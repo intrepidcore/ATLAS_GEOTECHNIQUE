@@ -1,0 +1,8 @@
+**/.git
+**/target
+**/node_modules
+**/.venv
+**/.idea
+**/.vscode
+**/*.log
+**/.tmp

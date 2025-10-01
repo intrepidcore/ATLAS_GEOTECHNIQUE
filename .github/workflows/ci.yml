@@ -1,0 +1,39 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        svc: [api-geo, api-infer, api-opti]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: fmt
+        run: |
+          cd services/${{ matrix.svc }}
+          cargo fmt --all -- --check
+      - name: clippy
+        run: |
+          cd services/${{ matrix.svc }}
+          cargo clippy -- -D warnings
+      - name: check
+        run: |
+          cd services/${{ matrix.svc }}
+          cargo check --all-targets
+  ui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: build
+        run: |
+          cd ui
+          npm ci
+          npm run build

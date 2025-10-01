@@ -1,0 +1,34 @@
+.PHONY: up down logs build db-migrate seed fmt lint
+
+COMPOSE=docker compose
+
+up:
+	$(COMPOSE) up --build -d
+
+down:
+	$(COMPOSE) down -v
+
+logs:
+	$(COMPOSE) logs -f --tail=200
+
+build:
+	$(COMPOSE) build --no-cache
+
+db-migrate:
+	$(COMPOSE) exec -T db psql -U $$POSTGRES_USER -d $$POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql
+
+seed:
+	$(COMPOSE) run --rm etl etl load-sample
+
+fmt:
+	# Rust format (uses official Rust image as a tooling container)
+	docker run --rm -v $(PWD)/services/api-geo:/work -w /work rust:1.79 cargo fmt --all -- --check || true
+	docker run --rm -v $(PWD)/services/api-infer:/work -w /work rust:1.79 cargo fmt --all -- --check || true
+	docker run --rm -v $(PWD)/services/api-opti:/work -w /work rust:1.79 cargo fmt --all -- --check || true
+	# UI format with Node
+	docker run --rm -v $(PWD)/ui:/work -w /work node:20 sh -lc "npm ci && npm run format" || true
+
+lint:
+	docker run --rm -v $(PWD)/services/api-geo:/work -w /work rust:1.79 sh -lc "rustup component add clippy && cargo clippy -- -D warnings" || true
+	docker run --rm -v $(PWD)/services/api-infer:/work -w /work rust:1.79 sh -lc "rustup component add clippy && cargo clippy -- -D warnings" || true
+	docker run --rm -v $(PWD)/services/api-opti:/work -w /work rust:1.79 sh -lc "rustup component add clippy && cargo clippy -- -D warnings" || true

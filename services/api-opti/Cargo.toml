@@ -1,0 +1,20 @@
+[package]
+name = "api-opti"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+axum = { version = "0.7", features = ["macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+rayon = "1.8"
+rand = "0.8"
+
+[build-dependencies]
+chrono = "0.4"

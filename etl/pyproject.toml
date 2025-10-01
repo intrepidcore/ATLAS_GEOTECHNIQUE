@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "atlas-etl"
+version = "0.1.0"
+description = "ETL pour atlas géotechnique"
+authors = ["Serge TABE DJATO <serge.tdjato@gmail.com>"]
+packages = [{ include = "etl" }]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+psycopg = {version = "^3.2", extras = ["binary"]}
+pandas = "^2.2.2"
+shapely = "^2.0.4"
+pydantic = "^2.8.2"
+typer = {version = "^0.12.3", extras = ["all"]}
+python-dotenv = "^1.0.1"
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.5.6"
+
+[tool.poetry.scripts]
+etl = "etl.cli:app"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

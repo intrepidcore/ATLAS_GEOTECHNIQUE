@@ -1,0 +1,8 @@
+html, body, #app, main { height: 100%; margin: 0; }
+header { padding: .5rem 1rem; background: #0f172a; color: #fff; }
+main { display: grid; grid-template-columns: 2fr 1fr; }
+#map { height: calc(100vh - 60px); }
+aside { padding: 1rem; overflow: auto; border-left: 1px solid #ddd; }
+.panel { margin-bottom: 1rem; display: grid; gap: .5rem; }
+button { padding: .5rem .75rem; cursor: pointer; }
+pre { background: #f8fafc; padding: .5rem; border: 1px solid #e2e8f0; border-radius: 4px; }

@@ -1,0 +1,132 @@
+version: "3.9"
+
+name: atlas
+
+services:
+  db:
+    image: postgis/postgis:16-3.4
+    container_name: atlas-db
+    restart: unless-stopped
+    env_file:
+      - ./.env
+      - ./.env.example
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ./data/db:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - atlas-net
+
+  api-geo:
+    build: ./services/api-geo
+    container_name: atlas-api-geo
+    env_file:
+      - ./.env
+      - ./.env.example
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      RUST_LOG: ${RUST_LOG}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - atlas-net
+
+  api-infer:
+    build: ./services/api-infer
+    container_name: atlas-api-infer
+    profiles: ["infer"]
+    env_file:
+      - ./.env
+      - ./.env.example
+    environment:
+      MODEL_PATH: ${MODEL_PATH}
+      RUST_LOG: ${RUST_LOG}
+    ports:
+      - "127.0.0.1:8002:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - atlas-net
+
+  api-opti:
+    build: ./services/api-opti
+    container_name: atlas-api-opti
+    profiles: ["opti"]
+    env_file:
+      - ./.env
+      - ./.env.example
+    environment:
+      RUST_LOG: ${RUST_LOG}
+    ports:
+      - "127.0.0.1:8003:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - atlas-net
+
+  ui:
+    build: ./ui
+    container_name: atlas-ui
+    env_file:
+      - ./.env
+      - ./.env.example
+    environment:
+      - VITE_API_GEO=${VITE_API_GEO}
+      - VITE_API_INFER=${VITE_API_INFER}
+      - VITE_API_OPTI=${VITE_API_OPTI}
+    depends_on:
+      - api-geo
+    ports:
+      - "127.0.0.1:8080:80"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - atlas-net
+
+  etl:
+    build: ./etl
+    container_name: atlas-etl
+    env_file:
+      - ./.env
+      - ./.env.example
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - atlas-net
+    # no published ports; run with `docker compose run --rm etl etl ...`
+    volumes:
+      - ./migrations:/migrations:ro
+
+networks:
+  atlas-net:
+    driver: bridge
