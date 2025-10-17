@@ -421,7 +421,7 @@ def load_maritime_dataset(
                 
                 cur.execute(
                     """
-                    INSERT INTO essais(id, sondage_id, profondeur, type_essai, valeur, unite, meta)
+                    INSERT INTO essais(id, sondage_id, depth_m, type, value, unit, meta)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """,
                     (
