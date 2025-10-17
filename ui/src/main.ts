@@ -514,6 +514,63 @@ const surveyForm = document.getElementById('surveyForm')!
 const surveyListView = document.getElementById('surveyListView')!
 let currentSurveyId: string | null = null
 let surveyMarkers: L.Marker[] = []
+let highlightedLayer: any = null
+
+// Highlight maille avec animation
+function highlightMaille(lat: number, lon: number) {
+  if (!gridLayer) return
+  
+  // Trouver la maille contenant le point
+  let targetLayer: any = null
+  gridLayer.eachLayer((layer: any) => {
+    const bounds = layer.getBounds()
+    if (bounds.contains([lat, lon])) {
+      targetLayer = layer
+    }
+  })
+  
+  if (!targetLayer) return
+  
+  // Retirer ancien highlight
+  if (highlightedLayer) {
+    gridLayer.resetStyle(highlightedLayer)
+  }
+  
+  // Appliquer animation
+  targetLayer.setStyle({
+    color: '#3aa6ff',
+    weight: 3,
+    fillOpacity: 0.3
+  })
+  
+  // Animer 5 fois
+  let count = 0
+  const interval = setInterval(() => {
+    if (count >= 10) {
+      clearInterval(interval)
+      gridLayer.resetStyle(targetLayer)
+      highlightedLayer = null
+      return
+    }
+    
+    if (count % 2 === 0) {
+      targetLayer.setStyle({
+        color: '#ff3a6f',
+        weight: 5,
+        fillOpacity: 0.6
+      })
+    } else {
+      targetLayer.setStyle({
+        color: '#3aa6ff',
+        weight: 3,
+        fillOpacity: 0.3
+      })
+    }
+    count++
+  }, 300)
+  
+  highlightedLayer = targetLayer
+}
 
 function openDrawer(mode: 'create' | 'list') {
   surveyDrawer.classList.add('open')
@@ -639,27 +696,57 @@ function renderSurveyList(surveys: any[]) {
     return
   }
 
-  list.innerHTML = surveys.map(s => `
-    <div class="survey-card" data-id="${s.id}">
-      <div class="survey-card-header">
-        <div class="survey-card-code">${s.code || 'N/A'}</div>
-        <div style="font-size:11px;color:var(--muted)">${s.maille_code || ''}</div>
+  list.innerHTML = surveys.map(s => {
+    const code = s.code || `Sondage-${s.id?.substring(0, 8) || '?'}`
+    const maille = s.maille_code || ''
+    const lon = (typeof s.lon === 'number' && !isNaN(s.lon)) ? s.lon.toFixed(4) : '—'
+    const lat = (typeof s.lat === 'number' && !isNaN(s.lat)) ? s.lat.toFixed(4) : '—'
+    const depthMin = (typeof s.depth_m_min === 'number' && !isNaN(s.depth_m_min)) ? s.depth_m_min.toFixed(1) : '0.0'
+    const depthMax = (typeof s.depth_m_max === 'number' && !isNaN(s.depth_m_max)) ? s.depth_m_max.toFixed(1) : '10.0'
+    const region = s.adm1_name || ''
+    
+    return `
+      <div class="survey-card" data-id="${s.id}">
+        <div class="survey-card-header">
+          <div class="survey-card-code">${code}</div>
+          <div style="font-size:11px;color:var(--muted)">${maille}</div>
+        </div>
+        <div class="survey-card-meta">
+          📍 ${lon}, ${lat}<br>
+          📏 ${depthMin}-${depthMax}m<br>
+          ${region ? `📌 ${region}` : ''}
+        </div>
       </div>
-      <div class="survey-card-meta">
-        📍 ${s.lon?.toFixed(4) || 'N/A'}, ${s.lat?.toFixed(4) || 'N/A'}<br>
-        📏 ${s.depth_m_min || 0}-${s.depth_m_max || 0}m<br>
-        ${s.adm1_name ? `📌 ${s.adm1_name}` : ''}
-      </div>
-    </div>
-  `).join('')
+    `
+  }).join('')
 
   // Click to view on map
   list.querySelectorAll('.survey-card').forEach(card => {
     card.addEventListener('click', () => {
       const survey = surveys.find(s => s.id === card.getAttribute('data-id'))
       if (survey && survey.lat && survey.lon) {
-        map.setView([survey.lat, survey.lon], 14)
-        toast(`Zoom sur ${survey.code}`)
+        // Zoom et highlight
+        map.setView([survey.lat, survey.lon], 15)
+        highlightMaille(survey.lat, survey.lon)
+        
+        // Ajouter marqueur temporaire pulsant
+        const tempMarker = L.circleMarker([survey.lat, survey.lon], {
+          radius: 8,
+          color: '#ff3a6f',
+          fillColor: '#ff3a6f',
+          fillOpacity: 0.8,
+          weight: 3,
+          className: 'survey-marker-pulse'
+        }).addTo(map)
+        
+        tempMarker.bindPopup(`<b>${survey.code}</b><br>📏 ${survey.depth_m_min || 0}-${survey.depth_m_max || 0}m<br>📌 ${survey.adm1_name || 'N/A'}`).openPopup()
+        
+        // Retirer après 5s
+        setTimeout(() => {
+          map.removeLayer(tempMarker)
+        }, 5000)
+        
+        toast(`📍 ${survey.code}`)
       }
     })
   })
