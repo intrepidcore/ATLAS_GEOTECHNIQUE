@@ -267,7 +267,7 @@ def make_grid(
 
         sql = """
         WITH tg AS (
-          SELECT ST_Transform(geom, 25231) AS g
+          SELECT ST_Transform(geom, %(to_srid)s) AS g
           FROM country_tg
           LIMIT 1
         ),
@@ -282,72 +282,50 @@ def make_grid(
         ),
         grid_clip AS (
           SELECT
-            ST_Intersection(cell, (SELECT g FROM tg)) AS geom_raw,
+            ST_Intersection(cell, (SELECT g FROM tg)) AS geom,
             col, row
           FROM grid_raw
           WHERE ST_Intersects(cell, (SELECT g FROM tg))
         ),
-        grid_clean AS (
-          SELECT
-            CASE
-              WHEN ST_GeometryType(geom_raw) = 'ST_GeometryCollection' THEN
-                ST_CollectionExtract(geom_raw, 3)  -- Extraire les polygones (type 3)
-              ELSE
-                geom_raw
-            END AS geom,
-            col, row
-          FROM grid_clip
-        ),
         grid_poly AS (
-          SELECT
-            geom,
-            col,
-            row
-          FROM grid_clean
-          WHERE geom IS NOT NULL 
-            AND ST_GeometryType(geom) = 'ST_Polygon'
-            AND ST_Area(geom) > %(min_area)s
+          SELECT ST_CollectionExtract(geom, 3) AS geom, col, row
+          FROM grid_clip
+          WHERE geom IS NOT NULL
         ),
-        grid_multi AS (
+        grid_dump AS (
           SELECT
-            (ST_Dump(geom)).geom AS geom,
-            col,
-            row
-          FROM grid_clean
-          WHERE geom IS NOT NULL 
-            AND ST_GeometryType(geom) = 'ST_MultiPolygon'
-            AND ST_Area(geom) > %(min_area)s
+            (sd).geom::geometry(Polygon, %(to_srid)s) AS geom,
+            row, col,
+            COALESCE((sd).path[1], 1) AS part
+          FROM (
+            SELECT ST_Dump(geom) AS sd, row, col
+            FROM grid_poly
+          ) d
         ),
-        grid_all AS (
-          SELECT geom, col, row, 1 AS source_order FROM grid_poly
-          UNION ALL
-          SELECT geom, col, row, 2 AS source_order FROM grid_multi
-        ),
-        grid_numbered AS (
+        grid_ok AS (
           SELECT
-            geom,
-            col,
-            row,
-            ROW_NUMBER() OVER (ORDER BY row, col, source_order) AS seq
-          FROM grid_all
-        ),
-        grid_final AS (
-          SELECT
-            geom,
-            ROW_NUMBER() OVER (ORDER BY seq) AS final_seq
-          FROM grid_numbered
+            geom, row, col, part
+          FROM grid_dump
+          WHERE ST_Area(geom) > %(min_area)s
         )
-        INSERT INTO mailles(id, geom, code, stats)
+        INSERT INTO mailles (id, geom, code, stats)
         SELECT
           gen_random_uuid(),
           geom,
-          'TG-' || LPAD(final_seq::text, 4, '0') AS code,
+          FORMAT('TG-%%s-%%s-%%s',
+                 LPAD(row::text, 4, '0'),
+                 LPAD(col::text, 4, '0'),
+                 LPAD(part::text, 2, '0')) AS code,
           '{"samples":0}'::jsonb
-        FROM grid_final
+        FROM grid_ok
+        ON CONFLICT (code) DO UPDATE
+        SET geom  = EXCLUDED.geom,
+            stats = EXCLUDED.stats,
+            updated_at = now()
         RETURNING code;
         """
 
-        cur.execute(sql, {"side": side_m, "min_area": min_area_m2})
+        cur.execute(sql, {"side": side_m, "min_area": min_area_m2, "to_srid": to_srid})
         inserted = cur.rowcount
 
     typer.secho(f"✓ {inserted} mailles générées avec succès", fg=typer.colors.GREEN)
