@@ -282,10 +282,21 @@ def make_grid(
         ),
         grid_clip AS (
           SELECT
-            ST_Intersection(cell, (SELECT g FROM tg)) AS geom,
+            ST_Intersection(cell, (SELECT g FROM tg)) AS geom_raw,
             col, row
           FROM grid_raw
           WHERE ST_Intersects(cell, (SELECT g FROM tg))
+        ),
+        grid_clean AS (
+          SELECT
+            CASE
+              WHEN ST_GeometryType(geom_raw) = 'ST_GeometryCollection' THEN
+                ST_CollectionExtract(geom_raw, 3)  -- Extraire les polygones (type 3)
+              ELSE
+                geom_raw
+            END AS geom,
+            col, row
+          FROM grid_clip
         ),
         grid_ok AS (
           SELECT
@@ -293,13 +304,20 @@ def make_grid(
             col,
             row,
             ROW_NUMBER() OVER (ORDER BY row, col) AS seq
-          FROM grid_clip
-          WHERE geom IS NOT NULL AND ST_Area(geom) > %(min_area)s
+          FROM grid_clean
+          WHERE geom IS NOT NULL 
+            AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon')
+            AND ST_Area(geom) > %(min_area)s
         )
         INSERT INTO mailles(id, geom, code, stats)
         SELECT
           gen_random_uuid(),
-          geom,
+          CASE
+            WHEN ST_GeometryType(geom) = 'ST_MultiPolygon' THEN
+              (ST_Dump(geom)).geom  -- Convertir MultiPolygon en Polygon
+            ELSE
+              geom
+          END AS geom,
           'TG-' || LPAD(seq::text, 4, '0') AS code,
           '{"samples":0}'::jsonb
         FROM grid_ok
