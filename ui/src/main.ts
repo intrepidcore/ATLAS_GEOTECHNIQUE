@@ -106,8 +106,51 @@ function onEachFeature(f: any, layer: any) {
       
       // Toast de confirmation
       toast(`📍 Maille sélectionnée: ${p.code}`, 'ok')
+      
+      // Afficher les données de la maille dans le panneau
+      displayMailleData(p)
     }
   })
+}
+
+// Afficher les données de la maille sélectionnée
+function displayMailleData(props: any) {
+  const jsonEl = document.getElementById('json')!
+  
+  const html = `
+<div style="background:#0f172a;border:1px solid #22304d;border-radius:8px;padding:12px">
+  <h5 style="margin:0 0 10px 0;font-size:14px;color:var(--accent);display:flex;align-items:center;gap:6px">
+    📍 ${props.code || 'N/A'}
+  </h5>
+  <div style="font-size:12px;line-height:1.8">
+    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #22304d22">
+      <span style="color:var(--muted)">Région:</span>
+      <span style="color:var(--text);font-weight:500">${props.adm1_name || '—'}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #22304d22">
+      <span style="color:var(--muted)">Préfecture:</span>
+      <span style="color:var(--text);font-weight:500">${props.adm2_name || '—'}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #22304d22">
+      <span style="color:var(--muted)">Commune:</span>
+      <span style="color:var(--text);font-weight:500">${props.adm3_name || '—'}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #22304d22">
+      <span style="color:var(--muted)">Sondages:</span>
+      <span style="color:var(--accent);font-weight:600">${props.n_sondages || 0}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;padding:4px 0">
+      <span style="color:var(--muted)">Essais:</span>
+      <span style="color:var(--accent);font-weight:600">${props.n_essais || 0}</span>
+    </div>
+  </div>
+  <button onclick="document.getElementById('newSurveyBtn').click()" style="width:100%;margin-top:12px;padding:8px;background:var(--accent);border:none;border-radius:6px;color:#0d1526;font-weight:600;cursor:pointer;font-size:12px">
+    ➕ Ajouter un sondage ici
+  </button>
+</div>
+  `.trim()
+  
+  jsonEl.innerHTML = html
 }
 
 // Générer automatiquement le code sondage
@@ -251,32 +294,7 @@ function buildAdmFilters(gj: any) {
   updateFilterStats()
 }
 
-function applyFilters() {
-  const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
-  const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
-  const adm3 = (document.getElementById('filterAdm3') as HTMLSelectElement).value
-  const showHasData = (document.getElementById('filterHasData') as HTMLInputElement).checked
-  const showNoData = (document.getElementById('filterNoData') as HTMLInputElement).checked
-  const minSondages = parseInt((document.getElementById('filterMinSondages') as HTMLInputElement).value) || 0
-
-  if (!gridLayer) return
-
-  gridLayer.eachLayer((layer: any) => {
-    const prop = layer.feature.properties
-    const matchAdm1 = !adm1 || prop.adm1_name === adm1
-    const matchAdm2 = !adm2 || prop.adm2_name === adm2
-    const matchAdm3 = !adm3 || prop.adm3_name === adm3
-    const matchData = (prop.has_data && showHasData) || (!prop.has_data && showNoData)
-    const matchMinSondages = (prop.n_sondages || 0) >= minSondages
-    const show = matchAdm1 && matchAdm2 && matchAdm3 && matchData && matchMinSondages
-    layer.setStyle({ 
-      opacity: show ? 1 : 0, 
-      fillOpacity: show ? (prop.has_data ? 0.35 : 0.06) : 0 
-    })
-  })
-
-  updateFilterStats()
-}
+// Fonction applyFilters déplacée plus bas avec les filtres avancés
 
 function updateFilterStats() {
   const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
@@ -1207,6 +1225,178 @@ map.on('click', (e: L.LeafletMouseEvent) => {
     toast('Coordonnées remplies depuis la carte')
   }
 })
+
+// --- Filtres avancés ---
+let currentView = 'default'
+
+document.getElementById('applyFilters')?.addEventListener('click', () => {
+  applyFilters()
+})
+
+document.getElementById('resetFilters')?.addEventListener('click', () => {
+  // Réinitialiser tous les filtres
+  (document.getElementById('filterHasData') as HTMLInputElement).checked = true;
+  (document.getElementById('filterNoData') as HTMLInputElement).checked = true;
+  (document.getElementById('filterDepth0-5') as HTMLInputElement).checked = true;
+  (document.getElementById('filterDepth5-10') as HTMLInputElement).checked = true;
+  (document.getElementById('filterDepth10plus') as HTMLInputElement).checked = true;
+  (document.getElementById('filterTestSPT') as HTMLInputElement).checked = true;
+  (document.getElementById('filterTestQC') as HTMLInputElement).checked = true;
+  (document.getElementById('filterMinSondages') as HTMLInputElement).value = '0';
+  (document.getElementById('filterAdm1') as HTMLSelectElement).value = '';
+  (document.getElementById('filterAdm2') as HTMLSelectElement).value = '';
+  (document.getElementById('filterAdm3') as HTMLSelectElement).value = '';
+  
+  applyFilters()
+  toast('Filtres réinitialisés', 'ok')
+})
+
+function applyFilters() {
+  if (!gridLayer) return
+  
+  const hasData = (document.getElementById('filterHasData') as HTMLInputElement).checked
+  const noData = (document.getElementById('filterNoData') as HTMLInputElement).checked
+  const depth05 = (document.getElementById('filterDepth0-5') as HTMLInputElement).checked
+  const depth510 = (document.getElementById('filterDepth5-10') as HTMLInputElement).checked
+  const depth10plus = (document.getElementById('filterDepth10plus') as HTMLInputElement).checked
+  const testSPT = (document.getElementById('filterTestSPT') as HTMLInputElement).checked
+  const testQC = (document.getElementById('filterTestQC') as HTMLInputElement).checked
+  const minSondages = parseInt((document.getElementById('filterMinSondages') as HTMLInputElement).value) || 0
+  const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
+  const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
+  const adm3 = (document.getElementById('filterAdm3') as HTMLSelectElement).value
+  
+  let visibleCount = 0
+  let withDataCount = 0
+  let sondagesCount = 0
+  let essaisCount = 0
+  
+  gridLayer.eachLayer((layer: any) => {
+    const props = layer.feature?.properties
+    if (!props) return
+    
+    let visible = true
+    
+    // Filtre has_data
+    if (props.has_data && !hasData) visible = false
+    if (!props.has_data && !noData) visible = false
+    
+    // Filtre min sondages
+    if ((props.n_sondages || 0) < minSondages) visible = false
+    
+    // Filtre ADM
+    if (adm1 && props.adm1_name !== adm1) visible = false
+    if (adm2 && props.adm2_name !== adm2) visible = false
+    if (adm3 && props.adm3_name !== adm3) visible = false
+    
+    // TODO: Filtres profondeur et type essai (nécessitent des données détaillées)
+    
+    if (visible) {
+      visibleCount++
+      if (props.has_data) withDataCount++
+      sondagesCount += props.n_sondages || 0
+      essaisCount += props.n_essais || 0
+      layer.setStyle({ opacity: 1, fillOpacity: props.has_data ? 0.35 : 0.06 })
+    } else {
+      layer.setStyle({ opacity: 0, fillOpacity: 0 })
+    }
+  })
+  
+  // Mettre à jour les stats
+  document.getElementById('statVisible')!.textContent = visibleCount.toLocaleString()
+  document.getElementById('statWithData')!.textContent = withDataCount.toLocaleString()
+  document.getElementById('statSondages')!.textContent = sondagesCount.toLocaleString()
+  document.getElementById('statEssais')!.textContent = essaisCount.toLocaleString()
+  
+  toast(`Filtres appliqués: ${visibleCount} mailles visibles`, 'ok')
+}
+
+// --- Vues thématiques ---
+document.getElementById('thematicView')?.addEventListener('change', (e) => {
+  currentView = (e.target as HTMLSelectElement).value
+  applyThematicView()
+})
+
+function applyThematicView() {
+  if (!gridLayer) return
+  
+  gridLayer.eachLayer((layer: any) => {
+    const props = layer.feature?.properties
+    if (!props) return
+    
+    let color = '#cfd8e3'
+    let fillOpacity = 0.06
+    
+    switch (currentView) {
+      case 'default':
+        color = props.has_data ? '#e85d68' : '#cfd8e3'
+        fillOpacity = props.has_data ? 0.35 : 0.06
+        break
+        
+      case 'density':
+        // Densité de sondages (0 = blanc, 10+ = bleu foncé)
+        const n = props.n_sondages || 0
+        if (n === 0) {
+          color = '#e0e7ee'
+          fillOpacity = 0.06
+        } else if (n <= 2) {
+          color = '#a8d5ff'
+          fillOpacity = 0.3
+        } else if (n <= 5) {
+          color = '#5eb3ff'
+          fillOpacity = 0.5
+        } else if (n <= 10) {
+          color = '#3a8fff'
+          fillOpacity = 0.7
+        } else {
+          color = '#1a5fb8'
+          fillOpacity = 0.85
+        }
+        break
+        
+      case 'spt_avg':
+        // SPT-N moyen (vert = faible, jaune = moyen, rouge = élevé)
+        // TODO: Calculer la moyenne réelle depuis les essais
+        const sptAvg = 15 // Placeholder
+        if (sptAvg < 10) {
+          color = '#0bb07b'
+          fillOpacity = 0.5
+        } else if (sptAvg < 30) {
+          color = '#f4b740'
+          fillOpacity = 0.6
+        } else {
+          color = '#ef476f'
+          fillOpacity = 0.7
+        }
+        break
+        
+      case 'qc_avg':
+        // qc moyen (vert = faible, jaune = moyen, rouge = élevé)
+        // TODO: Calculer la moyenne réelle depuis les essais
+        const qcAvg = 3.5 // Placeholder
+        if (qcAvg < 2) {
+          color = '#0bb07b'
+          fillOpacity = 0.5
+        } else if (qcAvg < 5) {
+          color = '#f4b740'
+          fillOpacity = 0.6
+        } else {
+          color = '#ef476f'
+          fillOpacity = 0.7
+        }
+        break
+    }
+    
+    layer.setStyle({
+      fillColor: color,
+      fillOpacity,
+      color: props.has_data ? color : '#6b778c55',
+      weight: props.has_data ? 1.2 : 0.5
+    })
+  })
+  
+  toast(`Vue: ${currentView}`, 'ok')
+}
 
 // Auto-load grid on startup
 loadGrid()
