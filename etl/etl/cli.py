@@ -294,7 +294,7 @@ def make_grid(
         ),
         grid_dump AS (
           SELECT
-            (sd).geom::geometry(Polygon, %(to_srid)s) AS geom,
+            (sd).geom AS geom,
             row, col,
             COALESCE((sd).path[1], 1) AS part
           FROM (
