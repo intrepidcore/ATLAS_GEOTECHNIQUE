@@ -5,7 +5,7 @@ const API_GEO = (import.meta.env.VITE_API_GEO ?? (window as any).__API_GEO__ ?? 
 const API_INFER = (import.meta.env.VITE_API_INFER ?? (window as any).__API_INFER__ ?? '') as string
 const API_OPTI = (import.meta.env.VITE_API_OPTI ?? (window as any).__API_OPTI__ ?? '') as string
 
-const map = L.map('map').setView([8.6195, 0.8248], 7) // Togo approx
+const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7) // Togo approx
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 18,
   attribution: '&copy; OpenStreetMap'
@@ -106,41 +106,103 @@ if (!API_GEO) {
   bannerMissing('GEO')
 }
 
-// --- Coverage grid loading & interactions ---
-async function loadCoverage() {
-  if (!API_GEO) return
-  if (statusEl) statusEl.textContent = 'Loading coverage…'
-  try {
-    const res = await fetch(`${API_GEO}/coverage/mailles`)
-    const fc = await res.json()
-    if (gridLayer) gridLayer.remove()
-    gridLayer = L.geoJSON(fc, {
+// --- Coverage grid loading & interactions with viewport filtering ---
+type BBox = [number, number, number, number] // [minX, minY, maxX, maxY]
+let gridFeatures: any[] = []
+
+function bboxOfGeom(geom: any): BBox {
+  const upd = (b: BBox, x: number, y: number): BBox => [
+    Math.min(b[0], x),
+    Math.min(b[1], y),
+    Math.max(b[2], x),
+    Math.max(b[3], y),
+  ]
+  const walk = (coords: any, b: BBox): BBox => {
+    if (typeof coords[0] === 'number') return upd(b, coords[0], coords[1])
+    for (const c of coords) b = walk(c, b)
+    return b
+  }
+  return walk(geom.coordinates, [Infinity, Infinity, -Infinity, -Infinity])
+}
+
+function intersects(b: BBox, view: L.LatLngBounds): boolean {
+  return (
+    b[2] >= view.getWest() &&
+    b[0] <= view.getEast() &&
+    b[3] >= view.getSouth() &&
+    b[1] <= view.getNorth()
+  )
+}
+
+function setStatus(msg: string) {
+  if (statusEl) statusEl.textContent = msg
+}
+
+function renderGrid() {
+  if (!gridFeatures.length) return
+  const view = map.getBounds()
+
+  // Sous-ensemble des features visibles
+  const subset = []
+  for (const f of gridFeatures) {
+    const bb = f.properties.__bbox as BBox
+    if (intersects(bb, view)) subset.push(f)
+    if (subset.length > 2500) break // garde-fou perf
+  }
+
+  if (gridLayer) gridLayer.clearLayers()
+  if (!gridLayer) {
+    gridLayer = L.geoJSON(null, {
       style: (feat: any) => {
         const has = !!feat?.properties?.has_data
         return {
-          color: has ? '#991b1b' : '#9ca3af',
-          weight: has ? 1.5 : 1,
-          fillColor: '#ef4444',
-          fillOpacity: has ? 0.45 : 0.0,
+          color: has ? '#cc0000' : '#666',
+          weight: has ? 1.0 : 0.5,
+          opacity: has ? 0.9 : 0.4,
+          fillOpacity: has ? 0.35 : 0.0,
         }
       },
-      onEachFeature: (feature: any, layer: L.Layer) => {
+      onEachFeature: (feat: any, layer: L.Layer) => {
         layer.on('click', () => {
-          const c = (feature.properties as any)?.code
-          if (c) {
-            codeInput.value = c
+          const code = feat?.properties?.code
+          if (code && codeInput) {
+            codeInput.value = code
             ;(document.getElementById('btn-grid') as HTMLButtonElement).click()
           }
         })
       }
     }).addTo(map)
-    if (statusEl) statusEl.innerHTML = `<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">OK</span> (${res.status})`
-    const b = gridLayer.getBounds()
-    if (b.isValid()) map.fitBounds(b.pad(0.1))
+  }
+
+  gridLayer.addData({ type: 'FeatureCollection', features: subset })
+  setStatus(`Grille: ${subset.length} mailles visibles / ${gridFeatures.length}`)
+}
+
+async function loadCoverage() {
+  if (!API_GEO) return
+  setStatus('Chargement des mailles…')
+  try {
+    const res = await fetch(`${API_GEO}/coverage/mailles`)
+    if (!res.ok) {
+      setStatus(`Erreur chargement (${res.status})`)
+      return
+    }
+    const fc = await res.json()
+    gridFeatures = (fc.features ?? []).map((f: any) => {
+      // calcule et mémorise un bbox pour filtre rapide
+      f.properties = f.properties ?? {}
+      f.properties.__bbox = bboxOfGeom(f.geometry)
+      return f
+    })
+    setStatus(`Grille chargée (${gridFeatures.length} mailles)`)
+    renderGrid()
   } catch (e: any) {
-    if (statusEl) statusEl.textContent = 'Error loading coverage'
+    setStatus(`Erreur: ${String(e)}`)
   }
 }
+
+// Re-render grid on map move/zoom
+map.on('moveend', () => renderGrid())
 
 // Button: GET /grid/{code}/shape
 ;(document.getElementById('btn-shape') as HTMLButtonElement).onclick = async () => {
