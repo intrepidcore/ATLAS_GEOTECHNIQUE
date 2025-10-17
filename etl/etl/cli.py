@@ -308,19 +308,27 @@ def make_grid(
           WHERE geom IS NOT NULL 
             AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon')
             AND ST_Area(geom) > %(min_area)s
+        ),
+        grid_final AS (
+          SELECT
+            CASE
+              WHEN ST_GeometryType(g.geom) = 'ST_MultiPolygon' THEN
+                d.geom
+              ELSE
+                g.geom
+            END AS geom,
+            ROW_NUMBER() OVER (ORDER BY g.seq, d.path) AS final_seq
+          FROM grid_ok g
+          LEFT JOIN LATERAL ST_Dump(g.geom) d ON ST_GeometryType(g.geom) = 'ST_MultiPolygon'
+          WHERE d.geom IS NOT NULL OR ST_GeometryType(g.geom) = 'ST_Polygon'
         )
         INSERT INTO mailles(id, geom, code, stats)
         SELECT
           gen_random_uuid(),
-          CASE
-            WHEN ST_GeometryType(geom) = 'ST_MultiPolygon' THEN
-              (ST_Dump(geom)).geom  -- Convertir MultiPolygon en Polygon
-            ELSE
-              geom
-          END AS geom,
-          'TG-' || LPAD(seq::text, 4, '0') AS code,
+          geom,
+          'TG-' || LPAD(final_seq::text, 4, '0') AS code,
           '{"samples":0}'::jsonb
-        FROM grid_ok
+        FROM grid_final
         RETURNING code;
         """
 
