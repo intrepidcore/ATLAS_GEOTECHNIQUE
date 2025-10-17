@@ -106,103 +106,67 @@ if (!API_GEO) {
   bannerMissing('GEO')
 }
 
-// --- Coverage grid loading & interactions with viewport filtering ---
-type BBox = [number, number, number, number] // [minX, minY, maxX, maxY]
-let gridFeatures: any[] = []
-
-function bboxOfGeom(geom: any): BBox {
-  const upd = (b: BBox, x: number, y: number): BBox => [
-    Math.min(b[0], x),
-    Math.min(b[1], y),
-    Math.max(b[2], x),
-    Math.max(b[3], y),
-  ]
-  const walk = (coords: any, b: BBox): BBox => {
-    if (typeof coords[0] === 'number') return upd(b, coords[0], coords[1])
-    for (const c of coords) b = walk(c, b)
-    return b
+// --- Coverage grid loading & interactions ---
+// Style: contour pour toutes les mailles, remplissage rouge si données
+function styleByProps(f: any): L.PathOptions {
+  const has = !!f?.properties?.has_data
+  return {
+    color: has ? '#c00' : '#666',      // contour rouge si données, gris sinon
+    weight: has ? 2 : 0.6,             // trait un peu plus épais si données
+    opacity: 0.9,
+    fillColor: has ? '#c00' : '#aaa',
+    fillOpacity: has ? 0.45 : 0.05,    // voile très léger pour mailles vides
   }
-  return walk(geom.coordinates, [Infinity, Infinity, -Infinity, -Infinity])
 }
 
-function intersects(b: BBox, view: L.LatLngBounds): boolean {
-  return (
-    b[2] >= view.getWest() &&
-    b[0] <= view.getEast() &&
-    b[3] >= view.getSouth() &&
-    b[1] <= view.getNorth()
-  )
+// Interaction: survol + clic → renseigne l'input
+function onEachCell(f: any, layer: L.Layer) {
+  const l = layer as L.Path
+
+  l.on('mouseover', () => l.setStyle({ weight: 3, opacity: 1 }))
+  l.on('mouseout', () => l.setStyle(styleByProps(f)))
+
+  l.on('click', () => {
+    if (codeInput) codeInput.value = f?.properties?.code ?? ''
+    // Auto-trigger GET /grid/{code}
+    ;(document.getElementById('btn-grid') as HTMLButtonElement)?.click()
+  })
+
+  // Tooltip avec le code de la maille
+  l.bindTooltip(() => f?.properties?.code ?? '', { sticky: true })
 }
 
-function setStatus(msg: string) {
-  if (statusEl) statusEl.textContent = msg
-}
-
-function renderGrid() {
-  if (!gridFeatures.length) return
-  const view = map.getBounds()
-
-  // Sous-ensemble des features visibles
-  const subset = []
-  for (const f of gridFeatures) {
-    const bb = f.properties.__bbox as BBox
-    if (intersects(bb, view)) subset.push(f)
-    if (subset.length > 2500) break // garde-fou perf
-  }
-
-  if (gridLayer) gridLayer.clearLayers()
-  if (!gridLayer) {
-    gridLayer = L.geoJSON(null, {
-      style: (feat: any) => {
-        const has = !!feat?.properties?.has_data
-        return {
-          color: has ? '#cc0000' : '#666',
-          weight: has ? 1.0 : 0.5,
-          opacity: has ? 0.9 : 0.4,
-          fillOpacity: has ? 0.35 : 0.0,
-        }
-      },
-      onEachFeature: (feat: any, layer: L.Layer) => {
-        layer.on('click', () => {
-          const code = feat?.properties?.code
-          if (code && codeInput) {
-            codeInput.value = code
-            ;(document.getElementById('btn-grid') as HTMLButtonElement).click()
-          }
-        })
-      }
-    }).addTo(map)
-  }
-
-  gridLayer.addData({ type: 'FeatureCollection', features: subset })
-  setStatus(`Grille: ${subset.length} mailles visibles / ${gridFeatures.length}`)
-}
-
-async function loadCoverage() {
+// Charge une fois toute la couverture et l'affiche
+async function loadCoverageOnce() {
   if (!API_GEO) return
-  setStatus('Chargement des mailles…')
+  if (statusEl) statusEl.textContent = 'Chargement des mailles…'
+  
   try {
     const res = await fetch(`${API_GEO}/coverage/mailles`)
-    if (!res.ok) {
-      setStatus(`Erreur chargement (${res.status})`)
-      return
-    }
-    const fc = await res.json()
-    gridFeatures = (fc.features ?? []).map((f: any) => {
-      // calcule et mémorise un bbox pour filtre rapide
-      f.properties = f.properties ?? {}
-      f.properties.__bbox = bboxOfGeom(f.geometry)
-      return f
-    })
-    setStatus(`Grille chargée (${gridFeatures.length} mailles)`)
-    renderGrid()
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const gj = await res.json()
+
+    // retire l'ancienne couche si on relance
+    if (gridLayer) gridLayer.removeFrom(map)
+
+    gridLayer = L.geoJSON(gj, {
+      style: styleByProps,
+      onEachFeature: onEachCell,
+    }).addTo(map)
+
+    // ajuste la vue sur l'ensemble de la grille
+    const bounds = gridLayer.getBounds()
+    if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] })
+
+    const total = gj.features?.length ?? 0
+    const withData = gj.features?.filter((f: any) => f.properties?.has_data).length ?? 0
+    if (statusEl) statusEl.textContent = `Grille chargée: ${total} mailles (${withData} avec données)`
+
   } catch (e: any) {
-    setStatus(`Erreur: ${String(e)}`)
+    console.error(e)
+    if (statusEl) statusEl.textContent = `Erreur couverture: ${e.message ?? e}`
   }
 }
-
-// Re-render grid on map move/zoom
-map.on('moveend', () => renderGrid())
 
 // Button: GET /grid/{code}/shape
 ;(document.getElementById('btn-shape') as HTMLButtonElement).onclick = async () => {
@@ -263,4 +227,4 @@ map.on('moveend', () => renderGrid())
 }
 
 // Auto-load coverage on startup
-loadCoverage()
+loadCoverageOnce()
