@@ -161,6 +161,37 @@ async function loadCoverage() {
   }
 }
 
+// Button: Export GeoJSON
+;(document.getElementById('btn-export') as HTMLButtonElement).onclick = async () => {
+  if (!API_GEO) return bannerMissing()
+  const code = codeInput.value
+  if (!code) {
+    if (statusEl) statusEl.innerHTML = `<span style="background:#f59e0b;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Warning</span> Code maille requis`
+    return
+  }
+  if (statusEl) statusEl.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #9ca3af;border-top-color:#111;border-radius:50%;animation:spin 1s linear infinite;margin-right:6px"></span>Exporting…'
+  try {
+    const res = await fetch(`${API_GEO}/grid/${encodeURIComponent(code)}/shape`)
+    if (!res.ok) {
+      if (statusEl) statusEl.innerHTML = `<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Error</span> (${res.status})`
+      show({ status: res.status, error: 'Failed to fetch shape' })
+      return
+    }
+    const gj = await res.json()
+    const blob = new Blob([JSON.stringify(gj, null, 2)], { type: 'application/geo+json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${code}.geojson`
+    a.click()
+    URL.revokeObjectURL(url)
+    if (statusEl) statusEl.innerHTML = `<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">OK</span> Exported ${code}.geojson`
+  } catch (e: any) {
+    if (statusEl) statusEl.innerHTML = `<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Error</span> Export failed`
+    show({ error: e?.message ?? String(e) })
+  }
+}
+
 // Button: Zoom Togo (bounds of coverage)
 ;(document.getElementById('btn-zoom') as HTMLButtonElement).onclick = () => {
   if (gridLayer) {

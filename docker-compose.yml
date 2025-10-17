@@ -1,5 +1,3 @@
-version: "3.9"
-
 name: atlas
 
 services:
@@ -126,6 +124,7 @@ services:
     # no published ports; run with `docker compose run --rm etl etl ...`
     volumes:
       - ./migrations:/migrations:ro
+      - ./data:/data:ro
 
 networks:
   atlas-net:
