@@ -40,9 +40,14 @@ function setKpis(total: number, withData: number) {
 // --- Leaflet styles ---
 function styleFeature(f: any) {
   const has = !!f.properties?.has_data
+  const zoom = map.getZoom()
+  // Contours dynamiques selon le zoom
+  const baseWeight = has ? 1.2 : 0.5
+  const weight = zoom < 10 ? baseWeight : zoom < 12 ? baseWeight * 1.5 : baseWeight * 2
+  
   return {
     color: has ? '#e85d68' : '#6b778c55',
-    weight: has ? 1.2 : 0.5,
+    weight,
     fillColor: has ? '#e85d68' : '#cfd8e3',
     fillOpacity: has ? 0.35 : 0.06
   }
@@ -121,6 +126,18 @@ async function loadGrid() {
 
     const bounds = gridLayer.getBounds()
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] })
+
+    // Redessiner les mailles lors du zoom pour ajuster les contours
+    map.on('zoomend', () => {
+      if (gridLayer) {
+        gridLayer.eachLayer((layer: any) => {
+          const feature = layer.feature
+          if (feature) {
+            layer.setStyle(styleFeature(feature))
+          }
+        })
+      }
+    })
 
     buildAdmFilters(gj)
   } catch (e: any) {

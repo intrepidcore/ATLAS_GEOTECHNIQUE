@@ -59,7 +59,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .survey-card-code{font-weight:600;color:var(--accent)}
 .survey-card-meta{font-size:11px;color:var(--muted);line-height:1.5}
 @keyframes pulse-highlight{0%,100%{stroke:#3aa6ff;stroke-width:3;fill-opacity:0.3}50%{stroke:#ff3a6f;stroke-width:5;fill-opacity:0.6}}
-.highlight-maille{animation:pulse-highlight 0.6s ease-in-out 5}
+.highlight-maille{animation:pulse-highlight 0.6s ease-in-out 8}
 .survey-marker-pulse{animation:marker-pulse 1s ease-in-out infinite}
 @keyframes marker-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.3);opacity:0.7}}
     </style>
@@ -174,8 +174,8 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           <input type="date" id="surveyDate" />
         </div>
         <div class="form-group">
-          <label>Source (Entreprise/Labo)</label>
-          <input type="text" id="surveySource" placeholder="ex: Laboratoire XYZ" />
+          <label>Source (Entreprise/Labo) <span style="color:var(--err)">*</span></label>
+          <input type="text" id="surveySource" placeholder="ex: Laboratoire XYZ" required />
         </div>
         <div class="form-group">
           <label>Opérateur</label>
