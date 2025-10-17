@@ -125,12 +125,15 @@ pub async fn get_coverage_mailles(State(state): State<AppState>) -> impl IntoRes
         r#"
         SELECT m.code,
                ST_AsGeoJSON(ST_Transform(m.geom,4326)) AS g,
+               m.adm1_name,
+               m.adm2_name,
+               m.adm3_name,
                COALESCE(COUNT(DISTINCT s.id),0)::bigint AS n_sondages,
                COALESCE(COUNT(e.id),0)::bigint AS n_essais
         FROM mailles m
         LEFT JOIN sondages s ON ST_Within(s.geom, m.geom)
         LEFT JOIN essais e ON e.sondage_id = s.id
-        GROUP BY m.code, m.geom
+        GROUP BY m.code, m.geom, m.adm1_name, m.adm2_name, m.adm3_name
         "#
     ).fetch_all(pool).await {
         Ok(v) => v,
@@ -140,14 +143,32 @@ pub async fn get_coverage_mailles(State(state): State<AppState>) -> impl IntoRes
     for r in rows {
         let code: String = r.get("code");
         let g: String = r.get("g");
+        let adm1_name: Option<String> = r.try_get("adm1_name").ok();
+        let adm2_name: Option<String> = r.try_get("adm2_name").ok();
+        let adm3_name: Option<String> = r.try_get("adm3_name").ok();
         let n_sondages: i64 = r.get("n_sondages");
         let n_essais: i64 = r.get("n_essais");
         let has_data = n_sondages > 0;
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
+            let mut props = serde_json::json!({
+                "code": code,
+                "has_data": has_data,
+                "n_sondages": n_sondages,
+                "n_essais": n_essais
+            });
+            if let Some(adm1) = adm1_name {
+                props["adm1_name"] = serde_json::Value::String(adm1);
+            }
+            if let Some(adm2) = adm2_name {
+                props["adm2_name"] = serde_json::Value::String(adm2);
+            }
+            if let Some(adm3) = adm3_name {
+                props["adm3_name"] = serde_json::Value::String(adm3);
+            }
             features.push(serde_json::json!({
                 "type":"Feature",
                 "geometry": geom,
-                "properties": {"code": code, "has_data": has_data, "n_sondages": n_sondages, "n_essais": n_essais}
+                "properties": props
             }));
         }
     }
