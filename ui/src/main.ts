@@ -104,35 +104,142 @@ async function loadGrid() {
     const bounds = gridLayer.getBounds()
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] })
 
-    buildAdmFilter(gj)
+    buildAdmFilters(gj)
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
     setStatus('Erreur de chargement')
   }
 }
 
-// --- ADM filter ---
-function buildAdmFilter(gj: any) {
-  const s = document.getElementById('filterAdm') as HTMLSelectElement
-  const set = new Set<string>()
-  gj.features.forEach((f: any) => {
-    if (f.properties?.adm1_name) set.add(f.properties.adm1_name)
+// --- ADM filters ---
+let allFeatures: any[] = []
+
+function buildAdmFilters(gj: any) {
+  allFeatures = gj.features
+  
+  // Build ADM1 (régions)
+  const adm1Select = document.getElementById('filterAdm1') as HTMLSelectElement
+  const adm1Set = new Set<string>()
+  allFeatures.forEach((f: any) => {
+    if (f.properties?.adm1_name) adm1Set.add(f.properties.adm1_name)
   })
-  ;[...set].sort().forEach(v => {
+  ;[...adm1Set].sort().forEach(v => {
     const opt = document.createElement('option')
     opt.value = v
     opt.textContent = v
-    s.appendChild(opt)
+    adm1Select.appendChild(opt)
   })
-  s.onchange = () => {
-    const v = s.value
-    if (!gridLayer) return
-    gridLayer.eachLayer((layer: any) => {
-      const prop = layer.feature.properties
-      const show = !v || prop.adm1_name === v
-      layer.setStyle({ opacity: show ? 1 : 0, fillOpacity: show ? (prop.has_data ? 0.35 : 0.06) : 0 })
+
+  // Build ADM2 (préfectures)
+  const adm2Select = document.getElementById('filterAdm2') as HTMLSelectElement
+  const adm2Set = new Set<string>()
+  allFeatures.forEach((f: any) => {
+    if (f.properties?.adm2_name) adm2Set.add(f.properties.adm2_name)
+  })
+  ;[...adm2Set].sort().forEach(v => {
+    const opt = document.createElement('option')
+    opt.value = v
+    opt.textContent = v
+    adm2Select.appendChild(opt)
+  })
+
+  // Build ADM3 (communes)
+  const adm3Select = document.getElementById('filterAdm3') as HTMLSelectElement
+  const adm3Set = new Set<string>()
+  allFeatures.forEach((f: any) => {
+    if (f.properties?.adm3_name) adm3Set.add(f.properties.adm3_name)
+  })
+  ;[...adm3Set].sort().forEach(v => {
+    const opt = document.createElement('option')
+    opt.value = v
+    opt.textContent = v
+    adm3Select.appendChild(opt)
+  })
+
+  // Attach change handlers
+  adm1Select.onchange = () => applyFilters()
+  adm2Select.onchange = () => applyFilters()
+  adm3Select.onchange = () => applyFilters()
+
+  // Attach data filter handlers
+  document.getElementById('filterHasData')!.addEventListener('change', () => applyFilters())
+  document.getElementById('filterNoData')!.addEventListener('change', () => applyFilters())
+  document.getElementById('filterMinSondages')!.addEventListener('input', () => applyFilters())
+
+  // Reset button
+  document.getElementById('resetFilters')!.addEventListener('click', () => {
+    adm1Select.value = ''
+    adm2Select.value = ''
+    adm3Select.value = ''
+    ;(document.getElementById('filterHasData') as HTMLInputElement).checked = true
+    ;(document.getElementById('filterNoData') as HTMLInputElement).checked = true
+    ;(document.getElementById('filterMinSondages') as HTMLInputElement).value = '0'
+    applyFilters()
+  })
+
+  // Initial stats
+  updateFilterStats()
+}
+
+function applyFilters() {
+  const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
+  const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
+  const adm3 = (document.getElementById('filterAdm3') as HTMLSelectElement).value
+  const showHasData = (document.getElementById('filterHasData') as HTMLInputElement).checked
+  const showNoData = (document.getElementById('filterNoData') as HTMLInputElement).checked
+  const minSondages = parseInt((document.getElementById('filterMinSondages') as HTMLInputElement).value) || 0
+
+  if (!gridLayer) return
+
+  gridLayer.eachLayer((layer: any) => {
+    const prop = layer.feature.properties
+    const matchAdm1 = !adm1 || prop.adm1_name === adm1
+    const matchAdm2 = !adm2 || prop.adm2_name === adm2
+    const matchAdm3 = !adm3 || prop.adm3_name === adm3
+    const matchData = (prop.has_data && showHasData) || (!prop.has_data && showNoData)
+    const matchMinSondages = (prop.n_sondages || 0) >= minSondages
+    const show = matchAdm1 && matchAdm2 && matchAdm3 && matchData && matchMinSondages
+    layer.setStyle({ 
+      opacity: show ? 1 : 0, 
+      fillOpacity: show ? (prop.has_data ? 0.35 : 0.06) : 0 
     })
-  }
+  })
+
+  updateFilterStats()
+}
+
+function updateFilterStats() {
+  const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
+  const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
+  const adm3 = (document.getElementById('filterAdm3') as HTMLSelectElement).value
+  const showHasData = (document.getElementById('filterHasData') as HTMLInputElement).checked
+  const showNoData = (document.getElementById('filterNoData') as HTMLInputElement).checked
+  const minSondages = parseInt((document.getElementById('filterMinSondages') as HTMLInputElement).value) || 0
+
+  const filtered = allFeatures.filter((f: any) => {
+    const prop = f.properties
+    const matchAdm1 = !adm1 || prop.adm1_name === adm1
+    const matchAdm2 = !adm2 || prop.adm2_name === adm2
+    const matchAdm3 = !adm3 || prop.adm3_name === adm3
+    const matchData = (prop.has_data && showHasData) || (!prop.has_data && showNoData)
+    const matchMinSondages = (prop.n_sondages || 0) >= minSondages
+    return matchAdm1 && matchAdm2 && matchAdm3 && matchData && matchMinSondages
+  })
+
+  let withData = 0
+  let totalSondages = 0
+  let totalEssais = 0
+
+  filtered.forEach((f: any) => {
+    if (f.properties?.has_data) withData++
+    totalSondages += f.properties?.n_sondages || 0
+    totalEssais += f.properties?.n_essais || 0
+  })
+
+  document.getElementById('statVisible')!.textContent = filtered.length.toLocaleString()
+  document.getElementById('statWithData')!.textContent = withData.toLocaleString()
+  document.getElementById('statSondages')!.textContent = totalSondages.toLocaleString()
+  document.getElementById('statEssais')!.textContent = totalEssais.toLocaleString()
 }
 
 // --- Button handlers ---
@@ -213,7 +320,33 @@ document.getElementById('shapeBtn')!.addEventListener('click', async () => {
   }
 })
 
-document.getElementById('exportBtn')!.addEventListener('click', async () => {
+// --- Export functions ---
+async function getCurrentGridData() {
+  const code = codeInput.value.trim()
+  if (!code) {
+    toast('Entrez un code de maille', 'err')
+    return null
+  }
+  try {
+    const res = await fetch(`${API_GEO}/grid/${encodeURIComponent(code)}`)
+    if (!res.ok) return null
+    return await res.json()
+  } catch {
+    return null
+  }
+}
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+document.getElementById('exportGeoJSON')!.addEventListener('click', async () => {
   const code = codeInput.value.trim()
   if (!code) {
     toast('Entrez un code', 'err')
@@ -226,17 +359,143 @@ document.getElementById('exportBtn')!.addEventListener('click', async () => {
       return
     }
     const gj = await res.json()
-    const blob = new Blob([JSON.stringify(gj, null, 2)], { type: 'application/geo+json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${code}.geojson`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast('Exporté')
+    downloadFile(JSON.stringify(gj, null, 2), `${code}.geojson`, 'application/geo+json')
+    toast('GeoJSON exporté')
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
   }
+})
+
+document.getElementById('exportMarkdown')!.addEventListener('click', async () => {
+  const data = await getCurrentGridData()
+  if (!data) {
+    toast('Impossible de récupérer les données', 'err')
+    return
+  }
+  
+  const code = data.code
+  const md = `# Maille ${code}
+
+## Informations générales
+
+- **Code**: ${code}
+- **BBox**: [${data.bbox.map((v: number) => v.toFixed(6)).join(', ')}]
+- **Région**: ${data.adm1_name || 'N/A'}
+- **Préfecture**: ${data.adm2_name || 'N/A'}
+- **Commune**: ${data.adm3_name || 'N/A'}
+
+## Statistiques
+
+- **Sondages**: ${data.summary?.n_sondages || 0}
+- **Essais**: ${data.summary?.n_essais || 0}
+
+### Répartition par type d'essai
+
+${Object.entries(data.summary?.by_type || {}).map(([type, count]) => `- **${type}**: ${count}`).join('\\n')}
+
+## IDW (Inverse Distance Weighting)
+
+${data.stats?.idw ? `- **Type**: ${data.stats.idw.type}
+- **Valeur**: ${data.stats.idw.value.toFixed(2)}
+- **Puissance**: ${data.stats.idw.p}
+- **Échantillons**: ${data.stats.samples}` : '_Pas de données IDW disponibles_'}
+
+---
+
+_Généré le ${new Date().toLocaleString('fr-FR')}_
+`
+  
+  downloadFile(md, `${code}.md`, 'text/markdown')
+  toast('Markdown exporté')
+})
+
+document.getElementById('exportPDF')!.addEventListener('click', async () => {
+  const data = await getCurrentGridData()
+  if (!data) {
+    toast('Impossible de récupérer les données', 'err')
+    return
+  }
+  
+  // Génération PDF simple (HTML to PDF via print)
+  const code = data.code
+  const printWindow = window.open('', '_blank')
+  if (!printWindow) {
+    toast('Popup bloquée', 'err')
+    return
+  }
+  
+  printWindow.document.write(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Maille ${code}</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        h1 { color: #0b1220; }
+        h2 { color: #3aa6ff; margin-top: 20px; }
+        table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+      </style>
+    </head>
+    <body>
+      <h1>Maille ${code}</h1>
+      <h2>Informations générales</h2>
+      <table>
+        <tr><th>Code</th><td>${code}</td></tr>
+        <tr><th>Région</th><td>${data.adm1_name || 'N/A'}</td></tr>
+        <tr><th>Préfecture</th><td>${data.adm2_name || 'N/A'}</td></tr>
+        <tr><th>Commune</th><td>${data.adm3_name || 'N/A'}</td></tr>
+      </table>
+      
+      <h2>Statistiques</h2>
+      <table>
+        <tr><th>Sondages</th><td>${data.summary?.n_sondages || 0}</td></tr>
+        <tr><th>Essais</th><td>${data.summary?.n_essais || 0}</td></tr>
+      </table>
+      
+      ${data.stats?.idw ? `
+      <h2>IDW</h2>
+      <table>
+        <tr><th>Type</th><td>${data.stats.idw.type}</td></tr>
+        <tr><th>Valeur</th><td>${data.stats.idw.value.toFixed(2)}</td></tr>
+        <tr><th>Échantillons</th><td>${data.stats.samples}</td></tr>
+      </table>
+      ` : '<p><em>Pas de données IDW disponibles</em></p>'}
+      
+      <p style="margin-top: 30px; font-size: 12px; color: #666;">
+        Généré le ${new Date().toLocaleString('fr-FR')}
+      </p>
+    </body>
+    </html>
+  `)
+  
+  printWindow.document.close()
+  setTimeout(() => {
+    printWindow.print()
+    toast('PDF généré (impression)')
+  }, 500)
+})
+
+document.getElementById('exportAll')!.addEventListener('click', async () => {
+  toast('Export complet en cours...', 'ok')
+  // Pour un vrai export ZIP, il faudrait une bibliothèque comme JSZip
+  // Pour l'instant, on exporte séquentiellement
+  const code = codeInput.value.trim()
+  if (!code) {
+    toast('Entrez un code', 'err')
+    return
+  }
+  
+  // Export GeoJSON
+  document.getElementById('exportGeoJSON')!.dispatchEvent(new Event('click'))
+  await new Promise(resolve => setTimeout(resolve, 500))
+  
+  // Export Markdown
+  document.getElementById('exportMarkdown')!.dispatchEvent(new Event('click'))
+  await new Promise(resolve => setTimeout(resolve, 500))
+  
+  toast('Exports terminés (GeoJSON + MD)')
 })
 
 document.getElementById('zoomTgBtn')!.addEventListener('click', () => {

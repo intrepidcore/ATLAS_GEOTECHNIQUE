@@ -330,6 +330,115 @@ def make_grid(
 
     typer.secho(f"✓ {inserted} mailles générées avec succès", fg=typer.colors.GREEN)
 
+@app.command("load-maritime-dataset")
+def load_maritime_dataset(
+    n_sondages: int = typer.Option(
+        300,
+        "-n", "--n-sondages",
+        help="Nombre de sondages à générer dans la région Maritime"
+    ),
+    seed: int = typer.Option(
+        100,
+        "-s", "--seed",
+        help="Graine aléatoire pour reproductibilité"
+    ),
+    truncate: bool = typer.Option(
+        False,
+        "--truncate/--no-truncate",
+        help="Vider les tables sondages/essais avant génération"
+    )
+):
+    """
+    Génère un large dataset de sondages fictifs dans la région Maritime (Lomé et environs).
+    Distribue les sondages sur plusieurs mailles pour créer une densité réaliste.
+    """
+    load_dotenv()
+    random.seed(seed)
+    
+    conn = get_conn()
+    with conn, conn.cursor() as cur:
+        if truncate:
+            cur.execute("TRUNCATE TABLE essais RESTART IDENTITY CASCADE")
+            cur.execute("TRUNCATE TABLE sondages RESTART IDENTITY CASCADE")
+            typer.secho("✓ Données de sondage/essais nettoyées", fg=typer.colors.YELLOW)
+        
+        # Zone Maritime: Lomé et environs (6.0°N - 6.5°N, 1.0°E - 1.4°E)
+        typer.secho(f"Génération de {n_sondages} sondages dans la région Maritime...", fg=typer.colors.CYAN)
+        
+        total_essais = 0
+        date_s = date(2024, 6, 15)
+        
+        for i in range(n_sondages):
+            # Distribution spatiale réaliste
+            lon = random.uniform(1.05, 1.35)
+            lat = random.uniform(6.05, 6.35)
+            
+            # Insérer le sondage
+            sondage_id = str(uuid.uuid4())
+            cur.execute(
+                """
+                INSERT INTO sondages(id, geom, date_sondage, source, meta)
+                VALUES (
+                    %s,
+                    ST_Transform(ST_SetSRID(ST_MakePoint(%s, %s), 4326), 25231),
+                    %s,
+                    %s,
+                    %s
+                )
+                """,
+                (
+                    sondage_id,
+                    lon, lat,
+                    date_s,
+                    "MARITIME-DATASET-v1.0",
+                    json.dumps({"region": "Maritime", "batch": "v1.0", "index": i})
+                )
+            )
+            
+            # Générer 2-5 essais par sondage
+            n_essais = random.randint(2, 5)
+            for j in range(n_essais):
+                # Valeurs réalistes pour la région Maritime (sols côtiers)
+                spt_base = max(1, random.gauss(15, 8))  # Sols plutôt mous
+                qc_base = max(0.2, random.gauss(3.5, 2.5))
+                
+                # Corrélation SPT_N / qc
+                qc = qc_base + 0.03 * (spt_base - 15)
+                spt = spt_base + 0.3 * (qc_base - 3.5)
+                
+                # Profondeur
+                depth = max(1.0, random.triangular(1.0, 25.0, 10.0))
+                
+                # Type d'essai (70% SPT_N, 30% qc pour région Maritime)
+                if random.random() < 0.7:
+                    essai_type = "SPT_N"
+                    value = round(spt, 1)
+                    unit = "blows/30cm"
+                else:
+                    essai_type = "qc"
+                    value = round(qc, 2)
+                    unit = "MPa"
+                
+                cur.execute(
+                    """
+                    INSERT INTO essais(id, sondage_id, profondeur, type_essai, valeur, unite, meta)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        str(uuid.uuid4()),
+                        sondage_id,
+                        round(depth, 2),
+                        essai_type,
+                        value,
+                        unit,
+                        json.dumps({"generated": True, "batch": "v1.0"})
+                    )
+                )
+                total_essais += 1
+        
+        conn.commit()
+        typer.secho(f"✓ Dataset Maritime terminé : {n_sondages} sondages, {total_essais} essais (seed={seed})", fg=typer.colors.GREEN)
+
 @app.command("load-sample-extended")
 def load_sample_extended(
     seed: int = typer.Option(

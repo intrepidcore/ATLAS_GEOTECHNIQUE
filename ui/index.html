@@ -59,15 +59,55 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           <h4>Actions</h4>
           <button id="recomputeBtn" class="btn">POST /grid/recompute/{code}</button>
           <button id="shapeBtn" class="btn" style="margin-top:8px">GET /grid/{code}/shape</button>
-          <button id="exportBtn" class="btn" style="margin-top:8px">Export GeoJSON</button>
           <button id="zoomTgBtn" class="btn" style="margin-top:8px">Zoom Togo</button>
         </div>
 
         <div class="section">
-          <h4>Filtres</h4>
-          <select id="filterAdm" class="input">
+          <h4>Export</h4>
+          <button id="exportGeoJSON" class="btn">Export GeoJSON</button>
+          <button id="exportMarkdown" class="btn" style="margin-top:8px">Export Markdown</button>
+          <button id="exportPDF" class="btn" style="margin-top:8px">Export PDF</button>
+          <button id="exportAll" class="btn primary" style="margin-top:8px">Export complet (ZIP)</button>
+        </div>
+
+        <div class="section">
+          <h4>Filtres géographiques</h4>
+          <select id="filterAdm1" class="input">
             <option value="">— toutes régions —</option>
           </select>
+          <select id="filterAdm2" class="input" style="margin-top:8px">
+            <option value="">— toutes préfectures —</option>
+          </select>
+          <select id="filterAdm3" class="input" style="margin-top:8px">
+            <option value="">— toutes communes —</option>
+          </select>
+        </div>
+
+        <div class="section">
+          <h4>Filtres données</h4>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="checkbox" id="filterHasData" checked />
+            <span style="font-size:13px">Mailles avec données</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="checkbox" id="filterNoData" checked />
+            <span style="font-size:13px">Mailles sans données</span>
+          </label>
+          <div style="margin-top:8px">
+            <label style="font-size:12px;color:var(--muted)">Min. sondages:</label>
+            <input type="number" id="filterMinSondages" class="input" value="0" min="0" style="margin-top:4px" />
+          </div>
+          <button id="resetFilters" class="btn" style="margin-top:8px;font-size:12px">Réinitialiser tout</button>
+        </div>
+
+        <div class="section">
+          <h4>Statistiques (filtrées)</h4>
+          <div id="filterStats" style="font-size:12px;color:var(--muted);line-height:1.6">
+            <div><strong>Mailles visibles:</strong> <span id="statVisible">0</span></div>
+            <div><strong>Avec données:</strong> <span id="statWithData">0</span></div>
+            <div><strong>Sondages:</strong> <span id="statSondages">0</span></div>
+            <div><strong>Essais:</strong> <span id="statEssais">0</span></div>
+          </div>
         </div>
 
         <div class="section">
@@ -78,7 +118,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           </div>
         </div>
 
-        <pre id="json" class="input" style="height:220px;overflow:auto;white-space:pre-wrap;font-size:11px"></pre>
+        <pre id="json" class="input" style="height:180px;overflow:auto;white-space:pre-wrap;font-size:11px"></pre>
       </aside>
     </div>
     <div id="toast" class="toast" style="display:none"></div>
