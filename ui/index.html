@@ -31,7 +31,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .legend .row{display:flex;align-items:center;gap:8px;color:#c9d7e3}
 .swatch{width:14px;height:14px;border-radius:3px;border:1px solid #0003}
 .status{margin-top:8px;font-size:12px;color:var(--muted)}
-.toast{position:fixed;right:14px;bottom:14px;background:#0f172a;border:1px solid #2a3b61;color:var(--text);padding:12px 14px;border-radius:10px;box-shadow:0 10px 30px #0006;z-index:2000}
+.toast{position:fixed;right:14px;bottom:14px;background:#0f172a;border:1px solid #2a3b61;color:var(--text);padding:12px 14px;border-radius:10px;box-shadow:0 10px 30px #0006;z-index:9999}
 .toast.ok{border-color:#115744}
 .toast.err{border-color:#6b1b2c}
 .badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #1c2843;background:#0f172a;color:#bcd0e0}
@@ -85,6 +85,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           <h4>Sondages</h4>
           <button id="newSurveyBtn" class="btn primary">➕ Nouveau sondage</button>
           <button id="listSurveysBtn" class="btn" style="margin-top:8px">📋 Liste des sondages</button>
+          <button id="importCsvBtn" class="btn" style="margin-top:8px">📥 Import CSV/Bulk</button>
         </div>
 
         <div class="section">
@@ -163,36 +164,115 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
       </h3>
       
       <div id="surveyForm">
+        <!-- Métadonnées -->
         <div class="form-group">
-          <label>Longitude *</label>
-          <input type="number" id="surveyLon" step="0.000001" placeholder="ex: 1.2345" required />
+          <label>Code sondage</label>
+          <input type="text" id="surveyCode" placeholder="ex: LOME-2025-S014" />
         </div>
         <div class="form-group">
-          <label>Latitude *</label>
-          <input type="number" id="surveyLat" step="0.000001" placeholder="ex: 6.1234" required />
+          <label>Date</label>
+          <input type="date" id="surveyDate" />
         </div>
         <div class="form-group">
-          <label>Profondeur min (m) *</label>
-          <input type="number" id="surveyDepthMin" step="0.1" value="0" required />
+          <label>Source (Entreprise/Labo)</label>
+          <input type="text" id="surveySource" placeholder="ex: Laboratoire XYZ" />
         </div>
         <div class="form-group">
-          <label>Profondeur max (m) *</label>
-          <input type="number" id="surveyDepthMax" step="0.1" value="10" required />
-        </div>
-        <div class="form-group">
-          <label>Commentaire</label>
-          <textarea id="surveyComment" placeholder="Description du sondage..."></textarea>
+          <label>Opérateur</label>
+          <input type="text" id="surveyOperator" placeholder="ex: Équipe A" />
         </div>
         
-        <div class="btn-group">
+        <!-- Mode de localisation -->
+        <div class="form-group">
+          <label>Mode de localisation *</label>
+          <select id="locationMode" class="input">
+            <option value="exact">Exact (coordonnées)</option>
+            <option value="centroid">Centroïde d'une zone ADM</option>
+            <option value="unknown">Administratif seul (sans coordonnées)</option>
+          </select>
+        </div>
+        
+        <!-- Section coordonnées -->
+        <div id="coordsSection">
+          <div class="form-group">
+            <label>Longitude *</label>
+            <input type="number" id="surveyLon" step="0.000001" placeholder="ex: 1.2345" />
+          </div>
+          <div class="form-group">
+            <label>Latitude *</label>
+            <input type="number" id="surveyLat" step="0.000001" placeholder="ex: 6.1234" />
+          </div>
+        </div>
+        
+        <!-- Section ADM -->
+        <div id="admSection" style="display:none">
+          <div class="form-group">
+            <label>Région (ADM1)</label>
+            <select id="selectAdm1" class="input">
+              <option value="">— Sélectionner —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Préfecture (ADM2)</label>
+            <select id="selectAdm2" class="input">
+              <option value="">— Sélectionner —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Commune (ADM3)</label>
+            <select id="selectAdm3" class="input">
+              <option value="">— Sélectionner —</option>
+            </select>
+          </div>
+          <div class="form-group" id="centroidOption" style="display:none">
+            <label style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" id="useCentroid" />
+              <span>Placer au centroïde de la zone</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Essais -->
+        <div class="form-group" style="margin-top:20px">
+          <label>Essais * <span style="color:var(--muted);font-size:11px">(au moins 1 requis)</span></label>
+          <table id="testsTable" style="width:100%;border-collapse:collapse;margin-top:8px">
+            <thead>
+              <tr style="background:#0f172a;border:1px solid #22304d">
+                <th style="padding:8px;text-align:left;font-size:12px">Type</th>
+                <th style="padding:8px;text-align:left;font-size:12px">Valeur</th>
+                <th style="padding:8px;text-align:left;font-size:12px">Prof. (m)</th>
+                <th style="padding:8px;text-align:center;font-size:12px;width:60px">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="testsTableBody">
+              <!-- Lignes dynamiques -->
+            </tbody>
+          </table>
+          <button type="button" class="btn" id="addTestBtn" style="margin-top:8px;width:100%">➕ Ajouter un essai</button>
+        </div>
+        
+        <!-- Notes -->
+        <div class="form-group">
+          <label>Notes</label>
+          <textarea id="surveyNotes" placeholder="Notes additionnelles..." style="min-height:60px"></textarea>
+        </div>
+        
+        <!-- Résumé -->
+        <div id="surveySummary" style="background:#0f172a;border:1px solid #22304d;border-radius:8px;padding:12px;margin-top:16px">
+          <h4 style="margin:0 0 8px 0;font-size:13px;color:var(--accent)">📋 Résumé</h4>
+          <div style="font-size:12px;color:var(--muted);line-height:1.6">
+            <div><strong>Région:</strong> <span id="summaryAdm1">—</span></div>
+            <div><strong>Préfecture:</strong> <span id="summaryAdm2">—</span></div>
+            <div><strong>Commune:</strong> <span id="summaryAdm3">—</span></div>
+            <div><strong>Code maille:</strong> <span id="summaryMaille">—</span></div>
+            <div><strong>Essais:</strong> <span id="summaryTests">0</span></div>
+          </div>
+          <div id="summaryAlerts" style="margin-top:8px;font-size:11px"></div>
+        </div>
+        
+        <div class="btn-group" style="margin-top:20px">
           <button id="saveSurveyBtn" class="btn primary">💾 Enregistrer</button>
           <button id="cancelSurveyBtn" class="btn">Annuler</button>
-        </div>
-        
-        <div id="testsSection" style="display:none;margin-top:24px">
-          <h4 style="margin:0 0 12px 0;color:#c9d7e3">Essais</h4>
-          <div id="testsList"></div>
-          <button id="addTestBtn" class="btn" style="margin-top:8px">➕ Ajouter un essai</button>
         </div>
       </div>
       
@@ -202,11 +282,31 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
         </div>
         <div id="surveyList"></div>
       </div>
+      
+      <div id="importCsvView" style="display:none">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
+          Importez plusieurs sondages en une seule fois via un fichier CSV.
+        </p>
+        
+        <div class="form-group">
+          <label>Format CSV (colonnes: code, date, source, lat, lon, test_type, test_value, test_depth_m)</label>
+          <textarea id="csvInput" class="input" rows="10" placeholder="code,date,source,lat,lon,test_type,test_value,test_depth_m
+BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,SPT_N,24,6.0
+BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,qc,4.2,5.0"></textarea>
+        </div>
+        
+        <div class="btn-group" style="margin-top:16px">
+          <button id="processCsvBtn" class="btn primary">🚀 Importer</button>
+          <button id="cancelImportBtn" class="btn">Annuler</button>
+        </div>
+        
+        <div id="importResults" style="margin-top:16px"></div>
+      </div>
     </div>
     
     <script>
       // Runtime overrides for API base URLs
-      window.__API_GEO__ = "http://127.0.0.1:8001";
+      window.__API_GEO__ = "http://127.0.0.1:8000";
       window.__API_INFER__ = "http://127.0.0.1:8002";
       window.__API_OPTI__ = "http://127.0.0.1:8003";
     </script>

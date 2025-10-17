@@ -9,6 +9,8 @@ mod version;
 mod routes;
 mod config;
 mod surveys;
+mod surveys_extended;
+mod surveys_bulk;
 pub mod state;
 
 #[derive(Serialize)]
@@ -21,6 +23,9 @@ use crate::state::AppState;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Charger le fichier .env (ignore l'erreur si absent, utile pour Docker)
+    let _ = dotenvy::dotenv();
+    
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::from_default_env())
         .with(tracing_subscriber::fmt::layer())
@@ -47,8 +52,11 @@ async fn main() -> anyhow::Result<()> {
         .nest("/grid", routes::grid_router())
         // Survey management endpoints
         .route("/grid/locate", get(surveys::locate_maille))
-        .route("/surveys", get(surveys::list_surveys).post(surveys::create_survey))
+        .route("/surveys", get(surveys::list_surveys).post(surveys_extended::create_survey_v2))
+        .route("/surveys/legacy", post(surveys::create_survey))
+        .route("/surveys/bulk", post(surveys_bulk::bulk_import_surveys))
         .route("/surveys/:id", delete(surveys::delete_survey))
+        .route("/surveys/:id/geocode", post(surveys_extended::geocode_survey))
         .route("/surveys/:id/tests", get(surveys::list_tests))
         .route("/tests", post(surveys::create_test))
         .route("/tests/:id", delete(surveys::delete_test))

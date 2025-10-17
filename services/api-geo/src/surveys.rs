@@ -14,6 +14,49 @@ use crate::state::AppState;
 // DTOs
 // ============================================================================
 
+// Extended DTOs for v1.2.0
+#[derive(Deserialize, Debug)]
+pub struct NewSurveyRequest {
+    pub commune_id: Option<String>,
+    pub location: Option<LocationInput>,
+    pub survey: SurveyMetadata,
+    pub tests: Vec<TestInput>,
+    pub snap_to_grid: Option<bool>,
+    pub use_commune_centroid: Option<bool>,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct LocationInput {
+    pub lon: f64,
+    pub lat: f64,
+}
+
+#[derive(Deserialize, Debug)]
+pub struct SurveyMetadata {
+    pub code: Option<String>,
+    pub date: Option<String>,
+    pub source: Option<String>,
+    pub operator: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+pub struct TestInput {
+    #[serde(rename = "type")]
+    pub test_type: String,
+    pub value: f64,
+    pub depth_m: f64,
+}
+
+#[derive(Serialize)]
+pub struct CreateSurveyResponse {
+    pub sondage_id: String,
+    pub maille_code: Option<String>,
+    pub essais_count: usize,
+    pub location_accuracy: String,
+}
+
+// Legacy DTO for backward compatibility
 #[derive(Deserialize)]
 pub struct NewSurvey {
     pub code: Option<String>,
@@ -23,8 +66,8 @@ pub struct NewSurvey {
     pub depth_m_min: Option<f64>,
     pub depth_m_max: Option<f64>,
     pub comment: Option<String>,
-    pub location_mode: Option<String>, // "exact", "centroid", "random", "unknown"
-    pub adm_level: Option<String>,     // "ADM1", "ADM2", "ADM3"
+    pub location_mode: Option<String>,
+    pub adm_level: Option<String>,
     pub adm_name: Option<String>,
     pub date: Option<String>,
     pub source: Option<String>,
@@ -43,14 +86,20 @@ pub struct AdmZone {
 pub struct Survey {
     pub id: String,
     pub code: String,
-    pub lon: f64,
-    pub lat: f64,
+    pub lon: Option<f64>,
+    pub lat: Option<f64>,
     pub depth_m_min: Option<f64>,
     pub depth_m_max: Option<f64>,
     pub maille_code: Option<String>,
     pub adm1_name: Option<String>,
     pub adm2_name: Option<String>,
     pub adm3_name: Option<String>,
+    pub location_accuracy: String,
+    pub is_geocoded: bool,
+    pub date: Option<String>,
+    pub source: Option<String>,
+    pub operator: Option<String>,
+    pub notes: Option<String>,
     pub comment: Option<String>,
     pub n_essais: i64,
     pub created_at: String,
@@ -93,6 +142,77 @@ pub struct LocateResponse {
 #[derive(Deserialize)]
 pub struct ListSurveysQuery {
     pub bbox: Option<String>,
+    pub location_accuracy: Option<String>,
+    pub is_geocoded: Option<bool>,
+}
+
+#[derive(Deserialize)]
+pub struct GeocodeRequest {
+    pub lon: Option<f64>,
+    pub lat: Option<f64>,
+    pub location_mode: Option<String>,
+    pub adm_level: Option<String>,
+    pub adm_name: Option<String>,
+}
+
+// ============================================================================
+// Validation helpers
+// ============================================================================
+
+pub fn validate_togo_bounds(lon: f64, lat: f64) -> Result<(), String> {
+    if lat < 5.0 || lat > 12.0 {
+        return Err(format!("Latitude {} hors limites Togo [5, 12]", lat));
+    }
+    if lon < -1.0 || lon > 2.0 {
+        return Err(format!("Longitude {} hors limites Togo [-1, 2]", lon));
+    }
+    Ok(())
+}
+
+fn validate_depth(depth_m: f64) -> Result<(), String> {
+    if depth_m < 0.5 || depth_m > 60.0 {
+        return Err(format!("Profondeur {} hors limites [0.5, 60] m", depth_m));
+    }
+    Ok(())
+}
+
+fn validate_spt_n(value: f64) -> Result<(), String> {
+    if value < 0.0 || value > 100.0 || value.fract() != 0.0 {
+        return Err(format!("SPT_N {} invalide (entier 0-100)", value));
+    }
+    Ok(())
+}
+
+fn validate_qc(value: f64) -> Result<(), String> {
+    if value < 0.1 || value > 50.0 {
+        return Err(format!("qc {} hors limites [0.1, 50] MPa", value));
+    }
+    Ok(())
+}
+
+pub fn validate_test(test: &TestInput) -> Result<(), String> {
+    validate_depth(test.depth_m)?;
+    
+    match test.test_type.as_str() {
+        "SPT_N" => validate_spt_n(test.value)?,
+        "qc" => validate_qc(test.value)?,
+        _ => {}
+    }
+    
+    Ok(())
+}
+
+pub fn get_test_unit(test_type: &str) -> &'static str {
+    match test_type {
+        "SPT_N" => "blows/30cm",
+        "qc" => "MPa",
+        "fs" => "kPa",
+        "Cu_VST" | "Cu_triax" => "kPa",
+        "phi_prime" => "degrees",
+        "gamma_d_max" => "kN/m3",
+        "w_opt" | "wL" | "wP" => "%",
+        _ => "unit"
+    }
 }
 
 // ============================================================================
@@ -219,14 +339,20 @@ pub async fn create_survey(
             Json(Survey {
                 id: id.to_string(),
                 code: code.unwrap_or_else(|| id.to_string()),
-                lon: lon.unwrap_or(0.0),
-                lat: lat.unwrap_or(0.0),
+                lon,
+                lat,
                 depth_m_min: payload.depth_m_min,
                 depth_m_max: payload.depth_m_max,
                 maille_code,
                 adm1_name: adm1,
                 adm2_name: adm2,
                 adm3_name: adm3,
+                location_accuracy: "exact".to_string(),
+                is_geocoded: true,
+                date: payload.date,
+                source: payload.source,
+                operator: payload.operator,
+                notes: payload.notes,
                 comment: payload.comment,
                 n_essais: 0,
                 created_at: created_at.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
@@ -246,7 +372,7 @@ pub async fn list_surveys(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     
-    let base_query = r#"
+    let mut query = r#"
         SELECT 
             id::text,
             code,
@@ -258,32 +384,48 @@ pub async fn list_surveys(
             adm1_name,
             adm2_name,
             adm3_name,
+            location_accuracy,
+            is_geocoded,
+            date,
+            source,
+            operator,
+            notes,
             comment,
             (SELECT COUNT(*) FROM essais WHERE sondage_id = sondages.id AND deleted_at IS NULL) as n_essais,
             created_at
         FROM sondages
         WHERE deleted_at IS NULL
-    "#;
+    "#.to_string();
     
-    let rows = if let Some(bbox_str) = q.bbox {
+    // Filtres
+    let mut conditions = Vec::new();
+    
+    if let Some(accuracy) = &q.location_accuracy {
+        conditions.push(format!("location_accuracy = '{}'", accuracy.replace("'", "''")));
+    }
+    
+    if let Some(geocoded) = q.is_geocoded {
+        conditions.push(format!("is_geocoded = {}", geocoded));
+    }
+    
+    if !conditions.is_empty() {
+        query.push_str(" AND ");
+        query.push_str(&conditions.join(" AND "));
+    }
+    
+    if let Some(bbox_str) = &q.bbox {
         let parts: Vec<f64> = bbox_str.split(',').filter_map(|s| s.parse().ok()).collect();
-        if parts.len() != 4 {
-            return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid bbox format"}))).into_response();
+        if parts.len() == 4 {
+            query.push_str(&format!(
+                " AND ST_Intersects(ST_Transform(geom, 4326), ST_MakeEnvelope({}, {}, {}, {}, 4326))",
+                parts[0], parts[1], parts[2], parts[3]
+            ));
         }
-        
-        let query = format!("{} AND ST_Intersects(ST_Transform(geom, 4326), ST_MakeEnvelope($1, $2, $3, $4, 4326)) ORDER BY created_at DESC", base_query);
-        
-        sqlx::query(&query)
-            .bind(parts[0])
-            .bind(parts[1])
-            .bind(parts[2])
-            .bind(parts[3])
-            .fetch_all(pool)
-            .await
-    } else {
-        let query = format!("{} ORDER BY created_at DESC LIMIT 1000", base_query);
-        sqlx::query(&query).fetch_all(pool).await
-    };
+    }
+    
+    query.push_str(" ORDER BY created_at DESC LIMIT 1000");
+    
+    let rows = sqlx::query(&query).fetch_all(pool).await;
     
     match rows {
         Ok(rows) => {
@@ -298,6 +440,12 @@ pub async fn list_surveys(
                 let adm1: Option<String> = r.try_get("adm1_name").ok();
                 let adm2: Option<String> = r.try_get("adm2_name").ok();
                 let adm3: Option<String> = r.try_get("adm3_name").ok();
+                let location_accuracy: String = r.try_get("location_accuracy").unwrap_or_else(|_| "exact".to_string());
+                let is_geocoded: bool = r.try_get("is_geocoded").unwrap_or(true);
+                let date: Option<String> = r.try_get::<Option<time::Date>, _>("date").ok().flatten().map(|d| d.to_string());
+                let source: Option<String> = r.try_get("source").ok();
+                let operator: Option<String> = r.try_get("operator").ok();
+                let notes: Option<String> = r.try_get("notes").ok();
                 let comment: Option<String> = r.try_get("comment").ok();
                 let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
                 let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
@@ -305,14 +453,20 @@ pub async fn list_surveys(
                 Survey {
                     id: id.unwrap_or_default(),
                     code,
-                    lon: lon.unwrap_or(0.0),
-                    lat: lat.unwrap_or(0.0),
+                    lon,
+                    lat,
                     depth_m_min: depth_min.and_then(|v| v.to_f64()),
                     depth_m_max: depth_max.and_then(|v| v.to_f64()),
                     maille_code: maille,
                     adm1_name: adm1,
                     adm2_name: adm2,
                     adm3_name: adm3,
+                    location_accuracy,
+                    is_geocoded,
+                    date,
+                    source,
+                    operator,
+                    notes,
                     comment,
                     n_essais,
                     created_at: created.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
@@ -543,17 +697,35 @@ pub async fn delete_test(
 pub async fn list_adm1(State(state): State<AppState>) -> impl IntoResponse {
     let pool = &state.pool;
     
-    let rows = sqlx::query("SELECT DISTINCT name FROM adm1_tg ORDER BY name")
-        .fetch_all(pool)
-        .await;
+    let rows = sqlx::query(
+        r#"
+        SELECT name, code,
+               ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
+               ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
+        FROM adm1_tg
+        ORDER BY name
+        "#
+    )
+    .fetch_all(pool)
+    .await;
     
     match rows {
         Ok(rows) => {
             let zones: Vec<AdmZone> = rows.iter().map(|r| {
+                let xmin: Option<f64> = r.try_get("xmin").ok();
+                let ymin: Option<f64> = r.try_get("ymin").ok();
+                let xmax: Option<f64> = r.try_get("xmax").ok();
+                let ymax: Option<f64> = r.try_get("ymax").ok();
+                let bbox = if let (Some(xmin), Some(ymin), Some(xmax), Some(ymax)) = (xmin, ymin, xmax, ymax) {
+                    Some(vec![xmin, ymin, xmax, ymax])
+                } else {
+                    None
+                };
+                
                 AdmZone {
                     name: r.try_get("name").unwrap_or_default(),
-                    code: None,
-                    bbox: None,
+                    code: r.try_get("code").ok(),
+                    bbox,
                 }
             }).collect();
             Json(zones).into_response()
@@ -573,9 +745,18 @@ pub async fn list_adm2(
     let pool = &state.pool;
     
     let query = if let Some(adm1) = q.get("adm1") {
-        format!("SELECT DISTINCT name FROM adm2_tg WHERE adm1_name = '{}' ORDER BY name", adm1.replace("'", "''"))
+        format!(
+            r#"SELECT name, code,
+               ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
+               ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
+               FROM adm2_tg WHERE adm1_name = '{}' ORDER BY name"#,
+            adm1.replace("'", "''")
+        )
     } else {
-        "SELECT DISTINCT name FROM adm2_tg ORDER BY name".to_string()
+        r#"SELECT name, code,
+           ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
+           ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
+           FROM adm2_tg ORDER BY name"#.to_string()
     };
     
     let rows = sqlx::query(&query).fetch_all(pool).await;
@@ -583,10 +764,20 @@ pub async fn list_adm2(
     match rows {
         Ok(rows) => {
             let zones: Vec<AdmZone> = rows.iter().map(|r| {
+                let xmin: Option<f64> = r.try_get("xmin").ok();
+                let ymin: Option<f64> = r.try_get("ymin").ok();
+                let xmax: Option<f64> = r.try_get("xmax").ok();
+                let ymax: Option<f64> = r.try_get("ymax").ok();
+                let bbox = if let (Some(xmin), Some(ymin), Some(xmax), Some(ymax)) = (xmin, ymin, xmax, ymax) {
+                    Some(vec![xmin, ymin, xmax, ymax])
+                } else {
+                    None
+                };
+                
                 AdmZone {
                     name: r.try_get("name").unwrap_or_default(),
-                    code: None,
-                    bbox: None,
+                    code: r.try_get("code").ok(),
+                    bbox,
                 }
             }).collect();
             Json(zones).into_response()
@@ -606,9 +797,18 @@ pub async fn list_adm3(
     let pool = &state.pool;
     
     let query = if let Some(adm2) = q.get("adm2") {
-        format!("SELECT DISTINCT name FROM adm3_tg WHERE adm2_name = '{}' ORDER BY name", adm2.replace("'", "''"))
+        format!(
+            r#"SELECT name, code,
+               ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
+               ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
+               FROM adm3_tg WHERE adm2_name = '{}' ORDER BY name"#,
+            adm2.replace("'", "''")
+        )
     } else {
-        "SELECT DISTINCT name FROM adm3_tg ORDER BY name".to_string()
+        r#"SELECT name, code,
+           ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
+           ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
+           FROM adm3_tg ORDER BY name"#.to_string()
     };
     
     let rows = sqlx::query(&query).fetch_all(pool).await;
@@ -616,10 +816,20 @@ pub async fn list_adm3(
     match rows {
         Ok(rows) => {
             let zones: Vec<AdmZone> = rows.iter().map(|r| {
+                let xmin: Option<f64> = r.try_get("xmin").ok();
+                let ymin: Option<f64> = r.try_get("ymin").ok();
+                let xmax: Option<f64> = r.try_get("xmax").ok();
+                let ymax: Option<f64> = r.try_get("ymax").ok();
+                let bbox = if let (Some(xmin), Some(ymin), Some(xmax), Some(ymax)) = (xmin, ymin, xmax, ymax) {
+                    Some(vec![xmin, ymin, xmax, ymax])
+                } else {
+                    None
+                };
+                
                 AdmZone {
                     name: r.try_get("name").unwrap_or_default(),
-                    code: None,
-                    bbox: None,
+                    code: r.try_get("code").ok(),
+                    bbox,
                 }
             }).collect();
             Json(zones).into_response()
