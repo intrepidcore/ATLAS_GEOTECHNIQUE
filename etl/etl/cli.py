@@ -298,35 +298,42 @@ def make_grid(
             col, row
           FROM grid_clip
         ),
-        grid_ok AS (
+        grid_poly AS (
           SELECT
             geom,
             col,
-            row,
-            ROW_NUMBER() OVER (ORDER BY row, col) AS seq
+            row
           FROM grid_clean
           WHERE geom IS NOT NULL 
-            AND ST_GeometryType(geom) IN ('ST_Polygon', 'ST_MultiPolygon')
+            AND ST_GeometryType(geom) = 'ST_Polygon'
             AND ST_Area(geom) > %(min_area)s
+        ),
+        grid_multi AS (
+          SELECT
+            (ST_Dump(geom)).geom AS geom,
+            col,
+            row
+          FROM grid_clean
+          WHERE geom IS NOT NULL 
+            AND ST_GeometryType(geom) = 'ST_MultiPolygon'
+            AND ST_Area(geom) > %(min_area)s
+        ),
+        grid_all AS (
+          SELECT geom, col, row FROM grid_poly
+          UNION ALL
+          SELECT geom, col, row FROM grid_multi
         ),
         grid_final AS (
           SELECT
-            CASE
-              WHEN ST_GeometryType(g.geom) = 'ST_MultiPolygon' THEN
-                d.geom
-              ELSE
-                g.geom
-            END AS geom,
-            ROW_NUMBER() OVER (ORDER BY g.seq, d.path) AS final_seq
-          FROM grid_ok g
-          LEFT JOIN LATERAL ST_Dump(g.geom) d ON ST_GeometryType(g.geom) = 'ST_MultiPolygon'
-          WHERE d.geom IS NOT NULL OR ST_GeometryType(g.geom) = 'ST_Polygon'
+            geom,
+            ROW_NUMBER() OVER (ORDER BY row, col) AS seq
+          FROM grid_all
         )
         INSERT INTO mailles(id, geom, code, stats)
         SELECT
           gen_random_uuid(),
           geom,
-          'TG-' || LPAD(final_seq::text, 4, '0') AS code,
+          'TG-' || LPAD(seq::text, 4, '0') AS code,
           '{"samples":0}'::jsonb
         FROM grid_final
         RETURNING code;
