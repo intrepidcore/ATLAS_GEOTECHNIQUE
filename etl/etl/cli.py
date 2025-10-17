@@ -319,21 +319,29 @@ def make_grid(
             AND ST_Area(geom) > %(min_area)s
         ),
         grid_all AS (
-          SELECT geom, col, row FROM grid_poly
+          SELECT geom, col, row, 1 AS source_order FROM grid_poly
           UNION ALL
-          SELECT geom, col, row FROM grid_multi
+          SELECT geom, col, row, 2 AS source_order FROM grid_multi
+        ),
+        grid_numbered AS (
+          SELECT
+            geom,
+            col,
+            row,
+            ROW_NUMBER() OVER (ORDER BY row, col, source_order) AS seq
+          FROM grid_all
         ),
         grid_final AS (
           SELECT
             geom,
-            ROW_NUMBER() OVER (ORDER BY row, col) AS seq
-          FROM grid_all
+            ROW_NUMBER() OVER (ORDER BY seq) AS final_seq
+          FROM grid_numbered
         )
         INSERT INTO mailles(id, geom, code, stats)
         SELECT
           gen_random_uuid(),
           geom,
-          'TG-' || LPAD(seq::text, 4, '0') AS code,
+          'TG-' || LPAD(final_seq::text, 4, '0') AS code,
           '{"samples":0}'::jsonb
         FROM grid_final
         RETURNING code;
