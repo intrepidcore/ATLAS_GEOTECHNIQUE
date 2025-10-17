@@ -3,44 +3,85 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Atlas Géotechnique</title>
+    <title>Atlas Géotechnique - Togo</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="/src/style.css" />
+    <style>
+:root{
+  --bg:#0b1220; --panel:#111a2a; --muted:#8aa0b5; --text:#ecf2f8;
+  --ok:#0bb07b; --warn:#f4b740; --err:#ef476f; --accent:#3aa6ff;
+  --with-data:#e85d68; --no-data:#cfd8e3; --selected:#111a2a;
+  --grid-stroke:#6b778c44; --grid-stroke-hover:#e85d6866;
+}
+*{box-sizing:border-box}
+body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;color:var(--text)}
+#topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--bg);border-bottom:1px solid #1b2740;position:sticky;top:0;z-index:1000}
+.brand{font-weight:700;font-size:18px;letter-spacing:.3px}
+.kpis{display:flex;gap:8px;flex-wrap:wrap}
+.kpi{background:#0f172a;border:1px solid #1c2843;border-radius:10px;padding:8px 10px;display:flex;gap:8px;align-items:center}
+.kpi b{font-size:16px}
+#container{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 52px)}
+#sidebar{background:var(--panel);border-left:1px solid #1b2740;padding:14px 14px 20px;overflow:auto}
+.section{margin-bottom:14px}
+.section h4{margin:10px 0 8px 0;color:#c9d7e3;font-size:13px;opacity:.9}
+.input, .btn{width:100%;border-radius:8px;border:1px solid #22304d;background:#0f172a;color:var(--text);padding:10px}
+.btn{cursor:pointer;text-align:center}
+.btn:hover{border-color:#2a3b61}
+.btn.primary{background:var(--accent);border-color:transparent;color:#0d1526;font-weight:600}
+.legend{display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.legend .row{display:flex;align-items:center;gap:8px;color:#c9d7e3}
+.swatch{width:14px;height:14px;border-radius:3px;border:1px solid #0003}
+.status{margin-top:8px;font-size:12px;color:var(--muted)}
+.toast{position:fixed;right:14px;bottom:14px;background:#0f172a;border:1px solid #2a3b61;color:var(--text);padding:12px 14px;border-radius:10px;box-shadow:0 10px 30px #0006;z-index:2000}
+.toast.ok{border-color:#115744}
+.toast.err{border-color:#6b1b2c}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #1c2843;background:#0f172a;color:#bcd0e0}
+.badge .dot{width:8px;height:8px;border-radius:50%}
+    </style>
   </head>
   <body>
-    <div id="app">
-      <header>
-        <h1>Atlas Géotechnique</h1>
-      </header>
-      <main>
-        <div id="map"></div>
-        <aside>
-          <div class="panel">
-            <label>Code Maille</label>
-            <input id="grid-code" value="TG-001" />
-            <button id="btn-grid">GET /grid/{code}</button>
-            <button id="btn-recompute">POST /grid/recompute/{code}</button>
-            <button id="btn-shape">GET /grid/{code}/shape</button>
-            <button id="btn-export">Export GeoJSON</button>
-            <button id="btn-zoom">Zoom Togo</button>
-          </div>
-          <div class="panel">
-            <button id="btn-predict">POST /predict</button>
-            <button id="btn-pareto">POST /pareto</button>
-          </div>
-          <div id="status" class="panel" aria-live="polite"></div>
-          <div id="info" class="panel" aria-live="polite"></div>
-          <pre id="output" aria-live="polite"></pre>
-          <div class="panel" id="legend">
-            <strong>Légende</strong><br/>
-            <span style="display:inline-block;width:14px;height:14px;background:#ef4444;opacity:.45;border:1px solid #991b1b"></span>
-            &nbsp;mailles avec sondages<br/>
-            <span style="display:inline-block;width:14px;height:14px;border:1px solid #9ca3af"></span>
-            &nbsp;mailles sans sondages
-          </div>
-        </aside>
-      </main>
+    <div id="topbar">
+      <div class="brand">Atlas Géotechnique</div>
+      <div class="kpis" id="kpis"></div>
+      <div style="margin-left:auto" class="badge"><span class="dot" style="background:var(--ok)"></span> API</div>
+      <div class="badge" id="gridBadge"><span class="dot" style="background:var(--warn)"></span> Grille</div>
     </div>
+    <div id="container">
+      <div id="map" style="height:calc(100vh - 52px);"></div>
+      <aside id="sidebar">
+        <div class="section">
+          <h4>Recherche maille</h4>
+          <input id="codeInput" class="input" placeholder="ex: TG-0479-0264-01" />
+          <button id="getBtn" class="btn primary" style="margin-top:8px">GET /grid/{code}</button>
+          <div class="status" id="status"></div>
+        </div>
+
+        <div class="section">
+          <h4>Actions</h4>
+          <button id="recomputeBtn" class="btn">POST /grid/recompute/{code}</button>
+          <button id="shapeBtn" class="btn" style="margin-top:8px">GET /grid/{code}/shape</button>
+          <button id="exportBtn" class="btn" style="margin-top:8px">Export GeoJSON</button>
+          <button id="zoomTgBtn" class="btn" style="margin-top:8px">Zoom Togo</button>
+        </div>
+
+        <div class="section">
+          <h4>Filtres</h4>
+          <select id="filterAdm" class="input">
+            <option value="">— toutes régions —</option>
+          </select>
+        </div>
+
+        <div class="section">
+          <h4>Légende</h4>
+          <div class="legend">
+            <div class="row"><span class="swatch" style="background:var(--with-data)"></span> mailles avec sondages</div>
+            <div class="row"><span class="swatch" style="background:var(--no-data)"></span> mailles sans sondages</div>
+          </div>
+        </div>
+
+        <pre id="json" class="input" style="height:220px;overflow:auto;white-space:pre-wrap;font-size:11px"></pre>
+      </aside>
+    </div>
+    <div id="toast" class="toast" style="display:none"></div>
     <script>
       // Runtime overrides for API base URLs
       window.__API_GEO__ = "http://127.0.0.1:8001";

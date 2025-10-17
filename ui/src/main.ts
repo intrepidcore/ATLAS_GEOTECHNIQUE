@@ -2,205 +2,227 @@ import L from 'leaflet'
 
 // Base URLs with runtime override support
 const API_GEO = (import.meta.env.VITE_API_GEO ?? (window as any).__API_GEO__ ?? '') as string
-const API_INFER = (import.meta.env.VITE_API_INFER ?? (window as any).__API_INFER__ ?? '') as string
-const API_OPTI = (import.meta.env.VITE_API_OPTI ?? (window as any).__API_OPTI__ ?? '') as string
 
-const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7) // Togo approx
+const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7)
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 18,
   attribution: '&copy; OpenStreetMap'
 }).addTo(map)
 
-const output = document.getElementById('output') as HTMLPreElement
-const codeInput = document.getElementById('grid-code') as HTMLInputElement
-const info = document.getElementById('info') as HTMLDivElement
-const statusEl = document.getElementById('status') as HTMLDivElement | null
-let bboxLayer: L.Rectangle | null = null
+const codeInput = document.getElementById('codeInput') as HTMLInputElement
 let gridLayer: L.GeoJSON<any> | null = null
 let shapeLayer: L.GeoJSON<any> | null = null
 
-function show(o: any) {
-  output.textContent = JSON.stringify(o, null, 2)
+// --- UI helpers ---
+function toast(msg: string, kind: 'ok' | 'err' = 'ok') {
+  const el = document.getElementById('toast')!
+  el.textContent = msg
+  el.className = `toast ${kind}`
+  el.style.display = 'block'
+  setTimeout(() => el.style.display = 'none', 2500)
 }
 
-async function call(url: string, opts?: RequestInit) {
-  if (statusEl) statusEl.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #9ca3af;border-top-color:#111;border-radius:50%;animation:spin 1s linear infinite;margin-right:6px"></span>Loading…'
-  try {
-    const res = await fetch(url, { ...opts, headers: { 'Content-Type': 'application/json' } })
-    const text = await res.text()
-    let data: any = {}
-    try { data = text ? JSON.parse(text) : {} } catch { data = { raw: text } }
-    if (statusEl) statusEl.innerHTML = res.ok
-      ? `<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">OK</span> (${res.status})`
-      : `<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Error</span> (${res.status})`
-    if (!res.ok) {
-      show({ status: res.status, error: data?.error ?? text ?? res.statusText })
-      return
-    }
-    show({ status: res.status, data })
-    // if grid payload, render info
-    if (data && data.bbox && Array.isArray(data.bbox) && data.bbox.length === 4) {
-      const [xmin, ymin, xmax, ymax] = data.bbox as [number, number, number, number]
-      // draw bbox in 4326
-      if (bboxLayer) bboxLayer.remove()
-      const bounds = L.latLngBounds([ymin, xmin], [ymax, xmax])
-      bboxLayer = L.rectangle(bounds, { color: '#ef4444', weight: 2 })
-      bboxLayer.addTo(map)
-      map.fitBounds(bounds.pad(0.25))
-      const nSond = data.summary?.n_sondages ?? 0
-      const nEss = data.summary?.n_essais ?? 0
-      const idwVal = data.stats?.idw?.value
-      info.innerHTML = `
-        <strong>Code:</strong> ${data.code}<br/>
-        <strong>BBox:</strong> [${xmin.toFixed(5)}, ${ymin.toFixed(5)}, ${xmax.toFixed(5)}, ${ymax.toFixed(5)}]<br/>
-        <strong>Comptes:</strong> sondages=${nSond}, essais=${nEss}<br/>
-        <strong>IDW (SPT_N, p=2):</strong> ${idwVal !== undefined ? Number(idwVal).toFixed(2) : '—'}
-      `
-    }
-  } catch (e: any) {
-    if (statusEl) statusEl.innerHTML = `<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Error</span> Network error`
-    show({ error: e?.message ?? String(e) })
-  }
+function setStatus(text: string) {
+  (document.getElementById('status')!).textContent = text
 }
 
-(document.getElementById('btn-grid') as HTMLButtonElement).onclick = () => {
-  if (!API_GEO) return bannerMissing()
-  call(`${API_GEO}/grid/${encodeURIComponent(codeInput.value)}`)
+function setKpis(total: number, withData: number) {
+  const k = document.getElementById('kpis')!
+  k.innerHTML = `
+    <div class="kpi"><span>Mailles</span><b>${total.toLocaleString()}</b></div>
+    <div class="kpi"><span>Avec données</span><b>${withData.toLocaleString()}</b></div>
+    <div class="kpi"><span>Sans données</span><b>${(total - withData).toLocaleString()}</b></div>
+  `
+  const b = document.getElementById('gridBadge')!
+  b.innerHTML = `<span class="dot" style="background:${withData > 0 ? 'var(--ok)' : 'var(--warn)'}"></span> Grille`
 }
 
-(document.getElementById('btn-recompute') as HTMLButtonElement).onclick = () => {
-  if (!API_GEO) return bannerMissing()
-  call(`${API_GEO}/grid/recompute/${encodeURIComponent(codeInput.value)}`, { method: 'POST' })
-}
-
-(document.getElementById('btn-predict') as HTMLButtonElement).onclick = () => {
-  if (!API_INFER) return bannerMissing('INFER')
-  call(`${API_INFER}/predict`, { method: 'POST', body: JSON.stringify({ features: [1,2,3] }) })
-}
-
-(document.getElementById('btn-pareto') as HTMLButtonElement).onclick = () => {
-  if (!API_OPTI) return bannerMissing('OPTI')
-  call(`${API_OPTI}/pareto`, { method: 'POST', body: JSON.stringify({ scenario: { k: 1 } }) })
-}
-
-function bannerMissing(kind: 'GEO' | 'INFER' | 'OPTI' | undefined = 'GEO') {
-  const id = 'banner'
-  let b = document.getElementById(id)
-  if (!b) {
-    b = document.createElement('div')
-    b.id = id
-    b.style.background = '#fde68a'
-    b.style.color = '#7c2d12'
-    b.style.padding = '8px'
-    b.style.margin = '8px 0'
-    b.style.border = '1px solid #f59e0b'
-    document.body.prepend(b)
-  }
-  const which = kind ?? 'GEO'
-  const varName = which === 'GEO' ? 'VITE_API_GEO' : which === 'INFER' ? 'VITE_API_INFER' : 'VITE_API_OPTI'
-  b.textContent = `API base URL is not configured. Set ${varName} in ui/.env.production and rebuild.`
-}
-
-// Show initial banner if main GEO endpoint missing
-if (!API_GEO) {
-  bannerMissing('GEO')
-}
-
-// --- Coverage grid loading & interactions ---
-// Style: contour pour toutes les mailles, remplissage rouge si données
-function styleByProps(f: any): L.PathOptions {
-  const has = !!f?.properties?.has_data
+// --- Leaflet styles ---
+function styleFeature(f: any) {
+  const has = !!f.properties?.has_data
   return {
-    color: has ? '#c00' : '#666',      // contour rouge si données, gris sinon
-    weight: has ? 2 : 0.6,             // trait un peu plus épais si données
-    opacity: 0.9,
-    fillColor: has ? '#c00' : '#aaa',
-    fillOpacity: has ? 0.45 : 0.05,    // voile très léger pour mailles vides
+    color: has ? '#e85d68' : '#6b778c55',
+    weight: has ? 1.2 : 0.5,
+    fillColor: has ? '#e85d68' : '#cfd8e3',
+    fillOpacity: has ? 0.35 : 0.06
   }
 }
 
-// Interaction: survol + clic → renseigne l'input
-function onEachCell(f: any, layer: L.Layer) {
-  const l = layer as L.Path
-
-  l.on('mouseover', () => l.setStyle({ weight: 3, opacity: 1 }))
-  l.on('mouseout', () => l.setStyle(styleByProps(f)))
-
-  l.on('click', () => {
-    if (codeInput) codeInput.value = f?.properties?.code ?? ''
-    // Auto-trigger GET /grid/{code}
-    ;(document.getElementById('btn-grid') as HTMLButtonElement)?.click()
-  })
-
-  // Tooltip avec le code de la maille
-  l.bindTooltip(() => f?.properties?.code ?? '', { sticky: true })
+function highlightFeature(e: any) {
+  e.target.setStyle({ weight: 2, color: '#e85d68' })
 }
 
-// Charge une fois toute la couverture et l'affiche
-async function loadCoverageOnce() {
+function resetHighlight(e: any) {
+  if (gridLayer) gridLayer.resetStyle(e.target)
+}
+
+// --- Feature interactions ---
+function onEachFeature(f: any, layer: any) {
+  const p = f.properties || {}
+  const title = `Code: ${p.code || '—'}${p.adm1_name ? `\nRégion: ${p.adm1_name}` : ''}${p.n_sondages != null ? `\nSondages: ${p.n_sondages}` : ''}`
+  layer.bindTooltip(title, { sticky: true, opacity: 0.9 })
+  layer.on({
+    mouseover: highlightFeature,
+    mouseout: resetHighlight,
+    click: () => {
+      codeInput.value = p.code || ''
+      map.fitBounds(layer.getBounds(), { maxZoom: 14 })
+      ;(document.getElementById('getBtn') as HTMLButtonElement).click()
+    }
+  })
+}
+
+// --- Grid loading ---
+async function loadGrid() {
   if (!API_GEO) return
-  if (statusEl) statusEl.textContent = 'Chargement des mailles…'
-  
+  setStatus('Chargement de la grille…')
   try {
     const res = await fetch(`${API_GEO}/coverage/mailles`)
-    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    if (!res.ok) {
+      toast(`HTTP ${res.status}`, 'err')
+      setStatus('Erreur de chargement')
+      return
+    }
     const gj = await res.json()
 
-    // retire l'ancienne couche si on relance
-    if (gridLayer) gridLayer.removeFrom(map)
+    let withData = 0
+    gj.features.forEach((f: any) => {
+      if (f.properties?.has_data) withData++
+    })
 
+    setKpis(gj.features.length, withData)
+    setStatus(`Grille chargée: ${gj.features.length.toLocaleString()} mailles (${withData} avec données)`)
+
+    if (gridLayer) {
+      map.removeLayer(gridLayer)
+    }
     gridLayer = L.geoJSON(gj, {
-      style: styleByProps,
-      onEachFeature: onEachCell,
+      style: styleFeature,
+      onEachFeature
     }).addTo(map)
 
-    // ajuste la vue sur l'ensemble de la grille
     const bounds = gridLayer.getBounds()
     if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] })
 
-    const total = gj.features?.length ?? 0
-    const withData = gj.features?.filter((f: any) => f.properties?.has_data).length ?? 0
-    if (statusEl) statusEl.textContent = `Grille chargée: ${total} mailles (${withData} avec données)`
-
+    buildAdmFilter(gj)
   } catch (e: any) {
-    console.error(e)
-    if (statusEl) statusEl.textContent = `Erreur couverture: ${e.message ?? e}`
+    toast(`Erreur: ${e.message}`, 'err')
+    setStatus('Erreur de chargement')
   }
 }
 
-// Button: GET /grid/{code}/shape
-;(document.getElementById('btn-shape') as HTMLButtonElement).onclick = async () => {
-  if (!API_GEO) return bannerMissing()
-  if (statusEl) statusEl.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #9ca3af;border-top-color:#111;border-radius:50%;animation:spin 1s linear infinite;margin-right:6px"></span>Loading shape…'
-  try {
-    const res = await fetch(`${API_GEO}/grid/${encodeURIComponent(codeInput.value)}/shape`)
-    const feat = await res.json()
-    if (shapeLayer) shapeLayer.remove()
-    shapeLayer = L.geoJSON(feat, { style: { color: '#2563eb', weight: 2, fillOpacity: 0.1 } }).addTo(map)
-    const b = shapeLayer.getBounds()
-    if (b.isValid()) map.fitBounds(b.pad(0.2))
-    if (statusEl) statusEl.innerHTML = `<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">OK</span> (${res.status})`
-    show({ status: res.status, data: feat })
-  } catch (e: any) {
-    if (statusEl) statusEl.innerHTML = `<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Error</span> loading shape`
-    show({ error: e?.message ?? String(e) })
+// --- ADM filter ---
+function buildAdmFilter(gj: any) {
+  const s = document.getElementById('filterAdm') as HTMLSelectElement
+  const set = new Set<string>()
+  gj.features.forEach((f: any) => {
+    if (f.properties?.adm1_name) set.add(f.properties.adm1_name)
+  })
+  ;[...set].sort().forEach(v => {
+    const opt = document.createElement('option')
+    opt.value = v
+    opt.textContent = v
+    s.appendChild(opt)
+  })
+  s.onchange = () => {
+    const v = s.value
+    if (!gridLayer) return
+    gridLayer.eachLayer((layer: any) => {
+      const prop = layer.feature.properties
+      const show = !v || prop.adm1_name === v
+      layer.setStyle({ opacity: show ? 1 : 0, fillOpacity: show ? (prop.has_data ? 0.35 : 0.06) : 0 })
+    })
   }
 }
 
-// Button: Export GeoJSON
-;(document.getElementById('btn-export') as HTMLButtonElement).onclick = async () => {
-  if (!API_GEO) return bannerMissing()
-  const code = codeInput.value
+// --- Button handlers ---
+document.getElementById('getBtn')!.addEventListener('click', async () => {
+  const code = codeInput.value.trim()
   if (!code) {
-    if (statusEl) statusEl.innerHTML = `<span style="background:#f59e0b;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Warning</span> Code maille requis`
+    toast('Entrez un code', 'err')
     return
   }
-  if (statusEl) statusEl.innerHTML = '<span style="display:inline-block;width:12px;height:12px;border:2px solid #9ca3af;border-top-color:#111;border-radius:50%;animation:spin 1s linear infinite;margin-right:6px"></span>Exporting…'
+  setStatus('Requête en cours…')
+  try {
+    const res = await fetch(`${API_GEO}/grid/${encodeURIComponent(code)}`)
+    const out = document.getElementById('json')!
+    if (!res.ok) {
+      out.textContent = JSON.stringify({ status: res.status, error: await res.text() }, null, 2)
+      toast('Erreur GET', 'err')
+      setStatus('Erreur')
+      return
+    }
+    const data = await res.json()
+    out.textContent = JSON.stringify(data, null, 2)
+    toast('OK')
+    setStatus('OK')
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+    setStatus('Erreur')
+  }
+})
+
+document.getElementById('recomputeBtn')!.addEventListener('click', async () => {
+  const code = codeInput.value.trim()
+  if (!code) {
+    toast('Entrez un code', 'err')
+    return
+  }
+  setStatus('Recalcul IDW…')
+  try {
+    const res = await fetch(`${API_GEO}/grid/recompute/${encodeURIComponent(code)}`, { method: 'POST' })
+    const out = document.getElementById('json')!
+    if (!res.ok) {
+      out.textContent = JSON.stringify({ status: res.status, error: await res.text() }, null, 2)
+      toast('Erreur compute', 'err')
+      setStatus('Erreur')
+      return
+    }
+    const data = await res.json()
+    out.textContent = JSON.stringify(data, null, 2)
+    toast('Recalcul OK')
+    setStatus('OK')
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+    setStatus('Erreur')
+  }
+})
+
+document.getElementById('shapeBtn')!.addEventListener('click', async () => {
+  const code = codeInput.value.trim()
+  if (!code) {
+    toast('Entrez un code', 'err')
+    return
+  }
   try {
     const res = await fetch(`${API_GEO}/grid/${encodeURIComponent(code)}/shape`)
     if (!res.ok) {
-      if (statusEl) statusEl.innerHTML = `<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Error</span> (${res.status})`
-      show({ status: res.status, error: 'Failed to fetch shape' })
+      toast('Erreur shape', 'err')
+      return
+    }
+    const gj = await res.json()
+    ;(document.getElementById('json')!).textContent = JSON.stringify(gj, null, 2)
+    
+    if (shapeLayer) shapeLayer.remove()
+    shapeLayer = L.geoJSON(gj, { style: { color: '#3aa6ff', weight: 2, fillOpacity: 0.1 } }).addTo(map)
+    const b = shapeLayer.getBounds()
+    if (b.isValid()) map.fitBounds(b.pad(0.2))
+    toast('Shape chargée')
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+})
+
+document.getElementById('exportBtn')!.addEventListener('click', async () => {
+  const code = codeInput.value.trim()
+  if (!code) {
+    toast('Entrez un code', 'err')
+    return
+  }
+  try {
+    const res = await fetch(`${API_GEO}/grid/${encodeURIComponent(code)}/shape`)
+    if (!res.ok) {
+      toast('Export impossible', 'err')
       return
     }
     const gj = await res.json()
@@ -211,20 +233,20 @@ async function loadCoverageOnce() {
     a.download = `${code}.geojson`
     a.click()
     URL.revokeObjectURL(url)
-    if (statusEl) statusEl.innerHTML = `<span style="background:#10b981;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">OK</span> Exported ${code}.geojson`
+    toast('Exporté')
   } catch (e: any) {
-    if (statusEl) statusEl.innerHTML = `<span style="background:#ef4444;color:white;padding:2px 6px;border-radius:4px;margin-right:6px">Error</span> Export failed`
-    show({ error: e?.message ?? String(e) })
+    toast(`Erreur: ${e.message}`, 'err')
   }
-}
+})
 
-// Button: Zoom Togo (bounds of coverage)
-;(document.getElementById('btn-zoom') as HTMLButtonElement).onclick = () => {
+document.getElementById('zoomTgBtn')!.addEventListener('click', () => {
   if (gridLayer) {
     const b = gridLayer.getBounds()
     if (b.isValid()) map.fitBounds(b.pad(0.1))
+  } else {
+    map.fitBounds([[6.1, 0.7], [11.2, 1.8]])
   }
-}
+})
 
-// Auto-load coverage on startup
-loadCoverageOnce()
+// Auto-load grid on startup
+loadGrid()
