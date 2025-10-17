@@ -64,6 +64,7 @@ function resetHighlight(e: any) {
 // --- Feature interactions ---
 // Variable globale pour la maille sélectionnée
 let selectedMailleLayer: any = null
+let selectedMailleCode: string | null = null
 
 function onEachFeature(f: any, layer: any) {
   const p = f.properties || {}
@@ -72,7 +73,7 @@ function onEachFeature(f: any, layer: any) {
   layer.on({
     mouseover: highlightFeature,
     mouseout: resetHighlight,
-    click: () => {
+    click: async () => {
       // Réinitialiser l'ancienne sélection
       if (selectedMailleLayer && gridLayer) {
         gridLayer.resetStyle(selectedMailleLayer)
@@ -85,14 +86,48 @@ function onEachFeature(f: any, layer: any) {
         fillOpacity: 0.4
       })
       selectedMailleLayer = layer
+      selectedMailleCode = p.code
       
-      // Zoomer uniquement (ne pas remplir le code automatiquement)
+      // Zoomer
       map.fitBounds(layer.getBounds(), { maxZoom: 14 })
+      
+      // Auto-générer le code sondage
+      await generateSurveyCode(p.code)
+      
+      // Auto-remplir lon/lat avec le centre de la maille
+      const bounds = layer.getBounds()
+      const center = bounds.getCenter()
+      const lonInput = document.getElementById('surveyLon') as HTMLInputElement
+      const latInput = document.getElementById('surveyLat') as HTMLInputElement
+      if (lonInput && latInput) {
+        lonInput.value = center.lng.toFixed(6)
+        latInput.value = center.lat.toFixed(6)
+      }
       
       // Toast de confirmation
       toast(`📍 Maille sélectionnée: ${p.code}`, 'ok')
     }
   })
+}
+
+// Générer automatiquement le code sondage
+async function generateSurveyCode(mailleCode: string) {
+  try {
+    // Récupérer les sondages existants dans cette maille
+    const res = await fetch(`${API_GEO}/surveys?maille=${mailleCode}`)
+    const surveys = res.ok ? await res.json() : []
+    
+    // Incrémenter le numéro
+    const nextNum = surveys.length + 1
+    const code = `${mailleCode}-${String(nextNum).padStart(3, '0')}`
+    
+    const codeInput = document.getElementById('surveyCode') as HTMLInputElement
+    if (codeInput) {
+      codeInput.value = code
+    }
+  } catch (e) {
+    console.error('Erreur génération code:', e)
+  }
 }
 
 // --- Grid loading ---
@@ -915,35 +950,73 @@ document.getElementById('selectAdm3')!.addEventListener('change', (e) => {
   updateSummary()
 })
 
-// Ajouter essai
+// Ajouter essai avec dropdown
 document.getElementById('addTestBtn')!.addEventListener('click', () => {
-  const type = prompt('Type (SPT_N ou qc):')
-  if (!type) return
+  const tbody = document.getElementById('testsTableBody')!
   
-  const valueStr = prompt('Valeur:')
-  if (!valueStr) return
-  const value = parseFloat(valueStr)
+  // Créer une nouvelle ligne avec dropdown
+  const row = document.createElement('tr')
+  row.style.background = '#0f172a'
+  row.style.border = '1px solid #22304d'
+  row.innerHTML = `
+    <td style="padding:8px">
+      <select class="test-type-select" style="width:100%;padding:6px;border-radius:4px;border:1px solid #22304d;background:#0a1018;color:var(--text);font-size:12px">
+        <option value="">-- Type --</option>
+        <option value="SPT_N">SPT-N</option>
+        <option value="qc">qc (MPa)</option>
+      </select>
+    </td>
+    <td style="padding:8px">
+      <input type="number" class="test-value-input" placeholder="Valeur" step="0.1" style="width:100%;padding:6px;border-radius:4px;border:1px solid #22304d;background:#0a1018;color:var(--text);font-size:12px" />
+    </td>
+    <td style="padding:8px">
+      <input type="number" class="test-depth-input" placeholder="Prof." step="0.5" style="width:100%;padding:6px;border-radius:4px;border:1px solid #22304d;background:#0a1018;color:var(--text);font-size:12px" />
+    </td>
+    <td style="padding:8px;text-align:center">
+      <button class="btn-add-test" style="background:var(--ok);border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px">✓</button>
+      <button class="btn-cancel-test" style="background:var(--err);border:none;color:#fff;padding:4px 8px;border-radius:4px;cursor:pointer;font-size:11px;margin-left:4px">✕</button>
+    </td>
+  `
+  tbody.appendChild(row)
   
-  const depthStr = prompt('Profondeur (m):')
-  if (!depthStr) return
-  const depth_m = parseFloat(depthStr)
+  // Bouton ajouter
+  row.querySelector('.btn-add-test')!.addEventListener('click', () => {
+    const type = (row.querySelector('.test-type-select') as HTMLSelectElement).value
+    const valueStr = (row.querySelector('.test-value-input') as HTMLInputElement).value
+    const depthStr = (row.querySelector('.test-depth-input') as HTMLInputElement).value
+    
+    if (!type || !valueStr || !depthStr) {
+      toast('Tous les champs sont requis', 'err')
+      return
+    }
+    
+    const value = parseFloat(valueStr)
+    const depth_m = parseFloat(depthStr)
+    
+    // Validation
+    if (type === 'SPT_N' && (value < 0 || value > 100 || value % 1 !== 0)) {
+      toast('SPT_N invalide (entier 0-100)', 'err')
+      return
+    }
+    if (type === 'qc' && (value < 0.1 || value > 50)) {
+      toast('qc invalide (0.1-50 MPa)', 'err')
+      return
+    }
+    if (depth_m < 0.5 || depth_m > 60) {
+      toast('Profondeur invalide (0.5-60 m)', 'err')
+      return
+    }
+    
+    tests.push({type, value, depth_m})
+    tbody.removeChild(row)
+    renderTestsTable()
+    toast('✓ Essai ajouté', 'ok')
+  })
   
-  // Validation
-  if (type === 'SPT_N' && (value < 0 || value > 100 || value % 1 !== 0)) {
-    toast('SPT_N invalide (entier 0-100)', 'err')
-    return
-  }
-  if (type === 'qc' && (value < 0.1 || value > 50)) {
-    toast('qc invalide (0.1-50 MPa)', 'err')
-    return
-  }
-  if (depth_m < 0.5 || depth_m > 60) {
-    toast('Profondeur invalide (0.5-60 m)', 'err')
-    return
-  }
-  
-  tests.push({type, value, depth_m})
-  renderTestsTable()
+  // Bouton annuler
+  row.querySelector('.btn-cancel-test')!.addEventListener('click', () => {
+    tbody.removeChild(row)
+  })
 })
 
 // Open drawer for new survey
