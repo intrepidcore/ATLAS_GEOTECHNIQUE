@@ -13,13 +13,15 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 tower-http = { version = "0.5", features = ["cors", "trace"] }
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "macros", "tls-rustls", "uuid", "json"] }
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "macros", "tls-rustls", "uuid", "json", "bigdecimal", "time"] }
 rayon = "1.8"
 geo = "0.27"
 nalgebra = "0.32"
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 dotenvy = "0.15"
+time = { version = "0.3", features = ["serde", "formatting"] }
+num-traits = "0.2"
 
 [build-dependencies]
 chrono = "0.4"

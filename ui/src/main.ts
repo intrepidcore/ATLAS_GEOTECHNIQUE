@@ -507,5 +507,181 @@ document.getElementById('zoomTgBtn')!.addEventListener('click', () => {
   }
 })
 
+// --- Survey Management ---
+const surveyDrawer = document.getElementById('surveyDrawer')!
+const drawerTitle = document.getElementById('drawerTitle')!
+const surveyForm = document.getElementById('surveyForm')!
+const surveyListView = document.getElementById('surveyListView')!
+let currentSurveyId: string | null = null
+let surveyMarkers: L.Marker[] = []
+
+function openDrawer(mode: 'create' | 'list') {
+  surveyDrawer.classList.add('open')
+  if (mode === 'create') {
+    drawerTitle.textContent = 'Nouveau sondage'
+    surveyForm.style.display = 'block'
+    surveyListView.style.display = 'none'
+    resetSurveyForm()
+  } else {
+    drawerTitle.textContent = 'Liste des sondages'
+    surveyForm.style.display = 'none'
+    surveyListView.style.display = 'block'
+    loadSurveyList()
+  }
+}
+
+function closeDrawer() {
+  surveyDrawer.classList.remove('open')
+  currentSurveyId = null
+}
+
+function resetSurveyForm() {
+  ;(document.getElementById('surveyLon') as HTMLInputElement).value = ''
+  ;(document.getElementById('surveyLat') as HTMLInputElement).value = ''
+  ;(document.getElementById('surveyDepthMin') as HTMLInputElement).value = '0'
+  ;(document.getElementById('surveyDepthMax') as HTMLInputElement).value = '10'
+  ;(document.getElementById('surveyComment') as HTMLTextAreaElement).value = ''
+  document.getElementById('testsSection')!.style.display = 'none'
+  document.getElementById('testsList')!.innerHTML = ''
+  currentSurveyId = null
+}
+
+// Create survey
+document.getElementById('saveSurveyBtn')!.addEventListener('click', async () => {
+  const lon = parseFloat((document.getElementById('surveyLon') as HTMLInputElement).value)
+  const lat = parseFloat((document.getElementById('surveyLat') as HTMLInputElement).value)
+  const depthMin = parseFloat((document.getElementById('surveyDepthMin') as HTMLInputElement).value)
+  const depthMax = parseFloat((document.getElementById('surveyDepthMax') as HTMLInputElement).value)
+  const comment = (document.getElementById('surveyComment') as HTMLTextAreaElement).value.trim()
+
+  if (isNaN(lon) || isNaN(lat) || isNaN(depthMin) || isNaN(depthMax)) {
+    toast('Coordonnées et profondeurs requises', 'err')
+    return
+  }
+
+  if (depthMin > depthMax) {
+    toast('Profondeur min > max', 'err')
+    return
+  }
+
+  try {
+    const res = await fetch(`${API_GEO}/surveys`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        lon: lon,
+        lat: lat,
+        srid: 4326,
+        depth_m_min: depthMin,
+        depth_m_max: depthMax,
+        comment: comment || null
+      })
+    })
+
+    if (!res.ok) {
+      const err = await res.text()
+      toast(`Erreur: ${err}`, 'err')
+      return
+    }
+
+    const data = await res.json()
+    currentSurveyId = data.id
+    toast(`Sondage créé: ${data.code}`)
+    
+    // Show tests section
+    document.getElementById('testsSection')!.style.display = 'block'
+    
+    // Add marker on map
+    const marker = L.marker([lat, lon], {
+      icon: L.divIcon({
+        className: 'survey-marker',
+        html: '<div style="background:#3aa6ff;width:12px;height:12px;border-radius:50%;border:2px solid white"></div>'
+      })
+    }).addTo(map)
+    marker.bindPopup(`<b>${data.code}</b><br>${depthMin}-${depthMax}m`)
+    surveyMarkers.push(marker)
+    
+    // Reload grid to update stats
+    loadGrid()
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+})
+
+document.getElementById('cancelSurveyBtn')!.addEventListener('click', closeDrawer)
+document.getElementById('closeDrawer')!.addEventListener('click', closeDrawer)
+
+// Open drawer for new survey
+document.getElementById('newSurveyBtn')!.addEventListener('click', () => openDrawer('create'))
+
+// Open drawer for survey list
+document.getElementById('listSurveysBtn')!.addEventListener('click', () => openDrawer('list'))
+
+// Load survey list
+async function loadSurveyList() {
+  try {
+    const res = await fetch(`${API_GEO}/surveys`)
+    if (!res.ok) {
+      toast('Erreur chargement sondages', 'err')
+      return
+    }
+    const surveys = await res.json()
+    renderSurveyList(surveys)
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+}
+
+function renderSurveyList(surveys: any[]) {
+  const list = document.getElementById('surveyList')!
+  if (surveys.length === 0) {
+    list.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">Aucun sondage</p>'
+    return
+  }
+
+  list.innerHTML = surveys.map(s => `
+    <div class="survey-card" data-id="${s.id}">
+      <div class="survey-card-header">
+        <div class="survey-card-code">${s.code || 'N/A'}</div>
+        <div style="font-size:11px;color:var(--muted)">${s.maille_code || ''}</div>
+      </div>
+      <div class="survey-card-meta">
+        📍 ${s.lon?.toFixed(4) || 'N/A'}, ${s.lat?.toFixed(4) || 'N/A'}<br>
+        📏 ${s.depth_m_min || 0}-${s.depth_m_max || 0}m<br>
+        ${s.adm1_name ? `📌 ${s.adm1_name}` : ''}
+      </div>
+    </div>
+  `).join('')
+
+  // Click to view on map
+  list.querySelectorAll('.survey-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const survey = surveys.find(s => s.id === card.getAttribute('data-id'))
+      if (survey && survey.lat && survey.lon) {
+        map.setView([survey.lat, survey.lon], 14)
+        toast(`Zoom sur ${survey.code}`)
+      }
+    })
+  })
+}
+
+// Search surveys
+document.getElementById('searchSurveys')!.addEventListener('input', (e) => {
+  const query = (e.target as HTMLInputElement).value.toLowerCase()
+  document.querySelectorAll('.survey-card').forEach(card => {
+    const text = card.textContent?.toLowerCase() || ''
+    ;(card as HTMLElement).style.display = text.includes(query) ? 'block' : 'none'
+  })
+})
+
+// Map click to create survey
+map.on('click', (e: L.LeafletMouseEvent) => {
+  if (surveyDrawer.classList.contains('open') && surveyForm.style.display !== 'none') {
+    ;(document.getElementById('surveyLon') as HTMLInputElement).value = e.latlng.lng.toFixed(6)
+    ;(document.getElementById('surveyLat') as HTMLInputElement).value = e.latlng.lat.toFixed(6)
+    toast('Coordonnées remplies depuis la carte')
+  }
+})
+
 // Auto-load grid on startup
 loadGrid()

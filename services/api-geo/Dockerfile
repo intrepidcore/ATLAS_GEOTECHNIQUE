@@ -8,6 +8,7 @@ WORKDIR /app
 
 # Pre-build to cache dependencies
 RUN rustup component add rustfmt clippy
+
 COPY Cargo.toml ./
 RUN mkdir -p src && echo "fn main(){}" > src/main.rs
 RUN --mount=type=cache,target=/usr/local/cargo/registry \

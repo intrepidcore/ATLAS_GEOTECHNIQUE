@@ -1,4 +1,4 @@
-use axum::{routing::{get, post}, Json, Router};
+use axum::{routing::{get, post, delete}, Json, Router};
 use axum::http::Method;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -8,6 +8,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod version;
 mod routes;
 mod config;
+mod surveys;
 pub mod state;
 
 #[derive(Serialize)]
@@ -25,22 +26,17 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // CORS permissif (dev/local). Autoriser GET/POST/OPTIONS et tous headers/origines
+    // CORS permissif (dev/local). Autoriser GET/POST/DELETE/PATCH/OPTIONS et tous headers/origines
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST, Method::OPTIONS])
+        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH, Method::OPTIONS])
         .allow_headers(Any);
 
-    // DB check (optional pool not stored yet)
-    let pool = match config::pg_pool().await {
-        Ok(p) => { tracing::info!("DB connectivité ok"); p },
-        Err(e) => {
-            tracing::warn!("DB indisponible au démarrage: {e:?}");
-            // on continue, mais certaines routes échoueront si DB requise
-            // pour rester robuste, on tente quand même de créer un pool (peut échouer plus tard)
-            config::pg_pool().await?
-        }
-    };
+    // DB connexion avec retry (5 tentatives max, backoff exponentiel)
+    tracing::info!("Connexion à la base de données...");
+    let pool = config::pg_pool_with_retry(5).await?;
+    tracing::info!("✅ DB connectée avec succès");
+    
     let state = AppState { pool };
 
     let app = Router::new()
@@ -49,6 +45,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/echo", post(|Json(v): Json<serde_json::Value>| async move { Json(Echo { any: v })}))
         .route("/coverage/mailles", get(routes::get_coverage_mailles))
         .nest("/grid", routes::grid_router())
+        // Survey management endpoints
+        .route("/grid/locate", get(surveys::locate_maille))
+        .route("/surveys", get(surveys::list_surveys).post(surveys::create_survey))
+        .route("/surveys/:id", delete(surveys::delete_survey))
+        .route("/surveys/:id/tests", get(surveys::list_tests))
+        .route("/tests", post(surveys::create_test))
+        .route("/tests/:id", delete(surveys::delete_test))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

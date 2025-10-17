@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO sondages (\n            id, code, geom, depth_m_min, depth_m_max, comment, source\n        )\n        VALUES (\n            $1,\n            $2,\n            ST_Transform(ST_SetSRID(ST_MakePoint($3, $4), $5), 25231),\n            $6,\n            $7,\n            $8,\n            'UI-v1.1'\n        )\n        RETURNING \n            code,\n            ST_X(ST_Transform(geom, 4326)) as lon,\n            ST_Y(ST_Transform(geom, 4326)) as lat,\n            maille_code,\n            adm1_name,\n            adm2_name,\n            adm3_name,\n            created_at\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "lon",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 2,
+        "name": "lat",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 3,
+        "name": "maille_code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "adm1_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "adm2_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "adm3_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Float8",
+        "Float8",
+        "Int4",
+        "Numeric",
+        "Numeric",
+        "Text"
+      ]
+    },
+    "nullable": [
+      true,
+      null,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "45ff24cf9cb2cad3535dd360a498aa7f19c2b002a20ad2e9df637c75c54bcd15"
+}

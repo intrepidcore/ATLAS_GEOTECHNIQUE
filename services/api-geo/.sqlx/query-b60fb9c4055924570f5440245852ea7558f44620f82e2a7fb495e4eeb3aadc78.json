@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT code, adm1_name, adm2_name, adm3_name\n        FROM mailles\n        WHERE ST_Contains(\n            geom,\n            ST_Transform(ST_SetSRID(ST_MakePoint($1, $2), 4326), 25231)\n        )\n        LIMIT 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "code",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 1,
+        "name": "adm1_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "adm2_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "adm3_name",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Float8",
+        "Float8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "b60fb9c4055924570f5440245852ea7558f44620f82e2a7fb495e4eeb3aadc78"
+}

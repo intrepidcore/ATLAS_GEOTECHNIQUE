@@ -294,11 +294,12 @@ async fn recompute_grid(State(state): State<AppState>, Path(code): Path<String>)
         "by_type": by_type,
     });
 
-    let mut resp = GridResponse { code, bbox, stats: updated, summary };
+    let resp = GridResponse { code, bbox, stats: updated, summary };
     Json(resp).into_response()
 }
 
 // Placeholder traits for future interpolation modules (IDW, Krigeage)
+#[allow(dead_code)]
 pub mod interp {
     pub trait Interpolator {
         fn name(&self) -> &'static str;

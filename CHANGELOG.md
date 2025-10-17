@@ -4,6 +4,61 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [1.1.0] - 2025-10-17
+
+### Ajouté
+- **[DB]** Migration `004_add_survey_management.sql` avec colonnes étendues pour `sondages`
+- **[DB]** Colonnes: `code`, `depth_m_min/max`, `maille_code`, `adm1/2/3_name`, `comment`, `created_at`, `updated_at`, `deleted_at`
+- **[DB]** ENUM `test_type` avec 30+ types d'essais géotechniques (SPT_N, qc, fs, Rf, pL, pf, EM, Cu_VST, K_PLT, D10, D50, Cu_grain, Cc, wL, wP, IP, gamma_d_max, w_opt, c_prime, phi_prime, Cu_triax, Cc_compress, Cs, Cv, water_table, layer_thickness, USCS, GTR)
+- **[DB]** Soft delete avec colonne `deleted_at` pour sondages et essais
+- **[DB]** Trigger `generate_sondage_code()` pour auto-génération du code (format: S-YYYYMMDD-NNN)
+- **[DB]** Trigger `tag_sondage_spatial()` pour auto-tag maille/ADM1/2/3 lors de l'insertion
+- **[DB]** Trigger `update_updated_at()` pour traçabilité des modifications
+- **[DB]** Table `audit_log` pour historique des opérations CRUD
+- **[DB]** Contraintes de validation (depth_m_min <= max, depth_m >= 0)
+- **[DB]** View `v_sondages_active` pour filtrer les sondages non supprimés
+- **[API]** Endpoint `GET /grid/locate?lon=&lat=` pour localiser une maille par coordonnées
+- **[API]** Endpoint `POST /surveys` pour créer un sondage avec auto-tag spatial
+- **[API]** Endpoint `GET /surveys?bbox=` pour lister les sondages (bbox optionnel)
+- **[API]** Endpoint `DELETE /surveys/:id` pour soft delete d'un sondage
+- **[API]** Endpoint `POST /tests` pour créer un essai avec validation des profondeurs
+- **[API]** Endpoint `GET /surveys/:id/tests` pour lister les essais d'un sondage
+- **[API]** Endpoint `DELETE /tests/:id` pour soft delete d'un essai
+- **[API]** Validation automatique: profondeur min <= max, point dans maille, essai dans bounds sondage
+- **[API]** Transformation SRID automatique (4326 -> 25231)
+- **[API]** Audit log automatique pour toutes les opérations CRUD
+- **[UI]** Section "Sondages" dans la sidebar avec boutons "Nouveau sondage" et "Liste des sondages"
+- **[UI]** Drawer latéral animé pour création/édition de sondages
+- **[UI]** Formulaire de saisie avec champs: longitude, latitude, profondeur min/max, commentaire
+- **[UI]** Interaction carte: clic sur la carte pour pré-remplir les coordonnées
+- **[UI]** Liste des sondages avec recherche en temps réel
+- **[UI]** Cartes cliquables pour zoom sur sondage
+- **[UI]** Marqueurs sur la carte pour visualiser les sondages créés
+- **[UI]** Notifications toast pour feedback utilisateur
+- **[UI]** Rechargement automatique de la grille après création de sondage
+- **[Scripts]** Script PowerShell `test-survey-api.ps1` pour tests E2E complets
+- **[Scripts]** Script PowerShell `check-api-compile.ps1` pour validation compilation
+
+### Modifié
+- **[API]** Configuration pool PostgreSQL avec timeouts généreux pour Docker (acquire: 60s, idle: 600s, max_lifetime: 1800s)
+- **[API]** Fonction `pg_pool_with_retry()` avec 5 tentatives et backoff exponentiel (2s → 32s)
+- **[API]** Logs de démarrage améliorés avec émojis et messages clairs
+- **[API]** Module `surveys.rs` sans macros SQLx (offline mode compatible)
+- **[Cargo]** Dépendances ajoutées: `time` avec features serde/formatting, `num-traits`
+
+### Corrigé
+- **[API]** Crash au démarrage causé par timeout de connexion DB
+- **[API]** Logique de retry cassée (double tentative immédiate)
+- **[API]** Warnings de compilation dans `routes.rs`
+
+### Technique
+- **[DB]** Triggers PL/pgSQL pour automatisation (code, spatial tag, timestamps)
+- **[DB]** Contraintes CHECK pour validation des données
+- **[API]** Retry avec backoff exponentiel pour connexion DB
+- **[API]** Queries SQL sans macros pour éviter dépendance à sqlx-data.json
+- **[UI]** CSS moderne avec variables CSS et animations fluides
+- **[UI]** TypeScript avec gestion d'état local pour le drawer
+
 ## [0.7.0] - 2025-01-XX
 
 ### Ajouté
