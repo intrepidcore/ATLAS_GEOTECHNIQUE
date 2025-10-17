@@ -52,6 +52,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/surveys/:id/tests", get(surveys::list_tests))
         .route("/tests", post(surveys::create_test))
         .route("/tests/:id", delete(surveys::delete_test))
+        .route("/adm1", get(surveys::list_adm1))
+        .route("/adm2", get(surveys::list_adm2))
+        .route("/adm3", get(surveys::list_adm3))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

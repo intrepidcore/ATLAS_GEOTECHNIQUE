@@ -609,5 +609,33 @@ def load_sample_extended(
         fg=typer.colors.GREEN
     )
 
+@app.command("load-adm")
+def load_adm_wrapper(
+    level: str = typer.Argument(..., help="Niveau ADM à charger: adm1, adm2, adm3, ou all"),
+    truncate: bool = typer.Option(False, "--truncate", help="Vider les tables avant import")
+):
+    """
+    Charge les divisions administratives du Togo depuis les shapefiles.
+    
+    Exemples:
+      etl load-adm adm1
+      etl load-adm all --truncate
+    """
+    import sys
+    sys.path.insert(0, '/app/commands')
+    from load_adm import app as adm_app, load_adm1, load_adm2, load_adm3, load_all
+    
+    if level == "adm1":
+        load_adm1(truncate=truncate)
+    elif level == "adm2":
+        load_adm2(truncate=truncate)
+    elif level == "adm3":
+        load_adm3(truncate=truncate)
+    elif level == "all":
+        load_all(truncate=truncate)
+    else:
+        typer.secho(f"❌ Niveau invalide: {level}. Utilisez: adm1, adm2, adm3, ou all", fg=typer.colors.RED, err=True)
+        raise typer.Exit(1)
+
 if __name__ == "__main__":
     app()

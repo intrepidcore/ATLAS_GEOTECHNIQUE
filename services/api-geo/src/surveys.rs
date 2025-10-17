@@ -17,12 +17,26 @@ use crate::state::AppState;
 #[derive(Deserialize)]
 pub struct NewSurvey {
     pub code: Option<String>,
-    pub lon: f64,
-    pub lat: f64,
+    pub lon: Option<f64>,
+    pub lat: Option<f64>,
     pub srid: Option<i32>,
     pub depth_m_min: Option<f64>,
     pub depth_m_max: Option<f64>,
     pub comment: Option<String>,
+    pub location_mode: Option<String>, // "exact", "centroid", "random", "unknown"
+    pub adm_level: Option<String>,     // "ADM1", "ADM2", "ADM3"
+    pub adm_name: Option<String>,
+    pub date: Option<String>,
+    pub source: Option<String>,
+    pub operator: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct AdmZone {
+    pub name: String,
+    pub code: Option<String>,
+    pub bbox: Option<Vec<f64>>,
 }
 
 #[derive(Serialize)]
@@ -516,6 +530,102 @@ pub async fn delete_test(
         Ok(_) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Test not found"}))).into_response(),
         Err(e) => {
             tracing::error!(?e, "delete_test error");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+        }
+    }
+}
+
+// ============================================================================
+// ADM Endpoints
+// ============================================================================
+
+/// GET /adm1 - Liste des régions
+pub async fn list_adm1(State(state): State<AppState>) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    let rows = sqlx::query("SELECT DISTINCT name FROM adm1_tg ORDER BY name")
+        .fetch_all(pool)
+        .await;
+    
+    match rows {
+        Ok(rows) => {
+            let zones: Vec<AdmZone> = rows.iter().map(|r| {
+                AdmZone {
+                    name: r.try_get("name").unwrap_or_default(),
+                    code: None,
+                    bbox: None,
+                }
+            }).collect();
+            Json(zones).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "list_adm1 error");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+        }
+    }
+}
+
+/// GET /adm2?adm1=... - Liste des préfectures
+pub async fn list_adm2(
+    Query(q): Query<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    let query = if let Some(adm1) = q.get("adm1") {
+        format!("SELECT DISTINCT name FROM adm2_tg WHERE adm1_name = '{}' ORDER BY name", adm1.replace("'", "''"))
+    } else {
+        "SELECT DISTINCT name FROM adm2_tg ORDER BY name".to_string()
+    };
+    
+    let rows = sqlx::query(&query).fetch_all(pool).await;
+    
+    match rows {
+        Ok(rows) => {
+            let zones: Vec<AdmZone> = rows.iter().map(|r| {
+                AdmZone {
+                    name: r.try_get("name").unwrap_or_default(),
+                    code: None,
+                    bbox: None,
+                }
+            }).collect();
+            Json(zones).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "list_adm2 error");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+        }
+    }
+}
+
+/// GET /adm3?adm2=... - Liste des communes
+pub async fn list_adm3(
+    Query(q): Query<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    let query = if let Some(adm2) = q.get("adm2") {
+        format!("SELECT DISTINCT name FROM adm3_tg WHERE adm2_name = '{}' ORDER BY name", adm2.replace("'", "''"))
+    } else {
+        "SELECT DISTINCT name FROM adm3_tg ORDER BY name".to_string()
+    };
+    
+    let rows = sqlx::query(&query).fetch_all(pool).await;
+    
+    match rows {
+        Ok(rows) => {
+            let zones: Vec<AdmZone> = rows.iter().map(|r| {
+                AdmZone {
+                    name: r.try_get("name").unwrap_or_default(),
+                    code: None,
+                    bbox: None,
+                }
+            }).collect();
+            Json(zones).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "list_adm3 error");
             (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
         }
     }

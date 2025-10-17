@@ -4,6 +4,46 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [1.2.0] - 2025-10-17
+
+### Ajouté
+- **[DB]** Migration `005_add_location_modes.sql` pour support des modes de localisation
+- **[DB]** Colonnes: `location_accuracy` (exact/centroid/random/unknown), `is_geocoded`, `date`, `source`, `operator`, `notes`
+- **[DB]** Fonctions PL/pgSQL: `place_at_centroid()`, `place_random_in_adm()` pour placement automatique
+- **[DB]** Views: `v_sondages_geocoded` (pour calculs IDW), `v_sondages_by_adm` (agrégations)
+- **[DB]** Contraintes de cohérence pour location_accuracy et is_geocoded
+- **[DB]** Migration `006_create_adm_tables.sql` pour tables ADM1/2/3
+- **[DB]** Tables `adm1_tg`, `adm2_tg`, `adm3_tg` avec géométries MultiPolygon EPSG:4326
+- **[DB]** Index GIST sur géométries ADM et index BTREE sur noms
+- **[API]** Endpoints `GET /adm1`, `GET /adm2?adm1=...`, `GET /adm3?adm2=...` pour lister divisions administratives
+- **[API]** DTO `AdmZone` pour réponses ADM
+- **[API]** Support optionnel des champs `location_mode`, `adm_level`, `adm_name` dans `NewSurvey`
+- **[ETL]** Commande `load-adm` pour charger ADM1/2/3 depuis shapefiles INSEED
+- **[ETL]** Fichier `commands/load_adm.py` avec support GeoPandas
+- **[UI]** Animation de clignotement (5 pulsations) lors du clic sur un sondage
+- **[UI]** Marqueur CircleMarker pulsant rouge avec popup automatique
+- **[UI]** Fonction `highlightMaille()` pour mise en évidence visuelle
+- **[UI]** Correction complète des valeurs N/A dans la liste des sondages
+- **[UI]** Validation stricte des types (number check + isNaN)
+- **[UI]** Formatage cohérent: toFixed(4) pour coordonnées, toFixed(1) pour profondeurs
+
+### Modifié
+- **[DB]** Colonne `geom` de `sondages` peut maintenant être NULL (pour sondages non géolocalisés)
+- **[DB]** Tous les sondages existants marqués comme `location_accuracy='exact'` et `is_geocoded=TRUE`
+- **[API]** DTO `NewSurvey` avec champs optionnels pour modes de localisation
+- **[UI]** Rendu de la liste des sondages avec valeurs par défaut propres au lieu de N/A
+- **[UI]** Zoom niveau 15 (au lieu de 14) lors du clic sur sondage
+- **[UI]** Durée d'affichage du marqueur temporaire: 5 secondes
+
+### Technique
+- **[DB]** Seed stable pour `place_random_in_adm()` basé sur MD5 du code sondage
+- **[DB]** Filtrage des reliquats avec seuil d'aire minimale (> 1 m²)
+- **[API]** Queries SQL paramétrées pour éviter injection SQL dans endpoints ADM
+- **[ETL]** Support reprojection automatique vers EPSG:4326 si nécessaire
+- **[ETL]** Conversion automatique Polygon → MultiPolygon
+- **[UI]** Animation CSS avec @keyframes pour pulse-highlight
+- **[UI]** Détection de maille par bounds.contains() sur gridLayer
+
 ## [1.1.0] - 2025-10-17
 
 ### Ajouté
