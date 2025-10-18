@@ -576,6 +576,57 @@ async fn get_grid_details(
     }).into_response()
 }
 
+// GET /adm/:level -> Liste des zones ADM (pour le formulaire)
+pub async fn list_adm_zones(
+    State(state): State<AppState>,
+    Path(level): Path<String>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    let table = match level.as_str() {
+        "adm1" => "adm1",
+        "adm2" => "adm2",
+        "adm3" => "adm3",
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "invalid level, must be adm1, adm2, or adm3"})),
+            ).into_response();
+        }
+    };
+    
+    let query = format!("SELECT gid, adm{}_fr AS name FROM {} ORDER BY name", 
+        match level.as_str() {
+            "adm1" => "1",
+            "adm2" => "2",
+            "adm3" => "3",
+            _ => unreachable!()
+        },
+        table
+    );
+    
+    let zones: Vec<(i32, String)> = match sqlx::query_as(&query)
+        .fetch_all(pool)
+        .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(?e, "Failed to fetch ADM zones");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "database error"})),
+            ).into_response();
+        }
+    };
+    
+    let result: Vec<serde_json::Value> = zones
+        .into_iter()
+        .map(|(gid, name)| serde_json::json!({"id": gid, "name": name}))
+        .collect();
+    
+    (StatusCode::OK, Json(result)).into_response()
+}
+
 #[cfg(test)]
 mod tests {
     use super::compute_idw;

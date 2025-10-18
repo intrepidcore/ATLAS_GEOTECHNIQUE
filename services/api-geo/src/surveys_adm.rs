@@ -40,7 +40,7 @@ impl LocationMode {
 #[derive(Debug, Deserialize)]
 pub struct CreateSurveyAdmRequest {
     pub adm_level: String,  // "ADM1", "ADM2", "ADM3"
-    pub adm_id: String,     // UUID de l'entité ADM
+    pub adm_id: i32,        // GID de l'entité ADM
     pub location_mode: LocationMode,
     pub survey: SurveyInfo,
     pub tests: Vec<TestInfo>,
@@ -92,7 +92,7 @@ pub enum GeocodeMode {
     AdmBased {
         location_mode: LocationMode,
         adm_level: String,
-        adm_id: String,
+        adm_id: i32,
     },
 }
 
@@ -127,16 +127,8 @@ pub async fn create_survey_adm(
         ).into_response();
     }
     
-    // Parser l'ADM ID
-    let adm_uuid = match Uuid::parse_str(&payload.adm_id) {
-        Ok(id) => id,
-        Err(_) => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({"error": "invalid adm_id format"})),
-            ).into_response();
-        }
-    };
+    // Utiliser directement le GID
+    let adm_gid = payload.adm_id;
     
     // Démarrer une transaction
     let mut tx = match pool.begin().await {
@@ -184,7 +176,7 @@ pub async fn create_survey_adm(
                 .bind("unknown")
                 .bind(false)
                 .bind("unknown")
-                .bind(adm_uuid)
+                .bind(adm_gid)
                 .execute(&mut *tx)
                 .await
             {
@@ -212,7 +204,7 @@ pub async fn create_survey_adm(
                 "#
             )
             .bind(&payload.adm_level)
-            .bind(adm_uuid)
+            .bind(adm_gid)
             .fetch_one(&mut *tx)
             .await;
             
@@ -252,7 +244,7 @@ pub async fn create_survey_adm(
                 .bind("centroid")
                 .bind(true)
                 .bind(&location_accuracy)
-                .bind(adm_uuid)
+                .bind(adm_gid)
                 .bind(&maille_code)
                 .execute(&mut *tx)
                 .await
@@ -281,7 +273,7 @@ pub async fn create_survey_adm(
                 "#
             )
             .bind(&payload.adm_level)
-            .bind(adm_uuid)
+            .bind(adm_gid)
             .bind(&survey_code)  // Seed déterministe
             .fetch_one(&mut *tx)
             .await;
@@ -322,7 +314,7 @@ pub async fn create_survey_adm(
                 .bind("random")
                 .bind(true)
                 .bind(&location_accuracy)
-                .bind(adm_uuid)
+                .bind(adm_gid)
                 .bind(&maille_code)
                 .execute(&mut *tx)
                 .await
@@ -466,7 +458,7 @@ pub async fn geocode_survey(
             .ok()
             .flatten();
             
-            (geom_wkt, "exact", "exact", maille_code, Some(lon), Some(lat))
+            (geom_wkt, "exact", "exact".to_string(), maille_code, Some(lon), Some(lat))
         }
         
         GeocodeMode::AdmBased { location_mode, adm_level, adm_id } => {
@@ -478,16 +470,8 @@ pub async fn geocode_survey(
                 ).into_response();
             }
             
-            // Parser l'ADM ID
-            let adm_uuid = match Uuid::parse_str(&adm_id) {
-                Ok(id) => id,
-                Err(_) => {
-                    return (
-                        StatusCode::BAD_REQUEST,
-                        Json(serde_json::json!({"error": "invalid adm_id format"})),
-                    ).into_response();
-                }
-            };
+            // Utiliser directement le GID
+            let adm_gid = adm_id;
             
             match location_mode {
                 LocationMode::Centroid => {
@@ -501,7 +485,7 @@ pub async fn geocode_survey(
                         "#
                     )
                     .bind(&adm_level)
-                    .bind(adm_uuid)
+                    .bind(adm_gid)
                     .fetch_one(pool)
                     .await;
                     
@@ -517,7 +501,7 @@ pub async fn geocode_survey(
                     };
                     
                     let location_accuracy = format!("centroid_{}", adm_level.to_lowercase());
-                    (geom_wkt, "centroid", &location_accuracy, maille_code, None, None)
+                    (geom_wkt, "centroid", location_accuracy, maille_code, None, None)
                 }
                 
                 LocationMode::Random => {
@@ -531,7 +515,7 @@ pub async fn geocode_survey(
                         "#
                     )
                     .bind(&adm_level)
-                    .bind(adm_uuid)
+                    .bind(adm_gid)
                     .bind(&survey_code)
                     .fetch_one(pool)
                     .await;
@@ -548,7 +532,7 @@ pub async fn geocode_survey(
                     };
                     
                     let location_accuracy = format!("random_{}", adm_level.to_lowercase());
-                    (geom_wkt, "random", &location_accuracy, maille_code, None, None)
+                    (geom_wkt, "random", location_accuracy, maille_code, None, None)
                 }
                 
                 _ => {
