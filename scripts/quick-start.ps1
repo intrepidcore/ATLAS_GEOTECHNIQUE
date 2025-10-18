@@ -53,11 +53,29 @@ if ($runningContainers) {
 
 Write-Host "`n🐳 Démarrage du backend Docker..." -ForegroundColor Yellow
 
-# Rebuild si demandé
-if ($RebuildDocker -or $CleanBuild) {
-    Write-Host "  🔨 Rebuild de l'image Docker..." -ForegroundColor Cyan
+# Vérifier si l'image existe
+$imageExists = docker images atlas-api-geo -q 2>$null
+$needsBuild = $false
+
+if (-not $imageExists) {
+    Write-Host "  ℹ️  Image Docker non trouvée - Build initial nécessaire" -ForegroundColor Cyan
+    $needsBuild = $true
+} elseif ($RebuildDocker -or $CleanBuild) {
+    Write-Host "  ℹ️  Rebuild demandé explicitement" -ForegroundColor Cyan
+    $needsBuild = $true
+}
+
+# Build si nécessaire
+if ($needsBuild) {
+    Write-Host "  🔨 Build de l'image Docker (peut prendre 2-3 minutes)..." -ForegroundColor Cyan
     docker compose build api-geo 2>&1 | Out-Null
-    Write-Host "  ✅ Image Docker reconstruite" -ForegroundColor Green
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  ✅ Image Docker construite avec succès" -ForegroundColor Green
+    } else {
+        Write-Host "  ❌ Erreur lors du build Docker" -ForegroundColor Red
+        Write-Host "  💡 Vérifiez les logs ci-dessus ou lancez: docker compose build api-geo" -ForegroundColor Yellow
+        exit 1
+    }
 }
 
 # Démarrer les services Docker
@@ -80,6 +98,20 @@ if ($apiHealthy) {
 # ============================================================================
 
 Write-Host "`n🎨 Démarrage du frontend Vite..." -ForegroundColor Yellow
+
+# Vérifier si node_modules existe
+$nodeModulesPath = "ui\node_modules"
+if (-not (Test-Path $nodeModulesPath)) {
+    Write-Host "  ℹ️  node_modules non trouvé - Installation des dépendances..." -ForegroundColor Cyan
+    Push-Location ui
+    npm install 2>&1 | Out-Null
+    Pop-Location
+    if ($LASTEXITCODE -eq 0) {
+        Write-Host "  ✅ Dépendances npm installées" -ForegroundColor Green
+    } else {
+        Write-Host "  ⚠️  Erreur lors de npm install - continuons quand même..." -ForegroundColor Yellow
+    }
+}
 
 Start-Process powershell -ArgumentList @(
     "-NoExit",

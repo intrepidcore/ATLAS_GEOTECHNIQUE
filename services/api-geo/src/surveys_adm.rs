@@ -4,9 +4,10 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{IntoResponse, Response},
     Json,
 };
+use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -49,7 +50,7 @@ pub struct CreateSurveyAdmRequest {
 #[derive(Debug, Deserialize)]
 pub struct SurveyInfo {
     pub code: Option<String>,
-    pub date: Option<String>,
+    pub date: Option<NaiveDate>,
     pub source: Option<String>,
     pub operator: Option<String>,
     pub notes: Option<String>,

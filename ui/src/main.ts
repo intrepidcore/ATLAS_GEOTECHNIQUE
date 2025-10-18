@@ -237,8 +237,9 @@ async function loadNeighbors(mailleCode: string) {
 // Fonction obsolète supprimée - utilise maintenant loadMailleDetails() pour afficher la fiche
 
 // Variables globales pour les charts
-let chartSptN: Chart | null = null
-let chartQc: Chart | null = null
+let chartGranulo: Chart | null = null
+let chartVBS: Chart | null = null
+let chartAtterberg: Chart | null = null
 let chartDepth: Chart | null = null
 
 // Charger les détails complets d'une maille
@@ -332,13 +333,17 @@ function renderCharts(sondages: any[]) {
   }
   
   // Détruire les anciens charts
-  if (chartSptN) {
-    console.log('[renderCharts] Destruction chartSptN')
-    chartSptN.destroy()
+  if (chartGranulo) {
+    console.log('[renderCharts] Destruction chartGranulo')
+    chartGranulo.destroy()
   }
-  if (chartQc) {
-    console.log('[renderCharts] Destruction chartQc')
-    chartQc.destroy()
+  if (chartVBS) {
+    console.log('[renderCharts] Destruction chartVBS')
+    chartVBS.destroy()
+  }
+  if (chartAtterberg) {
+    console.log('[renderCharts] Destruction chartAtterberg')
+    chartAtterberg.destroy()
   }
   if (chartDepth) {
     console.log('[renderCharts] Destruction chartDepth')
@@ -346,86 +351,130 @@ function renderCharts(sondages: any[]) {
   }
   
   // Extraire les données
-  const sptData: {x: number, y: number}[] = []
-  const qcData: {x: number, y: number}[] = []
+  const granuloData: {x: number, y: number}[] = []
+  const vbsData: {x: number, y: number}[] = []
+  const atterbergWL: {x: number, y: number}[] = []
+  const atterbergWP: {x: number, y: number}[] = []
   const depths: number[] = []
   
   sondages.forEach(s => {
     s.essais.forEach((e: any) => {
-      const type = e.type_essai || e.type // Support ancien et nouveau format
+      const type = e.type_essai || e.type
       const value = e.valeur_numerique || e.value
+      const depth = e.profondeur_m || e.depth_m || 0
       
-      if (type === 'SPT_N' && value !== null && value !== undefined) {
-        sptData.push({ x: e.depth_m, y: parseFloat(value) })
-      } else if (type === 'qc' && value !== null && value !== undefined) {
-        qcData.push({ x: e.depth_m, y: parseFloat(value) })
+      if (type === 'Granulometrie' && value !== null && value !== undefined) {
+        granuloData.push({ x: depth, y: parseFloat(value) })
+      } else if (type === 'BleuMethylene_VBS' && value !== null && value !== undefined) {
+        vbsData.push({ x: depth, y: parseFloat(value) })
+      } else if (type === 'Atterberg_WL' && value !== null && value !== undefined) {
+        atterbergWL.push({ x: depth, y: parseFloat(value) })
+      } else if (type === 'Atterberg_WP' && value !== null && value !== undefined) {
+        atterbergWP.push({ x: depth, y: parseFloat(value) })
       }
-      if (e.depth_m !== null && e.depth_m !== undefined) {
-        depths.push(e.depth_m)
+      if (depth > 0) {
+        depths.push(depth)
       }
     })
   })
   
-  console.log('[renderCharts] Données extraites - SPT:', sptData.length, 'qc:', qcData.length, 'depths:', depths.length)
+  console.log('[renderCharts] Données extraites - Granulo:', granuloData.length, 'VBS:', vbsData.length, 'Atterberg:', atterbergWL.length, 'depths:', depths.length)
   
-  // Chart SPT_N vs Profondeur
-  const ctxSpt = document.getElementById('chartSptN') as HTMLCanvasElement
-  console.log('[renderCharts] Canvas chartSptN:', ctxSpt)
-  if (!ctxSpt) {
-    console.error('[renderCharts] Canvas chartSptN introuvable !')
-    return
+  // Chart Granulométrie vs Profondeur
+  const ctxGranulo = document.getElementById('chartGranulo') as HTMLCanvasElement
+  if (ctxGranulo) {
+    chartGranulo = new Chart(ctxGranulo, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'Granulométrie',
+          data: granuloData,
+          backgroundColor: '#3aa6ff',
+          borderColor: '#3aa6ff',
+          pointRadius: 4
+        }]
+      },
+      options: {
+        responsive: false,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: 'Granulométrie (% passant)', color: '#c9d7e3', font: { size: 11 } }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
+          y: { title: { display: true, text: '% passant', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' }, min: 0, max: 100 }
+        }
+      }
+    })
   }
-  chartSptN = new Chart(ctxSpt, {
-    type: 'scatter',
-    data: {
-      datasets: [{
-        label: 'SPT_N',
-        data: sptData,
-        backgroundColor: '#3aa6ff',
-        borderColor: '#3aa6ff',
-        pointRadius: 4
-      }]
-    },
-    options: {
-      responsive: false,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { display: false },
-        title: { display: true, text: 'SPT_N vs Profondeur', color: '#c9d7e3', font: { size: 11 } }
-      },
-      scales: {
-        x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
-        y: { title: { display: true, text: 'SPT_N', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
-      }
-    }
-  })
   
-  // Chart qc vs Profondeur
-  const ctxQc = document.getElementById('chartQc') as HTMLCanvasElement
-  chartQc = new Chart(ctxQc, {
-    type: 'scatter',
-    data: {
-      datasets: [{
-        label: 'qc',
-        data: qcData,
-        backgroundColor: '#0bb07b',
-        borderColor: '#0bb07b',
-        pointRadius: 4
-      }]
-    },
-    options: {
-      responsive: false,
-      maintainAspectRatio: true,
-      plugins: {
-        legend: { display: false },
-        title: { display: true, text: 'qc vs Profondeur', color: '#c9d7e3', font: { size: 11 } }
+  // Chart VBS vs Profondeur
+  const ctxVBS = document.getElementById('chartVBS') as HTMLCanvasElement
+  if (ctxVBS) {
+    chartVBS = new Chart(ctxVBS, {
+      type: 'scatter',
+      data: {
+        datasets: [{
+          label: 'VBS',
+          data: vbsData,
+          backgroundColor: '#0bb07b',
+          borderColor: '#0bb07b',
+          pointRadius: 4
+        }]
       },
-      scales: {
-        x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
-        y: { title: { display: true, text: 'qc (MPa)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+      options: {
+        responsive: false,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: false },
+          title: { display: true, text: 'Bleu de Méthylène (VBS)', color: '#c9d7e3', font: { size: 11 } }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
+          y: { title: { display: true, text: 'VBS (g/100g)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+        }
       }
-    }
-  })
+    })
+  }
+  
+  // Chart Atterberg vs Profondeur
+  const ctxAtterberg = document.getElementById('chartAtterberg') as HTMLCanvasElement
+  if (ctxAtterberg) {
+    chartAtterberg = new Chart(ctxAtterberg, {
+      type: 'scatter',
+      data: {
+        datasets: [
+          {
+            label: 'WL',
+            data: atterbergWL,
+            backgroundColor: '#ff6b9d',
+            borderColor: '#ff6b9d',
+            pointRadius: 4
+          },
+          {
+            label: 'WP',
+            data: atterbergWP,
+            backgroundColor: '#c77dff',
+            borderColor: '#c77dff',
+            pointRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: false,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { display: true, labels: { color: '#8aa0b5', font: { size: 9 } } },
+          title: { display: true, text: 'Limites d\'Atterberg (%)', color: '#c9d7e3', font: { size: 11 } }
+        },
+        scales: {
+          x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
+          y: { title: { display: true, text: '%', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+        }
+      }
+    })
+  }
   
   // Histogramme profondeur
   const depthBins = [0, 5, 10, 15, 20, 25, 30]
