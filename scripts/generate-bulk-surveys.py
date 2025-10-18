@@ -27,7 +27,7 @@ DB_CONFIG = {
     'port': 5432,
     'database': 'atlas',
     'user': 'atlas',
-    'password': 'atlas123'
+    'password': 'atlas'
 }
 
 # ============================================================================
@@ -69,13 +69,13 @@ SOURCES = [
 ]
 
 SOIL_TYPES = [
-    ('Ferrugineux Tropicaux', 0.30),
-    ('Sols Hydromorphes', 0.20),
+    ('Ferrugineux Tropicaux Lessivés', 0.25),
+    ('Ferrugineux Tropicaux et Pseudogley', 0.20),
+    ('Hydromorphes', 0.20),
     ('Vertisols et Paravertisols', 0.15),
-    ('Sols Ferralitiques', 0.15),
-    ('Sols Peu Évolués', 0.10),
-    ('Sols Minéraux Bruts', 0.05),
-    ('Lithosols', 0.05)
+    ('Ferralitique Typique ou Modaux', 0.10),
+    ('Faiblement Ferralitique', 0.05),
+    ('Autre', 0.05)
 ]
 
 TEST_TYPES = {
@@ -214,7 +214,7 @@ def generate_survey(conn, adm_zones: List[Dict]) -> Tuple[str, List[Dict]]:
     
     # 4. Métadonnées
     survey_id = str(uuid.uuid4())
-    code = f"SND-{adm['adm3_pcode']}-{random.randint(1000, 9999)}"
+    code = f"SND-{adm['adm3_pcode']}-{str(uuid.uuid4())[:8]}"  # UUID court pour unicité
     date = random_date(datetime(2015, 1, 1), datetime.now())
     source = weighted_choice(SOURCES)
     operator = weighted_choice(OPERATORS)
@@ -314,7 +314,7 @@ def insert_batch(conn, surveys: List[Dict], all_tests: List[Dict]):
         for s in surveys:
             cur.execute("""
                 INSERT INTO sondages (
-                    id, code, geom, date_sondage, source, operateur, type_sol,
+                    id, code, geom, date_sondage, source, operator, type_sol,
                     location_mode, is_geocoded, location_accuracy,
                     adm1_id, adm2_id, adm3_id, created_at
                 )
@@ -329,16 +329,16 @@ def insert_batch(conn, surveys: List[Dict], all_tests: List[Dict]):
                 s['location_mode'],
                 s['location_mode'] != 'unknown',  # is_geocoded
                 'exact' if s['location_mode'] == 'exact' else f"{s['location_mode']}_adm3",
-                s['adm1_id'], s['adm2_id'], s['adm3_id']
+                None, None, None  # adm_id en NULL pour l'instant (UUID vs gid)
             ))
         
         # Insérer les essais
         for t in all_tests:
             cur.execute("""
                 INSERT INTO essais (
-                    sondage_id, type_essai, profondeur_m, valeur_numerique, unite, created_at
+                    id, sondage_id, type_essai, depth_m, valeur_numerique, unit, created_at
                 )
-                VALUES (%s, %s, %s, %s, %s, now())
+                VALUES (gen_random_uuid(), %s, %s, %s, %s, %s, now())
             """, (
                 t['sondage_id'], t['type'], t['depth'], t['value'], t['unit']
             ))
