@@ -1,6 +1,7 @@
 import L from 'leaflet'
 import { Chart, registerables } from 'chart.js'
 import { GeotechnicalFormManager } from './geotechnical-form'
+import { GeocodeManager } from './geocode-manager'
 import './geotechnical-form.css'
 
 // Enregistrer tous les composants Chart.js
@@ -1915,6 +1916,33 @@ const geotechForm = new GeotechnicalFormManager(
 // Bouton pour ouvrir le formulaire géotechnique
 safeAddEventListener('newGeotechSurveyBtn', 'click', () => {
   geotechForm.initForm('geotechFormContainer')
+})
+
+// Initialiser le geocode manager
+const geocodeManager = new GeocodeManager(API_GEO)
+
+// Bouton pour ouvrir le geocode manager
+safeAddEventListener('geocodeSurveysBtn', 'click', () => {
+  geocodeManager.renderUI(
+    'geocodeContainer',
+    (result) => {
+      console.log('[GEOCODE] Sondage géocodé:', result)
+      toast(`✅ Sondage ${result.code} géocodé avec succès!`, 'ok')
+      // Recharger la grille
+      loadGrid()
+      // Recharger la fiche si on est sur une maille
+      if (codeInput.value) {
+        setTimeout(() => {
+          const getBtn = document.getElementById('getBtn')
+          if (getBtn) getBtn.click()
+        }, 500)
+      }
+    },
+    (error) => {
+      console.error('[GEOCODE] Erreur:', error)
+      toast(`❌ Erreur: ${error}`, 'err')
+    }
+  )
 })
 
 // Open drawer for survey list

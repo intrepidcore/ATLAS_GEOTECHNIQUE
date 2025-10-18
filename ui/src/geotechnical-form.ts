@@ -185,8 +185,51 @@ export class GeotechnicalFormManager {
           </div>
         </div>
 
-        <!-- Partie 2: Localisation -->
+        <!-- Partie 1.5: Mode de Localisation -->
         <div class="form-section">
+          <h3>1.5 Mode de Localisation</h3>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="gt-location-mode">Mode *</label>
+              <select id="gt-location-mode" required>
+                <option value="exact">📍 Coordonnées exactes (GPS)</option>
+                <option value="unknown">❓ Position inconnue (ADM uniquement)</option>
+                <option value="centroid">🎯 Centroïde de la zone ADM</option>
+                <option value="random">🎲 Point aléatoire dans la zone ADM</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Sélection ADM (visible si mode != exact) -->
+          <div id="gt-adm-section" style="display: none;">
+            <div class="form-row">
+              <div class="form-group">
+                <label for="gt-adm-level">Niveau ADM *</label>
+                <select id="gt-adm-level">
+                  <option value="">-- Sélectionner --</option>
+                  <option value="ADM1">Région (ADM1)</option>
+                  <option value="ADM2">Préfecture (ADM2)</option>
+                  <option value="ADM3">Commune (ADM3)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="gt-adm-id">Zone ADM *</label>
+                <select id="gt-adm-id">
+                  <option value="">-- Sélectionner le niveau d'abord --</option>
+                </select>
+              </div>
+            </div>
+            
+            <div class="alert alert-info" id="gt-location-warning" style="display: none; padding: 12px; background: #1e3a5f; border-left: 4px solid #3aa6ff; border-radius: 4px; margin-top: 12px;">
+              <strong style="color: #3aa6ff;">ℹ️ Information :</strong>
+              <span id="gt-location-warning-text" style="color: #c9d7e3; margin-left: 8px;"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Partie 2: Localisation -->
+        <div class="form-section" id="gt-localisation-section">
           <h3>2. Localisation</h3>
           <div style="margin-bottom: 12px;">
             <button type="button" id="gt-select-on-map" class="btn-secondary" style="width: 100%;">
@@ -248,6 +291,64 @@ export class GeotechnicalFormManager {
     // Bouton fermer
     const closeBtn = document.getElementById('gt-close')
     closeBtn?.addEventListener('click', () => this.closeForm('geotechFormContainer'))
+    
+    // Mode de localisation
+    const locationModeSelect = document.getElementById('gt-location-mode') as HTMLSelectElement
+    locationModeSelect?.addEventListener('change', () => {
+      const mode = locationModeSelect.value
+      const admSection = document.getElementById('gt-adm-section')
+      const locSection = document.getElementById('gt-localisation-section')
+      const warning = document.getElementById('gt-location-warning')
+      const warningText = document.getElementById('gt-location-warning-text')
+      
+      if (mode === 'exact') {
+        // Mode exact: afficher lon/lat, masquer ADM
+        if (admSection) admSection.style.display = 'none'
+        if (locSection) locSection.style.display = 'block'
+        if (warning) warning.style.display = 'none'
+      } else {
+        // Autres modes: afficher ADM
+        if (admSection) admSection.style.display = 'block'
+        if (locSection) locSection.style.display = mode === 'unknown' ? 'none' : 'block'
+        if (warning) warning.style.display = 'block'
+        
+        // Messages d'avertissement
+        const messages: Record<string, string> = {
+          unknown: 'Le sondage sera créé sans coordonnées. Vous pourrez le géocoder ultérieurement.',
+          centroid: '⚠️ Le sondage sera placé au centroïde de la zone ADM. Position approximative.',
+          random: '⚠️ Le sondage sera placé aléatoirement dans la zone ADM. À utiliser avec précaution.'
+        }
+        if (warningText) warningText.textContent = messages[mode] || ''
+      }
+    })
+    
+    // Charger les zones ADM selon le niveau
+    const admLevelSelect = document.getElementById('gt-adm-level') as HTMLSelectElement
+    admLevelSelect?.addEventListener('change', async () => {
+      const level = admLevelSelect.value
+      const admIdSelect = document.getElementById('gt-adm-id') as HTMLSelectElement
+      
+      if (!level || !admIdSelect) return
+      
+      admIdSelect.innerHTML = '<option value="">Chargement...</option>'
+      
+      try {
+        const res = await fetch(`${this.apiGeoUrl}/adm/${level.toLowerCase()}`)
+        if (!res.ok) throw new Error('Failed to load ADM zones')
+        
+        const zones = await res.json()
+        admIdSelect.innerHTML = '<option value="">-- Sélectionner --</option>'
+        zones.forEach((zone: any) => {
+          const option = document.createElement('option')
+          option.value = zone.id.toString()
+          option.textContent = zone.name
+          admIdSelect.appendChild(option)
+        })
+      } catch (e) {
+        console.error('Failed to load ADM zones:', e)
+        admIdSelect.innerHTML = '<option value="">Erreur de chargement</option>'
+      }
+    })
     
     // Sélectionner sur la carte
     const selectMapBtn = document.getElementById('gt-select-on-map')
@@ -614,6 +715,7 @@ export class GeotechnicalFormManager {
     const source = (document.getElementById('gt-source') as HTMLInputElement)?.value
     const operator = (document.getElementById('gt-operator') as HTMLInputElement)?.value
     const notes = (document.getElementById('gt-notes') as HTMLTextAreaElement)?.value
+    const locationMode = (document.getElementById('gt-location-mode') as HTMLSelectElement)?.value || 'exact'
     const lon = parseFloat((document.getElementById('gt-lon') as HTMLInputElement)?.value)
     const lat = parseFloat((document.getElementById('gt-lat') as HTMLInputElement)?.value)
 
@@ -626,6 +728,17 @@ export class GeotechnicalFormManager {
     if (this.profondeurs.size === 0) {
       this.onError('Au moins une profondeur avec essais est requise')
       return
+    }
+    
+    // Validation ADM si mode != exact
+    if (locationMode !== 'exact') {
+      const admLevel = (document.getElementById('gt-adm-level') as HTMLSelectElement)?.value
+      const admId = (document.getElementById('gt-adm-id') as HTMLSelectElement)?.value
+      
+      if (!admLevel || !admId) {
+        this.onError('Veuillez sélectionner un niveau ADM et une zone')
+        return
+      }
     }
 
     // Construire le payload
@@ -676,13 +789,60 @@ export class GeotechnicalFormManager {
 
     console.log('[GeotechForm] Payload:', payload)
 
-    // Envoyer à l'API
+    // Envoyer à l'API selon le mode
     try {
-      const response = await fetch(`${this.apiGeoUrl}/surveys/geotech`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
+      let response: Response
+      
+      if (locationMode === 'exact') {
+        // Mode exact: utiliser l'endpoint geotech existant
+        response = await fetch(`${this.apiGeoUrl}/surveys/geotech`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        })
+      } else {
+        // Mode ADM: utiliser le nouvel endpoint
+        const admLevel = (document.getElementById('gt-adm-level') as HTMLSelectElement)?.value
+        const admId = parseInt((document.getElementById('gt-adm-id') as HTMLSelectElement)?.value)
+        
+        // Construire les tests au format ADM
+        const tests: any[] = []
+        essais_par_profondeur.forEach(ep => {
+          ep.mesures.forEach(m => {
+            if (m.valeur_numerique !== undefined) {
+              tests.push({
+                type: m.type,
+                value: m.valeur_numerique,
+                depth_m: ep.profondeur_m,
+                unit: m.unit
+              })
+            }
+          })
+        })
+        
+        const admPayload = {
+          adm_level: admLevel,
+          adm_id: admId,
+          location_mode: locationMode,
+          survey: {
+            code: code || undefined,
+            date: date || undefined,
+            source: source || undefined,
+            operator: operator || undefined,
+            notes: notes || undefined,
+            type_sol: typeSol
+          },
+          tests
+        }
+        
+        console.log('[GeotechForm] ADM Payload:', admPayload)
+        
+        response = await fetch(`${this.apiGeoUrl}/surveys/adm`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(admPayload)
+        })
+      }
 
       if (!response.ok) {
         const error = await response.json()

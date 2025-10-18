@@ -560,7 +560,7 @@ pub async fn geocode_survey(
     )
     .bind(&geom_wkt)
     .bind(location_mode)
-    .bind(location_accuracy)
+    .bind(&location_accuracy)
     .bind(&maille_code)
     .bind(survey_uuid)
     .execute(pool)

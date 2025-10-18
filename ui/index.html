@@ -242,6 +242,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
         <div class="section">
           <h4>✏️ Sondages</h4>
           <button id="newGeotechSurveyBtn" class="btn primary" style="background:#0bb07b;border-color:#0bb07b">🧪 Sondage Géotechnique</button>
+          <button id="geocodeSurveysBtn" class="btn" style="margin-top:8px;background:#3aa6ff;border-color:#3aa6ff;color:#fff">🗺️ Géocoder les sondages</button>
           <button id="listSurveysBtn" class="btn" style="margin-top:8px">📋 Liste des sondages</button>
           <button id="importCsvBtn" class="btn" style="margin-top:8px">📥 Import CSV/Bulk</button>
         </div>
@@ -485,6 +486,9 @@ BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,qc,4.2,5.0"></textarea>
     
     <!-- Formulaire Géotechnique Modal -->
     <div id="geotechFormContainer"></div>
+    
+    <!-- Geocode Manager Modal -->
+    <div id="geocodeContainer" class="modal-overlay"></div>
     
     <script>
       // Runtime overrides for API base URLs

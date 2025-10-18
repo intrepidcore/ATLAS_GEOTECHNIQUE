@@ -1,6 +1,26 @@
 /* Styles pour le formulaire géotechnique enrichi - v1.4.0 */
 
-/* Overlay modal */
+/* Overlay modal (réutilisable) */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 5000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  display: flex;
+}
+
+/* Overlay modal spécifique */
 #geotechFormContainer {
   position: fixed;
   top: 0;
