@@ -1,7 +1,24 @@
 import L from 'leaflet'
+import { Chart, registerables } from 'chart.js'
+import { GeotechnicalFormManager } from './geotechnical-form'
+import './geotechnical-form.css'
+
+// Enregistrer tous les composants Chart.js
+Chart.register(...registerables)
 
 // Base URLs with runtime override support
-const API_GEO = (import.meta.env.VITE_API_GEO ?? (window as any).__API_GEO__ ?? '') as string
+const API_GEO = (import.meta.env.VITE_API_GEO ?? (window as any).__API_GEO__ ?? 'http://localhost:8000') as string
+console.log('[INIT] API_GEO configuré:', API_GEO)
+
+// Helper pour ajouter des event listeners de manière sûre
+function safeAddEventListener(id: string, event: string, handler: EventListener) {
+  const el = document.getElementById(id)
+  if (el) {
+    el.addEventListener(event, handler)
+  } else {
+    console.warn(`[INIT] Élément #${id} introuvable - event listener ${event} ignoré`)
+  }
+}
 
 const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7)
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -15,7 +32,8 @@ let shapeLayer: L.GeoJSON<any> | null = null
 
 // --- UI helpers ---
 function toast(msg: string, kind: 'ok' | 'err' = 'ok') {
-  const el = document.getElementById('toast')!
+  const el = document.getElementById('toast')
+  if (!el) return
   el.textContent = msg
   el.className = `toast ${kind}`
   el.style.display = 'block'
@@ -23,18 +41,20 @@ function toast(msg: string, kind: 'ok' | 'err' = 'ok') {
 }
 
 function setStatus(text: string) {
-  (document.getElementById('status')!).textContent = text
+  const el = document.getElementById('status')
+  if (el) el.textContent = text
 }
 
 function setKpis(total: number, withData: number) {
-  const k = document.getElementById('kpis')!
+  const k = document.getElementById('kpis')
+  if (!k) return
   k.innerHTML = `
     <div class="kpi"><span>Mailles</span><b>${total.toLocaleString()}</b></div>
     <div class="kpi"><span>Avec données</span><b>${withData.toLocaleString()}</b></div>
     <div class="kpi"><span>Sans données</span><b>${(total - withData).toLocaleString()}</b></div>
   `
-  const b = document.getElementById('gridBadge')!
-  b.innerHTML = `<span class="dot" style="background:${withData > 0 ? 'var(--ok)' : 'var(--warn)'}"></span> Grille`
+  const b = document.getElementById('gridBadge')
+  if (b) b.innerHTML = `<span class="dot" style="background:${withData > 0 ? 'var(--ok)' : 'var(--warn)'}"></span> Grille`
 }
 
 // --- Leaflet styles ---
@@ -53,18 +73,23 @@ function styleFeature(f: any) {
   }
 }
 
+// Variable globale pour la maille sélectionnée
+let selectedMailleLayer: any = null
+let selectedMailleCode: string | null = null
+
 function highlightFeature(e: any) {
+  // Ne pas highlight si c'est la maille sélectionnée
+  if (e.target === selectedMailleLayer) return
   e.target.setStyle({ weight: 2, color: '#e85d68' })
 }
 
 function resetHighlight(e: any) {
+  // Ne pas reset si c'est la maille sélectionnée
+  if (e.target === selectedMailleLayer) return
   if (gridLayer) gridLayer.resetStyle(e.target)
 }
 
 // --- Feature interactions ---
-// Variable globale pour la maille sélectionnée
-let selectedMailleLayer: any = null
-let selectedMailleCode: string | null = null
 
 function onEachFeature(f: any, layer: any) {
   const p = f.properties || {}
@@ -74,12 +99,13 @@ function onEachFeature(f: any, layer: any) {
     mouseover: highlightFeature,
     mouseout: resetHighlight,
     click: async () => {
+      console.log('[onEachFeature] Clic sur maille:', p.code)
       // Réinitialiser l'ancienne sélection
       if (selectedMailleLayer && gridLayer) {
         gridLayer.resetStyle(selectedMailleLayer)
       }
       
-      // Mettre en évidence la nouvelle maille
+      // Mettre en évidence la nouvelle maille (7 secondes)
       layer.setStyle({
         weight: 4,
         color: '#FFD700',
@@ -87,6 +113,15 @@ function onEachFeature(f: any, layer: any) {
       })
       selectedMailleLayer = layer
       selectedMailleCode = p.code
+      
+      // Réinitialiser le style après 7 secondes
+      setTimeout(() => {
+        if (selectedMailleLayer === layer && gridLayer) {
+          gridLayer.resetStyle(layer)
+          selectedMailleLayer = null
+          selectedMailleCode = null
+        }
+      }, 7000)
       
       // Zoomer
       map.fitBounds(layer.getBounds(), { maxZoom: 14 })
@@ -104,53 +139,433 @@ function onEachFeature(f: any, layer: any) {
         latInput.value = center.lat.toFixed(6)
       }
       
+      // Si le formulaire géotechnique était en attente, le rouvrir
+      if (sessionStorage.getItem('geotechFormPending') === 'true') {
+        sessionStorage.removeItem('geotechFormPending')
+        
+        // Remplir les champs du formulaire géotechnique
+        setTimeout(() => {
+          const gtLon = document.getElementById('gt-lon') as HTMLInputElement
+          const gtLat = document.getElementById('gt-lat') as HTMLInputElement
+          const gtMailleCode = document.getElementById('gt-maille-code')
+          const gtSelectedMaille = document.getElementById('gt-selected-maille')
+          
+          if (gtLon) gtLon.value = center.lng.toFixed(6)
+          if (gtLat) gtLat.value = center.lat.toFixed(6)
+          if (gtMailleCode) gtMailleCode.textContent = p.code
+          if (gtSelectedMaille) gtSelectedMaille.style.display = 'block'
+          
+          // Rouvrir le formulaire
+          const container = document.getElementById('geotechFormContainer')
+          if (container) {
+            container.classList.add('active')
+          }
+          
+          toast(`✅ Maille ${p.code} sélectionnée pour le sondage`, 'ok')
+        }, 300)
+        
+        return // Ne pas charger les détails de la maille
+      }
+      
       // Toast de confirmation
       toast(`📍 Maille sélectionnée: ${p.code}`, 'ok')
-      
-      // Afficher les données de la maille dans le panneau
-      displayMailleData(p)
+
+      // Charger les détails complets de la maille (fiche géotechnique) - UNE SEULE FOIS
+      await loadMailleDetails(p.code)
+
+      // Charger les mailles voisines
+      loadNeighbors(p.code)
     }
   })
 }
 
+// Charger les mailles voisines
+async function loadNeighbors(mailleCode: string) {
+  const neighborsEl = document.getElementById('neighbors')
+  if (!neighborsEl) return
+  
+  try {
+    const res = await fetch(`${API_GEO}/grid/${mailleCode}/neighbors`)
+    if (!res.ok) {
+      neighborsEl.innerHTML = '<div style="color:var(--muted)">Aucune maille voisine trouvée</div>'
+      return
+    }
+    
+    const neighbors = await res.json()
+    
+    if (neighbors.length === 0) {
+      neighborsEl.innerHTML = '<div style="color:var(--muted)">Aucune maille voisine trouvée</div>'
+      return
+    }
+    
+    const html = neighbors.map((n: any) => {
+      const directionIcon = n.direction === 'Nord' ? '⬆️' : n.direction === 'Sud' ? '⬇️' : n.direction === 'Est' ? '➡️' : '⬅️'
+      const sptAvg = n.spt_n_avg ? n.spt_n_avg.toFixed(1) : '—'
+      const qcAvg = n.qc_avg ? n.qc_avg.toFixed(2) : '—'
+      const distance = n.distance_m ? `${(n.distance_m / 1000).toFixed(1)} km` : '—'
+      
+      return `
+        <div style="background:#0f172a;border:1px solid #22304d;border-radius:6px;padding:8px;margin-bottom:6px;cursor:pointer" 
+             onclick="window.selectNeighborMaille('${n.code}')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <span style="font-weight:600;color:var(--accent)">${directionIcon} ${n.code}</span>
+            <span style="font-size:10px;color:var(--muted)">${distance}</span>
+          </div>
+          <div style="font-size:10px;line-height:1.5;color:var(--muted)">
+            Sondages: ${n.n_sondages} | Essais: ${n.n_essais}<br>
+            SPT-N: ${sptAvg} | qc: ${qcAvg} MPa
+          </div>
+        </div>
+      `
+    }).join('')
+    
+    neighborsEl.innerHTML = html
+  } catch (e) {
+    console.error('Erreur chargement voisins:', e)
+    neighborsEl.innerHTML = '<div style="color:var(--err)">Erreur de chargement</div>'
+  }
+}
+
+// Fonction globale pour sélectionner une maille voisine
+;(window as any).selectNeighborMaille = (code: string) => {
+  codeInput.value = code
+  document.getElementById('getBtn')!.click()
+}
+
 // Afficher les données de la maille sélectionnée
-function displayMailleData(props: any) {
-  const jsonEl = document.getElementById('json')!
+// Fonction obsolète supprimée - utilise maintenant loadMailleDetails() pour afficher la fiche
+
+// Variables globales pour les charts
+let chartSptN: Chart | null = null
+let chartQc: Chart | null = null
+let chartDepth: Chart | null = null
+
+// Charger les détails complets d'une maille
+async function loadMailleDetails(code: string) {
+  console.log('[loadMailleDetails] Chargement des détails pour:', code)
+  try {
+    const res = await fetch(`${API_GEO}/grid/${code}/details`)
+    console.log('[loadMailleDetails] Réponse API:', res.status, res.statusText)
+    if (!res.ok) {
+      toast('Erreur chargement détails maille', 'err')
+      return
+    }
+    
+    const data = await res.json()
+    console.log('[loadMailleDetails] Données reçues:', data)
+    
+    // Afficher la fiche AVANT de rendre les graphiques
+    const ficheDiv = document.getElementById('mailleDetails')
+    console.log('[loadMailleDetails] Element #mailleDetails:', ficheDiv)
+    if (!ficheDiv) {
+      console.error('[loadMailleDetails] Element #mailleDetails introuvable !')
+      return
+    }
+    ficheDiv.classList.add('active')
+    console.log('[loadMailleDetails] Classe active ajoutée à #mailleDetails')
+    
+    // Scroller automatiquement vers la fiche dans le panneau gauche
+    setTimeout(() => {
+      ficheDiv.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 100)
+    
+    // En-tête
+    const ficheCode = document.getElementById('ficheCode')
+    const ficheAdm = document.getElementById('ficheAdm')
+    const ficheStatus = document.getElementById('ficheStatus')
+    if (ficheCode) ficheCode.textContent = data.code
+    const admParts = [data.adm.adm1, data.adm.adm2, data.adm3].filter(Boolean)
+    if (ficheAdm) ficheAdm.textContent = admParts.join(' > ') || '—'
+    if (ficheStatus) ficheStatus.innerHTML = data.kpi.sondages > 0 
+      ? '✅ avec données' 
+      : '— sans données'
+    
+    // KPIs
+    const kpiSondages = document.getElementById('kpiSondages')
+    const kpiEssais = document.getElementById('kpiEssais')
+    const kpiIdw = document.getElementById('kpiIdw')
+    const kpiProf = document.getElementById('kpiProf')
+    if (kpiSondages) kpiSondages.textContent = data.kpi.sondages.toString()
+    if (kpiEssais) kpiEssais.textContent = data.kpi.essais.toString()
+    if (kpiIdw) kpiIdw.textContent = data.kpi.idw_spt_n 
+      ? data.kpi.idw_spt_n.toFixed(1) 
+      : '—'
+    if (kpiProf) kpiProf.textContent = data.kpi.zmin && data.kpi.zmax
+      ? `${data.kpi.zmin.toFixed(1)} – ${data.kpi.zmax.toFixed(1)}`
+      : '—'
+    
+    // Attendre que le DOM soit mis à jour avant de rendre les graphiques
+    setTimeout(() => {
+      console.log('[loadMailleDetails] Rendu des graphiques et liste, sondages:', data.sondages?.length || 0)
+      // Graphiques
+      renderCharts(data.sondages)
+      
+      // Liste des sondages
+      renderSondagesList(data.sondages)
+    }, 50)
+    
+    // Boutons actions
+    const ficheRecalc = document.getElementById('ficheRecalculate')
+    const ficheExport = document.getElementById('ficheExportGeoJSON')
+    const ficheAdd = document.getElementById('ficheAddSurvey')
+    if (ficheRecalc) ficheRecalc.onclick = () => recomputeIdw(code)
+    if (ficheExport) ficheExport.onclick = () => exportMailleGeoJSON(code)
+    if (ficheAdd) ficheAdd.onclick = () => {
+      codeInput.value = code
+      const newSurveyBtn = document.getElementById('newSurveyBtn')
+      if (newSurveyBtn) newSurveyBtn.click()
+    }
+    
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+}
+
+// Rendre les graphiques
+function renderCharts(sondages: any[]) {
+  console.log('[renderCharts] Début, sondages:', sondages?.length || 0, sondages)
   
-  const html = `
-<div style="background:#0f172a;border:1px solid #22304d;border-radius:8px;padding:12px">
-  <h5 style="margin:0 0 10px 0;font-size:14px;color:var(--accent);display:flex;align-items:center;gap:6px">
-    📍 ${props.code || 'N/A'}
-  </h5>
-  <div style="font-size:12px;line-height:1.8">
-    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #22304d22">
-      <span style="color:var(--muted)">Région:</span>
-      <span style="color:var(--text);font-weight:500">${props.adm1_name || '—'}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #22304d22">
-      <span style="color:var(--muted)">Préfecture:</span>
-      <span style="color:var(--text);font-weight:500">${props.adm2_name || '—'}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #22304d22">
-      <span style="color:var(--muted)">Commune:</span>
-      <span style="color:var(--text);font-weight:500">${props.adm3_name || '—'}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #22304d22">
-      <span style="color:var(--muted)">Sondages:</span>
-      <span style="color:var(--accent);font-weight:600">${props.n_sondages || 0}</span>
-    </div>
-    <div style="display:flex;justify-content:space-between;padding:4px 0">
-      <span style="color:var(--muted)">Essais:</span>
-      <span style="color:var(--accent);font-weight:600">${props.n_essais || 0}</span>
-    </div>
-  </div>
-  <button onclick="document.getElementById('newSurveyBtn').click()" style="width:100%;margin-top:12px;padding:8px;background:var(--accent);border:none;border-radius:6px;color:#0d1526;font-weight:600;cursor:pointer;font-size:12px">
-    ➕ Ajouter un sondage ici
-  </button>
-</div>
-  `.trim()
+  if (!sondages || sondages.length === 0) {
+    console.warn('[renderCharts] Aucun sondage à afficher')
+    return
+  }
   
-  jsonEl.innerHTML = html
+  // Détruire les anciens charts
+  if (chartSptN) {
+    console.log('[renderCharts] Destruction chartSptN')
+    chartSptN.destroy()
+  }
+  if (chartQc) {
+    console.log('[renderCharts] Destruction chartQc')
+    chartQc.destroy()
+  }
+  if (chartDepth) {
+    console.log('[renderCharts] Destruction chartDepth')
+    chartDepth.destroy()
+  }
+  
+  // Extraire les données
+  const sptData: {x: number, y: number}[] = []
+  const qcData: {x: number, y: number}[] = []
+  const depths: number[] = []
+  
+  sondages.forEach(s => {
+    s.essais.forEach((e: any) => {
+      const type = e.type_essai || e.type // Support ancien et nouveau format
+      const value = e.valeur_numerique || e.value
+      
+      if (type === 'SPT_N' && value !== null && value !== undefined) {
+        sptData.push({ x: e.depth_m, y: parseFloat(value) })
+      } else if (type === 'qc' && value !== null && value !== undefined) {
+        qcData.push({ x: e.depth_m, y: parseFloat(value) })
+      }
+      if (e.depth_m !== null && e.depth_m !== undefined) {
+        depths.push(e.depth_m)
+      }
+    })
+  })
+  
+  console.log('[renderCharts] Données extraites - SPT:', sptData.length, 'qc:', qcData.length, 'depths:', depths.length)
+  
+  // Chart SPT_N vs Profondeur
+  const ctxSpt = document.getElementById('chartSptN') as HTMLCanvasElement
+  console.log('[renderCharts] Canvas chartSptN:', ctxSpt)
+  if (!ctxSpt) {
+    console.error('[renderCharts] Canvas chartSptN introuvable !')
+    return
+  }
+  chartSptN = new Chart(ctxSpt, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'SPT_N',
+        data: sptData,
+        backgroundColor: '#3aa6ff',
+        borderColor: '#3aa6ff',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'SPT_N vs Profondeur', color: '#c9d7e3', font: { size: 11 } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
+        y: { title: { display: true, text: 'SPT_N', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+      }
+    }
+  })
+  
+  // Chart qc vs Profondeur
+  const ctxQc = document.getElementById('chartQc') as HTMLCanvasElement
+  chartQc = new Chart(ctxQc, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: 'qc',
+        data: qcData,
+        backgroundColor: '#0bb07b',
+        borderColor: '#0bb07b',
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'qc vs Profondeur', color: '#c9d7e3', font: { size: 11 } }
+      },
+      scales: {
+        x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
+        y: { title: { display: true, text: 'qc (MPa)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+      }
+    }
+  })
+  
+  // Histogramme profondeur
+  const depthBins = [0, 5, 10, 15, 20, 25, 30]
+  const depthCounts = new Array(depthBins.length - 1).fill(0)
+  depths.forEach(d => {
+    for (let i = 0; i < depthBins.length - 1; i++) {
+      if (d >= depthBins[i] && d < depthBins[i + 1]) {
+        depthCounts[i]++
+        break
+      }
+    }
+  })
+  
+  const ctxDepth = document.getElementById('chartDepth') as HTMLCanvasElement
+  chartDepth = new Chart(ctxDepth, {
+    type: 'bar',
+    data: {
+      labels: depthBins.slice(0, -1).map((v, i) => `${v}-${depthBins[i+1]}m`),
+      datasets: [{
+        label: 'Essais',
+        data: depthCounts,
+        backgroundColor: '#f4b740',
+        borderColor: '#f4b740',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: false,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        title: { display: true, text: 'Distribution Profondeurs', color: '#c9d7e3', font: { size: 11 } }
+      },
+      scales: {
+        x: { ticks: { color: '#8aa0b5', font: { size: 9 } }, grid: { color: '#1c2843' } },
+        y: { title: { display: true, text: 'Nombre', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+      }
+    }
+  })
+}
+
+// Rendre la liste des sondages
+function renderSondagesList(sondages: any[]) {
+  const container = document.getElementById('sondagesList')
+  if (!container) return
+  const sondagesCount = document.getElementById('sondagesCount')
+  if (sondagesCount) sondagesCount.textContent = sondages.length.toString()
+  
+  if (sondages.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:10px;text-align:center">Aucun sondage</div>'
+    return
+  }
+  
+  container.innerHTML = sondages.map((s, idx) => {
+    const badge = s.has_coords 
+      ? '<span class="badge-geo">📍 coordonnées</span>' 
+      : '<span class="badge-adm">🏷 ADM-only</span>'
+    
+    const essaisRows = s.essais.map((e: any) => `
+      <tr>
+        <td><span class="badge-${e.type === 'SPT_N' ? 'spt' : 'qc'}">${e.type}</span></td>
+        <td>${e.value}</td>
+        <td>${e.unit}</td>
+        <td>${e.depth_m.toFixed(1)}</td>
+        <td>${e.date || '—'}</td>
+      </tr>
+    `).join('')
+    
+    return `
+      <div class="sondage-item">
+        <div class="sondage-header" onclick="toggleSondage('sondage${idx}')">
+          <span><strong>${s.code || s.id.substring(0, 8)}</strong> ${badge}</span>
+          <span style="color:var(--muted)">▼</span>
+        </div>
+        <div id="sondage${idx}" class="sondage-content">
+          <table class="essais-table">
+            <thead>
+              <tr><th>Type</th><th>Valeur</th><th>Unité</th><th>Z(m)</th><th>Date</th></tr>
+            </thead>
+            <tbody>${essaisRows}</tbody>
+          </table>
+          <div style="display:flex;gap:6px">
+            <button class="btn-sm" onclick="editSurvey('${s.id}')">✏️ Éditer</button>
+            <button class="btn-sm" onclick="deleteSurvey('${s.id}', '${s.code}')">🗑️ Supprimer</button>
+            <button class="btn-sm" onclick="locateSurvey(${s.lon}, ${s.lat}, ${s.has_coords})">📍 Localiser</button>
+          </div>
+        </div>
+      </div>
+    `
+  }).join('')
+}
+
+// Toggle accordéon sondage
+function toggleSondage(id: string) {
+  const el = document.getElementById(id)!
+  el.classList.toggle('open')
+}
+(window as any).toggleSondage = toggleSondage
+
+// Localiser un sondage sur la carte
+function locateSurvey(lon: number | null, lat: number | null, hasCoords: boolean) {
+  if (hasCoords && lon && lat) {
+    map.setView([lat, lon], 16)
+    toast('📍 Sondage localisé', 'ok')
+  } else {
+    toast('⚠️ Sondage ADM-only (pas de coordonnées précises)', 'err')
+  }
+}
+(window as any).locateSurvey = locateSurvey
+
+// Exporter GeoJSON d'une maille
+async function exportMailleGeoJSON(code: string) {
+  try {
+    const res = await fetch(`${API_GEO}/grid/${code}/shape`)
+    const geojson = await res.json()
+    const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `maille_${code}.geojson`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast('✅ GeoJSON exporté', 'ok')
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+}
+
+// Recalculer IDW
+async function recomputeIdw(code: string) {
+  try {
+    const res = await fetch(`${API_GEO}/grid/recompute/${code}`, { method: 'POST' })
+    if (res.ok) {
+      toast('✅ IDW recalculé', 'ok')
+      loadMailleDetails(code)
+    } else {
+      toast('Erreur recalcul IDW', 'err')
+    }
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
 }
 
 // Générer automatiquement le code sondage
@@ -173,18 +588,69 @@ async function generateSurveyCode(mailleCode: string) {
   }
 }
 
+// Vérifier les doublons à proximité (rayon 1 km)
+async function checkNearbyDuplicates(lon: number, lat: number, alertsEl: HTMLElement) {
+  try {
+    const res = await fetch(`${API_GEO}/surveys/nearby?lat=${lat}&lon=${lon}&radius=1000`)
+    if (!res.ok) return
+    
+    const nearby = await res.json()
+    if (nearby.length > 0) {
+      const list = nearby.slice(0, 3).map((s: any) => 
+        `<div>• ${s.code} (${Math.round(s.distance_m)}m)</div>`
+      ).join('')
+      
+      alertsEl.innerHTML = `
+        <div style="color:var(--warn);background:#f4b74022;padding:8px;border-radius:4px;margin-top:8px">
+          <div style="font-weight:600;margin-bottom:4px">⚠️ ${nearby.length} sondage(s) à proximité :</div>
+          ${list}
+        </div>
+      `
+    }
+  } catch (e) {
+    console.error('Erreur vérification doublons:', e)
+  }
+}
+
 // --- Grid loading ---
-async function loadGrid() {
-  if (!API_GEO) return
+let isLoadingGrid = false
+let lastBounds: L.LatLngBounds | null = null
+
+async function loadGrid(useBbox = false) {
+  console.log('[loadGrid] Début - API_GEO:', API_GEO, 'isLoadingGrid:', isLoadingGrid)
+  if (!API_GEO || isLoadingGrid) {
+    console.error('[loadGrid] ABORT - API_GEO vide ou déjà en cours de chargement')
+    return
+  }
+  isLoadingGrid = true
+
   setStatus('Chargement de la grille…')
   try {
-    const res = await fetch(`${API_GEO}/coverage/mailles`)
+    let url = `${API_GEO}/coverage/mailles`
+    console.log('[loadGrid] Fetching URL:', url)
+    
+    // Chargement paresseux par bbox si demandé et carte déplacée
+    if (useBbox && map) {
+      const bounds = map.getBounds()
+      const bbox = [
+        bounds.getWest(),
+        bounds.getSouth(),
+        bounds.getEast(),
+        bounds.getNorth()
+      ]
+      url += `?bbox=${bbox.join(',')}`
+    }
+    
+    const res = await fetch(url)
+    console.log('[loadGrid] Response status:', res.status, res.statusText)
     if (!res.ok) {
       toast(`HTTP ${res.status}`, 'err')
       setStatus('Erreur de chargement')
+      isLoadingGrid = false
       return
     }
     const gj = await res.json()
+    console.log('[loadGrid] GeoJSON reçu, features:', gj.features?.length)
 
     let withData = 0
     gj.features.forEach((f: any) => {
@@ -192,6 +658,7 @@ async function loadGrid() {
     })
 
     setKpis(gj.features.length, withData)
+    console.log('[loadGrid] KPIs mis à jour -', gj.features.length, 'mailles,', withData, 'avec données')
     setStatus(`Grille chargée: ${gj.features.length.toLocaleString()} mailles (${withData} avec données)`)
 
     if (gridLayer) {
@@ -203,7 +670,7 @@ async function loadGrid() {
     }).addTo(map)
 
     const bounds = gridLayer.getBounds()
-    if (bounds.isValid()) map.fitBounds(bounds, { padding: [12, 12] })
+    if (bounds.isValid() && !useBbox) map.fitBounds(bounds, { padding: [12, 12] })
 
     // Redessiner les mailles lors du zoom pour ajuster les contours
     map.on('zoomend', () => {
@@ -218,72 +685,173 @@ async function loadGrid() {
     })
 
     buildAdmFilters(gj)
+    lastBounds = map.getBounds()
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
     setStatus('Erreur de chargement')
+  } finally {
+    isLoadingGrid = false
   }
 }
 
-// --- ADM filters ---
+// Charger la grille immédiatement au démarrage
+setTimeout(() => loadGrid(false), 100)
+
+// Chargement paresseux DÉSACTIVÉ - on charge tout au démarrage
+// Commenté pour revenir au comportement original (chargement total)
+// let moveTimeout: number | null = null
+// map.on('moveend', () => {
+//   if (moveTimeout) clearTimeout(moveTimeout)
+//   moveTimeout = window.setTimeout(() => {
+//     const currentBounds = map.getBounds()
+//     if (!lastBounds || !currentBounds.equals(lastBounds)) {
+//       loadGrid(true)
+//     }
+//   }, 500)
+// })
+
+// --- ADM filters avec cascades ---
 let allFeatures: any[] = []
+let admData: {
+  adm2ByAdm1: Map<string, Set<string>>,
+  adm3ByAdm2: Map<string, Set<string>>
+} = {
+  adm2ByAdm1: new Map(),
+  adm3ByAdm2: new Map()
+}
 
 function buildAdmFilters(gj: any) {
   allFeatures = gj.features
-  
-  // Build ADM1 (régions)
-  const adm1Select = document.getElementById('filterAdm1') as HTMLSelectElement
+  console.log('[buildAdmFilters] Constru ction des filtres ADM avec cascades pour', allFeatures.length, 'mailles')
+
+  // Construire la structure de données hiérarchique
   const adm1Set = new Set<string>()
+
   allFeatures.forEach((f: any) => {
-    if (f.properties?.adm1_name) adm1Set.add(f.properties.adm1_name)
-  })
-  ;[...adm1Set].sort().forEach(v => {
-    const opt = document.createElement('option')
-    opt.value = v
-    opt.textContent = v
-    adm1Select.appendChild(opt)
+    const adm1 = f.properties?.adm1_name
+    const adm2 = f.properties?.adm2_name
+    const adm3 = f.properties?.adm3_name
+
+    if (adm1) {
+      adm1Set.add(adm1)
+
+      // Map ADM2 par ADM1
+      if (adm2) {
+        if (!admData.adm2ByAdm1.has(adm1)) {
+          admData.adm2ByAdm1.set(adm1, new Set())
+        }
+        admData.adm2ByAdm1.get(adm1)!.add(adm2)
+
+        // Map ADM3 par ADM2 (avec clé unique adm1|adm2)
+        if (adm3) {
+          const key = `${adm1}|${adm2}`
+          if (!admData.adm3ByAdm2.has(key)) {
+            admData.adm3ByAdm2.set(key, new Set())
+          }
+          admData.adm3ByAdm2.get(key)!.add(adm3)
+        }
+      }
+    }
   })
 
-  // Build ADM2 (préfectures)
-  const adm2Select = document.getElementById('filterAdm2') as HTMLSelectElement
-  const adm2Set = new Set<string>()
-  allFeatures.forEach((f: any) => {
-    if (f.properties?.adm2_name) adm2Set.add(f.properties.adm2_name)
-  })
-  ;[...adm2Set].sort().forEach(v => {
-    const opt = document.createElement('option')
-    opt.value = v
-    opt.textContent = v
-    adm2Select.appendChild(opt)
-  })
+  // Remplir ADM1 (toutes les régions)
+  const adm1Select = document.getElementById('filterAdm1') as HTMLSelectElement
+  if (adm1Select) {
+    adm1Select.innerHTML = '<option value="">— toutes régions —</option>'
+    ;[...adm1Set].sort().forEach(v => {
+      const opt = document.createElement('option')
+      opt.value = v
+      opt.textContent = v
+      adm1Select.appendChild(opt)
+    })
+    console.log('[buildAdmFilters] ADM1:', adm1Set.size, 'régions')
+  }
 
-  // Build ADM3 (communes)
-  const adm3Select = document.getElementById('filterAdm3') as HTMLSelectElement
-  const adm3Set = new Set<string>()
-  allFeatures.forEach((f: any) => {
-    if (f.properties?.adm3_name) adm3Set.add(f.properties.adm3_name)
-  })
-  ;[...adm3Set].sort().forEach(v => {
-    const opt = document.createElement('option')
-    opt.value = v
-    opt.textContent = v
-    adm3Select.appendChild(opt)
-  })
+  // Event listener ADM1 → filtre ADM2
+  const adm1El = document.getElementById('filterAdm1') as HTMLSelectElement
+  const adm2El = document.getElementById('filterAdm2') as HTMLSelectElement
+  const adm3El = document.getElementById('filterAdm3') as HTMLSelectElement
 
-  // Attach change handlers
-  adm1Select.onchange = () => applyFilters()
-  adm2Select.onchange = () => applyFilters()
-  adm3Select.onchange = () => applyFilters()
+  if (adm1El) {
+    adm1El.onchange = () => {
+      const selectedAdm1 = adm1El.value
+      console.log('[ADM1 change]', selectedAdm1)
+
+      // Réinitialiser ADM2 et ADM3
+      if (adm2El) {
+        adm2El.innerHTML = '<option value="">— toutes préfectures —</option>'
+        adm2El.disabled = !selectedAdm1
+
+        if (selectedAdm1 && admData.adm2ByAdm1.has(selectedAdm1)) {
+          const adm2List = [...admData.adm2ByAdm1.get(selectedAdm1)!].sort()
+          adm2List.forEach(adm2 => {
+            const opt = document.createElement('option')
+            opt.value = adm2
+            opt.textContent = adm2
+            adm2El.appendChild(opt)
+          })
+          console.log('[ADM2 populated]', adm2List.length, 'préfectures pour', selectedAdm1)
+        }
+      }
+
+      if (adm3El) {
+        adm3El.innerHTML = '<option value="">— toutes communes —</option>'
+        adm3El.disabled = true
+      }
+
+      applyFilters()
+    }
+  }
+
+  // Event listener ADM2 → filtre ADM3
+  if (adm2El) {
+    adm2El.onchange = () => {
+      const selectedAdm1 = adm1El?.value || ''
+      const selectedAdm2 = adm2El.value
+      console.log('[ADM2 change]', selectedAdm2)
+
+      // Réinitialiser ADM3
+      if (adm3El) {
+        adm3El.innerHTML = '<option value="">— toutes communes —</option>'
+        adm3El.disabled = !selectedAdm2
+
+        if (selectedAdm1 && selectedAdm2) {
+          const key = `${selectedAdm1}|${selectedAdm2}`
+          if (admData.adm3ByAdm2.has(key)) {
+            const adm3List = [...admData.adm3ByAdm2.get(key)!].sort()
+            adm3List.forEach(adm3 => {
+              const opt = document.createElement('option')
+              opt.value = adm3
+              opt.textContent = adm3
+              adm3El.appendChild(opt)
+            })
+            console.log('[ADM3 populated]', adm3List.length, 'communes pour', key)
+          }
+        }
+      }
+
+      applyFilters()
+    }
+  }
+
+  // Event listener ADM3
+  if (adm3El) {
+    adm3El.onchange = () => applyFilters()
+  }
 
   // Attach data filter handlers
-  document.getElementById('filterHasData')!.addEventListener('change', () => applyFilters())
-  document.getElementById('filterNoData')!.addEventListener('change', () => applyFilters())
-  document.getElementById('filterMinSondages')!.addEventListener('input', () => applyFilters())
+  safeAddEventListener('filterHasData', 'change', () => applyFilters())
+  safeAddEventListener('filterNoData', 'change', () => applyFilters())
+  safeAddEventListener('filterMinSondages', 'input', () => applyFilters())
 
   // Reset button
-  document.getElementById('resetFilters')!.addEventListener('click', () => {
-    adm1Select.value = ''
-    adm2Select.value = ''
-    adm3Select.value = ''
+  safeAddEventListener('resetFilters', 'click', () => {
+    const adm1El = document.getElementById('filterAdm1') as HTMLSelectElement
+    const adm2El = document.getElementById('filterAdm2') as HTMLSelectElement
+    const adm3El = document.getElementById('filterAdm3') as HTMLSelectElement
+    if (adm1El) adm1El.value = ''
+    if (adm2El) adm2El.value = ''
+    if (adm3El) adm3El.value = ''
     ;(document.getElementById('filterHasData') as HTMLInputElement).checked = true
     ;(document.getElementById('filterNoData') as HTMLInputElement).checked = true
     ;(document.getElementById('filterMinSondages') as HTMLInputElement).value = '0'
@@ -324,14 +892,18 @@ function updateFilterStats() {
     totalEssais += f.properties?.n_essais || 0
   })
 
-  document.getElementById('statVisible')!.textContent = filtered.length.toLocaleString()
-  document.getElementById('statWithData')!.textContent = withData.toLocaleString()
-  document.getElementById('statSondages')!.textContent = totalSondages.toLocaleString()
-  document.getElementById('statEssais')!.textContent = totalEssais.toLocaleString()
+  const statVisible = document.getElementById('statVisible')
+  const statWithData = document.getElementById('statWithData')
+  const statSondages = document.getElementById('statSondages')
+  const statEssais = document.getElementById('statEssais')
+  if (statVisible) statVisible.textContent = filtered.length.toLocaleString()
+  if (statWithData) statWithData.textContent = withData.toLocaleString()
+  if (statSondages) statSondages.textContent = totalSondages.toLocaleString()
+  if (statEssais) statEssais.textContent = totalEssais.toLocaleString()
 }
 
 // --- Button handlers ---
-document.getElementById('getBtn')!.addEventListener('click', async () => {
+safeAddEventListener('getBtn', 'click', async () => {
   const code = codeInput.value.trim()
   if (!code) {
     toast('Entrez un code', 'err')
@@ -340,15 +912,15 @@ document.getElementById('getBtn')!.addEventListener('click', async () => {
   setStatus('Requête en cours…')
   try {
     const res = await fetch(`${API_GEO}/grid/${encodeURIComponent(code)}`)
-    const out = document.getElementById('json')!
+    const out = document.getElementById('json')
     if (!res.ok) {
-      out.textContent = JSON.stringify({ status: res.status, error: await res.text() }, null, 2)
+      if (out) out.textContent = JSON.stringify({ status: res.status, error: await res.text() }, null, 2)
       toast('Erreur GET', 'err')
       setStatus('Erreur')
       return
     }
     const data = await res.json()
-    out.textContent = JSON.stringify(data, null, 2)
+    if (out) out.textContent = JSON.stringify(data, null, 2)
     toast('OK')
     setStatus('OK')
   } catch (e: any) {
@@ -357,7 +929,7 @@ document.getElementById('getBtn')!.addEventListener('click', async () => {
   }
 })
 
-document.getElementById('recomputeBtn')!.addEventListener('click', async () => {
+safeAddEventListener('recomputeBtn', 'click', async () => {
   const code = codeInput.value.trim()
   if (!code) {
     toast('Entrez un code', 'err')
@@ -366,15 +938,15 @@ document.getElementById('recomputeBtn')!.addEventListener('click', async () => {
   setStatus('Recalcul IDW…')
   try {
     const res = await fetch(`${API_GEO}/grid/recompute/${encodeURIComponent(code)}`, { method: 'POST' })
-    const out = document.getElementById('json')!
+    const out = document.getElementById('json')
     if (!res.ok) {
-      out.textContent = JSON.stringify({ status: res.status, error: await res.text() }, null, 2)
+      if (out) out.textContent = JSON.stringify({ status: res.status, error: await res.text() }, null, 2)
       toast('Erreur compute', 'err')
       setStatus('Erreur')
       return
     }
     const data = await res.json()
-    out.textContent = JSON.stringify(data, null, 2)
+    if (out) out.textContent = JSON.stringify(data, null, 2)
     toast('Recalcul OK')
     setStatus('OK')
   } catch (e: any) {
@@ -383,7 +955,7 @@ document.getElementById('recomputeBtn')!.addEventListener('click', async () => {
   }
 })
 
-document.getElementById('shapeBtn')!.addEventListener('click', async () => {
+safeAddEventListener('shapeBtn', 'click', async () => {
   const code = codeInput.value.trim()
   if (!code) {
     toast('Entrez un code', 'err')
@@ -396,7 +968,8 @@ document.getElementById('shapeBtn')!.addEventListener('click', async () => {
       return
     }
     const gj = await res.json()
-    ;(document.getElementById('json')!).textContent = JSON.stringify(gj, null, 2)
+    const out = document.getElementById('json')
+    if (out) out.textContent = JSON.stringify(gj, null, 2)
     
     if (shapeLayer) shapeLayer.remove()
     shapeLayer = L.geoJSON(gj, { style: { color: '#3aa6ff', weight: 2, fillOpacity: 0.1 } }).addTo(map)
@@ -434,7 +1007,7 @@ function downloadFile(content: string, filename: string, mimeType: string) {
   URL.revokeObjectURL(url)
 }
 
-document.getElementById('exportGeoJSON')!.addEventListener('click', async () => {
+safeAddEventListener('exportGeoJSON', 'click', async () => {
   const code = codeInput.value.trim()
   if (!code) {
     toast('Entrez un code', 'err')
@@ -454,7 +1027,7 @@ document.getElementById('exportGeoJSON')!.addEventListener('click', async () => 
   }
 })
 
-document.getElementById('exportMarkdown')!.addEventListener('click', async () => {
+safeAddEventListener('exportMarkdown', 'click', async () => {
   const data = await getCurrentGridData()
   if (!data) {
     toast('Impossible de récupérer les données', 'err')
@@ -497,7 +1070,7 @@ _Généré le ${new Date().toLocaleString('fr-FR')}_
   toast('Markdown exporté')
 })
 
-document.getElementById('exportPDF')!.addEventListener('click', async () => {
+safeAddEventListener('exportPDF', 'click', async () => {
   const data = await getCurrentGridData()
   if (!data) {
     toast('Impossible de récupérer les données', 'err')
@@ -565,7 +1138,7 @@ document.getElementById('exportPDF')!.addEventListener('click', async () => {
   }, 500)
 })
 
-document.getElementById('exportAll')!.addEventListener('click', async () => {
+safeAddEventListener('exportAll', 'click', async () => {
   toast('Export complet en cours...', 'ok')
   // Pour un vrai export ZIP, il faudrait une bibliothèque comme JSZip
   // Pour l'instant, on exporte séquentiellement
@@ -576,17 +1149,270 @@ document.getElementById('exportAll')!.addEventListener('click', async () => {
   }
   
   // Export GeoJSON
-  document.getElementById('exportGeoJSON')!.dispatchEvent(new Event('click'))
+  const geoBtn = document.getElementById('exportGeoJSON')
+  if (geoBtn) geoBtn.dispatchEvent(new Event('click'))
   await new Promise(resolve => setTimeout(resolve, 500))
   
   // Export Markdown
-  document.getElementById('exportMarkdown')!.dispatchEvent(new Event('click'))
+  const mdBtn = document.getElementById('exportMarkdown')
+  if (mdBtn) mdBtn.dispatchEvent(new Event('click'))
   await new Promise(resolve => setTimeout(resolve, 500))
   
   toast('Exports terminés (GeoJSON + MD)')
 })
 
-document.getElementById('zoomTgBtn')!.addEventListener('click', () => {
+safeAddEventListener('exportAuditCSV', 'click', async () => {
+  try {
+    const url = `${API_GEO}/audit/export/csv?limit=10000`
+    window.open(url, '_blank')
+    toast('📊 Export historique lancé')
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+})
+
+safeAddEventListener('exportGeoPackage', 'click', async () => {
+  try {
+    const bounds = map.getBounds()
+    const bbox = [
+      bounds.getWest(),
+      bounds.getSouth(),
+      bounds.getEast(),
+      bounds.getNorth()
+    ].join(',')
+    
+    const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
+    const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
+    const adm3 = (document.getElementById('filterAdm3') as HTMLSelectElement).value
+    
+    let url = `${API_GEO}/exports/geopackage?bbox=${bbox}`
+    if (adm1) url += `&adm1=${encodeURIComponent(adm1)}`
+    if (adm2) url += `&adm2=${encodeURIComponent(adm2)}`
+    if (adm3) url += `&adm3=${encodeURIComponent(adm3)}`
+    
+    window.open(url, '_blank')
+    toast('📦 Export GeoPackage lancé')
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+})
+
+safeAddEventListener('exportPDFPro', 'click', async () => {
+  try {
+    const bounds = map.getBounds()
+    const bbox = [
+      bounds.getWest(),
+      bounds.getSouth(),
+      bounds.getEast(),
+      bounds.getNorth()
+    ].join(',')
+    
+    const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
+    const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
+    const adm3 = (document.getElementById('filterAdm3') as HTMLSelectElement).value
+    
+    let url = `${API_GEO}/exports/pdf?bbox=${bbox}`
+    if (adm1) url += `&adm1=${encodeURIComponent(adm1)}`
+    if (adm2) url += `&adm2=${encodeURIComponent(adm2)}`
+    if (adm3) url += `&adm3=${encodeURIComponent(adm3)}`
+    
+    window.open(url, '_blank')
+    toast('📄 Export PDF professionnel lancé')
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+})
+
+// Impression de carte haute résolution
+safeAddEventListener('printMap', 'click', () => {
+  const modal = document.getElementById('printModal')
+  if (modal) modal.style.display = 'flex'
+})
+
+safeAddEventListener('cancelPrint', 'click', () => {
+  const modal = document.getElementById('printModal')
+  if (modal) modal.style.display = 'none'
+})
+
+safeAddEventListener('confirmPrint', 'click', async () => {
+  const format = (document.getElementById('printFormat') as HTMLSelectElement).value
+  const orientation = (document.getElementById('printOrientation') as HTMLSelectElement).value
+  const scale = (document.getElementById('printScale') as HTMLSelectElement).value
+  const dpi = parseInt((document.getElementById('printDPI') as HTMLSelectElement).value)
+  const includeLegend = (document.getElementById('printLegend') as HTMLInputElement).checked
+  const includeScale = (document.getElementById('printScale2') as HTMLInputElement).checked
+  const includeNorth = (document.getElementById('printNorth') as HTMLInputElement).checked
+  const includeTitle = (document.getElementById('printTitle') as HTMLInputElement).checked
+  
+  const modal = document.getElementById('printModal')
+  if (modal) modal.style.display = 'none'
+  toast('🖨️ Génération de la carte en cours...', 'ok')
+  
+  try {
+    // Calculer les dimensions en pixels selon le format et DPI
+    const formats: Record<string, [number, number]> = {
+      'A4': [210, 297],
+      'A3': [297, 420],
+      'Letter': [216, 279]
+    }
+    
+    let [width, height] = formats[format]
+    if (orientation === 'landscape') {
+      [width, height] = [height, width]
+    }
+    
+    // Convertir mm en pixels (1 inch = 25.4 mm)
+    const widthPx = Math.round(width / 25.4 * dpi)
+    const heightPx = Math.round(height / 25.4 * dpi)
+    
+    // Créer un canvas pour la carte
+    const canvas = document.createElement('canvas')
+    canvas.width = widthPx
+    canvas.height = heightPx
+    const ctx = canvas.getContext('2d')!
+    
+    // Fond blanc
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(0, 0, widthPx, heightPx)
+    
+    // Titre
+    if (includeTitle) {
+      ctx.fillStyle = '#0b1220'
+      ctx.font = `bold ${Math.round(dpi / 4)}px Arial`
+      ctx.textAlign = 'center'
+      ctx.fillText('Atlas Géotechnique du Togo', widthPx / 2, dpi / 2)
+      
+      ctx.font = `${Math.round(dpi / 6)}px Arial`
+      ctx.fillStyle = '#666'
+      const date = new Date().toLocaleDateString('fr-FR')
+      ctx.fillText(`Généré le ${date}`, widthPx / 2, dpi / 2 + dpi / 4)
+    }
+    
+    // Capturer la carte (simplification - dans un vrai système, utiliser leaflet-image ou mapbox-gl-export)
+    const mapContainer = document.getElementById('map')!
+    const mapCanvas = await html2canvas(mapContainer, {
+      width: widthPx - dpi,
+      height: heightPx - dpi * 1.5,
+      scale: dpi / 96,
+      useCORS: true,
+      logging: false
+    })
+    
+    ctx.drawImage(mapCanvas, dpi / 2, dpi, widthPx - dpi, heightPx - dpi * 1.5)
+    
+    // Légende
+    if (includeLegend) {
+      const legendX = widthPx - dpi * 2
+      const legendY = heightPx - dpi * 1.2
+      
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(legendX, legendY, dpi * 1.8, dpi * 0.8)
+      ctx.strokeStyle = '#333'
+      ctx.lineWidth = 2
+      ctx.strokeRect(legendX, legendY, dpi * 1.8, dpi * 0.8)
+      
+      ctx.fillStyle = '#0b1220'
+      ctx.font = `bold ${Math.round(dpi / 8)}px Arial`
+      ctx.textAlign = 'left'
+      ctx.fillText('Légende', legendX + 10, legendY + 25)
+      
+      ctx.fillStyle = '#e85d68'
+      ctx.fillRect(legendX + 10, legendY + 35, 20, 20)
+      ctx.fillStyle = '#333'
+      ctx.font = `${Math.round(dpi / 10)}px Arial`
+      ctx.fillText('Avec données', legendX + 40, legendY + 50)
+      
+      ctx.fillStyle = '#cfd8e3'
+      ctx.fillRect(legendX + 10, legendY + 60, 20, 20)
+      ctx.fillText('Sans données', legendX + 40, legendY + 75)
+    }
+    
+    // Échelle graphique
+    if (includeScale) {
+      const scaleX = dpi / 2
+      const scaleY = heightPx - dpi / 2
+      const scaleWidth = dpi * 2
+      
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(scaleX, scaleY - 30, scaleWidth, 50)
+      ctx.strokeStyle = '#333'
+      ctx.lineWidth = 2
+      ctx.strokeRect(scaleX, scaleY, scaleWidth, 10)
+      
+      ctx.fillStyle = '#333'
+      ctx.fillRect(scaleX, scaleY, scaleWidth / 2, 10)
+      
+      ctx.fillStyle = '#0b1220'
+      ctx.font = `${Math.round(dpi / 10)}px Arial`
+      ctx.textAlign = 'center'
+      ctx.fillText('0', scaleX, scaleY + 25)
+      ctx.fillText('5 km', scaleX + scaleWidth / 2, scaleY + 25)
+      ctx.fillText('10 km', scaleX + scaleWidth, scaleY + 25)
+    }
+    
+    // Rose des vents
+    if (includeNorth) {
+      const northX = widthPx - dpi / 2
+      const northY = dpi * 1.5
+      const northSize = dpi / 3
+      
+      // Flèche Nord
+      ctx.fillStyle = '#3aa6ff'
+      ctx.beginPath()
+      ctx.moveTo(northX, northY - northSize)
+      ctx.lineTo(northX - northSize / 3, northY)
+      ctx.lineTo(northX + northSize / 3, northY)
+      ctx.closePath()
+      ctx.fill()
+      
+      ctx.fillStyle = '#0b1220'
+      ctx.font = `bold ${Math.round(dpi / 8)}px Arial`
+      ctx.textAlign = 'center'
+      ctx.fillText('N', northX, northY + northSize / 2)
+    }
+    
+    // Télécharger l'image
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `atlas_carte_${format}_${orientation}_${dpi}dpi.png`
+        a.click()
+        URL.revokeObjectURL(url)
+        toast('✅ Carte exportée avec succès', 'ok')
+      }
+    }, 'image/png')
+    
+  } catch (e: any) {
+    console.error('Erreur impression:', e)
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+})
+
+// Fonction html2canvas simplifiée (à remplacer par la vraie bibliothèque)
+async function html2canvas(element: HTMLElement, options: any): Promise<HTMLCanvasElement> {
+  // Simulation - dans un vrai projet, utiliser la bibliothèque html2canvas
+  const canvas = document.createElement('canvas')
+  canvas.width = options.width || 800
+  canvas.height = options.height || 600
+  const ctx = canvas.getContext('2d')!
+  
+  // Fond de carte simplifié
+  ctx.fillStyle = '#e0e7ee'
+  ctx.fillRect(0, 0, canvas.width, canvas.height)
+  
+  ctx.fillStyle = '#0b1220'
+  ctx.font = '20px Arial'
+  ctx.textAlign = 'center'
+  ctx.fillText('Carte Atlas Géotechnique', canvas.width / 2, canvas.height / 2)
+  ctx.font = '14px Arial'
+  ctx.fillText('(Aperçu simplifié - installer html2canvas pour export réel)', canvas.width / 2, canvas.height / 2 + 30)
+  
+  return canvas
+}
+
+safeAddEventListener('zoomTgBtn', 'click', () => {
   if (gridLayer) {
     const b = gridLayer.getBounds()
     if (b.isValid()) map.fitBounds(b.pad(0.1))
@@ -596,10 +1422,10 @@ document.getElementById('zoomTgBtn')!.addEventListener('click', () => {
 })
 
 // --- Survey Management v1.2.0 ---
-const surveyDrawer = document.getElementById('surveyDrawer')!
-const drawerTitle = document.getElementById('drawerTitle')!
-const surveyForm = document.getElementById('surveyForm')!
-const surveyListView = document.getElementById('surveyListView')!
+const surveyDrawer = document.getElementById('surveyDrawer')
+const drawerTitle = document.getElementById('drawerTitle')
+const surveyForm = document.getElementById('surveyForm')
+const surveyListView = document.getElementById('surveyListView')
 let currentSurveyId: string | null = null
 let surveyMarkers: L.Marker[] = []
 let highlightedLayer: any = null
@@ -624,7 +1450,7 @@ function highlightMaille(lat: number, lon: number) {
   if (!targetLayer) return
   
   // Retirer ancien highlight
-  if (highlightedLayer) {
+  if (highlightedLayer && gridLayer) {
     gridLayer.resetStyle(highlightedLayer)
   }
   
@@ -640,7 +1466,7 @@ function highlightMaille(lat: number, lon: number) {
   const interval = setInterval(() => {
     if (count >= 10) {
       clearInterval(interval)
-      gridLayer.resetStyle(targetLayer)
+      if (gridLayer) gridLayer.resetStyle(targetLayer)
       highlightedLayer = null
       return
     }
@@ -665,31 +1491,32 @@ function highlightMaille(lat: number, lon: number) {
 }
 
 function openDrawer(mode: 'create' | 'list' | 'import') {
+  if (!surveyDrawer) return
   surveyDrawer.classList.add('open')
-  const importView = document.getElementById('importCsvView')!
+  const importView = document.getElementById('importCsvView')
   
   if (mode === 'create') {
-    drawerTitle.textContent = 'Nouveau sondage'
-    surveyForm.style.display = 'block'
-    surveyListView.style.display = 'none'
-    importView.style.display = 'none'
+    if (drawerTitle) drawerTitle.textContent = 'Nouveau sondage'
+    if (surveyForm) surveyForm.style.display = 'block'
+    if (surveyListView) surveyListView.style.display = 'none'
+    if (importView) importView.style.display = 'none'
     resetSurveyForm()
   } else if (mode === 'import') {
-    drawerTitle.textContent = '📥 Import CSV/Bulk'
-    surveyForm.style.display = 'none'
-    surveyListView.style.display = 'none'
-    importView.style.display = 'block'
+    if (drawerTitle) drawerTitle.textContent = '📥 Import CSV/Bulk'
+    if (surveyForm) surveyForm.style.display = 'none'
+    if (surveyListView) surveyListView.style.display = 'none'
+    if (importView) importView.style.display = 'block'
   } else {
-    drawerTitle.textContent = 'Liste des sondages'
-    surveyForm.style.display = 'none'
-    surveyListView.style.display = 'block'
-    importView.style.display = 'none'
+    if (drawerTitle) drawerTitle.textContent = 'Liste des sondages'
+    if (surveyForm) surveyForm.style.display = 'none'
+    if (surveyListView) surveyListView.style.display = 'block'
+    if (importView) importView.style.display = 'none'
     loadSurveyList()
   }
 }
 
 function closeDrawer() {
-  surveyDrawer.classList.remove('open')
+  if (surveyDrawer) surveyDrawer.classList.remove('open')
   currentSurveyId = null
 }
 
@@ -767,13 +1594,18 @@ function renderTestsTable() {
 
 // Mettre à jour le résumé
 function updateSummary() {
-  document.getElementById('summaryAdm1')!.textContent = selectedAdm1 || '—'
-  document.getElementById('summaryAdm2')!.textContent = selectedAdm2 || '—'
-  document.getElementById('summaryAdm3')!.textContent = selectedAdm3 || '—'
-  document.getElementById('summaryTests')!.textContent = tests.length.toString()
+  const summaryAdm1 = document.getElementById('summaryAdm1')
+  const summaryAdm2 = document.getElementById('summaryAdm2')
+  const summaryAdm3 = document.getElementById('summaryAdm3')
+  const summaryTests = document.getElementById('summaryTests')
+  
+  if (summaryAdm1) summaryAdm1.textContent = selectedAdm1 || '—'
+  if (summaryAdm2) summaryAdm2.textContent = selectedAdm2 || '—'
+  if (summaryAdm3) summaryAdm3.textContent = selectedAdm3 || '—'
+  if (summaryTests) summaryTests.textContent = tests.length.toString()
   
   const mode = (document.getElementById('locationMode') as HTMLSelectElement).value
-  const alerts = document.getElementById('summaryAlerts')!
+  const alerts = document.getElementById('summaryAlerts')
   
   if (mode === 'exact') {
     const lon = parseFloat((document.getElementById('surveyLon') as HTMLInputElement).value)
@@ -783,28 +1615,44 @@ function updateSummary() {
       fetch(`${API_GEO}/grid/locate?lon=${lon}&lat=${lat}`)
         .then(r => r.json())
         .then(data => {
-          document.getElementById('summaryMaille')!.textContent = data.code || '—'
+          const mailleEl = document.getElementById('summaryMaille')
+          if (mailleEl) mailleEl.textContent = data.code || '—'
           selectedAdm1 = data.adm1_name || ''
           selectedAdm2 = data.adm2_name || ''
           selectedAdm3 = data.adm3_name || ''
-          document.getElementById('summaryAdm1')!.textContent = selectedAdm1 || '—'
-          document.getElementById('summaryAdm2')!.textContent = selectedAdm2 || '—'
-          document.getElementById('summaryAdm3')!.textContent = selectedAdm3 || '—'
-          alerts.innerHTML = ''
+          
+          const summaryAdm1El = document.getElementById('summaryAdm1')
+          const summaryAdm2El = document.getElementById('summaryAdm2')
+          const summaryAdm3El = document.getElementById('summaryAdm3')
+          if (summaryAdm1El) summaryAdm1El.textContent = selectedAdm1 || '—'
+          if (summaryAdm2El) summaryAdm2El.textContent = selectedAdm2 || '—'
+          if (summaryAdm3El) summaryAdm3El.textContent = selectedAdm3 || '—'
+          if (alerts) alerts.innerHTML = ''
+          
+          // Vérifier les doublons à proximité
+          if (alerts) checkNearbyDuplicates(lon, lat, alerts)
         })
         .catch(() => {
-          document.getElementById('summaryMaille')!.textContent = '—'
-          alerts.innerHTML = '<div style="color:var(--err)">⚠️ Point hors grille</div>'
+          const mailleEl = document.getElementById('summaryMaille')
+          if (mailleEl) mailleEl.textContent = '—'
+          if (alerts) alerts.innerHTML = '<div style="color:var(--err)">⚠️ Point hors grille</div>'
         })
     }
   } else {
-    document.getElementById('summaryMaille')!.textContent = mode === 'unknown' ? 'N/A' : '(calculé après création)'
-    alerts.innerHTML = mode === 'unknown' ? '<div style="color:var(--warn)">ℹ️ Sondage sans coordonnées</div>' : ''
+    const mailleEl = document.getElementById('summaryMaille')
+    if (mailleEl) mailleEl.textContent = mode === 'unknown' ? 'N/A' : '(calculé après création)'
+    if (alerts) alerts.innerHTML = mode === 'unknown' ? '<div style="color:var(--warn)">ℹ️ Sondage sans coordonnées</div>' : ''
   }
 }
 
 // Create survey v1.2.0
-document.getElementById('saveSurveyBtn')!.addEventListener('click', async () => {
+safeAddEventListener('saveSurveyBtn', 'click', async () => {
+  // Si on est en mode édition, appeler la fonction update
+  if (currentSurveyId) {
+    await updateSurveySubmit()
+    return
+  }
+  
   const mode = (document.getElementById('locationMode') as HTMLSelectElement).value
   const code = (document.getElementById('surveyCode') as HTMLInputElement).value.trim()
   const date = (document.getElementById('surveyDate') as HTMLInputElement).value
@@ -870,8 +1718,8 @@ document.getElementById('saveSurveyBtn')!.addEventListener('click', async () => 
     loadGrid()
     
     // Message de confirmation convivial
-    const summaryDiv = document.getElementById('surveySummary')!
-    summaryDiv.innerHTML = `
+    const summaryDiv = document.getElementById('surveySummary')
+    if (summaryDiv) summaryDiv.innerHTML = `
       <div style="background: var(--ok); color: white; padding: 12px; border-radius: 6px; margin-top: 12px;">
         <div style="font-weight: bold; margin-bottom: 6px;">✅ Sondage enregistré avec succès !</div>
         <div style="font-size: 0.9em; opacity: 0.9;">
@@ -887,20 +1735,20 @@ document.getElementById('saveSurveyBtn')!.addEventListener('click', async () => 
   }
 })
 
-document.getElementById('cancelSurveyBtn')!.addEventListener('click', closeDrawer)
-document.getElementById('closeDrawer')!.addEventListener('click', closeDrawer)
+safeAddEventListener('cancelSurveyBtn', 'click', closeDrawer)
+safeAddEventListener('closeDrawer', 'click', closeDrawer)
 
 // Event listeners pour le formulaire
-document.getElementById('locationMode')!.addEventListener('change', () => {
+safeAddEventListener('locationMode', 'change', () => {
   toggleLocationSections()
   updateSummary()
 })
 
-document.getElementById('surveyLon')!.addEventListener('input', updateSummary)
-document.getElementById('surveyLat')!.addEventListener('input', updateSummary)
+safeAddEventListener('surveyLon', 'input', updateSummary)
+safeAddEventListener('surveyLat', 'input', updateSummary)
 
 // Cascade ADM2
-document.getElementById('selectAdm1')!.addEventListener('change', async (e) => {
+safeAddEventListener('selectAdm1', 'change', async (e) => {
   const adm1 = (e.target as HTMLSelectElement).value
   selectedAdm1 = adm1
   selectedAdm2 = ''
@@ -933,7 +1781,7 @@ document.getElementById('selectAdm1')!.addEventListener('change', async (e) => {
 })
 
 // Cascade ADM3
-document.getElementById('selectAdm2')!.addEventListener('change', async (e) => {
+safeAddEventListener('selectAdm2', 'change', async (e) => {
   const adm2 = (e.target as HTMLSelectElement).value
   selectedAdm2 = adm2
   selectedAdm3 = ''
@@ -963,14 +1811,15 @@ document.getElementById('selectAdm2')!.addEventListener('change', async (e) => {
   updateSummary()
 })
 
-document.getElementById('selectAdm3')!.addEventListener('change', (e) => {
+safeAddEventListener('selectAdm3', 'change', (e) => {
   selectedAdm3 = (e.target as HTMLSelectElement).value
   updateSummary()
 })
 
 // Ajouter essai avec dropdown
-document.getElementById('addTestBtn')!.addEventListener('click', () => {
-  const tbody = document.getElementById('testsTableBody')!
+safeAddEventListener('addTestBtn', 'click', () => {
+  const tbody = document.getElementById('testsTableBody')
+  if (!tbody) return
   
   // Créer une nouvelle ligne avec dropdown
   const row = document.createElement('tr')
@@ -1038,22 +1887,47 @@ document.getElementById('addTestBtn')!.addEventListener('click', () => {
 })
 
 // Open drawer for new survey
-document.getElementById('newSurveyBtn')!.addEventListener('click', () => {
+safeAddEventListener('newSurveyBtn', 'click', () => {
   openDrawer('create')
   loadAdm1()
 })
 
+// Initialiser le formulaire géotechnique
+const geotechForm = new GeotechnicalFormManager(
+  API_GEO,
+  (response) => {
+    console.log('[GEOTECH] Sondage créé:', response)
+    toast(`✅ Sondage ${response.code} créé avec succès! (${response.n_essais} essais, ${response.n_classifications} classifications)`, 'ok')
+    // Recharger la grille si on est sur une maille
+    if (codeInput.value) {
+      setTimeout(() => {
+        const getBtn = document.getElementById('getBtn')
+        if (getBtn) getBtn.click()
+      }, 500)
+    }
+  },
+  (error) => {
+    console.error('[GEOTECH] Erreur:', error)
+    toast(`❌ Erreur: ${error}`, 'err')
+  }
+)
+
+// Bouton pour ouvrir le formulaire géotechnique
+safeAddEventListener('newGeotechSurveyBtn', 'click', () => {
+  geotechForm.initForm('geotechFormContainer')
+})
+
 // Open drawer for survey list
-document.getElementById('listSurveysBtn')!.addEventListener('click', () => openDrawer('list'))
+safeAddEventListener('listSurveysBtn', 'click', () => openDrawer('list'))
 
 // Open drawer for CSV import
-document.getElementById('importCsvBtn')!.addEventListener('click', () => openDrawer('import'))
+safeAddEventListener('importCsvBtn', 'click', () => openDrawer('import'))
 
 // Cancel import
-document.getElementById('cancelImportBtn')!.addEventListener('click', closeDrawer)
+safeAddEventListener('cancelImportBtn', 'click', closeDrawer)
 
 // Process CSV import
-document.getElementById('processCsvBtn')!.addEventListener('click', async () => {
+safeAddEventListener('processCsvBtn', 'click', async () => {
   const csvText = (document.getElementById('csvInput') as HTMLTextAreaElement).value.trim()
   if (!csvText) {
     toast('Veuillez saisir des données CSV', 'err')
@@ -1172,6 +2046,10 @@ function renderSurveyList(surveys: any[]) {
           📏 ${depthMin}-${depthMax}m<br>
           ${region ? `📌 ${region}` : ''}
         </div>
+        <div style="display:flex;gap:4px;margin-top:8px">
+          <button onclick="window.editSurvey('${s.id}')" style="flex:1;padding:6px;background:var(--accent);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">✏️ Modifier</button>
+          <button onclick="window.deleteSurvey('${s.id}', '${code}')" style="flex:1;padding:6px;background:var(--err);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">🗑️ Supprimer</button>
+        </div>
       </div>
     `
   }).join('')
@@ -1209,7 +2087,7 @@ function renderSurveyList(surveys: any[]) {
 }
 
 // Search surveys
-document.getElementById('searchSurveys')!.addEventListener('input', (e) => {
+safeAddEventListener('searchSurveys', 'input', (e) => {
   const query = (e.target as HTMLInputElement).value.toLowerCase()
   document.querySelectorAll('.survey-card').forEach(card => {
     const text = card.textContent?.toLowerCase() || ''
@@ -1217,12 +2095,211 @@ document.getElementById('searchSurveys')!.addEventListener('input', (e) => {
   })
 })
 
-// Map click to create survey
-map.on('click', (e: L.LeafletMouseEvent) => {
+// --- CRUD Update/Delete ---
+async function editSurvey(surveyId: string) {
+  try {
+    const res = await fetch(`${API_GEO}/surveys/${surveyId}`)
+    if (!res.ok) {
+      toast('Erreur chargement sondage', 'err')
+      return
+    }
+    const survey = await res.json()
+    
+    openDrawer('create')
+    currentSurveyId = surveyId
+    drawerTitle.textContent = '✏️ Modifier le sondage'
+    
+    ;(document.getElementById('surveyCode') as HTMLInputElement).value = survey.code || ''
+    ;(document.getElementById('surveyDate') as HTMLInputElement).value = survey.date || ''
+    ;(document.getElementById('surveySource') as HTMLInputElement).value = survey.source || ''
+    ;(document.getElementById('surveyOperator') as HTMLInputElement).value = survey.operator || ''
+    ;(document.getElementById('surveyNotes') as HTMLTextAreaElement).value = survey.notes || ''
+    
+    if (survey.lon && survey.lat) {
+      ;(document.getElementById('surveyLon') as HTMLInputElement).value = survey.lon.toFixed(6)
+      ;(document.getElementById('surveyLat') as HTMLInputElement).value = survey.lat.toFixed(6)
+    }
+    
+    const testsRes = await fetch(`${API_GEO}/surveys/${surveyId}/tests`)
+    if (testsRes.ok) {
+      const testsData = await testsRes.json()
+      tests = testsData.map((t: any) => ({
+        type: t.test_type,
+        value: t.value,
+        depth_m: t.depth_m
+      }))
+      renderTestsTable()
+    }
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+}
+
+async function deleteSurvey(surveyId: string, surveyCode: string) {
+  if (!confirm(`Supprimer le sondage ${surveyCode} ?\n\nCette action est irréversible.`)) {
+    return
+  }
+  
+  try {
+    const res = await fetch(`${API_GEO}/surveys/${surveyId}`, { method: 'DELETE' })
+    if (res.ok || res.status === 204) {
+      toast(`✅ Sondage ${surveyCode} supprimé`)
+      loadSurveyList()
+      
+      // Recharger la grille pour mettre à jour les couleurs
+      await loadGrid()
+      
+      // Si une maille est affichée, recharger ses détails
+      const codeValue = codeInput.value.trim()
+      if (codeValue) {
+        await loadMailleDetails(codeValue)
+      }
+    } else {
+      toast('Erreur suppression', 'err')
+    }
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+}
+
+;(window as any).editSurvey = editSurvey
+;(window as any).deleteSurvey = deleteSurvey
+
+async function updateSurveySubmit() {
+  const code = (document.getElementById('surveyCode') as HTMLInputElement).value.trim()
+  const date = (document.getElementById('surveyDate') as HTMLInputElement).value
+  const source = (document.getElementById('surveySource') as HTMLInputElement).value.trim()
+  const operator = (document.getElementById('surveyOperator') as HTMLInputElement).value
+  const notes = (document.getElementById('surveyNotes') as HTMLTextAreaElement).value
+  const lon = parseFloat((document.getElementById('surveyLon') as HTMLInputElement).value)
+  const lat = parseFloat((document.getElementById('surveyLat') as HTMLInputElement).value)
+  
+  if (!source) {
+    toast('Source obligatoire', 'err')
+    return
+  }
+  
+  try {
+    const payload: any = { code, date, source, operator, notes }
+    if (!isNaN(lon) && !isNaN(lat)) {
+      payload.lon = lon
+      payload.lat = lat
+    }
+    
+    const res = await fetch(`${API_GEO}/surveys/${currentSurveyId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+    
+    if (!res.ok) {
+      toast('Erreur mise à jour', 'err')
+      return
+    }
+    
+    toast(`✅ Sondage mis à jour`)
+    closeDrawer()
+    loadGrid()
+    loadSurveyList()
+  } catch (e: any) {
+    toast(`Erreur: ${e.message}`, 'err')
+  }
+}
+
+// Marqueur de snapping
+let snapMarker: L.CircleMarker | null = null
+
+// Map click to create survey avec snapping
+map.on('click', async (e: L.LeafletMouseEvent) => {
   if (surveyDrawer.classList.contains('open') && surveyForm.style.display !== 'none') {
-    ;(document.getElementById('surveyLon') as HTMLInputElement).value = e.latlng.lng.toFixed(6)
-    ;(document.getElementById('surveyLat') as HTMLInputElement).value = e.latlng.lat.toFixed(6)
+    let finalLng = e.latlng.lng
+    let finalLat = e.latlng.lat
+    
+    // Trouver la maille contenant le point cliqué
+    try {
+      const res = await fetch(`${API_GEO}/grid/locate?lon=${finalLng}&lat=${finalLat}`)
+      if (res.ok) {
+        const maille = await res.json()
+        
+        // Récupérer le centre de la maille
+        const mailleRes = await fetch(`${API_GEO}/grid/${maille.code}/shape`)
+        if (mailleRes.ok) {
+          const mailleGeoJSON = await mailleRes.json()
+          
+          // Calculer le centroïde
+          if (mailleGeoJSON.geometry && mailleGeoJSON.geometry.coordinates) {
+            const coords = mailleGeoJSON.geometry.coordinates[0]
+            let sumLng = 0, sumLat = 0, count = 0
+            
+            coords.forEach((coord: number[]) => {
+              sumLng += coord[0]
+              sumLat += coord[1]
+              count++
+            })
+            
+            const centerLng = sumLng / count
+            const centerLat = sumLat / count
+            
+            // Calculer la distance au centre
+            const R = 6371000 // Rayon de la Terre en mètres
+            const dLat = (centerLat - finalLat) * Math.PI / 180
+            const dLng = (centerLng - finalLng) * Math.PI / 180
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                      Math.cos(finalLat * Math.PI / 180) * Math.cos(centerLat * Math.PI / 180) *
+                      Math.sin(dLng/2) * Math.sin(dLng/2)
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a))
+            const distance = R * c
+            
+            // Snapping si distance < 50m
+            if (distance < 50) {
+              finalLng = centerLng
+              finalLat = centerLat
+              toast('📍 Sondage aimanté au centre de la maille', 'ok')
+              
+              // Animation visuelle du snapping
+              if (snapMarker) map.removeLayer(snapMarker)
+              
+              snapMarker = L.circleMarker([finalLat, finalLng], {
+                radius: 12,
+                color: '#3aa6ff',
+                fillColor: '#3aa6ff',
+                fillOpacity: 0.4,
+                weight: 3
+              }).addTo(map)
+              
+              // Animation pulse
+              let pulseCount = 0
+              const pulseInterval = setInterval(() => {
+                if (pulseCount >= 6) {
+                  clearInterval(pulseInterval)
+                  if (snapMarker) {
+                    map.removeLayer(snapMarker)
+                    snapMarker = null
+                  }
+                  return
+                }
+                
+                if (snapMarker) {
+                  if (pulseCount % 2 === 0) {
+                    snapMarker.setStyle({ radius: 16, fillOpacity: 0.6 })
+                  } else {
+                    snapMarker.setStyle({ radius: 12, fillOpacity: 0.4 })
+                  }
+                }
+                pulseCount++
+              }, 200)
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Erreur snapping:', e)
+    }
+    
+    ;(document.getElementById('surveyLon') as HTMLInputElement).value = finalLng.toFixed(6)
+    ;(document.getElementById('surveyLat') as HTMLInputElement).value = finalLat.toFixed(6)
     toast('Coordonnées remplies depuis la carte')
+    updateSummary()
   }
 })
 
@@ -1237,16 +2314,23 @@ document.getElementById('resetFilters')?.addEventListener('click', () => {
   // Réinitialiser tous les filtres
   (document.getElementById('filterHasData') as HTMLInputElement).checked = true;
   (document.getElementById('filterNoData') as HTMLInputElement).checked = true;
-  (document.getElementById('filterDepth0-5') as HTMLInputElement).checked = true;
-  (document.getElementById('filterDepth5-10') as HTMLInputElement).checked = true;
-  (document.getElementById('filterDepth10plus') as HTMLInputElement).checked = true;
-  (document.getElementById('filterTestSPT') as HTMLInputElement).checked = true;
-  (document.getElementById('filterTestQC') as HTMLInputElement).checked = true;
   (document.getElementById('filterMinSondages') as HTMLInputElement).value = '0';
   (document.getElementById('filterAdm1') as HTMLSelectElement).value = '';
   (document.getElementById('filterAdm2') as HTMLSelectElement).value = '';
   (document.getElementById('filterAdm3') as HTMLSelectElement).value = '';
-  
+
+  // Réactiver les selects ADM2 et ADM3 et vider leurs options
+  const adm2El = document.getElementById('filterAdm2') as HTMLSelectElement
+  const adm3El = document.getElementById('filterAdm3') as HTMLSelectElement
+  if (adm2El) {
+    adm2El.innerHTML = '<option value="">— toutes préfectures —</option>'
+    adm2El.disabled = true
+  }
+  if (adm3El) {
+    adm3El.innerHTML = '<option value="">— toutes communes —</option>'
+    adm3El.disabled = true
+  }
+
   applyFilters()
   toast('Filtres réinitialisés', 'ok')
 })
@@ -1256,11 +2340,6 @@ function applyFilters() {
   
   const hasData = (document.getElementById('filterHasData') as HTMLInputElement).checked
   const noData = (document.getElementById('filterNoData') as HTMLInputElement).checked
-  const depth05 = (document.getElementById('filterDepth0-5') as HTMLInputElement).checked
-  const depth510 = (document.getElementById('filterDepth5-10') as HTMLInputElement).checked
-  const depth10plus = (document.getElementById('filterDepth10plus') as HTMLInputElement).checked
-  const testSPT = (document.getElementById('filterTestSPT') as HTMLInputElement).checked
-  const testQC = (document.getElementById('filterTestQC') as HTMLInputElement).checked
   const minSondages = parseInt((document.getElementById('filterMinSondages') as HTMLInputElement).value) || 0
   const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
   const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
@@ -1289,8 +2368,6 @@ function applyFilters() {
     if (adm2 && props.adm2_name !== adm2) visible = false
     if (adm3 && props.adm3_name !== adm3) visible = false
     
-    // TODO: Filtres profondeur et type essai (nécessitent des données détaillées)
-    
     if (visible) {
       visibleCount++
       if (props.has_data) withDataCount++
@@ -1303,10 +2380,14 @@ function applyFilters() {
   })
   
   // Mettre à jour les stats
-  document.getElementById('statVisible')!.textContent = visibleCount.toLocaleString()
-  document.getElementById('statWithData')!.textContent = withDataCount.toLocaleString()
-  document.getElementById('statSondages')!.textContent = sondagesCount.toLocaleString()
-  document.getElementById('statEssais')!.textContent = essaisCount.toLocaleString()
+  const statVisible = document.getElementById('statVisible')
+  const statWithData = document.getElementById('statWithData')
+  const statSondages = document.getElementById('statSondages')
+  const statEssais = document.getElementById('statEssais')
+  if (statVisible) statVisible.textContent = visibleCount.toLocaleString()
+  if (statWithData) statWithData.textContent = withDataCount.toLocaleString()
+  if (statSondages) statSondages.textContent = sondagesCount.toLocaleString()
+  if (statEssais) statEssais.textContent = essaisCount.toLocaleString()
   
   toast(`Filtres appliqués: ${visibleCount} mailles visibles`, 'ok')
 }
@@ -1356,9 +2437,11 @@ function applyThematicView() {
         
       case 'spt_avg':
         // SPT-N moyen (vert = faible, jaune = moyen, rouge = élevé)
-        // TODO: Calculer la moyenne réelle depuis les essais
-        const sptAvg = 15 // Placeholder
-        if (sptAvg < 10) {
+        const sptAvg = props.spt_n_avg
+        if (!sptAvg) {
+          color = '#e0e7ee'
+          fillOpacity = 0.06
+        } else if (sptAvg < 10) {
           color = '#0bb07b'
           fillOpacity = 0.5
         } else if (sptAvg < 30) {
@@ -1372,9 +2455,11 @@ function applyThematicView() {
         
       case 'qc_avg':
         // qc moyen (vert = faible, jaune = moyen, rouge = élevé)
-        // TODO: Calculer la moyenne réelle depuis les essais
-        const qcAvg = 3.5 // Placeholder
-        if (qcAvg < 2) {
+        const qcAvg = props.qc_avg
+        if (!qcAvg) {
+          color = '#e0e7ee'
+          fillOpacity = 0.06
+        } else if (qcAvg < 2) {
           color = '#0bb07b'
           fillOpacity = 0.5
         } else if (qcAvg < 5) {
@@ -1398,8 +2483,8 @@ function applyThematicView() {
   toast(`Vue: ${currentView}`, 'ok')
 }
 
-// Auto-load grid on startup
-loadGrid()
+// NOTE: loadGrid(false) est maintenant appelé via setTimeout() juste après sa définition (ligne 639)
+// pour éviter qu'une erreur dans les event listeners ne bloque le chargement
 
 // Initialiser la table des tests
 renderTestsTable()

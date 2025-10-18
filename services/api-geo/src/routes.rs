@@ -1,4 +1,4 @@
-use axum::{routing::{get, post}, Router, extract::{Path, State}, Json};
+use axum::{routing::{get, post}, Router, extract::{Path, Query, State}, Json};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use serde::Serialize;
@@ -17,6 +17,8 @@ pub fn grid_router() -> Router<AppState> {
     Router::new()
         .route("/:code", get(get_grid))
         .route("/:code/shape", get(get_grid_shape))
+        .route("/:code/details", get(get_grid_details))
+        .route("/:code/neighbors", get(crate::neighbors::get_neighbors))
         .route("/recompute/:code", post(recompute_grid))
 }
 
@@ -77,16 +79,16 @@ async fn get_grid(State(state): State<AppState>, Path(code): Path<String>) -> im
 
     let rows = sqlx::query(
         r#"
-        SELECT e.type, COUNT(*)::bigint AS n
+        SELECT e.type_essai, COUNT(*)::bigint AS n
         FROM essais e
         JOIN sondages s ON s.id = e.sondage_id
         JOIN mailles m ON m.id = $1
         WHERE ST_Within(s.geom, m.geom)
-        GROUP BY e.type
+        GROUP BY e.type_essai
         "#
     ).bind(maille_id).fetch_all(pool).await.unwrap_or_default();
     let mut by_type = serde_json::Map::new();
-    for r in rows { by_type.insert(r.get::<String,_>("type"), serde_json::json!(r.get::<i64,_>("n"))); }
+    for r in rows { by_type.insert(r.get::<String,_>("type_essai"), serde_json::json!(r.get::<i64,_>("n"))); }
 
     let summary = serde_json::json!({
         "n_sondages": n_sondages,
@@ -118,24 +120,48 @@ async fn get_grid_shape(State(state): State<AppState>, Path(code): Path<String>)
     Json(feature).into_response()
 }
 
-// GET /coverage/mailles -> FeatureCollection EPSG:4326 avec comptes
-pub async fn get_coverage_mailles(State(state): State<AppState>) -> impl IntoResponse {
+// GET /coverage/mailles?bbox=west,south,east,north -> FeatureCollection EPSG:4326 avec comptes
+pub async fn get_coverage_mailles(
+    Query(params): Query<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>
+) -> impl IntoResponse {
     let pool = &state.pool;
-    let rows = match sqlx::query(
-        r#"
+    
+    // Construire la requête avec filtre bbox optionnel
+    let mut query = r#"
         SELECT m.code,
                ST_AsGeoJSON(ST_Transform(m.geom,4326)) AS g,
                m.adm1_name,
                m.adm2_name,
                m.adm3_name,
                COALESCE(COUNT(DISTINCT s.id),0)::bigint AS n_sondages,
-               COALESCE(COUNT(e.id),0)::bigint AS n_essais
+               COALESCE(COUNT(e.id),0)::bigint AS n_essais,
+               AVG(CASE WHEN e.type_essai = 'SPT_N' THEN e.valeur_numerique::numeric ELSE NULL END) AS spt_n_avg,
+               AVG(CASE WHEN e.type_essai = 'qc' THEN e.valeur_numerique::numeric ELSE NULL END) AS qc_avg,
+               COUNT(CASE WHEN e.depth_m >= 0 AND e.depth_m < 5 THEN 1 END)::bigint AS n_depth_0_5,
+               COUNT(CASE WHEN e.depth_m >= 5 AND e.depth_m < 10 THEN 1 END)::bigint AS n_depth_5_10,
+               COUNT(CASE WHEN e.depth_m >= 10 THEN 1 END)::bigint AS n_depth_10plus,
+               COUNT(CASE WHEN e.type_essai = 'SPT_N' THEN 1 END)::bigint AS n_spt_n,
+               COUNT(CASE WHEN e.type_essai = 'qc' THEN 1 END)::bigint AS n_qc
         FROM mailles m
         LEFT JOIN sondages s ON ST_Within(s.geom, m.geom)
-        LEFT JOIN essais e ON e.sondage_id = s.id
-        GROUP BY m.code, m.geom, m.adm1_name, m.adm2_name, m.adm3_name
-        "#
-    ).fetch_all(pool).await {
+        LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+    "#.to_string();
+    
+    // Ajouter filtre bbox si présent
+    if let Some(bbox_str) = params.get("bbox") {
+        let parts: Vec<f64> = bbox_str.split(',').filter_map(|s| s.parse().ok()).collect();
+        if parts.len() == 4 {
+            query.push_str(&format!(
+                " WHERE ST_Intersects(ST_Transform(m.geom, 4326), ST_MakeEnvelope({}, {}, {}, {}, 4326))",
+                parts[0], parts[1], parts[2], parts[3]
+            ));
+        }
+    }
+    
+    query.push_str(" GROUP BY m.code, m.geom, m.adm1_name, m.adm2_name, m.adm3_name");
+    
+    let rows = match sqlx::query(&query).fetch_all(pool).await {
         Ok(v) => v,
         Err(e) => { tracing::error!(?e, "coverage query"); return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"type":"FeatureCollection","features":[]}))).into_response(); }
     };
@@ -148,6 +174,13 @@ pub async fn get_coverage_mailles(State(state): State<AppState>) -> impl IntoRes
         let adm3_name: Option<String> = r.try_get("adm3_name").ok();
         let n_sondages: i64 = r.get("n_sondages");
         let n_essais: i64 = r.get("n_essais");
+        let spt_n_avg: Option<sqlx::types::BigDecimal> = r.try_get("spt_n_avg").ok().flatten();
+        let qc_avg: Option<sqlx::types::BigDecimal> = r.try_get("qc_avg").ok().flatten();
+        let n_depth_0_5: i64 = r.try_get("n_depth_0_5").unwrap_or(0);
+        let n_depth_5_10: i64 = r.try_get("n_depth_5_10").unwrap_or(0);
+        let n_depth_10plus: i64 = r.try_get("n_depth_10plus").unwrap_or(0);
+        let n_spt_n: i64 = r.try_get("n_spt_n").unwrap_or(0);
+        let n_qc: i64 = r.try_get("n_qc").unwrap_or(0);
         let has_data = n_sondages > 0;
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
             let mut props = serde_json::json!({
@@ -165,6 +198,21 @@ pub async fn get_coverage_mailles(State(state): State<AppState>) -> impl IntoRes
             if let Some(adm3) = adm3_name {
                 props["adm3_name"] = serde_json::Value::String(adm3);
             }
+            if let Some(spt) = spt_n_avg {
+                if let Some(val) = spt.to_string().parse::<f64>().ok() {
+                    props["spt_n_avg"] = serde_json::Value::from(val);
+                }
+            }
+            if let Some(qc) = qc_avg {
+                if let Some(val) = qc.to_string().parse::<f64>().ok() {
+                    props["qc_avg"] = serde_json::Value::from(val);
+                }
+            }
+            props["n_depth_0_5"] = serde_json::Value::from(n_depth_0_5);
+            props["n_depth_5_10"] = serde_json::Value::from(n_depth_5_10);
+            props["n_depth_10plus"] = serde_json::Value::from(n_depth_10plus);
+            props["n_spt_n"] = serde_json::Value::from(n_spt_n);
+            props["n_qc"] = serde_json::Value::from(n_qc);
             features.push(serde_json::json!({
                 "type":"Feature",
                 "geometry": geom,
@@ -192,11 +240,11 @@ async fn recompute_grid(State(state): State<AppState>, Path(code): Path<String>)
     // Points SPT_N à l'intérieur (coords 25231 en mètres)
     let pts = sqlx::query(
         r#"
-        SELECT ST_X(s.geom) AS x, ST_Y(s.geom) AS y, e.value::double precision AS value
+        SELECT ST_X(s.geom) AS x, ST_Y(s.geom) AS y, e.valeur_numerique::double precision AS value
         FROM essais e
         JOIN sondages s ON s.id = e.sondage_id
         JOIN mailles m ON m.id = $1
-        WHERE e.type = 'SPT_N' AND ST_Within(s.geom, m.geom)
+        WHERE e.type_essai = 'SPT_N' AND ST_Within(s.geom, m.geom)
         "#
     ).bind(maille_id).fetch_all(pool).await.unwrap_or_default();
 
@@ -278,16 +326,16 @@ async fn recompute_grid(State(state): State<AppState>, Path(code): Path<String>)
     ).bind(maille_id).fetch_one(pool).await.unwrap_or(0);
     let rows = sqlx::query(
         r#"
-        SELECT e.type, COUNT(*)::bigint AS n
+        SELECT e.type_essai, COUNT(*)::bigint AS n
         FROM essais e
         JOIN sondages s ON s.id = e.sondage_id
         JOIN mailles m ON m.id = $1
         WHERE ST_Within(s.geom, m.geom)
-        GROUP BY e.type
+        GROUP BY e.type_essai
         "#
     ).bind(maille_id).fetch_all(pool).await.unwrap_or_default();
     let mut by_type = serde_json::Map::new();
-    for r in rows { by_type.insert(r.get::<String,_>("type"), serde_json::json!(r.get::<i64,_>("n"))); }
+    for r in rows { by_type.insert(r.get::<String,_>("type_essai"), serde_json::json!(r.get::<i64,_>("n"))); }
     let summary = serde_json::json!({
         "n_sondages": n_sondages,
         "n_essais": n_essais,
@@ -329,6 +377,203 @@ fn compute_idw(cx: f64, cy: f64, samples: &[(f64,f64,f64)], p: f64, eps: f64) ->
         num += w * *v; den += w;
     }
     if den > 0.0 { num/den } else { f64::NAN }
+}
+
+// GET /grid/{code}/details -> Fiche complète de la maille
+#[derive(Serialize)]
+struct GridDetails {
+    code: String,
+    adm: AdmInfo,
+    kpi: KpiInfo,
+    sondages: Vec<SondageDetail>,
+}
+
+#[derive(Serialize)]
+struct AdmInfo {
+    adm1: Option<String>,
+    adm2: Option<String>,
+    adm3: Option<String>,
+}
+
+#[derive(Serialize)]
+struct KpiInfo {
+    sondages: i64,
+    essais: i64,
+    idw_spt_n: Option<f64>,
+    zmin: Option<f64>,
+    zmax: Option<f64>,
+    updated_at: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SondageDetail {
+    id: String,
+    code: Option<String>,
+    has_coords: bool,
+    lon: Option<f64>,
+    lat: Option<f64>,
+    source: Option<String>,
+    date: Option<String>,
+    essais: Vec<EssaiDetail>,
+}
+
+#[derive(Serialize)]
+struct EssaiDetail {
+    #[serde(rename = "type")]
+    test_type: String,
+    value: f64,
+    unit: String,
+    depth_m: f64,
+    date: Option<String>,
+}
+
+async fn get_grid_details(
+    State(state): State<AppState>,
+    Path(code): Path<String>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    // 1. Récupérer les infos de la maille
+    let maille_row = match sqlx::query(
+        r#"
+        SELECT id, adm1_name, adm2_name, adm3_name, stats, updated_at
+        FROM mailles
+        WHERE code = $1
+        "#
+    ).bind(&code).fetch_optional(pool).await {
+        Ok(Some(r)) => r,
+        Ok(None) => return (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "maille introuvable"}))).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "get_grid_details maille");
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "db error"}))).into_response();
+        }
+    };
+    
+    let maille_id: uuid::Uuid = maille_row.get("id");
+    let adm = AdmInfo {
+        adm1: maille_row.get("adm1_name"),
+        adm2: maille_row.get("adm2_name"),
+        adm3: maille_row.get("adm3_name"),
+    };
+    
+    let stats: serde_json::Value = maille_row.try_get("stats").unwrap_or(serde_json::json!({}));
+    let idw_spt_n = stats.get("idw_spt_n").and_then(|v| v.as_f64());
+    let updated_at: Option<chrono::DateTime<chrono::Utc>> = maille_row.get("updated_at");
+    
+    // 2. Récupérer les KPIs
+    let kpi_row = match sqlx::query(
+        r#"
+        SELECT 
+            COUNT(DISTINCT s.id)::bigint AS n_sondages,
+            COUNT(e.id)::bigint AS n_essais,
+            MIN(e.depth_m) AS zmin,
+            MAX(e.depth_m) AS zmax
+        FROM mailles m
+        LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+        LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+        WHERE m.id = $1
+        "#
+    ).bind(maille_id).fetch_one(pool).await {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(?e, "get_grid_details kpi");
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "db error"}))).into_response();
+        }
+    };
+    
+    let zmin: Option<sqlx::types::BigDecimal> = kpi_row.try_get("zmin").ok().flatten();
+    let zmax: Option<sqlx::types::BigDecimal> = kpi_row.try_get("zmax").ok().flatten();
+
+    let kpi = KpiInfo {
+        sondages: kpi_row.get("n_sondages"),
+        essais: kpi_row.get("n_essais"),
+        idw_spt_n,
+        zmin: zmin.and_then(|v| v.to_string().parse().ok()),
+        zmax: zmax.and_then(|v| v.to_string().parse().ok()),
+        updated_at: updated_at.map(|dt| dt.format("%Y-%m-%d %H:%M").to_string()),
+    };
+    
+    // 3. Récupérer les sondages avec leurs essais
+    let sondages_rows = match sqlx::query(
+        r#"
+        SELECT
+            s.id,
+            s.code,
+            ST_X(ST_Transform(s.geom, 4326)) AS lon,
+            ST_Y(ST_Transform(s.geom, 4326)) AS lat,
+            s.source,
+            s.date,
+            s.location_accuracy,
+            s.is_geocoded
+        FROM sondages s
+        JOIN mailles m ON m.id = $1
+        WHERE (
+            (s.geom IS NOT NULL AND ST_Within(s.geom, m.geom))
+            OR (s.geom IS NULL AND s.maille_code = m.code)
+        )
+        AND s.deleted_at IS NULL
+        ORDER BY s.created_at DESC
+        "#
+    ).bind(maille_id).fetch_all(pool).await {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(?e, "get_grid_details sondages");
+            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "db error"}))).into_response();
+        }
+    };
+
+    let mut sondages = Vec::new();
+
+    for sondage_row in sondages_rows {
+        let sondage_id: uuid::Uuid = sondage_row.get("id");
+        let is_geocoded: bool = sondage_row.try_get("is_geocoded").unwrap_or(true);
+        let has_coords = is_geocoded;
+        
+        // Récupérer les essais de ce sondage
+        let essais_rows = match sqlx::query(
+            r#"
+            SELECT type_essai, valeur_numerique, unit, depth_m
+            FROM essais
+            WHERE sondage_id = $1 AND deleted_at IS NULL AND valeur_numerique IS NOT NULL
+            ORDER BY depth_m ASC
+            "#
+        ).bind(sondage_id).fetch_all(pool).await {
+            Ok(rows) => rows,
+            Err(e) => {
+                tracing::error!(?e, "get_grid_details essais");
+                continue;
+            }
+        };
+
+        let essais: Vec<EssaiDetail> = essais_rows.iter().map(|row| {
+            let depth: sqlx::types::BigDecimal = row.get("depth_m");
+            EssaiDetail {
+                test_type: row.get("type_essai"),
+                value: row.get::<sqlx::types::BigDecimal, _>("valeur_numerique").to_string().parse().unwrap_or(0.0),
+                unit: row.get("unit"),
+                depth_m: depth.to_string().parse().unwrap_or(0.0),
+                date: None,
+            }
+        }).collect();
+        
+        sondages.push(SondageDetail {
+            id: sondage_id.to_string(),
+            code: sondage_row.get("code"),
+            has_coords,
+            lon: if has_coords { sondage_row.get("lon") } else { None },
+            lat: if has_coords { sondage_row.get("lat") } else { None },
+            source: sondage_row.get("source"),
+            date: sondage_row.get("date"),
+            essais,
+        });
+    }
+    
+    Json(GridDetails {
+        code,
+        adm,
+        kpi,
+        sondages,
+    }).into_response()
 }
 
 #[cfg(test)]

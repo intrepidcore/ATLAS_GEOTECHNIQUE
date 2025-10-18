@@ -13,7 +13,7 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 tower-http = { version = "0.5", features = ["cors", "trace"] }
-sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "macros", "tls-rustls", "uuid", "json", "bigdecimal", "time"] }
+sqlx = { version = "0.7", features = ["postgres", "runtime-tokio", "macros", "tls-rustls", "uuid", "json", "bigdecimal", "time", "chrono"] }
 rayon = "1.8"
 geo = "0.27"
 nalgebra = "0.32"

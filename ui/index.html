@@ -19,10 +19,11 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .kpis{display:flex;gap:8px;flex-wrap:wrap}
 .kpi{background:#0f172a;border:1px solid #1c2843;border-radius:10px;padding:8px 10px;display:flex;gap:8px;align-items:center}
 .kpi b{font-size:16px}
-#container{display:grid;grid-template-columns:1fr 380px;min-height:calc(100vh - 52px)}
-#sidebar{background:var(--panel);border-left:1px solid #1b2740;padding:14px 14px 20px;overflow:auto}
-.section{margin-bottom:14px}
-.section h4{margin:10px 0 8px 0;color:#c9d7e3;font-size:13px;opacity:.9}
+#container{display:grid;grid-template-columns:380px 1fr 380px;min-height:calc(100vh - 52px)}
+#dashboard{background:var(--panel);border-right:1px solid #1b2740;padding:16px;overflow-y:auto;height:calc(100vh - 52px);position:relative}
+#sidebar{background:var(--panel);border-left:1px solid #1b2740;padding:14px 14px 20px;overflow-y:auto;height:calc(100vh - 52px)}
+.section{margin-bottom:10px}
+.section h4{margin:6px 0 6px 0;color:#c9d7e3;font-size:13px;opacity:.9;font-weight:600}
 .input, .btn{width:100%;border-radius:8px;border:1px solid #22304d;background:#0f172a;color:var(--text);padding:10px}
 .btn{cursor:pointer;text-align:center}
 .btn:hover{border-color:#2a3b61}
@@ -52,6 +53,34 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .test-item-header strong{color:var(--accent)}
 .test-item .btn-delete{background:transparent;border:1px solid #6b1b2c;color:var(--err);padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px}
 .test-item .btn-delete:hover{background:#6b1b2c22}
+.maille-header{background:#0f172a;border:1px solid #1c2843;border-radius:12px;padding:14px;margin-bottom:14px}
+.maille-code-badge{display:inline-block;background:var(--accent);color:#0d1526;padding:6px 12px;border-radius:6px;font-weight:600;font-size:13px;margin-bottom:8px}
+.maille-adm{font-size:12px;color:var(--muted);margin-bottom:8px}
+.maille-status{font-size:12px;margin-bottom:10px}
+.maille-actions{display:flex;gap:6px;flex-wrap:wrap}
+.btn-sm{padding:6px 10px;font-size:11px;border-radius:6px;border:1px solid #22304d;background:#0f172a;color:var(--text);cursor:pointer}
+.btn-sm:hover{border-color:#2a3b61;background:#131d30}
+.kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.kpi-card{background:#0f172a;border:1px solid #1c2843;border-radius:10px;padding:10px;text-align:center}
+.kpi-label{display:block;font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
+.kpi-value{display:block;font-size:18px;font-weight:700;color:var(--text)}
+.charts-section{margin-bottom:14px}
+.charts-section canvas{margin-bottom:10px;border-radius:8px;background:#0f172a;padding:8px;display:block;min-height:120px}
+.sondages-list{margin-top:14px}
+.sondage-item{background:#0f172a;border:1px solid #1c2843;border-radius:8px;margin-bottom:8px;overflow:hidden}
+.sondage-header{padding:10px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.sondage-header:hover{background:#131d30}
+.sondage-content{padding:12px;border-top:1px solid #1c2843;display:none}
+.sondage-content.open{display:block}
+.essais-table{width:100%;font-size:11px;margin-bottom:10px;border-collapse:collapse}
+.essais-table th{text-align:left;color:var(--muted);font-weight:500;padding:6px 4px;border-bottom:1px solid #1c2843}
+.essais-table td{padding:6px 4px;border-bottom:1px solid #1c284333}
+.badge-geo{font-size:10px;padding:3px 8px;border-radius:999px;background:#0bb07b22;color:var(--ok);border:1px solid #0bb07b44}
+.badge-adm{font-size:10px;padding:3px 8px;border-radius:999px;background:#8aa0b522;color:var(--muted);border:1px solid #8aa0b544}
+.badge-spt{background:#3aa6ff22;color:#3aa6ff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
+.badge-qc{background:#0bb07b22;color:#0bb07b;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
+#mailleDetails{display:none}
+#mailleDetails.active{display:block;background:#0a1018;padding:10px;border-radius:8px}
 #surveyList{max-height:calc(100vh - 200px);overflow-y:auto}
 .survey-card{background:#0f172a;border:1px solid #22304d;border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer;transition:border-color 0.2s}
 .survey-card:hover{border-color:#3aa6ff}
@@ -73,96 +102,10 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
       <div class="badge" id="gridBadge"><span class="dot" style="background:var(--warn)"></span> Grille</div>
     </div>
     <div id="container">
-      <div id="map" style="height:calc(100vh - 52px);"></div>
-      <aside id="sidebar">
+      <!-- PANNEAU GAUCHE: Affichage Données -->
+      <aside id="dashboard">
         <div class="section">
-          <h4>Recherche maille</h4>
-          <input id="codeInput" class="input" placeholder="ex: TG-0479-0264-01" />
-          <button id="getBtn" class="btn primary" style="margin-top:8px">GET /grid/{code}</button>
-          <div class="status" id="status"></div>
-        </div>
-
-        <div class="section">
-          <h4>Sondages</h4>
-          <button id="newSurveyBtn" class="btn primary">➕ Nouveau sondage</button>
-          <button id="listSurveysBtn" class="btn" style="margin-top:8px">📋 Liste des sondages</button>
-          <button id="importCsvBtn" class="btn" style="margin-top:8px">📥 Import CSV/Bulk</button>
-        </div>
-
-        <div class="section">
-          <h4>Actions</h4>
-          <button id="recomputeBtn" class="btn">POST /grid/recompute/{code}</button>
-          <button id="shapeBtn" class="btn" style="margin-top:8px">GET /grid/{code}/shape</button>
-          <button id="zoomTgBtn" class="btn" style="margin-top:8px">Zoom Togo</button>
-        </div>
-
-        <div class="section">
-          <h4>Export</h4>
-          <button id="exportGeoJSON" class="btn">Export GeoJSON</button>
-          <button id="exportMarkdown" class="btn" style="margin-top:8px">Export Markdown</button>
-          <button id="exportPDF" class="btn" style="margin-top:8px">Export PDF</button>
-          <button id="exportAll" class="btn primary" style="margin-top:8px">Export complet (ZIP)</button>
-        </div>
-
-        <div class="section">
-          <h4>Filtres géographiques</h4>
-          <select id="filterAdm1" class="input">
-            <option value="">— toutes régions —</option>
-          </select>
-          <select id="filterAdm2" class="input" style="margin-top:8px">
-            <option value="">— toutes préfectures —</option>
-          </select>
-          <select id="filterAdm3" class="input" style="margin-top:8px">
-            <option value="">— toutes communes —</option>
-          </select>
-        </div>
-
-        <div class="section">
-          <h4>Filtres données</h4>
-          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
-            <input type="checkbox" id="filterHasData" checked />
-            <span style="font-size:13px">Mailles avec données</span>
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
-            <input type="checkbox" id="filterNoData" checked />
-            <span style="font-size:13px">Mailles sans données</span>
-          </label>
-          <div style="margin-top:12px">
-            <label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Profondeur:</label>
-            <label style="display:flex;align-items:center;gap:8px;margin:4px 0;cursor:pointer">
-              <input type="checkbox" id="filterDepth0-5" checked />
-              <span style="font-size:12px">0-5 m</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;margin:4px 0;cursor:pointer">
-              <input type="checkbox" id="filterDepth5-10" checked />
-              <span style="font-size:12px">5-10 m</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;margin:4px 0;cursor:pointer">
-              <input type="checkbox" id="filterDepth10plus" checked />
-              <span style="font-size:12px">Plus de 10 m</span>
-            </label>
-          </div>
-          <div style="margin-top:12px">
-            <label style="font-size:12px;color:var(--muted);margin-bottom:4px;display:block">Type d'essai:</label>
-            <label style="display:flex;align-items:center;gap:8px;margin:4px 0;cursor:pointer">
-              <input type="checkbox" id="filterTestSPT" checked />
-              <span style="font-size:12px">SPT-N</span>
-            </label>
-            <label style="display:flex;align-items:center;gap:8px;margin:4px 0;cursor:pointer">
-              <input type="checkbox" id="filterTestQC" checked />
-              <span style="font-size:12px">qc</span>
-            </label>
-          </div>
-          <div style="margin-top:12px">
-            <label style="font-size:12px;color:var(--muted)">Min. sondages:</label>
-            <input type="number" id="filterMinSondages" class="input" value="0" min="0" style="margin-top:4px" />
-          </div>
-          <button id="applyFilters" class="btn primary" style="margin-top:12px;font-size:12px">Appliquer les filtres</button>
-          <button id="resetFilters" class="btn" style="margin-top:8px;font-size:12px">Réinitialiser tout</button>
-        </div>
-
-        <div class="section">
-          <h4>Statistiques (filtrées)</h4>
+          <h4>📊 Statistiques (filtrées)</h4>
           <div id="filterStats" style="font-size:12px;color:var(--muted);line-height:1.6">
             <div><strong>Mailles visibles:</strong> <span id="statVisible">0</span></div>
             <div><strong>Avec données:</strong> <span id="statWithData">0</span></div>
@@ -189,10 +132,208 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           </div>
         </div>
 
-        <pre id="json" class="input" style="height:180px;overflow:auto;white-space:pre-wrap;font-size:11px"></pre>
+        <!-- Fiche Géotechnique de la Maille -->
+        <div id="mailleDetails" class="section">
+          <div class="maille-header">
+            <div class="maille-code-badge" id="ficheCode">—</div>
+            <div class="maille-adm" id="ficheAdm">—</div>
+            <div class="maille-status" id="ficheStatus">—</div>
+            <div class="maille-actions">
+              <button class="btn-sm" id="ficheRecalculate">🔄 Recalculer</button>
+              <button class="btn-sm" id="ficheExportGeoJSON">📦 GeoJSON</button>
+              <button class="btn-sm" id="ficheAddSurvey">+ Sondage</button>
+            </div>
+          </div>
+
+          <!-- KPIs Grid 2x2 -->
+          <div class="kpi-grid">
+            <div class="kpi-card">
+              <span class="kpi-label">Sondages</span>
+              <span class="kpi-value" id="kpiSondages">0</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Essais</span>
+              <span class="kpi-value" id="kpiEssais">0</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">IDW N(p=2)</span>
+              <span class="kpi-value" id="kpiIdw">—</span>
+            </div>
+            <div class="kpi-card">
+              <span class="kpi-label">Prof (m)</span>
+              <span class="kpi-value" id="kpiProf">—</span>
+            </div>
+          </div>
+
+          <!-- Mini Charts -->
+          <div class="charts-section">
+            <canvas id="chartSptN" width="320" height="120"></canvas>
+            <canvas id="chartQc" width="320" height="120"></canvas>
+            <canvas id="chartDepth" width="320" height="100"></canvas>
+          </div>
+
+          <!-- Liste Sondages (Accordéon) -->
+          <div class="sondages-list">
+            <h4 style="margin:0 0 10px 0;font-size:13px">📋 Sondages (<span id="sondagesCount">0</span>)</h4>
+            <div id="sondagesList"></div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h4>🔀 Mailles voisines</h4>
+          <div id="neighbors" style="font-size:11px;color:var(--muted)">Sélectionnez une maille</div>
+        </div>
+
+      </aside>
+
+      <!-- CARTE CENTRALE -->
+      <div id="map" style="height:calc(100vh - 52px);"></div>
+
+      <!-- PANNEAU DROIT: Filtres & Actions -->
+      <aside id="sidebar">
+        <!-- Filtres Géographiques ADM (Cascades) -->
+        <div class="section">
+          <h4>🔍 Filtres géographiques</h4>
+          <div style="margin-bottom:8px">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Région (ADM1)</label>
+            <select id="filterAdm1" class="input" style="font-size:12px">
+              <option value="">— toutes régions —</option>
+            </select>
+          </div>
+          <div style="margin-bottom:8px">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Préfecture (ADM2)</label>
+            <select id="filterAdm2" class="input" style="font-size:12px" disabled>
+              <option value="">— toutes préfectures —</option>
+            </select>
+          </div>
+          <div style="margin-bottom:8px">
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Commune (ADM3)</label>
+            <select id="filterAdm3" class="input" style="font-size:12px" disabled>
+              <option value="">— toutes communes —</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Filtres Données -->
+        <div class="section">
+          <h4>🔍 Filtres données</h4>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="checkbox" id="filterHasData" checked />
+            <span style="font-size:12px">Mailles avec données</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="checkbox" id="filterNoData" checked />
+            <span style="font-size:12px">Mailles sans données</span>
+          </label>
+          <div style="margin-top:10px">
+            <label style="font-size:11px;color:var(--muted);margin-bottom:6px;display:block">Min. sondages:</label>
+            <input type="number" id="filterMinSondages" class="input" value="0" min="0" style="font-size:12px" />
+          </div>
+          <button id="resetFilters" class="btn" style="margin-top:10px;font-size:12px">Réinitialiser</button>
+        </div>
+
+        <div class="section">
+          <h4>Recherche maille</h4>
+          <input id="codeInput" class="input" placeholder="ex: TG-0479-0264-01" />
+          <button id="getBtn" class="btn primary" style="margin-top:8px">GET /grid/{code}</button>
+          <div class="status" id="status"></div>
+        </div>
+
+        <div class="section">
+          <h4>✏️ Sondages</h4>
+          <button id="newGeotechSurveyBtn" class="btn primary" style="background:#0bb07b;border-color:#0bb07b">🧪 Sondage Géotechnique</button>
+          <button id="listSurveysBtn" class="btn" style="margin-top:8px">📋 Liste des sondages</button>
+          <button id="importCsvBtn" class="btn" style="margin-top:8px">📥 Import CSV/Bulk</button>
+        </div>
+
+        <div class="section">
+          <h4>⚙️ Actions</h4>
+          <button id="recomputeBtn" class="btn">POST /grid/recompute/{code}</button>
+          <button id="shapeBtn" class="btn" style="margin-top:8px">GET /grid/{code}/shape</button>
+          <button id="zoomTgBtn" class="btn" style="margin-top:8px">Zoom Togo</button>
+        </div>
+
+        <div class="section">
+          <h4>📤 Export</h4>
+          <button id="exportGeoJSON" class="btn">Export GeoJSON</button>
+          <button id="exportMarkdown" class="btn" style="margin-top:8px">Export Markdown</button>
+          <button id="exportGeoPackage" class="btn" style="margin-top:8px">📦 GeoPackage</button>
+          <button id="exportPDFPro" class="btn" style="margin-top:8px">📄 PDF Professionnel</button>
+          <button id="printMap" class="btn" style="margin-top:8px">🖨️ Imprimer Carte</button>
+          <button id="exportAuditCSV" class="btn" style="margin-top:8px">📊 Historique CSV</button>
+        </div>
       </aside>
     </div>
     <div id="toast" class="toast" style="display:none"></div>
+    
+    <!-- Print Map Modal -->
+    <div id="printModal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.7);z-index:3000;align-items:center;justify-content:center">
+      <div style="background:var(--panel);border-radius:12px;padding:24px;width:500px;max-width:90vw">
+        <h3 style="margin:0 0 20px 0;color:var(--text)">🖨️ Options d'Impression de Carte</h3>
+        
+        <div class="form-group" style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Format</label>
+          <select id="printFormat" class="input">
+            <option value="A4">A4 (210 × 297 mm)</option>
+            <option value="A3">A3 (297 × 420 mm)</option>
+            <option value="Letter">Letter (216 × 279 mm)</option>
+          </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Orientation</label>
+          <select id="printOrientation" class="input">
+            <option value="portrait">Portrait</option>
+            <option value="landscape">Paysage</option>
+          </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Échelle</label>
+          <select id="printScale" class="input">
+            <option value="5000">1:5 000</option>
+            <option value="10000">1:10 000</option>
+            <option value="25000">1:25 000</option>
+            <option value="50000">1:50 000</option>
+            <option value="current">Échelle actuelle</option>
+          </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom:16px">
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:6px">Résolution</label>
+          <select id="printDPI" class="input">
+            <option value="150">150 DPI (Écran)</option>
+            <option value="300">300 DPI (Impression)</option>
+            <option value="600">600 DPI (Haute qualité)</option>
+          </select>
+        </div>
+        
+        <div class="form-group" style="margin-bottom:20px">
+          <label style="display:block;font-size:12px;color:var(--muted);margin-bottom:8px">Éléments à inclure</label>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="checkbox" id="printLegend" checked />
+            <span style="font-size:13px;color:var(--text)">Légende</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="checkbox" id="printScale2" checked />
+            <span style="font-size:13px;color:var(--text)">Échelle graphique</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="checkbox" id="printNorth" checked />
+            <span style="font-size:13px;color:var(--text)">Rose des vents</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;margin:6px 0;cursor:pointer">
+            <input type="checkbox" id="printTitle" checked />
+            <span style="font-size:13px;color:var(--text)">Titre et date</span>
+          </label>
+        </div>
+        
+        <div style="display:flex;gap:10px">
+          <button id="confirmPrint" class="btn primary" style="flex:1">🖨️ Imprimer</button>
+          <button id="cancelPrint" class="btn" style="flex:1">Annuler</button>
+        </div>
+      </div>
+    </div>
     
     <!-- Survey Drawer -->
     <div id="surveyDrawer">
@@ -341,6 +482,9 @@ BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,qc,4.2,5.0"></textarea>
         <div id="importResults" style="margin-top:16px"></div>
       </div>
     </div>
+    
+    <!-- Formulaire Géotechnique Modal -->
+    <div id="geotechFormContainer"></div>
     
     <script>
       // Runtime overrides for API base URLs

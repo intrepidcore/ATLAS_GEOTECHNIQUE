@@ -1,12 +1,11 @@
 // Bulk import handler for CSV/XLSX
 use axum::{
     extract::State,
-    http::StatusCode,
     response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Uuid, Row};
+use sqlx::types::Uuid;
 use std::str::FromStr;
 use crate::state::AppState;
 use crate::surveys::{validate_togo_bounds, validate_test, get_test_unit, TestInput};
@@ -19,6 +18,7 @@ pub struct BulkSurveyRow {
     pub operator: Option<String>,
     pub lat: Option<f64>,
     pub lon: Option<f64>,
+    #[allow(dead_code)]
     pub adm3_code: Option<String>,
     pub test_type: String,
     pub test_value: f64,
@@ -29,6 +29,7 @@ pub struct BulkSurveyRow {
 #[derive(Deserialize, Debug)]
 pub struct BulkImportRequest {
     pub rows: Vec<BulkSurveyRow>,
+    #[allow(dead_code)]
     pub snap_to_grid: Option<bool>,
 }
 
@@ -202,7 +203,7 @@ pub async fn bulk_import_surveys(
             
             let test_result = sqlx::query(
                 r#"
-                INSERT INTO essais (id, sondage_id, type, value, unit, depth_m, created_at)
+                INSERT INTO essais (id, sondage_id, type_essai, valeur_numerique, unit, depth_m, created_at)
                 VALUES ($1, $2, $3, $4, $5, $6, now())
                 "#
             )

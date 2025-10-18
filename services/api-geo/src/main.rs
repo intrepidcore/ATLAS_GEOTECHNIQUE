@@ -11,6 +11,11 @@ mod config;
 mod surveys;
 mod surveys_extended;
 mod surveys_bulk;
+mod surveys_adm;
+mod geotechnical;
+mod audit;
+mod neighbors;
+mod exports;
 pub mod state;
 
 #[derive(Serialize)]
@@ -31,10 +36,10 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // CORS permissif (dev/local). Autoriser GET/POST/DELETE/PATCH/OPTIONS et tous headers/origines
+    // CORS permissif (dev/local). Autoriser GET/POST/DELETE/PATCH/PUT/OPTIONS et tous headers/origines
     let cors = CorsLayer::new()
         .allow_origin(Any)
-        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH, Method::OPTIONS])
+        .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH, Method::PUT, Method::OPTIONS])
         .allow_headers(Any);
 
     // DB connexion avec retry (5 tentatives max, backoff exponentiel)
@@ -55,14 +60,25 @@ async fn main() -> anyhow::Result<()> {
         .route("/surveys", get(surveys::list_surveys).post(surveys_extended::create_survey_v2))
         .route("/surveys/legacy", post(surveys::create_survey))
         .route("/surveys/bulk", post(surveys_bulk::bulk_import_surveys))
-        .route("/surveys/:id", delete(surveys::delete_survey))
+        .route("/surveys/nearby", get(surveys::get_nearby_surveys))
+        .route("/surveys/:id", get(surveys::get_survey).put(surveys::update_survey).delete(surveys::delete_survey))
         .route("/surveys/:id/geocode", post(surveys_extended::geocode_survey))
         .route("/surveys/:id/tests", get(surveys::list_tests))
         .route("/tests", post(surveys::create_test))
         .route("/tests/:id", delete(surveys::delete_test))
+        // Geotechnical enriched endpoints
+        .route("/surveys/geotech", post(geotechnical::create_survey_geotech))
+        .route("/surveys/:id/geotech", get(geotechnical::get_survey_geotech))
+        .route("/classifications/:sondage_id", get(geotechnical::list_classifications))
         .route("/adm1", get(surveys::list_adm1))
         .route("/adm2", get(surveys::list_adm2))
         .route("/adm3", get(surveys::list_adm3))
+        // Audit log endpoints
+        .route("/audit", get(audit::list_audit_logs))
+        .route("/audit/export/csv", get(audit::export_audit_csv))
+        // Export endpoints
+        .route("/exports/geopackage", get(exports::export_geopackage))
+        .route("/exports/pdf", get(exports::export_pdf))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

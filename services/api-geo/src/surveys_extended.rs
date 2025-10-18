@@ -5,7 +5,7 @@ use axum::{
     response::IntoResponse,
     Json,
 };
-use sqlx::{types::Uuid, Row};
+use sqlx::types::Uuid;
 use std::str::FromStr;
 use crate::state::AppState;
 use crate::surveys::{
@@ -174,7 +174,7 @@ pub async fn create_survey_v2(
         
         let test_result = sqlx::query(
             r#"
-            INSERT INTO essais (id, sondage_id, type, value, unit, depth_m, created_at)
+            INSERT INTO essais (id, sondage_id, type_essai, valeur_numerique, unit, depth_m, created_at)
             VALUES ($1, $2, $3, $4, $5, $6, now())
             "#
         )
