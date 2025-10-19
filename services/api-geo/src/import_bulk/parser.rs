@@ -9,6 +9,9 @@ use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
 use encoding_rs::{Encoding, UTF_8, WINDOWS_1252, ISO_8859_15};
 use std::collections::HashMap;
+use calamine::{Reader, open_workbook_from_rs, Xlsx, Data as DataType};
+use serde_json::Value;
+use std::io::Cursor;
 
 // ============================================================================
 // DÉTECTION AUTOMATIQUE
@@ -165,9 +168,6 @@ impl CsvParser {
 // PARSER XLSX
 // ============================================================================
 
-use calamine::{Reader, Xlsx, open_workbook_from_rs, DataType};
-use std::io::Cursor;
-
 pub struct XlsxParser;
 
 impl XlsxParser {
@@ -268,7 +268,6 @@ impl XlsxParser {
                 // Approximation simple pour dates récentes
                 format!("{}", dt)
             },
-            DataType::Duration(d) => d.to_string(),
             DataType::DateTimeIso(s) => s.clone(),
             DataType::DurationIso(s) => s.clone(),
             DataType::Error(e) => format!("#ERROR: {:?}", e),
@@ -293,7 +292,7 @@ impl JsonParser {
 
         // Vérifier que c'est un array
         let array = value.as_array()
-            .ok_or_else(|| anyhow!("Le JSON doit être un array d'objets. Format attendu: [{...}, {...}]"))?;
+            .ok_or_else(|| anyhow!("Le JSON doit être un array d'objets. Format attendu: [{{...}}, {{...}}]"))?;
 
         if array.is_empty() {
             return Err(anyhow!("Array JSON vide"));

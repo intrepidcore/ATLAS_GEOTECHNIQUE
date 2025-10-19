@@ -359,14 +359,13 @@ pub enum MatchConfidence {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MappingProfile {
     pub id: Uuid,
-    pub user_id: Option<String>,
     pub name: String,
     pub description: Option<String>,
     pub mapping: MappingConfig,
     pub geolocation: GeolocationConfig,
-    pub created_at: DateTime<Utc>,
-    pub last_used_at: Option<DateTime<Utc>>,
-    pub use_count: i32,
+    pub created_by: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub is_public: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -375,6 +374,26 @@ pub struct CreateMappingProfileRequest {
     pub description: Option<String>,
     pub mapping: MappingConfig,
     pub geolocation: GeolocationConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UpdateMappingProfileRequest {
+    pub name: String,
+    pub description: Option<String>,
+    pub mapping: MappingConfig,
+    pub geolocation: GeolocationConfig,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ImportJobResponse {
+    pub job_id: Uuid,
+    pub status: ImportStatus,
+    pub progress: f32,
+    pub stats: Option<ImportStats>,
+    pub error_message: Option<String>,
+    pub created_at: Option<DateTime<Utc>>,
+    pub started_at: Option<DateTime<Utc>>,
+    pub completed_at: Option<DateTime<Utc>>,
 }
 
 // ============================================================================

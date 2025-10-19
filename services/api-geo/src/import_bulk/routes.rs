@@ -12,7 +12,7 @@ use axum::{
     extract::{Path, Query, State, Multipart},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
+    routing::{get, post, put, delete},
     Json, Router,
 };
 use sqlx::Row;
@@ -35,6 +35,8 @@ pub fn configure() -> Router<AppState> {
         .route("/surveys/bulk-import/profiles", get(list_profiles))
         .route("/surveys/bulk-import/profiles", post(create_profile))
         .route("/surveys/bulk-import/profiles/:profile_id", get(get_profile))
+        .route("/surveys/bulk-import/profiles/:profile_id", put(update_profile))
+        .route("/surveys/bulk-import/profiles/:profile_id", delete(delete_profile))
         .route("/surveys/bulk-import/profiles/:profile_id/use", post(use_profile))
 }
 
@@ -287,7 +289,7 @@ pub async fn import_async(
 pub async fn get_status(
     State(state): State<AppState>,
     Path(job_id): Path<Uuid>,
-) -> Result<Json<ImportJob>, (StatusCode, String)> {
+) -> Result<Json<ImportJobResponse>, (StatusCode, String)> {
     let row = sqlx::query(
         r#"
         SELECT 
@@ -332,7 +334,7 @@ pub async fn get_status(
         _ => ImportStatus::Pending,
     };
     
-    let geoloc_mode = match record.geoloc_mode.as_str() {
+    let _geoloc_mode = match record.geoloc_mode.as_str() {
         "exact" => GeolocationMode::Exact,
         "centroid" => GeolocationMode::Centroid,
         "random" => GeolocationMode::Random,
@@ -345,19 +347,15 @@ pub async fn get_status(
         .and_then(|p| p.to_string().parse::<f32>().ok())
         .unwrap_or(0.0);
     
-    Ok(Json(ImportJob {
-        id: record.id,
-        filename: record.filename,
-        size_bytes: record.size_bytes,
-        content_hash: record.content_hash,
+    Ok(Json(ImportJobResponse {
+        job_id: record.id,
         status,
         progress,
-        stats,
-        geoloc_mode,
-        created_at: record.created_at.unwrap(),
+        stats: Some(stats),
+        error_message: record.error_message,
+        created_at: record.created_at,
         started_at: record.started_at,
         completed_at: record.completed_at,
-        error_message: record.error_message,
     }))
 }
 
@@ -534,15 +532,21 @@ pub async fn list_profiles(
         .filter_map(|row| {
             Some(MappingProfile {
                 id: Uuid::parse_str(&row.try_get::<String, _>("id_str").ok()?).ok()?,
-                user_id: row.try_get::<String, _>("user_id_str").ok()
-                    .and_then(|s| Uuid::parse_str(&s).ok()),
                 name: row.try_get("name").ok()?,
                 description: row.try_get("description").ok(),
                 mapping: serde_json::from_value(row.try_get("mapping_json").ok()?).ok()?,
-                created_at: row.try_get("created_at").ok()?,
-                updated_at: row.try_get("updated_at").ok(),
-                last_used_at: row.try_get("last_used_at").ok(),
-                use_count: row.try_get("use_count").ok()?,
+                geolocation: GeolocationConfig {
+                    mode: GeolocationMode::Unknown,
+                    seed: None,
+                    jitter_radius: None,
+                    adm1_fixed: None,
+                    adm2_fixed: None,
+                    adm3_fixed: None,
+                    maille_code_fixed: None,
+                },
+                created_by: row.try_get("user_id_str").ok(),
+                created_at: row.try_get("created_at").ok(),
+                is_public: false,
             })
         })
         .collect();
@@ -561,17 +565,15 @@ pub async fn create_profile(
     let row = sqlx::query(
         r#"
         INSERT INTO import_mapping_profiles (
-            user_id, name, description, mapping_json
+            name, description, mapping_json
         )
-        VALUES ($1, $2, $3, $4)
+        VALUES ($1, $2, $3)
         RETURNING
             id::text as id_str,
-            user_id::text as user_id_str,
             name, description, mapping_json,
-            created_at, updated_at, last_used_at, use_count
+            created_at
         "#
     )
-    .bind(req.user_id)
     .bind(&req.name)
     .bind(&req.description)
     .bind(&mapping_json)
@@ -581,15 +583,13 @@ pub async fn create_profile(
 
     Ok(Json(MappingProfile {
         id: Uuid::parse_str(&row.try_get::<String, _>("id_str").unwrap()).unwrap(),
-        user_id: row.try_get::<String, _>("user_id_str").ok()
-            .and_then(|s| Uuid::parse_str(&s).ok()),
         name: row.try_get("name").unwrap(),
         description: row.try_get("description").ok(),
         mapping: serde_json::from_value(row.try_get("mapping_json").unwrap()).unwrap(),
-        created_at: row.try_get("created_at").unwrap(),
-        updated_at: row.try_get("updated_at").ok(),
-        last_used_at: row.try_get("last_used_at").ok(),
-        use_count: row.try_get("use_count").unwrap(),
+        geolocation: req.geolocation,
+        created_by: None,
+        created_at: row.try_get("created_at").ok(),
+        is_public: false,
     }))
 }
 
@@ -615,16 +615,75 @@ pub async fn get_profile(
 
     Ok(Json(MappingProfile {
         id: Uuid::parse_str(&row.try_get::<String, _>("id_str").unwrap()).unwrap(),
-        user_id: row.try_get::<String, _>("user_id_str").ok()
-            .and_then(|s| Uuid::parse_str(&s).ok()),
         name: row.try_get("name").unwrap(),
         description: row.try_get("description").ok(),
         mapping: serde_json::from_value(row.try_get("mapping_json").unwrap()).unwrap(),
-        created_at: row.try_get("created_at").unwrap(),
-        updated_at: row.try_get("updated_at").ok(),
-        last_used_at: row.try_get("last_used_at").ok(),
-        use_count: row.try_get("use_count").unwrap(),
+        geolocation: GeolocationConfig {
+            mode: GeolocationMode::Unknown,
+            seed: None,
+            jitter_radius: None,
+            adm1_fixed: None,
+            adm2_fixed: None,
+            adm3_fixed: None,
+            maille_code_fixed: None,
+        },
+        created_by: row.try_get("user_id_str").ok(),
+        created_at: row.try_get("created_at").ok(),
+        is_public: false,
     }))
+}
+
+pub async fn update_profile(
+    State(state): State<AppState>,
+    Path(profile_id): Path<Uuid>,
+    Json(request): Json<UpdateMappingProfileRequest>,
+) -> Result<Json<MappingProfile>, (StatusCode, String)> {
+    let _ = sqlx::query(
+        r#"
+        UPDATE import_mapping_profiles
+        SET name = $1, description = $2, mapping_json = $3, updated_at = now()
+        WHERE id = $4
+        "#
+    )
+    .bind(&request.name)
+    .bind(&request.description)
+    .bind(serde_json::to_value(&request.mapping).unwrap())
+    .bind(profile_id)
+    .execute(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    
+    Ok(Json(MappingProfile {
+        id: profile_id,
+        name: request.name,
+        description: request.description,
+        mapping: request.mapping,
+        geolocation: request.geolocation,
+        created_by: None,
+        created_at: None,
+        is_public: false,
+    }))
+}
+
+pub async fn delete_profile(
+    State(state): State<AppState>,
+    Path(profile_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let _ = sqlx::query(
+        r#"
+        DELETE FROM import_mapping_profiles
+        WHERE id = $1
+        "#
+    )
+    .bind(profile_id)
+    .execute(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Profil supprimé"
+    })))
 }
 
 pub async fn use_profile(

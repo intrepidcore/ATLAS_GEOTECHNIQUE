@@ -25,6 +25,7 @@ pub struct NewSurveyGeotechRequest {
     pub use_commune_centroid: Option<bool>,
     pub essais_par_profondeur: Vec<EssaisProfondeur>,
     pub classifications_par_profondeur: Option<Vec<ClassificationsProfondeur>>,
+    #[allow(dead_code)]
     pub snap_to_grid: Option<bool>,
 }
 

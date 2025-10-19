@@ -148,6 +148,7 @@ pub struct ListSurveysQuery {
 }
 
 #[derive(Deserialize)]
+#[allow(dead_code)]
 pub struct GeocodeRequest {
     pub lon: Option<f64>,
     pub lat: Option<f64>,

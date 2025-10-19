@@ -17,14 +17,16 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ImportJob {
+    #[allow(dead_code)]
     pub import_id: Uuid,
     pub rows: Vec<ParsedRow>,
     pub mapping: MappingConfig,
     pub geoloc_config: GeolocationConfig,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct JobStatus {
+    #[allow(dead_code)]
     pub import_id: Uuid,
     pub status: ImportStatus,
     pub progress: f32,
@@ -106,11 +108,13 @@ impl JobQueue {
     }
 
     /// Récupérer statut d'un job
+    #[allow(dead_code)]
     pub async fn get_status(&self, import_id: &Uuid) -> Option<JobStatus> {
         self.jobs.read().await.get(import_id).cloned()
     }
 
     /// Annuler un job (marque comme cancelled, mais ne stoppe pas vraiment)
+    #[allow(dead_code)]
     pub async fn cancel(&self, import_id: &Uuid) -> Result<()> {
         if let Some(status) = self.jobs.write().await.get_mut(import_id) {
             if status.status == ImportStatus::Running {
@@ -122,6 +126,7 @@ impl JobQueue {
     }
 
     /// Nettoyer jobs terminés (garder seulement 1000 derniers)
+    #[allow(dead_code)]
     pub async fn cleanup_old_jobs(&self) {
         let mut jobs = self.jobs.write().await;
 
@@ -147,6 +152,7 @@ impl JobQueue {
     }
 
     /// Lister tous les jobs actifs
+    #[allow(dead_code)]
     pub async fn list_active_jobs(&self) -> Vec<JobStatus> {
         self.jobs.read().await.values()
             .filter(|s| matches!(s.status, ImportStatus::Pending | ImportStatus::Running))
@@ -193,7 +199,7 @@ async fn process_import_job(
                 Ok(stats) => {
                     status.status = if stats.errors == 0 {
                         ImportStatus::Succeeded
-                    } else if stats.succeeded > 0 {
+                    } else if stats.valid_rows > 0 {
                         ImportStatus::Partial
                     } else {
                         ImportStatus::Failed

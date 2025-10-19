@@ -4,12 +4,11 @@
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::IntoResponse,
     Json,
 };
-use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use chrono::NaiveDate;
 use uuid::Uuid;
 
 use crate::AppState;
@@ -150,7 +149,7 @@ pub async fn create_survey_adm(
     };
     
     // Créer le sondage selon le mode de localisation
-    let (survey_id, geom_wkt, is_geocoded, location_accuracy, maille_code) = match payload.location_mode {
+    let (survey_id, _geom_wkt, is_geocoded, location_accuracy, maille_code) = match payload.location_mode {
         LocationMode::Unknown => {
             // Mode unknown: pas de geom, pas de maille
             let survey_id = Uuid::new_v4();

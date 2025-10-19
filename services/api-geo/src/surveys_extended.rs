@@ -240,6 +240,7 @@ pub async fn create_survey_v2(
 }
 
 /// POST /surveys/:id/geocode
+#[allow(dead_code)]
 pub async fn geocode_survey(
     Path(id): Path<String>,
     State(state): State<AppState>,
