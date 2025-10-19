@@ -1,14 +1,14 @@
 // ============================================================================
-// Matcher: Matching ADM3 par nom avec fuzzy search (VERSION SIMPLIFIÉE)
+// Matcher: Matching ADM3 par nom avec fuzzy search (VERSION CORRIGÉE)
 // ============================================================================
 
 use super::types::*;
 use anyhow::Result;
-use sqlx::{PgPool, Executor};
+use sqlx::{PgPool, Executor, Row};
 use uuid::Uuid;
 
 // ============================================================================
-// MATCHING ADM3 SIMPLIFIÉ (sans jointures pour éviter problèmes schéma)
+// MATCHING ADM3 SIMPLIFIÉ
 // ============================================================================
 
 pub async fn match_adm3(
@@ -17,39 +17,44 @@ pub async fn match_adm3(
     _adm2_hint: Option<&str>,
     _adm1_hint: Option<&str>,
 ) -> Result<Vec<AdmMatch>> {
-    // Recherche simple par similarité
-    let results = sqlx::query!(
+    // Utiliser requête dynamique pour éviter problèmes sqlx::query!
+    let rows = sqlx::query(
         r#"
         SELECT 
-            gid as id,
-            name_3 as name,
-            similarity(name_3, $1) as "score!"
+            id::text as id_str,
+            name,
+            similarity(name, $1) as score
         FROM adm3
-        WHERE similarity(name_3, $1) > 0.75
+        WHERE similarity(name, $1) > 0.75
         ORDER BY score DESC
         LIMIT 5
-        "#,
-        localite
+        "#
     )
+    .bind(localite)
     .fetch_all(pool)
     .await?;
     
     let mut matches = Vec::new();
-    for row in results {
-        let confidence = if row.score >= 0.95 {
+    for row in rows {
+        let id_str: String = row.try_get("id_str")?;
+        let id = Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4());
+        let name: String = row.try_get("name")?;
+        let score: f32 = row.try_get("score")?;
+        
+        let confidence = if score >= 0.95 {
             MatchConfidence::High
-        } else if row.score >= 0.85 {
+        } else if score >= 0.85 {
             MatchConfidence::Medium
         } else {
             MatchConfidence::Low
         };
         
         matches.push(AdmMatch {
-            id: Uuid::new_v4(), // Temporaire - utiliser gid
-            name: row.name,
+            id,
+            name,
             adm2_name: None,
             adm1_name: None,
-            score: row.score,
+            score,
             confidence,
         });
     }
@@ -66,38 +71,48 @@ pub async fn match_adm2(
     adm2_name: &str,
     _adm1_hint: Option<&str>,
 ) -> Result<Option<Uuid>> {
-    let result = sqlx::query!(
+    let row = sqlx::query(
         r#"
-        SELECT gid
+        SELECT id::text as id_str
         FROM adm2
-        WHERE unaccent(lower(name_2)) = unaccent(lower($1))
+        WHERE unaccent(lower(name)) = unaccent(lower($1))
         LIMIT 1
-        "#,
-        adm2_name
+        "#
     )
+    .bind(adm2_name)
     .fetch_optional(pool)
     .await?;
     
-    Ok(result.map(|_| Uuid::new_v4())) // Temporaire
+    if let Some(r) = row {
+        let id_str: String = r.try_get("id_str")?;
+        Ok(Some(Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4())))
+    } else {
+        Ok(None)
+    }
 }
 
 pub async fn match_adm1(
     pool: &PgPool,
     adm1_name: &str,
 ) -> Result<Option<Uuid>> {
-    let result = sqlx::query!(
+    let row = sqlx::query(
         r#"
-        SELECT gid
+        SELECT id::text as id_str
         FROM adm1
-        WHERE unaccent(lower(name_1)) = unaccent(lower($1))
+        WHERE unaccent(lower(name)) = unaccent(lower($1))
         LIMIT 1
-        "#,
-        adm1_name
+        "#
     )
+    .bind(adm1_name)
     .fetch_optional(pool)
     .await?;
     
-    Ok(result.map(|_| Uuid::new_v4())) // Temporaire
+    if let Some(r) = row {
+        let id_str: String = r.try_get("id_str")?;
+        Ok(Some(Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4())))
+    } else {
+        Ok(None)
+    }
 }
 
 // ============================================================================
@@ -111,22 +126,30 @@ pub async fn match_maille<'a, E>(
 where
     E: Executor<'a, Database = sqlx::Postgres>,
 {
-    let result = sqlx::query!(
+    let row = sqlx::query(
         r#"
         SELECT 
-            gid,
-            ST_X(ST_Centroid(geom)) as "lon!",
-            ST_Y(ST_Centroid(geom)) as "lat!"
+            id::text as id_str,
+            ST_X(ST_Centroid(geom)) as lon,
+            ST_Y(ST_Centroid(geom)) as lat
         FROM mailles
         WHERE code = $1
         LIMIT 1
-        "#,
-        maille_code
+        "#
     )
+    .bind(maille_code)
     .fetch_optional(executor)
     .await?;
     
-    Ok(result.map(|r| (Uuid::new_v4(), r.lon, r.lat))) // Temporaire
+    if let Some(r) = row {
+        let id_str: String = r.try_get("id_str")?;
+        let id = Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4());
+        let lon: f64 = r.try_get("lon")?;
+        let lat: f64 = r.try_get("lat")?;
+        Ok(Some((id, lon, lat)))
+    } else {
+        Ok(None)
+    }
 }
 
 // ============================================================================
@@ -135,23 +158,60 @@ where
 
 pub async fn get_adm3_centroid<'a, E>(
     executor: E,
-    _adm3_id: Uuid,
+    adm3_id: Uuid,
 ) -> Result<Option<(f64, f64)>>
 where
     E: Executor<'a, Database = sqlx::Postgres>,
 {
-    // Version simplifiée - retourner None pour l'instant
-    Ok(None)
+    let row = sqlx::query(
+        r#"
+        SELECT 
+            ST_X(ST_Centroid(ST_Transform(geom, 25231))) as lon,
+            ST_Y(ST_Centroid(ST_Transform(geom, 25231))) as lat
+        FROM adm3
+        WHERE id = $1
+        "#
+    )
+    .bind(adm3_id)
+    .fetch_optional(executor)
+    .await?;
+    
+    if let Some(r) = row {
+        let lon: f64 = r.try_get("lon")?;
+        let lat: f64 = r.try_get("lat")?;
+        Ok(Some((lon, lat)))
+    } else {
+        Ok(None)
+    }
 }
 
 pub async fn get_adm2_centroid<'a, E>(
     executor: E,
-    _adm2_id: Uuid,
+    adm2_id: Uuid,
 ) -> Result<Option<(f64, f64)>>
 where
     E: Executor<'a, Database = sqlx::Postgres>,
 {
-    Ok(None)
+    let row = sqlx::query(
+        r#"
+        SELECT 
+            ST_X(ST_Centroid(ST_Transform(geom, 25231))) as lon,
+            ST_Y(ST_Centroid(ST_Transform(geom, 25231))) as lat
+        FROM adm2
+        WHERE id = $1
+        "#
+    )
+    .bind(adm2_id)
+    .fetch_optional(executor)
+    .await?;
+    
+    if let Some(r) = row {
+        let lon: f64 = r.try_get("lon")?;
+        let lat: f64 = r.try_get("lat")?;
+        Ok(Some((lon, lat)))
+    } else {
+        Ok(None)
+    }
 }
 
 // ============================================================================
@@ -163,8 +223,8 @@ use rand_chacha::ChaCha8Rng;
 use sha2::{Sha256, Digest};
 
 pub async fn generate_random_point_in_adm3<'a, E>(
-    _executor: E,
-    _adm3_id: Uuid,
+    executor: E,
+    adm3_id: Uuid,
     survey_code: &str,
     seed: i32,
     jitter_radius: i32,
@@ -172,32 +232,35 @@ pub async fn generate_random_point_in_adm3<'a, E>(
 where
     E: Executor<'a, Database = sqlx::Postgres>,
 {
-    // Version simplifiée - générer point aléatoire autour du centre du Togo
-    let center_lon = 1.0;
-    let center_lat = 8.5;
+    // Récupérer le centroïde
+    let centroid = get_adm3_centroid(executor, adm3_id).await?;
     
-    // Générer seed déterministe
-    let hash_input = format!("{}|{}", survey_code, seed);
-    let mut hasher = Sha256::new();
-    hasher.update(hash_input.as_bytes());
-    let hash_result = hasher.finalize();
-    
-    // Convertir hash en seed u64
-    let seed_bytes = &hash_result[..8];
-    let seed_u64 = u64::from_le_bytes(seed_bytes.try_into().unwrap());
-    
-    // Créer RNG déterministe
-    let mut rng = ChaCha8Rng::seed_from_u64(seed_u64);
-    
-    // Générer offset aléatoire dans le rayon
-    let radius_deg = (jitter_radius as f64) / 111_000.0; // ~111km par degré
-    let angle = rng.gen::<f64>() * 2.0 * std::f64::consts::PI;
-    let distance = rng.gen::<f64>() * radius_deg;
-    
-    let offset_lon = distance * angle.cos();
-    let offset_lat = distance * angle.sin();
-    
-    Ok(Some((center_lon + offset_lon, center_lat + offset_lat)))
+    if let Some((lon, lat)) = centroid {
+        // Générer seed déterministe
+        let hash_input = format!("{}|{}|{}", survey_code, seed, adm3_id);
+        let mut hasher = Sha256::new();
+        hasher.update(hash_input.as_bytes());
+        let hash_result = hasher.finalize();
+        
+        // Convertir hash en seed u64
+        let seed_bytes = &hash_result[..8];
+        let seed_u64 = u64::from_le_bytes(seed_bytes.try_into().unwrap());
+        
+        // Créer RNG déterministe
+        let mut rng = ChaCha8Rng::seed_from_u64(seed_u64);
+        
+        // Générer offset aléatoire dans le rayon
+        let radius_deg = (jitter_radius as f64) / 111_000.0; // ~111km par degré
+        let angle = rng.gen::<f64>() * 2.0 * std::f64::consts::PI;
+        let distance = rng.gen::<f64>() * radius_deg;
+        
+        let offset_lon = distance * angle.cos();
+        let offset_lat = distance * angle.sin();
+        
+        Ok(Some((lon + offset_lon, lat + offset_lat)))
+    } else {
+        Ok(None)
+    }
 }
 
 // ============================================================================
@@ -206,8 +269,22 @@ where
 
 pub async fn get_adm3_pcode(
     pool: &PgPool,
-    _adm3_id: Uuid,
+    adm3_id: Uuid,
 ) -> Result<Option<String>> {
-    // Version simplifiée
-    Ok(None)
+    let row = sqlx::query(
+        r#"
+        SELECT code
+        FROM adm3
+        WHERE id = $1
+        "#
+    )
+    .bind(adm3_id)
+    .fetch_optional(pool)
+    .await?;
+    
+    if let Some(r) = row {
+        Ok(r.try_get("code").ok())
+    } else {
+        Ok(None)
+    }
 }

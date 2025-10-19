@@ -4,7 +4,7 @@
 
 use super::types::*;
 use anyhow::{anyhow, Result};
-use sqlx::{PgPool, types::BigDecimal};
+use sqlx::{PgPool, Row, types::BigDecimal};
 use sha2::{Sha256, Digest};
 use chrono::Datelike;
 
@@ -20,29 +20,29 @@ pub async fn validate_test_value(
 ) -> Result<(bool, Option<String>, Option<String>)> {
     let valeur_bd = BigDecimal::try_from(valeur).unwrap_or_default();
     
-    let result = sqlx::query!(
+    let row = sqlx::query(
         r#"
         SELECT is_valid, error_msg, warning_msg
         FROM validate_test_value($1, $2, $3)
-        "#,
-        type_essai,
-        valeur_bd,
-        unite
+        "#
     )
+    .bind(type_essai)
+    .bind(valeur_bd)
+    .bind(unite)
     .fetch_one(pool)
     .await?;
     
     Ok((
-        result.is_valid.unwrap_or(false),
-        result.error_msg,
-        result.warning_msg,
+        row.try_get::<bool, _>("is_valid").unwrap_or(false),
+        row.try_get::<Option<String>, _>("error_msg").ok().flatten(),
+        row.try_get::<Option<String>, _>("warning_msg").ok().flatten(),
     ))
 }
 
 pub async fn get_test_type_defaults(
     pool: &PgPool,
 ) -> Result<Vec<TestTypeDefault>> {
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"
         SELECT 
             type_essai,
@@ -60,13 +60,13 @@ pub async fn get_test_type_defaults(
     .await?;
     
     let defaults = rows.into_iter().map(|r| TestTypeDefault {
-        type_essai: r.type_essai,
-        default_unit: r.default_unit,
-        min_value: r.min_value,
-        max_value: r.max_value,
-        accepted_units: r.accepted_units,
-        converter_fn: r.converter_fn,
-        description: r.description,
+        type_essai: r.try_get("type_essai").unwrap(),
+        default_unit: r.try_get("default_unit").unwrap(),
+        min_value: r.try_get("min_value").ok(),
+        max_value: r.try_get("max_value").ok(),
+        accepted_units: r.try_get("accepted_units").ok(),
+        converter_fn: r.try_get("converter_fn").ok(),
+        description: r.try_get("description").ok(),
     }).collect();
     
     Ok(defaults)
@@ -213,19 +213,19 @@ pub async fn check_duplicate_fingerprint(
     pool: &PgPool,
     fingerprint: &str,
 ) -> Result<bool> {
-    let exists = sqlx::query!(
+    let row = sqlx::query(
         r#"
         SELECT EXISTS(
             SELECT 1 FROM import_items 
             WHERE fingerprint = $1
-        ) as "exists!"
-        "#,
-        fingerprint
+        ) as exists
+        "#
     )
+    .bind(fingerprint)
     .fetch_one(pool)
     .await?;
     
-    Ok(exists.exists)
+    Ok(row.try_get::<bool, _>("exists").unwrap_or(false))
 }
 
 // ============================================================================

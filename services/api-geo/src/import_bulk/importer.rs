@@ -1,5 +1,5 @@
 // ============================================================================
-// Importer: Logique d'import dans la base de données
+// Importer: Logique d'import dans la base de données (VERSION CORRIGÉE)
 // ============================================================================
 
 use super::types::*;
@@ -7,7 +7,7 @@ use super::matcher::*;
 use super::validator::*;
 use super::transformer::*;
 use anyhow::Result;
-use sqlx::{PgPool, Postgres, Transaction};
+use sqlx::{PgPool, Postgres, Transaction, Row};
 use uuid::Uuid;
 
 // ============================================================================
@@ -23,7 +23,7 @@ pub async fn create_import_job(
     geoloc: &GeolocationConfig,
     file_blob: Option<Vec<u8>>,
 ) -> Result<Uuid> {
-    let import_id = sqlx::query!(
+    let row = sqlx::query(
         r#"
         INSERT INTO imports (
             filename, size_bytes, content_hash,
@@ -32,20 +32,19 @@ pub async fn create_import_job(
         )
         VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
         RETURNING id
-        "#,
-        filename,
-        size_bytes,
-        content_hash,
-        serde_json::to_value(mapping)?,
-        geoloc.mode.to_string(),
-        geoloc.seed,
-        file_blob
+        "#
     )
+    .bind(filename)
+    .bind(size_bytes)
+    .bind(content_hash)
+    .bind(serde_json::to_value(mapping)?)
+    .bind(geoloc.mode.to_string())
+    .bind(geoloc.seed)
+    .bind(file_blob)
     .fetch_one(pool)
-    .await?
-    .id;
+    .await?;
     
-    Ok(import_id)
+    Ok(row.try_get("id")?)
 }
 
 // ============================================================================
@@ -62,7 +61,7 @@ pub async fn update_import_status(
 ) -> Result<()> {
     let stats_json = stats.map(|s| serde_json::to_value(s)).transpose()?;
     
-    sqlx::query!(
+    sqlx::query(
         r#"
         UPDATE imports
         SET status = $2,
@@ -72,13 +71,13 @@ pub async fn update_import_status(
             started_at = COALESCE(started_at, CASE WHEN $2 = 'running' THEN now() ELSE NULL END),
             completed_at = CASE WHEN $2 IN ('succeeded', 'failed', 'partial', 'cancelled') THEN now() ELSE NULL END
         WHERE id = $1
-        "#,
-        import_id,
-        status.to_string(),
-        progress as f64,
-        stats_json,
-        error_message
+        "#
     )
+    .bind(import_id)
+    .bind(status.to_string())
+    .bind(progress as f64)
+    .bind(stats_json)
+    .bind(error_message)
     .execute(pool)
     .await?;
     
@@ -96,16 +95,16 @@ pub async fn log_import(
     message: &str,
     context: Option<serde_json::Value>,
 ) -> Result<()> {
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO import_logs (import_id, level, message, context_json)
         VALUES ($1, $2, $3, $4)
-        "#,
-        import_id,
-        level,
-        message,
-        context
+        "#
     )
+    .bind(import_id)
+    .bind(level)
+    .bind(message)
+    .bind(context)
     .execute(pool)
     .await?;
     
@@ -221,61 +220,81 @@ pub async fn import_surveys(
             }
         };
         
-        // Créer le sondage (colonnes simplifiées)
-        let survey_id = sqlx::query!(
+        // Créer le sondage avec les VRAIS noms de colonnes
+        let geom_expr = if let (Some(lon), Some(lat)) = (lon, lat) {
+            format!("ST_Transform(ST_SetSRID(ST_MakePoint({}, {}), 4326), 25231)", lon, lat)
+        } else {
+            "NULL".to_string()
+        };
+        
+        let query = format!(
             r#"
             INSERT INTO sondages (
-                code, date_sondage, source, operator,
-                lon, lat, location_mode,
+                id, code, geom, date, source, operator,
+                location_mode, is_geocoded,
+                adm1_id, adm2_id, adm3_id, maille_code,
                 import_id, import_row_idx
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            RETURNING gid as id
+            VALUES (
+                gen_random_uuid(), $1, {}, $2, $3, $4,
+                $5, $6,
+                $7, $8, $9, $10,
+                $11, $12
+            )
+            RETURNING id
             "#,
-            survey.code,
-            survey.date,
-            survey.source,
-            survey.operator,
-            lon,
-            lat,
-            location_mode,
-            import_id,
-            idx as i32
-        )
-        .fetch_one(&mut **tx)
-        .await?
-        .id;
+            geom_expr
+        );
         
+        let row = sqlx::query(&query)
+            .bind(&survey.code)
+            .bind(survey.date)
+            .bind(&survey.source)
+            .bind(&survey.operator)
+            .bind(location_mode)
+            .bind(lon.is_some() && lat.is_some())
+            .bind(survey.adm1_id)
+            .bind(survey.adm2_id)
+            .bind(survey.adm3_id)
+            .bind(&survey.maille_code)
+            .bind(import_id)
+            .bind(idx as i32)
+            .fetch_one(&mut **tx)
+            .await?;
+        
+        let survey_id: Uuid = row.try_get("id")?;
         stats.sondages += 1;
         
-        // Créer les essais
+        // Créer les essais avec les VRAIS noms de colonnes
         for test in &survey.tests {
-            let _test_id = sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO essais (
-                    sondage_id, type_essai, depth_m,
-                    valeur, unit, analyse_qualitative,
+                    id, sondage_id, type, depth_m,
+                    value, unit, analyse_qualitative,
                     is_from_import, import_id
                 )
-                VALUES ($1, $2, $3, $4, $5, $6, true, $7)
-                RETURNING gid as id
-                "#,
-                survey_id,
-                test.parsed.type_essai,
-                test.parsed.profondeur_m,
-                test.parsed.valeur,
-                test.parsed.unite,
-                test.parsed.analyse_qualitative,
-                import_id
+                VALUES (
+                    gen_random_uuid(), $1, $2, $3,
+                    $4, $5, $6,
+                    true, $7
+                )
+                "#
             )
-            .fetch_one(&mut **tx)
-            .await?
-            .id;
+            .bind(survey_id)
+            .bind(&test.parsed.type_essai)
+            .bind(test.parsed.profondeur_m)
+            .bind(test.parsed.valeur)
+            .bind(&test.parsed.unite)
+            .bind(&test.parsed.analyse_qualitative)
+            .bind(import_id)
+            .execute(&mut **tx)
+            .await?;
             
             stats.essais += 1;
             
             // Créer import_item
-            sqlx::query!(
+            sqlx::query(
                 r#"
                 INSERT INTO import_items (
                     import_id, row_idx, status,
@@ -284,23 +303,23 @@ pub async fn import_surveys(
                     warning_msg
                 )
                 VALUES ($1, $2, $3, $4, 1, $5, $6, $7)
-                "#,
-                import_id,
-                test.parsed.row_idx,
-                if test.validation_errors.is_empty() {
-                    if test.validation_warnings.is_empty() { "ok" } else { "warning" }
-                } else {
-                    "error"
-                },
-                survey_id,
-                test.fingerprint,
-                serde_json::to_value(&test.parsed).ok(),
-                if test.validation_warnings.is_empty() {
-                    None
-                } else {
-                    Some(test.validation_warnings.join("; "))
-                }
+                "#
             )
+            .bind(import_id)
+            .bind(test.parsed.row_idx)
+            .bind(if test.validation_errors.is_empty() {
+                if test.validation_warnings.is_empty() { "ok" } else { "warning" }
+            } else {
+                "error"
+            })
+            .bind(survey_id)
+            .bind(&test.fingerprint)
+            .bind(serde_json::to_value(&test.parsed).ok())
+            .bind(if test.validation_warnings.is_empty() {
+                None
+            } else {
+                Some(test.validation_warnings.join("; "))
+            })
             .execute(&mut **tx)
             .await?;
             
@@ -324,7 +343,7 @@ pub async fn process_import(
     pool: &PgPool,
     import_id: Uuid,
     rows: Vec<ParsedRow>,
-    mapping: &MappingConfig,
+    _mapping: &MappingConfig,
     geoloc: &GeolocationConfig,
 ) -> Result<ImportStats> {
     // 1. Validation

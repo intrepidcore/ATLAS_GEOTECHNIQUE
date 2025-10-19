@@ -7,7 +7,6 @@ use super::parser::*;
 use super::transformer::*;
 use super::importer::*;
 use crate::state::AppState;
-use sqlx::types::BigDecimal;
 use axum::{
     extract::{Path, Query, State, Multipart},
     http::StatusCode,
@@ -15,6 +14,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use sqlx::Row;
 use std::collections::HashMap;
 use uuid::Uuid;
 use sha2::{Sha256, Digest};
@@ -302,22 +302,36 @@ pub async fn get_status(
     State(state): State<AppState>,
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<ImportJob>, (StatusCode, String)> {
-    let record = sqlx::query_as!(
-        ImportRecord,
+    let row = sqlx::query(
         r#"
         SELECT 
-            id, filename, size_bytes, content_hash,
+            id::text as id_str, filename, size_bytes, content_hash,
             status, progress, stats_json, geoloc_mode,
             created_at, started_at, completed_at, error_message
         FROM imports
         WHERE id = $1
-        "#,
-        job_id
+        "#
     )
+    .bind(job_id)
     .fetch_optional(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .ok_or((StatusCode::NOT_FOUND, "Import not found".to_string()))?;
+    
+    let record = ImportRecord {
+        id: Uuid::parse_str(&row.try_get::<String, _>("id_str").unwrap()).unwrap(),
+        filename: row.try_get("filename").unwrap(),
+        size_bytes: row.try_get("size_bytes").unwrap(),
+        content_hash: row.try_get("content_hash").unwrap(),
+        status: row.try_get("status").unwrap(),
+        progress: row.try_get("progress").ok(),
+        stats_json: row.try_get("stats_json").ok(),
+        geoloc_mode: row.try_get("geoloc_mode").unwrap(),
+        created_at: row.try_get("created_at").ok(),
+        started_at: row.try_get("started_at").ok(),
+        completed_at: row.try_get("completed_at").ok(),
+        error_message: row.try_get("error_message").ok(),
+    };
     
     let stats: ImportStats = serde_json::from_value(record.stats_json.unwrap_or_default())
         .unwrap_or_default();
@@ -369,15 +383,15 @@ pub async fn cancel_import(
     State(state): State<AppState>,
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         UPDATE imports
         SET status = 'cancelled', completed_at = now()
         WHERE id = $1 AND status IN ('pending', 'running')
         RETURNING id
-        "#,
-        job_id
+        "#
     )
+    .bind(job_id)
     .fetch_optional(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
@@ -402,7 +416,7 @@ pub async fn get_report(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let format = params.get("format").map(|s| s.as_str()).unwrap_or("json");
     
-    let rows = sqlx::query!(
+    let rows = sqlx::query(
         r#"
         SELECT 
             row_idx, status, error_msg, warning_msg,
@@ -410,20 +424,20 @@ pub async fn get_report(
         FROM import_items
         WHERE import_id = $1
         ORDER BY row_idx
-        "#,
-        import_id
+        "#
     )
+    .bind(import_id)
     .fetch_all(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     
     let items: Vec<ImportItemReport> = rows.into_iter().map(|r| ImportItemReport {
-        row_idx: r.row_idx,
-        status: r.status,
-        error_msg: r.error_msg,
-        warning_msg: r.warning_msg,
-        created_tests_count: r.created_tests_count,
-        raw_json: r.raw_json,
+        row_idx: r.try_get("row_idx").unwrap(),
+        status: r.try_get("status").unwrap(),
+        error_msg: r.try_get("error_msg").ok(),
+        warning_msg: r.try_get("warning_msg").ok(),
+        created_tests_count: r.try_get("created_tests_count").ok(),
+        raw_json: r.try_get("raw_json").ok(),
     }).collect();
     
     if format == "csv" {
