@@ -187,7 +187,7 @@ WHERE geom IS NULL AND location_mode IS NULL;
 -- ============================================================================
 
 CREATE OR REPLACE VIEW sondages_non_geocodes AS
-SELECT 
+SELECT
   s.id,
   s.code,
   s.location_mode,
@@ -204,7 +204,7 @@ LEFT JOIN adm1 a1 ON s.adm1_id = a1.id
 LEFT JOIN adm2 a2 ON s.adm2_id = a2.id
 LEFT JOIN adm3 a3 ON s.adm3_id = a3.id
 LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
-WHERE s.location_mode = 'unknown'
+WHERE s.location_mode IN ('unknown', 'centroid', 'random')
   AND s.deleted_at IS NULL
 GROUP BY s.id, s.code, s.location_mode, s.adm1_id, s.adm2_id, s.adm3_id,
          a1.name, a2.name, a3.name, s.created_at;
@@ -222,7 +222,7 @@ COMMENT ON FUNCTION get_adm_centroid IS 'Retourne le centroïde (EPSG:25231) d''
 COMMENT ON FUNCTION get_adm_random_point IS 'Génère un point aléatoire déterministe (EPSG:25231) dans un polygone administratif';
 COMMENT ON FUNCTION find_maille_for_point IS 'Trouve la maille contenant un point donné (EPSG:25231)';
 
-COMMENT ON VIEW sondages_non_geocodes IS 'Vue des sondages en attente de géocodage (location_mode = unknown)';
+COMMENT ON VIEW sondages_non_geocodes IS 'Vue des sondages en attente de géocodage ou pouvant être re-géocodés (location_mode IN (unknown, centroid, random))';
 
 -- ============================================================================
 -- FIN DE LA MIGRATION

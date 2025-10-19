@@ -77,8 +77,6 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .essais-table td{padding:6px 4px;border-bottom:1px solid #1c284333}
 .badge-geo{font-size:10px;padding:3px 8px;border-radius:999px;background:#0bb07b22;color:var(--ok);border:1px solid #0bb07b44}
 .badge-adm{font-size:10px;padding:3px 8px;border-radius:999px;background:#8aa0b522;color:var(--muted);border:1px solid #8aa0b544}
-.badge-spt{background:#3aa6ff22;color:#3aa6ff;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
-.badge-qc{background:#0bb07b22;color:#0bb07b;padding:2px 6px;border-radius:4px;font-size:10px;font-weight:600}
 #mailleDetails{display:none}
 #mailleDetails.active{display:block;background:#0a1018;padding:10px;border-radius:8px}
 #surveyList{max-height:calc(100vh - 200px);overflow-y:auto}
@@ -119,8 +117,6 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           <select id="thematicView" class="input" style="font-size:12px">
             <option value="default">Vue par défaut</option>
             <option value="density">Densité de sondages</option>
-            <option value="spt_avg">SPT-N moyen</option>
-            <option value="qc_avg">qc moyen</option>
           </select>
         </div>
 
@@ -472,8 +468,8 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
         <div class="form-group">
           <label>Format CSV (colonnes: code, date, source, lat, lon, test_type, test_value, test_depth_m)</label>
           <textarea id="csvInput" class="input" rows="10" placeholder="code,date,source,lat,lon,test_type,test_value,test_depth_m
-BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,SPT_N,24,6.0
-BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,qc,4.2,5.0"></textarea>
+BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,Granulometrie,45.5,5.0
+BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,Atterberg_WL,38.2,5.0"></textarea>
         </div>
         
         <div class="btn-group" style="margin-top:16px">

@@ -161,8 +161,8 @@ export class GeotechnicalFormManager {
           
           <div class="form-row">
             <div class="form-group">
-              <label for="gt-type-sol">Type de Sol *</label>
-              <select id="gt-type-sol" required>
+              <label for="gt-type-sol">Type de Sol</label>
+              <select id="gt-type-sol">
                 <option value="">-- Sélectionner --</option>
                 ${TYPES_SOL.map(t => `<option value="${t}">${t}</option>`).join('')}
               </select>
@@ -191,7 +191,7 @@ export class GeotechnicalFormManager {
           
           <div class="form-row">
             <div class="form-group">
-              <label for="gt-location-mode">Mode *</label>
+              <label for="gt-location-mode">Mode <span style="color:#ff4444;">*</span></label>
               <select id="gt-location-mode" required>
                 <option value="exact">📍 Coordonnées exactes (GPS)</option>
                 <option value="unknown">❓ Position inconnue (ADM uniquement)</option>
@@ -205,7 +205,7 @@ export class GeotechnicalFormManager {
           <div id="gt-adm-section" style="display: none;">
             <div class="form-row">
               <div class="form-group">
-                <label for="gt-adm-level">Niveau ADM *</label>
+                <label for="gt-adm-level">Niveau ADM <span style="color:#ff4444;">*</span></label>
                 <select id="gt-adm-level">
                   <option value="">-- Sélectionner --</option>
                   <option value="ADM1">Région (ADM1)</option>
@@ -214,7 +214,7 @@ export class GeotechnicalFormManager {
                 </select>
               </div>
               <div class="form-group">
-                <label for="gt-adm-id">Zone ADM *</label>
+                <label for="gt-adm-id">Zone ADM <span style="color:#ff4444;">*</span></label>
                 <select id="gt-adm-id">
                   <option value="">-- Sélectionner le niveau d'abord --</option>
                 </select>
@@ -315,8 +315,8 @@ export class GeotechnicalFormManager {
         // Messages d'avertissement
         const messages: Record<string, string> = {
           unknown: 'Le sondage sera créé sans coordonnées. Vous pourrez le géocoder ultérieurement.',
-          centroid: '⚠️ Le sondage sera placé au centroïde de la zone ADM. Position approximative.',
-          random: '⚠️ Le sondage sera placé aléatoirement dans la zone ADM. À utiliser avec précaution.'
+          centroid: 'Le sondage sera placé au centroïde de la zone ADM. Vous pourrez le géocoder avec des coordonnées exactes ultérieurement.',
+          random: 'Le sondage sera placé aléatoirement dans la zone ADM. Vous pourrez le géocoder avec des coordonnées exactes ultérieurement.'
         }
         if (warningText) warningText.textContent = messages[mode] || ''
       }
@@ -720,11 +720,6 @@ export class GeotechnicalFormManager {
     const lat = parseFloat((document.getElementById('gt-lat') as HTMLInputElement)?.value)
 
     // Validation
-    if (!typeSol) {
-      this.onError('Le type de sol est obligatoire')
-      return
-    }
-
     if (this.profondeurs.size === 0) {
       this.onError('Au moins une profondeur avec essais est requise')
       return
@@ -745,7 +740,7 @@ export class GeotechnicalFormManager {
     const essais_par_profondeur: EssaiProfondeurData[] = []
     this.essaisData.forEach((mesures, profondeur) => {
       // Filtrer les mesures vides
-      const mesuresValides = mesures.filter(m => 
+      const mesuresValides = mesures.filter(m =>
         m.valeur_numerique !== undefined || m.valeur_qualitative !== undefined
       )
       if (mesuresValides.length > 0) {
@@ -755,6 +750,12 @@ export class GeotechnicalFormManager {
         })
       }
     })
+
+    // Vérifier qu'il y a au moins un essai avec des mesures valides
+    if (essais_par_profondeur.length === 0) {
+      this.onError('Au moins un essai avec des mesures valides est requis')
+      return
+    }
 
     const classifications_par_profondeur: ClassificationProfondeurData[] = []
     this.classificationsData.forEach((analyses, profondeur) => {

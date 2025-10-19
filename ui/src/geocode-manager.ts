@@ -1,5 +1,5 @@
-// Module pour gérer le géocodage des sondages non géocodés
-// Permet de lister et géocoder les sondages en mode "unknown"
+// Module pour gérer le géocodage des sondages
+// Permet de lister et géocoder les sondages en modes "unknown", "centroid" et "random"
 
 export class GeocodeManager {
   constructor(private apiUrl: string) {}

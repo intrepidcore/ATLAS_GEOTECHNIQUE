@@ -128,7 +128,7 @@ npm run build
 
 - **[API v1.3.0](docs/API_v1.3.0.md)** - Documentation complète des endpoints
 - **[Guide Utilisateur](docs/GUIDE_UTILISATEUR.md)** - Manuel d'utilisation
-- **[Roadmap v1.3.0](docs/ROADMAP_v1.3.0.md)** - Fonctionnalités implémentées
+- **[Roadmap v1.3.0](ROADMAP_v1.3.0_Pas_terminer.md)** - Fonctionnalités implémentées
 - **[Format Grille](docs/GRID_CODE_FORMAT_v0.7.0.md)** - Format des codes maille
 
 ### Endpoints Principaux
