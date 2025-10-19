@@ -5,7 +5,7 @@
 use super::types::*;
 use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;
-use encoding_rs::{Encoding, UTF_8, WINDOWS_1252, ISO_8859_1};
+use encoding_rs::{Encoding, UTF_8, WINDOWS_1252, ISO_8859_15};
 use std::collections::HashMap;
 
 // ============================================================================
@@ -48,8 +48,8 @@ pub fn detect_encoding(bytes: &[u8]) -> &'static Encoding {
         return WINDOWS_1252;
     }
     
-    // Par défaut ISO-8859-1
-    ISO_8859_1
+    // Par défaut ISO-8859-15
+    ISO_8859_15
 }
 
 /// Convertit les bytes en String UTF-8

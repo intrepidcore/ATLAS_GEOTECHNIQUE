@@ -5,10 +5,9 @@
 use super::types::*;
 use super::parser::*;
 use super::transformer::*;
-use super::validator::*;
-use super::matcher::*;
 use super::importer::*;
 use crate::state::AppState;
+use sqlx::types::BigDecimal;
 use axum::{
     extract::{Path, Query, State, Multipart},
     http::StatusCode,
@@ -47,7 +46,6 @@ pub async fn dry_run_import(
     mut multipart: Multipart,
 ) -> Result<Json<DryRunResult>, (StatusCode, String)> {
     let mut file_bytes: Option<Vec<u8>> = None;
-    let mut filename: Option<String> = None;
     let mut request: Option<ImportRequest> = None;
     
     // Parser multipart
@@ -58,7 +56,6 @@ pub async fn dry_run_import(
         
         match name.as_str() {
             "file" => {
-                filename = field.file_name().map(|s| s.to_string());
                 file_bytes = Some(field.bytes().await
                     .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
                     .to_vec());
@@ -88,7 +85,7 @@ pub async fn dry_run_import(
             for (idx, row) in raw_rows.iter().enumerate() {
                 match map_long_row(row, idx as i32, &request.mapping) {
                     Ok(parsed) => parsed_rows.push(parsed),
-                    Err(e) => {
+                    Err(_) => {
                         // Continuer même en cas d'erreur
                         continue;
                     }
@@ -344,13 +341,17 @@ pub async fn get_status(
         _ => GeolocationMode::Unknown,
     };
     
+    let progress = record.progress
+        .and_then(|p| p.to_string().parse::<f32>().ok())
+        .unwrap_or(0.0);
+    
     Ok(Json(ImportJob {
         id: record.id,
         filename: record.filename,
         size_bytes: record.size_bytes,
         content_hash: record.content_hash,
         status,
-        progress: record.progress.unwrap_or(0.0) as f32,
+        progress,
         stats,
         geoloc_mode,
         created_at: record.created_at.unwrap(),
@@ -401,8 +402,7 @@ pub async fn get_report(
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let format = params.get("format").map(|s| s.as_str()).unwrap_or("json");
     
-    let items = sqlx::query_as!(
-        ImportItemReport,
+    let rows = sqlx::query!(
         r#"
         SELECT 
             row_idx, status, error_msg, warning_msg,
@@ -417,6 +417,15 @@ pub async fn get_report(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     
+    let items: Vec<ImportItemReport> = rows.into_iter().map(|r| ImportItemReport {
+        row_idx: r.row_idx,
+        status: r.status,
+        error_msg: r.error_msg,
+        warning_msg: r.warning_msg,
+        created_tests_count: r.created_tests_count,
+        raw_json: r.raw_json,
+    }).collect();
+    
     if format == "csv" {
         let mut csv = String::from("row,status,tests_created,warnings,errors\n");
         for item in items {
@@ -424,7 +433,7 @@ pub async fn get_report(
                 "{},{},{},{},{}\n",
                 item.row_idx,
                 item.status,
-                item.created_tests_count,
+                item.created_tests_count.unwrap_or(0),
                 item.warning_msg.unwrap_or_default(),
                 item.error_msg.unwrap_or_default()
             ));
@@ -460,13 +469,15 @@ pub async fn get_template(
         _ => return Err((StatusCode::NOT_FOUND, "Template not found".to_string())),
     };
     
+    let filename = format!("template_{}.csv", template_type);
+    
     Ok((
         StatusCode::OK,
         [
-            ("content-type", "text/csv"),
-            ("content-disposition", &format!("attachment; filename=\"template_{}.csv\"", template_type))
+            ("content-type", "text/csv".to_string()),
+            ("content-disposition", format!("attachment; filename=\"{}\"", filename))
         ],
-        csv
+        csv.to_string()
     ))
 }
 

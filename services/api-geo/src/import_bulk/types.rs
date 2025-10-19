@@ -4,8 +4,7 @@
 
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
-use std::collections::HashMap;
+use sqlx::{FromRow, types::BigDecimal};
 use uuid::Uuid;
 
 // ============================================================================
@@ -124,14 +123,14 @@ pub struct ImportStats {
     pub duplicates: i32,
 }
 
-#[derive(Debug, FromRow)]
+#[derive(Debug)]
 pub struct ImportRecord {
     pub id: Uuid,
     pub filename: String,
     pub size_bytes: i32,
     pub content_hash: String,
     pub status: String,
-    pub progress: Option<f64>,
+    pub progress: Option<BigDecimal>,
     pub stats_json: Option<serde_json::Value>,
     pub geoloc_mode: String,
     pub created_at: Option<DateTime<Utc>>,
@@ -270,7 +269,7 @@ pub struct AdmCandidate {
 // DONNÉES PARSÉES
 // ============================================================================
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ParsedRow {
     pub row_idx: i32,
     pub localite: Option<String>,
@@ -323,13 +322,13 @@ pub struct GroupedSurvey {
 // RÉFÉRENTIELS
 // ============================================================================
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 pub struct TestTypeDefault {
     pub type_essai: String,
     pub default_unit: String,
-    pub min_value: Option<f64>,
-    pub max_value: Option<f64>,
-    pub accepted_units: Vec<String>,
+    pub min_value: Option<BigDecimal>,
+    pub max_value: Option<BigDecimal>,
+    pub accepted_units: Option<Vec<String>>,
     pub converter_fn: Option<String>,
     pub description: Option<String>,
 }
@@ -392,13 +391,13 @@ pub struct ImportReport {
     pub items: Vec<ImportItemReport>,
 }
 
-#[derive(Debug, Serialize, FromRow)]
+#[derive(Debug, Serialize)]
 pub struct ImportItemReport {
     pub row_idx: i32,
     pub status: String,
     pub error_msg: Option<String>,
     pub warning_msg: Option<String>,
-    pub created_tests_count: i32,
+    pub created_tests_count: Option<i32>,
     pub raw_json: Option<serde_json::Value>,
 }
 

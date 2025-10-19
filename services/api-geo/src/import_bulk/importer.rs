@@ -6,10 +6,9 @@ use super::types::*;
 use super::matcher::*;
 use super::validator::*;
 use super::transformer::*;
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use sqlx::{PgPool, Postgres, Transaction};
 use uuid::Uuid;
-use chrono::Utc;
 
 // ============================================================================
 // CRÉATION IMPORT JOB
@@ -183,10 +182,10 @@ pub async fn import_surveys(
             
             GeolocationMode::Centroid => {
                 if let Some(adm3_id) = survey.adm3_id {
-                    let centroid = get_adm3_centroid(tx, adm3_id).await?;
+                    let centroid = get_adm3_centroid(&mut **tx, adm3_id).await?;
                     (centroid.map(|c| c.0), centroid.map(|c| c.1), "centroid")
                 } else if let Some(adm2_id) = survey.adm2_id {
-                    let centroid = get_adm2_centroid(tx, adm2_id).await?;
+                    let centroid = get_adm2_centroid(&mut **tx, adm2_id).await?;
                     (centroid.map(|c| c.0), centroid.map(|c| c.1), "centroid")
                 } else {
                     (None, None, "unknown")
@@ -196,7 +195,7 @@ pub async fn import_surveys(
             GeolocationMode::Random => {
                 if let Some(adm3_id) = survey.adm3_id {
                     let point = generate_random_point_in_adm3(
-                        tx,
+                        &mut **tx,
                         adm3_id,
                         &survey.code,
                         geoloc_config.seed.unwrap_or(42),
@@ -214,7 +213,7 @@ pub async fn import_surveys(
             
             GeolocationMode::Maille => {
                 if let Some(ref maille_code) = survey.maille_code {
-                    let maille = match_maille(tx, maille_code).await?;
+                    let maille = match_maille(&mut **tx, maille_code).await?;
                     (maille.map(|m| m.1), maille.map(|m| m.2), "maille")
                 } else {
                     (None, None, "unknown")
@@ -222,30 +221,24 @@ pub async fn import_surveys(
             }
         };
         
-        // Créer le sondage
+        // Créer le sondage (colonnes simplifiées)
         let survey_id = sqlx::query!(
             r#"
             INSERT INTO sondages (
-                code, localite, date_sondage, source, operator, type_sol,
+                code, date_sondage, source, operator,
                 lon, lat, location_mode,
-                adm1_id, adm2_id, adm3_id,
                 import_id, import_row_idx
             )
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
-            RETURNING id
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            RETURNING gid as id
             "#,
             survey.code,
-            survey.localite,
             survey.date,
             survey.source,
             survey.operator,
-            survey.type_sol,
             lon,
             lat,
             location_mode,
-            survey.adm1_id,
-            survey.adm2_id,
-            survey.adm3_id,
             import_id,
             idx as i32
         )
@@ -257,15 +250,15 @@ pub async fn import_surveys(
         
         // Créer les essais
         for test in &survey.tests {
-            let test_id = sqlx::query!(
+            let _test_id = sqlx::query!(
                 r#"
                 INSERT INTO essais (
-                    sondage_id, type_essai, profondeur_m,
-                    valeur, unite, analyse_qualitative,
+                    sondage_id, type_essai, depth_m,
+                    valeur, unit, analyse_qualitative,
                     is_from_import, import_id
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, true, $7)
-                RETURNING id
+                RETURNING gid as id
                 "#,
                 survey_id,
                 test.parsed.type_essai,
@@ -345,17 +338,17 @@ pub async fn process_import(
     
     let stats = import_surveys(&mut tx, import_id, surveys, geoloc).await?;
     
-    // 4. Mise à jour statut
+    tx.commit().await?;
+    
+    // 4. Mise à jour statut (après commit)
     update_import_status(
-        &mut tx,
+        pool,
         import_id,
         ImportStatus::Succeeded,
         100.0,
         Some(&stats),
         None,
     ).await?;
-    
-    tx.commit().await?;
     
     Ok(stats)
 }

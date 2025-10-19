@@ -4,8 +4,9 @@
 
 use super::types::*;
 use anyhow::{anyhow, Result};
-use sqlx::PgPool;
+use sqlx::{PgPool, types::BigDecimal};
 use sha2::{Sha256, Digest};
+use chrono::Datelike;
 
 // ============================================================================
 // VALIDATION ESSAIS
@@ -17,13 +18,15 @@ pub async fn validate_test_value(
     valeur: f64,
     unite: Option<&str>,
 ) -> Result<(bool, Option<String>, Option<String>)> {
+    let valeur_bd = BigDecimal::try_from(valeur).unwrap_or_default();
+    
     let result = sqlx::query!(
         r#"
         SELECT is_valid, error_msg, warning_msg
         FROM validate_test_value($1, $2, $3)
         "#,
         type_essai,
-        valeur,
+        valeur_bd,
         unite
     )
     .fetch_one(pool)
@@ -39,8 +42,7 @@ pub async fn validate_test_value(
 pub async fn get_test_type_defaults(
     pool: &PgPool,
 ) -> Result<Vec<TestTypeDefault>> {
-    let defaults = sqlx::query_as!(
-        TestTypeDefault,
+    let rows = sqlx::query!(
         r#"
         SELECT 
             type_essai,
@@ -56,6 +58,16 @@ pub async fn get_test_type_defaults(
     )
     .fetch_all(pool)
     .await?;
+    
+    let defaults = rows.into_iter().map(|r| TestTypeDefault {
+        type_essai: r.type_essai,
+        default_unit: r.default_unit,
+        min_value: r.min_value,
+        max_value: r.max_value,
+        accepted_units: r.accepted_units,
+        converter_fn: r.converter_fn,
+        description: r.description,
+    }).collect();
     
     Ok(defaults)
 }
