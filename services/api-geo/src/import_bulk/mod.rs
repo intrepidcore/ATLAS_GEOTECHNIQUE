@@ -13,6 +13,10 @@ pub mod validator;
 pub mod matcher;
 pub mod transformer;
 pub mod importer;
+pub mod job_queue;
 pub mod routes;
+
+#[cfg(test)]
+mod tests;
 
 pub use routes::configure;

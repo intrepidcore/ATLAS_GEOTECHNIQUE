@@ -162,30 +162,205 @@ impl CsvParser {
 }
 
 // ============================================================================
-// PARSER XLSX (TODO Phase 3)
+// PARSER XLSX
 // ============================================================================
+
+use calamine::{Reader, Xlsx, open_workbook_from_rs, DataType};
+use std::io::Cursor;
 
 pub struct XlsxParser;
 
 impl XlsxParser {
-    pub fn parse(_bytes: &[u8]) -> Result<Vec<HashMap<String, String>>> {
-        Err(anyhow!("XLSX parsing not implemented yet - Phase 3"))
+    pub fn parse(bytes: &[u8]) -> Result<Vec<HashMap<String, String>>> {
+        // Créer curseur mémoire
+        let cursor = Cursor::new(bytes);
+
+        // Ouvrir workbook
+        let mut workbook: Xlsx<_> = open_workbook_from_rs(cursor)
+            .map_err(|e| anyhow!("Erreur ouverture XLSX: {}", e))?;
+
+        // Lire première feuille
+        let sheet_names = workbook.sheet_names();
+        if sheet_names.is_empty() {
+            return Err(anyhow!("Fichier XLSX vide (aucune feuille)"));
+        }
+
+        let sheet_name = sheet_names[0].clone();
+        let range = workbook.worksheet_range(&sheet_name)
+            .map_err(|e| anyhow!("Erreur lecture feuille: {}", e))?;
+
+        // Extraire en-têtes (première ligne non vide)
+        let mut rows_iter = range.rows();
+        let headers_row = rows_iter.next()
+            .ok_or_else(|| anyhow!("Aucune ligne trouvée dans la feuille"))?;
+
+        let headers: Vec<String> = headers_row
+            .iter()
+            .map(|cell| Self::cell_to_string(cell))
+            .collect();
+
+        if headers.is_empty() || headers.iter().all(|h| h.is_empty()) {
+            return Err(anyhow!("En-têtes vides"));
+        }
+
+        // Convertir lignes → HashMap
+        let mut rows = Vec::new();
+        for row in rows_iter {
+            // Skip lignes vides
+            if row.iter().all(|cell| matches!(cell, DataType::Empty)) {
+                continue;
+            }
+
+            let mut map = HashMap::new();
+            for (i, cell) in row.iter().enumerate() {
+                if let Some(header) = headers.get(i) {
+                    if !header.is_empty() {
+                        map.insert(header.clone(), Self::cell_to_string(cell));
+                    }
+                }
+            }
+
+            // Ne garder que les lignes avec au moins un champ
+            if !map.is_empty() {
+                rows.push(map);
+            }
+        }
+
+        Ok(rows)
     }
-    
-    pub fn get_headers(_bytes: &[u8]) -> Result<Vec<String>> {
-        Err(anyhow!("XLSX parsing not implemented yet - Phase 3"))
+
+    pub fn get_headers(bytes: &[u8]) -> Result<Vec<String>> {
+        let cursor = Cursor::new(bytes);
+        let mut workbook: Xlsx<_> = open_workbook_from_rs(cursor)
+            .map_err(|e| anyhow!("Erreur ouverture XLSX: {}", e))?;
+
+        let sheet_names = workbook.sheet_names();
+        if sheet_names.is_empty() {
+            return Err(anyhow!("Fichier XLSX vide"));
+        }
+
+        let sheet_name = sheet_names[0].clone();
+        let range = workbook.worksheet_range(&sheet_name)
+            .map_err(|e| anyhow!("Erreur lecture feuille: {}", e))?;
+
+        let headers_row = range.rows().next()
+            .ok_or_else(|| anyhow!("Aucune ligne trouvée"))?;
+
+        Ok(headers_row.iter().map(|c| Self::cell_to_string(c)).collect())
+    }
+
+    /// Convertir cellule Excel en String
+    fn cell_to_string(cell: &DataType) -> String {
+        match cell {
+            DataType::Int(i) => i.to_string(),
+            DataType::Float(f) => {
+                // Éviter notation scientifique pour petits nombres
+                if f.abs() < 1e6 && f.fract() == 0.0 {
+                    format!("{:.0}", f)
+                } else {
+                    f.to_string()
+                }
+            },
+            DataType::String(s) => s.clone(),
+            DataType::Bool(b) => b.to_string(),
+            DataType::DateTime(dt) => {
+                // Convertir Excel DateTime (nombre de jours depuis 1900)
+                // Approximation simple pour dates récentes
+                format!("{}", dt)
+            },
+            DataType::Duration(d) => d.to_string(),
+            DataType::DateTimeIso(s) => s.clone(),
+            DataType::DurationIso(s) => s.clone(),
+            DataType::Error(e) => format!("#ERROR: {:?}", e),
+            DataType::Empty => String::new(),
+        }
     }
 }
 
 // ============================================================================
-// PARSER JSON (TODO Phase 3)
+// PARSER JSON
 // ============================================================================
 
 pub struct JsonParser;
 
 impl JsonParser {
-    pub fn parse(_bytes: &[u8]) -> Result<Vec<HashMap<String, String>>> {
-        Err(anyhow!("JSON parsing not implemented yet - Phase 3"))
+    pub fn parse(bytes: &[u8]) -> Result<Vec<HashMap<String, String>>> {
+        use serde_json::Value;
+
+        // Déserialiser JSON
+        let value: Value = serde_json::from_slice(bytes)
+            .map_err(|e| anyhow!("Erreur parsing JSON: {}", e))?;
+
+        // Vérifier que c'est un array
+        let array = value.as_array()
+            .ok_or_else(|| anyhow!("Le JSON doit être un array d'objets. Format attendu: [{...}, {...}]"))?;
+
+        if array.is_empty() {
+            return Err(anyhow!("Array JSON vide"));
+        }
+
+        // Convertir chaque objet
+        let mut rows = Vec::new();
+        for (idx, item) in array.iter().enumerate() {
+            let obj = item.as_object()
+                .ok_or_else(|| anyhow!("Ligne {} : chaque élément doit être un objet JSON", idx + 1))?;
+
+            let mut map = HashMap::new();
+            for (key, val) in obj {
+                // Convertir toutes valeurs en String
+                let str_val = Self::value_to_string(val);
+                if !str_val.is_empty() {
+                    map.insert(key.clone(), str_val);
+                }
+            }
+
+            if !map.is_empty() {
+                rows.push(map);
+            }
+        }
+
+        if rows.is_empty() {
+            return Err(anyhow!("Aucune ligne valide trouvée dans le JSON"));
+        }
+
+        Ok(rows)
+    }
+
+    /// Convertir Value JSON en String
+    fn value_to_string(val: &serde_json::Value) -> String {
+        match val {
+            Value::String(s) => s.clone(),
+            Value::Number(n) => {
+                // Préserver les entiers sans décimales
+                if let Some(i) = n.as_i64() {
+                    i.to_string()
+                } else if let Some(u) = n.as_u64() {
+                    u.to_string()
+                } else if let Some(f) = n.as_f64() {
+                    if f.fract() == 0.0 && f.abs() < 1e15 {
+                        format!("{:.0}", f)
+                    } else {
+                        f.to_string()
+                    }
+                } else {
+                    n.to_string()
+                }
+            },
+            Value::Bool(b) => b.to_string(),
+            Value::Null => String::new(),
+            Value::Array(arr) => {
+                // Convertir array en string séparé par virgules
+                arr.iter()
+                    .map(Self::value_to_string)
+                    .filter(|s| !s.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            },
+            Value::Object(_) => {
+                // Sérialiser objets imbriqués en JSON compact
+                serde_json::to_string(val).unwrap_or_default()
+            }
+        }
     }
 }
 

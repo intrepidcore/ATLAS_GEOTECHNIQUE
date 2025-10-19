@@ -6,6 +6,7 @@ use super::types::*;
 use super::parser::*;
 use super::transformer::*;
 use super::importer::*;
+use super::job_queue::{JOB_QUEUE, ImportJob};
 use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State, Multipart},
@@ -221,7 +222,7 @@ pub async fn import_async(
         None
     };
     
-    let job_id = create_import_job(
+    let import_id = create_import_job(
         &state.pool,
         filename.clone(),
         file_bytes.len() as i32,
@@ -231,15 +232,12 @@ pub async fn import_async(
         file_blob,
     ).await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
-    // TODO: Lancer job async (tokio::spawn)
-    // Pour l'instant, traitement synchrone
-    
-    // Parser
+
+    // Parser fichier
     let raw_rows = parse_file(&file_bytes, &request.format)
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Erreur parsing: {}", e)))?;
-    
-    // Transformer
+
+    // Transformer données
     let mut parsed_rows = Vec::new();
     match request.mapping.structure {
         DataStructure::Long => {
@@ -253,7 +251,7 @@ pub async fn import_async(
             if let Some(ref prof_cols) = request.mapping.profondeur_cols {
                 let type_essai = request.mapping.type_essai.as_ref()
                     .ok_or((StatusCode::BAD_REQUEST, "Type essai requis".to_string()))?;
-                
+
                 for row in &raw_rows {
                     if let Ok(mut rows) = transform_large_to_long(row, prof_cols, type_essai, &request.mapping) {
                         parsed_rows.append(&mut rows);
@@ -262,35 +260,23 @@ pub async fn import_async(
             }
         }
     }
-    
-    // Process import
-    update_import_status(&state.pool, job_id, ImportStatus::Running, 0.0, None, None).await
+
+    // Créer job et soumettre à la queue
+    let job = ImportJob {
+        import_id,
+        rows: parsed_rows,
+        mapping: request.mapping,
+        geoloc_config: request.geolocation,
+    };
+
+    JOB_QUEUE.submit(job, std::sync::Arc::new(state.pool.clone())).await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
-    let stats = process_import(
-        &state.pool,
-        job_id,
-        parsed_rows,
-        &request.mapping,
-        &request.geolocation,
-    ).await
-    .map_err(|e| {
-        // Log erreur
-        let _ = update_import_status(
-            &state.pool,
-            job_id,
-            ImportStatus::Failed,
-            0.0,
-            None,
-            Some(&e.to_string()),
-        );
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
-    
+
+    // Retourner immédiatement avec job_id
     Ok(Json(ImportResponse {
-        job_id,
-        status: ImportStatus::Succeeded,
-        message: format!("{} sondages, {} essais importés", stats.sondages, stats.essais),
+        job_id: import_id,
+        status: ImportStatus::Pending,
+        message: format!("Import démarré en arrière-plan. Utilisez /status/{} pour suivre la progression.", import_id),
     }))
 }
 
@@ -383,6 +369,11 @@ pub async fn cancel_import(
     State(state): State<AppState>,
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    // Annuler dans le job queue
+    JOB_QUEUE.cancel(&job_id).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    // Mettre à jour en DB
     let result = sqlx::query(
         r#"
         UPDATE imports
@@ -395,7 +386,7 @@ pub async fn cancel_import(
     .fetch_optional(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     match result {
         Some(_) => Ok(Json(serde_json::json!({
             "success": true,
@@ -496,32 +487,170 @@ pub async fn get_template(
 }
 
 // ============================================================================
-// PROFILS (TODO Phase 2)
+// PROFILS MAPPING
 // ============================================================================
 
 pub async fn list_profiles(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<MappingProfile>>, (StatusCode, String)> {
-    Ok(Json(vec![]))
+    // Filtrer par user_id si fourni
+    let user_id = params.get("user_id").and_then(|s| Uuid::parse_str(s).ok());
+
+    let query = if let Some(uid) = user_id {
+        sqlx::query(
+            r#"
+            SELECT
+                id::text as id_str, user_id::text as user_id_str,
+                name, description, mapping_json,
+                created_at, updated_at, last_used_at, use_count
+            FROM import_mapping_profiles
+            WHERE user_id = $1
+            ORDER BY last_used_at DESC NULLS LAST, created_at DESC
+            "#
+        )
+        .bind(uid)
+    } else {
+        sqlx::query(
+            r#"
+            SELECT
+                id::text as id_str, user_id::text as user_id_str,
+                name, description, mapping_json,
+                created_at, updated_at, last_used_at, use_count
+            FROM import_mapping_profiles
+            ORDER BY use_count DESC, created_at DESC
+            LIMIT 100
+            "#
+        )
+    };
+
+    let rows = query
+        .fetch_all(&state.pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let profiles: Vec<MappingProfile> = rows
+        .iter()
+        .filter_map(|row| {
+            Some(MappingProfile {
+                id: Uuid::parse_str(&row.try_get::<String, _>("id_str").ok()?).ok()?,
+                user_id: row.try_get::<String, _>("user_id_str").ok()
+                    .and_then(|s| Uuid::parse_str(&s).ok()),
+                name: row.try_get("name").ok()?,
+                description: row.try_get("description").ok(),
+                mapping: serde_json::from_value(row.try_get("mapping_json").ok()?).ok()?,
+                created_at: row.try_get("created_at").ok()?,
+                updated_at: row.try_get("updated_at").ok(),
+                last_used_at: row.try_get("last_used_at").ok(),
+                use_count: row.try_get("use_count").ok()?,
+            })
+        })
+        .collect();
+
+    Ok(Json(profiles))
 }
 
 pub async fn create_profile(
-    State(_state): State<AppState>,
-    Json(_req): Json<CreateMappingProfileRequest>,
+    State(state): State<AppState>,
+    Json(req): Json<CreateMappingProfileRequest>,
 ) -> Result<Json<MappingProfile>, (StatusCode, String)> {
-    Err((StatusCode::NOT_IMPLEMENTED, "Not implemented yet".to_string()))
+    // Valider le mapping JSON
+    let mapping_json = serde_json::to_value(&req.mapping)
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Mapping invalide: {}", e)))?;
+
+    let row = sqlx::query(
+        r#"
+        INSERT INTO import_mapping_profiles (
+            user_id, name, description, mapping_json
+        )
+        VALUES ($1, $2, $3, $4)
+        RETURNING
+            id::text as id_str,
+            user_id::text as user_id_str,
+            name, description, mapping_json,
+            created_at, updated_at, last_used_at, use_count
+        "#
+    )
+    .bind(req.user_id)
+    .bind(&req.name)
+    .bind(&req.description)
+    .bind(&mapping_json)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(MappingProfile {
+        id: Uuid::parse_str(&row.try_get::<String, _>("id_str").unwrap()).unwrap(),
+        user_id: row.try_get::<String, _>("user_id_str").ok()
+            .and_then(|s| Uuid::parse_str(&s).ok()),
+        name: row.try_get("name").unwrap(),
+        description: row.try_get("description").ok(),
+        mapping: serde_json::from_value(row.try_get("mapping_json").unwrap()).unwrap(),
+        created_at: row.try_get("created_at").unwrap(),
+        updated_at: row.try_get("updated_at").ok(),
+        last_used_at: row.try_get("last_used_at").ok(),
+        use_count: row.try_get("use_count").unwrap(),
+    }))
 }
 
 pub async fn get_profile(
-    State(_state): State<AppState>,
-    Path(_profile_id): Path<Uuid>,
+    State(state): State<AppState>,
+    Path(profile_id): Path<Uuid>,
 ) -> Result<Json<MappingProfile>, (StatusCode, String)> {
-    Err((StatusCode::NOT_IMPLEMENTED, "Not implemented yet".to_string()))
+    let row = sqlx::query(
+        r#"
+        SELECT
+            id::text as id_str, user_id::text as user_id_str,
+            name, description, mapping_json,
+            created_at, updated_at, last_used_at, use_count
+        FROM import_mapping_profiles
+        WHERE id = $1
+        "#
+    )
+    .bind(profile_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or((StatusCode::NOT_FOUND, "Profile not found".to_string()))?;
+
+    Ok(Json(MappingProfile {
+        id: Uuid::parse_str(&row.try_get::<String, _>("id_str").unwrap()).unwrap(),
+        user_id: row.try_get::<String, _>("user_id_str").ok()
+            .and_then(|s| Uuid::parse_str(&s).ok()),
+        name: row.try_get("name").unwrap(),
+        description: row.try_get("description").ok(),
+        mapping: serde_json::from_value(row.try_get("mapping_json").unwrap()).unwrap(),
+        created_at: row.try_get("created_at").unwrap(),
+        updated_at: row.try_get("updated_at").ok(),
+        last_used_at: row.try_get("last_used_at").ok(),
+        use_count: row.try_get("use_count").unwrap(),
+    }))
 }
 
 pub async fn use_profile(
-    State(_state): State<AppState>,
-    Path(_profile_id): Path<Uuid>,
+    State(state): State<AppState>,
+    Path(profile_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
-    Err((StatusCode::NOT_IMPLEMENTED, "Not implemented yet".to_string()))
+    // Incrémenter use_count et mettre à jour last_used_at
+    let result = sqlx::query(
+        r#"
+        UPDATE import_mapping_profiles
+        SET use_count = use_count + 1,
+            last_used_at = now()
+        WHERE id = $1
+        RETURNING id
+        "#
+    )
+    .bind(profile_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    match result {
+        Some(_) => Ok(Json(serde_json::json!({
+            "success": true,
+            "message": "Profile usage tracked"
+        }))),
+        None => Err((StatusCode::NOT_FOUND, "Profile not found".to_string())),
+    }
 }
