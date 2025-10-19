@@ -16,6 +16,7 @@ mod geotechnical;
 mod audit;
 mod neighbors;
 mod exports;
+mod import_bulk;
 pub mod state;
 
 #[derive(Serialize)]
@@ -83,6 +84,8 @@ async fn main() -> anyhow::Result<()> {
         // Export endpoints
         .route("/exports/geopackage", get(exports::export_geopackage))
         .route("/exports/pdf", get(exports::export_pdf))
+        // Import bulk endpoints
+        .merge(import_bulk::configure())
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);
