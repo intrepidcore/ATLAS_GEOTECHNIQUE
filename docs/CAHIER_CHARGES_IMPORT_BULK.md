@@ -492,6 +492,7 @@ LIMIT 1
 - ⚠️ Valeurs dans les plages attendues
 
 **Plages de valeurs:**
+
 | Essai | Min | Max | Unité |
 |-------|-----|-----|-------|
 | Granulometrie | 0 | 100 | % |
@@ -917,3 +918,165 @@ R: Cliquez sur "🗺️ Géocoder les sondages" et sélectionnez le sondage.
 **Version:** 1.0  
 **Date:** 19 octobre 2025  
 **Statut:** ✅ Validé pour implémentation
+
+---
+
+
+Top ! Ton cahier des charges est très solide. Voilà mon retour rapide—ce qui est nickel ✅, les points d’attention 🔴, puis ce qu’il faut décider tout de suite ⚙️ pour éviter les mauvaises surprises.
+
+# ✅ Points forts (garde-les)
+
+- **UX pensée “QGIS-like”** (détection auto, mapping interactif, prévisualisation) → super pour l’adoption.
+    
+- **Formats “Long” recommandé** + conversion “Large→Long” intégrée → réduit 80% des frictions réelles.
+    
+- **Modes de géolocalisation** (centroïde / aléatoire / maille / unknown) → couvre les cas sans GPS.
+    
+- **Validation progressive** (erreurs vs. warnings) + prévisualisation → bon pour l’import partiel contrôlé.
+    
+- **Roadmap en sprints** (MVP → enrichissement → optimisation) → pragmatique.
+    
+- **Fuzzy matching ADM** + normalisation accents → indispensable sur les toponymes réels.
+    
+
+# 🔴 Points d’attention (risques / écueils fréquents)
+
+### Données & schéma
+
+- **Normalisation des unités** : impose des unités par défaut par `type_essai` (table de correspondance) et convertis si le fichier varie (ex. MPa vs kPa).
+    
+- **Valeurs qualitatives** : verrouille le vocabulaire (enum + mapping “Faible/Moyen/Forte/Élevé”, casse et accents inclus).
+    
+- **Idempotence** : définis une clé logique anti-doublon (ex. `fingerprint(code/localite, date, type_essai, profondeur_m, valeur)`) pour éviter doubles imports.
+    
+- **Traçabilité** : table `imports` (lot), `import_items` (ligne source → entité créée) + sauvegarde du **fichier brut** (BLOB) et du **mapping** utilisé (JSON).
+    
+- **Sondages “unknown”** : ils n’apparaissent pas sur la carte—prévois une vue/liste dédiée + compteur, sinon ils “disparaissent”.
+    
+
+### Performance & robustesse
+
+- **Gros CSV/XLSX** : lecture en streaming (évite tout-en-mémoire), chunking côté API, transactions par batch (1–5k lignes).
+    
+- **Progression & annulation** : job asynchrone (queue interne), statut (pending/running/succeeded/failed/partial), **dry-run** mode.
+    
+- **Index** : GIST sur `adm*.geom`, btree sur (`type`, `depth_m`), (`date_sondage`), (`meta->>'location_mode'`) et sur colonnes de matching (nom ADM normalisé).
+    
+- **Fuzzy matching** : limite la recherche à l’ADM parent quand fourni (réduit collisions), journalise le score, bloque <0.75.
+    
+
+### Qualité & sécurité
+
+- **Dates** : force l’ISO `YYYY-MM-DD`, détecte et refuse `DD/MM/YYYY` ambigu sans paramètre explicite.
+    
+- **CSV injection** : neutralise champs débutant par `=`, `+`, `-`, `@` si tu ré-exportes ensuite.
+    
+- **Encodage** : normalise en UTF-8 dès l’entrée, sinon accent+fuzzy = chaos.
+    
+- **RGPD/PII** : si `operator` contient des noms réels, précise la base légale + champ “source/provenance”.
+    
+- **Licences shapefiles ADM** : vérifie les droits de redistribution (si tu réexportes).
+    
+
+### Géolocalisation sans GPS
+
+- **Aléatoire déterministe** : dérive le point d’un **hash(code + seed + adm3)** → stable et reproductible.
+    
+- **Jitter borné** : respecte un tampon intérieur pour éviter les points hors polygone (zones fines côtières).
+    
+- **Maille** : si l’option “maille imposée” est cochée, vérifie la cohérence ADM↔maille (sinon warning).
+    
+
+# ⚙️ Décisions à prendre maintenant (bloquantes)
+
+1. **Clé d’unicité d’import**
+    
+    - Option A (reco) : `hash(source_file_id, row_number)` pour traçabilité + `fingerprint logique` pour anti-doublon.
+        
+2. **Politique d’unités**
+    
+    - Table `test_type_defaults(type, default_unit, min, max, converter?)`. Rejeter ou convertir ?
+        
+3. **Asynchrone vs synchrone**
+    
+    - Pour >10k lignes, **obligatoirement asynchrone** avec barre de progression + logs téléchargeables.
+        
+4. **Stratégie “unknown / centroid / random”**
+    
+    - Unknown autorisé mais **obligatoire** d’indiquer ADM au **moins jusqu’à ADM2**, sinon rejet.
+        
+5. **Gestion des collisions toponymiques**
+    
+    - Règle : si multiple matches > score, exiger confirmation utilisateur en étape “mapping”.
+        
+
+# 🚀 Quick wins (peu d’effort, gros impact)
+
+- **Mode “Dry-run”** (compte, erreurs, warnings, carte preview) avant “Importer”.
+    
+- **Templates téléchargeables** (CSV “Long” par type d’essai) + exemples.
+    
+- **Sauvegarde des “profils de mapping”** par utilisateur (réutiliser sur prochains fichiers).
+    
+- **Badge “⚑ à géocoder”** partout (liste, stats, KPI) + filtre rapide.
+    
+- **Déterminisme** pour les points aléatoires (seed + code) ⇒ évite que ça “bouge” d’un import à l’autre.
+    
+
+# 🧱 Modèle de données (compléments)
+
+- `imports(id, filename, size, content_hash, created_by, created_at, mapping_json, geoloc_mode, seed, status, stats_json)`
+    
+- `import_items(import_id, row_idx, status, error_msg, created_survey_id, created_tests, raw_json)`
+    
+- `sondages(meta)` : ajoute `location_mode`, `location_accuracy`, `import_id`, `import_row_idx`.
+    
+- `essais(meta)` : ajoute `is_from_import`, `import_id`.
+    
+
+# 📈 Observabilité & tests
+
+- **Logs structurés** (par lot, par ligne).
+    
+- **Export “rapport d’import”** (CSV/JSON) : lignes OK, warnings, erreurs avec raisons.
+    
+- **Tests** :
+    
+    - Large→Long (Granulo 1/1.5/2 + analyses VBS)
+        
+    - ADM fuzzy (avec variantes d’accents)
+        
+    - 50k lignes CSV ISO-8859-1
+        
+    - Annulation en cours d’import
+        
+    - Rejouer le même fichier (idempotence)
+        
+
+# 🖥️ UI – micro-ajouts utiles
+
+- **Stepper 3 étapes** : Fichier → Mapping → Géolocalisation & Preview → Import.
+    
+- **Mini-carte preview** (10 premiers points) selon le mode choisi.
+    
+- **Pillules d’état** : “X sondages (Y à géocoder) – Z essais – T warnings”.
+    
+- **Lien “Géocoder maintenant”** immédiat à la fin.
+    
+
+# 🧭 Risques concrets & mitigations
+
+- **ADM3 manquant ou ambigu** → exiger au moins ADM2 + afficher choix “meilleurs matches”.
+    
+- **Shapefiles multi-polygones** (îlots) → `ST_PointOnSurface` plutôt que `ST_Centroid` dans certains cas.
+    
+- **Bordure pays/mer** → `ST_Buffer(geom, -ε)` avant point-aléatoire pour éviter sorties de polygone.
+    
+- **Excel** : cellules fusionnées/formatées → impose “première ligne = en-têtes” sinon rejet clair.
+    
+
+---
+
+## Verdict
+
+Le cahier des charges est **mûr et exécutable**. En verrouillant les 5 décisions ci-dessus (unicité, unités, asynchronisme, règles ADM, collisions toponymiques) et en ajoutant dry-run + traçabilité par lot, tu auras un import **fiable, reproductible et auditable**, parfaitement aligné avec l’usage terrain.
