@@ -1,16 +1,60 @@
 # Atlas Géotechnique (Monorepo local)
 
-**Version actuelle : 0.7.0**
+**Version actuelle : 1.4.0**
 
 Ce dépôt fournit une ossature de monorepo pour un atlas géotechnique local uniquement, avec PostGIS, APIs Rust (axum), UI Vite + TS + Leaflet, et un ETL Python.
 
+## Nouveautés v1.4.0 - Import Bulk Production Ready 🚀
+
+* **Import Bulk Complet** : Système d'import massif de sondages géotechniques (CSV/XLSX/JSON)
+  - Support multi-formats : CSV (auto-détection séparateur), XLSX (via calamine), JSON
+  - Parser intelligent avec détection d'encodage (UTF-8, Latin-1, Windows-1252)
+  - Validation complète des données (coordonnées, champs requis, types)
+  - Transformation long ↔ large format automatique
+  - Détection et gestion des doublons (fingerprinting SHA-256)
+  
+* **Géolocalisation Avancée** : 5 modes de géolocalisation
+  - Exact : Coordonnées précises fournies
+  - Centroid : Centre géométrique d'une zone ADM
+  - Random : Point aléatoire dans une zone avec jitter configurable
+  - Unknown : Sondage sans coordonnées (géocodage ultérieur)
+  - Maille : Rattachement à une maille spécifique
+  
+* **Job Queue Asynchrone** : Traitement en arrière-plan
+  - File d'attente avec workers parallèles (tokio)
+  - Suivi temps réel de la progression (0-100%)
+  - Statistiques détaillées (lignes traitées, erreurs, warnings)
+  - Annulation de jobs en cours
+  - Historique des imports avec rapports détaillés
+  
+* **Profils de Mapping** : Réutilisation des configurations
+  - CRUD complet (GET/POST/PUT/DELETE)
+  - Sauvegarde mapping colonnes + géolocalisation
+  - Partage entre utilisateurs (profils publics)
+  - Compteur d'utilisation et dernière utilisation
+  
+* **Streaming Gros Fichiers** : Traitement par chunks
+  - Chunks de 1000 lignes (configurable)
+  - Batch inserts de 100 enregistrements
+  - Estimation mémoire automatique
+  - Support fichiers > 100 MB
+  
+* **API REST Complète** : 13 endpoints
+  - `/surveys/bulk-import/dry-run` : Validation sans insertion
+  - `/surveys/bulk-import/async` : Import asynchrone
+  - `/surveys/bulk-import/status/:id` : Suivi progression
+  - `/surveys/bulk-import/cancel/:id` : Annulation
+  - `/surveys/bulk-import/report/:id` : Rapport détaillé
+  - `/surveys/bulk-import/templates/:type` : Téléchargement templates
+  - `/surveys/bulk-import/profiles` : CRUD profils mapping
+
 ## Nouveautés v0.7.0
 
-* **Grille nationale Togo** : Génération automatique d'une grille couvrant tout le Togo avec des mailles carrées de ~2 km² (côté ≈ 1414.21 m), clippée au polygone du pays
-* **Seed multi-villes** : Données fictives réalistes réparties dans plusieurs villes (Lomé, Sokodé, Kara, Dapaong) avec distributions logiques de SPT_N, qc et profondeurs
-* **Export GeoJSON** : Bouton dans l'UI pour télécharger la géométrie d'une maille au format GeoJSON
-* **Endpoint `/coverage/mailles`** : FeatureCollection 4326 avec métadonnées (has_data, n_sondages, n_essais)
-* **Coloration conditionnelle** : Seules les mailles contenant des données sont colorées sur la carte
+* **Grille nationale Togo** : Génération automatique d'une grille couvrant tout le Togo avec des mailles carrées de ~2 km²
+* **Seed multi-villes** : Données fictives réalistes réparties dans plusieurs villes
+* **Export GeoJSON** : Bouton dans l'UI pour télécharger la géométrie d'une maille
+* **Endpoint `/coverage/mailles`** : FeatureCollection 4326 avec métadonnées
+* **Coloration conditionnelle** : Seules les mailles contenant des données sont colorées
 
 ## Prérequis
 - Docker + Docker Compose
