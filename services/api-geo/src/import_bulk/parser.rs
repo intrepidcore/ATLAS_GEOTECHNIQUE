@@ -2,6 +2,8 @@
 // Parser CSV/XLSX/JSON avec détection automatique
 // ============================================================================
 
+#![allow(dead_code)]
+
 use super::types::*;
 use anyhow::{anyhow, Result};
 use csv::ReaderBuilder;

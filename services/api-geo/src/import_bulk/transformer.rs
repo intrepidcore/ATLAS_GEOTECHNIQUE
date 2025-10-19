@@ -2,6 +2,8 @@
 // Transformer: Conversion Large → Long et mapping colonnes
 // ============================================================================
 
+#![allow(dead_code)]
+
 use super::types::*;
 use anyhow::{anyhow, Result};
 use chrono::NaiveDate;

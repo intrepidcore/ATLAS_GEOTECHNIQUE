@@ -2,6 +2,8 @@
 // Validator: Validation des données importées
 // ============================================================================
 
+#![allow(dead_code)]
+
 use super::types::*;
 use anyhow::{anyhow, Result};
 use sqlx::{PgPool, Row, types::BigDecimal};

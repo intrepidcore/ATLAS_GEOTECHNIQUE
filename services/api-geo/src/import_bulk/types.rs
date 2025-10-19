@@ -2,9 +2,11 @@
 // Types et structures de données pour l'import bulk
 // ============================================================================
 
+#![allow(dead_code)]
+
 use chrono::{DateTime, NaiveDate, Utc};
 use serde::{Deserialize, Serialize};
-use sqlx::{FromRow, types::BigDecimal};
+use sqlx::types::BigDecimal;
 use uuid::Uuid;
 
 // ============================================================================

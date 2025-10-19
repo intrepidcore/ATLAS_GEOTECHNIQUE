@@ -16,4 +16,3 @@ pub mod importer;
 pub mod routes;
 
 pub use routes::configure;
-pub use types::*;

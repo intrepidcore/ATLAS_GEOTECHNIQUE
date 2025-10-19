@@ -2,6 +2,8 @@
 // Matcher: Matching ADM3 par nom avec fuzzy search (VERSION CORRIGÉE)
 // ============================================================================
 
+#![allow(dead_code)]
+
 use super::types::*;
 use anyhow::Result;
 use sqlx::{PgPool, Executor, Row};

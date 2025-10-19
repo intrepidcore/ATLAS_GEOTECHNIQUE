@@ -2,6 +2,8 @@
 // Importer: Logique d'import dans la base de données (VERSION CORRIGÉE)
 // ============================================================================
 
+#![allow(dead_code)]
+
 use super::types::*;
 use super::matcher::*;
 use super::validator::*;
