@@ -93,8 +93,8 @@ pub fn validate_geolocation(
                 if lon < -1.0 || lon > 2.0 {
                     return Err(anyhow!("Longitude hors du Togo: {}", lon));
                 }
-                if lat < 6.0 || lat < 11.5 {
-                    return Err(anyhow!("Latitude hors du Togo: {}", lat));
+                if lat < 6.0 || lat > 11.5 {
+                    return Err(anyhow!("Latitude hors du Togo (6.0 - 11.5): {}", lat));
                 }
             }
         }
