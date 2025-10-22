@@ -38,6 +38,10 @@ pub fn configure() -> Router<AppState> {
         .route("/surveys/bulk-import/profiles/:profile_id", put(update_profile))
         .route("/surveys/bulk-import/profiles/:profile_id", delete(delete_profile))
         .route("/surveys/bulk-import/profiles/:profile_id/use", post(use_profile))
+        // Import géotechnique XLSX multi-feuilles
+        .route("/surveys/bulk-import/geotechnical", post(import_geotechnical_xlsx))
+        // Alias pour compatibilité UI
+        .route("/import/bulk", post(import_async))
 }
 
 // ============================================================================
@@ -712,4 +716,84 @@ pub async fn use_profile(
         }))),
         None => Err((StatusCode::NOT_FOUND, "Profile not found".to_string())),
     }
+}
+
+// ============================================================================
+// IMPORT GÉOTECHNIQUE XLSX
+// ============================================================================
+
+use super::xlsx_parser::parse_xlsx_multisheet;
+use super::geotechnical_importer::{import_geotechnical_data, GeotechnicalImportStats};
+use std::io::Cursor;
+
+#[derive(Debug, serde::Deserialize)]
+pub struct GeotechnicalImportRequest {
+    pub geolocation_mode: Option<String>,  // "exact", "centroid", "random", "unknown"
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct GeotechnicalImportResponse {
+    pub success: bool,
+    pub stats: GeotechnicalImportStats,
+    pub message: String,
+}
+
+pub async fn import_geotechnical_xlsx(
+    State(state): State<AppState>,
+    mut multipart: Multipart,
+) -> Result<Json<GeotechnicalImportResponse>, (StatusCode, String)> {
+    let mut file_bytes: Option<Vec<u8>> = None;
+    let mut geoloc_mode = "centroid".to_string();
+    
+    // Parser multipart
+    while let Some(field) = multipart.next_field().await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))? 
+    {
+        let name = field.name().unwrap_or("").to_string();
+        
+        match name.as_str() {
+            "file" => {
+                file_bytes = Some(field.bytes().await
+                    .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
+                    .to_vec());
+            }
+            "geolocation_mode" => {
+                let data = field.bytes().await
+                    .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
+                if let Ok(s) = String::from_utf8(data.to_vec()) {
+                    geoloc_mode = s;
+                }
+            }
+            _ => {}
+        }
+    }
+    
+    let file_bytes = file_bytes.ok_or((StatusCode::BAD_REQUEST, "Fichier XLSX manquant".to_string()))?;
+    
+    // Parser le fichier XLSX
+    let cursor = Cursor::new(file_bytes);
+    let xlsx_data = parse_xlsx_multisheet(cursor)
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Erreur parsing XLSX: {}", e)))?;
+    
+    // Importer les données
+    let stats = import_geotechnical_data(&state.pool, xlsx_data, &geoloc_mode).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur import: {}", e)))?;
+    
+    let success = stats.errors.is_empty();
+    let message = if success {
+        format!(
+            "Import réussi: {} sondages, {} échantillons, {} essais",
+            stats.sondages_created + stats.sondages_updated,
+            stats.echantillons_created,
+            stats.atterberg_created + stats.vbs_created + stats.proctor_created
+        )
+    } else {
+        format!("Import partiel: {} erreurs", stats.errors.len())
+    };
+    
+    Ok(Json(GeotechnicalImportResponse {
+        success,
+        stats,
+        message,
+    }))
 }

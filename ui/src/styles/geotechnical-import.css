@@ -1,0 +1,488 @@
+/* ============================================================================
+   Styles pour le wizard d'import géotechnique
+   ============================================================================ */
+
+.geotechnical-import-wizard {
+  max-width: 900px;
+  margin: 0 auto;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.wizard-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2rem;
+  position: relative;
+}
+
+.wizard-header h2 {
+  margin: 0 0 0.5rem 0;
+  font-size: 1.8rem;
+}
+
+.wizard-header .subtitle {
+  margin: 0;
+  opacity: 0.9;
+  font-size: 0.95rem;
+}
+
+.btn-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  font-size: 1.5rem;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.wizard-content {
+  padding: 2rem;
+}
+
+/* Upload Section */
+.upload-section {
+  margin-bottom: 2rem;
+}
+
+.upload-section h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.upload-zone {
+  border: 2px dashed #cbd5e0;
+  border-radius: 8px;
+  padding: 3rem 2rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #f7fafc;
+}
+
+.upload-zone:hover,
+.upload-zone.dragover {
+  border-color: #667eea;
+  background: #edf2f7;
+}
+
+.upload-icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.upload-text {
+  color: #4a5568;
+}
+
+.upload-text strong {
+  color: #2d3748;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.file-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #e6fffa;
+  border: 1px solid #81e6d9;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.file-icon {
+  font-size: 2rem;
+  color: #38b2ac;
+}
+
+.file-details {
+  flex: 1;
+}
+
+.file-details strong {
+  display: block;
+  color: #2d3748;
+}
+
+.file-details small {
+  color: #718096;
+}
+
+.btn-sm {
+  background: transparent;
+  border: none;
+  color: #e53e3e;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.btn-sm:hover {
+  background: rgba(229, 62, 62, 0.1);
+}
+
+.template-download {
+  margin-top: 1rem;
+  text-align: center;
+}
+
+.btn-link {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+}
+
+.btn-link:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+/* Geolocation Section */
+.geoloc-section {
+  margin-bottom: 2rem;
+}
+
+.geoloc-section h3 {
+  margin: 0 0 0.5rem 0;
+  color: #333;
+  font-size: 1.2rem;
+}
+
+.help-text {
+  margin: 0 0 1rem 0;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+.radio-group {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.radio-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.radio-option:hover {
+  border-color: #cbd5e0;
+  background: #f7fafc;
+}
+
+.radio-option.selected {
+  border-color: #667eea;
+  background: #edf2f7;
+}
+
+.radio-option input[type="radio"] {
+  margin-top: 0.25rem;
+  cursor: pointer;
+}
+
+.radio-content {
+  flex: 1;
+}
+
+.radio-content strong {
+  display: block;
+  color: #2d3748;
+  margin-bottom: 0.25rem;
+}
+
+.radio-content p {
+  margin: 0;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+/* Format Info */
+.format-info {
+  background: #f7fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.format-info h3 {
+  margin: 0 0 1rem 0;
+  color: #333;
+  font-size: 1.1rem;
+}
+
+.format-details {
+  display: grid;
+  gap: 1rem;
+}
+
+.format-item strong {
+  display: block;
+  color: #2d3748;
+  margin-bottom: 0.5rem;
+}
+
+.format-item ul {
+  margin: 0;
+  padding-left: 1.5rem;
+  color: #4a5568;
+}
+
+.format-item li {
+  margin-bottom: 0.25rem;
+}
+
+.format-item code {
+  background: #edf2f7;
+  padding: 0.125rem 0.375rem;
+  border-radius: 3px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.9em;
+  color: #667eea;
+}
+
+.format-item p {
+  margin: 0.5rem 0;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+/* Progress */
+.progress-section {
+  margin: 2rem 0;
+}
+
+.progress-bar {
+  height: 8px;
+  background: #e2e8f0;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  width: 0%;
+  animation: progress 2s ease-in-out infinite;
+}
+
+@keyframes progress {
+  0% { width: 0%; }
+  50% { width: 70%; }
+  100% { width: 100%; }
+}
+
+.progress-text {
+  text-align: center;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+/* Results */
+.results-section {
+  margin: 2rem 0;
+}
+
+.results {
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.results.success {
+  background: #f0fff4;
+  border: 2px solid #9ae6b4;
+}
+
+.results.has-errors {
+  background: #fff5f5;
+  border: 2px solid #fc8181;
+}
+
+.results-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.results-icon {
+  font-size: 2.5rem;
+}
+
+.results-header h3 {
+  margin: 0;
+  color: #2d3748;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.stat-card {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+}
+
+.stat-value {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #667eea;
+  margin-bottom: 0.25rem;
+}
+
+.stat-label {
+  font-size: 0.85rem;
+  color: #718096;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.warnings-section,
+.errors-section {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 6px;
+}
+
+.warnings-section {
+  background: #fffaf0;
+  border: 1px solid #fbd38d;
+}
+
+.errors-section {
+  background: #fff5f5;
+  border: 1px solid #fc8181;
+}
+
+.warnings-section h4,
+.errors-section h4 {
+  margin: 0 0 0.75rem 0;
+  color: #2d3748;
+  font-size: 1rem;
+}
+
+.warnings-section ul,
+.errors-section ul {
+  margin: 0;
+  padding-left: 1.5rem;
+}
+
+.warnings-section li,
+.errors-section li {
+  margin-bottom: 0.5rem;
+  color: #4a5568;
+  font-size: 0.9rem;
+}
+
+.error-message {
+  background: white;
+  padding: 1rem;
+  border-radius: 6px;
+  border: 1px solid #fc8181;
+}
+
+.error-message p {
+  margin: 0;
+  color: #e53e3e;
+}
+
+/* Footer */
+.wizard-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding: 1.5rem 2rem;
+  background: #f7fafc;
+  border-top: 1px solid #e2e8f0;
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: 1px solid #cbd5e0;
+  border-radius: 6px;
+  background: white;
+  color: #4a5568;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background: #f7fafc;
+  border-color: #a0aec0;
+}
+
+.btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+}
+
+.btn.primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .geotechnical-import-wizard {
+    margin: 1rem;
+  }
+
+  .wizard-header {
+    padding: 1.5rem;
+  }
+
+  .wizard-content {
+    padding: 1.5rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .wizard-footer {
+    padding: 1rem 1.5rem;
+  }
+}

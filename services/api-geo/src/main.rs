@@ -17,6 +17,7 @@ mod audit;
 mod neighbors;
 mod exports;
 mod import_bulk;
+mod thematic;
 pub mod state;
 
 #[derive(Serialize)]
@@ -86,6 +87,12 @@ async fn main() -> anyhow::Result<()> {
         .route("/exports/pdf", get(exports::export_pdf))
         // Import bulk endpoints
         .merge(import_bulk::configure())
+        // Thematic maps endpoints
+        .route("/thematic/data", get(thematic::get_thematic_data))
+        .route("/thematic/classify", post(thematic::classify_data))
+        .route("/thematic/configs", get(thematic::list_configs).post(thematic::create_config))
+        .route("/thematic/configs/:id", get(thematic::get_config).delete(thematic::delete_config))
+        .route("/thematic/palettes", get(thematic::list_palettes))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

@@ -15,6 +15,8 @@ pub mod transformer;
 pub mod importer;
 pub mod job_queue;
 pub mod routes;
+pub mod xlsx_parser;
+pub mod geotechnical_importer;
 
 #[cfg(test)]
 mod tests;

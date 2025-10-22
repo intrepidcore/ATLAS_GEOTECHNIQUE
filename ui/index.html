@@ -112,12 +112,15 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           </div>
         </div>
 
-        <div class="section">
-          <h4>🎨 Vue thématique</h4>
-          <select id="thematicView" class="input" style="font-size:12px">
-            <option value="default">Vue par défaut</option>
-            <option value="density">Densité de sondages</option>
-          </select>
+        <!-- Détection de Doublons -->
+        <div id="duplicateAlert" class="section" style="display:none">
+          <div style="background:#6b1b2c22;border:1px solid #ef476f;border-radius:8px;padding:12px">
+            <h4 style="margin:0 0 8px 0;color:#ef476f;font-size:13px">⚠️ Doublons détectés</h4>
+            <div id="duplicateContent" style="font-size:11px;color:var(--text);line-height:1.5"></div>
+            <button id="showDuplicatesBtn" class="btn" style="margin-top:8px;font-size:11px;padding:6px 10px">
+              📍 Afficher sur la carte
+            </button>
+          </div>
         </div>
 
         <div class="section">
@@ -462,14 +465,25 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
       
       <div id="importCsvView" style="display:none">
         <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">
-          Importez plusieurs sondages en une seule fois via un fichier CSV.
+          Importez plusieurs sondages géotechniques via CSV.
         </p>
         
+        <!-- File Upload -->
         <div class="form-group">
-          <label>Format CSV (colonnes: code, date, source, lat, lon, test_type, test_value, test_depth_m)</label>
-          <textarea id="csvInput" class="input" rows="10" placeholder="code,date,source,lat,lon,test_type,test_value,test_depth_m
-BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,Granulometrie,45.5,5.0
-BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,Atterberg_WL,38.2,5.0"></textarea>
+          <label>📁 Sélectionner un fichier CSV</label>
+          <input type="file" id="csvFileInput" accept=".csv,.txt" class="input" style="padding:8px">
+          <small style="display:block;margin-top:4px;color:var(--muted)">
+            Formats acceptés: CSV (max 50 MB)
+          </small>
+        </div>
+        
+        <div class="form-group">
+          <label>Format CSV (colonnes: code, date, source, lat, lon, depth_m, passant_80um, passant_2mm, wl, wp, vbs, gamma_d_max, w_opt, eg)</label>
+          <textarea id="csvInput" class="input" rows="10" placeholder="code,date,source,lat,lon,depth_m,passant_80um,passant_2mm,wl,wp,vbs,gamma_d_max,w_opt,eg
+BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,5.0,45.5,85.2,38.2,22.1,2.5,18.5,12.3,1.2
+BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,10.0,52.3,88.1,42.5,25.3,3.1,17.8,13.5,2.1
+
+Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon, depth_m"></textarea>
         </div>
         
         <div class="btn-group" style="margin-top:16px">
@@ -486,6 +500,128 @@ BULK-001,2025-01-10,Lab XYZ,6.1345,1.2123,Atterberg_WL,38.2,5.0"></textarea>
     
     <!-- Geocode Manager Modal -->
     <div id="geocodeContainer" class="modal-overlay"></div>
+    
+    <!-- Import Bulk Wizard -->
+    <div id="importBulkWizard" style="display:none"></div>
+    
+    <!-- Panneau Cartes Thématiques -->
+    <div id="thematicPanel" class="panel" style="display:none;">
+      <div class="panel-header">
+        <h3>🗺️ Cartes Thématiques</h3>
+        <button id="closeThematicPanel" class="btn-close">×</button>
+      </div>
+      
+      <div class="panel-body">
+        <!-- Catégorie -->
+        <div class="form-group">
+          <label>Catégorie</label>
+          <select id="thematicCategory">
+            <option value="all">Toutes</option>
+            <option value="density">Densité & Couverture</option>
+            <option value="granulo">Granulométrie</option>
+            <option value="atterberg">Atterberg</option>
+            <option value="vbs">Bleu de Méthylène</option>
+            <option value="proctor">Proctor</option>
+            <option value="gonflement">Gonflement</option>
+          </select>
+        </div>
+        
+        <!-- Paramètre -->
+        <div class="form-group">
+          <label>Paramètre</label>
+          <select id="thematicParameter"></select>
+          <small id="parameterDescription"></small>
+        </div>
+        
+        <!-- Type de carte -->
+        <div class="form-group">
+          <label>Type de carte</label>
+          <select id="mapType">
+            <option value="choropleth">Choroplèthe (aplats)</option>
+            <option value="proportional">Symboles proportionnels</option>
+          </select>
+        </div>
+        
+        <!-- Classification -->
+        <div class="form-group">
+          <label>Méthode de classification</label>
+          <select id="classificationMethod">
+            <option value="quantiles">Quantiles</option>
+            <option value="equal_interval">Intervalles égaux</option>
+            <option value="jenks">Jenks (seuils naturels)</option>
+            <option value="custom">Personnalisé</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Nombre de classes</label>
+          <input type="number" id="nClasses" value="5" min="3" max="10">
+        </div>
+        
+        <!-- Palette -->
+        <div class="form-group">
+          <label>Palette de couleurs</label>
+          <select id="colorPalette">
+            <option value="Blues">Bleus</option>
+            <option value="Greens">Verts</option>
+            <option value="Reds">Rouges</option>
+            <option value="RdYlGn">Rouge-Jaune-Vert</option>
+            <option value="RdBu">Rouge-Bleu</option>
+            <option value="Viridis">Viridis</option>
+          </select>
+        </div>
+        
+        <!-- Opacité -->
+        <div class="form-group">
+          <label>Opacité</label>
+          <input type="range" id="opacity" min="0" max="1" step="0.1" value="0.7">
+        </div>
+        
+        <!-- Filtres -->
+        <div class="form-group">
+          <label for="thematicFilterAdm1">Région (ADM1)</label>
+          <select id="thematicFilterAdm1" title="Sélectionner une région">
+            <option value="">Toutes</option>
+            <option value="Maritime">Maritime</option>
+            <option value="Plateaux">Plateaux</option>
+            <option value="Centrale">Centrale</option>
+            <option value="Kara">Kara</option>
+            <option value="Savanes">Savanes</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Sondages minimum</label>
+          <input type="number" id="minSondages" value="3" min="0">
+        </div>
+        
+        <!-- Actions -->
+        <div class="button-group">
+          <button id="applyThematic" class="btn-primary">📊 Appliquer</button>
+          <button id="resetThematic" class="btn-secondary">🔄 Réinitialiser</button>
+        </div>
+        
+        <!-- Statistiques -->
+        <div id="thematicStats" class="stats-box" style="display:none;">
+          <h4>Statistiques</h4>
+          <div id="statsContent"></div>
+        </div>
+        
+        <!-- Sauvegarde -->
+        <div class="button-group" style="margin-top:12px">
+          <button id="saveThematicConfig" class="btn-secondary">💾 Sauvegarder</button>
+          <button id="exportThematicGeoJSON" class="btn-secondary">📥 Export GeoJSON</button>
+        </div>
+        <div class="button-group">
+          <button id="exportThematicPNG" class="btn-secondary">🖼️ Export PNG</button>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Bouton flottant pour ouvrir le panneau -->
+    <button id="openThematicPanel" class="floating-btn" title="Cartes Thématiques">
+      🗺️
+    </button>
     
     <script>
       // Runtime overrides for API base URLs

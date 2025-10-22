@@ -2,7 +2,12 @@ import L from 'leaflet'
 import { Chart, registerables } from 'chart.js'
 import { GeotechnicalFormManager } from './geotechnical-form'
 import { GeocodeManager } from './geocode-manager'
+import { ThematicMapManager } from './thematic/thematic-maps'
+import { ThematicPanel } from './thematic/thematic-panel'
+import { ImportBulkWizard } from './import-bulk-wizard'
 import './geotechnical-form.css'
+import './thematic-maps.css'
+import './import-bulk-wizard.css'
 
 // Enregistrer tous les composants Chart.js
 Chart.register(...registerables)
@@ -30,6 +35,16 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const codeInput = document.getElementById('codeInput') as HTMLInputElement
 let gridLayer: L.GeoJSON<any> | null = null
 let shapeLayer: L.GeoJSON<any> | null = null
+let duplicateMarkers: L.CircleMarker[] = []
+let currentDuplicates: any[] = []
+
+// Exposer gridLayer globalement pour le gestionnaire de cartes thématiques
+declare global {
+  interface Window {
+    gridLayer?: L.GeoJSON<any> | null
+  }
+}
+;(window as any).gridLayer = gridLayer
 
 // --- UI helpers ---
 function toast(msg: string, kind: 'ok' | 'err' = 'ok') {
@@ -718,6 +733,9 @@ async function loadGrid(useBbox = false) {
       style: styleFeature,
       onEachFeature
     }).addTo(map)
+    
+    // Mettre à jour la référence globale
+    ;(window as any).gridLayer = gridLayer
 
     const bounds = gridLayer.getBounds()
     if (bounds.isValid() && !useBbox) map.fitBounds(bounds, { padding: [12, 12] })
@@ -1997,11 +2015,47 @@ safeAddEventListener('geocodeSurveysBtn', 'click', () => {
 // Open drawer for survey list
 safeAddEventListener('listSurveysBtn', 'click', () => openDrawer('list'))
 
-// Open drawer for CSV import
-safeAddEventListener('importCsvBtn', 'click', () => openDrawer('import'))
+// Open drawer for CSV import (old version - deprecated)
+// safeAddEventListener('importCsvBtn', 'click', () => openDrawer('import'))
+
+// Open Import Bulk Wizard (new version)
+safeAddEventListener('importCsvBtn', 'click', () => {
+  console.log('[IMPORT] Ouverture du wizard...')
+  importWizard.open()
+})
 
 // Cancel import
 safeAddEventListener('cancelImportBtn', 'click', closeDrawer)
+
+// File input handler
+safeAddEventListener('csvFileInput', 'change', async (e) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  
+  if (!file) return
+  
+  // Check file size (max 50 MB)
+  const maxSize = 50 * 1024 * 1024
+  if (file.size > maxSize) {
+    toast(`Fichier trop volumineux (max 50 MB). Taille: ${(file.size / 1024 / 1024).toFixed(2)} MB`, 'err')
+    input.value = ''
+    return
+  }
+  
+  try {
+    // Read file content
+    const text = await file.text()
+    const csvInput = document.getElementById('csvInput') as HTMLTextAreaElement
+    if (csvInput) {
+      csvInput.value = text
+      toast(`Fichier chargé: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`, 'ok')
+    }
+  } catch (error) {
+    console.error('Erreur lecture fichier:', error)
+    toast('Erreur lors de la lecture du fichier', 'err')
+    input.value = ''
+  }
+})
 
 // Process CSV import
 safeAddEventListener('processCsvBtn', 'click', async () => {
@@ -2133,20 +2187,20 @@ function renderSurveyList(surveys: any[]) {
 
   // Click to view on map
   list.querySelectorAll('.survey-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', async () => {
       const survey = surveys.find(s => s.id === card.getAttribute('data-id'))
       if (survey && survey.lat && survey.lon) {
         // Zoom et highlight
         map.setView([survey.lat, survey.lon], 15)
-        highlightMaille(survey.lat, survey.lon)
         
-        // Ajouter marqueur temporaire pulsant
+        // Ajouter un marqueur temporaire
         const tempMarker = L.circleMarker([survey.lat, survey.lon], {
-          radius: 8,
-          color: '#ff3a6f',
-          fillColor: '#ff3a6f',
-          fillOpacity: 0.8,
+          radius: 12,
+          fillColor: '#3aa6ff',
+          color: '#fff',
           weight: 3,
+          opacity: 1,
+          fillOpacity: 0.8,
           className: 'survey-marker-pulse'
         }).addTo(map)
         
@@ -2157,7 +2211,9 @@ function renderSurveyList(surveys: any[]) {
           map.removeLayer(tempMarker)
         }, 5000)
         
-        toast(`📍 ${survey.code}`)
+        // Vérifier les doublons
+        const duplicates = await checkDuplicates(survey.lat, survey.lon, survey.code)
+        showDuplicateAlert(duplicates, survey.code)
       }
     })
   })
@@ -2184,7 +2240,7 @@ async function editSurvey(surveyId: string) {
     
     openDrawer('create')
     currentSurveyId = surveyId
-    drawerTitle.textContent = '✏️ Modifier le sondage'
+    if (drawerTitle) drawerTitle.textContent = '✏️ Modifier le sondage'
     
     ;(document.getElementById('surveyCode') as HTMLInputElement).value = survey.code || ''
     ;(document.getElementById('surveyDate') as HTMLInputElement).value = survey.date || ''
@@ -2288,7 +2344,7 @@ let snapMarker: L.CircleMarker | null = null
 
 // Map click to create survey avec snapping
 map.on('click', async (e: L.LeafletMouseEvent) => {
-  if (surveyDrawer.classList.contains('open') && surveyForm.style.display !== 'none') {
+  if (surveyDrawer && surveyForm && surveyDrawer.classList.contains('open') && surveyForm.style.display !== 'none') {
     let finalLng = e.latlng.lng
     let finalLat = e.latlng.lat
     
@@ -2469,99 +2525,112 @@ function applyFilters() {
   toast(`Filtres appliqués: ${visibleCount} mailles visibles`, 'ok')
 }
 
-// --- Vues thématiques ---
-document.getElementById('thematicView')?.addEventListener('change', (e) => {
-  currentView = (e.target as HTMLSelectElement).value
-  applyThematicView()
-})
+// --- Vues thématiques (OBSOLÈTE - Remplacé par le panneau Cartes Thématiques) ---
+// Le code ci-dessous est conservé pour compatibilité mais n'est plus utilisé
+// Utilisez le bouton flottant 🗺️ pour accéder aux cartes thématiques
 
-function applyThematicView() {
-  if (!gridLayer) return
-  
-  gridLayer.eachLayer((layer: any) => {
-    const props = layer.feature?.properties
-    if (!props) return
-    
-    let color = '#cfd8e3'
-    let fillOpacity = 0.06
-    
-    switch (currentView) {
-      case 'default':
-        color = props.has_data ? '#e85d68' : '#cfd8e3'
-        fillOpacity = props.has_data ? 0.35 : 0.06
-        break
-        
-      case 'density':
-        // Densité de sondages (0 = blanc, 10+ = bleu foncé)
-        const n = props.n_sondages || 0
-        if (n === 0) {
-          color = '#e0e7ee'
-          fillOpacity = 0.06
-        } else if (n <= 2) {
-          color = '#a8d5ff'
-          fillOpacity = 0.3
-        } else if (n <= 5) {
-          color = '#5eb3ff'
-          fillOpacity = 0.5
-        } else if (n <= 10) {
-          color = '#3a8fff'
-          fillOpacity = 0.7
-        } else {
-          color = '#1a5fb8'
-          fillOpacity = 0.85
-        }
-        break
-        
-      case 'spt_avg':
-        // SPT-N moyen (vert = faible, jaune = moyen, rouge = élevé)
-        const sptAvg = props.spt_n_avg
-        if (!sptAvg) {
-          color = '#e0e7ee'
-          fillOpacity = 0.06
-        } else if (sptAvg < 10) {
-          color = '#0bb07b'
-          fillOpacity = 0.5
-        } else if (sptAvg < 30) {
-          color = '#f4b740'
-          fillOpacity = 0.6
-        } else {
-          color = '#ef476f'
-          fillOpacity = 0.7
-        }
-        break
-        
-      case 'qc_avg':
-        // qc moyen (vert = faible, jaune = moyen, rouge = élevé)
-        const qcAvg = props.qc_avg
-        if (!qcAvg) {
-          color = '#e0e7ee'
-          fillOpacity = 0.06
-        } else if (qcAvg < 2) {
-          color = '#0bb07b'
-          fillOpacity = 0.5
-        } else if (qcAvg < 5) {
-          color = '#f4b740'
-          fillOpacity = 0.6
-        } else {
-          color = '#ef476f'
-          fillOpacity = 0.7
-        }
-        break
-    }
-    
-    layer.setStyle({
-      fillColor: color,
-      fillOpacity,
-      color: props.has_data ? color : '#6b778c55',
-      weight: props.has_data ? 1.2 : 0.5
-    })
-  })
-  
-  toast(`Vue: ${currentView}`, 'ok')
-}
+// document.getElementById('thematicView')?.addEventListener('change', (e) => {
+//   currentView = (e.target as HTMLSelectElement).value
+//   applyThematicView()
+// })
+
+// function applyThematicView() { ... }
 
 // NOTE: loadGrid(false) est maintenant appelé via setTimeout() juste après sa définition (ligne 639)
 // pour éviter qu'une erreur dans les event listeners ne bloque le chargement
 
 // Initialiser la table des tests
 renderTestsTable()
+
+// Initialiser les cartes thématiques
+console.log('[INIT] Initialisation cartes thématiques...')
+const thematicManager = new ThematicMapManager(map, API_GEO)
+const thematicPanel = new ThematicPanel(thematicManager)
+console.log('[INIT] ✅ Cartes thématiques initialisées')
+
+// Initialiser le wizard d'import bulk
+console.log('[INIT] Initialisation Import Bulk Wizard...')
+const importWizard = new ImportBulkWizard('importBulkWizard', API_GEO, () => {
+  console.log('[IMPORT] Import terminé, rechargement de la grille...')
+  loadGrid(false)
+})
+console.log('[INIT] ✅ Import Bulk Wizard initialisé')
+
+// --- Détection de Doublons (Rayon 1 km) ---
+async function checkDuplicates(lat: number, lon: number, code: string) {
+  try {
+    const response = await fetch(`${API_GEO}/surveys/nearby?lat=${lat}&lon=${lon}&radius=1000&exclude=${encodeURIComponent(code)}`)
+    if (!response.ok) return []
+    
+    const data = await response.json()
+    return data.surveys || []
+  } catch (error) {
+    console.error('Erreur détection doublons:', error)
+    return []
+  }
+}
+
+function showDuplicateAlert(duplicates: any[], referenceCode: string) {
+  const alertEl = document.getElementById('duplicateAlert')
+  const contentEl = document.getElementById('duplicateContent')
+  
+  if (!alertEl || !contentEl) return
+  
+  if (duplicates.length === 0) {
+    alertEl.style.display = 'none'
+    return
+  }
+  
+  currentDuplicates = duplicates
+  
+  const message = `<strong>${duplicates.length} sondage${duplicates.length > 1 ? 's' : ''} trouvé${duplicates.length > 1 ? 's' : ''} dans un rayon de 1 km :</strong><br><br>`
+  const list = duplicates.map(d => {
+    const distance = Math.round(d.distance)
+    return `• <strong>${d.code}</strong> (${distance}m)`
+  }).join('<br>')
+  
+  contentEl.innerHTML = message + list
+  alertEl.style.display = 'block'
+}
+
+function highlightDuplicatesOnMap() {
+  // Effacer les anciens marqueurs
+  duplicateMarkers.forEach(m => map.removeLayer(m))
+  duplicateMarkers = []
+  
+  if (currentDuplicates.length === 0) return
+  
+  // Ajouter des marqueurs pour chaque doublon
+  currentDuplicates.forEach(dup => {
+    if (dup.lat && dup.lon) {
+      const marker = L.circleMarker([dup.lat, dup.lon], {
+        radius: 8,
+        fillColor: '#ef476f',
+        color: '#fff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.8
+      }).addTo(map)
+      
+      marker.bindPopup(`
+        <strong>${dup.code}</strong><br>
+        Distance: ${Math.round(dup.distance)}m<br>
+        <small>Doublon potentiel</small>
+      `)
+      
+      duplicateMarkers.push(marker)
+    }
+  })
+  
+  // Zoomer sur la zone des doublons
+  if (duplicateMarkers.length > 0) {
+    const group = L.featureGroup(duplicateMarkers)
+    map.fitBounds(group.getBounds().pad(0.2))
+    toast(`${duplicateMarkers.length} doublon(s) affiché(s)`, 'ok')
+  }
+}
+
+// Event listener pour le bouton d'affichage
+safeAddEventListener('showDuplicatesBtn', 'click', () => {
+  highlightDuplicatesOnMap()
+})

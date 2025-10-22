@@ -34,11 +34,15 @@ services:
     environment:
       DATABASE_URL: ${DATABASE_URL}
       RUST_LOG: ${RUST_LOG}
+      API_BIND: 0.0.0.0:8000
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:8001:8000"
+    # Pas de ports exposés - accès uniquement via proxy Nginx
+    # Pour debug direct: décommenter la ligne ci-dessous
+    # ports:
+    #   - "8001:8000"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
       interval: 10s
@@ -87,7 +91,12 @@ services:
       - atlas-net
 
   ui:
-    build: ./ui
+    build:
+      context: ./ui
+      args:
+        - VITE_API_GEO=${VITE_API_GEO:-/api}
+        - VITE_API_INFER=${VITE_API_INFER:-/api-infer}
+        - VITE_API_OPTI=${VITE_API_OPTI:-/api-opti}
     container_name: atlas-ui
     env_file:
       - ./.env
@@ -99,7 +108,7 @@ services:
     depends_on:
       - api-geo
     ports:
-      - "127.0.0.1:8080:80"
+      - "8080:80"  # Exposé sur toutes les interfaces pour LAN
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1/"]
       interval: 10s
