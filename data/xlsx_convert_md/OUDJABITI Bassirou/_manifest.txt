@@ -1,0 +1,9 @@
+Source: OUDJABITI Bassirou.xlsx
+Auteur: OUDJABITI Bassirou
+Conversion: 2025-10-27T11:03:17.288015
+Sheets: 21
+Total rows: 326
+
+Fichiers générés:
+- 21 fichiers CSV
+- 1 rapport Markdown compilé (OUDJABITI Bassirou.md)

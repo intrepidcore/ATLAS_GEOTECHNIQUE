@@ -1,0 +1,10 @@
+I,col_1,col_2,col_3,col_4,col_5,col_6,col_7
+,Reference,Localité,Profondeur,Teneur en eau,Wi,Is,Caractéristique
+,1,Tchamba,1,5,30.64,0.163,Gonflement faible
+,1,Tchamba,1.5,5,34.91,0.143,Gonflement moyenne
+,1,Tchamba,2,4,37.44,0.107,Gonflement moyenne
+,,,Moyenne,4.67,34.33,0.136,Gonflement faible
+,2,Alibi,1,4,35.03,0.114,Gonflement moyenne
+,2,Alibi,1.5,4,30.79,0.129,Gonflement faible
+,2,Alibi,2,7,27.14,0.258,Gonflement faible
+,,,Moyenne,5,30.99,0.161,Gonflement faible

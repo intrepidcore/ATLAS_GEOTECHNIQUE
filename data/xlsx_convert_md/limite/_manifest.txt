@@ -1,0 +1,9 @@
+Source: limite.xlsx
+Auteur: limite
+Conversion: 2025-10-27T11:03:17.067326
+Sheets: 1
+Total rows: 37
+
+Fichiers générés:
+- 1 fichiers CSV
+- 1 rapport Markdown compilé (limite.md)

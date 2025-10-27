@@ -1,0 +1,9 @@
+Source: ANYO Akouete jean-paul.xlsx
+Auteur: ANYO Akouete jean-paul
+Conversion: 2025-10-27T11:03:16.973963
+Sheets: 29
+Total rows: 497
+
+Fichiers générés:
+- 29 fichiers CSV
+- 1 rapport Markdown compilé (ANYO Akouete jean-paul.md)

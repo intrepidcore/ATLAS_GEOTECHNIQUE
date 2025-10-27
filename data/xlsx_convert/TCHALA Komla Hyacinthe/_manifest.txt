@@ -1,0 +1,9 @@
+Source: TCHALA Komla Hyacinthe.xlsx
+Auteur: TCHALA Komla Hyacinthe
+Conversion: 2025-10-27T11:12:57.830409
+Sheets: 14
+Total rows: 113
+
+Fichiers générés:
+- 14 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (TCHALA Komla Hyacinthe.md)

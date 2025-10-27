@@ -1,0 +1,9 @@
+Source: GAMBAGA Inoussa.xlsx
+Auteur: GAMBAGA Inoussa
+Conversion: 2025-10-27T11:03:17.038433
+Sheets: 14
+Total rows: 194
+
+Fichiers générés:
+- 14 fichiers CSV
+- 1 rapport Markdown compilé (GAMBAGA Inoussa.md)

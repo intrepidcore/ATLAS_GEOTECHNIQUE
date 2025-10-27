@@ -1,0 +1,11 @@
+col_0,col_1,col_2,col_3,col_4,teneur_en_eau,col_6,col_7,col_8,col_9
+,,,,,,,Grandeurs,,
+,,,Réference,Cantons,Profondeurs,Teneur en eau,WI,Ls,Caracteristiques
+,,,1,Yade,1,18.52,61.5,0.3,Gonflement élevé
+,,,1,Yade,1.5,11.66,37,0.31,Gonflement moyen
+,,,1,Yade,5,5.89,34.5,0.17,Gonflement faible
+,,,1,Yade,Moyenne,12.02,44.33,0.27,Gonflement moyen
+,,,2,Tchitchao,1,4.59,26.33,0.17,Gonflement faible
+,,,2,Tchitchao,1.5,4.26,48.5,0.09,Gonflement moyen
+,,,2,Tchitchao,5,10.14,52,0.19,Gonflement élevé
+,,,2,Tchitchao,Moyenne,6.33,33.71,0.19,Gonflement élevé

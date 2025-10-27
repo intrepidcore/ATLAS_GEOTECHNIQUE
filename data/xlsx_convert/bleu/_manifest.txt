@@ -1,0 +1,9 @@
+Source: bleu.xlsx
+Auteur: bleu
+Conversion: 2025-10-27T11:12:57.322677
+Sheets: 6
+Total rows: 76
+
+Fichiers générés:
+- 6 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (bleu.md)

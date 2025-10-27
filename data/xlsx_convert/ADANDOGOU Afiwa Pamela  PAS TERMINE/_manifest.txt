@@ -1,0 +1,9 @@
+Source: ADANDOGOU Afiwa Pamela  PAS TERMINE.xlsx
+Auteur: ADANDOGOU Afiwa Pamela  PAS TERMINE
+Conversion: 2025-10-27T11:12:57.071711
+Sheets: 24
+Total rows: 420
+
+Fichiers générés:
+- 24 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (ADANDOGOU Afiwa Pamela  PAS TERMINE.md)

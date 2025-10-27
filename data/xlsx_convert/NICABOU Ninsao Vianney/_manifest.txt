@@ -1,0 +1,9 @@
+Source: NICABOU Ninsao Vianney.xlsx
+Auteur: NICABOU Ninsao Vianney
+Conversion: 2025-10-27T11:12:57.621931
+Sheets: 29
+Total rows: 408
+
+Fichiers générés:
+- 29 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (NICABOU Ninsao Vianney.md)

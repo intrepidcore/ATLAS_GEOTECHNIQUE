@@ -1,0 +1,14 @@
+latitude,col_1,col_2,col_3,col_4,col_5,col_6
+,Référance,Localité/Cantons,profondeur,Wl,Wp,Ip
+,1,Kévé,1,53,23,30
+,1,Kévé,1.5,48,21,27
+,1,Kévé,2,51,22,29
+,1,Kévé,Moyenne,50.66,22,28.66
+,2,Assahoum,1,24,12,12
+,2,Assahoum,1.5,41,19,22
+,2,Assahoum,2,42,22,20
+,2,Assahoum,Moyenne,35.66,17.66,18
+,3,Badja,1,49,18,31
+,3,Badja,1.5,53,18,35
+,3,Badja,2,51,17,34
+,3,Badja,Moyenne,51,17.66,33.33

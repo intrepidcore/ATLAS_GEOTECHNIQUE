@@ -1,0 +1,9 @@
+Source: AKONDOR Tigana Messanh.xlsx
+Auteur: AKONDOR Tigana Messanh
+Conversion: 2025-10-27T11:03:16.891733
+Sheets: 12
+Total rows: 129
+
+Fichiers générés:
+- 12 fichiers CSV
+- 1 rapport Markdown compilé (AKONDOR Tigana Messanh.md)

@@ -1,0 +1,9 @@
+Source: TEMPLATE.xlsx
+Auteur: TEMPLATE
+Conversion: 2025-10-27T11:03:17.499435
+Sheets: 1
+Total rows: 2
+
+Fichiers générés:
+- 1 fichiers CSV
+- 1 rapport Markdown compilé (TEMPLATE.md)

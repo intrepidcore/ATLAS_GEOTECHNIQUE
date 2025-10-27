@@ -1,0 +1,15 @@
+col_0,col_1,col_2,col_3,col_4,col_5,col_6,col_7,col_8,col_9,col_10,col_11,col_12,col_13
+,,,,,,REFERENCE,QUARTIER,PROFONDEURS,,,GRANDEURS,,CARACTERISTIQUES
+,,,,,,,,,,TENEUR en eau ,Wi,Is,
+,,,,,,1,Apeyeme,1,,8.09,41.8,0.19,gonflement moyen
+,,,,,,,Apeyeme,1.5,,7.88,43.39,0.18,gonflement moyen
+,,,,,,,Apeyeme,2,,7.25,40.91,0.18,gonflement moyen
+,,,,,,,,MOYENNE,,7.74,42.03,0.18,gonflement moyen
+,,,,,,2,DJOGBEKOPE,1,,7.3,46.25,0.16,gonflement moyen
+,,,,,,,DJOGBEKOPE,1.5,,8.17,44.49,0.18,gonflement moyen
+,,,,,,,DJOGBEKOPE,2,,8.48,41.64,0.2,gonflement moyen
+,,,,,,,,MOYENNE,,7.98,44.13,0.18,gonflement moyen
+,,,,,,3,BADOME,1,,13.79,69.96,0.19,gonflement eleve
+,,,,,,,BADOME,1.5,,4.39,37.74,0.12,gonflement moyen
+,,,,,,,BADOME,2,,2.46,46.05,0.05,gonflement moyen
+,,,,,,,,MOYENNE,,6.88,51.31,0.12,gonflement eleve

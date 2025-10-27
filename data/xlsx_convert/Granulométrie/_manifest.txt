@@ -1,0 +1,9 @@
+Source: Granulométrie.xlsx
+Auteur: Granulométrie
+Conversion: 2025-10-27T11:12:57.385792
+Sheets: 6
+Total rows: 82
+
+Fichiers générés:
+- 6 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (Granulométrie.md)

@@ -1,0 +1,9 @@
+Source: NABIYOU Warou.xlsx
+Auteur: NABIYOU Warou
+Conversion: 2025-10-27T11:12:57.430772
+Sheets: 10
+Total rows: 62
+
+Fichiers générés:
+- 10 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (NABIYOU Warou.md)

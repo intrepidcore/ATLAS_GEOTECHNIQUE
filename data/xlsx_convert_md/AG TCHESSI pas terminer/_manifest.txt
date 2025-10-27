@@ -1,0 +1,9 @@
+Source: AG TCHESSI pas terminer.xlsx
+Auteur: AG TCHESSI pas terminer
+Conversion: 2025-10-27T11:03:16.860874
+Sheets: 21
+Total rows: 385
+
+Fichiers générés:
+- 21 fichiers CSV
+- 1 rapport Markdown compilé (AG TCHESSI pas terminer.md)

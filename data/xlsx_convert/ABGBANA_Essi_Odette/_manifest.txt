@@ -1,0 +1,9 @@
+Source: ABGBANA_Essi_Odette.xlsx
+Auteur: ABGBANA_Essi_Odette
+Conversion: 2025-10-27T11:12:56.997452
+Sheets: 0
+Total rows: 0
+
+Fichiers générés:
+- 0 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (ABGBANA_Essi_Odette.md)

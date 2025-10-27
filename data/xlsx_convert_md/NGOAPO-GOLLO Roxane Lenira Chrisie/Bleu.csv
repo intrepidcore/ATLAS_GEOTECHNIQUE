@@ -1,0 +1,10 @@
+col_0,col_1,col_2,col_3,col_4,col_5,bleu,col_7,col_8
+,,,,Réference,Cantons,Profondeurs,VBS,Caractéristiques
+,,,,1,Yade,1,7.29,Sol argileux
+,,,,1,Yade,1.5,7.94,Sol argileux
+,,,,1,Yade,5,6.84,Sol argileux
+,,,,1,Yade,Moyenne,7.36,Sol argileux
+,,,,2,Tchitchao,1,6.8,Sol argileux
+,,,,2,Tchitchao,1.5,8.62,Sol  très argileux
+,,,,2,Tchitchao,5,6.68,Sol argileux
+,,,,2,Tchitchao,Moyenne,7.37,Sol argileux

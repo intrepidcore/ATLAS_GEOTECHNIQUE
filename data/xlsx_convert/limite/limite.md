@@ -1,0 +1,62 @@
+# limite
+
+**Auteur/Source:** limite.xlsx
+
+**Date de conversion:** 2025-10-27 11:12:57
+
+**Nombre de feuilles:** 1
+
+---
+
+## Table des matières
+
+1. [3-13](#3-13)
+
+---
+
+
+## 3-13 {#3-13}
+
+**Lignes de données:** 37
+
+| col_0 | col_1 | col_2 | col_3 | col_4 | col_5 | col_6 | col_7 | col_8 |
+|---|---|---|---|---|---|---|---|---|
+|  |  | N | Localité | Profondeur | WL | WP | IP | Analyse suivant WL |
+|  |  | 1 | Adjengré (Pounpouni) | 1 | 50.34 | 22.64 | 27.7 | Elevé |
+|  |  | 1 | Adjengré (Pounpouni) | 1.5 | 65.68 | 36.64 | 29.04 | Elevé |
+|  |  | 1 | Adjengré (Pounpouni) | 2 | 58.42 | 24.61 | 33.81 | Elevé |
+|  |  | 2 | Agotivé | 1 | 48.65 | 19.11 | 29.54 | Moyen |
+|  |  | 2 | Agotivé | 1.5 | 51.12 | 17.56 | 33.56 | Elevé |
+|  |  | 2 | Agotivé | 2 | 51 | 18.95 | 32.05 | Elevé |
+|  |  | 3 | Anié | 1 | 61.56 | 24.11 | 37.45 | Elevé |
+|  |  | 3 | Anié | 1.5 | 55.08 | 21.07 | 34.01 | Elevé |
+|  |  | 3 | Anié | 2 | 54.19 | 17.5 | 36.69 | Elevé |
+|  |  | 4 | Apéyéyémé | 1 | 41.8 | 22 | 19.8 | Moyen |
+|  |  | 4 | Apéyéyémé | 1.5 | 43.39 | 23 | 20.39 | Moyen |
+|  |  | 4 | Apéyéyémé | 2 | 40.91 | 22 | 18.91 | Moyen |
+|  |  | 5 | Badomé | 1 | 69.96 | 37 | 32.96 | Elevé |
+|  |  | 5 | Badomé | 1.5 | 37.74 | 19 | 18.74 | Moyen |
+|  |  | 5 | Badomé | 2 | 46.5 | 31 | 15.5 | Moyen |
+|  |  | 6 | Kadambara | 1 | 32.91 | 11.93 | 20.98 | Faible |
+|  |  | 6 | Kadambara | 1.5 | 37.87 | 12.12 | 25.75 | Moyen |
+|  |  | 6 | Kadambara | 2 | 43.38 | 13.37 | 30.01 | Moyen |
+|  |  | 7 | Kamina Barrage | 1 | 45.04 | 11.28 | 33.76 | Moyen |
+|  |  | 7 | Kamina Barrage | 1.5 | 47.91 | 9.91 | 38 | Moyen |
+|  |  | 7 | Kamina Barrage | 2 | 51.79 | 13.59 | 38.2 | Elevé |
+|  |  | 8 | Kamina Dakré | 1 | 48.27 | 19.52 | 28.75 | Moyen |
+|  |  | 8 | Kamina Dakré | 1.5 | 53.93 | 20.48 | 33.45 | Elevé |
+|  |  | 8 | Kamina Dakré | 2 | 54.81 | 15 | 39.81 | Elevé |
+|  |  | 9 | Kaniamboua (Bogo) | 1 | 43.2 | 20.73 | 22.47 | Moyen |
+|  |  | 9 | Kaniamboua (Bogo) | 1.5 | 46.08 | 20.73 | 25.35 | Moyen |
+|  |  | 9 | Kaniamboua (Bogo) | 2 | 48.47 | 22.45 | 26.02 | Moyen |
+|  |  | 10 | Nyamassila | 1 | 52.59 | 25.48 | 27.11 | Elevé |
+|  |  | 10 | Nyamassila | 1.5 | 53.48 | 24.23 | 29.25 | Elevé |
+|  |  | 10 | Nyamassila | 2 | 52.01 | 21.5 | 30.51 | Elevé |
+|  |  | 11 | Ountivou | 1 | 28.3 | 8 | 20.3 | Faible |
+|  |  | 11 | Ountivou | 1.5 | 29.86 | 12 | 17.86 | Faible |
+|  |  | 11 | Ountivou | 2 | 32.99 | 10.78 | 22.21 | Faible |
+|  |  | 12 | Stouboua (Sondé) | 1 | 49.5 | 29.81 | 19.69 | Moyen |
+|  |  | 12 | Stouboua (Sondé) | 1.5 | 59.45 | 27.11 | 32.34 | Elevé |
+|  |  | 12 | Stouboua (Sondé) | 2 | 61.81 | 28.28 | 33.53 | Elevé |
+
+---

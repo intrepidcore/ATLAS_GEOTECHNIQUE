@@ -1,0 +1,9 @@
+Source: SOGLO FERDINAND.xlsx
+Auteur: SOGLO FERDINAND
+Conversion: 2025-10-27T11:03:17.421325
+Sheets: 36
+Total rows: 719
+
+Fichiers générés:
+- 36 fichiers CSV
+- 1 rapport Markdown compilé (SOGLO FERDINAND.md)

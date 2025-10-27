@@ -1,0 +1,9 @@
+Source: ADOTE Adote emmanuel.xlsx
+Auteur: ADOTE Adote emmanuel
+Conversion: 2025-10-27T11:12:57.100231
+Sheets: 8
+Total rows: 255
+
+Fichiers générés:
+- 8 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (ADOTE Adote emmanuel.md)

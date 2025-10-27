@@ -1,0 +1,9 @@
+Source: NGOAPO-GOLLO Roxane Lenira Chrisie.xlsx
+Auteur: NGOAPO-GOLLO Roxane Lenira Chrisie
+Conversion: 2025-10-27T11:12:57.534928
+Sheets: 27
+Total rows: 393
+
+Fichiers générés:
+- 27 fichiers CSV (données brutes)
+- 1 rapport Markdown compilé (NGOAPO-GOLLO Roxane Lenira Chrisie.md)

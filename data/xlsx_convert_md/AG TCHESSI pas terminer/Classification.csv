@@ -1,0 +1,12 @@
+col_0,col_1,col_2,col_3,col_4,col_5,col_6
+,Tableau 3-9 : Résultats de classification,,,,,
+,,Echantillons ,profondeurs (m) ,Classification HBR,Classification unifié,Classification d'après le bleu de méthyléne
+,,Bohou,1,A-6,sable argileux grenu,Sol limoneux de plasticité moyenne
+,,Bohou,1.5,A-6,sable argileux grenu,Sol limoneux de plasticité moyenne
+,,Bohou,2,A-7-6,sable argileux grenu,Sol limoneux de plasticité moyenne
+,,Lama Feing,1,A-7-6,Argile peu plastique,Sol très argileux
+,,Lama Feing,1.5,A-6,Limon peu plastique,Sol très argileux
+,,Lama Feing,2,A-7-6,Limon peu plastique,Sol très argileux
+,,Lama Tchamdé,1,A-6,Argile peu plastique,Sol limoneux de plasticité moyenne
+,,Lama Tchamdé,1.5,A-2-6,sable argileux grenu,Sol limoneux de plasticité moyenne
+,,Lama Tchamdé,2,A-6,Argile peu plastique,Sol argileux

@@ -1,0 +1,3 @@
+code,date,source,latitude,longitude,depth_m,passing_pct,passing_pct,passing_pct,liquid_limit,plastic_limit,methylene_blue_value,max_dry_density,optimum_water_content,proctor_type,swelling_eg,laboratory,norm
+TEST-9034-415,2024-07-30,Lab C - Sokodé,10.3186,0.497,1.0,80.3,89.8,97.0,47.9,39.6,5.42,16.12,22.9,normal,5.33,Lab C - Sokodé,NF P94-051
+TEST-9034-415,2024-07-30,Lab C - Sokodé,10.3186,0.497,3.4,85.4,96.2,95.5,45.5,22.9,5.27,15.74,21.2,normal,3.88,Lab C - Sokodé,NF P94-051
