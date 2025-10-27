@@ -790,60 +790,59 @@ export class GeotechnicalFormManager {
 
     console.log('[GeotechForm] Payload:', payload)
 
-    // Envoyer à l'API selon le mode
-    try {
-      let response: Response
-      
-      if (locationMode === 'exact') {
-        // Mode exact: utiliser l'endpoint geotech existant
-        response = await fetch(`${this.apiGeoUrl}/surveys/geotech`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        })
-      } else {
-        // Mode ADM: utiliser le nouvel endpoint
-        const admLevel = (document.getElementById('gt-adm-level') as HTMLSelectElement)?.value
-        const admId = parseInt((document.getElementById('gt-adm-id') as HTMLSelectElement)?.value)
-        
-        // Construire les tests au format ADM
-        const tests: any[] = []
-        essais_par_profondeur.forEach(ep => {
-          ep.mesures.forEach(m => {
-            if (m.valeur_numerique !== undefined) {
-              tests.push({
-                type: m.type,
-                value: m.valeur_numerique,
-                depth_m: ep.profondeur_m,
-                unit: m.unit
-              })
-            }
+    // Construire les tests au format v2 (plat)
+    const tests: any[] = []
+    essais_par_profondeur.forEach(ep => {
+      ep.mesures.forEach(m => {
+        if (m.valeur_numerique !== undefined) {
+          tests.push({
+            type: m.type,
+            value: m.valeur_numerique,
+            depth_m: ep.profondeur_m
           })
-        })
-        
-        const admPayload = {
-          adm_level: admLevel,
-          adm_id: admId,
-          location_mode: locationMode,
-          survey: {
-            code: code || undefined,
-            date: date || undefined,
-            source: source || undefined,
-            operator: operator || undefined,
-            notes: notes || undefined,
-            type_sol: typeSol
-          },
-          tests
         }
-        
-        console.log('[GeotechForm] ADM Payload:', admPayload)
-        
-        response = await fetch(`${this.apiGeoUrl}/surveys/adm`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(admPayload)
-        })
+      })
+    })
+    
+    // Construire le payload v2 unifié
+    const v2Payload: any = {
+      survey: {
+        code: code || undefined,
+        date: date || undefined,
+        source: source || undefined,
+        operator: operator || undefined,
+        notes: notes || undefined
+      },
+      tests
+    }
+    
+    // Ajouter localisation selon le mode
+    if (locationMode === 'exact') {
+      // Mode exact: coordonnées GPS
+      if (!isNaN(lon) && !isNaN(lat)) {
+        v2Payload.location = { lon, lat }
       }
+    } else {
+      // Mode centroid: utiliser commune_id
+      const admLevel = (document.getElementById('gt-adm-level') as HTMLSelectElement)?.value
+      const admSelect = document.getElementById('gt-adm-id') as HTMLSelectElement
+      const admCode = admSelect?.value
+      
+      if (admCode) {
+        v2Payload.commune_id = admCode
+        v2Payload.use_commune_centroid = true
+      }
+    }
+    
+    console.log('[GeotechForm] V2 Payload:', v2Payload)
+
+    // Envoyer à l'API v2
+    try {
+      const response = await fetch(`${this.apiGeoUrl}/surveys`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(v2Payload)
+      })
 
       if (!response.ok) {
         const error = await response.json()
