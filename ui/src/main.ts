@@ -2520,11 +2520,8 @@ safeAddEventListener('addTestBtn', 'click', () => {
   })
 })
 
-// Open drawer for new survey
-safeAddEventListener('newSurveyBtn', 'click', () => {
-  openDrawer('create')
-  loadAdm1()
-})
+// Note: newSurveyBtn est maintenant géré par le dropdown dans right-panel.ts
+// L'ancien listener est supprimé pour éviter les conflits
 
 // Initialiser le formulaire géotechnique
 const geotechForm = new GeotechnicalFormManager(

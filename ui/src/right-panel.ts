@@ -25,6 +25,7 @@ export function initDropdowns() {
   
   if (newSurveyBtn && newSurveyMenu) {
     newSurveyBtn.addEventListener('click', (e) => {
+      e.preventDefault()
       e.stopPropagation()
       newSurveyMenu.classList.toggle('open')
     })
