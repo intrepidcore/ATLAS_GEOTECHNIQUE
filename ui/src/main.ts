@@ -8,6 +8,7 @@ import { ThematicPanel } from './thematic/thematic-panel'
 // import { ImportBulkWizard } from './import-bulk-wizard' // V2 - désactivé
 import { bootImportWizardV3 } from './import-bulk-wizard_v3'
 import { APP_VERSION } from './version'
+import { initAccordions, initDropdowns, initKeyboardShortcuts, initFilterListeners, initCloseMailleActions, showMailleActions } from './right-panel'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -420,6 +421,9 @@ async function loadMailleDetails(code: string) {
     renderEssais(data.samples || [], data.kpi.pct_spread || 0, data.source_surveys || [])
     renderSondages(data.surveys || [], data.source_surveys || [])
     renderClassification(data.samples || [])
+    
+    // Afficher actions maille contextuelles (v2.1.0)
+    showMailleActions(code, data.kpi.n_sondages, data.kpi.n_essais)
     
     // Boutons actions
     const ficheRecalc = document.getElementById('ficheRecalculate')
@@ -3284,9 +3288,21 @@ if (document.readyState === 'loading') {
     updateAppVersion()
     bootstrapImportWizard()
     initTabs()
+    // Panneau droit v2.1.0
+    initAccordions()
+    initDropdowns()
+    initKeyboardShortcuts()
+    initFilterListeners()
+    initCloseMailleActions()
   }, { once: true })
 } else {
   updateAppVersion()
   bootstrapImportWizard()
   initTabs()
+  // Panneau droit v2.1.0
+  initAccordions()
+  initDropdowns()
+  initKeyboardShortcuts()
+  initFilterListeners()
+  initCloseMailleActions()
 }
