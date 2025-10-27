@@ -1,0 +1,4 @@
+Source: ADOTE Adote emmanuel.xlsx
+Conversion: 2025-10-27T10:56:40.778909
+Sheets: 8
+Total rows: 255

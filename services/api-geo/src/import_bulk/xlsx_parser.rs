@@ -20,6 +20,7 @@ pub struct XlsxImportData {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct SondageRow {
     pub code_site: String,
     pub localite: Option<String>,
@@ -33,6 +34,7 @@ pub struct SondageRow {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct EchantillonRow {
     pub code_site: String,
     pub depth_m: f64,

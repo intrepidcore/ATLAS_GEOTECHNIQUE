@@ -1,0 +1,824 @@
+{
+  "source_file": "NABIYOU Warou.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.481533",
+  "sheets": [
+    {
+      "name": "Sheet 1",
+      "headers": [
+        "code",
+        "date",
+        "source",
+        "lat",
+        "lon",
+        "depth_m",
+        "passant_80um",
+        "passant_2mm",
+        "passant_20mm",
+        "wl",
+        "wp",
+        "vbs",
+        "gamma_d_max",
+        "w_opt",
+        "proctor_type",
+        "eg",
+        "laboratory",
+        "norm"
+      ],
+      "rows": [
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": "10.3186",
+          "longitude": "0.497",
+          "depth_m": "1.0",
+          "passing_pct": "97.0",
+          "liquid_limit": "47.9",
+          "plastic_limit": "39.6",
+          "methylene_blue_value": "5.42",
+          "max_dry_density": "16.12",
+          "optimum_water_content": "22.9",
+          "proctor_type": "normal",
+          "swelling_eg": "5.33",
+          "laboratory": "Lab C - Sokodé",
+          "norm": "NF P94-051"
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": "10.3186",
+          "longitude": "0.497",
+          "depth_m": "3.4",
+          "passing_pct": "95.5",
+          "liquid_limit": "45.5",
+          "plastic_limit": "22.9",
+          "methylene_blue_value": "5.27",
+          "max_dry_density": "15.74",
+          "optimum_water_content": "21.2",
+          "proctor_type": "normal",
+          "swelling_eg": "3.88",
+          "laboratory": "Lab C - Sokodé",
+          "norm": "NF P94-051"
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": "NABIYOU Warou",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        }
+      ],
+      "translated_headers": [
+        "code",
+        "date",
+        "source",
+        "latitude",
+        "longitude",
+        "depth_m",
+        "passing_pct",
+        "passing_pct",
+        "passing_pct",
+        "liquid_limit",
+        "plastic_limit",
+        "methylene_blue_value",
+        "max_dry_density",
+        "optimum_water_content",
+        "proctor_type",
+        "swelling_eg",
+        "laboratory",
+        "norm"
+      ]
+    },
+    {
+      "name": "AGT",
+      "headers": [
+        "Profondeur 2m",
+        "col_1",
+        "MODULES AFNOR",
+        "TAMIS (mm)",
+        "%PASSANTS",
+        "OBSERVATIONS"
+      ],
+      "rows": [
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 20,
+          "sieve_mm": 0.08,
+          "passing_pct": 47.87,
+          "observations": 48
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 21,
+          "sieve_mm": 0.1,
+          "passing_pct": 51.37,
+          "observations": 51
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 22,
+          "sieve_mm": 0.125,
+          "passing_pct": 55.93,
+          "observations": 56
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 23,
+          "sieve_mm": 0.16,
+          "passing_pct": 62.39,
+          "observations": 62
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 24,
+          "sieve_mm": 0.2,
+          "passing_pct": 69.51,
+          "observations": 70
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 25,
+          "sieve_mm": 0.25,
+          "passing_pct": 77.73,
+          "observations": 78
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 26,
+          "sieve_mm": 0.315,
+          "passing_pct": 83.56,
+          "observations": 84
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 27,
+          "sieve_mm": 0.4,
+          "passing_pct": 88.3,
+          "observations": 88
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 28,
+          "sieve_mm": 0.5,
+          "passing_pct": 91.37,
+          "observations": 91
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 29,
+          "sieve_mm": 0.63,
+          "passing_pct": 94.15,
+          "observations": 94
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 30,
+          "sieve_mm": 0.8,
+          "passing_pct": 96.55,
+          "observations": 97
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 31,
+          "sieve_mm": 1,
+          "passing_pct": 98.19,
+          "observations": 98
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 32,
+          "sieve_mm": 1.25,
+          "passing_pct": 99.08,
+          "observations": 99
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 33,
+          "sieve_mm": 1.6,
+          "passing_pct": 99.59,
+          "observations": 100
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 34,
+          "sieve_mm": 2,
+          "passing_pct": 99.81,
+          "observations": 100
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 35,
+          "sieve_mm": 2.5,
+          "passing_pct": 99.84,
+          "observations": 100
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 36,
+          "sieve_mm": 3.15,
+          "passing_pct": 99.95,
+          "observations": 100
+        },
+        {
+          "depth_m": null,
+          "col_1": null,
+          "modules_afnor": 31,
+          "sieve_mm": 4,
+          "passing_pct": 99.99,
+          "observations": 100
+        }
+      ],
+      "translated_headers": [
+        "depth_m",
+        "col_1",
+        "modules_afnor",
+        "sieve_mm",
+        "passing_pct",
+        "observations"
+      ]
+    },
+    {
+      "name": "Annexe",
+      "headers": [
+        "n",
+        "Paramètre",
+        "Valeur"
+      ],
+      "rows": [
+        {
+          "n": 1,
+          "paramètre": "WL",
+          "valeur": 40
+        },
+        {
+          "n": 2,
+          "paramètre": "WP",
+          "valeur": 14
+        },
+        {
+          "n": 3,
+          "paramètre": "IP",
+          "valeur": 26
+        },
+        {
+          "n": 4,
+          "paramètre": "VBS",
+          "valeur": 5.03
+        }
+      ],
+      "translated_headers": [
+        "n",
+        "paramètre",
+        "valeur"
+      ]
+    },
+    {
+      "name": " Teneur en eau",
+      "headers": [
+        "Poucentages",
+        "0.06",
+        "0.08",
+        "0.1",
+        "0.12",
+        "0.14"
+      ],
+      "rows": [
+        {
+          "poucentages": "Masses d'éprouvettes",
+          "006": 4528.5,
+          "008": 4783,
+          "01": 4911,
+          "012": 4897,
+          "014": 4920
+        },
+        {
+          "poucentages": "Volume du moule",
+          "006": 2291,
+          "008": 2291,
+          "01": 2291,
+          "012": 2291,
+          "014": 2291
+        },
+        {
+          "poucentages": "Densités sèches",
+          "006": 1.84,
+          "008": 1.92,
+          "01": 1.93,
+          "012": 1.9,
+          "014": 1.88
+        },
+        {
+          "poucentages": "teneur en eau",
+          "006": 7.2,
+          "008": 8.9,
+          "01": 10.8,
+          "012": 12.6,
+          "014": 14.5
+        }
+      ],
+      "translated_headers": [
+        "poucentages",
+        "006",
+        "008",
+        "01",
+        "012",
+        "014"
+      ]
+    },
+    {
+      "name": "Teneur en émulsion",
+      "headers": [
+        "Pourcentages",
+        "0.04",
+        "0.06",
+        "0.08",
+        "0.1",
+        "0.12"
+      ],
+      "rows": [
+        {
+          "pourcentages": "Masses d'éprouvettes",
+          "004": 4264.9,
+          "006": 4444.1,
+          "008": 4503.2,
+          "01": 4485.8,
+          "012": 4490.4
+        },
+        {
+          "pourcentages": "Volume du moule",
+          "004": 2291,
+          "006": 2291,
+          "008": 2291,
+          "01": 2291,
+          "012": 2291
+        },
+        {
+          "pourcentages": "Densités sèches",
+          "004": 1.84,
+          "006": 1.92,
+          "008": 1.93,
+          "01": 1.9,
+          "012": 1.88
+        },
+        {
+          "pourcentages": "Teneur en eau",
+          "004": null,
+          "006": null,
+          "008": null,
+          "01": null,
+          "012": null
+        }
+      ],
+      "translated_headers": [
+        "pourcentages",
+        "004",
+        "006",
+        "008",
+        "01",
+        "012"
+      ]
+    },
+    {
+      "name": "Récap compression",
+      "headers": [
+        "14 jours traction",
+        "Résistance à la compression (Mpa)",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "14_jours_traction": "Pourcentages",
+          "résistance_à_la_compression_mpa": 0,
+          "col_2": 0.02,
+          "col_3": 0.04,
+          "col_4": 0.06,
+          "col_5": 0.08,
+          "col_6": 0.1
+        },
+        {
+          "14_jours_traction": "Essai 1",
+          "résistance_à_la_compression_mpa": 1.594,
+          "col_2": null,
+          "col_3": 1.047,
+          "col_4": 1.026,
+          "col_5": 1.109,
+          "col_6": 1.138
+        },
+        {
+          "14_jours_traction": "Essai 2",
+          "résistance_à_la_compression_mpa": 1.668,
+          "col_2": null,
+          "col_3": 1.087,
+          "col_4": 1.039,
+          "col_5": 1.126,
+          "col_6": 1.151
+        },
+        {
+          "14_jours_traction": "Essai 3",
+          "résistance_à_la_compression_mpa": 1.707,
+          "col_2": null,
+          "col_3": 1.064,
+          "col_4": 1.049,
+          "col_5": 1.101,
+          "col_6": 1.171
+        },
+        {
+          "14_jours_traction": "Moyennes",
+          "résistance_à_la_compression_mpa": 1.656,
+          "col_2": null,
+          "col_3": 1.066,
+          "col_4": 1.038,
+          "col_5": 1.112,
+          "col_6": 1.153
+        }
+      ],
+      "translated_headers": [
+        "14_jours_traction",
+        "résistance_à_la_compression_mpa",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Limite mélange",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": "LIMITE DE PLASTICITE",
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Nombre de coups",
+          "col_4": 12,
+          "col_5": 15.5,
+          "col_6": 18.7,
+          "col_7": 21.5
+        },
+        {
+          "col_0": "AF12",
+          "col_1": "AF4",
+          "col_2": "A1",
+          "col_3": "N de la tare",
+          "col_4": "VBS",
+          "col_5": "AF18",
+          "col_6": "AF8",
+          "col_7": "V1"
+        },
+        {
+          "col_0": 13.06,
+          "col_1": 13.13,
+          "col_2": 13.77,
+          "col_3": "Poids total humide",
+          "col_4": 49.03,
+          "col_5": 51.09,
+          "col_6": 55.33,
+          "col_7": 66.59
+        },
+        {
+          "col_0": 12.57,
+          "col_1": 12.64,
+          "col_2": 13.16,
+          "col_3": "Poids total sec",
+          "col_4": 44.69,
+          "col_5": 45.93,
+          "col_6": 48.09,
+          "col_7": 57.63
+        },
+        {
+          "col_0": 10.75,
+          "col_1": 10.77,
+          "col_2": 10.79,
+          "col_3": "Poids de la tare",
+          "col_4": 33.16,
+          "col_5": 33.71,
+          "col_6": 32.97,
+          "col_7": 40.55
+        },
+        {
+          "col_0": 0.49,
+          "col_1": 0.49,
+          "col_2": 0.61,
+          "col_3": "Poids de l'eau",
+          "col_4": 4.34,
+          "col_5": 5.16,
+          "col_6": 7.24,
+          "col_7": 8.96
+        },
+        {
+          "col_0": 1.82,
+          "col_1": 1.87,
+          "col_2": 2.37,
+          "col_3": "Poids du sol sec",
+          "col_4": 11.69,
+          "col_5": 12.22,
+          "col_6": 15.12,
+          "col_7": 17.08
+        },
+        {
+          "col_0": 26.92,
+          "col_1": 26.2,
+          "col_2": 25.74,
+          "col_3": "Teneur en eau",
+          "col_4": 37.64,
+          "col_5": 42.23,
+          "col_6": 47.88,
+          "col_7": 52.46
+        },
+        {
+          "col_0": null,
+          "col_1": "LP= 26",
+          "col_2": null,
+          "col_3": null,
+          "col_4": "IP= 19",
+          "col_5": null,
+          "col_6": null,
+          "col_7": "LL=45"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "Récap limite",
+      "headers": [
+        "Matériaux",
+        "WL",
+        "WP",
+        "IP"
+      ],
+      "rows": [
+        {
+          "matériaux": "Argile pure",
+          "liquid_limit": 40,
+          "plastic_limit": 14,
+          "plasticity_index": 26
+        },
+        {
+          "matériaux": "Argile mélangé",
+          "liquid_limit": 45,
+          "plastic_limit": 26,
+          "plasticity_index": 19
+        }
+      ],
+      "translated_headers": [
+        "matériaux",
+        "liquid_limit",
+        "plastic_limit",
+        "plasticity_index"
+      ]
+    },
+    {
+      "name": "Essai de traction",
+      "headers": [
+        "col_0",
+        "Pourcentage d'émulsion",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": "Essais ",
+          "pourcentage_démulsion": 0,
+          "col_2": 0.02,
+          "col_3": 0.04,
+          "col_4": 0.06,
+          "col_5": 0.08,
+          "col_6": 0.1
+        },
+        {
+          "col_0": 1,
+          "pourcentage_démulsion": 0.548,
+          "col_2": null,
+          "col_3": 0.279,
+          "col_4": 0.232,
+          "col_5": 0.329,
+          "col_6": 0.441
+        },
+        {
+          "col_0": 2,
+          "pourcentage_démulsion": 0.561,
+          "col_2": null,
+          "col_3": 0.265,
+          "col_4": 0.249,
+          "col_5": 0.328,
+          "col_6": 0.433
+        },
+        {
+          "col_0": 3,
+          "pourcentage_démulsion": 0.568,
+          "col_2": null,
+          "col_3": 0.272,
+          "col_4": 0.241,
+          "col_5": 0.33,
+          "col_6": 0.438
+        },
+        {
+          "col_0": "Moyennes",
+          "pourcentage_démulsion": 0.559,
+          "col_2": null,
+          "col_3": 0.272,
+          "col_4": 0.241,
+          "col_5": 0.329,
+          "col_6": 0.437
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "pourcentage_démulsion",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Récap Proctor",
+      "headers": [
+        "Matériaux",
+        "Gamma d",
+        "Wopt (%)"
+      ],
+      "rows": [
+        {
+          "matériaux": "Argile pure",
+          "gamma_d": 1.94,
+          "wopt_": 9.8
+        },
+        {
+          "matériaux": "Argile mélangé",
+          "gamma_d": 1.84,
+          "wopt_": 6.8
+        }
+      ],
+      "translated_headers": [
+        "matériaux",
+        "gamma_d",
+        "wopt_"
+      ]
+    }
+  ]
+}

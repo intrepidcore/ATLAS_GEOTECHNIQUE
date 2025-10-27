@@ -40,60 +40,86 @@ pub async fn get_thematic_data(
         "geom"  // Zoom in : géométrie complète
     };
     
-    let query = if req.include_geometry {
-        let geom_select = format!("ST_AsGeoJSON({})::text as geom,", geom_column);
-        
-        let mut q = format!(
+    // Construire la requête avec paramètres sécurisés
+    let mut param_index = 1;
+    
+    let base_query = if req.include_geometry {
+        format!(
             "SELECT 
                 code,
-                {}
+                ST_AsGeoJSON({})::text as geom,
                 CAST({} AS DOUBLE PRECISION) as value,
                 n_sondages,
-                n_essais_geo
+                n_essais_geo,
+                adm1_name,
+                adm2_name,
+                adm3_name
              FROM mailles_geotechnique_stats_wgs84
              WHERE {} IS NOT NULL",
-            geom_select, column, column
-        );
-        
-        // Ajouter filtres
-        if let Some(min_s) = req.min_sondages {
-            q.push_str(&format!(" AND n_sondages >= {}", min_s));
-        }
-        
-        if let Some(bbox) = req.bbox {
-            q.push_str(&format!(
-                " AND {} && ST_MakeEnvelope({}, {}, {}, {}, 4326)",
-                geom_column, bbox[0], bbox[1], bbox[2], bbox[3]
-            ));
-        }
-        
-        q.push_str(" ORDER BY code");
-        q
+            geom_column, column, column
+        )
     } else {
-        // Sans géométrie
-        let mut q = format!(
+        format!(
             "SELECT 
                 code,
                 CAST({} AS DOUBLE PRECISION) as value,
                 n_sondages,
-                n_essais_geo
+                n_essais_geo,
+                adm1_name,
+                adm2_name,
+                adm3_name
              FROM mailles_geotechnique_stats_wgs84
              WHERE {} IS NOT NULL",
             column, column
-        );
-        
-        // Ajouter filtres
-        if let Some(min_s) = req.min_sondages {
-            q.push_str(&format!(" AND n_sondages >= {}", min_s));
-        }
-        
-        q.push_str(" ORDER BY code");
-        q
+        )
     };
     
-    // Exécuter requête
+    let mut query = base_query;
+    
+    // Filtre min_sondages
+    if let Some(_) = req.min_sondages {
+        query.push_str(&format!(" AND n_sondages >= ${}", param_index));
+        param_index += 1;
+    }
+    
+    // Filtres ADM (paramétrés - colonnes maintenant dans la MV)
+    if let Some(_) = &req.adm1 {
+        query.push_str(&format!(" AND adm1_name = ${}", param_index));
+        param_index += 1;
+    }
+    if let Some(_) = &req.adm2 {
+        query.push_str(&format!(" AND adm2_name = ${}", param_index));
+        param_index += 1;
+    }
+    if let Some(_) = &req.adm3 {
+        query.push_str(&format!(" AND adm3_name = ${}", param_index));
+        param_index += 1;
+    }
+    
+    query.push_str(" ORDER BY code");
+    
+    // Exécuter requête avec paramètres
     eprintln!("🔍 SQL Query: {}", query);
-    let rows = sqlx::query(&query)
+    eprintln!("🔒 Params: min_sondages={:?}, adm1={:?}, adm2={:?}, adm3={:?}", 
+              req.min_sondages, req.adm1, req.adm2, req.adm3);
+    
+    let mut query_builder = sqlx::query(&query);
+    
+    // Bind parameters
+    if let Some(min_s) = req.min_sondages {
+        query_builder = query_builder.bind(min_s);
+    }
+    if let Some(adm1) = &req.adm1 {
+        query_builder = query_builder.bind(adm1);
+    }
+    if let Some(adm2) = &req.adm2 {
+        query_builder = query_builder.bind(adm2);
+    }
+    if let Some(adm3) = &req.adm3 {
+        query_builder = query_builder.bind(adm3);
+    }
+    
+    let rows = query_builder
         .fetch_all(pool)
         .await
         .map_err(|e| {

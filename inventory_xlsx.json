@@ -1,0 +1,158 @@
+{
+  "files": [
+    {
+      "file": "atlas_import_example.xlsx",
+      "size_kb": 34.61,
+      "modified": "2025-10-26 16:14",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "atlas_import_example_1761495185.xlsx",
+      "size_kb": 26.48,
+      "modified": "2025-10-26 16:13",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/ABGBANA_Essi_Odette.xlsx",
+      "size_kb": 8.18,
+      "modified": "2025-10-21 15:13",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/ADANDOGOU Afiwa Pamela  PAS TERMINE.xlsx",
+      "size_kb": 44.82,
+      "modified": "2025-10-24 07:25",
+      "status": "skip",
+      "skip_reason": "incomplet"
+    },
+    {
+      "file": "data/xlsx/ADOTE Adote emmanuel.xlsx",
+      "size_kb": 18.12,
+      "modified": "2025-10-21 19:17",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/AG TCHESSI pas terminer.xlsx",
+      "size_kb": 35.67,
+      "modified": "2025-10-21 19:04",
+      "status": "skip",
+      "skip_reason": "incomplet"
+    },
+    {
+      "file": "data/xlsx/AKONDOR Tigana Messanh.xlsx",
+      "size_kb": 23.1,
+      "modified": "2025-10-21 18:15",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/ANYO Akouete jean-paul.xlsx",
+      "size_kb": 44.71,
+      "modified": "2025-10-21 18:25",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/GAMBAGA Inoussa.xlsx",
+      "size_kb": 26.78,
+      "modified": "2025-10-22 04:49",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/Granulométrie.xlsx",
+      "size_kb": 15.87,
+      "modified": "2025-10-18 13:58",
+      "status": "skip",
+      "skip_reason": "fichier test/partiel"
+    },
+    {
+      "file": "data/xlsx/IMPORT/atlas_import_nicabou_ninsao_vianney.xlsx",
+      "size_kb": 27.1,
+      "modified": "2025-10-24 21:25",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/IMPORT/atlas_import_soglo_ferdinand.xlsx",
+      "size_kb": 28.92,
+      "modified": "2025-10-24 20:04",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/NABIYOU Warou.xlsx",
+      "size_kb": 19.32,
+      "modified": "2025-10-20 16:42",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/NGOAPO-GOLLO Roxane Lenira Chrisie.xlsx",
+      "size_kb": 40.96,
+      "modified": "2025-10-21 16:41",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/NICABOU Ninsao Vianney.xlsx",
+      "size_kb": 42.65,
+      "modified": "2025-10-21 17:04",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/OUDJABITI Bassirou.xlsx",
+      "size_kb": 32.74,
+      "modified": "2025-10-21 18:15",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/SOGLO FERDINAND.xlsx",
+      "size_kb": 56.96,
+      "modified": "2025-10-21 19:09",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/TCHALA Komla Hyacinthe.xlsx",
+      "size_kb": 23.09,
+      "modified": "2025-10-21 19:41",
+      "status": "pending",
+      "skip_reason": null
+    },
+    {
+      "file": "data/xlsx/TEMPLATE.xlsx",
+      "size_kb": 11.52,
+      "modified": "2025-10-20 14:38",
+      "status": "skip",
+      "skip_reason": "template"
+    },
+    {
+      "file": "data/xlsx/bleu.xlsx",
+      "size_kb": 16.44,
+      "modified": "2025-10-18 15:47",
+      "status": "skip",
+      "skip_reason": "fichier test/partiel"
+    },
+    {
+      "file": "data/xlsx/limite.xlsx",
+      "size_kb": 10.67,
+      "modified": "2025-10-18 15:42",
+      "status": "skip",
+      "skip_reason": "fichier test/partiel"
+    },
+    {
+      "file": "scripts/atlas_import_template.xlsx",
+      "size_kb": 11.87,
+      "modified": "2025-10-24 10:41",
+      "status": "skip",
+      "skip_reason": "template"
+    }
+  ]
+}

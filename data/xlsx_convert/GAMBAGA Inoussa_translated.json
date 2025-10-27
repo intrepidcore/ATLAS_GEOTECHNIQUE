@@ -1,0 +1,1582 @@
+{
+  "source_file": "GAMBAGA Inoussa.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.433182",
+  "sheets": [
+    {
+      "name": "Sheet 1",
+      "headers": [
+        "code",
+        "date",
+        "source",
+        "lat",
+        "lon",
+        "depth_m",
+        "passant_80um",
+        "passant_2mm",
+        "passant_20mm",
+        "wl",
+        "wp",
+        "vbs",
+        "gamma_d_max",
+        "w_opt",
+        "proctor_type",
+        "eg",
+        "laboratory",
+        "norm"
+      ],
+      "rows": [
+        {
+          "code": " ",
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": "10.3186",
+          "longitude": "0.497",
+          "depth_m": "1.0",
+          "passing_pct": "97.0",
+          "liquid_limit": "47.9",
+          "plastic_limit": "39.6",
+          "methylene_blue_value": "5.42",
+          "max_dry_density": "16.12",
+          "optimum_water_content": "22.9",
+          "proctor_type": "normal",
+          "swelling_eg": "5.33",
+          "laboratory": "Lab C - Sokodé",
+          "norm": "NF P94-051"
+        },
+        {
+          "code": " ",
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": "10.3186",
+          "longitude": "0.497",
+          "depth_m": "3.4",
+          "passing_pct": "95.5",
+          "liquid_limit": "45.5",
+          "plastic_limit": "22.9",
+          "methylene_blue_value": "5.27",
+          "max_dry_density": "15.74",
+          "optimum_water_content": "21.2",
+          "proctor_type": "normal",
+          "swelling_eg": "3.88",
+          "laboratory": "Lab C - Sokodé",
+          "norm": "NF P94-051"
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        },
+        {
+          "code": null,
+          "date": "2025-10-20 00:00:00",
+          "source": " GAMBAGA Inoussa",
+          "latitude": null,
+          "longitude": null,
+          "depth_m": null,
+          "passing_pct": null,
+          "liquid_limit": null,
+          "plastic_limit": null,
+          "methylene_blue_value": null,
+          "max_dry_density": null,
+          "optimum_water_content": null,
+          "proctor_type": null,
+          "swelling_eg": null,
+          "laboratory": null,
+          "norm": null
+        }
+      ],
+      "translated_headers": [
+        "code",
+        "date",
+        "source",
+        "latitude",
+        "longitude",
+        "depth_m",
+        "passing_pct",
+        "passing_pct",
+        "passing_pct",
+        "liquid_limit",
+        "plastic_limit",
+        "methylene_blue_value",
+        "max_dry_density",
+        "optimum_water_content",
+        "proctor_type",
+        "swelling_eg",
+        "laboratory",
+        "norm"
+      ]
+    },
+    {
+      "name": " Sanfatoute AGT passant",
+      "headers": [
+        "Ouverture du tamis (mm)",
+        "1m",
+        "1,5m",
+        "2m"
+      ],
+      "rows": [
+        {
+          "sieve_mm": 25,
+          "1m": 100,
+          "15m": 100,
+          "2m": 100
+        },
+        {
+          "sieve_mm": 20,
+          "1m": 100,
+          "15m": 100,
+          "2m": 100
+        },
+        {
+          "sieve_mm": 16,
+          "1m": 100,
+          "15m": 100,
+          "2m": 100
+        },
+        {
+          "sieve_mm": 12.5,
+          "1m": 99.75,
+          "15m": 100,
+          "2m": 99.47
+        },
+        {
+          "sieve_mm": 10,
+          "1m": 98.87,
+          "15m": 99.7,
+          "2m": 99.47
+        },
+        {
+          "sieve_mm": 8,
+          "1m": 98.5,
+          "15m": 99.7,
+          "2m": 99.4
+        },
+        {
+          "sieve_mm": 6.3,
+          "1m": 98.22,
+          "15m": 99.61,
+          "2m": 99.36
+        },
+        {
+          "sieve_mm": 5,
+          "1m": 97.95,
+          "15m": 99.59,
+          "2m": 99.34
+        },
+        {
+          "sieve_mm": 4,
+          "1m": 97.54,
+          "15m": 99.51,
+          "2m": 99.25
+        },
+        {
+          "sieve_mm": 3.15,
+          "1m": 96.56,
+          "15m": 99.33,
+          "2m": 99.05
+        },
+        {
+          "sieve_mm": 2.5,
+          "1m": 95.72,
+          "15m": 99.07,
+          "2m": 98.89
+        },
+        {
+          "sieve_mm": 2,
+          "1m": 95.09,
+          "15m": 98.62,
+          "2m": 98.71
+        },
+        {
+          "sieve_mm": 1.6,
+          "1m": 94.58,
+          "15m": 98.03,
+          "2m": 98.54
+        },
+        {
+          "sieve_mm": 1.25,
+          "1m": 94.21,
+          "15m": 97.38,
+          "2m": 98.28
+        },
+        {
+          "sieve_mm": 1,
+          "1m": 93.96,
+          "15m": 96.87,
+          "2m": 98.03
+        },
+        {
+          "sieve_mm": 0.8,
+          "1m": 93.7,
+          "15m": 96.29,
+          "2m": 97.75
+        },
+        {
+          "sieve_mm": 0.63,
+          "1m": 93.45,
+          "15m": 95.77,
+          "2m": 97.4
+        },
+        {
+          "sieve_mm": 0.5,
+          "1m": 93.06,
+          "15m": 95.02,
+          "2m": 96.67
+        },
+        {
+          "sieve_mm": 0.4,
+          "1m": 92.67,
+          "15m": 94.46,
+          "2m": 95.91
+        },
+        {
+          "sieve_mm": 0.315,
+          "1m": 91.88,
+          "15m": 93.23,
+          "2m": 94.04
+        },
+        {
+          "sieve_mm": 0.25,
+          "1m": 91,
+          "15m": 91.88,
+          "2m": 91.73
+        },
+        {
+          "sieve_mm": 0.2,
+          "1m": 89.69,
+          "15m": 87.92,
+          "2m": 84.86
+        },
+        {
+          "sieve_mm": 0.16,
+          "1m": 88.25,
+          "15m": 85.7,
+          "2m": 80.61
+        },
+        {
+          "sieve_mm": 0.125,
+          "1m": 85.5,
+          "15m": 80.41,
+          "2m": 73.48
+        },
+        {
+          "sieve_mm": 0.1,
+          "1m": 83.77,
+          "15m": 78.65,
+          "2m": 70.87
+        },
+        {
+          "sieve_mm": 0.08,
+          "1m": 82.81,
+          "15m": 77.5,
+          "2m": 68.75
+        }
+      ],
+      "translated_headers": [
+        "sieve_mm",
+        "1m",
+        "15m",
+        "2m"
+      ]
+    },
+    {
+      "name": "Sanfatoute AGS passant",
+      "headers": [
+        "Ouverture du tamis (mm)",
+        "1m",
+        "1,5m",
+        "2m"
+      ],
+      "rows": [
+        {
+          "sieve_mm": 0.0696,
+          "1m": 82.38,
+          "15m": 77.12,
+          "2m": 65.88
+        },
+        {
+          "sieve_mm": 0.0494,
+          "1m": 79.33,
+          "15m": 73.7,
+          "2m": 62.82
+        },
+        {
+          "sieve_mm": 0.0351,
+          "1m": 76.65,
+          "15m": 70.28,
+          "2m": 60.02
+        },
+        {
+          "sieve_mm": 0.0224,
+          "1m": 71.69,
+          "15m": 65.15,
+          "2m": 56.21
+        },
+        {
+          "sieve_mm": 0.013,
+          "1m": 67.1,
+          "15m": 59.33,
+          "2m": 51.11
+        },
+        {
+          "sieve_mm": 0.0076,
+          "1m": 61.37,
+          "15m": 53.18,
+          "2m": 46.03
+        },
+        {
+          "sieve_mm": 0.0047,
+          "1m": 56.4,
+          "15m": 48.05,
+          "2m": 40.7
+        },
+        {
+          "sieve_mm": 0.0033,
+          "1m": 52.97,
+          "15m": 43.63,
+          "2m": 37.13
+        },
+        {
+          "sieve_mm": 0.0027,
+          "1m": 51.03,
+          "15m": 41.23,
+          "2m": 34.58
+        },
+        {
+          "sieve_mm": 0.0024,
+          "1m": 49.91,
+          "15m": 39.86,
+          "2m": 33.05
+        },
+        {
+          "sieve_mm": 0.0019,
+          "1m": 48.76,
+          "15m": 38.5,
+          "2m": 31.01
+        },
+        {
+          "sieve_mm": 0.0014,
+          "1m": 48,
+          "15m": 37.1,
+          "2m": 28.97
+        }
+      ],
+      "translated_headers": [
+        "sieve_mm",
+        "1m",
+        "15m",
+        "2m"
+      ]
+    },
+    {
+      "name": "Densité",
+      "headers": [
+        "Référence",
+        "Cantons",
+        "Profondeurs(m)",
+        "Densité; Absolue"
+      ],
+      "rows": [
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": 1,
+          "densité_absolue": 2.47
+        },
+        {
+          "référence": null,
+          "cantons": "Sanfatoute",
+          "depth_m": 1.5,
+          "densité_absolue": 2.39
+        },
+        {
+          "référence": null,
+          "cantons": "Sanfatoute",
+          "depth_m": 2,
+          "densité_absolue": 2.63
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": 1,
+          "densité_absolue": 2.47
+        },
+        {
+          "référence": null,
+          "cantons": "Korbongou",
+          "depth_m": 1.5,
+          "densité_absolue": 2.51
+        },
+        {
+          "référence": null,
+          "cantons": "Korbongou",
+          "depth_m": 2,
+          "densité_absolue": 2.57
+        }
+      ],
+      "translated_headers": [
+        "référence",
+        "cantons",
+        "depth_m",
+        "densité_absolue"
+      ]
+    },
+    {
+      "name": "Limite sanfatoute",
+      "headers": [
+        "Cantons",
+        "Profondeur",
+        "WL",
+        "WP",
+        "IP"
+      ],
+      "rows": [
+        {
+          "cantons": "Sanfatoute",
+          "depth_m": 1,
+          "liquid_limit": 57.57,
+          "plastic_limit": 25.06,
+          "plasticity_index": 32.51
+        },
+        {
+          "cantons": "Sanfatoute",
+          "depth_m": 1.5,
+          "liquid_limit": 42.95,
+          "plastic_limit": 29.96,
+          "plasticity_index": 12.99
+        },
+        {
+          "cantons": "Sanfatoute",
+          "depth_m": 2,
+          "liquid_limit": 32.46,
+          "plastic_limit": 23.83,
+          "plasticity_index": 8.63
+        },
+        {
+          "cantons": "Sanfatoute",
+          "depth_m": "Moyenne",
+          "liquid_limit": 44.33,
+          "plastic_limit": 26.28,
+          "plasticity_index": 18.05
+        },
+        {
+          "cantons": "Korbongou",
+          "depth_m": 1,
+          "liquid_limit": 39.6,
+          "plastic_limit": 16.66,
+          "plasticity_index": 22.94
+        },
+        {
+          "cantons": "Korbongou",
+          "depth_m": 1.5,
+          "liquid_limit": 33.47,
+          "plastic_limit": 16.09,
+          "plasticity_index": 17.38
+        },
+        {
+          "cantons": "Korbongou",
+          "depth_m": 2,
+          "liquid_limit": 24.24,
+          "plastic_limit": 16.22,
+          "plasticity_index": 8.02
+        },
+        {
+          "cantons": "Korbongou",
+          "depth_m": "Moyenne",
+          "liquid_limit": 32.44,
+          "plastic_limit": 16.32,
+          "plasticity_index": 16.12
+        }
+      ],
+      "translated_headers": [
+        "cantons",
+        "depth_m",
+        "liquid_limit",
+        "plastic_limit",
+        "plasticity_index"
+      ]
+    },
+    {
+      "name": "Bleu",
+      "headers": [
+        "Référence",
+        "Cantons",
+        "Profondeurs(m)",
+        "VBS",
+        "Caractéristiques"
+      ],
+      "rows": [
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": 1,
+          "methylene_blue_value": 7.31,
+          "caractéristiques": "Sol argileux"
+        },
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": 1.5,
+          "methylene_blue_value": 6.28,
+          "caractéristiques": "Sol argileux"
+        },
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": 2,
+          "methylene_blue_value": 4.69,
+          "caractéristiques": "Sol limoneux de plasticité moyenne"
+        },
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": "Moyenne",
+          "methylene_blue_value": 6.09,
+          "caractéristiques": "Sol argileux"
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": 1,
+          "methylene_blue_value": 4.4,
+          "caractéristiques": "Sol limoneux de plasticité moyenne"
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": 1.5,
+          "methylene_blue_value": 3.98,
+          "caractéristiques": "Sol limoneux de plasticité moyenne"
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": 2,
+          "methylene_blue_value": 2.48,
+          "caractéristiques": "Sol sableux argileux peu plastique"
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": "Moyenne",
+          "methylene_blue_value": 3.62,
+          "caractéristiques": "Sol limoneux de plasticité moyenne"
+        }
+      ],
+      "translated_headers": [
+        "référence",
+        "cantons",
+        "depth_m",
+        "methylene_blue_value",
+        "caractéristiques"
+      ]
+    },
+    {
+      "name": "Teneur en eau",
+      "headers": [
+        "Référence",
+        "Cantons",
+        "Profondeurs(m)",
+        "Teneur en eau",
+        "Wl",
+        "Is",
+        "Caractéristiques"
+      ],
+      "rows": [
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": 1,
+          "teneur_en_eau": 9.82,
+          "liquid_limit": 57.57,
+          "is": 0.171,
+          "caractéristiques": "Gonflement élevé"
+        },
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": 1.5,
+          "teneur_en_eau": 10.35,
+          "liquid_limit": 42.95,
+          "is": 0.241,
+          "caractéristiques": "Gonflement moyen"
+        },
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": 2,
+          "teneur_en_eau": 8.02,
+          "liquid_limit": 32.46,
+          "is": 0.247,
+          "caractéristiques": "Gonflement faible"
+        },
+        {
+          "référence": 1,
+          "cantons": "Sanfatoute",
+          "depth_m": "Moyenne",
+          "teneur_en_eau": 9.4,
+          "liquid_limit": 35.39,
+          "is": 0.266,
+          "caractéristiques": "Gonflement moyen"
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": 1,
+          "teneur_en_eau": 8.17,
+          "liquid_limit": 39.6,
+          "is": 0.206,
+          "caractéristiques": "Gonflement élevé"
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": 1.5,
+          "teneur_en_eau": 7.52,
+          "liquid_limit": 33.47,
+          "is": 0.225,
+          "caractéristiques": "Gonflement moyen"
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": 2,
+          "teneur_en_eau": 6.21,
+          "liquid_limit": 24.24,
+          "is": 0.256,
+          "caractéristiques": "Gonflement faible"
+        },
+        {
+          "référence": 2,
+          "cantons": "Korbongou",
+          "depth_m": "Moyenne",
+          "teneur_en_eau": 7.3,
+          "liquid_limit": 33.71,
+          "is": 0.217,
+          "caractéristiques": "Gonflement moyen"
+        }
+      ],
+      "translated_headers": [
+        "référence",
+        "cantons",
+        "depth_m",
+        "teneur_en_eau",
+        "liquid_limit",
+        "is",
+        "caractéristiques"
+      ]
+    },
+    {
+      "name": "Classification",
+      "headers": [
+        "Canton",
+        "Profondeur(m)",
+        "Classification HBR ",
+        "Classification unifiée",
+        "Classification d'après le bleu de méthylène"
+      ],
+      "rows": [
+        {
+          "canton": "Sanfatoute",
+          "depth_m": 1,
+          "classification_hbr": "A-7-5",
+          "classification_unifiée": "Sol fin, argile peu plasticité",
+          "classification_daprès_le_bleu_de_méthylène": "Sol argileux"
+        },
+        {
+          "canton": null,
+          "depth_m": 1.5,
+          "classification_hbr": "A-7-6",
+          "classification_unifiée": "Sol fin, limoneux peu plasticité",
+          "classification_daprès_le_bleu_de_méthylène": "Sol argileux"
+        },
+        {
+          "canton": null,
+          "depth_m": 2,
+          "classification_hbr": "A-5",
+          "classification_unifiée": "Sol fin, argileux limoneux peu plasticité",
+          "classification_daprès_le_bleu_de_méthylène": "Sol limoneux de plasticité moyenne"
+        },
+        {
+          "canton": "Korbongou",
+          "depth_m": 1,
+          "classification_hbr": "A-6",
+          "classification_unifiée": "Sol fin, argile peu plasticité",
+          "classification_daprès_le_bleu_de_méthylène": "Sol limoneux de plasticité moyenne"
+        },
+        {
+          "canton": null,
+          "depth_m": 1.5,
+          "classification_hbr": "A-6",
+          "classification_unifiée": "Sol fin, argile peu plasticité",
+          "classification_daprès_le_bleu_de_méthylène": "Sol limoneux de plasticité moyenne"
+        },
+        {
+          "canton": null,
+          "depth_m": 2,
+          "classification_hbr": "A-4",
+          "classification_unifiée": "Sol grenue, sable argileux peu plasticité",
+          "classification_daprès_le_bleu_de_méthylène": "Sol sableux argileux peu plastique"
+        }
+      ],
+      "translated_headers": [
+        "canton",
+        "depth_m",
+        "classification_hbr",
+        "classification_unifiée",
+        "classification_daprès_le_bleu_de_méthylène"
+      ]
+    },
+    {
+      "name": "AGS Korbongou ALL 1",
+      "headers": [
+        "Ouverture du tamis(mm)",
+        "Masse de refus cumulés(g)",
+        "Refus cumulés (%)",
+        "Passant (%)"
+      ],
+      "rows": [
+        {
+          "ouverture_du_tamismm": 0.0595,
+          "retained_pct": null,
+          "passing_pct": 64.51
+        },
+        {
+          "ouverture_du_tamismm": 0.0428,
+          "retained_pct": null,
+          "passing_pct": 61.48
+        },
+        {
+          "ouverture_du_tamismm": 0.0309,
+          "retained_pct": null,
+          "passing_pct": 57.69
+        },
+        {
+          "ouverture_du_tamismm": 0.0199,
+          "retained_pct": null,
+          "passing_pct": 53.9
+        },
+        {
+          "ouverture_du_tamismm": 0.0118,
+          "retained_pct": null,
+          "passing_pct": 48.59
+        },
+        {
+          "ouverture_du_tamismm": 0.007,
+          "retained_pct": null,
+          "passing_pct": 42.98
+        },
+        {
+          "ouverture_du_tamismm": 0.0044,
+          "retained_pct": null,
+          "passing_pct": 39.51
+        },
+        {
+          "ouverture_du_tamismm": 0.0031,
+          "retained_pct": null,
+          "passing_pct": 37.23
+        },
+        {
+          "ouverture_du_tamismm": 0.0026,
+          "retained_pct": null,
+          "passing_pct": 35.41
+        },
+        {
+          "ouverture_du_tamismm": 0.0022,
+          "retained_pct": null,
+          "passing_pct": 33.44
+        },
+        {
+          "ouverture_du_tamismm": 0.0018,
+          "retained_pct": null,
+          "passing_pct": 32.39
+        },
+        {
+          "ouverture_du_tamismm": 0.0013,
+          "retained_pct": null,
+          "passing_pct": 31.18
+        }
+      ],
+      "translated_headers": [
+        "ouverture_du_tamismm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGT Korbongou ALL 1",
+      "headers": [
+        "Ouverture du tamis(mm)",
+        "Masse de refus cumulés(g)",
+        "Refus cumulés (%)",
+        "Passant (%)"
+      ],
+      "rows": [
+        {
+          "ouverture_du_tamismm": 16,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "ouverture_du_tamismm": 12.5,
+          "retained_pct": 0.37,
+          "passing_pct": 99.63
+        },
+        {
+          "ouverture_du_tamismm": 10,
+          "retained_pct": 0.67,
+          "passing_pct": 99.33
+        },
+        {
+          "ouverture_du_tamismm": 8,
+          "retained_pct": 0.84,
+          "passing_pct": 99.16
+        },
+        {
+          "ouverture_du_tamismm": 6.3,
+          "retained_pct": 1.02,
+          "passing_pct": 98.98
+        },
+        {
+          "ouverture_du_tamismm": 5,
+          "retained_pct": 1.15,
+          "passing_pct": 98.85
+        },
+        {
+          "ouverture_du_tamismm": 4,
+          "retained_pct": 1.23,
+          "passing_pct": 98.77
+        },
+        {
+          "ouverture_du_tamismm": 3.15,
+          "retained_pct": 1.62,
+          "passing_pct": 98.38
+        },
+        {
+          "ouverture_du_tamismm": 2.5,
+          "retained_pct": 2.02,
+          "passing_pct": 97.98
+        },
+        {
+          "ouverture_du_tamismm": 2,
+          "retained_pct": 2.45,
+          "passing_pct": 97.55
+        },
+        {
+          "ouverture_du_tamismm": 1.6,
+          "retained_pct": 3.12,
+          "passing_pct": 96.88
+        },
+        {
+          "ouverture_du_tamismm": 1.25,
+          "retained_pct": 4.15,
+          "passing_pct": 95.85
+        },
+        {
+          "ouverture_du_tamismm": 1,
+          "retained_pct": 5.16,
+          "passing_pct": 94.84
+        },
+        {
+          "ouverture_du_tamismm": 0.8,
+          "retained_pct": 6.29,
+          "passing_pct": 93.71
+        },
+        {
+          "ouverture_du_tamismm": 0.63,
+          "retained_pct": 7.41,
+          "passing_pct": 92.59
+        },
+        {
+          "ouverture_du_tamismm": 0.5,
+          "retained_pct": 9.06,
+          "passing_pct": 90.94
+        },
+        {
+          "ouverture_du_tamismm": 0.4,
+          "retained_pct": 10.54,
+          "passing_pct": 89.46
+        },
+        {
+          "ouverture_du_tamismm": 0.315,
+          "retained_pct": 12.6,
+          "passing_pct": 87.4
+        },
+        {
+          "ouverture_du_tamismm": 0.25,
+          "retained_pct": 14.72,
+          "passing_pct": 85.28
+        },
+        {
+          "ouverture_du_tamismm": 0.2,
+          "retained_pct": 17.85,
+          "passing_pct": 82.15
+        },
+        {
+          "ouverture_du_tamismm": 0.16,
+          "retained_pct": 21.64,
+          "passing_pct": 78.36
+        },
+        {
+          "ouverture_du_tamismm": 0.125,
+          "retained_pct": 28.91,
+          "passing_pct": 71.09
+        },
+        {
+          "ouverture_du_tamismm": 0.1,
+          "retained_pct": 31.75,
+          "passing_pct": 68.25
+        },
+        {
+          "ouverture_du_tamismm": 0.08,
+          "retained_pct": 33.26,
+          "passing_pct": 66.74
+        }
+      ],
+      "translated_headers": [
+        "ouverture_du_tamismm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGS Korbongou ALL 1,5",
+      "headers": [
+        "Ouverture du tamis(mm)",
+        "Masse de refus cumulés(g)",
+        "Refus cumulés (%)",
+        "Passant (%)"
+      ],
+      "rows": [
+        {
+          "ouverture_du_tamismm": 0.0666,
+          "retained_pct": null,
+          "passing_pct": 49.7
+        },
+        {
+          "ouverture_du_tamismm": 0.0477,
+          "retained_pct": null,
+          "passing_pct": 45.81
+        },
+        {
+          "ouverture_du_tamismm": 0.0342,
+          "retained_pct": null,
+          "passing_pct": 41.92
+        },
+        {
+          "ouverture_du_tamismm": 0.022,
+          "retained_pct": null,
+          "passing_pct": 37.06
+        },
+        {
+          "ouverture_du_tamismm": 0.0129,
+          "retained_pct": null,
+          "passing_pct": 32.21
+        },
+        {
+          "ouverture_du_tamismm": 0.0075,
+          "retained_pct": null,
+          "passing_pct": 28.32
+        },
+        {
+          "ouverture_du_tamismm": 0.0046,
+          "retained_pct": null,
+          "passing_pct": 25.4
+        },
+        {
+          "ouverture_du_tamismm": 0.0033,
+          "retained_pct": null,
+          "passing_pct": 23.45
+        },
+        {
+          "ouverture_du_tamismm": 0.0027,
+          "retained_pct": null,
+          "passing_pct": 22.48
+        },
+        {
+          "ouverture_du_tamismm": 0.0024,
+          "retained_pct": null,
+          "passing_pct": 21.51
+        },
+        {
+          "ouverture_du_tamismm": 0.0019,
+          "retained_pct": null,
+          "passing_pct": 20.55
+        },
+        {
+          "ouverture_du_tamismm": 0.0014,
+          "retained_pct": null,
+          "passing_pct": 20.55
+        }
+      ],
+      "translated_headers": [
+        "ouverture_du_tamismm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGT Korbongou ALL 1,5",
+      "headers": [
+        "Ouverture du tamis(mm)",
+        "Masse de refus cumulés(g)",
+        "Refus cumulés (%)",
+        "Passant (%)"
+      ],
+      "rows": [
+        {
+          "ouverture_du_tamismm": 10,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "ouverture_du_tamismm": 8,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "ouverture_du_tamismm": 6.3,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "ouverture_du_tamismm": 5,
+          "retained_pct": 0.02,
+          "passing_pct": 99.98
+        },
+        {
+          "ouverture_du_tamismm": 4,
+          "retained_pct": 0.05,
+          "passing_pct": 99.95
+        },
+        {
+          "ouverture_du_tamismm": 3.15,
+          "retained_pct": 0.33,
+          "passing_pct": 99.67
+        },
+        {
+          "ouverture_du_tamismm": 2.5,
+          "retained_pct": 0.96,
+          "passing_pct": 99.04
+        },
+        {
+          "ouverture_du_tamismm": 2,
+          "retained_pct": 1.94,
+          "passing_pct": 98.06
+        },
+        {
+          "ouverture_du_tamismm": 1.6,
+          "retained_pct": 3.47,
+          "passing_pct": 96.53
+        },
+        {
+          "ouverture_du_tamismm": 1.25,
+          "retained_pct": 5.48,
+          "passing_pct": 94.52
+        },
+        {
+          "ouverture_du_tamismm": 1,
+          "retained_pct": 7.31,
+          "passing_pct": 92.69
+        },
+        {
+          "ouverture_du_tamismm": 0.8,
+          "retained_pct": 9.39,
+          "passing_pct": 90.61
+        },
+        {
+          "ouverture_du_tamismm": 0.63,
+          "retained_pct": 11.64,
+          "passing_pct": 88.36
+        },
+        {
+          "ouverture_du_tamismm": 0.5,
+          "retained_pct": 14.99,
+          "passing_pct": 85.01
+        },
+        {
+          "ouverture_du_tamismm": 0.4,
+          "retained_pct": 17.6,
+          "passing_pct": 82.4
+        },
+        {
+          "ouverture_du_tamismm": 0.315,
+          "retained_pct": 21.39,
+          "passing_pct": 78.61
+        },
+        {
+          "ouverture_du_tamismm": 0.25,
+          "retained_pct": 24.77,
+          "passing_pct": 75.23
+        },
+        {
+          "ouverture_du_tamismm": 0.2,
+          "retained_pct": 29.09,
+          "passing_pct": 70.91
+        },
+        {
+          "ouverture_du_tamismm": 0.16,
+          "retained_pct": 34.04,
+          "passing_pct": 65.96000000000001
+        },
+        {
+          "ouverture_du_tamismm": 0.125,
+          "retained_pct": 40.99,
+          "passing_pct": 59.01
+        },
+        {
+          "ouverture_du_tamismm": 0.1,
+          "retained_pct": 43.91,
+          "passing_pct": 56.09
+        },
+        {
+          "ouverture_du_tamismm": 0.08,
+          "retained_pct": 45.43,
+          "passing_pct": 54.57
+        }
+      ],
+      "translated_headers": [
+        "ouverture_du_tamismm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGS Korbongou ALL 2",
+      "headers": [
+        "Ouverture du tamis(mm)",
+        "Masse de refus cumulés(g)",
+        "Refus cumulés (%)",
+        "Passant (%)"
+      ],
+      "rows": [
+        {
+          "ouverture_du_tamismm": 0.0649,
+          "retained_pct": null,
+          "passing_pct": 34.66
+        },
+        {
+          "ouverture_du_tamismm": 0.0467,
+          "retained_pct": null,
+          "passing_pct": 31.4
+        },
+        {
+          "ouverture_du_tamismm": 0.0334,
+          "retained_pct": null,
+          "passing_pct": 28.79
+        },
+        {
+          "ouverture_du_tamismm": 0.0214,
+          "retained_pct": null,
+          "passing_pct": 26.83
+        },
+        {
+          "ouverture_du_tamismm": 0.0125,
+          "retained_pct": null,
+          "passing_pct": 24.22
+        },
+        {
+          "ouverture_du_tamismm": 0.0073,
+          "retained_pct": null,
+          "passing_pct": 22.92
+        },
+        {
+          "ouverture_du_tamismm": 0.0045,
+          "retained_pct": null,
+          "passing_pct": 21.09
+        },
+        {
+          "ouverture_du_tamismm": 0.0032,
+          "retained_pct": null,
+          "passing_pct": 19.78
+        },
+        {
+          "ouverture_du_tamismm": 0.0026,
+          "retained_pct": null,
+          "passing_pct": 19
+        },
+        {
+          "ouverture_du_tamismm": 0.0023,
+          "retained_pct": null,
+          "passing_pct": 18.09
+        },
+        {
+          "ouverture_du_tamismm": 0.0019,
+          "retained_pct": null,
+          "passing_pct": 17.04
+        },
+        {
+          "ouverture_du_tamismm": 0.0013,
+          "retained_pct": null,
+          "passing_pct": 17.05
+        }
+      ],
+      "translated_headers": [
+        "ouverture_du_tamismm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGT Korbongou 2",
+      "headers": [
+        "Ouverture du tamis(mm)",
+        "Masse de refus cumulés(g)",
+        "Refus cumulés (%)",
+        "Passant (%)"
+      ],
+      "rows": [
+        {
+          "ouverture_du_tamismm": 10,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "ouverture_du_tamismm": 8,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "ouverture_du_tamismm": 6.3,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "ouverture_du_tamismm": 5,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "ouverture_du_tamismm": 4,
+          "retained_pct": 0.21,
+          "passing_pct": 99.79
+        },
+        {
+          "ouverture_du_tamismm": 3.15,
+          "retained_pct": 1.27,
+          "passing_pct": 98.73
+        },
+        {
+          "ouverture_du_tamismm": 2.5,
+          "retained_pct": 4.28,
+          "passing_pct": 95.72
+        },
+        {
+          "ouverture_du_tamismm": 2,
+          "retained_pct": 8.73,
+          "passing_pct": 91.27
+        },
+        {
+          "ouverture_du_tamismm": 1.6,
+          "retained_pct": 14.11,
+          "passing_pct": 85.89
+        },
+        {
+          "ouverture_du_tamismm": 1.25,
+          "retained_pct": 20.92,
+          "passing_pct": 79.08
+        },
+        {
+          "ouverture_du_tamismm": 1,
+          "retained_pct": 25.97,
+          "passing_pct": 74.03
+        },
+        {
+          "ouverture_du_tamismm": 0.8,
+          "retained_pct": 30.58,
+          "passing_pct": 69.42
+        },
+        {
+          "ouverture_du_tamismm": 0.63,
+          "retained_pct": 34.72,
+          "passing_pct": 65.28
+        },
+        {
+          "ouverture_du_tamismm": 0.5,
+          "retained_pct": 39.88,
+          "passing_pct": 60.12
+        },
+        {
+          "ouverture_du_tamismm": 0.4,
+          "retained_pct": 43.16,
+          "passing_pct": 56.84
+        },
+        {
+          "ouverture_du_tamismm": 0.315,
+          "retained_pct": 47.29,
+          "passing_pct": 52.71
+        },
+        {
+          "ouverture_du_tamismm": 0.25,
+          "retained_pct": 50.52,
+          "passing_pct": 49.48
+        },
+        {
+          "ouverture_du_tamismm": 0.2,
+          "retained_pct": 54.36,
+          "passing_pct": 45.64
+        },
+        {
+          "ouverture_du_tamismm": 0.16,
+          "retained_pct": 57.09,
+          "passing_pct": 42.91
+        },
+        {
+          "ouverture_du_tamismm": 0.125,
+          "retained_pct": 61.98,
+          "passing_pct": 38.02
+        },
+        {
+          "ouverture_du_tamismm": 0.1,
+          "retained_pct": 63.29,
+          "passing_pct": 36.71
+        },
+        {
+          "ouverture_du_tamismm": 0.08,
+          "retained_pct": 63.87,
+          "passing_pct": 36.13
+        }
+      ],
+      "translated_headers": [
+        "ouverture_du_tamismm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    }
+  ]
+}

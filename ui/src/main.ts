@@ -2,9 +2,12 @@ import L from 'leaflet'
 import { Chart, registerables } from 'chart.js'
 import { GeotechnicalFormManager } from './geotechnical-form'
 import { GeocodeManager } from './geocode-manager'
+import { SuggestionsPanel } from './suggestions-panel'
 import { ThematicMapManager } from './thematic/thematic-maps'
 import { ThematicPanel } from './thematic/thematic-panel'
-import { ImportBulkWizard } from './import-bulk-wizard'
+// import { ImportBulkWizard } from './import-bulk-wizard' // V2 - désactivé
+import { bootImportWizardV3 } from './import-bulk-wizard_v3'
+import { APP_VERSION } from './version'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -12,8 +15,33 @@ import './import-bulk-wizard.css'
 // Enregistrer tous les composants Chart.js
 Chart.register(...registerables)
 
+// Feature flags
+declare global {
+  interface Window {
+    ATLAS_FLAGS?: {
+      showClassificationTab?: boolean
+      showSparklines?: boolean
+      enableAuditLog?: boolean
+    }
+  }
+}
+
+;(window as any).ATLAS_FLAGS = {
+  showClassificationTab: true,
+  showSparklines: true,
+  enableAuditLog: false
+}
+
 // Base URLs with runtime override support
-const API_GEO = (import.meta.env.VITE_API_GEO ?? (window as any).__API_GEO__ ?? 'http://localhost:8000') as string
+// Priorité: localStorage > env > window > défaut
+// En production (Docker), utiliser /api qui est proxyfié par Nginx vers api-geo:8000
+// En dev (Vite), utiliser http://localhost:8000 directement
+const API_GEO = (
+  localStorage.getItem('API_GEO') ?? 
+  import.meta.env.VITE_API_GEO ?? 
+  (window as any).__API_GEO__ ?? 
+  '/api'
+) as string
 console.log('[INIT] API_GEO configuré:', API_GEO)
 
 // Helper pour ajouter des event listeners de manière sûre
@@ -257,11 +285,83 @@ let chartVBS: Chart | null = null
 let chartAtterberg: Chart | null = null
 let chartDepth: Chart | null = null
 
+// Rendre la liste des sondages avec accordéon
+function renderSondagesList(sondages: any[]) {
+  const listContainer = document.getElementById('sondagesList')
+  const countEl = document.getElementById('sondagesCount')
+  
+  if (!listContainer) return
+  
+  if (countEl) countEl.textContent = sondages.length.toString()
+  
+  if (sondages.length === 0) {
+    listContainer.innerHTML = '<div style="font-size:11px;color:var(--muted);padding:10px;text-align:center">Aucun sondage</div>'
+    return
+  }
+  
+  listContainer.innerHTML = sondages.map((s, idx) => {
+    const modeIcon = s.mode === 'real' ? '📍' : '📊'
+    const modeBadge = s.mode === 'real' 
+      ? '<span class="badge-geo">GPS</span>' 
+      : '<span class="badge-adm">Spread</span>'
+    
+    return `
+      <div class="sondage-item">
+        <div class="sondage-header" onclick="toggleSondage(${idx})">
+          <div>
+            <strong>${modeIcon} ${s.localite || s.code_site || 'N/A'}</strong>
+            ${modeBadge}
+          </div>
+          <div style="font-size:11px;color:var(--muted)">
+            ${s.samples || 0} échantillons • ${s.tests || 0} essais
+          </div>
+        </div>
+        <div class="sondage-content" id="sondage-${idx}">
+          <table style="width:100%;font-size:11px;margin-bottom:8px">
+            <tr><td style="color:var(--muted)">Code site:</td><td><strong>${s.code_site || 'N/A'}</strong></td></tr>
+            <tr><td style="color:var(--muted)">Date:</td><td>${s.date || 'N/A'}</td></tr>
+            <tr><td style="color:var(--muted)">ADM3:</td><td>${s.adm3_code || 'N/A'}</td></tr>
+            <tr><td style="color:var(--muted)">Mode:</td><td>${s.mode || 'N/A'}</td></tr>
+          </table>
+          <div style="display:flex;gap:6px">
+            <button class="btn-sm" onclick="viewSondageDetails('${s.id}')">👁️ Détails</button>
+            <button class="btn-sm" onclick="editSondage('${s.id}')">✏️ Modifier</button>
+          </div>
+        </div>
+      </div>
+    `
+  }).join('')
+  
+  console.log(`[renderSondagesList] ${sondages.length} sondages affichés`)
+}
+
+// Fonction globale pour toggler l'accordéon
+;(window as any).toggleSondage = function(idx: number) {
+  const content = document.getElementById(`sondage-${idx}`)
+  if (content) {
+    const isOpen = content.classList.contains('open')
+    content.classList.toggle('open')
+    console.log(`[toggleSondage] Sondage ${idx} ${isOpen ? 'fermé' : 'ouvert'}`)
+  }
+}
+
+// Fonctions globales pour les actions sur les sondages
+;(window as any).viewSondageDetails = function(id: string) {
+  console.log('[viewSondageDetails] ID:', id)
+  toast('Détails du sondage (à implémenter)', 'ok')
+}
+
+;(window as any).editSondage = function(id: string) {
+  console.log('[editSondage] ID:', id)
+  toast('Édition du sondage (à implémenter)', 'ok')
+}
+
 // Charger les détails complets d'une maille
 async function loadMailleDetails(code: string) {
   console.log('[loadMailleDetails] Chargement des détails pour:', code)
   try {
-    const res = await fetch(`${API_GEO}/grid/${code}/details`)
+    // Appel au nouvel endpoint /cells/{code}/complete
+    const res = await fetch(`${API_GEO}/cells/${code}/complete`)
     console.log('[loadMailleDetails] Réponse API:', res.status, res.statusText)
     if (!res.ok) {
       toast('Erreur chargement détails maille', 'err')
@@ -288,38 +388,38 @@ async function loadMailleDetails(code: string) {
     
     // En-tête
     const ficheCode = document.getElementById('ficheCode')
-    const ficheAdm = document.getElementById('ficheAdm')
     const ficheStatus = document.getElementById('ficheStatus')
-    if (ficheCode) ficheCode.textContent = data.code
-    const admParts = [data.adm.adm1, data.adm.adm2, data.adm3].filter(Boolean)
-    if (ficheAdm) ficheAdm.textContent = admParts.join(' > ') || '—'
-    if (ficheStatus) ficheStatus.innerHTML = data.kpi.sondages > 0 
+    if (ficheCode) ficheCode.textContent = code
+    if (ficheStatus) ficheStatus.innerHTML = data.kpi.n_sondages > 0 
       ? '✅ avec données' 
       : '— sans données'
     
     // KPIs
     const kpiSondages = document.getElementById('kpiSondages')
+    const kpiEchantillons = document.getElementById('kpiEchantillons')
     const kpiEssais = document.getElementById('kpiEssais')
-    const kpiIdw = document.getElementById('kpiIdw')
-    const kpiProf = document.getElementById('kpiProf')
-    if (kpiSondages) kpiSondages.textContent = data.kpi.sondages.toString()
-    if (kpiEssais) kpiEssais.textContent = data.kpi.essais.toString()
-    if (kpiIdw) kpiIdw.textContent = data.kpi.idw_spt_n 
-      ? data.kpi.idw_spt_n.toFixed(1) 
-      : '—'
-    if (kpiProf) kpiProf.textContent = data.kpi.zmin && data.kpi.zmax
-      ? `${data.kpi.zmin.toFixed(1)} – ${data.kpi.zmax.toFixed(1)}`
-      : '—'
+    const kpiSpread = document.getElementById('kpiSpread')
+    if (kpiSondages) kpiSondages.textContent = data.kpi.n_sondages.toString()
+    if (kpiEchantillons) kpiEchantillons.textContent = data.kpi.n_echantillons.toString()
+    if (kpiEssais) kpiEssais.textContent = data.kpi.n_essais.toString()
+    if (kpiSpread) kpiSpread.textContent = `${data.kpi.pct_spread.toFixed(0)}%`
     
-    // Attendre que le DOM soit mis à jour avant de rendre les graphiques
-    setTimeout(() => {
-      console.log('[loadMailleDetails] Rendu des graphiques et liste, sondages:', data.sondages?.length || 0)
-      // Graphiques
-      renderCharts(data.sondages)
-      
-      // Liste des sondages
-      renderSondagesList(data.sondages)
-    }, 50)
+    // Alerte Spread
+    const spreadAlert = document.getElementById('spreadAlert')
+    const spreadSource = document.getElementById('spreadSource')
+    if (data.kpi.pct_spread > 99 && data.source_surveys && data.source_surveys.length > 0) {
+      const source = data.source_surveys[0]
+      if (spreadSource) spreadSource.textContent = `${source.code_site || 'N/A'} (${source.adm3_code || 'N/A'})`
+      if (spreadAlert) spreadAlert.style.display = 'block'
+    } else {
+      if (spreadAlert) spreadAlert.style.display = 'none'
+    }
+    
+    // Rendre les onglets
+    renderOverview(data.overview)
+    renderEssais(data.samples || [], data.kpi.pct_spread || 0, data.source_surveys || [])
+    renderSondages(data.surveys || [], data.source_surveys || [])
+    renderClassification(data.samples || [])
     
     // Boutons actions
     const ficheRecalc = document.getElementById('ficheRecalculate')
@@ -335,6 +435,526 @@ async function loadMailleDetails(code: string) {
     
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
+  }
+}
+
+// Onglet 1: Vue d ensemble
+function renderOverview(overview: any) {
+  console.log('[renderOverview] Rendu vue ensemble', overview)
+  renderChartsFromLabs(overview)
+}
+
+// Onglet 2: Essais détaillés
+function renderEssais(samples: any[], pctSpread: number, sourceSurveys: any[]) {
+  console.log('[renderEssais] Rendu essais détaillés, samples:', samples.length)
+  const list = document.getElementById('essaisList')
+  if (!list) return
+  
+  if (samples.length === 0) {
+    // Empty state avec explication selon le contexte
+    const emptyMessage = pctSpread > 99 
+      ? `
+        <div style="padding:20px;text-align:center;color:var(--muted)">
+          <div style="font-size:40px;margin-bottom:10px">📊</div>
+          <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">
+            Aucun essai dans cette maille
+          </div>
+          <div style="font-size:11px;line-height:1.6">
+            Ces valeurs proviennent d'une <strong>diffusion ADM3</strong>.<br>
+            ${sourceSurveys.length > 0 ? `Consultez l'onglet <strong>Sondages</strong> pour voir le(s) sondage(s) source(s).` : ''}
+          </div>
+        </div>
+      `
+      : `
+        <div style="padding:20px;text-align:center;color:var(--muted)">
+          <div style="font-size:40px;margin-bottom:10px">🔬</div>
+          <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">
+            Aucun essai disponible
+          </div>
+          <div style="font-size:11px">
+            Cette maille ne contient pas encore d'essais géotechniques.
+          </div>
+        </div>
+      `
+    list.innerHTML = emptyMessage
+    return
+  }
+  
+  list.innerHTML = samples.map((s, idx) => `
+    <div class="essai-item">
+      <div class="essai-header" onclick="window.toggleEssai(${idx})">
+        <strong>Profondeur: ${s.depth_m}m</strong>
+        <span>▼</span>
+      </div>
+      <div class="essai-content" id="essai-${idx}">
+        ${renderEssaiDetails(s)}
+      </div>
+    </div>
+  `).join('')
+  
+  // Boutons Déployer/Replier tout
+  const expandAll = document.getElementById('expandAll')
+  const collapseAll = document.getElementById('collapseAll')
+  if (expandAll) expandAll.onclick = () => {
+    document.querySelectorAll('.essai-content').forEach(el => el.classList.add('open'))
+  }
+  if (collapseAll) collapseAll.onclick = () => {
+    document.querySelectorAll('.essai-content').forEach(el => el.classList.remove('open'))
+  }
+}
+
+function renderEssaiDetails(sample: any): string {
+  let html = ''
+  
+  // Atterberg avec badges intelligents
+  if (sample.atterberg) {
+    const a = sample.atterberg
+    // Calculer IP si manquant mais WL et WP présents
+    const ip = a.ip || (a.wl && a.wp ? a.wl - a.wp : null)
+    const ipBadge = ip 
+      ? ip < 7 
+        ? '<span class="badge-ip-faible">Faible</span>' 
+        : ip < 17 
+          ? '<span class="badge-ip-moyen">Moyen</span>' 
+          : '<span class="badge-ip-fort">Fort</span>'
+      : ''
+    
+    html += `
+      <div class="essai-group">
+        <h5>Atterberg</h5>
+        <table>
+          ${a.wl ? `<tr><td>WL:</td><td>${a.wl}%</td></tr>` : ''}
+          ${a.wp ? `<tr><td>WP:</td><td>${a.wp}%</td></tr>` : ''}
+          ${ip ? `<tr><td>IP:</td><td>${ip}% ${ipBadge}</td></tr>` : ''}
+          ${a.zone ? `<tr><td>Zone:</td><td><span class="badge-zone">${a.zone}</span></td></tr>` : ''}
+        </table>
+      </div>
+    `
+  }
+  
+  // VBS avec badges intelligents
+  if (sample.vbs) {
+    const v = sample.vbs
+    const vbsValue = v.vbs
+    const vbsBadge = vbsValue <= 1.5 
+      ? '<span class="badge-vbs-faible">Faible</span>' 
+      : vbsValue <= 3 
+        ? '<span class="badge-vbs-moyen">Moyen</span>' 
+        : '<span class="badge-vbs-eleve">Élevé</span>'
+    
+    html += `
+      <div class="essai-group">
+        <h5>VBS</h5>
+        <table>
+          <tr><td>VBS:</td><td>${vbsValue} g/100g ${vbsBadge}</td></tr>
+          ${v.argilosite ? `<tr><td>Argilosité:</td><td>${v.argilosite}</td></tr>` : ''}
+        </table>
+      </div>
+    `
+  }
+  
+  // Granulométrie
+  if (sample.granulo) {
+    const g = sample.granulo
+    html += `
+      <div class="essai-group">
+        <h5>Granulométrie</h5>
+        <table>
+          ${g.passant_80um ? `<tr><td>Passant 80µm:</td><td>${g.passant_80um}%</td></tr>` : ''}
+          ${g.passant_2mm ? `<tr><td>Passant 2mm:</td><td>${g.passant_2mm}%</td></tr>` : ''}
+          ${g.passant_20mm ? `<tr><td>Passant 20mm:</td><td>${g.passant_20mm}%</td></tr>` : ''}
+          ${g.indices && g.indices.d10 ? `<tr><td>D10:</td><td>${g.indices.d10.toFixed(3)} mm</td></tr>` : ''}
+          ${g.indices && g.indices.d30 ? `<tr><td>D30:</td><td>${g.indices.d30.toFixed(3)} mm</td></tr>` : ''}
+          ${g.indices && g.indices.d60 ? `<tr><td>D60:</td><td>${g.indices.d60.toFixed(3)} mm</td></tr>` : ''}
+          ${g.indices && g.indices.cu ? `<tr><td>Cu:</td><td>${g.indices.cu.toFixed(2)}</td></tr>` : ''}
+          ${g.indices && g.indices.cc ? `<tr><td>Cc:</td><td>${g.indices.cc.toFixed(2)}</td></tr>` : ''}
+        </table>
+        ${g.points && g.points.length > 0 ? `<button class="mini-chart-btn" onclick="window.showGranuloChart(${JSON.stringify(g.points).replace(/"/g, '&quot;')})">📊 Voir courbe</button>` : ''}
+      </div>
+    `
+  }
+  
+  // Proctor
+  if (sample.proctor) {
+    const p = sample.proctor
+    html += `
+      <div class="essai-group">
+        <h5>Proctor</h5>
+        <table>
+          ${p.gamma_d_max ? `<tr><td>γd max:</td><td>${p.gamma_d_max} kN/m³</td></tr>` : ''}
+          ${p.w_opt ? `<tr><td>wopt:</td><td>${p.w_opt}%</td></tr>` : ''}
+          ${p.type ? `<tr><td>Type:</td><td>${p.type}</td></tr>` : ''}
+        </table>
+      </div>
+    `
+  }
+  
+  // Gonflement
+  if (sample.swelling) {
+    const sw = sample.swelling
+    html += `
+      <div class="essai-group">
+        <h5>Gonflement</h5>
+        <table>
+          <tr><td>Eg:</td><td>${sw.eg}%</td></tr>
+          ${sw.risque ? `<tr><td>Risque:</td><td><span class="badge-risk-${sw.risque.toLowerCase()}">${sw.risque}</span></td></tr>` : ''}
+        </table>
+      </div>
+    `
+  }
+  
+  // Classifications avec raisons
+  if (sample.classif) {
+    const c = sample.classif
+    // Gérer les nouvelles structures avec class/reason
+    const uscsClass = typeof c.uscs === 'object' ? c.uscs.class : c.uscs
+    const uscsReason = typeof c.uscs === 'object' ? c.uscs.reason : null
+    const aashtoClass = typeof c.aashto === 'object' ? c.aashto.class : c.aashto
+    const aashtoReason = typeof c.aashto === 'object' ? c.aashto.reason : null
+    const gtrClass = typeof c.gtr === 'object' ? c.gtr.class : c.gtr
+    const gtrReason = typeof c.gtr === 'object' ? c.gtr.reason : null
+    
+    html += `
+      <div class="essai-group">
+        <h5>Classifications</h5>
+        <table>
+          ${uscsClass ? `
+            <tr>
+              <td>USCS:</td>
+              <td>
+                <span class="badge-uscs">${uscsClass}</span>
+                ${uscsReason ? `<br><small style="color:var(--muted);font-size:9px">${uscsReason}</small>` : ''}
+              </td>
+            </tr>
+          ` : ''}
+          ${aashtoClass ? `
+            <tr>
+              <td>AASHTO:</td>
+              <td>
+                <span class="badge-aashto">${aashtoClass}</span>
+                ${aashtoReason ? `<br><small style="color:var(--muted);font-size:9px">${aashtoReason}</small>` : ''}
+              </td>
+            </tr>
+          ` : ''}
+          ${gtrClass ? `
+            <tr>
+              <td>GTR:</td>
+              <td>
+                <span class="badge-gtr">${gtrClass}</span>
+                ${gtrReason ? `<br><small style="color:var(--muted);font-size:9px">${gtrReason}</small>` : ''}
+              </td>
+            </tr>
+          ` : ''}
+        </table>
+      </div>
+    `
+  }
+  
+  return html || '<div style="font-size:11px;color:var(--muted);padding:10px">Aucune donnée disponible</div>'
+}
+
+// Fonction globale pour toggler les essais
+;(window as any).toggleEssai = function(idx: number) {
+  const content = document.getElementById(`essai-${idx}`)
+  if (content) {
+    content.classList.toggle('open')
+  }
+}
+
+// Fonction globale pour afficher une courbe granulo (placeholder)
+;(window as any).showGranuloChart = function(points: any[]) {
+  console.log('[showGranuloChart] Points:', points)
+  toast('Affichage courbe granulo (à implémenter)', 'ok')
+}
+
+// Onglet 3: Sondages
+function renderSondages(surveys: any[], sourceSurveys: any[]) {
+  console.log('[renderSondages] Rendu sondages, surveys:', surveys.length, 'sources:', sourceSurveys.length)
+  const list = document.getElementById('sondagesList')
+  if (!list) return
+  
+  let html = ''
+  
+  // Sondages de la maille
+  if (surveys.length > 0) {
+    html += surveys.map((s, idx) => {
+      const modeIcon = s.mode === 'real' ? '🟢' : '⚪'
+      const modeBadge = s.mode === 'real'
+        ? '<span class="badge-geo">GPS</span>'
+        : '<span class="badge-adm">Spread</span>'
+      
+      return `
+        <div class="sondage-item">
+          <div class="sondage-header" onclick="window.toggleSondage(${idx})">
+            <div>
+              <strong>${modeIcon} ${s.code_site || 'N/A'}</strong>
+              ${modeBadge}
+            </div>
+            <div style="font-size:11px;color:var(--muted)">
+              ${s.samples || 0} échantillons • ${s.tests || 0} essais
+            </div>
+          </div>
+          <div class="sondage-content" id="sondage-${idx}">
+            <table style="width:100%;font-size:11px;margin-bottom:8px">
+              <tr><td style="color:var(--muted)">Code site:</td><td><strong>${s.code_site || 'N/A'}</strong></td></tr>
+              <tr><td style="color:var(--muted)">Date:</td><td>${s.date || 'N/A'}</td></tr>
+              <tr><td style="color:var(--muted)">ADM3:</td><td>${s.adm3_code || 'N/A'}</td></tr>
+              <tr><td style="color:var(--muted)">Mode:</td><td>${s.mode || 'N/A'}</td></tr>
+            </table>
+            <div style="display:flex;gap:6px">
+              <button class="btn-sm" onclick="window.viewSondageDetails('${s.id}')">👁️ Détails</button>
+              <button class="btn-sm" onclick="window.editSondage('${s.id}')">✏️ Modifier</button>
+            </div>
+          </div>
+        </div>
+      `
+    }).join('')
+  }
+  
+  // Sondages sources (si spread-only)
+  if (sourceSurveys.length > 0) {
+    html += `
+      <div style="margin-top:16px;padding-top:16px;border-top:2px solid #1b2740">
+        <h5 style="font-size:11px;color:var(--muted);margin:0 0 10px 0;text-transform:uppercase">Sondages sources (diffusion)</h5>
+        ${sourceSurveys.map((s, idx) => `
+          <div class="sondage-item">
+            <div class="sondage-header">
+              <div>
+                <strong>🔄 ${s.code_site || 'N/A'}</strong>
+                <span class="badge-geo">Source</span>
+              </div>
+              <div style="font-size:11px;color:var(--muted)">
+                ${s.adm3_code || 'N/A'}
+              </div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `
+  }
+  
+  list.innerHTML = html || '<div style="font-size:11px;color:var(--muted);padding:10px;text-align:center">Aucun sondage</div>'
+}
+
+// Fonction globale pour toggler les sondages
+;(window as any).toggleSondage = function(idx: number) {
+  const content = document.getElementById(`sondage-${idx}`)
+  if (content) {
+    content.classList.toggle('open')
+  }
+}
+
+// Onglet 4: Classification
+function renderClassification(samples: any[]) {
+  console.log('[renderClassification] Rendu classification, samples:', samples.length)
+  const rulesDiv = document.getElementById('classifRules')
+  if (!rulesDiv) return
+  
+  // Compter les classifications
+  const uscsCount: Record<string, number> = {}
+  const aashtoCount: Record<string, number> = {}
+  
+  samples.forEach(s => {
+    if (s.classif) {
+      if (s.classif.uscs && s.classif.uscs !== 'N/A') {
+        uscsCount[s.classif.uscs] = (uscsCount[s.classif.uscs] || 0) + 1
+      }
+      if (s.classif.aashto && s.classif.aashto !== 'N/A') {
+        aashtoCount[s.classif.aashto] = (aashtoCount[s.classif.aashto] || 0) + 1
+      }
+    }
+  })
+  
+  let html = '<h5 style="margin:0 0 8px 0;font-size:11px;color:var(--accent);text-transform:uppercase">Répartition USCS</h5>'
+  if (Object.keys(uscsCount).length > 0) {
+    html += '<table style="width:100%;font-size:11px;margin-bottom:12px">'
+    Object.entries(uscsCount).forEach(([key, count]) => {
+      html += `<tr><td><span class="badge-uscs">${key}</span></td><td>${count} échantillon(s)</td></tr>`
+    })
+    html += '</table>'
+  } else {
+    html += '<div style="font-size:11px;color:var(--muted);margin-bottom:12px">Aucune classification USCS</div>'
+  }
+  
+  html += '<h5 style="margin:12px 0 8px 0;font-size:11px;color:var(--accent);text-transform:uppercase">Répartition AASHTO</h5>'
+  if (Object.keys(aashtoCount).length > 0) {
+    html += '<table style="width:100%;font-size:11px">'
+    Object.entries(aashtoCount).forEach(([key, count]) => {
+      html += `<tr><td><span class="badge-aashto">${key}</span></td><td>${count} échantillon(s)</td></tr>`
+    })
+    html += '</table>'
+  } else {
+    html += '<div style="font-size:11px;color:var(--muted)">Aucune classification AASHTO</div>'
+  }
+  
+  rulesDiv.innerHTML = html
+  
+  // TODO: Diagrammes Casagrande et pie charts (nécessite Chart.js)
+}
+
+// Rendre les graphiques depuis le nouvel endpoint /cells/{code}/labs
+function renderChartsFromLabs(data: any) {
+  console.log('[renderChartsFromLabs] Début, data:', data)
+  
+  // Détruire les anciens charts
+  if (chartGranulo) chartGranulo.destroy()
+  if (chartVBS) chartVBS.destroy()
+  if (chartAtterberg) chartAtterberg.destroy()
+  if (chartDepth) chartDepth.destroy()
+  
+  // Préparer données Atterberg
+  const atterbergWL: {x: number, y: number}[] = []
+  const atterbergWP: {x: number, y: number}[] = []
+  if (data.atterberg && data.atterberg.length > 0) {
+    data.atterberg.forEach((pt: any) => {
+      if (pt.wl !== null) atterbergWL.push({ x: pt.depth_m, y: pt.wl })
+      if (pt.wp !== null) atterbergWP.push({ x: pt.depth_m, y: pt.wp })
+    })
+  }
+  
+  // Préparer données VBS
+  const vbsData: {x: number, y: number}[] = []
+  if (data.vbs && data.vbs.length > 0) {
+    data.vbs.forEach((pt: any) => {
+      if (pt.vbs !== null) vbsData.push({ x: pt.depth_m, y: pt.vbs })
+    })
+  }
+  
+  // Préparer histogramme profondeurs
+  const depthLabels: string[] = []
+  const depthCounts: number[] = []
+  if (data.depth_hist && data.depth_hist.length > 0) {
+    const bins = [0, 5, 10, 15, 20, 25, 30]
+    data.depth_hist.forEach((item: any) => {
+      const binIdx = item.bin - 1
+      if (binIdx >= 0 && binIdx < bins.length - 1) {
+        depthLabels.push(`${bins[binIdx]}-${bins[binIdx + 1]}m`)
+        depthCounts.push(item.n)
+      }
+    })
+  }
+  
+  console.log('[renderChartsFromLabs] Atterberg WL:', atterbergWL.length, 'WP:', atterbergWP.length, 'VBS:', vbsData.length, 'Depth bins:', depthCounts.length)
+  
+  // Chart Atterberg - CONDITIONNEL
+  const ctxAtterberg = document.getElementById('chartAtterberg') as HTMLCanvasElement
+  if (ctxAtterberg) {
+    if (atterbergWL.length > 0 || atterbergWP.length > 0) {
+      ctxAtterberg.style.display = 'block'
+      chartAtterberg = new Chart(ctxAtterberg, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'WL',
+              data: atterbergWL,
+              backgroundColor: '#ff6b9d',
+              borderColor: '#ff6b9d',
+              pointRadius: 4
+            },
+            {
+              label: 'WP',
+              data: atterbergWP,
+              backgroundColor: '#c77dff',
+              borderColor: '#c77dff',
+              pointRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: false,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: true, labels: { color: '#8aa0b5', font: { size: 9 } } },
+            title: { display: true, text: 'Limites d\'Atterberg (%)', color: '#c9d7e3', font: { size: 11 } }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
+            y: { title: { display: true, text: '%', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+          }
+        }
+      })
+    } else {
+      ctxAtterberg.style.display = 'none'
+      console.log('[renderChartsFromLabs] Atterberg masqué (pas de données)')
+    }
+  }
+  
+  // Chart VBS - CONDITIONNEL
+  const ctxVBS = document.getElementById('chartVBS') as HTMLCanvasElement
+  if (ctxVBS) {
+    if (vbsData.length > 0) {
+      ctxVBS.style.display = 'block'
+      chartVBS = new Chart(ctxVBS, {
+        type: 'scatter',
+        data: {
+          datasets: [{
+            label: 'VBS',
+            data: vbsData,
+            backgroundColor: '#0bb07b',
+            borderColor: '#0bb07b',
+            pointRadius: 4
+          }]
+        },
+        options: {
+          responsive: false,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Bleu de Méthylène (VBS)', color: '#c9d7e3', font: { size: 11 } }
+          },
+          scales: {
+            x: { title: { display: true, text: 'Profondeur (m)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } },
+            y: { title: { display: true, text: 'VBS (g/100g)', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+          }
+        }
+      })
+    } else {
+      ctxVBS.style.display = 'none'
+      console.log('[renderChartsFromLabs] VBS masqué (pas de données)')
+    }
+  }
+  
+  // Histogramme profondeurs - CONDITIONNEL
+  const ctxDepth = document.getElementById('chartDepth') as HTMLCanvasElement
+  if (ctxDepth) {
+    if (depthCounts.length > 0) {
+      ctxDepth.style.display = 'block'
+      chartDepth = new Chart(ctxDepth, {
+        type: 'bar',
+        data: {
+          labels: depthLabels,
+          datasets: [{
+            label: 'Échantillons',
+            data: depthCounts,
+            backgroundColor: '#f4b740',
+            borderColor: '#f4b740',
+            borderWidth: 1
+          }]
+        },
+        options: {
+          responsive: false,
+          maintainAspectRatio: true,
+          plugins: {
+            legend: { display: false },
+            title: { display: true, text: 'Distribution Profondeurs', color: '#c9d7e3', font: { size: 11 } }
+          },
+          scales: {
+            x: { ticks: { color: '#8aa0b5', font: { size: 9 } }, grid: { color: '#1c2843' } },
+            y: { title: { display: true, text: 'Nombre', color: '#8aa0b5', font: { size: 10 } }, ticks: { color: '#8aa0b5' }, grid: { color: '#1c2843' } }
+          }
+        }
+      })
+    } else {
+      ctxDepth.style.display = 'none'
+      console.log('[renderChartsFromLabs] Depth masqué (pas de données)')
+    }
+  }
+  
+  // Masquer chartGranulo (pas de données granulo pour l'instant)
+  const ctxGranulo = document.getElementById('chartGranulo') as HTMLCanvasElement
+  if (ctxGranulo) {
+    ctxGranulo.style.display = 'none'
   }
 }
 
@@ -530,64 +1150,6 @@ function renderCharts(sondages: any[]) {
     }
   })
 }
-
-// Rendre la liste des sondages
-function renderSondagesList(sondages: any[]) {
-  const container = document.getElementById('sondagesList')
-  if (!container) return
-  const sondagesCount = document.getElementById('sondagesCount')
-  if (sondagesCount) sondagesCount.textContent = sondages.length.toString()
-  
-  if (sondages.length === 0) {
-    container.innerHTML = '<div style="color:var(--muted);font-size:11px;padding:10px;text-align:center">Aucun sondage</div>'
-    return
-  }
-  
-  container.innerHTML = sondages.map((s, idx) => {
-    const badge = s.has_coords 
-      ? '<span class="badge-geo">📍 coordonnées</span>' 
-      : '<span class="badge-adm">🏷 ADM-only</span>'
-    
-    const essaisRows = s.essais.map((e: any) => `
-      <tr>
-        <td><span class="badge-${e.type === 'SPT_N' ? 'spt' : 'qc'}">${e.type}</span></td>
-        <td>${e.value}</td>
-        <td>${e.unit}</td>
-        <td>${e.depth_m.toFixed(1)}</td>
-        <td>${e.date || '—'}</td>
-      </tr>
-    `).join('')
-    
-    return `
-      <div class="sondage-item">
-        <div class="sondage-header" onclick="toggleSondage('sondage${idx}')">
-          <span><strong>${s.code || s.id.substring(0, 8)}</strong> ${badge}</span>
-          <span style="color:var(--muted)">▼</span>
-        </div>
-        <div id="sondage${idx}" class="sondage-content">
-          <table class="essais-table">
-            <thead>
-              <tr><th>Type</th><th>Valeur</th><th>Unité</th><th>Z(m)</th><th>Date</th></tr>
-            </thead>
-            <tbody>${essaisRows}</tbody>
-          </table>
-          <div style="display:flex;gap:6px">
-            <button class="btn-sm" onclick="editSurvey('${s.id}')">✏️ Éditer</button>
-            <button class="btn-sm" onclick="deleteSurvey('${s.id}', '${s.code}')">🗑️ Supprimer</button>
-            <button class="btn-sm" onclick="locateSurvey(${s.lon}, ${s.lat}, ${s.has_coords})">📍 Localiser</button>
-          </div>
-        </div>
-      </div>
-    `
-  }).join('')
-}
-
-// Toggle accordéon sondage
-function toggleSondage(id: string) {
-  const el = document.getElementById(id)!
-  el.classList.toggle('open')
-}
-(window as any).toggleSondage = toggleSondage
 
 // Localiser un sondage sur la carte
 function locateSurvey(lon: number | null, lat: number | null, hasCoords: boolean) {
@@ -1987,6 +2549,7 @@ safeAddEventListener('newGeotechSurveyBtn', 'click', () => {
 
 // Initialiser le geocode manager
 const geocodeManager = new GeocodeManager(API_GEO)
+const suggestionsPanel = new SuggestionsPanel(API_GEO)
 
 // Bouton pour ouvrir le geocode manager
 safeAddEventListener('geocodeSurveysBtn', 'click', () => {
@@ -2012,6 +2575,23 @@ safeAddEventListener('geocodeSurveysBtn', 'click', () => {
   )
 })
 
+// Bouton pour ouvrir le panel de suggestions
+safeAddEventListener('suggestionsBtn', 'click', () => {
+  suggestionsPanel.renderUI(
+    'suggestionsContainer',
+    (msg) => {
+      console.log('[SUGGESTIONS]', msg)
+      toast(msg, 'ok')
+      // Recharger la grille
+      loadGrid()
+    },
+    (error) => {
+      console.error('[SUGGESTIONS] Erreur:', error)
+      toast(`❌ Erreur: ${error}`, 'err')
+    }
+  )
+})
+
 // Open drawer for survey list
 safeAddEventListener('listSurveysBtn', 'click', () => openDrawer('list'))
 
@@ -2019,10 +2599,7 @@ safeAddEventListener('listSurveysBtn', 'click', () => openDrawer('list'))
 // safeAddEventListener('importCsvBtn', 'click', () => openDrawer('import'))
 
 // Open Import Bulk Wizard (new version)
-safeAddEventListener('importCsvBtn', 'click', () => {
-  console.log('[IMPORT] Ouverture du wizard...')
-  importWizard.open()
-})
+// Event listener sera enregistré dans bootstrap() après initialisation du wizard
 
 // Cancel import
 safeAddEventListener('cancelImportBtn', 'click', closeDrawer)
@@ -2548,13 +3125,12 @@ const thematicManager = new ThematicMapManager(map, API_GEO)
 const thematicPanel = new ThematicPanel(thematicManager)
 console.log('[INIT] ✅ Cartes thématiques initialisées')
 
-// Initialiser le wizard d'import bulk
-console.log('[INIT] Initialisation Import Bulk Wizard...')
-const importWizard = new ImportBulkWizard('importBulkWizard', API_GEO, () => {
-  console.log('[IMPORT] Import terminé, rechargement de la grille...')
-  loadGrid(false)
-})
-console.log('[INIT] ✅ Import Bulk Wizard initialisé')
+// Le wizard sera initialisé dans bootstrap() pour éviter les problèmes de portée
+// V2 - désactivé pour tests
+// const importWizard = new ImportBulkWizard('importBulkWizard', API_GEO, () => {
+//   console.log('[IMPORT] Import terminé, rechargement de la grille...')
+//   loadGrid(false)
+// })
 
 // --- Détection de Doublons (Rayon 1 km) ---
 async function checkDuplicates(lat: number, lon: number, code: string) {
@@ -2634,3 +3210,83 @@ function highlightDuplicatesOnMap() {
 safeAddEventListener('showDuplicatesBtn', 'click', () => {
   highlightDuplicatesOnMap()
 })
+
+/* =========================
+   Bootstrap Import Wizard V3
+   ========================= */
+
+function registerImportHandlers(wizard: ReturnType<typeof bootImportWizardV3>) {
+  if (!wizard) {
+    console.error('[BOOTSTRAP] Wizard non initialisé, handlers non enregistrés')
+    return
+  }
+
+  safeAddEventListener('importCsvBtn', 'click', () => {
+    console.log('[IMPORT] Ouverture du wizard V3...')
+    wizard.open()
+  })
+
+  // Si vous avez un bouton séparé pour bulk
+  safeAddEventListener('importBulkBtn', 'click', () => {
+    console.log('[IMPORT] Ouverture du wizard V3 (bulk)...')
+    wizard.open()
+  })
+
+  console.log('[BOOTSTRAP] ✅ Handlers import enregistrés')
+}
+
+function bootstrapImportWizard() {
+  console.log('[BOOTSTRAP] Initialisation Import Bulk Wizard V3...')
+  const wizard = bootImportWizardV3(API_GEO)
+  
+  if (wizard) {
+    console.log('[BOOTSTRAP] ✅ Import Bulk Wizard V3 initialisé')
+    registerImportHandlers(wizard)
+  } else {
+    console.error('[BOOTSTRAP] ❌ Échec initialisation Import Bulk Wizard V3')
+  }
+}
+
+// Mettre à jour la version dynamiquement
+function updateAppVersion() {
+  const versionEl = document.getElementById('appVersion')
+  if (versionEl) {
+    versionEl.textContent = APP_VERSION
+    console.log(`[INIT] Version affichée: ${APP_VERSION}`)
+  }
+}
+
+// Initialiser les onglets
+function initTabs() {
+  const tabs = document.querySelectorAll('.tab')
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const targetTab = tab.getAttribute('data-tab')
+      if (!targetTab) return
+      
+      // Désactiver tous les onglets et contenus
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'))
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'))
+      
+      // Activer l'onglet et le contenu sélectionnés
+      tab.classList.add('active')
+      const content = document.getElementById(`tab-${targetTab}`)
+      if (content) content.classList.add('active')
+      
+      console.log(`[initTabs] Onglet activé: ${targetTab}`)
+    })
+  })
+}
+
+// Garantit l'ordre : d'abord boot, ensuite listeners
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    updateAppVersion()
+    bootstrapImportWizard()
+    initTabs()
+  }, { once: true })
+} else {
+  updateAppVersion()
+  bootstrapImportWizard()
+  initTabs()
+}

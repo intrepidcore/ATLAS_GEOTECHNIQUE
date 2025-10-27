@@ -128,24 +128,24 @@ pub async fn get_coverage_mailles(
     let pool = &state.pool;
     
     // Construire la requête avec filtre bbox optionnel
+    // Utilise mv_mailles_geotech qui inclut le spread ADM3
     let mut query = r#"
-        SELECT m.code,
-               ST_AsGeoJSON(ST_Transform(m.geom,4326)) AS g,
-               m.adm1_name,
-               m.adm2_name,
-               m.adm3_name,
-               COALESCE(COUNT(DISTINCT s.id),0)::bigint AS n_sondages,
-               COALESCE(COUNT(e.id),0)::bigint AS n_essais,
-               AVG(CASE WHEN e.type_essai = 'SPT_N' THEN e.valeur_numerique::numeric ELSE NULL END) AS spt_n_avg,
-               AVG(CASE WHEN e.type_essai = 'qc' THEN e.valeur_numerique::numeric ELSE NULL END) AS qc_avg,
-               COUNT(CASE WHEN e.depth_m >= 0 AND e.depth_m < 5 THEN 1 END)::bigint AS n_depth_0_5,
-               COUNT(CASE WHEN e.depth_m >= 5 AND e.depth_m < 10 THEN 1 END)::bigint AS n_depth_5_10,
-               COUNT(CASE WHEN e.depth_m >= 10 THEN 1 END)::bigint AS n_depth_10plus,
-               COUNT(CASE WHEN e.type_essai = 'SPT_N' THEN 1 END)::bigint AS n_spt_n,
-               COUNT(CASE WHEN e.type_essai = 'qc' THEN 1 END)::bigint AS n_qc
-        FROM mailles m
-        LEFT JOIN sondages s ON ST_Within(s.geom, m.geom)
-        LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+        SELECT code,
+               ST_AsGeoJSON(ST_Transform(geom,4326)) AS g,
+               adm1_name,
+               adm2_name,
+               adm3_name,
+               (nb_sondages_real + nb_sondages_spread)::bigint AS n_sondages,
+               0::bigint AS n_essais,
+               NULL::numeric AS spt_n_avg,
+               NULL::numeric AS qc_avg,
+               0::bigint AS n_depth_0_5,
+               0::bigint AS n_depth_5_10,
+               0::bigint AS n_depth_10plus,
+               0::bigint AS n_spt_n,
+               0::bigint AS n_qc,
+               has_data
+        FROM mv_mailles_geotech
     "#.to_string();
     
     // Ajouter filtre bbox si présent
@@ -153,13 +153,13 @@ pub async fn get_coverage_mailles(
         let parts: Vec<f64> = bbox_str.split(',').filter_map(|s| s.parse().ok()).collect();
         if parts.len() == 4 {
             query.push_str(&format!(
-                " WHERE ST_Intersects(ST_Transform(m.geom, 4326), ST_MakeEnvelope({}, {}, {}, {}, 4326))",
+                " WHERE ST_Intersects(ST_Transform(geom, 4326), ST_MakeEnvelope({}, {}, {}, {}, 4326))",
                 parts[0], parts[1], parts[2], parts[3]
             ));
         }
     }
     
-    query.push_str(" GROUP BY m.code, m.geom, m.adm1_name, m.adm2_name, m.adm3_name");
+    // Pas besoin de GROUP BY car la vue est déjà agrégée
     
     let rows = match sqlx::query(&query).fetch_all(pool).await {
         Ok(v) => v,

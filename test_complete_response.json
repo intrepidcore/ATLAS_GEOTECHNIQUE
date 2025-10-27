@@ -1,0 +1,24 @@
+{
+  "kpi": {
+    "n_sondages": 0,
+    "n_echantillons": 0,
+    "n_essais": 0,
+    "pct_spread": 0.0,
+    "depth_max_m": null,
+    "updated_at": "2025-10-27T08:34:27.727040041+00:00"
+  },
+  "overview": {
+    "atterberg": [],
+    "vbs": [],
+    "granulo": [],
+    "depth_hist": [
+      {
+        "bin": 1,
+        "n": 3
+      }
+    ]
+  },
+  "samples": [],
+  "surveys": [],
+  "source_surveys": []
+}

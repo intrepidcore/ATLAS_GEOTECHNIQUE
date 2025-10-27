@@ -1,0 +1,4050 @@
+{
+  "source_file": "ADANDOGOU Afiwa Pamela  PAS TERMINE.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.178470",
+  "sheets": [
+    {
+      "name": "AGTAssahoum",
+      "headers": [
+        "col_0",
+        "col_1",
+        "Taleau3-3:Analyse granulométriquepar timisage    et  sédimentometrie   de l'argile",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "ouverture des tamis (mm)",
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": "Passant par profondeur 1m",
+          "col_3": "Passant profondeur 1,5m",
+          "col_4": "Passant profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": 25,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 100,
+          "col_3": 100,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 20,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 100,
+          "col_3": 100,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 100,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": null,
+          "col_3": 99.47,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 99.92,
+          "col_3": 99.1,
+          "col_4": 99.33
+        },
+        {
+          "col_0": "Analyse granulométrie par tamisage",
+          "col_1": 10,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 99.92,
+          "col_3": 98.07,
+          "col_4": 98.09
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 99.78,
+          "col_3": 97.25,
+          "col_4": 95.85
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 99.46,
+          "col_3": 94.48,
+          "col_4": 91.58
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 98.99,
+          "col_3": 90.23,
+          "col_4": 74.01
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 98.56,
+          "col_3": 86.15,
+          "col_4": 65.85
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 98.09,
+          "col_3": 81.63,
+          "col_4": 57.61
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 97.26,
+          "col_3": 76.53,
+          "col_4": 49.53
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 96.08,
+          "col_3": 72.89,
+          "col_4": 45.74
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 94.05,
+          "col_3": 69.22,
+          "col_4": 43.65
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 91.62,
+          "col_3": 66.65,
+          "col_4": 41.93
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 88.57,
+          "col_3": 60.2,
+          "col_4": 40.08
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 84.98,
+          "col_3": 59.78,
+          "col_4": 38.27
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 78.47,
+          "col_3": 54.6,
+          "col_4": 36.2
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 73.84,
+          "col_3": 50.33,
+          "col_4": 33.91
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 68.26,
+          "col_3": 46.6,
+          "col_4": 31.89
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 61.99,
+          "col_3": 422.43,
+          "col_4": 29.81
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 56.74,
+          "col_3": 39.15,
+          "col_4": 28.81
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 51.07,
+          "col_3": 34.47,
+          "col_4": 26.47
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 47.26,
+          "col_3": 30.27,
+          "col_4": 24.92
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 44.74,
+          "col_3": 27.88,
+          "col_4": 24.33
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 43.76,
+          "col_3": 26.56,
+          "col_4": 24.08
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile": 43.3,
+          "col_3": 5.7,
+          "col_4": 4.02
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "taleau33analyse_granulométriquepar_timisage_et_sédimentometrie_de_largile",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS Assahoum ",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouverture des tamis (mm)",
+          "col_3": "Passant par profondeur 1m",
+          "col_4": "Passant par profondeur 1,5m",
+          "col_5": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0714,
+          "col_3": 39.8,
+          "col_4": 22.54,
+          "col_5": 21.2
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0506,
+          "col_3": 36.19,
+          "col_4": 18.95,
+          "col_5": 14.7
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0364,
+          "col_3": 27.41,
+          "col_4": 16.11,
+          "col_5": 12.32
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0231,
+          "col_3": 23.17,
+          "col_4": 13.85,
+          "col_5": 10.87
+        },
+        {
+          "col_0": "Analyse  granulométrie par  tamisage",
+          "col_1": "Analyse  granulmétrie   par sédimentometrie",
+          "col_2": 0.0163,
+          "col_3": 19.36,
+          "col_4": 13.5,
+          "col_5": 10.71
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0115,
+          "col_3": 15.49,
+          "col_4": 12.8,
+          "col_5": 10.63
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.00822,
+          "col_3": 14.5,
+          "col_4": 12.45,
+          "col_5": 10.54
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0058,
+          "col_3": 13.51,
+          "col_4": 11.75,
+          "col_5": 10.38
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0034,
+          "col_3": 13,
+          "col_4": 11.37,
+          "col_5": 10.27
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGT BADJA",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouverture des tamis (mm)",
+          "col_3": "Passant par profondeur 1m",
+          "col_4": "Passant par profondeur 1,5m",
+          "col_5": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 25,
+          "col_3": 100,
+          "col_4": 98.63,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "col_3": 100,
+          "col_4": 98.63,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 100,
+          "col_3": 100,
+          "col_4": 98.24,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 12.5,
+          "col_3": 100,
+          "col_4": 97.85,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 100,
+          "col_4": 96.78,
+          "col_5": 99.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 8,
+          "col_3": 99.63,
+          "col_4": 95.62,
+          "col_5": 99.66
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 6.3,
+          "col_3": 99.45,
+          "col_4": 94.38,
+          "col_5": 99.47
+        },
+        {
+          "col_0": null,
+          "col_1": "Analyse granulométrie par tamisage",
+          "col_2": 5,
+          "col_3": 99.19,
+          "col_4": 92.5,
+          "col_5": 99.28
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 4,
+          "col_3": 98.81,
+          "col_4": 90.84,
+          "col_5": 98.92
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 3.15,
+          "col_3": 98.25,
+          "col_4": 88.13,
+          "col_5": 97.94
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2.5,
+          "col_3": 97.2,
+          "col_4": 84.46,
+          "col_5": 96.97
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": 95.98,
+          "col_4": 80.54,
+          "col_5": 95.21
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.6,
+          "col_3": 93.92,
+          "col_4": 76.36,
+          "col_5": 92.34
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.25,
+          "col_3": 91.4,
+          "col_4": 71.68,
+          "col_5": 88.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": 88.23,
+          "col_4": 65.82,
+          "col_5": 84.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.8,
+          "col_3": 84.69,
+          "col_4": 60.98,
+          "col_5": 80.29
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.63,
+          "col_3": 79.91,
+          "col_4": 55.2,
+          "col_5": 74.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.5,
+          "col_3": 75.68,
+          "col_4": 51.28,
+          "col_5": 69.91
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.4,
+          "col_3": 72.3,
+          "col_4": 47.7,
+          "col_5": 66
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 68.18,
+          "col_4": 43.45,
+          "col_5": 61.72
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.25,
+          "col_3": 65.04,
+          "col_4": 40.45,
+          "col_5": 57.93
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.2,
+          "col_3": 59.33,
+          "col_4": 33.49,
+          "col_5": 53
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.16,
+          "col_3": 53.7,
+          "col_4": 32.88,
+          "col_5": 47.81
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.125,
+          "col_3": 51.12,
+          "col_4": 31.9,
+          "col_5": 45.58
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.1,
+          "col_3": 49.85,
+          "col_4": 31.09,
+          "col_5": 44.46
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 48.54,
+          "col_4": 30.28,
+          "col_5": 43.27
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGS BADJA",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Passant par profondeur 1m",
+          "col_3": "Passant par profondeur 1,5m",
+          "col_4": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0671,
+          "col_2": 43.63,
+          "col_3": 28.82,
+          "col_4": 40.13
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0474,
+          "col_2": 38.94,
+          "col_3": 25.6,
+          "col_4": 32.47
+        },
+        {
+          "col_0": "Analyse  granulmétrie   par sédimentometrie",
+          "col_1": 0.0331,
+          "col_2": 31.7,
+          "col_3": 20.6,
+          "col_4": 28.22
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0211,
+          "col_2": 30.59,
+          "col_3": 13.78,
+          "col_4": 22.75
+        },
+        {
+          "col_0": null,
+          "col_1": 0.015,
+          "col_2": 29.48,
+          "col_3": 12.66,
+          "col_4": 16.68
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0105,
+          "col_2": 26.71,
+          "col_3": 11.91,
+          "col_4": 16.14
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0077,
+          "col_2": 24.48,
+          "col_3": 11.53,
+          "col_4": 15.06
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0055,
+          "col_2": 22.81,
+          "col_3": 10.78,
+          "col_4": 15.07
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0032,
+          "col_2": 21.1,
+          "col_3": 10.4,
+          "col_4": 12.36
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGT Kévé",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Passant par profondeur 1m",
+          "col_3": "Passant par profondeur 1,5m",
+          "col_4": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": 25,
+          "col_2": 100,
+          "col_3": 100,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 20,
+          "col_2": 100,
+          "col_3": 100,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 100,
+          "col_2": 100,
+          "col_3": 100,
+          "col_4": 99.72
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "col_2": 99.89,
+          "col_3": 99.59,
+          "col_4": 98.87
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 99.79,
+          "col_3": 98.45,
+          "col_4": 95.05
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 99.62,
+          "col_3": 95.93,
+          "col_4": 90.63
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 99.28,
+          "col_3": 92.46,
+          "col_4": 84.22
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 98.67,
+          "col_3": 88.4,
+          "col_4": 76.35
+        },
+        {
+          "col_0": "Analyse granulométrie par tamisage",
+          "col_1": 4,
+          "col_2": 98.04,
+          "col_3": 84.79,
+          "col_4": 69.38
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 97.5,
+          "col_3": 81.95,
+          "col_4": 63.84
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 96.83,
+          "col_3": 79.4,
+          "col_4": 59.15
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 96.06,
+          "col_3": 77.45,
+          "col_4": 56.15
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 94.87,
+          "col_3": 75.64,
+          "col_4": 53.56
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 93.46,
+          "col_3": 73.9,
+          "col_4": 51.6
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 91.9,
+          "col_3": 72.43,
+          "col_4": 49.78
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 90.6,
+          "col_3": 71.1,
+          "col_4": 48.91
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 87.85,
+          "col_3": 69.34,
+          "col_4": 47.48
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 83.14,
+          "col_3": 67.62,
+          "col_4": 46.28
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 80.34,
+          "col_3": 65.9,
+          "col_4": 44.98
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 77.32,
+          "col_3": 63.93,
+          "col_4": 43.63
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 7440,
+          "col_3": 62.25,
+          "col_4": 4.6
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 71.6,
+          "col_3": 60.12,
+          "col_4": 41
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 70.36,
+          "col_3": 58.18,
+          "col_4": 39.32
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 67.38,
+          "col_3": 57.65,
+          "col_4": 38.14
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 67.3,
+          "col_3": 57.42,
+          "col_4": 37.32
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 65.3,
+          "col_3": 57.32,
+          "col_4": 36.66
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS Kévé",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Ouverture des tamis (mm)",
+          "col_4": "Passant par profondeur 1m",
+          "col_5": "Passant par profondeur 1,5m",
+          "col_6": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0702,
+          "col_4": 61.2,
+          "col_5": 53.31,
+          "col_6": 34.08
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.05,
+          "col_4": 54.5,
+          "col_5": 51.49,
+          "col_6": 28.91
+        },
+        {
+          "col_0": null,
+          "col_1": "Analyse  granulmétrie   par sédimentometrie",
+          "col_2": null,
+          "col_3": 0.356,
+          "col_4": 48.2,
+          "col_5": 46.8,
+          "col_6": 24.91
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.229,
+          "col_4": 41.5,
+          "col_5": 41.14,
+          "col_6": 19.14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0134,
+          "col_4": 28.74,
+          "col_5": 31.12,
+          "col_6": 15.39
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0078,
+          "col_4": 19.02,
+          "col_5": 24.75,
+          "col_6": 13.97
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0048,
+          "col_4": 13.43,
+          "col_5": 24.08,
+          "col_6": 12.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0028,
+          "col_4": 10.95,
+          "col_5": 22.722,
+          "col_6": 11.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0014,
+          "col_4": 5.74,
+          "col_5": 21.99,
+          "col_6": 8.84
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Densité",
+      "headers": [
+        "D",
+        "col_1",
+        "col_2",
+        "Taleau 3-5: Récapitulatif des   essais de   densié",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": "Référance",
+          "latitude": "Localité/Cantons",
+          "col_4": "profondeur",
+          "col_5": "Densité Apparente",
+          "col_6": "Densité Absolue"
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 1,
+          "latitude": "Kévé",
+          "col_4": 1,
+          "col_5": 1.28,
+          "col_6": 2.49
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 1,
+          "latitude": "Kévé",
+          "col_4": 1.5,
+          "col_5": 1.16,
+          "col_6": 2.45
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 1,
+          "latitude": "Kévé",
+          "col_4": 2,
+          "col_5": 1.22,
+          "col_6": 2.58
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 2,
+          "latitude": "Assahoum",
+          "col_4": 1,
+          "col_5": 1.31,
+          "col_6": 2.44
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 2,
+          "latitude": "Assahoum",
+          "col_4": 1.5,
+          "col_5": 1.25,
+          "col_6": 2.44
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 2,
+          "latitude": "Assahoum",
+          "col_4": 2,
+          "col_5": 1.33,
+          "col_6": 2.58
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 3,
+          "latitude": "Badja",
+          "col_4": 1,
+          "col_5": 1.31,
+          "col_6": 2.37
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 3,
+          "latitude": "Badja",
+          "col_4": 1.5,
+          "col_5": 1.32,
+          "col_6": 2.35
+        },
+        {
+          "d": null,
+          "col_1": null,
+          "col_2": 3,
+          "latitude": "Badja",
+          "col_4": 2,
+          "col_5": 1.5,
+          "col_6": 2.31
+        }
+      ],
+      "translated_headers": [
+        "d",
+        "col_1",
+        "col_2",
+        "latitude",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Limite ATT",
+      "headers": [
+        "Taleau 3-5: Récapitulatif des résultats de limite  d'Attererg",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "latitude": null,
+          "col_1": "Référance",
+          "col_2": "Localité/Cantons",
+          "col_3": "profondeur",
+          "col_4": "Wl",
+          "col_5": "Wp",
+          "col_6": "Ip"
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 1,
+          "col_4": 53,
+          "col_5": 23,
+          "col_6": 30
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 1.5,
+          "col_4": 48,
+          "col_5": 21,
+          "col_6": 27
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 2,
+          "col_4": 51,
+          "col_5": 22,
+          "col_6": 29
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": "Moyenne",
+          "col_4": 50.66,
+          "col_5": 22,
+          "col_6": 28.66
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 1,
+          "col_4": 24,
+          "col_5": 12,
+          "col_6": 12
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 1.5,
+          "col_4": 41,
+          "col_5": 19,
+          "col_6": 22
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 2,
+          "col_4": 42,
+          "col_5": 22,
+          "col_6": 20
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": "Moyenne",
+          "col_4": 35.66,
+          "col_5": 17.66,
+          "col_6": 18
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 1,
+          "col_4": 49,
+          "col_5": 18,
+          "col_6": 31
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 1.5,
+          "col_4": 53,
+          "col_5": 18,
+          "col_6": 35
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 2,
+          "col_4": 51,
+          "col_5": 17,
+          "col_6": 34
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": "Moyenne",
+          "col_4": 51,
+          "col_5": 17.66,
+          "col_6": 33.33
+        }
+      ],
+      "translated_headers": [
+        "latitude",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Bleu",
+      "headers": [
+        "Taleau 3-5: Récapitulatif des essais de  bleu de méthylène",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "latitude": null,
+          "col_1": "Référance",
+          "col_2": "Localité/Cantons",
+          "col_3": "profondeur",
+          "col_4": "VBS",
+          "col_5": "Caractéristique"
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 1,
+          "col_4": 4.02,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 1.5,
+          "col_4": 3.61,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 2,
+          "col_4": 1.22,
+          "col_5": "Sol  limoneux "
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": "Moyenne",
+          "col_4": 2.94,
+          "col_5": "Sol  limoneux "
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 1,
+          "col_4": 1.83,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 1.5,
+          "col_4": 3.82,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 2,
+          "col_4": 2.64,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": "Moyenne",
+          "col_4": 2.76,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 1,
+          "col_4": 4.6,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 1.5,
+          "col_4": 4.03,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 2,
+          "col_4": 5.03,
+          "col_5": "Sol  limoneux argileux"
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": "Moyenne",
+          "col_4": 4.53,
+          "col_5": "Sol  limoneux argileux"
+        }
+      ],
+      "translated_headers": [
+        "latitude",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "Teneur en eau",
+      "headers": [
+        "Taleau 3-5: Récapitulatif des teneur en eau naturel des sols et de l'indice",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "latitude": null,
+          "col_1": "Référance",
+          "col_2": "Localité/Cantons",
+          "col_3": "profondeur",
+          "col_4": "Teneur en eau",
+          "col_5": "WI",
+          "col_6": "W",
+          "col_7": "Caractéristique"
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 1,
+          "col_4": 14.61,
+          "col_5": 53,
+          "col_6": 0.28,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 1.5,
+          "col_4": 11.29,
+          "col_5": 48,
+          "col_6": 0.23,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": 2,
+          "col_4": 4.4,
+          "col_5": 51,
+          "col_6": 0.08,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 1,
+          "col_2": "Kévé",
+          "col_3": "Moyenne",
+          "col_4": 10.1,
+          "col_5": 50.66,
+          "col_6": 0.2,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 1,
+          "col_4": 10.66,
+          "col_5": 24,
+          "col_6": 0.44,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 1.5,
+          "col_4": 28.37,
+          "col_5": 41,
+          "col_6": 0.69,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": 2,
+          "col_4": 20.97,
+          "col_5": 42,
+          "col_6": 0.49,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 2,
+          "col_2": "Assahoum",
+          "col_3": "Moyenne",
+          "col_4": 20,
+          "col_5": 35.66,
+          "col_6": 0.56,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 1,
+          "col_4": 9.29,
+          "col_5": 49,
+          "col_6": 0.19,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 1.5,
+          "col_4": 14.44,
+          "col_5": 53,
+          "col_6": 0.27,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": 2,
+          "col_4": 20.65,
+          "col_5": 51,
+          "col_6": 0.4,
+          "col_7": "Gonflemet  faile"
+        },
+        {
+          "latitude": null,
+          "col_1": 3,
+          "col_2": "Badja",
+          "col_3": "Moyenne",
+          "col_4": 14.29,
+          "col_5": 51,
+          "col_6": 0.28,
+          "col_7": "Gonflemet  faile"
+        }
+      ],
+      "translated_headers": [
+        "latitude",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "Classification",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": "Taleau 3-9: Résultats de classification",
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null
+        },
+        {
+          "col_0": null,
+          "col_1": "Localité/ Cantons  ",
+          "col_2": "Profondeur (m)",
+          "col_3": "Classification HRB",
+          "col_4": "Classification uité",
+          "col_5": "classification d'après le bleu de méthylène"
+        },
+        {
+          "col_0": null,
+          "col_1": "Kévé",
+          "col_2": 1,
+          "col_3": "Sol  argileux",
+          "col_4": "sol fin",
+          "col_5": "Sol limoneux argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": "Kévé",
+          "col_2": 1.5,
+          "col_3": "Sol  argileux",
+          "col_4": "sol fin",
+          "col_5": "Sol limoneux argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": "Kévé",
+          "col_2": 2,
+          "col_3": "Sol  argileux",
+          "col_4": "sol genu",
+          "col_5": "Sol limoneux "
+        },
+        {
+          "col_0": null,
+          "col_1": "Assahoum",
+          "col_2": 1,
+          "col_3": "Sol  argileux",
+          "col_4": "sol genu",
+          "col_5": "Sol limoneux "
+        },
+        {
+          "col_0": null,
+          "col_1": "Assahoum",
+          "col_2": 1.5,
+          "col_3": "Gravier et  sable   limoneux  ou argileux",
+          "col_4": "sol genu",
+          "col_5": "Sol limoneux argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": "Assahoum",
+          "col_2": 2,
+          "col_3": "Gravier et  sable   limoneux  ou argileux",
+          "col_4": "sol genu",
+          "col_5": "Sol limoneux argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": "Badja",
+          "col_2": 1,
+          "col_3": "Sol  argileux",
+          "col_4": "sol genu",
+          "col_5": "Sol limoneux argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": "Badja",
+          "col_2": 1.5,
+          "col_3": "Gravier et  sable   limoneux  ou argileux",
+          "col_4": "sol genu",
+          "col_5": "Sol limoneux argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": "Badja",
+          "col_2": 2,
+          "col_3": "Sol  argileux",
+          "col_4": "sol genu",
+          "col_5": "Sol limoneux argileux"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGT  Kévé 1,5m ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "col_2": 11.1,
+          "col_3": 0.41,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 41.7,
+          "col_3": 1.55,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 109.6,
+          "col_3": 4.07,
+          "col_4": 99.59
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 203.2,
+          "col_3": 7.54,
+          "col_4": 98.45
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 312.1,
+          "col_3": 11.54,
+          "col_4": 95.93
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": 410.1,
+          "col_3": 15.21,
+          "col_4": 922.46
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 486.5,
+          "col_3": 18.05,
+          "col_4": 88.42
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 554.9,
+          "col_3": 20.58,
+          "col_4": 84.78
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 605.5,
+          "col_3": 22.46,
+          "col_4": 81.95
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 656.9,
+          "col_3": 24.36,
+          "col_4": 79.42
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 703,
+          "col_3": 26.08,
+          "col_4": 77.54
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 743.2,
+          "col_3": 27.57,
+          "col_4": 75.64
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 779.1,
+          "col_3": 28.9,
+          "col_4": 73.9
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 826.6,
+          "col_3": 30.38,
+          "col_4": 72.43
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 873,
+          "col_3": 32.38,
+          "col_4": 71.1
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 919.4,
+          "col_3": 34.1,
+          "col_4": 69.34
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 972.4,
+          "col_3": 36.07,
+          "col_4": 67.62
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 1017.7,
+          "col_3": 37.75,
+          "col_4": 65.9
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 1075.1,
+          "col_3": 39.88,
+          "col_4": 63.93
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 117.3,
+          "col_3": 41.82,
+          "col_4": 6.25
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 1141.8,
+          "col_3": 42.822,
+          "col_4": 60.122
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 1148,
+          "col_3": 42.58,
+          "col_4": 58.18
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 1150.5,
+          "col_3": 42.68,
+          "col_4": 57.65
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS Kévé 1,5m ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0703,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 57.42
+        },
+        {
+          "col_0": null,
+          "col_1": 0.499,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 57.32
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0354,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 53.31
+        },
+        {
+          "col_0": null,
+          "col_1": 0.224,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 51.49
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0159,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 46.8
+        },
+        {
+          "col_0": "Analyse granulométrie par  sédimentométrie",
+          "col_1": 0.0113,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 41.14
+        },
+        {
+          "col_0": null,
+          "col_1": 0.008,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 31.122
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0057,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 224.75
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0033,
+          "col_2": "-",
+          "col_3": "-",
+          "col_4": 24.08
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGT Kévé 2m  ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 25,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 20,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": 8,
+          "col_3": 0.28,
+          "col_4": 99.72
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "col_2": 32.5,
+          "col_3": 1.13,
+          "col_4": 98.87
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 142.1,
+          "col_3": 4.95,
+          "col_4": 95.05
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 269.3,
+          "col_3": 9.37,
+          "col_4": 90.63
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 453.5,
+          "col_3": 15.78,
+          "col_4": 94.22
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 679.7,
+          "col_3": 23.65,
+          "col_4": 76.35
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": 879.8,
+          "col_3": 30.62,
+          "col_4": 69.38
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 1039,
+          "col_3": 36.16,
+          "col_4": 63.84
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 1173.8,
+          "col_3": 40.85,
+          "col_4": 59.15
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 161.7,
+          "col_3": 43.91,
+          "col_4": 56.09
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 1334.4,
+          "col_3": 46.44,
+          "col_4": 52.56
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 1390.8,
+          "col_3": 48.4,
+          "col_4": 51.6
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 1443.1,
+          "col_3": 50.22,
+          "col_4": 49.78
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 1468.2,
+          "col_3": 51.09,
+          "col_4": 48.91
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 1509.3,
+          "col_3": 52.52,
+          "col_4": 47.48
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 1543.7,
+          "col_3": 53.72,
+          "col_4": 46.28
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 1580.9,
+          "col_3": 55.02,
+          "col_4": 44.98
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 1649.9,
+          "col_3": 56.37,
+          "col_4": 43.63
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 1649.3,
+          "col_3": 57.4,
+          "col_4": 42.6
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 1695.4,
+          "col_3": 59,
+          "col_4": 41
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 1743.6,
+          "col_3": 60.68,
+          "col_4": 39.32
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 1777.6,
+          "col_3": 61.86,
+          "col_4": 38.14
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 1801,
+          "col_3": 62.68,
+          "col_4": 37.32
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 1820,
+          "col_3": 63.34,
+          "col_4": 36.66
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS Kévé 2m ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouverture des tamis (mm)",
+          "col_3": "Masse de  refus  cumulés  (g)",
+          "col_4": "refus  cumulés  (%)",
+          "col_5": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0661,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 34.08
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0471,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 28.91
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0336,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 24.76
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0215,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 19.14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0126,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 15.39
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0073,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 13.97
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0045,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 12.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0027,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 11.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0013,
+          "col_3": "-",
+          "col_4": "-",
+          "col_5": 8.54
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGT Kévé 1m ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "col_2": 3,
+          "col_3": 0.11,
+          "col_4": 99.89
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 5.5,
+          "col_3": 0.21,
+          "col_4": 99.79
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 10,
+          "col_3": 0.38,
+          "col_4": 99.62
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 18.9,
+          "col_3": 0.72,
+          "col_4": 99.28
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 34.9,
+          "col_3": 1.33,
+          "col_4": 98.67
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": 51.2,
+          "col_3": 1.96,
+          "col_4": 98.04
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 65.3,
+          "col_3": 2.49,
+          "col_4": 97.05
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 83,
+          "col_3": 3.17,
+          "col_4": 96.83
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 103.2,
+          "col_3": 3.94,
+          "col_4": 96.06
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 134.2,
+          "col_3": 5.13,
+          "col_4": 94.87
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 171.1,
+          "col_3": 6.54,
+          "col_4": 93.46
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 212.1,
+          "col_3": 8.1,
+          "col_4": 91.9
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 255,
+          "col_3": 9.74,
+          "col_4": 90.26
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 318.1,
+          "col_3": 12.15,
+          "col_4": 87.85
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 377.7,
+          "col_3": 14.43,
+          "col_4": 95.57
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 441.3,
+          "col_3": 16.96,
+          "col_4": 83.14
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 514.4,
+          "col_3": 19.65,
+          "col_4": 80.34
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 593.5,
+          "col_3": 22.67,
+          "col_4": 77.32
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 670.1,
+          "col_3": 25.6,
+          "col_4": 74.4
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 743.3,
+          "col_3": 28.4,
+          "col_4": 71.6
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 775.7,
+          "col_3": 29.63,
+          "col_4": 70.36
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 787,
+          "col_3": 30.07,
+          "col_4": 67.47
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 790.7,
+          "col_3": 30.21,
+          "col_4": 65.3
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS Kévé 1m AII ",
+      "headers": [
+        "a",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "a": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "a": null,
+          "col_1": 0.0702,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 61.2
+        },
+        {
+          "a": null,
+          "col_1": 0.05,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 54.5
+        },
+        {
+          "a": null,
+          "col_1": 0.0356,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 58.2
+        },
+        {
+          "a": null,
+          "col_1": 0.0229,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 41.5
+        },
+        {
+          "a": null,
+          "col_1": 0.0134,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 28.74
+        },
+        {
+          "a": null,
+          "col_1": 0.0078,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 19.02
+        },
+        {
+          "a": null,
+          "col_1": 0.0048,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 13.42
+        },
+        {
+          "a": null,
+          "col_1": 0.0028,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10.95
+        },
+        {
+          "a": null,
+          "col_1": 0.0014,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 5.74
+        }
+      ],
+      "translated_headers": [
+        "a",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGT ASSAHOUN (1m) ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "col_2": 2.3,
+          "col_3": 0.08,
+          "col_4": 99.92
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 2.3,
+          "col_3": 0.08,
+          "col_4": 99.92
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 6,
+          "col_3": 0.22,
+          "col_4": 99.78
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 14.7,
+          "col_3": 0.54,
+          "col_4": 99.46
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 27.4,
+          "col_3": 1.01,
+          "col_4": 98.99
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": 39.3,
+          "col_3": 1.45,
+          "col_4": 98.55
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 52,
+          "col_3": 1.92,
+          "col_4": 98.08
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 74.7,
+          "col_3": 2.76,
+          "col_4": 97.24
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 106.7,
+          "col_3": 3.94,
+          "col_4": 96.06
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 162,
+          "col_3": 5.98,
+          "col_4": 94.02
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 228.3,
+          "col_3": 8.42,
+          "col_4": 91.58
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 311.4,
+          "col_3": 11.49,
+          "col_4": 88.51
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 409.1,
+          "col_3": 15.09,
+          "col_4": 84.91
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 559,
+          "col_3": 20.62,
+          "col_4": 79.38
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 71.4,
+          "col_3": 26.28,
+          "col_4": 73.72
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 864.5,
+          "col_3": 31.89,
+          "col_4": 68.11
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 1035.1,
+          "col_3": 38.18,
+          "col_4": 61.82
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 1178,
+          "col_3": 43.45,
+          "col_4": 56.55
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 1332.5,
+          "col_3": 49.15,
+          "col_4": 50.85
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 1436,
+          "col_3": 52.98,
+          "col_4": 47.02
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 1505,
+          "col_3": 55.51,
+          "col_4": 44.49
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 1531.5,
+          "col_3": 56.49,
+          "col_4": 43.51
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 1544.2,
+          "col_3": 56.96,
+          "col_4": 43.3
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS  ASSAHOUN (1m) AII",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0714,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 39.8
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0506,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 36.19
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0364,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 27.41
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0231,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 23.17
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0163,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 19.36
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0115,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 15.49
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0082,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 14.5
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0058,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 13.51
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0034,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 13
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGT  ASSAHOUN 1,5M ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 25,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 20,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": 12.4,
+          "col_3": 0.53,
+          "col_4": 99.47
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "col_2": 21.1,
+          "col_3": 0.9,
+          "col_4": 99.1
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 45.1,
+          "col_3": 1.93,
+          "col_4": 98.07
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 64.3,
+          "col_3": 2.75,
+          "col_4": 97.25
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 129,
+          "col_3": 5.52,
+          "col_4": 94.48
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 228.4,
+          "col_3": 9.77,
+          "col_4": 90.23
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": 323.7,
+          "col_3": 13.85,
+          "col_4": 86.15
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 429.3,
+          "col_3": 18.37,
+          "col_4": 81.63
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 548.6,
+          "col_3": 23.47,
+          "col_4": 76.52
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 633.6,
+          "col_3": 27.11,
+          "col_4": 72.89
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 719.3,
+          "col_3": 30.78,
+          "col_4": 69.22
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 779.3,
+          "col_3": 33.35,
+          "col_4": 66.65
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 860,
+          "col_3": 38.8,
+          "col_4": 63.2
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 940,
+          "col_3": 40.22,
+          "col_4": 59.78
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 1061,
+          "col_3": 45.4,
+          "col_4": 54.6
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 1160.7,
+          "col_3": 49.67,
+          "col_4": 50.33
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 1247.9,
+          "col_3": 53.4,
+          "col_4": 46.6
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 1345.4,
+          "col_3": 57.57,
+          "col_4": 42.43
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 1422.1,
+          "col_3": 60.85,
+          "col_4": 39.15
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 1531.4,
+          "col_3": 65.53,
+          "col_4": 34.45
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 1629.5,
+          "col_3": 69.73,
+          "col_4": 30.27
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 1685.4,
+          "col_3": 72.12,
+          "col_4": 27.88
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 1716.3,
+          "col_3": 73.44,
+          "col_4": 26.56
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 1736.3,
+          "col_3": 74.3,
+          "col_4": 25.7
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS ASSAHOUN 1,5m ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouverture des tamis (mm)",
+          "col_3": "Masse de  refus  cumulés  (g)",
+          "col_4": "refus  cumulés  (%)",
+          "col_5": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0703,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 22.54
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0499,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 18.95
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0354,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 16.11
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0224,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 13.48
+        },
+        {
+          "col_0": "Analyse  granulométrique par  sédimentométrie",
+          "col_1": null,
+          "col_2": 0.0159,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 13.5
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0113,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 12.8
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.008,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 12.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0057,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 11.75
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0033,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 11.37
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGT  ASSAHOUN  2m ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": "Tableau A-6: Analyse granulométrie par tamisage ",
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null
+        },
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": 12.4,
+          "col_3": 0.53,
+          "col_4": 99.47
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 16.6,
+          "col_3": 0.67,
+          "col_4": 99.33
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 47.3,
+          "col_3": 1.91,
+          "col_4": 98.09
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 102.8,
+          "col_3": 4.15,
+          "col_4": 96.85
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 208.7,
+          "col_3": 8.42,
+          "col_4": 91.58
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": 644.5,
+          "col_3": 25.99,
+          "col_4": 74.01
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 853.5,
+          "col_3": 34.42,
+          "col_4": 65.58
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 1051.2,
+          "col_3": 42.39,
+          "col_4": 57.61
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 1251.6,
+          "col_3": 50.47,
+          "col_4": 49.53
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 1345.7,
+          "col_3": 54.26,
+          "col_4": 45.74
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 1397.5,
+          "col_3": 56.35,
+          "col_4": 43.65
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 1440.2,
+          "col_3": 58.07,
+          "col_4": 41.93
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 1486.1,
+          "col_3": 59.92,
+          "col_4": 40.08
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 1530.8,
+          "col_3": 61.73,
+          "col_4": 38.27
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 1582.1,
+          "col_3": 63.8,
+          "col_4": 36.2
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 1689,
+          "col_3": 68.11,
+          "col_4": 31.89
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 1740.6,
+          "col_3": 70.19,
+          "col_4": 29.81
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 1783,
+          "col_3": 71.9,
+          "col_4": 28.1
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 1823.5,
+          "col_3": 73.53,
+          "col_4": 26.47
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 1861.9,
+          "col_3": 75.08,
+          "col_4": 24.92
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 1876.7,
+          "col_3": 75.67,
+          "col_4": 24.33
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 1882.9,
+          "col_3": 75.92,
+          "col_4": 24.08
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 1884.3,
+          "col_3": 75.98,
+          "col_4": 24.02
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS ASSAHOUM 2m ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture des tamis (mm)",
+          "col_2": "Masse de  refus  cumulés  (g)",
+          "col_3": "refus  cumulés  (%)",
+          "col_4": "Passants  (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0677,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 21.2
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0482,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 14.7
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0342,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 12.32
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0216,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10.87
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0153,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10.71
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0108,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10.63
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0076,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10.54
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0054,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10.38
+        },
+        {
+          "col_0": null,
+          "col_1": 0.0031,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10.27
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGT  BADJA 1m ALL",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11",
+        "col_12",
+        "col_13",
+        "col_14",
+        "col_15",
+        "col_16"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "Ouverture du tamis (mm)",
+          "col_14": "Masse de refus cumulés (g)",
+          "col_15": "Refus cumulés (%)",
+          "col_16": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "Analyse granulométrique par tamisage",
+          "col_14": null,
+          "col_15": null,
+          "col_16": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": 10,
+          "col_14": "0,00",
+          "col_15": "0,00",
+          "col_16": "100,00"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": 8,
+          "col_14": "10,20",
+          "col_15": "0,37",
+          "col_16": "99,63"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "6,3",
+          "col_14": "15,00",
+          "col_15": "0,55",
+          "col_16": "99,45"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": 5,
+          "col_14": "22,10",
+          "col_15": "0,81",
+          "col_16": "99,19"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": 4,
+          "col_14": "32,80",
+          "col_15": "1,19",
+          "col_16": "98,81"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "3,15",
+          "col_14": "48,10",
+          "col_15": "1,75",
+          "col_16": "98,25"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "2,5",
+          "col_14": "76,80",
+          "col_15": "2,80",
+          "col_16": "97,20"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": 2,
+          "col_14": "111,40",
+          "col_15": "4,06",
+          "col_16": "95,94"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "1,6",
+          "col_14": "166,90",
+          "col_15": "6,08",
+          "col_16": "93,92"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "1,25",
+          "col_14": "236,20",
+          "col_15": "8,60",
+          "col_16": "91,40"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": 1,
+          "col_14": "323,20",
+          "col_15": "11,77",
+          "col_16": "88,23"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,8",
+          "col_14": "420,30",
+          "col_15": "15,31",
+          "col_16": "84,69"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,63",
+          "col_14": "551,40",
+          "col_15": "20,09",
+          "col_16": "79,91"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,5",
+          "col_14": "667,70",
+          "col_15": "24,32",
+          "col_16": "75,68"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,4",
+          "col_14": "760,30",
+          "col_15": "27,70",
+          "col_16": "72,30"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,315",
+          "col_14": "873,50",
+          "col_15": "31,82",
+          "col_16": "68,18"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,25",
+          "col_14": "959,70",
+          "col_15": "34,96",
+          "col_16": "65,04"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,2",
+          "col_14": "1116,40",
+          "col_15": "40,67",
+          "col_16": "59,33"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,16",
+          "col_14": "1271,00",
+          "col_15": "46,30",
+          "col_16": "53,70"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,125",
+          "col_14": "1341,80",
+          "col_15": "48,88",
+          "col_16": "51,12"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,1",
+          "col_14": "1376,50",
+          "col_15": "50,15",
+          "col_16": "49,85"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,08",
+          "col_14": "1412,70",
+          "col_15": "51,46",
+          "col_16": "48,54"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "Analyse granulométrique par sédimentométrie",
+          "col_14": null,
+          "col_15": null,
+          "col_16": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0671",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": "38,94"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0474",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": "31,70"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0331",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": "30,59"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0211",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": "29,48"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0150",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": "26,71"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0108",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": "24,48"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0077",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": "22,81"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0055",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": "21,10"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null,
+          "col_12": null,
+          "col_13": "0,0032",
+          "col_14": "-",
+          "col_15": "-",
+          "col_16": null
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11",
+        "col_12",
+        "col_13",
+        "col_14",
+        "col_15",
+        "col_16"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fix API URL - Atlas</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        h1 { color: #2563eb; margin-top: 0; }
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 5px;
+        }
+        button:hover { background: #1d4ed8; }
+        .success { color: #059669; font-weight: bold; }
+        .error { color: #dc2626; font-weight: bold; }
+        .info { background: #eff6ff; padding: 15px; border-radius: 6px; margin: 15px 0; }
+        code { background: #f1f5f9; padding: 2px 6px; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>🔧 Correctif API URL</h1>
+        
+        <div class="info">
+            <strong>Problème détecté :</strong><br>
+            L'API est configurée sur un mauvais port/URL.<br>
+            Ce script va forcer l'utilisation du proxy Nginx.
+        </div>
+
+        <p><strong>Configuration actuelle :</strong></p>
+        <p id="current">Chargement...</p>
+
+        <button onclick="fixAPI()">✅ Corriger l'API URL</button>
+        <button onclick="checkAPI()">🔍 Tester l'API</button>
+        
+        <div id="result" style="margin-top: 20px;"></div>
+    </div>
+
+    <script>
+        function showCurrent() {
+            const current = localStorage.getItem('API_GEO') || 'Non défini (défaut: /api)';
+            document.getElementById('current').innerHTML = `<code>${current}</code>`;
+        }
+
+        function fixAPI() {
+            // Forcer l'utilisation du proxy Nginx
+            localStorage.setItem('API_GEO', '/api');
+            
+            const result = document.getElementById('result');
+            result.innerHTML = `
+                <p class="success">✅ API URL corrigée !</p>
+                <p>Nouvelle valeur : <code>/api</code></p>
+                <p><strong>Action requise :</strong> Rechargez la page principale d'Atlas</p>
+                <button onclick="reloadAtlas()">🔄 Recharger Atlas</button>
+            `;
+            showCurrent();
+        }
+
+        async function checkAPI() {
+            const result = document.getElementById('result');
+            result.innerHTML = '<p>🔍 Test en cours...</p>';
+
+            try {
+                // Test 1: API via proxy
+                const res1 = await fetch('/api/coverage/mailles');
+                const test1 = res1.ok ? '✅' : '❌';
+                
+                // Test 2: Vérifier le localStorage
+                const apiGeo = localStorage.getItem('API_GEO') || '/api';
+                
+                result.innerHTML = `
+                    <p><strong>Résultats des tests :</strong></p>
+                    <p>${test1} API via proxy (/api/coverage/mailles): ${res1.status}</p>
+                    <p>📋 localStorage.API_GEO: <code>${apiGeo}</code></p>
+                    ${res1.ok ? 
+                        '<p class="success">✅ L\'API fonctionne correctement !</p>' : 
+                        '<p class="error">❌ L\'API ne répond pas. Vérifiez que les conteneurs Docker sont démarrés.</p>'
+                    }
+                `;
+            } catch (err) {
+                result.innerHTML = `
+                    <p class="error">❌ Erreur lors du test</p>
+                    <p>${err.message}</p>
+                    <p><strong>Vérifiez que :</strong></p>
+                    <ul>
+                        <li>Les conteneurs Docker sont démarrés</li>
+                        <li>Le port 8080 est accessible</li>
+                    </ul>
+                `;
+            }
+        }
+
+        function reloadAtlas() {
+            window.location.href = '/';
+        }
+
+        // Afficher la config au chargement
+        showCurrent();
+    </script>
+</body>
+</html>

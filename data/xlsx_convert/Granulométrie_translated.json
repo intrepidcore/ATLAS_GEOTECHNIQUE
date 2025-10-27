@@ -1,0 +1,777 @@
+{
+  "source_file": "Granulométrie.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.450639",
+  "sheets": [
+    {
+      "name": "3.1",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "N",
+          "col_2": "Localités",
+          "col_3": 1,
+          "col_4": 1.5,
+          "col_5": 2
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": "Adjengré (Pounpouni)",
+          "col_3": 77.73,
+          "col_4": 81.8,
+          "col_5": 74.85
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": "Agotivé",
+          "col_3": 60.61,
+          "col_4": 52.23,
+          "col_5": 47.15
+        },
+        {
+          "col_0": null,
+          "col_1": 3,
+          "col_2": "Anié",
+          "col_3": 63.74,
+          "col_4": 44.92,
+          "col_5": 32.25
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": "Apéyéyémé",
+          "col_3": 62.56,
+          "col_4": 64.05,
+          "col_5": 63.99
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": "Badomé",
+          "col_3": 38.5,
+          "col_4": 39.24,
+          "col_5": 38.18
+        },
+        {
+          "col_0": null,
+          "col_1": 6,
+          "col_2": "Kadambara",
+          "col_3": 51.97,
+          "col_4": 54.6,
+          "col_5": 62.96
+        },
+        {
+          "col_0": null,
+          "col_1": 7,
+          "col_2": "Kamina Barrage ",
+          "col_3": 53.38,
+          "col_4": 43.25,
+          "col_5": 74.87
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": "Kamina Dakré",
+          "col_3": 66.34,
+          "col_4": 70.11,
+          "col_5": 72.66
+        },
+        {
+          "col_0": null,
+          "col_1": 9,
+          "col_2": "Kaniamboua (Bago)",
+          "col_3": 62.52,
+          "col_4": 54.5,
+          "col_5": null
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": "Nyamassila",
+          "col_3": 39.71,
+          "col_4": 56.3,
+          "col_5": 55.6
+        },
+        {
+          "col_0": null,
+          "col_1": 11,
+          "col_2": "Ountivou",
+          "col_3": 51.41,
+          "col_4": 57.3,
+          "col_5": 53.52
+        },
+        {
+          "col_0": null,
+          "col_1": 12,
+          "col_2": "Sotouboua (Soudè)",
+          "col_3": 83.38,
+          "col_4": 83.27,
+          "col_5": 82.57
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "3.2",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": "N",
+          "col_1": "Localité",
+          "col_2": 1,
+          "col_3": 1.5,
+          "col_4": 2
+        },
+        {
+          "col_0": 1,
+          "col_1": "Aképé",
+          "col_2": 33.71,
+          "col_3": 32.88,
+          "col_4": 33.44
+        },
+        {
+          "col_0": 2,
+          "col_1": "Assahoun",
+          "col_2": 43.04,
+          "col_3": 25.7,
+          "col_4": 24.02
+        },
+        {
+          "col_0": 3,
+          "col_1": "Badja",
+          "col_2": 48.67,
+          "col_3": 25.93,
+          "col_4": 43.17
+        },
+        {
+          "col_0": 4,
+          "col_1": "Kevé",
+          "col_2": 69.79,
+          "col_3": 57.32,
+          "col_4": 36.66
+        },
+        {
+          "col_0": 5,
+          "col_1": "Tovégan ",
+          "col_2": 38.5,
+          "col_3": 42.28,
+          "col_4": 44.24
+        },
+        {
+          "col_0": 6,
+          "col_1": "Tsévié blévé",
+          "col_2": 42.66,
+          "col_3": 43.52,
+          "col_4": 48.1
+        },
+        {
+          "col_0": 7,
+          "col_1": "Tsévié dalavémodji",
+          "col_2": 43.01,
+          "col_3": 47.47,
+          "col_4": 53.44
+        },
+        {
+          "col_0": 8,
+          "col_1": "Tsévié dévé",
+          "col_2": 53.55,
+          "col_3": 58.15,
+          "col_4": 61.86
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "3.3",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "N",
+          "col_2": "Localité",
+          "col_3": 1,
+          "col_4": 1.5,
+          "col_5": 2
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": "Abobo",
+          "col_3": 36.22,
+          "col_4": 36.88,
+          "col_5": 42.8
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": "Adétikopé",
+          "col_3": 53.18,
+          "col_4": 54.24,
+          "col_5": 30.07
+        },
+        {
+          "col_0": null,
+          "col_1": 3,
+          "col_2": "Apéhéme",
+          "col_3": 62.56,
+          "col_4": 64.05,
+          "col_5": 63.99
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": "Belgique",
+          "col_3": 35.37,
+          "col_4": null,
+          "col_5": 42.25
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": "Dalavé",
+          "col_3": 69.31,
+          "col_4": 56.71,
+          "col_5": 67.3
+        },
+        {
+          "col_0": null,
+          "col_1": 6,
+          "col_2": "Dikamé",
+          "col_3": 66.59,
+          "col_4": 62.84,
+          "col_5": 61.54
+        },
+        {
+          "col_0": null,
+          "col_1": 7,
+          "col_2": "Djagblé",
+          "col_3": 52.9,
+          "col_4": 61.37,
+          "col_5": 53.84
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": "Dzogbékopé",
+          "col_3": 63.67,
+          "col_4": 65.35,
+          "col_5": 40.1
+        },
+        {
+          "col_0": null,
+          "col_1": 9,
+          "col_2": "Gbatopé",
+          "col_3": 38.5,
+          "col_4": 39.51,
+          "col_5": 38.18
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": "Hahotoé",
+          "col_3": 37.66,
+          "col_4": 40.46,
+          "col_5": 42.63
+        },
+        {
+          "col_0": null,
+          "col_1": 11,
+          "col_2": "Kovié",
+          "col_3": 80.08,
+          "col_4": 88.79,
+          "col_5": 80.58
+        },
+        {
+          "col_0": null,
+          "col_1": 12,
+          "col_2": "Mission tové",
+          "col_3": 47.01,
+          "col_4": 50.04,
+          "col_5": 56.37
+        },
+        {
+          "col_0": null,
+          "col_1": 13,
+          "col_2": "Sevagan ",
+          "col_3": 39,
+          "col_4": 57.02,
+          "col_5": 64.32
+        },
+        {
+          "col_0": null,
+          "col_1": 14,
+          "col_2": "Srikpui (Togblécopé)",
+          "col_3": 67.89,
+          "col_4": 78.3,
+          "col_5": 74.15
+        },
+        {
+          "col_0": null,
+          "col_1": 15,
+          "col_2": "Tekpo",
+          "col_3": 45.89,
+          "col_4": 44.68,
+          "col_5": 53.1
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": "Wli",
+          "col_3": 55.11,
+          "col_4": 58.96,
+          "col_5": 66.42
+        },
+        {
+          "col_0": null,
+          "col_1": 17,
+          "col_2": "Zongo 1",
+          "col_3": 74.98,
+          "col_4": 74.92,
+          "col_5": 74.73
+        },
+        {
+          "col_0": null,
+          "col_1": 18,
+          "col_2": "Zongo 2",
+          "col_3": 74.98,
+          "col_4": 81.1,
+          "col_5": 76.82
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "3.4",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "N",
+          "col_2": "Localités",
+          "col_3": 1,
+          "col_4": 1.5,
+          "col_5": 2
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": "Apéssito",
+          "col_3": 58.05,
+          "col_4": 63.4,
+          "col_5": 63.34
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": "Bohou",
+          "col_3": 34.99,
+          "col_4": 31.48,
+          "col_5": 33.05
+        },
+        {
+          "col_0": null,
+          "col_1": 3,
+          "col_2": "Campement",
+          "col_3": 23.19,
+          "col_4": 41.04,
+          "col_5": 41.83
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": "Djidjolé",
+          "col_3": 82.48,
+          "col_4": 54.74,
+          "col_5": 56.61
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": "Doutikopé",
+          "col_3": 35.17,
+          "col_4": 33.19,
+          "col_5": 28.89
+        },
+        {
+          "col_0": null,
+          "col_1": 6,
+          "col_2": "koudjouwdè",
+          "col_3": 34.88,
+          "col_4": 34.58,
+          "col_5": 49.9
+        },
+        {
+          "col_0": null,
+          "col_1": 7,
+          "col_2": "Kpawa",
+          "col_3": 60.47,
+          "col_4": 75.4,
+          "col_5": 53.41
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": "Lama Feing",
+          "col_3": 44.6,
+          "col_4": 46.36,
+          "col_5": 55.25
+        },
+        {
+          "col_0": null,
+          "col_1": 9,
+          "col_2": "Lama Tchamdè",
+          "col_3": 33.72,
+          "col_4": 31.16,
+          "col_5": 32.34
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": "Solim",
+          "col_3": 21.86,
+          "col_4": 24.22,
+          "col_5": 31.83
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "3.5",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "N",
+          "col_2": "Localités",
+          "col_3": 1,
+          "col_4": 1.5,
+          "col_5": 2
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": "Katore",
+          "col_3": 58.49,
+          "col_4": 65.13,
+          "col_5": 52.58
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": "Kpadapé",
+          "col_3": 60.36,
+          "col_4": 51.76,
+          "col_5": 53.47
+        },
+        {
+          "col_0": null,
+          "col_1": 3,
+          "col_2": "Kpimé (Séva)",
+          "col_3": 26.82,
+          "col_4": 29.53,
+          "col_5": 24.53
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": "Kpimé (Tomégbé)",
+          "col_3": 41.46,
+          "col_4": 42.86,
+          "col_5": 32.27
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": "Kpiné (Woumé)",
+          "col_3": 49.98,
+          "col_4": 53.74,
+          "col_5": 51.26
+        },
+        {
+          "col_0": null,
+          "col_1": 6,
+          "col_2": "Kpodzi",
+          "col_3": 69.31,
+          "col_4": 56.71,
+          "col_5": 67.3
+        },
+        {
+          "col_0": null,
+          "col_1": 7,
+          "col_2": "Lavié Apédomé",
+          "col_3": 52.9,
+          "col_4": 61.37,
+          "col_5": 53.84
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": "Womé (Cascade)",
+          "col_3": 64.47,
+          "col_4": 63.83,
+          "col_5": 65.5
+        },
+        {
+          "col_0": null,
+          "col_1": 9,
+          "col_2": "Womé (Ville)",
+          "col_3": 64.43,
+          "col_4": 67.68,
+          "col_5": 65.12
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": "Womé (Zongo)",
+          "col_3": 64.2,
+          "col_4": 65.09,
+          "col_5": 65.55
+        },
+        {
+          "col_0": null,
+          "col_1": 11,
+          "col_2": "Zomayi",
+          "col_3": 53.12,
+          "col_4": 60.37,
+          "col_5": 68.09
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "3.6",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "N",
+          "col_2": "Localités",
+          "col_3": 1,
+          "col_4": 1.5,
+          "col_5": 2
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": "Akié",
+          "col_3": 50.94,
+          "col_4": 52.3,
+          "col_5": 57.81
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": "Alibi",
+          "col_3": 58.98,
+          "col_4": 58.67,
+          "col_5": 51.27
+        },
+        {
+          "col_0": null,
+          "col_1": 3,
+          "col_2": "Bassar (Kpankissi)",
+          "col_3": 44.24,
+          "col_4": 54.02,
+          "col_5": 64.81
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": "Bitchabe",
+          "col_3": 48.52,
+          "col_4": 31.43,
+          "col_5": 33.3
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": "Dimouri",
+          "col_3": 49.36,
+          "col_4": 65.44,
+          "col_5": 58.88
+        },
+        {
+          "col_0": null,
+          "col_1": 6,
+          "col_2": "Kabou (okpandoupo)",
+          "col_3": 33.85,
+          "col_4": 36.36,
+          "col_5": 39.89
+        },
+        {
+          "col_0": null,
+          "col_1": 7,
+          "col_2": "Komah",
+          "col_3": 40.92,
+          "col_4": 42.53,
+          "col_5": 44.56
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": "Korbongou",
+          "col_3": 56.74,
+          "col_4": 54.47,
+          "col_5": 36.13
+        },
+        {
+          "col_0": null,
+          "col_1": 9,
+          "col_2": "Kparatao",
+          "col_3": 25.8,
+          "col_4": 22.35,
+          "col_5": 21.78
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": "Lama-tessi",
+          "col_3": 36.26,
+          "col_4": 38.45,
+          "col_5": 41.68
+        },
+        {
+          "col_0": null,
+          "col_1": 11,
+          "col_2": "Pitiah",
+          "col_3": 46.42,
+          "col_4": 49.48,
+          "col_5": 44.6
+        },
+        {
+          "col_0": null,
+          "col_1": 12,
+          "col_2": "Sanfatoule",
+          "col_3": 52.81,
+          "col_4": 57.5,
+          "col_5": 58.75
+        },
+        {
+          "col_0": null,
+          "col_1": 13,
+          "col_2": "Tchalo",
+          "col_3": 26.09,
+          "col_4": 29.83,
+          "col_5": 33.21
+        },
+        {
+          "col_0": null,
+          "col_1": 14,
+          "col_2": "Tchamba",
+          "col_3": 39.88,
+          "col_4": 44.92,
+          "col_5": 54.01
+        },
+        {
+          "col_0": null,
+          "col_1": 15,
+          "col_2": "Tchamdè",
+          "col_3": 48.51,
+          "col_4": 50.79,
+          "col_5": 57.8
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": "Tchitchao",
+          "col_3": 66.38,
+          "col_4": 60.77,
+          "col_5": 58.36
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Yade",
+          "col_3": 57.05,
+          "col_4": 65,
+          "col_5": 42.49
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    }
+  ]
+}

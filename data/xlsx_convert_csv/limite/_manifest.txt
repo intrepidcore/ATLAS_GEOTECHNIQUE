@@ -1,0 +1,4 @@
+Source: limite.xlsx
+Conversion: 2025-10-27T10:56:41.018185
+Sheets: 1
+Total rows: 37

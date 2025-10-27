@@ -1,0 +1,702 @@
+{
+  "source_file": "bleu.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.406219",
+  "sheets": [
+    {
+      "name": "3-7",
+      "headers": [
+        "col_0",
+        "N",
+        "Localités",
+        "1",
+        "1.5",
+        "2",
+        "1",
+        "1.5",
+        "2"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "n": 1,
+          "localités": "Adjengré ( Pounpoun)",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "col_0": null,
+          "n": 2,
+          "localités": "Agotivé",
+          "1": "Très forte",
+          "15": "Très forte",
+          "2": "Moyen"
+        },
+        {
+          "col_0": null,
+          "n": 3,
+          "localités": "Anié",
+          "1": "Très forte",
+          "15": "Très forte",
+          "2": "Très forte"
+        },
+        {
+          "col_0": null,
+          "n": 4,
+          "localités": "Apéyéyémé",
+          "1": "Très forte",
+          "15": "Très forte",
+          "2": "Très forte"
+        },
+        {
+          "col_0": null,
+          "n": 5,
+          "localités": "Badomé",
+          "1": "Moyen",
+          "15": "Forte",
+          "2": "Forte"
+        },
+        {
+          "col_0": null,
+          "n": 6,
+          "localités": "Kadambara",
+          "1": "Très forte",
+          "15": "Forte",
+          "2": "Très forte"
+        },
+        {
+          "col_0": null,
+          "n": 7,
+          "localités": "Kamina Barrage",
+          "1": "Forte",
+          "15": "Très forte",
+          "2": "Très forte"
+        },
+        {
+          "col_0": null,
+          "n": 8,
+          "localités": "Kamina Dakré",
+          "1": "Moyen",
+          "15": "Très forte",
+          "2": "Très forte"
+        },
+        {
+          "col_0": null,
+          "n": 9,
+          "localités": "Kaniamboua ( Bago )",
+          "1": "Très forte",
+          "15": "Très forte",
+          "2": "Moyen"
+        },
+        {
+          "col_0": null,
+          "n": 10,
+          "localités": "Nyamassila",
+          "1": "Forte",
+          "15": "Moyen",
+          "2": "Forte"
+        },
+        {
+          "col_0": null,
+          "n": 11,
+          "localités": "Ountivou",
+          "1": "Très forte",
+          "15": "Très forte",
+          "2": "Très forte"
+        },
+        {
+          "col_0": null,
+          "n": 12,
+          "localités": "Sotouboua ( Sondè )",
+          "1": "Moyen",
+          "15": "Forte",
+          "2": "Forte"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "n",
+        "localités",
+        "1",
+        "15",
+        "2",
+        "1",
+        "15",
+        "2"
+      ]
+    },
+    {
+      "name": "3-8",
+      "headers": [
+        "N",
+        "Localités",
+        "1",
+        "1.5",
+        "2",
+        "1",
+        "1.5",
+        "2"
+      ],
+      "rows": [
+        {
+          "n": 1,
+          "localités": "Aképé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 2,
+          "localités": "Assahoun",
+          "1": "Faible",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 3,
+          "localités": "Badja",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 4,
+          "localités": "Kévé",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Faible"
+        },
+        {
+          "n": 5,
+          "localités": "Tovégan",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Forte"
+        },
+        {
+          "n": 6,
+          "localités": "Tsévié blévé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 7,
+          "localités": "Tsévié dalavémodji",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 8,
+          "localités": "Tsévié dévé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        }
+      ],
+      "translated_headers": [
+        "n",
+        "localités",
+        "1",
+        "15",
+        "2",
+        "1",
+        "15",
+        "2"
+      ]
+    },
+    {
+      "name": "3-9",
+      "headers": [
+        "N",
+        "Localités",
+        "1",
+        "1.5",
+        "2",
+        "1",
+        "1.5",
+        "2"
+      ],
+      "rows": [
+        {
+          "n": 1,
+          "localités": "Abobo",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 2,
+          "localités": "Adétikopé",
+          "1": "Forte",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 3,
+          "localités": "Apéhéme ",
+          "1": "Faible",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 4,
+          "localités": "Belgique",
+          "1": "Faible",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 5,
+          "localités": "Dalavé",
+          "1": "Moyen",
+          "15": "Forte",
+          "2": "Très forte"
+        },
+        {
+          "n": 6,
+          "localités": "Dikamé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 7,
+          "localités": "Djagblé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 8,
+          "localités": "Dzogbékomé",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 9,
+          "localités": "Gbatopé",
+          "1": "Faible",
+          "15": "Moyen",
+          "2": "Faible"
+        },
+        {
+          "n": 10,
+          "localités": "Hahotoé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 11,
+          "localités": "Kovié",
+          "1": "Moyen",
+          "15": "Forte",
+          "2": "Très forte"
+        },
+        {
+          "n": 12,
+          "localités": "Mission tové",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 13,
+          "localités": "Sevegan",
+          "1": "Faible",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 14,
+          "localités": "Srikpui( Togblecopé)",
+          "1": "Moyen",
+          "15": "Forte",
+          "2": "Forte"
+        },
+        {
+          "n": 15,
+          "localités": "Tekpo",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 16,
+          "localités": "Wli",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 17,
+          "localités": "Zongo 1",
+          "1": "Forte",
+          "15": "Forte",
+          "2": "Forte"
+        },
+        {
+          "n": 18,
+          "localités": "Zongo 2",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        }
+      ],
+      "translated_headers": [
+        "n",
+        "localités",
+        "1",
+        "15",
+        "2",
+        "1",
+        "15",
+        "2"
+      ]
+    },
+    {
+      "name": "3-10",
+      "headers": [
+        "N",
+        "Localités",
+        "1",
+        "1.5",
+        "2",
+        "1",
+        "1.5",
+        "2"
+      ],
+      "rows": [
+        {
+          "n": 1,
+          "localités": "Apéssito",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 2,
+          "localités": "Bohou",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 3,
+          "localités": "Campement",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 4,
+          "localités": "Djidjolé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 5,
+          "localités": "Doutikopé",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 6,
+          "localités": "Koudjouwdè",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 7,
+          "localités": "Kpawa",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Moyen"
+        },
+        {
+          "n": 8,
+          "localités": "Lama Feing",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 9,
+          "localités": "Lama Tchamdè",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 10,
+          "localités": "Solim",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        }
+      ],
+      "translated_headers": [
+        "n",
+        "localités",
+        "1",
+        "15",
+        "2",
+        "1",
+        "15",
+        "2"
+      ]
+    },
+    {
+      "name": "3-11",
+      "headers": [
+        "N",
+        "Localités",
+        "1",
+        "1.5",
+        "2",
+        "1",
+        "1.5",
+        "2"
+      ],
+      "rows": [
+        {
+          "n": 1,
+          "localités": "Katore",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 2,
+          "localités": "Kpadapé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 3,
+          "localités": "Kpimé ( Séva )",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Moyen"
+        },
+        {
+          "n": 4,
+          "localités": "Kpimé (Tomégbé)",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Moyen"
+        },
+        {
+          "n": 5,
+          "localités": "Kpimé (Woumé )",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Moyen"
+        },
+        {
+          "n": 6,
+          "localités": "Kpodzi",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 7,
+          "localités": "Lavié Apédomé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 8,
+          "localités": "Womé ( Cascade )",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Moyen"
+        },
+        {
+          "n": 9,
+          "localités": "Womé( Ville)",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Moyen"
+        },
+        {
+          "n": 10,
+          "localités": "Zomayi",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 11,
+          "localités": null,
+          "1": null,
+          "15": null,
+          "2": null
+        }
+      ],
+      "translated_headers": [
+        "n",
+        "localités",
+        "1",
+        "15",
+        "2",
+        "1",
+        "15",
+        "2"
+      ]
+    },
+    {
+      "name": "3-12",
+      "headers": [
+        "N",
+        "Localités",
+        "1",
+        "1.5",
+        "2",
+        "1",
+        "1.5",
+        "2"
+      ],
+      "rows": [
+        {
+          "n": 1,
+          "localités": "Akéi",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 2,
+          "localités": "Alibi",
+          "1": "Moyen",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 3,
+          "localités": "Bassar ( kpankissi)",
+          "1": "Moyen",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 4,
+          "localités": "Bitchabé",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 5,
+          "localités": "Dimouri",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 6,
+          "localités": "Kabou(okpandoukpo)",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 7,
+          "localités": "Komah",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Faible"
+        },
+        {
+          "n": 8,
+          "localités": "Korbongou",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Faible"
+        },
+        {
+          "n": 9,
+          "localités": "Kparatao",
+          "1": "Forte",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 10,
+          "localités": "Lama-tessi",
+          "1": "Forte",
+          "15": "Forte",
+          "2": "Forte"
+        },
+        {
+          "n": 11,
+          "localités": "Pittah",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Moyen"
+        },
+        {
+          "n": 12,
+          "localités": "Sanfatoute",
+          "1": "Moyen",
+          "15": "Moyen",
+          "2": "Moyen"
+        },
+        {
+          "n": 13,
+          "localités": "Tchalo",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 14,
+          "localités": "Tchamba",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Moyen"
+        },
+        {
+          "n": 15,
+          "localités": "Tchamdè",
+          "1": "Faible",
+          "15": "Faible",
+          "2": "Faible"
+        },
+        {
+          "n": 16,
+          "localités": "Tchitchao",
+          "1": "Forte",
+          "15": "Forte",
+          "2": "Forte"
+        },
+        {
+          "n": 17,
+          "localités": "Yade",
+          "1": "Forte",
+          "15": "Forte",
+          "2": "Forte"
+        }
+      ],
+      "translated_headers": [
+        "n",
+        "localités",
+        "1",
+        "15",
+        "2",
+        "1",
+        "15",
+        "2"
+      ]
+    }
+  ]
+}

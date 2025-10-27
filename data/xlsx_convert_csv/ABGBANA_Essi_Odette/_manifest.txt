@@ -1,0 +1,4 @@
+Source: ABGBANA_Essi_Odette.xlsx
+Conversion: 2025-10-27T10:56:40.681987
+Sheets: 0
+Total rows: 0

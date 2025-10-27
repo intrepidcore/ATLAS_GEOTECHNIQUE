@@ -727,6 +727,7 @@ use super::geotechnical_importer::{import_geotechnical_data, GeotechnicalImportS
 use std::io::Cursor;
 
 #[derive(Debug, serde::Deserialize)]
+#[allow(dead_code)]
 pub struct GeotechnicalImportRequest {
     pub geolocation_mode: Option<String>,  // "exact", "centroid", "random", "unknown"
 }

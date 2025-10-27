@@ -146,6 +146,18 @@ export class ThematicPanel {
     if (exportPNGBtn) {
       exportPNGBtn.addEventListener('click', () => this.exportPNG())
     }
+    
+    // Toggle grid layer
+    const toggleGridBtn = document.getElementById('toggleGridLayer') as HTMLInputElement
+    if (toggleGridBtn) {
+      toggleGridBtn.addEventListener('change', () => this.toggleGridLayer(toggleGridBtn.checked))
+    }
+    
+    // Auto-AOI button
+    const autoAOIBtn = document.getElementById('autoAOI')
+    if (autoAOIBtn) {
+      autoAOIBtn.addEventListener('click', () => this.autoZoomToData())
+    }
   }
   
   private setDefaults(): void {
@@ -189,6 +201,8 @@ export class ThematicPanel {
     const paletteSelect = document.getElementById('colorPalette') as HTMLSelectElement
     const typeSelect = document.getElementById('mapType') as HTMLSelectElement
     const adm1Select = document.getElementById('filterAdm1') as HTMLSelectElement
+    const adm2Select = document.getElementById('filterAdm2') as HTMLSelectElement
+    const adm3Select = document.getElementById('filterAdm3') as HTMLSelectElement
     const minSondagesInput = document.getElementById('minSondages') as HTMLInputElement
     const opacityInput = document.getElementById('opacity') as HTMLInputElement
     
@@ -198,6 +212,8 @@ export class ThematicPanel {
     const palette = paletteSelect?.value || 'Blues'
     const type = (typeSelect?.value as any) || 'choropleth'
     const adm1 = adm1Select?.value || undefined
+    const adm2 = adm2Select?.value || undefined
+    const adm3 = adm3Select?.value || undefined
     const minSondages = parseInt(minSondagesInput?.value || '3')
     const opacity = parseFloat(opacityInput?.value || '0.7')
     
@@ -227,6 +243,8 @@ export class ThematicPanel {
       },
       filters: {
         adm1,
+        adm2,
+        adm3,
         min_sondages: minSondages
       }
     }
@@ -321,6 +339,46 @@ export class ThematicPanel {
     setTimeout(() => {
       toast.remove()
     }, 3000)
+  }
+  
+  private toggleGridLayer(show: boolean): void {
+    const gridLayer = (window as any).gridLayer
+    const map = this.manager['map'] // Access private map
+    
+    if (!gridLayer || !map) return
+    
+    if (show) {
+      if (!map.hasLayer(gridLayer)) {
+        gridLayer.addTo(map)
+        console.log('[ThematicPanel] Grille de fond affichée')
+      }
+    } else {
+      if (map.hasLayer(gridLayer)) {
+        map.removeLayer(gridLayer)
+        console.log('[ThematicPanel] Grille de fond masquée')
+      }
+    }
+  }
+  
+  private autoZoomToData(): void {
+    const currentLayer = this.manager['currentLayer'] // Access private layer
+    const map = this.manager['map']
+    
+    if (!currentLayer || !map) {
+      this.toast('Aucune carte thématique active', 'error')
+      return
+    }
+    
+    try {
+      const bounds = currentLayer.getBounds()
+      if (bounds.isValid()) {
+        map.fitBounds(bounds.pad(0.1)) // 10% padding
+        this.toast('Zoom ajusté aux données', 'success')
+      }
+    } catch (error) {
+      console.error('Erreur auto-zoom:', error)
+      this.toast('Erreur lors du zoom automatique', 'error')
+    }
   }
   
   public open(): void {

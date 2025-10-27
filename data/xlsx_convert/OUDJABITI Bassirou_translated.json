@@ -1,0 +1,2955 @@
+{
+  "source_file": "OUDJABITI Bassirou.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.651806",
+  "sheets": [
+    {
+      "name": "AGT Tchamba",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouverture tamis (mm)",
+          "col_3": "Passants par profondeur 1m ",
+          "col_4": "Passants par profondeur 1,5 m",
+          "col_5": "Passants par profondeur 2 m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 25,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 16,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 12.5,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 99.4
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 99.18
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 8,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 99.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 6.3,
+          "col_3": 99.97,
+          "col_4": 99.96,
+          "col_5": 98.69
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "col_3": 99.94,
+          "col_4": 99.87,
+          "col_5": 98.44
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 4,
+          "col_3": 99.88,
+          "col_4": 99.83,
+          "col_5": 98.07
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 3.15,
+          "col_3": 99.74,
+          "col_4": 99.56,
+          "col_5": 97.54
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2.5,
+          "col_3": 99.35,
+          "col_4": 99.1,
+          "col_5": 96.91
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": 98.68,
+          "col_4": 98.21,
+          "col_5": 96.15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.6,
+          "col_3": 97.61,
+          "col_4": 97.03,
+          "col_5": 95.2
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.25,
+          "col_3": 96.11,
+          "col_4": 95.45,
+          "col_5": 93.99
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": 94.42,
+          "col_4": 93.81,
+          "col_5": 92.7
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.8,
+          "col_3": 91.38,
+          "col_4": 91.12,
+          "col_5": 90.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.63,
+          "col_3": 87.15,
+          "col_4": 87.03,
+          "col_5": 87.28
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.5,
+          "col_3": 80.02,
+          "col_4": 79.49,
+          "col_5": 82.13
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.4,
+          "col_3": 74.91,
+          "col_4": 75.11,
+          "col_5": 78.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 67.33,
+          "col_4": 67.42,
+          "col_5": 73.57
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.25,
+          "col_3": 60.92,
+          "col_4": 61.09,
+          "col_5": 68.95
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.2,
+          "col_3": 51.59,
+          "col_4": 55.28,
+          "col_5": 63.38
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.16,
+          "col_3": 47.81,
+          "col_4": 51.28,
+          "col_5": 59.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.125,
+          "col_3": 42.46,
+          "col_4": 47.07,
+          "col_5": 56.22
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.1,
+          "col_3": 40.78,
+          "col_4": 45.57,
+          "col_5": 54.82
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 39.88,
+          "col_4": 44.92,
+          "col_5": 54.01
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGS Tchamba",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Ouverture tamis",
+          "col_4": "Passants par profondeur 1m ",
+          "col_5": "Passants par profondeur 1,5 m",
+          "col_6": "Passants par profondeur 2 m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.069,
+          "col_4": 35.21,
+          "col_5": 25.26,
+          "col_6": 20.56
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0475,
+          "col_4": 31.5,
+          "col_5": 20.55,
+          "col_6": 19.21
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0345,
+          "col_4": 26.32,
+          "col_5": 17.87,
+          "col_6": 18.54
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0215,
+          "col_4": 22.61,
+          "col_5": 17.19,
+          "col_6": 17.86
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0175,
+          "col_4": 20.39,
+          "col_5": 15.85,
+          "col_6": 17.19
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0073,
+          "col_4": 19.66,
+          "col_5": 15.17,
+          "col_6": 15.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.00465,
+          "col_4": 18.91,
+          "col_5": 14.49,
+          "col_6": 14.5
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.00275,
+          "col_4": 18.16,
+          "col_5": 13.81,
+          "col_6": 13.83
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.00139,
+          "col_4": 17.4,
+          "col_5": 13.12,
+          "col_6": null
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGT d'Alibi",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Ouverture tamis (mm)",
+          "col_4": "Passants par profondeur 1m ",
+          "col_5": "Passants par profondeur 1,5 m",
+          "col_6": "Passants par profondeur 2 m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 25,
+          "col_4": 100,
+          "col_5": 100,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 20,
+          "col_4": 100,
+          "col_5": 100,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 16,
+          "col_4": 100,
+          "col_5": 100,
+          "col_6": 99.06
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 12.5,
+          "col_4": 100,
+          "col_5": 100,
+          "col_6": 98.72
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 10,
+          "col_4": 100,
+          "col_5": 99.72,
+          "col_6": 98.34
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 8,
+          "col_4": 99.86,
+          "col_5": 99.61,
+          "col_6": 97.17
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 6.3,
+          "col_4": 99.43,
+          "col_5": 99.4,
+          "col_6": 96.52
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 5,
+          "col_4": 99.24,
+          "col_5": 99.06,
+          "col_6": 95.94
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 4,
+          "col_4": 98.91,
+          "col_5": 98.55,
+          "col_6": 95.33
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 3.15,
+          "col_4": 98.57,
+          "col_5": 97.98,
+          "col_6": 94.52
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2.5,
+          "col_4": 98.25,
+          "col_5": 97.52,
+          "col_6": 93.74
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": 97.73,
+          "col_5": 97.04,
+          "col_6": 93.07
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.6,
+          "col_4": 97.26,
+          "col_5": 96.53,
+          "col_6": 92.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.25,
+          "col_4": 96.71,
+          "col_5": 95.97,
+          "col_6": 91.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": 96.18,
+          "col_5": 95.43,
+          "col_6": 90.72
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.8,
+          "col_4": 95.44,
+          "col_5": 94.74,
+          "col_6": 89.69
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.63,
+          "col_4": 94.35,
+          "col_5": 93.66,
+          "col_6": 87.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.5,
+          "col_4": 91.97,
+          "col_5": 91.26,
+          "col_6": 85.4
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.4,
+          "col_4": 90.01,
+          "col_5": 89.68,
+          "col_6": 82.36
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.315,
+          "col_4": 84.86,
+          "col_5": 78.54,
+          "col_6": 77.3
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.25,
+          "col_4": 78.58,
+          "col_5": 73.59,
+          "col_6": 71.79
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.2,
+          "col_4": 69.14,
+          "col_5": 66.63,
+          "col_6": 62.93
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.16,
+          "col_4": 65.82,
+          "col_5": 64.06,
+          "col_6": 58.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.125,
+          "col_4": 61.34,
+          "col_5": 60.31,
+          "col_6": 54.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.1,
+          "col_4": 59.77,
+          "col_5": 59.27,
+          "col_6": 52.39
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.08,
+          "col_4": 58.98,
+          "col_5": 58.67,
+          "col_6": 51.27
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGS d'Alibi",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Ouverture tamis (mm)",
+          "col_5": "Passants par profondeur 1m ",
+          "col_6": "Passants par profondeur 1,5 m",
+          "col_7": "Passants par profondeur 2 m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.066,
+          "col_5": 52.13,
+          "col_6": 39.33,
+          "col_7": 36.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.046,
+          "col_5": 36.73,
+          "col_6": 32.86,
+          "col_7": 31.94
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.033,
+          "col_5": 32.2,
+          "col_6": 31.02,
+          "col_7": 25.31
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.02,
+          "col_5": 27.66,
+          "col_6": 28.25,
+          "col_7": 22
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.012,
+          "col_5": 24.04,
+          "col_6": 26.4,
+          "col_7": 21.17
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0071,
+          "col_5": 23.14,
+          "col_6": 24.55,
+          "col_7": 21.17
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0046,
+          "col_5": 23.13,
+          "col_6": 22.69,
+          "col_7": 18.69
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.00275,
+          "col_5": 22.22,
+          "col_6": 20.82,
+          "col_7": 17.03
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.00139,
+          "col_5": 18.57,
+          "col_6": 18.96,
+          "col_7": 14.55
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "Densité",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Reference",
+          "col_3": "Localité",
+          "col_4": "Profondeurs",
+          "col_5": "Densité Absolue"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": "Tchamba",
+          "col_4": 1,
+          "col_5": 2.56
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": "Tchamba",
+          "col_4": 1.5,
+          "col_5": 2.31
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": "Tchamba",
+          "col_4": 2,
+          "col_5": 2.73
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": "Alibi",
+          "col_4": 1,
+          "col_5": 2.49
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": "Alibi",
+          "col_4": 1.5,
+          "col_5": 2.49
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": "Alibi",
+          "col_4": 2,
+          "col_5": 2.44
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "Limite ATT ",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Reference",
+          "col_3": "Localité",
+          "col_4": "Profondeurs",
+          "col_5": "Wi",
+          "col_6": "Wp",
+          "col_7": "Ip"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": "Tchamba",
+          "col_4": 1,
+          "col_5": 30.64,
+          "col_6": 17.81,
+          "col_7": 12.83
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": "Tchamba",
+          "col_4": 1.5,
+          "col_5": 34.91,
+          "col_6": 16.08,
+          "col_7": 18.83
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": "Tchamba",
+          "col_4": 2,
+          "col_5": 37.44,
+          "col_6": 17.14,
+          "col_7": 20.03
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Tchamba",
+          "col_4": "Moyenne",
+          "col_5": 34.33,
+          "col_6": 17.01,
+          "col_7": 17.23
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": "Alibi",
+          "col_4": 1,
+          "col_5": 35.03,
+          "col_6": 11.94,
+          "col_7": 23.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": "Alibi",
+          "col_4": 1.5,
+          "col_5": 30.79,
+          "col_6": 12.92,
+          "col_7": 17.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": "Alibi",
+          "col_4": 2,
+          "col_5": 27.14,
+          "col_6": 11.72,
+          "col_7": 15.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Moyenne",
+          "col_5": 30.99,
+          "col_6": 12.19,
+          "col_7": 18.79
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "Bleu",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Reference",
+          "col_2": "Localité",
+          "col_3": "Profondeurs",
+          "col_4": "VBS",
+          "col_5": "Caractéristique"
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": "Tchamba",
+          "col_3": 1,
+          "col_4": 1.02,
+          "col_5": "Sol sablo limoneux sensible à l'eau"
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": "Tchamba",
+          "col_3": 1.5,
+          "col_4": 1.04,
+          "col_5": "Sol sablo limoneux sensible à l'eau"
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": "Tchamba",
+          "col_3": 2,
+          "col_4": 2.71,
+          "col_5": "Sol sablo limoneux plasticité moyenne"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Tchamba",
+          "col_3": "Moyenne",
+          "col_4": 1.59,
+          "col_5": "sol sablo argileux, peu plastique"
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": "Alibi",
+          "col_3": 1,
+          "col_4": 4.23,
+          "col_5": "Sol limoneux de plasticité moyenne"
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": "Alibi",
+          "col_3": 1.5,
+          "col_4": 1.73,
+          "col_5": "Sol sablo argileux, peu plastique"
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": "Alibi",
+          "col_3": 2,
+          "col_4": 1.67,
+          "col_5": "Sol sablo argileux, peu plastique"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Alibi",
+          "col_3": "Moyenne",
+          "col_4": 2.54,
+          "col_5": "Sol limoneux de plasticité moyenne"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "Teneur en eau",
+      "headers": [
+        "I",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "i": null,
+          "col_1": "Reference",
+          "col_2": "Localité",
+          "col_3": "Profondeur",
+          "col_4": "Teneur en eau",
+          "col_5": "Wi",
+          "col_6": "Is",
+          "col_7": "Caractéristique"
+        },
+        {
+          "i": null,
+          "col_1": 1,
+          "col_2": "Tchamba",
+          "col_3": 1,
+          "col_4": 5,
+          "col_5": 30.64,
+          "col_6": 0.163,
+          "col_7": "Gonflement faible"
+        },
+        {
+          "i": null,
+          "col_1": 1,
+          "col_2": "Tchamba",
+          "col_3": 1.5,
+          "col_4": 5,
+          "col_5": 34.91,
+          "col_6": 0.143,
+          "col_7": "Gonflement moyenne"
+        },
+        {
+          "i": null,
+          "col_1": 1,
+          "col_2": "Tchamba",
+          "col_3": 2,
+          "col_4": 4,
+          "col_5": 37.44,
+          "col_6": 0.107,
+          "col_7": "Gonflement moyenne"
+        },
+        {
+          "i": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Moyenne",
+          "col_4": 4.67,
+          "col_5": 34.33,
+          "col_6": 0.136,
+          "col_7": "Gonflement faible"
+        },
+        {
+          "i": null,
+          "col_1": 2,
+          "col_2": "Alibi",
+          "col_3": 1,
+          "col_4": 4,
+          "col_5": 35.03,
+          "col_6": 0.114,
+          "col_7": "Gonflement moyenne"
+        },
+        {
+          "i": null,
+          "col_1": 2,
+          "col_2": "Alibi",
+          "col_3": 1.5,
+          "col_4": 4,
+          "col_5": 30.79,
+          "col_6": 0.129,
+          "col_7": "Gonflement faible"
+        },
+        {
+          "i": null,
+          "col_1": 2,
+          "col_2": "Alibi",
+          "col_3": 2,
+          "col_4": 7,
+          "col_5": 27.14,
+          "col_6": 0.258,
+          "col_7": "Gonflement faible"
+        },
+        {
+          "i": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Moyenne",
+          "col_4": 5,
+          "col_5": 30.99,
+          "col_6": 0.161,
+          "col_7": "Gonflement faible"
+        }
+      ],
+      "translated_headers": [
+        "i",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "Classification",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Localité",
+          "col_2": "Profondeur (m) ",
+          "col_3": "Classification HRB",
+          "col_4": "Classification Unifié",
+          "col_5": "Classification d'après le bleu de méthylène"
+        },
+        {
+          "col_0": null,
+          "col_1": "Tchamba",
+          "col_2": 1,
+          "col_3": "A-6",
+          "col_4": "Sol grenu argileux",
+          "col_5": "Sol sablo limoneux sensible à l'eau"
+        },
+        {
+          "col_0": null,
+          "col_1": "Tchamba",
+          "col_2": 1.5,
+          "col_3": "A-6",
+          "col_4": "Sol grenu argileux",
+          "col_5": "Sol sablo limoneux sensible à l'eau"
+        },
+        {
+          "col_0": null,
+          "col_1": "Tchamba",
+          "col_2": 2,
+          "col_3": "A-6",
+          "col_4": "Sol fin argileux",
+          "col_5": "Sol sablo argileux, peu plastique"
+        },
+        {
+          "col_0": null,
+          "col_1": "Alibi",
+          "col_2": 1,
+          "col_3": "A-6",
+          "col_4": "Sol fin argileux",
+          "col_5": "Sol limoneux de plasticité moyenne"
+        },
+        {
+          "col_0": null,
+          "col_1": "Alibi",
+          "col_2": 1.5,
+          "col_3": "A-6",
+          "col_4": "Sol fin argileux",
+          "col_5": "Sol  sablo argileux, peu plastique"
+        },
+        {
+          "col_0": null,
+          "col_1": "Alibi",
+          "col_2": 2,
+          "col_3": "A-6",
+          "col_4": "Sol fin argileux",
+          "col_5": "Sol sablo argileux, peu plastique"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGT Tchamba 1m All",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture du tamis (mm)",
+          "col_2": "Masse de refus cumulés (g)",
+          "col_3": "Refus cumulés (%)",
+          "col_4": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 0.5,
+          "col_3": 0.5,
+          "col_4": 99.97
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 0.91,
+          "col_3": 0.42,
+          "col_4": 99.94
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": 1.75,
+          "col_3": 0.81,
+          "col_4": 99.88
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 3.74,
+          "col_3": 1.99,
+          "col_4": 99.74
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 9.41,
+          "col_3": 5.65,
+          "col_4": 99.35
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 19.05,
+          "col_3": 9.63,
+          "col_4": 98.68
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 34.44,
+          "col_3": 15.4,
+          "col_4": 97.61
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 56.15,
+          "col_3": null,
+          "col_4": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 80.67,
+          "col_3": null,
+          "col_4": null
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 56.15,
+          "col_3": 21.65,
+          "col_4": 96.11
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 80.67,
+          "col_3": 24.5,
+          "col_4": 94.42
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 124.23,
+          "col_3": 43.57,
+          "col_4": 91.39
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 185.89,
+          "col_3": 61.25,
+          "col_4": 87.15
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 288.39,
+          "col_3": 102.84,
+          "col_4": 80.02
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 362.1,
+          "col_3": 73.73,
+          "col_4": 74.91
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 471.4,
+          "col_3": 109.32,
+          "col_4": 67.33
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 563.75,
+          "col_3": 92.38,
+          "col_4": 60.92
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 698.34,
+          "col_3": 134.6,
+          "col_4": 51.59
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 752.82,
+          "col_3": 54.5,
+          "col_4": 41.81
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 829.98,
+          "col_3": 77.16,
+          "col_4": 42.46
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 854.24,
+          "col_3": 24.25,
+          "col_4": 40.78
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 867.15,
+          "col_3": 12.93,
+          "col_4": 39.88
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS Tchamba 1m All",
+      "headers": [
+        "A",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Ouverture du tamis (mm)",
+          "col_4": "Masse de refus cumulés (g)",
+          "col_5": "Refus cumulés (%)",
+          "col_6": "Passants (%)"
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0045,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 35.21
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.045,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 31.5
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0325,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 26.32
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.02,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 22.61
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.012,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 20.39
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0069,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 19.66
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.00455,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 18.91
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.00265,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 18.16
+        },
+        {
+          "a": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.00135,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 17.4
+        }
+      ],
+      "translated_headers": [
+        "a",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGS Tchamba 1,5m All",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouverture du tamis (mm)",
+          "col_3": "Masse de refus cumulés (g)",
+          "col_4": "Refus cumulés (%)",
+          "col_5": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.069,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 25.26
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0475,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 20.55
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0345,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 17.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0215,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 17.19
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0125,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 15.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0073,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 15.17
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.00465,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 14.49
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.00275,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 13.81
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.00139,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 13.12
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGT Tchamba 1,5m All ",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouverture du tamis (mm)",
+          "col_3": "Masse de refus cumulés (g)",
+          "col_4": "Refus cumulés (%)",
+          "col_5": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 0,
+          "col_4": 0,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 8,
+          "col_3": 0,
+          "col_4": 0,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 6.3,
+          "col_3": 0.61,
+          "col_4": 0.61,
+          "col_5": 99.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "col_3": 1.9,
+          "col_4": 1.3,
+          "col_5": 99.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 4,
+          "col_3": 2.41,
+          "col_4": 0.52,
+          "col_5": 99.83
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 3.15,
+          "col_3": 6.25,
+          "col_4": 3.85,
+          "col_5": 99.56
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2.5,
+          "col_3": 12.9,
+          "col_4": 6.65,
+          "col_5": 99.1
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": 25.78,
+          "col_4": 12.91,
+          "col_5": 98.21
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.6,
+          "col_3": 42.79,
+          "col_4": 17.02,
+          "col_5": 97.03
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.25,
+          "col_3": 65.65,
+          "col_4": 22.84,
+          "col_5": 95.44
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": 89.15,
+          "col_4": 23.53,
+          "col_5": 93.81
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.8,
+          "col_3": 128.08,
+          "col_4": 38.9,
+          "col_5": 91.12
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.63,
+          "col_3": 187,
+          "col_4": 58.86,
+          "col_5": 87.03
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.5,
+          "col_3": 295.86,
+          "col_4": 108.87,
+          "col_5": 79.49
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.4,
+          "col_3": 359.04,
+          "col_4": 63.15,
+          "col_5": 75.11
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 469.91,
+          "col_4": 110.83,
+          "col_5": 67.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.25,
+          "col_3": 561.21,
+          "col_4": 91.32,
+          "col_5": 61.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.2,
+          "col_3": 645.02,
+          "col_4": 83.84,
+          "col_5": 55.28
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.16,
+          "col_3": 702.6,
+          "col_4": 57.6,
+          "col_5": 51.29
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.125,
+          "col_3": 763.34,
+          "col_4": 60.77,
+          "col_5": 47.07
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.1,
+          "col_3": 784.98,
+          "col_4": 21.65,
+          "col_5": 45.57
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 794.44,
+          "col_4": 9.42,
+          "col_5": 44.92
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGS Tchamba 2m All",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouverture du tamis (mm)",
+          "col_3": "Masse de refus cumulés (g)",
+          "col_4": "Refus cumulés (%)",
+          "col_5": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.066,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 20.56
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.046,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 16.21
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.033,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 18.54
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0205,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 17.86
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.012,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 17.19
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0071,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 15.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0045,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 14.5
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.00265,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 13.83
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.00137,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 12.49
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGT Tchamba 2m All",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Ouverture du tamis (mm)",
+          "col_2": "Masse de refus cumulés (g)",
+          "col_3": "Refus cumulés (%)",
+          "col_4": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": 25,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 20,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 16,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "col_1": 12.5,
+          "col_2": 8.45,
+          "col_3": 8.45,
+          "col_4": 99.4
+        },
+        {
+          "col_0": null,
+          "col_1": 10,
+          "col_2": 11.48,
+          "col_3": 3.01,
+          "col_4": 99.18
+        },
+        {
+          "col_0": null,
+          "col_1": 8,
+          "col_2": 13.84,
+          "col_3": 2.36,
+          "col_4": 99.01
+        },
+        {
+          "col_0": null,
+          "col_1": 6.3,
+          "col_2": 18.46,
+          "col_3": 4.59,
+          "col_4": 98.69
+        },
+        {
+          "col_0": null,
+          "col_1": 5,
+          "col_2": 21.01,
+          "col_3": 3.5,
+          "col_4": 98.44
+        },
+        {
+          "col_0": null,
+          "col_1": 4,
+          "col_2": 27.14,
+          "col_3": 5.08,
+          "col_4": 98.07
+        },
+        {
+          "col_0": null,
+          "col_1": 3.15,
+          "col_2": 34.68,
+          "col_3": 7.45,
+          "col_4": 97.54
+        },
+        {
+          "col_0": null,
+          "col_1": 2.5,
+          "col_2": 43.52,
+          "col_3": 8.88,
+          "col_4": 96.91
+        },
+        {
+          "col_0": null,
+          "col_1": 2,
+          "col_2": 54.19,
+          "col_3": 10.63,
+          "col_4": 96.15
+        },
+        {
+          "col_0": null,
+          "col_1": 1.6,
+          "col_2": 67.48,
+          "col_3": 13.27,
+          "col_4": 95.2
+        },
+        {
+          "col_0": null,
+          "col_1": 1.25,
+          "col_2": 84.57,
+          "col_3": 17.08,
+          "col_4": 93.99
+        },
+        {
+          "col_0": null,
+          "col_1": 1,
+          "col_2": 102.56,
+          "col_3": 18.02,
+          "col_4": 92.7
+        },
+        {
+          "col_0": null,
+          "col_1": 0.8,
+          "col_2": 134.36,
+          "col_3": 31.56,
+          "col_4": 90.45
+        },
+        {
+          "col_0": null,
+          "col_1": 0.63,
+          "col_2": 188.54,
+          "col_3": 44.37,
+          "col_4": 87.28
+        },
+        {
+          "col_0": null,
+          "col_1": 0.5,
+          "col_2": 250.76,
+          "col_3": 72.2,
+          "col_4": 82.13
+        },
+        {
+          "col_0": null,
+          "col_1": 0.4,
+          "col_2": 301.87,
+          "col_3": 50.74,
+          "col_4": 78.52
+        },
+        {
+          "col_0": null,
+          "col_1": 0.315,
+          "col_2": 370.87,
+          "col_3": 69.36,
+          "col_4": 73.57
+        },
+        {
+          "col_0": null,
+          "col_1": 0.25,
+          "col_2": 435.48,
+          "col_3": 64.68,
+          "col_4": 68.95
+        },
+        {
+          "col_0": null,
+          "col_1": 0.2,
+          "col_2": 513.13,
+          "col_3": 78.06,
+          "col_4": 63.39
+        },
+        {
+          "col_0": null,
+          "col_1": 0.16,
+          "col_2": 561.5,
+          "col_3": 47.99,
+          "col_4": 59.96
+        },
+        {
+          "col_0": null,
+          "col_1": 0.125,
+          "col_2": 613.93,
+          "col_3": 52.45,
+          "col_4": 56.22
+        },
+        {
+          "col_0": null,
+          "col_1": 0.1,
+          "col_2": 633.5,
+          "col_3": 19.6,
+          "col_4": 54.82
+        },
+        {
+          "col_0": null,
+          "col_1": 0.08,
+          "col_2": 644.89,
+          "col_3": 11.4,
+          "col_4": 54.01
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGT Alibi 1m All",
+      "headers": [
+        "A",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "a": null,
+          "col_1": "Ouverture du tamis (mm)",
+          "col_2": "Masse de refus cumulés (g)",
+          "col_3": "Refus cumulés (%)",
+          "col_4": "Passants (%)"
+        },
+        {
+          "a": null,
+          "col_1": 25,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "a": null,
+          "col_1": 20,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "a": null,
+          "col_1": 16,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "a": null,
+          "col_1": 12.5,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "a": null,
+          "col_1": 10,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "a": null,
+          "col_1": 8,
+          "col_2": 2,
+          "col_3": 2,
+          "col_4": 99.86
+        },
+        {
+          "a": null,
+          "col_1": 6.3,
+          "col_2": 8.22,
+          "col_3": 6.18,
+          "col_4": 99.43
+        },
+        {
+          "a": null,
+          "col_1": 5,
+          "col_2": 10.87,
+          "col_3": 2.66,
+          "col_4": 99.24
+        },
+        {
+          "a": null,
+          "col_1": 4,
+          "col_2": 15.53,
+          "col_3": 4.67,
+          "col_4": 98.91
+        },
+        {
+          "a": null,
+          "col_1": 3.15,
+          "col_2": 20.47,
+          "col_3": 4.9,
+          "col_4": 98.57
+        },
+        {
+          "a": null,
+          "col_1": 2.5,
+          "col_2": 25.04,
+          "col_3": 4.59,
+          "col_4": 98.25
+        },
+        {
+          "a": null,
+          "col_1": 2,
+          "col_2": 32.44,
+          "col_3": 7.4,
+          "col_4": 97.73
+        },
+        {
+          "a": null,
+          "col_1": 1.6,
+          "col_2": 39.21,
+          "col_3": 6.72,
+          "col_4": 97.26
+        },
+        {
+          "a": null,
+          "col_1": 1.25,
+          "col_2": 47.04,
+          "col_3": 7.87,
+          "col_4": 96.71
+        },
+        {
+          "a": null,
+          "col_1": 1,
+          "col_2": 54.05,
+          "col_3": 7.56,
+          "col_4": 96.18
+        },
+        {
+          "a": null,
+          "col_1": 0.8,
+          "col_2": 65.25,
+          "col_3": 10.57,
+          "col_4": 95.44
+        },
+        {
+          "a": null,
+          "col_1": 0.63,
+          "col_2": 80.93,
+          "col_3": 15.65,
+          "col_4": 94.35
+        },
+        {
+          "a": null,
+          "col_1": 0.5,
+          "col_2": 114.86,
+          "col_3": 43.92,
+          "col_4": 91.97
+        },
+        {
+          "a": null,
+          "col_1": 0.4,
+          "col_2": 142.86,
+          "col_3": 28,
+          "col_4": 90.01
+        },
+        {
+          "a": null,
+          "col_1": 0.315,
+          "col_2": 216.53,
+          "col_3": 73.65,
+          "col_4": 84.86
+        },
+        {
+          "a": null,
+          "col_1": 0.25,
+          "col_2": 306.16,
+          "col_3": 89.64,
+          "col_4": 78.58
+        },
+        {
+          "a": null,
+          "col_1": 0.2,
+          "col_2": 441.06,
+          "col_3": 134.89,
+          "col_4": 69.14
+        },
+        {
+          "a": null,
+          "col_1": 0.16,
+          "col_2": 488.5,
+          "col_3": 47.45,
+          "col_4": 65.82
+        },
+        {
+          "a": null,
+          "col_1": 0.125,
+          "col_2": 552.41,
+          "col_3": 63.9,
+          "col_4": 61.34
+        },
+        {
+          "a": null,
+          "col_1": 0.1,
+          "col_2": 775,
+          "col_3": 22.5,
+          "col_4": 59.77
+        },
+        {
+          "a": null,
+          "col_1": 0.08,
+          "col_2": 586.28,
+          "col_3": 11.3,
+          "col_4": 58.98
+        }
+      ],
+      "translated_headers": [
+        "a",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGS Alibi 1m All",
+      "headers": [
+        "col_0",
+        "col_1",
+        "Ouverture du tamis (mm)",
+        "Masse de refus cumulés (g)",
+        "Refus cumulés (%)",
+        "Passants (%)"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.066,
+          "retained_pct": null,
+          "passing_pct": 52.13
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.046,
+          "retained_pct": null,
+          "passing_pct": 36.73
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.033,
+          "retained_pct": null,
+          "passing_pct": 32.2
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.0205,
+          "retained_pct": null,
+          "passing_pct": 27.66
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.012,
+          "retained_pct": null,
+          "passing_pct": 24.04
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.0073,
+          "retained_pct": null,
+          "passing_pct": 23.14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.0465,
+          "retained_pct": null,
+          "passing_pct": 23.13
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.00275,
+          "retained_pct": null,
+          "passing_pct": 22.22
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.00143,
+          "retained_pct": null,
+          "passing_pct": 18.57
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "sieve_mm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGT Alibi 1,5m All",
+      "headers": [
+        "col_0",
+        "Ouverture du tamis (mm)",
+        "Masse de refus cumulés (g)",
+        "Refus cumulés (%)",
+        "Passants (%)"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "sieve_mm": 25,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 20,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 16,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 12.5,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 10,
+          "retained_pct": 3.95,
+          "passing_pct": 99.72
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 8,
+          "retained_pct": 1.68,
+          "passing_pct": 99.61
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 6.3,
+          "retained_pct": 2.98,
+          "passing_pct": 99.4
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 5,
+          "retained_pct": 4.88,
+          "passing_pct": 99.06
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 4,
+          "retained_pct": 7.16,
+          "passing_pct": 98.55
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 3.15,
+          "retained_pct": 8.14,
+          "passing_pct": 97.98
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 2.5,
+          "retained_pct": 6.58,
+          "passing_pct": 97.52
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 2,
+          "retained_pct": 6.92,
+          "passing_pct": 97.04
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 1.6,
+          "retained_pct": 7.23,
+          "passing_pct": 96.53
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 1.25,
+          "retained_pct": 8.09,
+          "passing_pct": 95.97
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 1,
+          "retained_pct": 7.68,
+          "passing_pct": 95.43
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.8,
+          "retained_pct": 9.88,
+          "passing_pct": 94.74
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.63,
+          "retained_pct": 15.35,
+          "passing_pct": 93.66
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.5,
+          "retained_pct": 34.34,
+          "passing_pct": 91.26
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.4,
+          "retained_pct": 22.6,
+          "passing_pct": 89.68
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.315,
+          "retained_pct": 159.08,
+          "passing_pct": 78.54
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.25,
+          "retained_pct": 70.81,
+          "passing_pct": 73.59
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.2,
+          "retained_pct": 99.34,
+          "passing_pct": 66.63
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.16,
+          "retained_pct": 36.67,
+          "passing_pct": 64.06
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.125,
+          "retained_pct": 53.6,
+          "passing_pct": 60.31
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.1,
+          "retained_pct": 14.88,
+          "passing_pct": 59.27
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.08,
+          "retained_pct": 8.65,
+          "passing_pct": 58.67
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "sieve_mm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGS Allibi 1,5m",
+      "headers": [
+        "col_0",
+        "Ouverture du tamis (mm)",
+        "Masse de refus cumulés (g)",
+        "Refus cumulés (%)",
+        "Passants (%)"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "sieve_mm": 0.066,
+          "retained_pct": null,
+          "passing_pct": 39.33
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.046,
+          "retained_pct": null,
+          "passing_pct": 32.86
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.033,
+          "retained_pct": null,
+          "passing_pct": 31.02
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.02,
+          "retained_pct": null,
+          "passing_pct": 28.25
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.012,
+          "retained_pct": null,
+          "passing_pct": 26.4
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.0071,
+          "retained_pct": null,
+          "passing_pct": 24.55
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.0046,
+          "retained_pct": null,
+          "passing_pct": 22.69
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.00275,
+          "retained_pct": null,
+          "passing_pct": 20.82
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.00139,
+          "retained_pct": null,
+          "passing_pct": 18.96
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "sieve_mm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGT Allibi 2m",
+      "headers": [
+        "col_0",
+        "Ouverture du tamis (mm)",
+        "Masse de refus cumulés (g)",
+        "Refus cumulés (%)",
+        "Passants (%)"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "sieve_mm": 25,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 20,
+          "retained_pct": 0,
+          "passing_pct": 100
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 16,
+          "retained_pct": 13.52,
+          "passing_pct": 99.06
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 12.5,
+          "retained_pct": 5.01,
+          "passing_pct": 98.72
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 10,
+          "retained_pct": 5.35,
+          "passing_pct": 98.34
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 8,
+          "retained_pct": 16.94,
+          "passing_pct": 97.17
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 6.3,
+          "retained_pct": 9.38,
+          "passing_pct": 96.52
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 5,
+          "retained_pct": 88.32,
+          "passing_pct": 95.94
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 4,
+          "retained_pct": 8.8,
+          "passing_pct": 95.33
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 3.15,
+          "retained_pct": 11.7,
+          "passing_pct": 94.52
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 2.5,
+          "retained_pct": 11.2,
+          "passing_pct": 93.74
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 2,
+          "retained_pct": 9.76,
+          "passing_pct": 93.07
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 1.6,
+          "retained_pct": 9.19,
+          "passing_pct": 92.43
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 1.25,
+          "retained_pct": 14.14,
+          "passing_pct": 91.45
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 1,
+          "retained_pct": 10.56,
+          "passing_pct": 90.72
+        },
+        {
+          "col_0": null,
+          "sieve_mm": 0.8,
+          "retained_pct": 14.86,
+          "passing_pct": 89.69
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "sieve_mm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    },
+    {
+      "name": "AGS Allibi 2m",
+      "headers": [
+        "col_0",
+        "col_1",
+        "Ouverture du tamis (mm)",
+        "Masse de refus cumulés (g)",
+        "Refus cumulés (%)",
+        "Passants (%)"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.63,
+          "retained_pct": 26.06,
+          "passing_pct": 87.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.5,
+          "retained_pct": 35.73,
+          "passing_pct": 85.4
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.4,
+          "retained_pct": 43.89,
+          "passing_pct": 82.36
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.315,
+          "retained_pct": 73.01,
+          "passing_pct": 77.3
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.25,
+          "retained_pct": 79.49,
+          "passing_pct": 71.79
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.2,
+          "retained_pct": 127.71,
+          "passing_pct": 62.93
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.16,
+          "retained_pct": 63.73,
+          "passing_pct": 58.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.125,
+          "retained_pct": 63.83,
+          "passing_pct": 54.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.1,
+          "retained_pct": 24.44,
+          "passing_pct": 52.39
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.08,
+          "retained_pct": 12.19,
+          "passing_pct": 51.27
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.0585,
+          "retained_pct": null,
+          "passing_pct": 36.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.041,
+          "retained_pct": null,
+          "passing_pct": 31.94
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.0305,
+          "retained_pct": null,
+          "passing_pct": 25.31
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.02,
+          "retained_pct": null,
+          "passing_pct": 22
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.012,
+          "retained_pct": null,
+          "passing_pct": 21.17
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.0069,
+          "retained_pct": null,
+          "passing_pct": 21.17
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.0044,
+          "retained_pct": null,
+          "passing_pct": 18.69
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.0026,
+          "retained_pct": null,
+          "passing_pct": 17.03
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "sieve_mm": 0.00133,
+          "retained_pct": null,
+          "passing_pct": 14.55
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "sieve_mm",
+        "retained_pct",
+        "retained_pct",
+        "passing_pct"
+      ]
+    }
+  ]
+}

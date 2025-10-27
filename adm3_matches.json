@@ -1,0 +1,81 @@
+[
+  {
+    "file": "atlas_import_nicabou_ninsao_vianney.xlsx",
+    "code_site": "APEHEME",
+    "localite": "Apeheme",
+    "adm3_pcode": "TG030701",
+    "adm3_name": "Ahepe",
+    "adm2": "Yoto",
+    "adm1": "Maritime",
+    "match_type": "fuzzy"
+  },
+  {
+    "file": "atlas_import_nicabou_ninsao_vianney.xlsx",
+    "code_site": "DAVIE",
+    "localite": "Davie",
+    "adm3_pcode": "TG030805",
+    "adm3_name": "Davie",
+    "adm2": "Zio",
+    "adm1": "Maritime"
+  },
+  {
+    "file": "atlas_import_nicabou_ninsao_vianney.xlsx",
+    "code_site": "DZOGBECOPE",
+    "localite": "Dzogbecope",
+    "adm3_pcode": "TG030904",
+    "adm3_name": "Togblekope",
+    "adm2": "Agoe-Nyive",
+    "adm1": "Maritime",
+    "match_type": "fuzzy"
+  },
+  {
+    "file": "atlas_import_nicabou_ninsao_vianney.xlsx",
+    "code_site": "TEKPO",
+    "localite": "Tekpo",
+    "adm3_pcode": "TG030709",
+    "adm3_name": "Tchekpo",
+    "adm2": "Yoto",
+    "adm1": "Maritime",
+    "match_type": "fuzzy"
+  },
+  {
+    "file": "atlas_import_soglo_ferdinand.xlsx",
+    "code_site": "KONSOGOU_T1",
+    "localite": "Konsogou T1",
+    "adm3_pcode": "TG020605",
+    "adm3_name": "Koutougou",
+    "adm2": "Keran",
+    "adm1": "Kara",
+    "match_type": "fuzzy"
+  },
+  {
+    "file": "atlas_import_soglo_ferdinand.xlsx",
+    "code_site": "KONSOGOU_T2",
+    "localite": "Konsogou T2",
+    "adm3_pcode": "TG020605",
+    "adm3_name": "Koutougou",
+    "adm2": "Keran",
+    "adm1": "Kara",
+    "match_type": "fuzzy"
+  },
+  {
+    "file": "atlas_import_soglo_ferdinand.xlsx",
+    "code_site": "NASSABLE",
+    "localite": "Nassablé",
+    "adm3_pcode": "TG051703",
+    "adm3_name": "Cinkasse",
+    "adm2": "Cinkasse",
+    "adm1": "Savanes",
+    "match_type": "fuzzy"
+  },
+  {
+    "file": "atlas_import_soglo_ferdinand.xlsx",
+    "code_site": "KONTONGBONGUE",
+    "localite": "Kontongbongue",
+    "adm3_pcode": "TG051902",
+    "adm3_name": "Koumongou",
+    "adm2": "Oti-Sud",
+    "adm1": "Savanes",
+    "match_type": "fuzzy"
+  }
+]

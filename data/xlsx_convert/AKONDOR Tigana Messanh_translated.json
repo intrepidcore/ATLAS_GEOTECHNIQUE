@@ -1,0 +1,1562 @@
+{
+  "source_file": "AKONDOR Tigana Messanh.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.298073",
+  "sheets": [
+    {
+      "name": " AGT ANIE",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouvertuure du tamis ",
+          "col_3": "Passants par profondeur  1m",
+          "col_4": "Passants par profondeur 1.5m",
+          "col_5": "Passants par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 31.5,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "col_3": 0,
+          "col_4": 90.55,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 100,
+          "col_4": 73.35,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "col_3": 96.74,
+          "col_4": 69.66,
+          "col_5": 91.59
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2.5,
+          "col_3": 88.61,
+          "col_4": 65.15,
+          "col_5": 82.98
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.25,
+          "col_3": 81.78,
+          "col_4": 60.09,
+          "col_5": 66.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.63,
+          "col_3": 78.81,
+          "col_4": 57.09,
+          "col_5": 53.07
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 75.9,
+          "col_4": 54.02,
+          "col_5": 43.1
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.16,
+          "col_3": 71.54,
+          "col_4": 46.97,
+          "col_5": 34.05
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 63.74,
+          "col_4": 44.92,
+          "col_5": 32025
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGS ANIE ",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouvertuure du tamis ",
+          "col_3": "Passants par profondeur  1m",
+          "col_4": "Passants par profondeur 1.5m",
+          "col_5": "Passants par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.076,
+          "col_3": 59.97,
+          "col_4": 38.43,
+          "col_5": 26.14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0543,
+          "col_3": 44.16,
+          "col_4": 32.16,
+          "col_5": 24.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.385,
+          "col_3": 41.9,
+          "col_4": 30.6,
+          "col_5": 23.6
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.25,
+          "col_3": 39.654,
+          "col_4": 27.46,
+          "col_5": 22.32
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0145,
+          "col_3": 32.87,
+          "col_4": 22.76,
+          "col_5": 18.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0084,
+          "col_3": 24.74,
+          "col_4": 16.81,
+          "col_5": 13.89
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0052,
+          "col_3": 19.32,
+          "col_4": 13.37,
+          "col_5": 10.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0046,
+          "col_3": 14.95,
+          "col_4": 10.43,
+          "col_5": 8.23
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.0016,
+          "col_3": 5.89,
+          "col_4": 4.15,
+          "col_5": 3.28
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGT Nyamassila",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Ouvertuure du tamis ",
+          "col_3": "Passants par profondeur  1m",
+          "col_4": "Passants par profondeur 1.5m",
+          "col_5": "Passants par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 31.15,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "col_3": 97.66,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 95.45,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "col_3": 87.44,
+          "col_4": 99.19,
+          "col_5": 98.6
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2.5,
+          "col_3": 73.21,
+          "col_4": 95.94,
+          "col_5": 96.04
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.25,
+          "col_3": 60.17,
+          "col_4": 91.5,
+          "col_5": 92.72
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.63,
+          "col_3": 54.62,
+          "col_4": 86.49,
+          "col_5": 88.89
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 47.81,
+          "col_4": 77.87,
+          "col_5": 80.49
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.16,
+          "col_3": 40.45,
+          "col_4": 66.76,
+          "col_5": 68.15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 34.71,
+          "col_4": 56.3,
+          "col_5": 55.6
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGS nayamassila ",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Ouvertuure du tamis ",
+          "col_4": "Passants par profondeur  1m",
+          "col_5": "Passants par profondeur 1.5m",
+          "col_6": "Passants par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.078,
+          "col_4": 29.38,
+          "col_5": 48.68,
+          "col_6": 48.9
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0563,
+          "col_4": 24.63,
+          "col_5": 44,
+          "col_6": 38.92
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.403,
+          "col_4": 17.98,
+          "col_5": 38.38,
+          "col_6": 32.27
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0255,
+          "col_4": 17.35,
+          "col_5": 27.14,
+          "col_6": 30.37
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.15,
+          "col_4": 14.18,
+          "col_5": 26.21,
+          "col_6": 28
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0086,
+          "col_4": 10.38,
+          "col_5": 25.27,
+          "col_6": 25.15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0053,
+          "col_4": 7.21,
+          "col_5": 20.05,
+          "col_6": 20.82
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0049,
+          "col_4": 4.15,
+          "col_5": 15.21,
+          "col_6": 15.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0016,
+          "col_4": 4.08,
+          "col_5": 14.99,
+          "col_6": 10.95
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.001,
+          "col_4": 1.01,
+          "col_5": 10.77,
+          "col_6": 6.2
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Blue",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Refernce",
+          "col_3": "Localite/Cantons",
+          "col_4": "Profondeurs",
+          "col_5": "VBS",
+          "col_6": "Caracteristique"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Anié",
+          "col_4": 1,
+          "col_5": 8,
+          "col_6": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Anié",
+          "col_4": 1.5,
+          "col_5": 4.8,
+          "col_6": "Sol limoneux aegileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Anié",
+          "col_4": 2,
+          "col_5": 2,
+          "col_6": "Sol limoneux aegileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Anié",
+          "col_4": "Moyenne",
+          "col_5": 4.93,
+          "col_6": "Sol limoneux aegileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Nyamassila",
+          "col_4": 1,
+          "col_5": 2,
+          "col_6": "Sol limoneux aegileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Nyamassila",
+          "col_4": 1.5,
+          "col_5": 2,
+          "col_6": "Sol limoneux aegileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Nyamassila",
+          "col_4": 2,
+          "col_5": 7.33,
+          "col_6": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Nyamassila",
+          "col_4": "Moyenne",
+          "col_5": 3.77,
+          "col_6": "sol limoneux argileux"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Poids spec",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Canton",
+          "col_3": "Profondeur",
+          "col_4": "Valeur du poids specifiques"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 1,
+          "col_4": 2.53
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 1.5,
+          "col_4": 2.6
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 2,
+          "col_4": 2.63
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Moyenne",
+          "col_4": 2.59
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "NYAMASSILA",
+          "col_3": 1,
+          "col_4": 2.63
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "NYAMASSILA",
+          "col_3": 1.5,
+          "col_4": 2.62
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "NYAMASSILA",
+          "col_3": 2,
+          "col_4": 2.62
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Moyenne",
+          "col_4": 2.62
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "Classification",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Localite/Caton",
+          "col_3": "Profondeur",
+          "col_4": "Classification HBR",
+          "col_5": "Classification unifié",
+          "col_6": "Classification d'après le bleu de Métyléne"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 1,
+          "col_4": "A-7-6",
+          "col_5": "Sol fin et plasticité moyenne",
+          "col_6": "sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 1.5,
+          "col_4": "A-6",
+          "col_5": "sol fin et faible plasticité",
+          "col_6": "sol limoneu argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 2,
+          "col_4": "A-2-6",
+          "col_5": "sol grenu faible plasticité",
+          "col_6": "sol limoneu argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "NYAMASSILA",
+          "col_3": 1,
+          "col_4": "A-6",
+          "col_5": "Sol fin argile de plasticité faible",
+          "col_6": "sol limoneu argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.5,
+          "col_4": "A-6",
+          "col_5": "sol fin un silt-argile de platicité faible",
+          "col_6": "sol limoneu argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "A-6",
+          "col_5": "Sol fin un silt-argile de plasticité moyenne",
+          "col_6": "sol argileux"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "indice de glonglement",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Localité/caton ",
+          "col_2": "Profondeur",
+          "col_3": "Limite de liquidité",
+          "col_4": "Teneur en eau ",
+          "col_5": "indice de gonflement"
+        },
+        {
+          "col_0": null,
+          "col_1": "ANIE",
+          "col_2": 1,
+          "col_3": 61.55,
+          "col_4": 18.7,
+          "col_5": 0.0304
+        },
+        {
+          "col_0": null,
+          "col_1": "ANIE",
+          "col_2": 1.5,
+          "col_3": 35.08,
+          "col_4": 6.09,
+          "col_5": 0.174
+        },
+        {
+          "col_0": null,
+          "col_1": "ANIE",
+          "col_2": 2,
+          "col_3": 24.19,
+          "col_4": 9.17,
+          "col_5": 0.378
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Moyenne",
+          "col_3": 40.27,
+          "col_4": 11.51,
+          "col_5": 0.286
+        },
+        {
+          "col_0": null,
+          "col_1": "NYAMASSILA",
+          "col_2": 1,
+          "col_3": 67.58,
+          "col_4": 5.24,
+          "col_5": 0.078
+        },
+        {
+          "col_0": null,
+          "col_1": "NYAMASSILA",
+          "col_2": 1.5,
+          "col_3": 70,
+          "col_4": 5.84,
+          "col_5": 0.083
+        },
+        {
+          "col_0": null,
+          "col_1": "NYAMASSILA",
+          "col_2": 2,
+          "col_3": 53,
+          "col_4": 3.3,
+          "col_5": 0.062
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Moyenne",
+          "col_3": 63.53,
+          "col_4": 4.79,
+          "col_5": 0.075
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "indice de consistance",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Localité/caton ",
+          "col_3": "Profondeur",
+          "col_4": "Limite de liquidité",
+          "col_5": "Teneur en eau  naturel",
+          "col_6": "indice de consistance"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 1,
+          "col_4": 61.56,
+          "col_5": 18.7,
+          "col_6": 1.47
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 1.5,
+          "col_4": 35.08,
+          "col_5": 6.09,
+          "col_6": 2.25
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "ANIE",
+          "col_3": 2,
+          "col_4": 24.19,
+          "col_5": 9.15,
+          "col_6": 3.3
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Moyenne",
+          "col_4": 40.27,
+          "col_5": 11.51,
+          "col_6": 2.34
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "NYAMASSILA",
+          "col_3": 1,
+          "col_4": 67.58,
+          "col_5": 5.24,
+          "col_6": 1.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "NYAMASSILA",
+          "col_3": 1.5,
+          "col_4": 70,
+          "col_5": 3.3,
+          "col_6": 1.55
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "NYAMASSILA",
+          "col_3": 2,
+          "col_4": 53,
+          "col_5": 4.79,
+          "col_6": 1.53
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Moyenne",
+          "col_4": 63.52,
+          "col_5": 4.44,
+          "col_6": 1.53
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "indice de plasticite",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Localité/caton ",
+          "col_4": "Profondeur",
+          "col_5": "Limite de liquidité Wl à 25 coups",
+          "col_6": "indice de plasticité"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "ANIE",
+          "col_4": 1,
+          "col_5": 61.56,
+          "col_6": 37.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "ANIE",
+          "col_4": 1.5,
+          "col_5": 35.08,
+          "col_6": 14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "ANIE",
+          "col_4": 2,
+          "col_5": 24.19,
+          "col_6": 6.69
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Moyenne",
+          "col_5": 40.27,
+          "col_6": 19.38
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "NYAMASSILA",
+          "col_4": 1,
+          "col_5": 52.59,
+          "col_6": 27.11
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "NYAMASSILA",
+          "col_4": 1.5,
+          "col_5": 53.48,
+          "col_6": 29.25
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "NYAMASSILA",
+          "col_4": 2,
+          "col_5": 52.01,
+          "col_6": 30.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Moyenne",
+          "col_5": 52.69,
+          "col_6": 28.95
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "densite anié",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Echantillons",
+          "col_3": "1m",
+          "col_4": "1m",
+          "col_5": "1m",
+          "col_6": "1.5m",
+          "col_7": "1.5m",
+          "col_8": "1.5m",
+          "col_9": "2m",
+          "col_10": "2m",
+          "col_11": "2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "N du picno",
+          "col_3": 1,
+          "col_4": 2,
+          "col_5": 3,
+          "col_6": 1,
+          "col_7": 2,
+          "col_8": 3,
+          "col_9": 1,
+          "col_10": 2,
+          "col_11": 3
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Sol sec ms (g)",
+          "col_3": 25.01,
+          "col_4": 25.13,
+          "col_5": 25.11,
+          "col_6": 25.04,
+          "col_7": 25.07,
+          "col_8": 25.03,
+          "col_9": 25,
+          "col_10": 25,
+          "col_11": 25
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "picno mp (g)",
+          "col_3": 49.7,
+          "col_4": 44.33,
+          "col_5": 42.44,
+          "col_6": 40.81,
+          "col_7": 44.8,
+          "col_8": 44.64,
+          "col_9": 41.4,
+          "col_10": 44.74,
+          "col_11": 44.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "picno + eau m'o (g)",
+          "col_3": 148.63,
+          "col_4": 143.42,
+          "col_5": 141.25,
+          "col_6": 140.25,
+          "col_7": 144.71,
+          "col_8": 143.69,
+          "col_9": 140.25,
+          "col_10": 144.11,
+          "col_11": 143.69
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Temprérature de l'eau to  (°C) ",
+          "col_3": 28,
+          "col_4": 27.7,
+          "col_5": 28.7,
+          "col_6": 29,
+          "col_7": 28.9,
+          "col_8": 28.9,
+          "col_9": 28.6,
+          "col_10": 28.1,
+          "col_11": 28.6
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "1ère correction dmo (g)",
+          "col_3": -0.176,
+          "col_4": -0.168,
+          "col_5": -0.194,
+          "col_6": -0.202,
+          "col_7": -0.199,
+          "col_8": -0.194,
+          "col_9": -0.191,
+          "col_10": -0.178,
+          "col_11": -0.191
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Masse corrigé mo = m'o + dmo (g)",
+          "col_3": 148.454,
+          "col_4": 143.252,
+          "col_5": 141.056,
+          "col_6": 140.048,
+          "col_7": 143.911,
+          "col_8": 143.496,
+          "col_9": 140.059,
+          "col_10": 143.932,
+          "col_11": 143.499
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Picno + Ech. Sec m1 -mp (g)",
+          "col_3": 74.71,
+          "col_4": 69.46,
+          "col_5": 67.55,
+          "col_6": 66.37,
+          "col_7": 69.81,
+          "col_8": 69.67,
+          "col_9": 66.37,
+          "col_10": 69.81,
+          "col_11": 69.67
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Calcul de l'Ech. Sec ms = m1 -mp (g)",
+          "col_3": 25.01,
+          "col_4": 25.13,
+          "col_5": 25.11,
+          "col_6": 25.56,
+          "col_7": 25.01,
+          "col_8": 25.03,
+          "col_9": 24.97,
+          "col_10": 25.07,
+          "col_11": 25.03
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Picno + Ech. Sec + Eau m'2 (g)",
+          "col_3": 163.7,
+          "col_4": 158.71,
+          "col_5": 156.58,
+          "col_6": 155.64,
+          "col_7": 159.65,
+          "col_8": 159.32,
+          "col_9": 155.64,
+          "col_10": 159.65,
+          "col_11": 159.32
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Température de la solution t2 (°C)",
+          "col_3": 29.6,
+          "col_4": 30,
+          "col_5": 29.8,
+          "col_6": 28.7,
+          "col_7": 28.7,
+          "col_8": 28.9,
+          "col_9": 29.7,
+          "col_10": 29.8,
+          "col_11": 29.8
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "2ème correction dm2 (g)",
+          "col_3": -0.216,
+          "col_4": -0.229,
+          "col_5": -0.223,
+          "col_6": -0.229,
+          "col_7": -0.229,
+          "col_8": -0.199,
+          "col_9": -0.221,
+          "col_10": -0.223,
+          "col_11": -0.223
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Masse corrigé m2 = m'2 + dm2 (g)",
+          "col_3": 163.482,
+          "col_4": 158.481,
+          "col_5": 156.357,
+          "col_6": 155.411,
+          "col_7": 159.421,
+          "col_8": 159.121,
+          "col_9": 155.419,
+          "col_10": 159.427,
+          "col_11": 159.097
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Poids spécifiques élémentaires Gs",
+          "col_3": 200.506,
+          "col_4": 2.538,
+          "col_5": 2.56,
+          "col_6": 2.507,
+          "col_7": 2.633,
+          "col_8": 2.661,
+          "col_9": 2.598,
+          "col_10": 2.618,
+          "col_11": 2.654
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0326,
+          "col_4": 0.0216,
+          "col_5": 0.544,
+          "col_6": 0.126,
+          "col_7": 0.0287,
+          "col_8": 0.1547,
+          "col_9": 0.0199,
+          "col_10": 0.0355,
+          "col_11": 0.0554
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Moyenne",
+          "col_3": null,
+          "col_4": 2.5345,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 2.6002,
+          "col_8": null,
+          "col_9": 2.6234,
+          "col_10": null,
+          "col_11": null
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ]
+    },
+    {
+      "name": "densite Nyamassila",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Echantillons",
+          "col_3": "1m",
+          "col_4": "1m",
+          "col_5": "1m",
+          "col_6": "1.5m",
+          "col_7": "1.5m",
+          "col_8": "1.5m",
+          "col_9": "2m",
+          "col_10": "2m",
+          "col_11": "2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "N du picno",
+          "col_3": 1,
+          "col_4": 2,
+          "col_5": 3,
+          "col_6": 1,
+          "col_7": 2,
+          "col_8": 3,
+          "col_9": 1,
+          "col_10": 2,
+          "col_11": 3
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Sol sec ms (g)",
+          "col_3": 25,
+          "col_4": 25.04,
+          "col_5": 25.05,
+          "col_6": 25.01,
+          "col_7": 25,
+          "col_8": 25.02,
+          "col_9": 25,
+          "col_10": 25,
+          "col_11": 25
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "picno mp (g)",
+          "col_3": 42.52,
+          "col_4": 44.95,
+          "col_5": 49.76,
+          "col_6": 44.32,
+          "col_7": 49.7,
+          "col_8": 43.31,
+          "col_9": 44.74,
+          "col_10": 44.65,
+          "col_11": 41.35
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "picno + eau m'o (g)",
+          "col_3": 141.44,
+          "col_4": 144.05,
+          "col_5": 148.55,
+          "col_6": 143.42,
+          "col_7": 148.67,
+          "col_8": 141.38,
+          "col_9": 143.98,
+          "col_10": 163.65,
+          "col_11": 140.22
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Temprérature de l'eau to  (°C) ",
+          "col_3": 28,
+          "col_4": 28.8,
+          "col_5": 28.3,
+          "col_6": 28.7,
+          "col_7": 28.7,
+          "col_8": 28.5,
+          "col_9": 28.7,
+          "col_10": 28.7,
+          "col_11": 28.5
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "1ère correction dmo (g)",
+          "col_3": 0.176,
+          "col_4": 0.196,
+          "col_5": 0.183,
+          "col_6": 0.194,
+          "col_7": 0.194,
+          "col_8": 0.189,
+          "col_9": 0.194,
+          "col_10": 0.194,
+          "col_11": -0.189
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Masse corrigé mo = m'o + dmo (g)",
+          "col_3": 141.26,
+          "col_4": 144.304,
+          "col_5": 148.367,
+          "col_6": 143.226,
+          "col_7": 148.476,
+          "col_8": 141.191,
+          "col_9": 143.786,
+          "col_10": 144.05,
+          "col_11": 140.031
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Picno + Ech. Sec m1 -mp (g)",
+          "col_3": 67.52,
+          "col_4": 39.99,
+          "col_5": 74.81,
+          "col_6": 69.42,
+          "col_7": 74.7,
+          "col_8": 67.33,
+          "col_9": 69.74,
+          "col_10": 69.65,
+          "col_11": 66.35
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Calcul de l'Ech. Sec ms = m1 -mp (g)",
+          "col_3": 25,
+          "col_4": 25.04,
+          "col_5": 25.5,
+          "col_6": 25.01,
+          "col_7": 25,
+          "col_8": 25.02,
+          "col_9": 25,
+          "col_10": 25,
+          "col_11": 25
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Picno + Ech. Sec + Eau m'2 (g)",
+          "col_3": 155.05,
+          "col_4": 159.68,
+          "col_5": 164.41,
+          "col_6": 158.95,
+          "col_7": 164.1,
+          "col_8": 156.89,
+          "col_9": 159.45,
+          "col_10": 160,
+          "col_11": 155.84
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Température de la solution t2 (°C)",
+          "col_3": 29.8,
+          "col_4": 29.9,
+          "col_5": 29.9,
+          "col_6": 29.9,
+          "col_7": 29.8,
+          "col_8": 29.9,
+          "col_9": 29.9,
+          "col_10": 29.8,
+          "col_11": 29.9
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "2ème correction dm2 (g)",
+          "col_3": 0.223,
+          "col_4": 0.226,
+          "col_5": 0.226,
+          "col_6": 0.226,
+          "col_7": 0.223,
+          "col_8": 0.226,
+          "col_9": 0.226,
+          "col_10": 0.223,
+          "col_11": -0.226
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Masse corrigé m2 = m'2 + dm2 (g)",
+          "col_3": 156.827,
+          "col_4": 159.454,
+          "col_5": 164.184,
+          "col_6": 158.724,
+          "col_7": 163.877,
+          "col_8": 156.664,
+          "col_9": 159.24,
+          "col_10": 160,
+          "col_11": 1555
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Poids spécifiques élémentaires Gs",
+          "col_3": 2.65,
+          "col_4": 2.532,
+          "col_5": 2.713,
+          "col_6": 2.629,
+          "col_7": 2.604,
+          "col_8": 2.621,
+          "col_9": 2.615,
+          "col_10": 2.762,
+          "col_11": 2.492
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.1184,
+          "col_4": 0.1812,
+          "col_5": 0.0628,
+          "col_6": 0.0249,
+          "col_7": 0.0163,
+          "col_8": 0.0086,
+          "col_9": 0.1479,
+          "col_10": 0.2702,
+          "col_11": -0.1222
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Moyenne",
+          "col_3": null,
+          "col_4": 2.6317,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 2.6187,
+          "col_8": null,
+          "col_9": null,
+          "col_10": 2.6231,
+          "col_11": null
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ]
+    }
+  ]
+}

@@ -18,6 +18,9 @@ mod neighbors;
 mod exports;
 mod import_bulk;
 mod thematic;
+mod geocoding;
+mod cells_labs;
+mod surveys_compat;
 pub mod state;
 
 #[derive(Serialize)]
@@ -38,11 +41,17 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // CORS permissif (dev/local). Autoriser GET/POST/DELETE/PATCH/PUT/OPTIONS et tous headers/origines
+    // CORS permissif (dev/local). Autoriser localhost:8080 et 127.0.0.1:8080
+    use axum::http::header::{AUTHORIZATION, CONTENT_TYPE, ACCEPT};
+    
     let cors = CorsLayer::new()
-        .allow_origin(Any)
+        .allow_origin([
+            "http://localhost:8080".parse::<axum::http::HeaderValue>().unwrap(),
+            "http://127.0.0.1:8080".parse::<axum::http::HeaderValue>().unwrap(),
+        ])
         .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH, Method::PUT, Method::OPTIONS])
-        .allow_headers(Any);
+        .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
+        .allow_credentials(true);
 
     // DB connexion avec retry (5 tentatives max, backoff exponentiel)
     tracing::info!("Connexion à la base de données...");
@@ -74,7 +83,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/classifications/:sondage_id", get(geotechnical::list_classifications))
         // ADM-based surveys (without coordinates)
         .route("/surveys/adm", post(surveys_adm::create_survey_adm))
-        .route("/surveys/ungeocode", get(surveys_adm::list_ungeocode_surveys))
+        .route("/surveys/ungeocode", get(surveys_compat::list_ungeocode))
+        // Cell labs data (panneau gauche)
+        .route("/cells/:code/labs", get(cells_labs::get_cell_labs))
+        .route("/cells/:code/complete", get(cells_labs::get_cell_complete))
         .route("/adm/:level", get(routes::list_adm_zones))
         .route("/adm1", get(surveys::list_adm1))
         .route("/adm2", get(surveys::list_adm2))
@@ -93,6 +105,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/thematic/configs", get(thematic::list_configs).post(thematic::create_config))
         .route("/thematic/configs/:id", get(thematic::get_config).delete(thematic::delete_config))
         .route("/thematic/palettes", get(thematic::list_palettes))
+        // Geocoding endpoints
+        .route("/geocode/suggestions", get(geocoding::list_suggestions))
+        .route("/geocode/suggestions/:id/accept", post(geocoding::accept_suggestion))
+        .route("/geocode/suggestions/:id/reject", post(geocoding::reject_suggestion))
+        .route("/geocode/suggestions/:id/update", post(geocoding::update_suggestion))
+        .route("/geocode/apply-accepted", post(geocoding::apply_accepted))
+        .route("/geocode/stats", get(geocoding::get_stats))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

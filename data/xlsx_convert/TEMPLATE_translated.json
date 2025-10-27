@@ -1,0 +1,87 @@
+{
+  "source_file": "TEMPLATE.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.829961",
+  "sheets": [
+    {
+      "name": "Sheet 1",
+      "headers": [
+        "code",
+        "date",
+        "source",
+        "lat",
+        "lon",
+        "depth_m",
+        "passant_80um",
+        "passant_2mm",
+        "passant_20mm",
+        "wl",
+        "wp",
+        "vbs",
+        "gamma_d_max",
+        "w_opt",
+        "proctor_type",
+        "eg",
+        "laboratory",
+        "norm"
+      ],
+      "rows": [
+        {
+          "code": "TEST-9034-415",
+          "date": "2024-07-30",
+          "source": "Lab C - Sokodé",
+          "latitude": "10.3186",
+          "longitude": "0.497",
+          "depth_m": "1.0",
+          "passing_pct": "97.0",
+          "liquid_limit": "47.9",
+          "plastic_limit": "39.6",
+          "methylene_blue_value": "5.42",
+          "max_dry_density": "16.12",
+          "optimum_water_content": "22.9",
+          "proctor_type": "normal",
+          "swelling_eg": "5.33",
+          "laboratory": "Lab C - Sokodé",
+          "norm": "NF P94-051"
+        },
+        {
+          "code": "TEST-9034-415",
+          "date": "2024-07-30",
+          "source": "Lab C - Sokodé",
+          "latitude": "10.3186",
+          "longitude": "0.497",
+          "depth_m": "3.4",
+          "passing_pct": "95.5",
+          "liquid_limit": "45.5",
+          "plastic_limit": "22.9",
+          "methylene_blue_value": "5.27",
+          "max_dry_density": "15.74",
+          "optimum_water_content": "21.2",
+          "proctor_type": "normal",
+          "swelling_eg": "3.88",
+          "laboratory": "Lab C - Sokodé",
+          "norm": "NF P94-051"
+        }
+      ],
+      "translated_headers": [
+        "code",
+        "date",
+        "source",
+        "latitude",
+        "longitude",
+        "depth_m",
+        "passing_pct",
+        "passing_pct",
+        "passing_pct",
+        "liquid_limit",
+        "plastic_limit",
+        "methylene_blue_value",
+        "max_dry_density",
+        "optimum_water_content",
+        "proctor_type",
+        "swelling_eg",
+        "laboratory",
+        "norm"
+      ]
+    }
+  ]
+}

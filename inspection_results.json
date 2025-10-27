@@ -1,0 +1,3388 @@
+{
+  "files": [
+    {
+      "file": "data/xlsx/ABGBANA_Essi_Odette.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "Feuil1",
+          "rows": 0,
+          "cols": 0,
+          "columns": []
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/ADOTE Adote emmanuel.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "AGT OGARO",
+          "rows": 20,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS YALGA",
+          "rows": 45,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": " AGT OGARO 1",
+          "rows": 41,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS OGARO 1",
+          "rows": 47,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT Batbougou",
+          "rows": 22,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS Batbougou",
+          "rows": 44,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT Nanousongue",
+          "rows": 22,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS Nanousongue",
+          "rows": 43,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/AKONDOR Tigana Messanh.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": " AGT ANIE",
+          "rows": 15,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS ANIE ",
+          "rows": 14,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT Nyamassila",
+          "rows": 16,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS nayamassila ",
+          "rows": 13,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "Blue",
+          "rows": 11,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "Poids spec",
+          "rows": 10,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "Classification",
+          "rows": 9,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "indice de glonglement",
+          "rows": 11,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "indice de consistance",
+          "rows": 13,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "indice de plasticite",
+          "rows": 16,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "densite anié",
+          "rows": 22,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "densite Nyamassila",
+          "rows": 22,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/ANYO Akouete jean-paul.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "AGT d Apeyeme",
+          "rows": 28,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS d Apeyeme",
+          "rows": 20,
+          "cols": 14,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11",
+            "Unnamed: 12",
+            "Unnamed: 13"
+          ]
+        },
+        {
+          "name": "AGT de Djobekope",
+          "rows": 30,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS  de Djobekope",
+          "rows": 24,
+          "cols": 13,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11",
+            "Unnamed: 12"
+          ]
+        },
+        {
+          "name": "AGT de Badome",
+          "rows": 29,
+          "cols": 13,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11",
+            "Unnamed: 12"
+          ]
+        },
+        {
+          "name": "AGS de Badome",
+          "rows": 21,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "dansite",
+          "rows": 16,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "limite ATT",
+          "rows": 21,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "BLEU",
+          "rows": 19,
+          "cols": 10,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9"
+          ]
+        },
+        {
+          "name": "TENEUR EN EAU ",
+          "rows": 19,
+          "cols": 14,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11",
+            "Unnamed: 12",
+            "Unnamed: 13"
+          ]
+        },
+        {
+          "name": "Clasification",
+          "rows": 17,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGT APEYEME 1m ALL",
+          "rows": 25,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS APEYEME 1m ALL",
+          "rows": 37,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGT APEYEME 1,5 m ALL",
+          "rows": 27,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "AGS APEYEME 1,5 m ALL",
+          "rows": 19,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGT APEYEME 2m ALL",
+          "rows": 28,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS APEYEME 2m ALL",
+          "rows": 19,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": " AGT DJOGBEKOPE 1m ALL",
+          "rows": 27,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS DJOGBEKOPE 1m ALL",
+          "rows": 18,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGT DJOGBEKOPE 1,5m ALL",
+          "rows": 31,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS DJOGBEKOPE 1,5m ALL",
+          "rows": 20,
+          "cols": 11,
+          "columns": [
+            "AGS DJOGBEKOPE ",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGT DJOGBEKOPE 2m ALL",
+          "rows": 31,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS DJOGBEKOPE 2m ALL",
+          "rows": 20,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGT BADOME 1m ALL",
+          "rows": 29,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS BADOME 1m ALL",
+          "rows": 15,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT BADOME 1,5m ALL",
+          "rows": 27,
+          "cols": 9,
+          "columns": [
+            "AGT BADOME",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS BADOME 1,5m ALL",
+          "rows": 20,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGT B ADOME 2m ALL",
+          "rows": 28,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS BADOME 2mALL",
+          "rows": 19,
+          "cols": 10,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9"
+          ]
+        },
+        {
+          "name": "Feuil36",
+          "rows": 0,
+          "cols": 0,
+          "columns": []
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/GAMBAGA Inoussa.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "Sheet 1",
+          "rows": 16,
+          "cols": 18,
+          "columns": [
+            "code",
+            "date",
+            "source",
+            "lat",
+            "lon",
+            "depth_m",
+            "passant_80um",
+            "passant_2mm",
+            "passant_20mm",
+            "wl",
+            "wp",
+            "vbs",
+            "gamma_d_max",
+            "w_opt",
+            "proctor_type",
+            "eg",
+            "laboratory",
+            "norm"
+          ]
+        },
+        {
+          "name": " Sanfatoute AGT passant",
+          "rows": 26,
+          "cols": 4,
+          "columns": [
+            "Ouverture du tamis (mm)",
+            "1m",
+            "1,5m",
+            "2m"
+          ]
+        },
+        {
+          "name": "Sanfatoute AGS passant",
+          "rows": 12,
+          "cols": 4,
+          "columns": [
+            "Ouverture du tamis (mm)",
+            "1m",
+            "1,5m",
+            "2m"
+          ]
+        },
+        {
+          "name": "Densité",
+          "rows": 6,
+          "cols": 4,
+          "columns": [
+            "Référence",
+            "Cantons",
+            "Profondeurs(m)",
+            "Densité; Absolue"
+          ]
+        },
+        {
+          "name": "Limite sanfatoute",
+          "rows": 8,
+          "cols": 5,
+          "columns": [
+            "Cantons",
+            "Profondeur",
+            "WL",
+            "WP",
+            "IP"
+          ]
+        },
+        {
+          "name": "Bleu",
+          "rows": 8,
+          "cols": 5,
+          "columns": [
+            "Référence",
+            "Cantons",
+            "Profondeurs(m)",
+            "VBS",
+            "Caractéristiques"
+          ]
+        },
+        {
+          "name": "Teneur en eau",
+          "rows": 8,
+          "cols": 7,
+          "columns": [
+            "Référence",
+            "Cantons",
+            "Profondeurs(m)",
+            "Teneur en eau",
+            "Wl",
+            "Is",
+            "Caractéristiques"
+          ]
+        },
+        {
+          "name": "Classification",
+          "rows": 6,
+          "cols": 5,
+          "columns": [
+            "Canton",
+            "Profondeur(m)",
+            "Classification HBR ",
+            "Classification unifiée",
+            "Classification d'après le bleu de méthylène"
+          ]
+        },
+        {
+          "name": "AGS Korbongou ALL 1",
+          "rows": 12,
+          "cols": 4,
+          "columns": [
+            "Ouverture du tamis(mm)",
+            "Masse de refus cumulés(g)",
+            "Refus cumulés (%)",
+            "Passant (%)"
+          ]
+        },
+        {
+          "name": "AGT Korbongou ALL 1",
+          "rows": 24,
+          "cols": 4,
+          "columns": [
+            "Ouverture du tamis(mm)",
+            "Masse de refus cumulés(g)",
+            "Refus cumulés (%)",
+            "Passant (%)"
+          ]
+        },
+        {
+          "name": "AGS Korbongou ALL 1,5",
+          "rows": 12,
+          "cols": 4,
+          "columns": [
+            "Ouverture du tamis(mm)",
+            "Masse de refus cumulés(g)",
+            "Refus cumulés (%)",
+            "Passant (%)"
+          ]
+        },
+        {
+          "name": "AGT Korbongou ALL 1,5",
+          "rows": 22,
+          "cols": 4,
+          "columns": [
+            "Ouverture du tamis(mm)",
+            "Masse de refus cumulés(g)",
+            "Refus cumulés (%)",
+            "Passant (%)"
+          ]
+        },
+        {
+          "name": "AGS Korbongou ALL 2",
+          "rows": 12,
+          "cols": 4,
+          "columns": [
+            "Ouverture du tamis(mm)",
+            "Masse de refus cumulés(g)",
+            "Refus cumulés (%)",
+            "Passant (%)"
+          ]
+        },
+        {
+          "name": "AGT Korbongou 2",
+          "rows": 22,
+          "cols": 4,
+          "columns": [
+            "Ouverture du tamis(mm)",
+            "Masse de refus cumulés(g)",
+            "Refus cumulés (%)",
+            "Passant (%)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/IMPORT/atlas_import_nicabou_ninsao_vianney.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "agt_raw_long",
+          "rows": 162,
+          "cols": 6,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "sieve_mm",
+            "mass_refus_cum_g",
+            "refus_cum_pct",
+            "passants_pct"
+          ]
+        },
+        {
+          "name": "ags_raw_long",
+          "rows": 72,
+          "cols": 4,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "sieve_mm",
+            "passants_pct"
+          ]
+        },
+        {
+          "name": "data_issues",
+          "rows": 3,
+          "cols": 5,
+          "columns": [
+            "sheet",
+            "row_index",
+            "column",
+            "issue",
+            "note"
+          ]
+        },
+        {
+          "name": "granulo_tamisage_large",
+          "rows": 9,
+          "cols": 10,
+          "columns": [
+            "sieve_mm",
+            "APEHEME@1.0",
+            "APEHEME@1.5",
+            "APEHEME@2.0",
+            "DAVIE@1.0",
+            "DAVIE@1.5",
+            "DAVIE@2.0",
+            "DZOGBECOPE@1.0",
+            "DZOGBECOPE@1.5",
+            "DZOGBECOPE@2.0"
+          ]
+        },
+        {
+          "name": "granulo_sedimento_large",
+          "rows": 51,
+          "cols": 10,
+          "columns": [
+            "sieve_mm",
+            "APEHEME@1.0",
+            "APEHEME@1.5",
+            "APEHEME@2.0",
+            "DAVIE@1.0",
+            "DAVIE@1.5",
+            "DAVIE@2.0",
+            "DZOGBECOPE@1.0",
+            "DZOGBECOPE@1.5",
+            "DZOGBECOPE@2.0"
+          ]
+        },
+        {
+          "name": "atterberg",
+          "rows": 9,
+          "cols": 5,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "wl",
+            "wp",
+            "ip"
+          ]
+        },
+        {
+          "name": "vbs",
+          "rows": 9,
+          "cols": 4,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "vbs",
+            "commentaire"
+          ]
+        },
+        {
+          "name": "teneur_eau",
+          "rows": 9,
+          "cols": 4,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "w",
+            "is"
+          ]
+        },
+        {
+          "name": "classification",
+          "rows": 9,
+          "cols": 4,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "hrb",
+            "unified"
+          ]
+        },
+        {
+          "name": "sondages",
+          "rows": 4,
+          "cols": 9,
+          "columns": [
+            "code_site",
+            "localite",
+            "date",
+            "source",
+            "lat",
+            "lon",
+            "adm1",
+            "adm2",
+            "adm3"
+          ]
+        },
+        {
+          "name": "echantillons",
+          "rows": 12,
+          "cols": 7,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "date",
+            "laboratory",
+            "rho_s_gcm3",
+            "water_content_w",
+            "is_index"
+          ]
+        },
+        {
+          "name": "meta",
+          "rows": 3,
+          "cols": 2,
+          "columns": [
+            "key",
+            "value"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/IMPORT/atlas_import_soglo_ferdinand.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "granulo_tamisage_large",
+          "rows": 12,
+          "cols": 13,
+          "columns": [
+            "sieve_mm",
+            "KONSOGOU_T1@1.0",
+            "KONSOGOU_T1@1.5",
+            "KONSOGOU_T1@2.0",
+            "KONSOGOU_T2@1.0",
+            "KONSOGOU_T2@1.5",
+            "KONSOGOU_T2@2.0",
+            "NASSABLE@1.0",
+            "NASSABLE@1.5",
+            "NASSABLE@2.0",
+            "KONTONGBONGUE@1.0",
+            "KONTONGBONGUE@1.5",
+            "KONTONGBONGUE@2.0"
+          ]
+        },
+        {
+          "name": "granulo_sedimento_large",
+          "rows": 107,
+          "cols": 13,
+          "columns": [
+            "sieve_mm",
+            "KONSOGOU_T1@1.0",
+            "KONSOGOU_T1@1.5",
+            "KONSOGOU_T1@2.0",
+            "KONSOGOU_T2@1.0",
+            "KONSOGOU_T2@1.5",
+            "KONSOGOU_T2@2.0",
+            "NASSABLE@1.0",
+            "NASSABLE@1.5",
+            "NASSABLE@2.0",
+            "KONTONGBONGUE@1.0",
+            "KONTONGBONGUE@1.5",
+            "KONTONGBONGUE@2.0"
+          ]
+        },
+        {
+          "name": "atterberg",
+          "rows": 12,
+          "cols": 4,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "wl",
+            "wp"
+          ]
+        },
+        {
+          "name": "vbs",
+          "rows": 12,
+          "cols": 4,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "vbs",
+            "commentaire"
+          ]
+        },
+        {
+          "name": "teneur_eau",
+          "rows": 12,
+          "cols": 5,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "w",
+            "wi",
+            "note"
+          ]
+        },
+        {
+          "name": "classification",
+          "rows": 12,
+          "cols": 5,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "hrb",
+            "unified",
+            "bm"
+          ]
+        },
+        {
+          "name": "meta",
+          "rows": 3,
+          "cols": 2,
+          "columns": [
+            "key",
+            "value"
+          ]
+        },
+        {
+          "name": "sondages",
+          "rows": 4,
+          "cols": 9,
+          "columns": [
+            "code_site",
+            "localite",
+            "date",
+            "source",
+            "lat",
+            "lon",
+            "adm1",
+            "adm2",
+            "adm3"
+          ]
+        },
+        {
+          "name": "echantillons",
+          "rows": 12,
+          "cols": 7,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "date",
+            "laboratory",
+            "rho_s_gcm3",
+            "water_content_w",
+            "is_index"
+          ]
+        },
+        {
+          "name": "data_issues",
+          "rows": 30,
+          "cols": 5,
+          "columns": [
+            "sheet",
+            "row_index",
+            "column",
+            "issue",
+            "note"
+          ]
+        },
+        {
+          "name": "agt_raw_long",
+          "rows": 208,
+          "cols": 6,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "sieve_mm",
+            "mass_refus_cum_g",
+            "refus_cum_pct",
+            "passants_pct"
+          ]
+        },
+        {
+          "name": "ags_raw_long",
+          "rows": 63,
+          "cols": 4,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "sieve_mm",
+            "passants_pct"
+          ]
+        },
+        {
+          "name": "atterberg_raw",
+          "rows": 84,
+          "cols": 11,
+          "columns": [
+            "code_site",
+            "depth_m",
+            "test_type",
+            "tare_no",
+            "nb_coups",
+            "poids_total_humide_g",
+            "poids_total_sec_g",
+            "poids_tare_g",
+            "poids_eau_g",
+            "poids_sol_sec_g",
+            "teneur_eau_pct"
+          ]
+        },
+        {
+          "name": "raw_long_ambiguous",
+          "rows": 2,
+          "cols": 2,
+          "columns": [
+            "note",
+            "suggestion"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/NABIYOU Warou.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "Sheet 1",
+          "rows": 9,
+          "cols": 18,
+          "columns": [
+            "code",
+            "date",
+            "source",
+            "lat",
+            "lon",
+            "depth_m",
+            "passant_80um",
+            "passant_2mm",
+            "passant_20mm",
+            "wl",
+            "wp",
+            "vbs",
+            "gamma_d_max",
+            "w_opt",
+            "proctor_type",
+            "eg",
+            "laboratory",
+            "norm"
+          ]
+        },
+        {
+          "name": "AGT",
+          "rows": 18,
+          "cols": 6,
+          "columns": [
+            "Profondeur 2m",
+            "Unnamed: 1",
+            "MODULES AFNOR",
+            "TAMIS (mm)",
+            "%PASSANTS",
+            "OBSERVATIONS"
+          ]
+        },
+        {
+          "name": "Annexe",
+          "rows": 4,
+          "cols": 3,
+          "columns": [
+            "n",
+            "Paramètre",
+            "Valeur"
+          ]
+        },
+        {
+          "name": " Teneur en eau",
+          "error": "sequence item 1: expected str instance, float found"
+        },
+        {
+          "name": "Teneur en émulsion",
+          "error": "sequence item 1: expected str instance, float found"
+        },
+        {
+          "name": "Récap compression",
+          "rows": 5,
+          "cols": 7,
+          "columns": [
+            "14 jours traction",
+            "Résistance à la compression (Mpa)",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "Limite argile pure",
+          "rows": 0,
+          "cols": 0,
+          "columns": []
+        },
+        {
+          "name": "Limite mélange",
+          "rows": 10,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "Récap limite",
+          "rows": 2,
+          "cols": 4,
+          "columns": [
+            "Matériaux",
+            "WL",
+            "WP",
+            "IP"
+          ]
+        },
+        {
+          "name": "Essai de traction",
+          "rows": 5,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Pourcentage d'émulsion",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "Récap Proctor",
+          "rows": 2,
+          "cols": 3,
+          "columns": [
+            "Matériaux",
+            "Gamma d",
+            "Wopt (%)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/NGOAPO-GOLLO Roxane Lenira Chrisie.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "AGT Yade",
+          "rows": 28,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "AGT Yade",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS Yade",
+          "rows": 17,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "AGS Yade",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Tchitchao",
+          "rows": 28,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "AGT Tchitchao",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGS Tchitchao",
+          "rows": 14,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "AGS Tchtchao",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "Densité",
+          "rows": 8,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Densité",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "Limite Att",
+          "rows": 10,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "Bleu",
+          "rows": 10,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Bleu",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "Teneur en eau",
+          "rows": 10,
+          "cols": 10,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Teneur en eau",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9"
+          ]
+        },
+        {
+          "name": "Classification",
+          "rows": 8,
+          "cols": 15,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11",
+            "Unnamed: 12",
+            "Classification",
+            "Unnamed: 14"
+          ]
+        },
+        {
+          "name": "AGT yade 1m all",
+          "rows": 28,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS Yade 1 m all",
+          "rows": 15,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGT yade 1,5m all",
+          "rows": 27,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGS yade 1,5m all",
+          "rows": 15,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGT Yade 2 m all",
+          "rows": 27,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGS Yade 2 all",
+          "rows": 15,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Thitchao 1m all",
+          "rows": 27,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGS Tchitchao 1m all",
+          "rows": 14,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Tchitchao 1,5 m all",
+          "rows": 27,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGS Tchitchao 1,5m all",
+          "rows": 15,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGT Tchitchao 2m all",
+          "rows": 27,
+          "cols": 7,
+          "columns": [
+            "AGT",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGS Tchitchao 2m all",
+          "rows": 14,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "Limite Att yade 1 m all",
+          "rows": 8,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "Limite att  yade 1,5m all",
+          "rows": 6,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "Limitte att yade 2 m all",
+          "rows": 7,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "Limite att Tchitchao 1 m all",
+          "rows": 7,
+          "cols": 13,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11",
+            "Unnamed: 12"
+          ]
+        },
+        {
+          "name": "Limitte att Tchitchao 1,5m all",
+          "rows": 7,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "Limite Att Tchitchao 2 m all",
+          "rows": 7,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/NICABOU Ninsao Vianney.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "AGT Apeheme",
+          "rows": 10,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGS apeheme",
+          "rows": 29,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGT Dzogbécopé",
+          "rows": 11,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS Dzogbécopé",
+          "rows": 29,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT Davié",
+          "rows": 11,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGS Davié",
+          "rows": 28,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "LIMITE ATT",
+          "rows": 10,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "BLEU",
+          "rows": 9,
+          "cols": 5,
+          "columns": [
+            "Référence",
+            "Localité",
+            "profondeurs",
+            "VBS",
+            "Interprétation"
+          ]
+        },
+        {
+          "name": "DENSITE",
+          "rows": 12,
+          "cols": 4,
+          "columns": [
+            "Unnamed: 0",
+            "Localité",
+            "Profondeurs",
+            "Densité Absolue"
+          ]
+        },
+        {
+          "name": "TENEUR EN EAU",
+          "rows": 10,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "CLASSIFICATION",
+          "rows": 10,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGT Apéhémé 1m all",
+          "rows": 23,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Apéhémé 1,5m all",
+          "rows": 23,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Apéhémé 2m all",
+          "rows": 21,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Dzogbécopé 1m all",
+          "rows": 22,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Dzogbécopé 1,5m all",
+          "rows": 23,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Dzogbécopé 2m all",
+          "rows": 22,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Tekpo 1m all",
+          "rows": 24,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Tekpo 1,5m all",
+          "rows": 23,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT Tekpo 2m all",
+          "rows": 23,
+          "cols": 8,
+          "columns": [
+            "Mh",
+            "w",
+            "Ms",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Apéhémé 1m all",
+          "rows": 7,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Apéhémé 1,5m all",
+          "rows": 8,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Apéhémé 2m all",
+          "rows": 8,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Dzogbécopé1m all",
+          "rows": 7,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Dzogbécopé1,5m all",
+          "rows": 8,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Dzogbécopé 2m all",
+          "rows": 9,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Tokpe 1m all",
+          "rows": 10,
+          "cols": 10,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Tokpe 1,5m all",
+          "rows": 13,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "LIMITE ATT Tokpe 2m all",
+          "rows": 11,
+          "cols": 12,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10",
+            "Unnamed: 11"
+          ]
+        },
+        {
+          "name": "Feuil30",
+          "rows": 0,
+          "cols": 0,
+          "columns": []
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/OUDJABITI Bassirou.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "AGT Tchamba",
+          "rows": 29,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS Tchamba",
+          "rows": 15,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGT d'Alibi",
+          "rows": 34,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGS d'Alibi",
+          "rows": 11,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "Densité",
+          "rows": 8,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "Limite ATT ",
+          "rows": 10,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "Bleu",
+          "rows": 9,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "Teneur en eau",
+          "rows": 9,
+          "cols": 8,
+          "columns": [
+            "I",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "Classification",
+          "rows": 7,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT Tchamba 1m All",
+          "rows": 25,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGS Tchamba 1m All",
+          "rows": 10,
+          "cols": 7,
+          "columns": [
+            "A",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGS Tchamba 1,5m All",
+          "rows": 11,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT Tchamba 1,5m All ",
+          "rows": 24,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS Tchamba 2m All",
+          "rows": 10,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT Tchamba 2m All",
+          "rows": 28,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGT Alibi 1m All",
+          "rows": 27,
+          "cols": 5,
+          "columns": [
+            "A",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGS Alibi 1m All",
+          "rows": 9,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Ouverture du tamis (mm)",
+            "Masse de refus cumulés (g)",
+            "Refus cumulés (%)",
+            "Passants (%)"
+          ]
+        },
+        {
+          "name": "AGT Alibi 1,5m All",
+          "rows": 26,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Ouverture du tamis (mm)",
+            "Masse de refus cumulés (g)",
+            "Refus cumulés (%)",
+            "Passants (%)"
+          ]
+        },
+        {
+          "name": "AGS Allibi 1,5m",
+          "rows": 9,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Ouverture du tamis (mm)",
+            "Masse de refus cumulés (g)",
+            "Refus cumulés (%)",
+            "Passants (%)"
+          ]
+        },
+        {
+          "name": "AGT Allibi 2m",
+          "rows": 16,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Ouverture du tamis (mm)",
+            "Masse de refus cumulés (g)",
+            "Refus cumulés (%)",
+            "Passants (%)"
+          ]
+        },
+        {
+          "name": "AGS Allibi 2m",
+          "rows": 19,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Ouverture du tamis (mm)",
+            "Masse de refus cumulés (g)",
+            "Refus cumulés (%)",
+            "Passants (%)"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/SOGLO FERDINAND.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "AGT NAGEROU(KONSOGOU T1)",
+          "rows": 15,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS NAGEROU(KONSOGOU T1)",
+          "rows": 38,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGT NAGEROU(KONSOGOU T2)",
+          "rows": 16,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS NAGEROU(KONSOGOU T2)",
+          "rows": 38,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGT DAPAONG(NASSABLE)",
+          "rows": 16,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGS DAPAONG(NASSABLE)",
+          "rows": 38,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AGT DAPAONG(KONTONGBONGUE)",
+          "rows": 16,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGS DAPAONG(KONTONGBONGUE)",
+          "rows": 39,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT KONSOGOUT1(1m)",
+          "rows": 31,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "LIMITE ATT",
+          "rows": 16,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "BLEU DE METHYLENE",
+          "rows": 14,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "TENEUR EN EAU",
+          "rows": 16,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "CLASSIFICATION",
+          "rows": 16,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGS KONSOGOU T1 (1m)",
+          "rows": 12,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "AGT KONSOGOU T1 (1,5m)",
+          "rows": 32,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS KONSOGOU T1 (1,5m)_x0009_",
+          "rows": 16,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT KONSOGOU T1 (2m)_x0009_",
+          "rows": 34,
+          "cols": 10,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9"
+          ]
+        },
+        {
+          "name": "AGS KONSOGOU T1 (2m)",
+          "rows": 16,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGT KONSOGOU T2 (1m)",
+          "rows": 33,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS KONSOGOU T2 (1m)",
+          "rows": 16,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGT KONSOGOU T2 (1,5m)",
+          "rows": 35,
+          "cols": 11,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9",
+            "Unnamed: 10"
+          ]
+        },
+        {
+          "name": "AGS KONSOGOU T2 (1,5m)",
+          "rows": 16,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGT KONSOGOU T2 (2m)",
+          "rows": 34,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS KONSOGOU T2 (2m)",
+          "rows": 16,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT NASSABLE  (1m)",
+          "rows": 33,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS KONSOGOU  (1m)",
+          "rows": 17,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT NASSABLE  (1,5m)",
+          "rows": 34,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS KONSOGOU  (1,5m)",
+          "rows": 17,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT NASSABLE  (2m)",
+          "rows": 34,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS NASSABLE  (2m)",
+          "rows": 16,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT KONTONGBONGUE  (1m)",
+          "rows": 33,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS KONTONGBONGUE (1m)",
+          "rows": 17,
+          "cols": 8,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": "AGT KONTONGBONGUE  (1,5m)",
+          "rows": 33,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS KONTONGBONGUE (1,5m)",
+          "rows": 17,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        },
+        {
+          "name": "AGT KONTONGBONGUE  (2m)",
+          "rows": 34,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGS KONTONGBONGUE (2m)",
+          "rows": 16,
+          "cols": 7,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6"
+          ]
+        }
+      ]
+    },
+    {
+      "file": "data/xlsx/TCHALA Komla Hyacinthe.xlsx",
+      "status": "ok",
+      "sheets": [
+        {
+          "name": "AG",
+          "rows": 16,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Tableau 3-1: Résultats de l' analyse granulométrique",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "Limtes Atterberg",
+          "rows": 6,
+          "cols": 3,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Tableau 3-2: Valeurs des limites d'Atterberg"
+          ]
+        },
+        {
+          "name": "proctor materiau simple ",
+          "rows": 4,
+          "cols": 9,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8"
+          ]
+        },
+        {
+          "name": "AGN total naturel",
+          "rows": 16,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "Equivalent de sable",
+          "rows": 4,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "la",
+          "rows": 4,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "md",
+          "rows": 4,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "essai proctor materiau concassé",
+          "rows": 4,
+          "cols": 8,
+          "columns": [
+            "s",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7"
+          ]
+        },
+        {
+          "name": " optimuim proctor concassee",
+          "rows": 4,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "optimuim proctor simple",
+          "rows": 4,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "CBR",
+          "rows": 0,
+          "cols": 0,
+          "columns": []
+        },
+        {
+          "name": "AGN concassée",
+          "rows": 17,
+          "cols": 6,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5"
+          ]
+        },
+        {
+          "name": "limite ATT MELANGE",
+          "rows": 11,
+          "cols": 5,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4"
+          ]
+        },
+        {
+          "name": "AG MELANGE",
+          "rows": 32,
+          "cols": 10,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3",
+            "Unnamed: 4",
+            "Unnamed: 5",
+            "Unnamed: 6",
+            "Unnamed: 7",
+            "Unnamed: 8",
+            "Unnamed: 9"
+          ]
+        },
+        {
+          "name": "ESSAI PROCTOR MELANCHE",
+          "rows": 9,
+          "cols": 4,
+          "columns": [
+            "Unnamed: 0",
+            "Unnamed: 1",
+            "Unnamed: 2",
+            "Unnamed: 3"
+          ]
+        }
+      ]
+    }
+  ]
+}

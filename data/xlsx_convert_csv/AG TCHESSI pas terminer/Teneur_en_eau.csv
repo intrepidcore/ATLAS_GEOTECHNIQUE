@@ -1,0 +1,15 @@
+col_0,col_1,col_2,col_3,col_4,col_5,col_6,col_7,col_8,col_9
+,Tableau 3-8 : Résultats des teneurs en eau naturelle des sols et de l'indice de gonflement,,,,,,,,
+,,Réf,Canton ,Localités,Profondeurs (m),TEN,WL,IS,Caractéristiques
+,,1,BOHOU,Bohou,1,8.8,32.88,0.268,Gonflement faible
+,,1,BOHOU,Bohou,1.5,9.94,36.53,0.272,Gonflement moyen 
+,,1,BOHOU,Bohou,2,13.25,55.27,0.24,Gonflement élevé
+,,1,BOHOU,MOYENNE BOHOU,,10.66,41.56,0.257,Gonflement moyen 
+,,2,LAMA,Feing,1,2.77,44.32,0.063,Gonflement moyen 
+,,2,LAMA,Feing,1.5,3.59,35.18,0.102,Gonflement moyen 
+,,2,LAMA,Feing,2,3.52,42.01,0.084,Gonflement moyen 
+,,2,LAMA,MOYENNE FEING,,3.3,40.5,0.081,Gonflement moyen 
+,,2,LAMA,Tchamdé,1,3.58,21.67,0.165,Gonflement faible
+,,2,LAMA,Tchamdé,1.5,2.07,28.03,0.074,Gonflement faible
+,,2,LAMA,Tchamdé,2,5.004,34.36,0.147,Gonflement faible
+,,2,LAMA,MOYENNE TCHAMDE,,3.56,28.02,0.127,Gonflement faible

@@ -1,0 +1,64 @@
+{
+  "todo_files": [
+    {
+      "file": "atlas_import_example.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "atlas_import_example_1761495185.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/ABGBANA_Essi_Odette.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/ADOTE Adote emmanuel.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/AKONDOR Tigana Messanh.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/ANYO Akouete jean-paul.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/GAMBAGA Inoussa.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/IMPORT/atlas_import_nicabou_ninsao_vianney.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/IMPORT/atlas_import_soglo_ferdinand.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/NABIYOU Warou.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/NGOAPO-GOLLO Roxane Lenira Chrisie.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/NICABOU Ninsao Vianney.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/OUDJABITI Bassirou.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/SOGLO FERDINAND.xlsx",
+      "status": "pending"
+    },
+    {
+      "file": "data/xlsx/TCHALA Komla Hyacinthe.xlsx",
+      "status": "pending"
+    }
+  ]
+}

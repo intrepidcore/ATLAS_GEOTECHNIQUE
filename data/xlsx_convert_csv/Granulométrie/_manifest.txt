@@ -1,0 +1,4 @@
+Source: Granulométrie.xlsx
+Conversion: 2025-10-27T10:56:41.009056
+Sheets: 6
+Total rows: 82

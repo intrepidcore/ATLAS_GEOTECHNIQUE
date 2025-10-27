@@ -1,0 +1,4654 @@
+{
+  "source_file": "NGOAPO-GOLLO Roxane Lenira Chrisie.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.537062",
+  "sheets": [
+    {
+      "name": "AGT Yade",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "AGT Yade",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Tamis",
+          "agt_yade": "Passant par profondeur 1m ",
+          "col_4": "Passant par profondeur 1,5m",
+          "col_5": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 25,
+          "agt_yade": 100,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "agt_yade": 100,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 16,
+          "agt_yade": 100,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 12.5,
+          "agt_yade": 99.39,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "agt_yade": 99.22,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 8,
+          "agt_yade": 99.01,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 6.3,
+          "agt_yade": 98.59,
+          "col_4": 100,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "agt_yade": 97.85,
+          "col_4": 100,
+          "col_5": 99.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 4,
+          "agt_yade": 96.41,
+          "col_4": 99.98,
+          "col_5": 99.82
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 3.15,
+          "agt_yade": 92.66,
+          "col_4": 99.83,
+          "col_5": 99.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2.5,
+          "agt_yade": 88.77,
+          "col_4": 99.57,
+          "col_5": 98.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "agt_yade": 85.04,
+          "col_4": 99.22,
+          "col_5": 98.15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.6,
+          "agt_yade": 82.1,
+          "col_4": 98.85,
+          "col_5": 97.11
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.25,
+          "agt_yade": 80.05,
+          "col_4": 98.01,
+          "col_5": 94.99
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "agt_yade": 79.02,
+          "col_4": 97.59,
+          "col_5": 92.77
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.8,
+          "agt_yade": 78.01,
+          "col_4": 97.01,
+          "col_5": 89.8
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.63,
+          "agt_yade": 77.08,
+          "col_4": 96.35,
+          "col_5": 87.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.5,
+          "agt_yade": 75.98,
+          "col_4": 94.97,
+          "col_5": 82.26
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.4,
+          "agt_yade": 74.85,
+          "col_4": 93.73,
+          "col_5": 78.41
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "agt_yade": 73.28,
+          "col_4": 89.3,
+          "col_5": 73.89
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.25,
+          "agt_yade": 71.44,
+          "col_4": 84.24,
+          "col_5": 69.2
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.2,
+          "agt_yade": 68.64,
+          "col_4": 78.66,
+          "col_5": 62.9
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.16,
+          "agt_yade": 66.03,
+          "col_4": 73.18,
+          "col_5": 58.14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.125,
+          "agt_yade": 61.74,
+          "col_4": 67.47,
+          "col_5": 49.23
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.1,
+          "agt_yade": 58.71,
+          "col_4": 66.09,
+          "col_5": 45.04
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "agt_yade": 57.05,
+          "col_4": 65,
+          "col_5": 42.49
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "agt_yade",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGS Yade",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "AGS Yade",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Tamis",
+          "ags_yade": "Passant par profondeur 1m ",
+          "col_6": "Passant par profondeur 1,5m",
+          "col_7": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0634,
+          "ags_yade": 50.34,
+          "col_6": 60.06,
+          "col_7": 36.26
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0475,
+          "ags_yade": 38.76,
+          "col_6": 52.06,
+          "col_7": 27.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0353,
+          "ags_yade": 27.86,
+          "col_6": 44.06,
+          "col_7": 20.67
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0235,
+          "ags_yade": 15.74,
+          "col_6": 37.64,
+          "col_7": 13.33
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.014,
+          "ags_yade": 7.9,
+          "col_6": 34.44,
+          "col_7": 10.58
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.008,
+          "ags_yade": 8.93,
+          "col_6": 31.24,
+          "col_7": 7.84
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.005,
+          "ags_yade": 6.64,
+          "col_6": 25.64,
+          "col_7": 6.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0035,
+          "ags_yade": 6.51,
+          "col_6": 20.2,
+          "col_7": 5.57
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0029,
+          "ags_yade": 6.51,
+          "col_6": 15.27,
+          "col_7": 5.12
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0025,
+          "ags_yade": 6.51,
+          "col_6": 10.48,
+          "col_7": 5.1
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.002,
+          "ags_yade": 6.48,
+          "col_6": 4.09,
+          "col_7": 5.1
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0014,
+          "ags_yade": 5.78,
+          "col_6": 0.89,
+          "col_7": 5.1
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "ags_yade",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "AGT Tchitchao",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "AGT Tchitchao",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Tamis",
+          "agt_tchitchao": "Passant par profondeur 1m ",
+          "col_6": "Passant par profondeur 1,5m",
+          "col_7": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 25,
+          "agt_tchitchao": 100,
+          "col_6": 100,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 20,
+          "agt_tchitchao": 95.84,
+          "col_6": 100,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 16,
+          "agt_tchitchao": 94.65,
+          "col_6": 99.56,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 12.5,
+          "agt_tchitchao": 94.92,
+          "col_6": 99.56,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10,
+          "agt_tchitchao": 94.06,
+          "col_6": 99.56,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 8,
+          "agt_tchitchao": 93.67,
+          "col_6": 99.43,
+          "col_7": 99.94
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 6.3,
+          "agt_tchitchao": 92.85,
+          "col_6": 99.43,
+          "col_7": 99.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 5,
+          "agt_tchitchao": 92.39,
+          "col_6": 99.14,
+          "col_7": 99.74
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 4,
+          "agt_tchitchao": 91.97,
+          "col_6": 98.96,
+          "col_7": 99.48
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 3.15,
+          "agt_tchitchao": 91.59,
+          "col_6": 98.64,
+          "col_7": 98.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2.5,
+          "agt_tchitchao": 91.35,
+          "col_6": 98.42,
+          "col_7": 98.63
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2,
+          "agt_tchitchao": 91.21,
+          "col_6": 98.17,
+          "col_7": 98.31
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1.6,
+          "agt_tchitchao": 91.04,
+          "col_6": 97.94,
+          "col_7": 97.98
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1.25,
+          "agt_tchitchao": 90.88,
+          "col_6": 97.66,
+          "col_7": 97.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1,
+          "agt_tchitchao": 90.74,
+          "col_6": 97.44,
+          "col_7": 97.33
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.8,
+          "agt_tchitchao": 90.59,
+          "col_6": 97.15,
+          "col_7": 96.92
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.63,
+          "agt_tchitchao": 90.41,
+          "col_6": 96.78,
+          "col_7": 96.33
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.5,
+          "agt_tchitchao": 90.09,
+          "col_6": 95.9,
+          "col_7": 94.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.4,
+          "agt_tchitchao": 89.64,
+          "col_6": 94.82,
+          "col_7": 93.37
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.315,
+          "agt_tchitchao": 88.8,
+          "col_6": 87.48,
+          "col_7": 90.15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.25,
+          "agt_tchitchao": 87.46,
+          "col_6": 82.36,
+          "col_7": 85.73
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.2,
+          "agt_tchitchao": 84.81,
+          "col_6": 71.72,
+          "col_7": 79.41
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.16,
+          "agt_tchitchao": 81.33,
+          "col_6": 67.23,
+          "col_7": 73.81
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.125,
+          "agt_tchitchao": 72.63,
+          "col_6": 62.68,
+          "col_7": 64.93
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.1,
+          "agt_tchitchao": 69.16,
+          "col_6": 61.43,
+          "col_7": 60.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.08,
+          "agt_tchitchao": 66.38,
+          "col_6": 60.77,
+          "col_7": 58.36
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "agt_tchitchao",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "AGS Tchitchao",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "AGS Tchtchao",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Tamis",
+          "ags_tchtchao": "Passant par profondeur 1m ",
+          "col_5": "Passant par profondeur 1,5m",
+          "col_6": "Passant par profondeur 2m"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0617,
+          "ags_tchtchao": 50.34,
+          "col_5": 56.62,
+          "col_6": 52.71
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0454,
+          "ags_tchtchao": 38.76,
+          "col_5": 45.98,
+          "col_6": 42.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0338,
+          "ags_tchtchao": 27.86,
+          "col_5": 36.66,
+          "col_6": 35.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0224,
+          "ags_tchtchao": 15.74,
+          "col_5": 27.35,
+          "col_6": 28.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0131,
+          "ags_tchtchao": 7.9,
+          "col_5": 26.02,
+          "col_6": 24.29
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0076,
+          "ags_tchtchao": 8.93,
+          "col_5": 24.69,
+          "col_6": 24.36
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0047,
+          "ags_tchtchao": 6.64,
+          "col_5": 23.37,
+          "col_6": 21.84
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0033,
+          "ags_tchtchao": 6.51,
+          "col_5": 22.04,
+          "col_6": 20.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0027,
+          "ags_tchtchao": 6.51,
+          "col_5": 20.71,
+          "col_6": 20.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0024,
+          "ags_tchtchao": 6.51,
+          "col_5": 20.04,
+          "col_6": 19.05
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.002,
+          "ags_tchtchao": 6.48,
+          "col_5": 18.05,
+          "col_6": 19.05
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0014,
+          "ags_tchtchao": 5.78,
+          "col_5": 15.36,
+          "col_6": 16.23
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "ags_tchtchao",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Densité",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "Densité",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Réference",
+          "col_4": "Cantons",
+          "densité": "Profondeurs",
+          "col_6": "Densité absolue"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "YADE",
+          "densité": 1,
+          "col_6": 2.46
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "YADE",
+          "densité": 1.5,
+          "col_6": 2.32
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "YADE",
+          "densité": 2,
+          "col_6": 2.6
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "TCHITCHAO",
+          "densité": 1,
+          "col_6": 2.44
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "TCHITCHAO",
+          "densité": 1.5,
+          "col_6": 2.47
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "TCHITCHAO",
+          "densité": 2,
+          "col_6": 2.34
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "densité",
+        "col_6"
+      ]
+    },
+    {
+      "name": "Limite Att",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": "Grandeurs",
+          "col_8": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Réference",
+          "col_4": "Cantons",
+          "col_5": "Profondeurs",
+          "col_6": "Wi",
+          "col_7": "Wp",
+          "col_8": "Lp"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "Yade",
+          "col_5": 1,
+          "col_6": 61.5,
+          "col_7": 23,
+          "col_8": 38.5
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "Yade",
+          "col_5": 1.5,
+          "col_6": 37,
+          "col_7": 24,
+          "col_8": 13
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "Yade",
+          "col_5": 5,
+          "col_6": 34.5,
+          "col_7": 22,
+          "col_8": 12.5
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "Yade",
+          "col_5": "Moyenne",
+          "col_6": 44.33,
+          "col_7": 23,
+          "col_8": 21.33
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "Tchitchao",
+          "col_5": 1,
+          "col_6": 26.33,
+          "col_7": 18,
+          "col_8": 8.33
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "Tchitchao",
+          "col_5": 1.5,
+          "col_6": 48.5,
+          "col_7": 17,
+          "col_8": 31.5
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "Tchitchao",
+          "col_5": 5,
+          "col_6": 52,
+          "col_7": 15,
+          "col_8": 37
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "Tchitchao",
+          "col_5": "Moyenne",
+          "col_6": 42.28,
+          "col_7": 16.67,
+          "col_8": 25.61
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8"
+      ]
+    },
+    {
+      "name": "Bleu",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "Bleu",
+        "col_7",
+        "col_8"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Réference",
+          "col_5": "Cantons",
+          "bleu": "Profondeurs",
+          "col_7": "VBS",
+          "col_8": "Caractéristiques"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1,
+          "col_5": "Yade",
+          "bleu": 1,
+          "col_7": 7.29,
+          "col_8": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1,
+          "col_5": "Yade",
+          "bleu": 1.5,
+          "col_7": 7.94,
+          "col_8": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1,
+          "col_5": "Yade",
+          "bleu": 5,
+          "col_7": 6.84,
+          "col_8": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1,
+          "col_5": "Yade",
+          "bleu": "Moyenne",
+          "col_7": 7.36,
+          "col_8": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2,
+          "col_5": "Tchitchao",
+          "bleu": 1,
+          "col_7": 6.8,
+          "col_8": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2,
+          "col_5": "Tchitchao",
+          "bleu": 1.5,
+          "col_7": 8.62,
+          "col_8": "Sol  très argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2,
+          "col_5": "Tchitchao",
+          "bleu": 5,
+          "col_7": 6.68,
+          "col_8": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2,
+          "col_5": "Tchitchao",
+          "bleu": "Moyenne",
+          "col_7": 7.37,
+          "col_8": "Sol argileux"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "bleu",
+        "col_7",
+        "col_8"
+      ]
+    },
+    {
+      "name": "Teneur en eau",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "Teneur en eau",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "teneur_en_eau": null,
+          "col_6": null,
+          "col_7": "Grandeurs",
+          "col_8": null,
+          "col_9": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Réference",
+          "col_4": "Cantons",
+          "teneur_en_eau": "Profondeurs",
+          "col_6": "Teneur en eau",
+          "col_7": "WI",
+          "col_8": "Ls",
+          "col_9": "Caracteristiques"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "Yade",
+          "teneur_en_eau": 1,
+          "col_6": 18.52,
+          "col_7": 61.5,
+          "col_8": 0.3,
+          "col_9": "Gonflement élevé"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "Yade",
+          "teneur_en_eau": 1.5,
+          "col_6": 11.66,
+          "col_7": 37,
+          "col_8": 0.31,
+          "col_9": "Gonflement moyen"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "Yade",
+          "teneur_en_eau": 5,
+          "col_6": 5.89,
+          "col_7": 34.5,
+          "col_8": 0.17,
+          "col_9": "Gonflement faible"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": "Yade",
+          "teneur_en_eau": "Moyenne",
+          "col_6": 12.02,
+          "col_7": 44.33,
+          "col_8": 0.27,
+          "col_9": "Gonflement moyen"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "Tchitchao",
+          "teneur_en_eau": 1,
+          "col_6": 4.59,
+          "col_7": 26.33,
+          "col_8": 0.17,
+          "col_9": "Gonflement faible"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "Tchitchao",
+          "teneur_en_eau": 1.5,
+          "col_6": 4.26,
+          "col_7": 48.5,
+          "col_8": 0.09,
+          "col_9": "Gonflement moyen"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "Tchitchao",
+          "teneur_en_eau": 5,
+          "col_6": 10.14,
+          "col_7": 52,
+          "col_8": 0.19,
+          "col_9": "Gonflement élevé"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": "Tchitchao",
+          "teneur_en_eau": "Moyenne",
+          "col_6": 6.33,
+          "col_7": 33.71,
+          "col_8": 0.19,
+          "col_9": "Gonflement élevé"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "teneur_en_eau",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9"
+      ]
+    },
+    {
+      "name": "Classification",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11",
+        "col_12",
+        "Classification",
+        "col_14"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": "Quartier",
+          "col_11": "Profondeur",
+          "col_12": "Classification (HRB)",
+          "classification": "Classification (unifiée)",
+          "col_14": "Classification d'apès le bleu de méthylène"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": "Yade",
+          "col_11": 1,
+          "col_12": "A-7-6",
+          "classification": "Sol argileux peu plastique",
+          "col_14": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": "Yade",
+          "col_11": 1.5,
+          "col_12": "A-6",
+          "classification": "Sol argileux peu plastique",
+          "col_14": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": "Yade",
+          "col_11": 2,
+          "col_12": "A-6",
+          "classification": "Sol argileux peu plastique",
+          "col_14": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": "Tchitchao",
+          "col_11": 1,
+          "col_12": "A-4",
+          "classification": "Sol argileux peu plastique",
+          "col_14": "Sol argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": "Tchitchao",
+          "col_11": 1.5,
+          "col_12": "A-7-6",
+          "classification": "Sol argileux peu plastique",
+          "col_14": "Sol très argileux"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null,
+          "col_10": "Tchitchao",
+          "col_11": 2,
+          "col_12": "A-7-6",
+          "classification": "Sol peu plastique",
+          "col_14": "Sol argileux"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11",
+        "col_12",
+        "classification",
+        "col_14"
+      ]
+    },
+    {
+      "name": "AGT yade 1m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Tamis",
+          "col_3": "Masse de refus cumulées",
+          "col_4": "Refus cumulés",
+          "col_5": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "col_3": 0,
+          "col_4": 0,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 16,
+          "col_3": 0,
+          "col_4": 0,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 12.5,
+          "col_3": 7.76,
+          "col_4": 0.61,
+          "col_5": 99.39
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 9.92,
+          "col_4": 0.78,
+          "col_5": 99.22
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 8,
+          "col_3": 12.57,
+          "col_4": 0.99,
+          "col_5": 99.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 6.3,
+          "col_3": 17.83,
+          "col_4": 1.41,
+          "col_5": 98.59
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "col_3": 27.19,
+          "col_4": 2.15,
+          "col_5": 97.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 4,
+          "col_3": 45.44,
+          "col_4": 3.59,
+          "col_5": 96.41
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 3.15,
+          "col_3": 92.92,
+          "col_4": 7.34,
+          "col_5": 92.66
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2.5,
+          "col_3": 142.14,
+          "col_4": 11.23,
+          "col_5": 88.77
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": 189.37,
+          "col_4": 14.96,
+          "col_5": 85.04
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.6,
+          "col_3": 226.52,
+          "col_4": 17.9,
+          "col_5": 82.1
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.25,
+          "col_3": 252.49,
+          "col_4": 19.95,
+          "col_5": 80.05
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": 265.54,
+          "col_4": 20.98,
+          "col_5": 79.02
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.8,
+          "col_3": 278.34,
+          "col_4": 21.99,
+          "col_5": 78.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.63,
+          "col_3": 290.1,
+          "col_4": 22.92,
+          "col_5": 77.08
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.5,
+          "col_3": 304.04,
+          "col_4": 24.02,
+          "col_5": 75.98
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.4,
+          "col_3": 318.36,
+          "col_4": 25.15,
+          "col_5": 74.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 338.23,
+          "col_4": 26.72,
+          "col_5": 73.28
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.25,
+          "col_3": 361.5,
+          "col_4": 28.56,
+          "col_5": 71.44
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.2,
+          "col_3": 396.88,
+          "col_4": 31.36,
+          "col_5": 68.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.16,
+          "col_3": 429.93,
+          "col_4": 33.97,
+          "col_5": 66.03
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.125,
+          "col_3": 484.26,
+          "col_4": 38.26,
+          "col_5": 71.74
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.1,
+          "col_3": 522.51,
+          "col_4": 41.29,
+          "col_5": 58.71
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 543.59,
+          "col_4": 42.95,
+          "col_5": 57.05
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "AGS Yade 1 m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Tamis",
+          "col_4": "Masse de refus cumulées",
+          "col_5": "Refus cumulés",
+          "col_6": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0634,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 50.34
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0475,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 38.76
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0353,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 27.86
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0235,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 15.74
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.014,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 7.9
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.008,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 8.93
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.005,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 6.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0035,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 6.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0029,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 6.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0025,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 6.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.002,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 6.48
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0014,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 5.78
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGT yade 1,5m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Tamis",
+          "col_4": "Masse de refus cumulées",
+          "col_5": "Refus cumulés",
+          "col_6": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 20,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 16,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 12.5,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 10,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 8,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 6.3,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 5,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 4,
+          "col_4": 0.31,
+          "col_5": 0.02,
+          "col_6": 99.98
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 3.15,
+          "col_4": 2.32,
+          "col_5": 0.17,
+          "col_6": 99.83
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2.5,
+          "col_4": 5.79,
+          "col_5": 0.43,
+          "col_6": 99.57
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": 10.45,
+          "col_5": 0.78,
+          "col_6": 99.22
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.6,
+          "col_4": 15.4,
+          "col_5": 1.15,
+          "col_6": 98.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.25,
+          "col_4": 26.71,
+          "col_5": 1.99,
+          "col_6": 98.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": 32.31,
+          "col_5": 2.41,
+          "col_6": 97.59
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.8,
+          "col_4": 40.21,
+          "col_5": 2.99,
+          "col_6": 97.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.63,
+          "col_4": 49.07,
+          "col_5": 3.65,
+          "col_6": 96.35
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.5,
+          "col_4": 67.51,
+          "col_5": 5.03,
+          "col_6": 94.97
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.4,
+          "col_4": 84.26,
+          "col_5": 6.27,
+          "col_6": 93.73
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.315,
+          "col_4": 143.75,
+          "col_5": 10.7,
+          "col_6": 89.3
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.25,
+          "col_4": 211.67,
+          "col_5": 15.76,
+          "col_6": 84.24
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.2,
+          "col_4": 286.66,
+          "col_5": 21.34,
+          "col_6": 78.66
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.16,
+          "col_4": 360.33,
+          "col_5": 26.82,
+          "col_6": 73.18
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.125,
+          "col_4": 436.94,
+          "col_5": 32.53,
+          "col_6": 67.47
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.1,
+          "col_4": 450.51,
+          "col_5": 33.91,
+          "col_6": 66.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.08,
+          "col_4": 470.18,
+          "col_5": 35,
+          "col_6": 65
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGS yade 1,5m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Tamis",
+          "col_4": "Masse de refus cumulées",
+          "col_5": "Refus cumulés",
+          "col_6": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0657,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 60.06
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0483,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 52.06
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0354,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 44.06
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.023,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 37.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0135,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 34.44
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0079,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 31.24
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0049,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 25.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0035,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 20.2
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0029,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 15.27
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0026,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 10.48
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0022,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 4.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0015,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 0.89
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGT Yade 2 m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Tamis",
+          "col_5": "Masse de refus cumulées",
+          "col_6": "Refus cumulés",
+          "col_7": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 20,
+          "col_5": 0,
+          "col_6": 0,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 16,
+          "col_5": 0,
+          "col_6": 0,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 12.5,
+          "col_5": 0,
+          "col_6": 0,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10,
+          "col_5": 0,
+          "col_6": 0,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 8,
+          "col_5": 0,
+          "col_6": 0,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 6.3,
+          "col_5": 0,
+          "col_6": 0,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 5,
+          "col_5": 0.63,
+          "col_6": 0.04,
+          "col_7": 99.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 4,
+          "col_5": 2.52,
+          "col_6": 0.18,
+          "col_7": 99.82
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 3.15,
+          "col_5": 8.13,
+          "col_6": 0.57,
+          "col_7": 99.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2.5,
+          "col_5": 15.9,
+          "col_6": 1.12,
+          "col_7": 98.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2,
+          "col_5": 26.14,
+          "col_6": 1.85,
+          "col_7": 98.15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1.6,
+          "col_5": 40.91,
+          "col_6": 2.89,
+          "col_7": 97.11
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1.25,
+          "col_5": 71.01,
+          "col_6": 5.01,
+          "col_7": 94.99
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1,
+          "col_5": 102.4,
+          "col_6": 7.23,
+          "col_7": 92.77
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.8,
+          "col_5": 144.55,
+          "col_6": 10.2,
+          "col_7": 89.8
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.63,
+          "col_5": 178.02,
+          "col_6": 12.57,
+          "col_7": 87.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.5,
+          "col_5": 251.26,
+          "col_6": 17.74,
+          "col_7": 82.26
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.4,
+          "col_5": 305.86,
+          "col_6": 21.59,
+          "col_7": 78.41
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.315,
+          "col_5": 369.93,
+          "col_6": 26.11,
+          "col_7": 73.89
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.25,
+          "col_5": 436.28,
+          "col_6": 30.8,
+          "col_7": 69.2
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.2,
+          "col_5": 525.56,
+          "col_6": 37.1,
+          "col_7": 62.9
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.16,
+          "col_5": 592.92,
+          "col_6": 41.86,
+          "col_7": 58.14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.125,
+          "col_5": 719.14,
+          "col_6": 50.77,
+          "col_7": 49.23
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.1,
+          "col_5": 778.57,
+          "col_6": 54.96,
+          "col_7": 45.04
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.08,
+          "col_5": 814.68,
+          "col_6": 57.51,
+          "col_7": 42.49
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "AGS Yade 2 all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Tamis",
+          "col_5": "Masse de refus cumulées",
+          "col_6": "Refus cumulés",
+          "col_7": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0585,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 36.26
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0447,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 27.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0331,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 20.67
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.022,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 13.33
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0129,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 10.58
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0076,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 7.84
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0047,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 6.01
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0033,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 5.57
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0027,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 5.12
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0024,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 5.1
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0019,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 5.1
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0014,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 5.1
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "AGT Thitchao 1m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Tamis",
+          "col_4": "Masse de refus cumulées",
+          "col_5": "Refus cumulés",
+          "col_6": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 20,
+          "col_4": 59.62,
+          "col_5": 4.16,
+          "col_6": 95.84
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 16,
+          "col_4": 76.76,
+          "col_5": 5.35,
+          "col_6": 94.65
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 12.5,
+          "col_4": 72.82,
+          "col_5": 5.08,
+          "col_6": 94.92
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 10,
+          "col_4": 85.16,
+          "col_5": 5.94,
+          "col_6": 94.06
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 8,
+          "col_4": 90.78,
+          "col_5": 6.33,
+          "col_6": 93.67
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 6.3,
+          "col_4": 102.48,
+          "col_5": 7.15,
+          "col_6": 92.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 5,
+          "col_4": 109.15,
+          "col_5": 7.61,
+          "col_6": 92.39
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 4,
+          "col_4": 115.14,
+          "col_5": 8.03,
+          "col_6": 91.97
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 3.15,
+          "col_4": 120.67,
+          "col_5": 8.41,
+          "col_6": 91.59
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2.5,
+          "col_4": 124.12,
+          "col_5": 8.65,
+          "col_6": 91.35
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": 126.04,
+          "col_5": 8.79,
+          "col_6": 91.21
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.6,
+          "col_4": 128.46,
+          "col_5": 8.96,
+          "col_6": 91.04
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.25,
+          "col_4": 130.83,
+          "col_5": 9.12,
+          "col_6": 90.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": 132.79,
+          "col_5": 9.26,
+          "col_6": 90.74
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.8,
+          "col_4": 134.97,
+          "col_5": 9.41,
+          "col_6": 90.59
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.63,
+          "col_4": 137.5,
+          "col_5": 9.59,
+          "col_6": 90.41
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.5,
+          "col_4": 142.12,
+          "col_5": 9.91,
+          "col_6": 90.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.4,
+          "col_4": 148.58,
+          "col_5": 10.36,
+          "col_6": 89.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.315,
+          "col_4": 160.56,
+          "col_5": 11.2,
+          "col_6": 88.8
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.25,
+          "col_4": 179.9,
+          "col_5": 12.54,
+          "col_6": 87.46
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.2,
+          "col_4": 217.79,
+          "col_5": 15.19,
+          "col_6": 84.81
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.16,
+          "col_4": 267.79,
+          "col_5": 18.67,
+          "col_6": 81.33
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.125,
+          "col_4": 392.5,
+          "col_5": 27.37,
+          "col_6": 72.63
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.1,
+          "col_4": 442.36,
+          "col_5": 30.84,
+          "col_6": 69.16
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.08,
+          "col_4": 482.23,
+          "col_5": 33.62,
+          "col_6": 66.38
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGS Tchitchao 1m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Tamis",
+          "col_5": "Masse de refus cumulées",
+          "col_6": "Refus cumulés",
+          "col_7": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0617,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 58.13
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0454,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 50.78
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0338,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 40.49
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0224,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 30.21
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0131,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 27.27
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0076,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 26.54
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0047,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 23.6
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0033,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 21.37
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0027,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 19.9
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0024,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 18.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.002,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 16.94
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0014,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 12.74
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "AGT Tchitchao 1,5 m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Tamis",
+          "col_5": "Masse de refus cumulées",
+          "col_6": "Refus cumulés",
+          "col_7": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 20,
+          "col_5": 0,
+          "col_6": 0,
+          "col_7": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 16,
+          "col_5": 6.32,
+          "col_6": 0.44,
+          "col_7": 99.56
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 12.5,
+          "col_5": 6.32,
+          "col_6": 0.44,
+          "col_7": 99.56
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 10,
+          "col_5": 6.32,
+          "col_6": 0.44,
+          "col_7": 99.56
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 8,
+          "col_5": 8.27,
+          "col_6": 0.57,
+          "col_7": 99.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 6.3,
+          "col_5": 8.27,
+          "col_6": 0.57,
+          "col_7": 99.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 5,
+          "col_5": 12.44,
+          "col_6": 0.86,
+          "col_7": 99.14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 4,
+          "col_5": 14.93,
+          "col_6": 1.04,
+          "col_7": 98.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 3.15,
+          "col_5": 19.51,
+          "col_6": 1.36,
+          "col_7": 98.64
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2.5,
+          "col_5": 22.8,
+          "col_6": 1.58,
+          "col_7": 98.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 2,
+          "col_5": 26.29,
+          "col_6": 1.83,
+          "col_7": 98.17
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1.6,
+          "col_5": 29.66,
+          "col_6": 2.06,
+          "col_7": 97.94
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1.25,
+          "col_5": 33.69,
+          "col_6": 2.34,
+          "col_7": 97.66
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 1,
+          "col_5": 36.81,
+          "col_6": 2.56,
+          "col_7": 97.44
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.8,
+          "col_5": 41,
+          "col_6": 2.85,
+          "col_7": 97.15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.63,
+          "col_5": 46.34,
+          "col_6": 3.22,
+          "col_7": 96.78
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.5,
+          "col_5": 58.98,
+          "col_6": 4.1,
+          "col_7": 95.9
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.4,
+          "col_5": 74.61,
+          "col_6": 5.18,
+          "col_7": 94.82
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.315,
+          "col_5": 180.16,
+          "col_6": 12.52,
+          "col_7": 97.48
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.25,
+          "col_5": 253.79,
+          "col_6": 17.64,
+          "col_7": 82.36
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.2,
+          "col_5": 406.85,
+          "col_6": 28.28,
+          "col_7": 71.72
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.16,
+          "col_5": 411.45,
+          "col_6": 32.77,
+          "col_7": 67.23
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.125,
+          "col_5": 536.89,
+          "col_6": 37.32,
+          "col_7": 62.68
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.1,
+          "col_5": 554.9,
+          "col_6": 38.57,
+          "col_7": 61.43
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.08,
+          "col_5": 564.42,
+          "col_6": 39.23,
+          "col_7": 60.77
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "AGS Tchitchao 1,5m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Tamis",
+          "col_4": "Masse de refus cumulées",
+          "col_5": "Refus cumulés",
+          "col_6": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0595,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 56.62
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.449,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 45.98
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0334,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 36.66
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0221,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 27.25
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0129,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 26.02
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0075,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 24.69
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0046,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 23.37
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0033,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 22.04
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0027,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 20.71
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0023,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 20.04
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0019,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 18.05
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.0014,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 15.36
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGT Tchitchao 2m all",
+      "headers": [
+        "AGT",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ],
+      "rows": [
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Tamis",
+          "col_4": "Masse de refus cumulées",
+          "col_5": "Refus cumulés",
+          "col_6": "Passants (%)"
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 20,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 16,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 12.5,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 10,
+          "col_4": 0,
+          "col_5": 0,
+          "col_6": 100
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 8,
+          "col_4": 0.78,
+          "col_5": 0.06,
+          "col_6": 99.94
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 6.3,
+          "col_4": 1.72,
+          "col_5": 0.013,
+          "col_6": 99.87
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 5,
+          "col_4": 3.59,
+          "col_5": 0.26,
+          "col_6": 99.74
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 4,
+          "col_4": 7.04,
+          "col_5": 0.52,
+          "col_6": 99.48
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 3.15,
+          "col_4": 14.19,
+          "col_5": 1.04,
+          "col_6": 98.96
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2.5,
+          "col_4": 18.6,
+          "col_5": 1.37,
+          "col_6": 98.63
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 2,
+          "col_4": 23.03,
+          "col_5": 1.69,
+          "col_6": 98.31
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.6,
+          "col_4": 27.45,
+          "col_5": 2.02,
+          "col_6": 97.98
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1.25,
+          "col_4": 32.2,
+          "col_5": 2.36,
+          "col_6": 97.64
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 1,
+          "col_4": 36.37,
+          "col_5": 2.67,
+          "col_6": 97.33
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.8,
+          "col_4": 41.94,
+          "col_5": 3.08,
+          "col_6": 96.92
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.63,
+          "col_4": 49.98,
+          "col_5": 3.67,
+          "col_6": 96.33
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.5,
+          "col_4": 68.69,
+          "col_5": 5.04,
+          "col_6": 94.96
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.4,
+          "col_4": 90.31,
+          "col_5": 6.63,
+          "col_6": 93.37
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.315,
+          "col_4": 134.2,
+          "col_5": 9.85,
+          "col_6": 90.15
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.25,
+          "col_4": 194.3,
+          "col_5": 14.27,
+          "col_6": 85.73
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.2,
+          "col_4": 280.46,
+          "col_5": 20.59,
+          "col_6": 79.41
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.16,
+          "col_4": 356.73,
+          "col_5": 26.19,
+          "col_6": 73.81
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.125,
+          "col_4": 477.62,
+          "col_5": 35.07,
+          "col_6": 64.93
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.1,
+          "col_4": 536,
+          "col_5": 39.36,
+          "col_6": 60.64
+        },
+        {
+          "agt": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": 0.08,
+          "col_4": 567.15,
+          "col_5": 41.64,
+          "col_6": 58.36
+        }
+      ],
+      "translated_headers": [
+        "agt",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6"
+      ]
+    },
+    {
+      "name": "AGS Tchitchao 2m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Tamis",
+          "col_5": "Masse de refus cumulées",
+          "col_6": "Refus cumulés",
+          "col_7": "Passants (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.065,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 52.71
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0485,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 42.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0355,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 35.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0232,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 28.85
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0137,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 24.29
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0079,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 24.36
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0049,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 21.84
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0035,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 20.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0028,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 20.45
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0025,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 19.05
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.002,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 19.05
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 0.0014,
+          "col_5": null,
+          "col_6": null,
+          "col_7": 16.23
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": "Limite Att yade 1 m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": "Limite de liquidité",
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Wp",
+          "col_5": "Wp",
+          "col_6": "C15",
+          "col_7": "C19",
+          "col_8": "C23",
+          "col_9": "C27",
+          "col_10": "C32",
+          "col_11": "C35"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 42.5,
+          "col_5": 46.39,
+          "col_6": 62.97,
+          "col_7": 43.4,
+          "col_8": 64.73,
+          "col_9": 65.39,
+          "col_10": 41.89,
+          "col_11": 66.49
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 61.06,
+          "col_5": 64.65,
+          "col_6": 67.36,
+          "col_7": 48.27,
+          "col_8": 69.9,
+          "col_9": 73.35,
+          "col_10": 48.66,
+          "col_11": 72.72
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 58.16,
+          "col_5": 61.18,
+          "col_6": 65.58,
+          "col_7": 46.34,
+          "col_8": 67.91,
+          "col_9": 70.37,
+          "col_10": 46.19,
+          "col_11": 70.6
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 23,
+          "col_5": 23,
+          "col_6": 68,
+          "col_7": 66,
+          "col_8": 63,
+          "col_9": 60,
+          "col_10": 57,
+          "col_11": 56
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ]
+    },
+    {
+      "name": "Limite att  yade 1,5m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": "Limite de liquidité",
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Wp",
+          "col_5": "Wp",
+          "col_6": "C15",
+          "col_7": "C19",
+          "col_8": "C23",
+          "col_9": "C27",
+          "col_10": "C32",
+          "col_11": "C35"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 30.02,
+          "col_5": 33.5,
+          "col_6": 46.65,
+          "col_7": 62.06,
+          "col_8": 44.3,
+          "col_9": 40.53,
+          "col_10": 36.17,
+          "col_11": 43.7
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 45.82,
+          "col_5": 50.48,
+          "col_6": 52.48,
+          "col_7": 69.35,
+          "col_8": 53.25,
+          "col_9": 46,
+          "col_10": 42.25,
+          "col_11": 50.57
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 42.67,
+          "col_5": 47.32,
+          "col_6": 50.73,
+          "col_7": 65.24,
+          "col_8": 50.77,
+          "col_9": 44.55,
+          "col_10": 40.68,
+          "col_11": 48.91
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 25,
+          "col_5": 23,
+          "col_6": 43,
+          "col_7": 41,
+          "col_8": 38,
+          "col_9": 36,
+          "col_10": 35,
+          "col_11": 34
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ]
+    },
+    {
+      "name": "Limitte att yade 2 m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": "Limite de liquidité",
+          "col_8": null,
+          "col_9": null,
+          "col_10": null,
+          "col_11": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": "Wp",
+          "col_5": "Wp",
+          "col_6": "C15",
+          "col_7": "C19",
+          "col_8": "C23",
+          "col_9": "C27",
+          "col_10": "C32",
+          "col_11": "C35"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 32,
+          "col_5": 32.62,
+          "col_6": 42.2,
+          "col_7": 44.8,
+          "col_8": 44.7,
+          "col_9": 41.4,
+          "col_10": 63.38,
+          "col_11": 45.74
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 49.12,
+          "col_5": 53.27,
+          "col_6": 47.65,
+          "col_7": 50.4,
+          "col_8": 50.54,
+          "col_9": 49.13,
+          "col_10": 67.89,
+          "col_11": 54.74
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 46.1,
+          "col_5": 49.55,
+          "col_6": 46,
+          "col_7": 48.8,
+          "col_8": 48.89,
+          "col_9": 45.09,
+          "col_10": 66.74,
+          "col_11": 52.6
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": 21,
+          "col_5": 22,
+          "col_6": 43,
+          "col_7": 40,
+          "col_8": 39,
+          "col_9": 36,
+          "col_10": 34,
+          "col_11": 31
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ]
+    },
+    {
+      "name": "Limite att Tchitchao 1 m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11",
+        "col_12"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": "Limite de liquidité",
+          "col_10": null,
+          "col_11": null,
+          "col_12": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": "Wp",
+          "col_7": "Wp",
+          "col_8": "C15",
+          "col_9": "C19",
+          "col_10": "C21",
+          "col_11": "C27",
+          "col_12": "C35"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 24.42,
+          "col_7": 23.7,
+          "col_8": 40.6,
+          "col_9": 30,
+          "col_10": 45,
+          "col_11": 17.4,
+          "col_12": 29
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 35.97,
+          "col_7": 33.16,
+          "col_8": 45,
+          "col_9": 32.9,
+          "col_10": 48.2,
+          "col_11": 20,
+          "col_12": 31
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 34.16,
+          "col_7": 31.78,
+          "col_8": 43.7,
+          "col_9": 32.14,
+          "col_10": 47.41,
+          "col_11": 19.52,
+          "col_12": 30.84
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": 19,
+          "col_7": 17,
+          "col_8": 42,
+          "col_9": 36,
+          "col_10": 33,
+          "col_11": 23,
+          "col_12": 9
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11",
+        "col_12"
+      ]
+    },
+    {
+      "name": "Limitte att Tchitchao 1,5m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": "Limite de liquidité",
+          "col_9": null,
+          "col_10": null,
+          "col_11": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": "Wp",
+          "col_6": "Wp",
+          "col_7": "C15",
+          "col_8": "C19",
+          "col_9": "C21",
+          "col_10": "C27",
+          "col_11": "C35"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 21.73,
+          "col_6": 24.73,
+          "col_7": 40,
+          "col_8": 40.96,
+          "col_9": 52.28,
+          "col_10": 68.92,
+          "col_11": 43.4
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 37.69,
+          "col_6": 39.23,
+          "col_7": 43.6,
+          "col_8": 45.7,
+          "col_9": 56,
+          "col_10": 74.5,
+          "col_11": 45.9
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 35.25,
+          "col_6": 37.22,
+          "col_7": 42.19,
+          "col_8": 44.09,
+          "col_9": 54.82,
+          "col_10": 72.94,
+          "col_11": 45.31
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 18,
+          "col_6": 16,
+          "col_7": 64,
+          "col_8": 51,
+          "col_9": 46,
+          "col_10": 39,
+          "col_11": 31
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ]
+    },
+    {
+      "name": "Limite Att Tchitchao 2 m all",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": "Limite de liquidité",
+          "col_9": null,
+          "col_10": null,
+          "col_11": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": "Wp",
+          "col_6": "Wp",
+          "col_7": "C15",
+          "col_8": "C19",
+          "col_9": "C21",
+          "col_10": "C27",
+          "col_11": "C35"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 21.17,
+          "col_6": 23.47,
+          "col_7": 40,
+          "col_8": 50.93,
+          "col_9": 43.47,
+          "col_10": 42.07,
+          "col_11": 39.78
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 32.24,
+          "col_6": 37.16,
+          "col_7": 44.24,
+          "col_8": 54.3,
+          "col_9": 47.35,
+          "col_10": 46.45,
+          "col_11": 42.8
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 30.88,
+          "col_6": 35.19,
+          "col_7": 42.61,
+          "col_8": 53.06,
+          "col_9": 46,
+          "col_10": 45.02,
+          "col_11": 41.87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": 14,
+          "col_6": 17,
+          "col_7": 62,
+          "col_8": 58,
+          "col_9": 53,
+          "col_10": 48,
+          "col_11": 44
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9",
+        "col_10",
+        "col_11"
+      ]
+    }
+  ]
+}

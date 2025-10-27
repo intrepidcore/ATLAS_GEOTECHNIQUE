@@ -1,0 +1,74 @@
+{
+  "import_session": {
+    "date": "2025-10-26",
+    "status": "partial_success",
+    "files_processed": 2,
+    "files_remaining": 11,
+    "files_skipped": 7
+  },
+  "completed_files": [
+    {
+      "file": "data/xlsx/IMPORT/atlas_import_nicabou_ninsao_vianney.xlsx",
+      "status": "success",
+      "duration_s": 10.8,
+      "sondages": 4,
+      "echantillons": 12,
+      "atterberg": 9,
+      "vbs": 9,
+      "raw_agt": 162,
+      "raw_ags": 72,
+      "raw_atterberg": 0,
+      "warnings": ["8 sondages sans géoloc"]
+    },
+    {
+      "file": "data/xlsx/IMPORT/atlas_import_soglo_ferdinand.xlsx",
+      "status": "success_with_errors",
+      "duration_s": 10.9,
+      "sondages": 4,
+      "echantillons": 12,
+      "atterberg": 12,
+      "vbs": 12,
+      "raw_agt": 208,
+      "raw_ags": 63,
+      "raw_atterberg": 60,
+      "errors": ["24 Atterberg RAW rejetés (LP au lieu de PL)"],
+      "warnings": ["8 sondages sans géoloc"]
+    }
+  ],
+  "database_totals": {
+    "sondages": 8,
+    "echantillons": 24,
+    "essais_atterberg": 21,
+    "essais_vbs": 21,
+    "raw_lab_agt": 370,
+    "raw_lab_ags": 135,
+    "raw_lab_atterberg": 60
+  },
+  "pending_files": [
+    "data/xlsx/ADOTE Adote emmanuel.xlsx",
+    "data/xlsx/AKONDOR Tigana Messanh.xlsx",
+    "data/xlsx/ANYO Akouete jean-paul.xlsx",
+    "data/xlsx/GAMBAGA Inoussa.xlsx",
+    "data/xlsx/NABIYOU Warou.xlsx",
+    "data/xlsx/NGOAPO-GOLLO Roxane Lenira Chrisie.xlsx",
+    "data/xlsx/NICABOU Ninsao Vianney.xlsx",
+    "data/xlsx/OUDJABITI Bassirou.xlsx",
+    "data/xlsx/SOGLO FERDINAND.xlsx",
+    "data/xlsx/TCHALA Komla Hyacinthe.xlsx"
+  ],
+  "issues": {
+    "critical": [
+      "Tous les sondages (8/8) sans géolocalisation - ne peuvent pas être affichés sur carte"
+    ],
+    "minor": [
+      "24 mesures Atterberg RAW rejetées (erreur saisie LP/PL)",
+      "11 fichiers restants nécessitent parsing personnalisé"
+    ]
+  },
+  "next_steps": [
+    "Ajouter ADM3 ou GPS aux sondages orphelins",
+    "Corriger erreurs LP→PL dans soglo_ferdinand.xlsx",
+    "Développer parsers pour fichiers non standardisés",
+    "Rafraîchir vues matérialisées après ajout géoloc"
+  ]
+}

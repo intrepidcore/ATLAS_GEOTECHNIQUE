@@ -39,10 +39,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # Pas de ports exposés - accès uniquement via proxy Nginx
-    # Pour debug direct: décommenter la ligne ci-dessous
-    # ports:
-    #   - "8001:8000"
+    # Ports exposés pour accès direct (dev/debug)
+    ports:
+      - "8000:8000"  # Exposé pour accès direct depuis l'UI
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
       interval: 10s
@@ -109,6 +108,9 @@ services:
       - api-geo
     ports:
       - "8080:80"  # Exposé sur toutes les interfaces pour LAN
+    # Volume pour dev: mount dist pour voir les changements sans rebuild
+    volumes:
+      - ./ui/dist:/usr/share/nginx/html:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1/"]
       interval: 10s

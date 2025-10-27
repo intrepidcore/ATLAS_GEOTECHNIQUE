@@ -1,0 +1,1284 @@
+{
+  "source_file": "TCHALA Komla Hyacinthe.xlsx",
+  "conversion_date": "2025-10-27T10:52:40.799705",
+  "sheets": [
+    {
+      "name": "AG",
+      "headers": [
+        "col_0",
+        "Tableau 3-1: Résultats de l' analyse granulométrique",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": "Diamètres des tamis (mm)",
+          "col_2": "Masse des refus cumulés (g)",
+          "col_3": "Pourcentage de réfus cumulés (%)",
+          "col_4": "Pourcentage de passants cumulés (%)"
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 40,
+          "col_2": 0,
+          "col_3": 0,
+          "col_4": 100
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 31.5,
+          "col_2": 33.2,
+          "col_3": 0.72,
+          "col_4": 99.28
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 25,
+          "col_2": 142.9,
+          "col_3": 3.09,
+          "col_4": 96.91
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 20,
+          "col_2": 334.9,
+          "col_3": 7.26,
+          "col_4": 92.74
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 10,
+          "col_2": 1523.9,
+          "col_3": 33.05,
+          "col_4": 66.94
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 5,
+          "col_2": 2682,
+          "col_3": 58.17,
+          "col_4": 41.82
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 2,
+          "col_2": 3152.7,
+          "col_3": 68.38,
+          "col_4": 31.61
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 1,
+          "col_2": 3214.6,
+          "col_3": 69.73,
+          "col_4": 30.23
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 0.5,
+          "col_2": 3287.5,
+          "col_3": 71.31,
+          "col_4": 28.68
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 0.315,
+          "col_2": 3384.4,
+          "col_3": 73.41,
+          "col_4": 26.58
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 0.2,
+          "col_2": 3504,
+          "col_3": 76,
+          "col_4": 24
+        },
+        {
+          "col_0": null,
+          "tableau_31_résultats_de_l_analyse_granulométrique": 0.08,
+          "col_2": 3669.8,
+          "col_3": 79.6,
+          "col_4": 20.39
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "tableau_31_résultats_de_l_analyse_granulométrique",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "Limtes Atterberg",
+      "headers": [
+        "col_0",
+        "col_1",
+        "Tableau 3-2: Valeurs des limites d'Atterberg"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Désignation",
+          "tableau_32_valeurs_des_limites_datterberg": "Valeur"
+        },
+        {
+          "col_0": null,
+          "col_1": "Limete de plasticité wp_",
+          "tableau_32_valeurs_des_limites_datterberg": 48
+        },
+        {
+          "col_0": null,
+          "col_1": "Limete de plasticité wp_",
+          "tableau_32_valeurs_des_limites_datterberg": 24
+        },
+        {
+          "col_0": null,
+          "col_1": "Indice de plasticité IP",
+          "tableau_32_valeurs_des_limites_datterberg": 24
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "tableau_32_valeurs_des_limites_datterberg"
+      ]
+    },
+    {
+      "name": "proctor materiau simple ",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Tableau 3-3: Résultats de l'essai Proctor sur matériau simple ( à 0%)",
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Teneur en eau obtenue (%)",
+          "col_3": 7.3,
+          "col_4": 8.1,
+          "col_5": 8.6,
+          "col_6": 10.3,
+          "col_7": 11.3,
+          "col_8": 12.3
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Densité sèche (g/cm 3)",
+          "col_3": 2.04,
+          "col_4": 2.08,
+          "col_5": 2.1,
+          "col_6": 2.07,
+          "col_7": 2.05,
+          "col_8": 2.02
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8"
+      ]
+    },
+    {
+      "name": "AGN total naturel",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Tableau 3-6: Résultats de l' analyse granulométrique du gravier concassées",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Diamètres des tamis (mm)",
+          "col_3": "Masses des refus cumulés (g)",
+          "col_4": "Pourcentage de refus cumulés (%)",
+          "col_5": "Pourcentage de passants cumulés (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 40,
+          "col_3": 0,
+          "col_4": 0,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 31.5,
+          "col_3": 74.2,
+          "col_4": 1.19,
+          "col_5": 98.81
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 25,
+          "col_3": 493.8,
+          "col_4": 7.93,
+          "col_5": 92.07
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "col_3": 1213.2,
+          "col_4": 19.49,
+          "col_5": 80.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 2836.8,
+          "col_4": 45.58,
+          "col_5": 54.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "col_3": 3595.7,
+          "col_4": 57.77,
+          "col_5": 42.23
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": 4240,
+          "col_4": 68.12,
+          "col_5": 31.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": 4600,
+          "col_4": 73.91,
+          "col_5": 26.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.5,
+          "col_3": 4887.8,
+          "col_4": 78.53,
+          "col_5": 21.47
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 5082.5,
+          "col_4": 81.66,
+          "col_5": 18.34
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.2,
+          "col_3": 5355.4,
+          "col_4": 86.04,
+          "col_5": 13.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 5647.3,
+          "col_4": 90.73,
+          "col_5": 9.27
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "Equivalent de sable",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Tableau 3-7:Résultats de l'équivalent de sable ",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Essai",
+          "col_3": "Résultat obtenu",
+          "col_4": "Résultat exigé en couche de fondation",
+          "col_5": "Résultatsexigé en couche de base"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Equivalent de sable",
+          "col_3": 50,
+          "col_4": "SUP ou EGALE 50",
+          "col_5": "SUP ou EGALE 50"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "la",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Tableau 3-8: Résultats de l'essai Los Angeles sur les concassées de Lilikopé ",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Essai",
+          "col_3": "Résultat obtenu",
+          "col_4": "Résultat exigé en couche de fondation",
+          "col_5": "Résultat exigé en couche de base"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Los Angeles",
+          "col_3": 28.47,
+          "col_4": "inf ou egale 40",
+          "col_5": "inf ou egale 30S"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "md",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Tableau 3-9: Résultats de i'essai Micro Deval sur les concassées de Lilikopé",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Essai",
+          "col_3": "Résultat obtenu",
+          "col_4": "Résultat exigé en couche de fondation",
+          "col_5": "Résultat exigé en couche de fondation"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Micro Deval ",
+          "col_3": 15.63,
+          "col_4": "inf ou egale 35",
+          "col_5": "inf ou egale 25"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "essai proctor materiau concassé",
+      "headers": [
+        "s",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ],
+      "rows": [
+        {
+          "s": null,
+          "col_1": "Tableau 3-10: Résultats de l'essai Proctor modifié sur le gravier concassé",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null
+        },
+        {
+          "s": null,
+          "col_1": null,
+          "col_2": "Teneur en eau obtenue (%) ",
+          "col_3": 0.25,
+          "col_4": 2.47,
+          "col_5": 4.17,
+          "col_6": 6.18,
+          "col_7": 7.89
+        },
+        {
+          "s": null,
+          "col_1": null,
+          "col_2": "Densité sèche (g/cm3)",
+          "col_3": 2.14,
+          "col_4": 2.23,
+          "col_5": 2.27,
+          "col_6": 2.27,
+          "col_7": 2.22
+        }
+      ],
+      "translated_headers": [
+        "s",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7"
+      ]
+    },
+    {
+      "name": " optimuim proctor concassee",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Tableau 3-11: Valeur de l'optimum Proctor",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Echantillon ",
+          "col_3": "Densité sèche gama d(g/cm3)",
+          "col_4": "Teneur en eau W (%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Concassé de granite",
+          "col_3": 2.27,
+          "col_4": 5.38
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "optimuim proctor simple",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Tableau 3-4: Valeurs de l'optimum Proctor",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Echantillon",
+          "col_3": "Densité sèche gama d (g/cm3)",
+          "col_4": "Teneur en eau W(%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Gravier latéritique naturel ",
+          "col_3": 21,
+          "col_4": 8.7
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AGN concassée",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Tableau 3-6 : Résultats de l'analyse granulométrique du gravier concassées",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Diamètre des tamis (mm)",
+          "col_3": "Masses des refus cumulés (g)",
+          "col_4": "Pourcentage de refus cumulés (%) ",
+          "col_5": "Pourcentage de passants cumulés(%)"
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 40,
+          "col_3": 0,
+          "col_4": 0,
+          "col_5": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 31.5,
+          "col_3": 74.2,
+          "col_4": 1.19,
+          "col_5": 98.81
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 25,
+          "col_3": 493.8,
+          "col_4": 7.93,
+          "col_5": 92.07
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "col_3": 1213.2,
+          "col_4": 19.49,
+          "col_5": 80.51
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 2836.8,
+          "col_4": 45.58,
+          "col_5": 54.42
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "col_3": 3595.7,
+          "col_4": 57.77,
+          "col_5": 42.23
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": 4240,
+          "col_4": 68.12,
+          "col_5": 31.88
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": 4600,
+          "col_4": 73.91,
+          "col_5": 26.09
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.5,
+          "col_3": 4887.8,
+          "col_4": 78.53,
+          "col_5": 21.49
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 5082.5,
+          "col_4": 81.66,
+          "col_5": 18.34
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.2,
+          "col_3": 5355.4,
+          "col_4": 86.04,
+          "col_5": 13.96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 5647.3,
+          "col_4": 90.73,
+          "col_5": 9.27
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": "s"
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5"
+      ]
+    },
+    {
+      "name": "limite ATT MELANGE",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Materiaux ",
+          "col_2": "Limite de liquidité (Wl)",
+          "col_3": "Limite de plasticité",
+          "col_4": "Indice de plasticité"
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 5%",
+          "col_2": 35,
+          "col_3": 13,
+          "col_4": 22
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 10%",
+          "col_2": 29.5,
+          "col_3": 10.5,
+          "col_4": 19
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 15%",
+          "col_2": 27.5,
+          "col_3": 8.5,
+          "col_4": 19
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 20%",
+          "col_2": 33,
+          "col_3": 15,
+          "col_4": 18
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 25%",
+          "col_2": 29,
+          "col_3": 13,
+          "col_4": 16
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 30%",
+          "col_2": 30,
+          "col_3": 15,
+          "col_4": 15
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 35%",
+          "col_2": 30,
+          "col_3": 15,
+          "col_4": 15
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4"
+      ]
+    },
+    {
+      "name": "AG MELANGE",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Taleau  3-12: Résultats des essais d' analyse granulométriques des melanges",
+          "col_2": null,
+          "col_3": null,
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": null,
+          "col_3": "Pourcentage des passants cumulés",
+          "col_4": null,
+          "col_5": null,
+          "col_6": null,
+          "col_7": null,
+          "col_8": null,
+          "col_9": null
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": "Diamètre destamis (mm) ",
+          "col_3": 0.05,
+          "col_4": 0.1,
+          "col_5": 0.15,
+          "col_6": 0.2,
+          "col_7": 0.25,
+          "col_8": 0.3,
+          "col_9": 0.35
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 31.5,
+          "col_3": 100,
+          "col_4": 100,
+          "col_5": 100,
+          "col_6": 100,
+          "col_7": 100,
+          "col_8": 100,
+          "col_9": 100
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 25,
+          "col_3": 97,
+          "col_4": 99,
+          "col_5": 100,
+          "col_6": 97,
+          "col_7": 96,
+          "col_8": 96,
+          "col_9": 99
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 20,
+          "col_3": 92,
+          "col_4": 94,
+          "col_5": 94,
+          "col_6": 93,
+          "col_7": 88,
+          "col_8": 92,
+          "col_9": 96
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 16,
+          "col_3": 90,
+          "col_4": 87,
+          "col_5": 89,
+          "col_6": 90,
+          "col_7": 84,
+          "col_8": 87,
+          "col_9": 87
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 12.5,
+          "col_3": 88,
+          "col_4": 91,
+          "col_5": 85,
+          "col_6": 87,
+          "col_7": 80,
+          "col_8": 82,
+          "col_9": 83
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 10,
+          "col_3": 86,
+          "col_4": 75,
+          "col_5": 81,
+          "col_6": 83,
+          "col_7": 78,
+          "col_8": 80,
+          "col_9": 77
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 8,
+          "col_3": 83,
+          "col_4": 71,
+          "col_5": 69,
+          "col_6": 78,
+          "col_7": 72,
+          "col_8": 78,
+          "col_9": 68
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 6.3,
+          "col_3": 78,
+          "col_4": 64,
+          "col_5": 62,
+          "col_6": 70,
+          "col_7": 62,
+          "col_8": 76,
+          "col_9": 61
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 5,
+          "col_3": 71,
+          "col_4": 57,
+          "col_5": 52,
+          "col_6": 61,
+          "col_7": 56,
+          "col_8": 74,
+          "col_9": 50
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 4,
+          "col_3": 65,
+          "col_4": 50,
+          "col_5": 41,
+          "col_6": 51,
+          "col_7": 46,
+          "col_8": 56,
+          "col_9": 40
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 3.15,
+          "col_3": 51,
+          "col_4": 41,
+          "col_5": 31,
+          "col_6": 40,
+          "col_7": 37,
+          "col_8": 48,
+          "col_9": 32
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2.5,
+          "col_3": 41,
+          "col_4": 33,
+          "col_5": 25,
+          "col_6": 31,
+          "col_7": 29,
+          "col_8": 38,
+          "col_9": 25
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 2,
+          "col_3": 34,
+          "col_4": 27,
+          "col_5": 22,
+          "col_6": 26,
+          "col_7": 23,
+          "col_8": 30,
+          "col_9": 23
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.6,
+          "col_3": 30,
+          "col_4": 25,
+          "col_5": 20,
+          "col_6": 24,
+          "col_7": 22,
+          "col_8": 24,
+          "col_9": 21
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1.25,
+          "col_3": 29,
+          "col_4": 23,
+          "col_5": 19,
+          "col_6": 22,
+          "col_7": 20,
+          "col_8": 23,
+          "col_9": 20
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 1,
+          "col_3": 28,
+          "col_4": 22,
+          "col_5": 18,
+          "col_6": 21,
+          "col_7": 19,
+          "col_8": 20,
+          "col_9": 19
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.8,
+          "col_3": 26,
+          "col_4": 21,
+          "col_5": 17,
+          "col_6": 20,
+          "col_7": 18,
+          "col_8": 19,
+          "col_9": 18
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.63,
+          "col_3": 25,
+          "col_4": 20,
+          "col_5": 17,
+          "col_6": 19,
+          "col_7": 17,
+          "col_8": 18,
+          "col_9": 18
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.5,
+          "col_3": 24,
+          "col_4": 19,
+          "col_5": 16,
+          "col_6": 18,
+          "col_7": 16,
+          "col_8": 17,
+          "col_9": 17
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.4,
+          "col_3": 23,
+          "col_4": 18,
+          "col_5": 15,
+          "col_6": 17,
+          "col_7": 15,
+          "col_8": 16,
+          "col_9": 16
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.315,
+          "col_3": 22,
+          "col_4": 17,
+          "col_5": 14,
+          "col_6": 17,
+          "col_7": 14,
+          "col_8": 15,
+          "col_9": 15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.25,
+          "col_3": 21,
+          "col_4": 16,
+          "col_5": 14,
+          "col_6": 16,
+          "col_7": 13,
+          "col_8": 14,
+          "col_9": 15
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.2,
+          "col_3": 20,
+          "col_4": 15,
+          "col_5": 13,
+          "col_6": 15,
+          "col_7": 13,
+          "col_8": 13,
+          "col_9": 14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.16,
+          "col_3": 19,
+          "col_4": 14,
+          "col_5": 13,
+          "col_6": 14,
+          "col_7": 12,
+          "col_8": 12,
+          "col_9": 14
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.125,
+          "col_3": 18,
+          "col_4": 13,
+          "col_5": 12,
+          "col_6": 13,
+          "col_7": 11,
+          "col_8": 11,
+          "col_9": 13
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.1,
+          "col_3": 18,
+          "col_4": 12,
+          "col_5": 11,
+          "col_6": 12,
+          "col_7": 10,
+          "col_8": 10,
+          "col_9": 12
+        },
+        {
+          "col_0": null,
+          "col_1": null,
+          "col_2": 0.08,
+          "col_3": 17,
+          "col_4": 12,
+          "col_5": 11,
+          "col_6": 12,
+          "col_7": 10,
+          "col_8": 10,
+          "col_9": 12
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3",
+        "col_4",
+        "col_5",
+        "col_6",
+        "col_7",
+        "col_8",
+        "col_9"
+      ]
+    },
+    {
+      "name": "ESSAI PROCTOR MELANCHE",
+      "headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3"
+      ],
+      "rows": [
+        {
+          "col_0": null,
+          "col_1": "Materiaux ",
+          "col_2": "DENSITE Sèche optimale",
+          "col_3": "Teneur en eau optimale"
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 5%",
+          "col_2": 2.1,
+          "col_3": 7.8
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 10%",
+          "col_2": 2.11,
+          "col_3": 7.7
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 15%",
+          "col_2": 2.12,
+          "col_3": 7.1
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 20%",
+          "col_2": 2.13,
+          "col_3": 6.5
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 25%",
+          "col_2": 2.14,
+          "col_3": 5.8
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 30%",
+          "col_2": 2.15,
+          "col_3": 5.3
+        },
+        {
+          "col_0": null,
+          "col_1": "Latérite améliorée à 35%",
+          "col_2": 2.15,
+          "col_3": 4.7
+        }
+      ],
+      "translated_headers": [
+        "col_0",
+        "col_1",
+        "col_2",
+        "col_3"
+      ]
+    }
+  ]
+}
