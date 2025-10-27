@@ -6,6 +6,8 @@ export class SuggestionsPanel {
   private suggestions: Suggestion[] = []
   private loading = false
   private filter: 'all' | 'pending' | 'accepted' | 'rejected' = 'pending'
+  private selectedCandidates: Map<number, string> = new Map() // suggestionId -> candidateCode
+  private undoStack: Array<{action: string, data: any}> = []
 
   constructor(private apiUrl: string) {}
 
@@ -98,12 +100,13 @@ export class SuggestionsPanel {
         </div>
 
         <!-- Filtres -->
-        <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
           <button class="filter-btn" data-filter="pending" style="padding: 8px 16px; background: #ff9f43; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 13px;">En attente</button>
           <button class="filter-btn" data-filter="accepted" style="padding: 8px 16px; background: #3d3d3d; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 13px;">Acceptées</button>
           <button class="filter-btn" data-filter="rejected" style="padding: 8px 16px; background: #3d3d3d; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 13px;">Rejetées</button>
           <button class="filter-btn" data-filter="all" style="padding: 8px 16px; background: #3d3d3d; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 13px;">Toutes</button>
           <div style="flex: 1;"></div>
+          <button id="bulk-accept-btn" style="padding: 8px 16px; background: #3aa6ff; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-weight: 600;">⚡ Accepter tout ≥80%</button>
           <button id="apply-accepted-btn" style="padding: 8px 16px; background: #0bb07b; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-weight: 600;">✅ Appliquer les acceptées</button>
         </div>
 
@@ -123,6 +126,36 @@ export class SuggestionsPanel {
       setTimeout(() => container.innerHTML = '', 300)
     })
 
+    // Bouton bulk accept
+    const bulkBtn = document.getElementById('bulk-accept-btn')
+    bulkBtn?.addEventListener('click', async () => {
+      const threshold = 0.8
+      const toAccept = this.suggestions.filter(s => 
+        s.status === 'pending' && s.top_score && s.top_score >= threshold
+      )
+      
+      if (toAccept.length === 0) {
+        onError('Aucune suggestion ≥80% à accepter')
+        return
+      }
+      
+      if (!confirm(`Accepter ${toAccept.length} suggestion(s) avec score ≥80% ?`)) {
+        return
+      }
+      
+      try {
+        let accepted = 0
+        for (const s of toAccept) {
+          await this.acceptSuggestion(s.id)
+          accepted++
+        }
+        onSuccess(`⚡ ${accepted} suggestion(s) acceptée(s) automatiquement`)
+        this.renderList(onSuccess, onError)
+      } catch (e: any) {
+        onError(e.message)
+      }
+    })
+    
     // Bouton appliquer
     const applyBtn = document.getElementById('apply-accepted-btn')
     applyBtn?.addEventListener('click', async () => {
@@ -239,14 +272,25 @@ export class SuggestionsPanel {
             </div>
             
             ${s.candidates && s.candidates.length > 0 ? `
-              <details style="margin-top: 12px;">
-                <summary style="cursor: pointer; color: #8aa0b5; font-size: 13px;">📋 Candidats (${s.candidates.length})</summary>
-                <ul style="margin: 8px 0 0 20px; padding: 0; list-style: decimal;">
-                  ${s.candidates.slice(0, 5).map(c => `
-                    <li style="color: #8aa0b5; font-size: 12px; margin: 4px 0;">
-                      <b>${c.name}</b> (${c.code}) — Score: ${c.score.toFixed(2)} ${c.method ? `· ${c.method}` : ''}
-                    </li>
-                  `).join('')}
+              <details style="margin-top: 12px;" open>
+                <summary style="cursor: pointer; color: #8aa0b5; font-size: 13px; font-weight: 600;">📋 Candidats (${s.candidates.length}) - Sélectionnez le bon</summary>
+                <div style="margin: 12px 0; padding: 12px; background: #0a1018; border-radius: 6px;">
+                  ${s.candidates.slice(0, 10).map((c, idx) => {
+                    const scoreColor = c.score >= 0.8 ? '#0bb07b' : c.score >= 0.6 ? '#ff9f43' : '#8aa0b5'
+                    const isSelected = this.selectedCandidates.get(s.id) === c.code
+                    return `
+                    <label style="display: flex; align-items: center; gap: 12px; padding: 10px; margin: 6px 0; background: ${isSelected ? '#1a2942' : 'transparent'}; border: 1px solid ${isSelected ? '#3aa6ff' : '#22304d'}; border-radius: 4px; cursor: pointer; transition: all 0.2s;" class="candidate-label" onmouseover="this.style.background='#1a2942'" onmouseout="this.style.background='${isSelected ? '#1a2942' : 'transparent'}'">
+                      <input type="radio" name="candidate-${s.id}" value="${c.code}" ${isSelected ? 'checked' : ''} style="cursor: pointer;" />
+                      <div style="flex: 1;">
+                        <div style="color: #ecf2f8; font-weight: 500; font-size: 13px;">${c.name}</div>
+                        <div style="color: #8aa0b5; font-size: 11px; margin-top: 2px;">${c.code} ${c.method ? `· ${c.method}` : ''}</div>
+                      </div>
+                      <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="color: ${scoreColor}; font-weight: 600; font-size: 14px;">${(c.score * 100).toFixed(0)}%</span>
+                        <button class="preview-btn" data-code="${c.code}" data-name="${c.name}" style="padding: 4px 8px; background: #3aa6ff; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 11px;" onclick="event.preventDefault(); event.stopPropagation();">👁️</button>
+                      </div>
+                    </label>
+                  `}).join('')}
                 </ul>
               </details>
             ` : ''}
@@ -255,12 +299,45 @@ export class SuggestionsPanel {
       }).join('')
 
       // Attacher event listeners
+      
+      // Radio buttons pour sélectionner candidat
+      document.querySelectorAll('input[type="radio"][name^="candidate-"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+          const target = e.target as HTMLInputElement
+          const suggestionId = parseInt(target.name.split('-')[1])
+          const candidateCode = target.value
+          this.selectedCandidates.set(suggestionId, candidateCode)
+          console.log(`[SUGGESTIONS] Candidat sélectionné: ${candidateCode} pour suggestion ${suggestionId}`)
+        })
+      })
+      
+      // Boutons preview
+      document.querySelectorAll('.preview-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const target = e.target as HTMLElement
+          const code = target.dataset.code!
+          const name = target.dataset.name!
+          this.previewAdm3OnMap(code, name)
+        })
+      })
+      
+      // Bouton accepter (utilise le candidat sélectionné si disponible)
       document.querySelectorAll('.accept-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           const id = parseInt((e.target as HTMLElement).dataset.id!)
+          const selectedCode = this.selectedCandidates.get(id)
+          
           try {
-            await this.acceptSuggestion(id)
-            onSuccess(`✅ Suggestion ${id} acceptée`)
+            if (selectedCode) {
+              // Accepter avec le candidat sélectionné
+              await this.updateSuggestion(id, selectedCode)
+              await this.acceptSuggestion(id)
+              onSuccess(`✅ Suggestion acceptée avec ${selectedCode}`)
+            } else {
+              // Accepter avec le top candidat
+              await this.acceptSuggestion(id)
+              onSuccess(`✅ Suggestion acceptée`)
+            }
             this.renderList(onSuccess, onError)
           } catch (e: any) {
             onError(e.message)
@@ -304,5 +381,14 @@ export class SuggestionsPanel {
         </div>
       `
     }
+  }
+  
+  private previewAdm3OnMap(code: string, name: string) {
+    // Émettre un événement custom pour que la carte puisse écouter
+    const event = new CustomEvent('preview-adm3', {
+      detail: { code, name }
+    })
+    window.dispatchEvent(event)
+    console.log(`[SUGGESTIONS] Preview ADM3: ${code} (${name})`)
   }
 }
