@@ -17,6 +17,7 @@ mod audit;
 mod neighbors;
 mod exports;
 mod import_bulk;
+mod import_wizard;
 mod thematic;
 mod geocoding;
 mod cells_labs;
@@ -99,6 +100,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/exports/pdf", get(exports::export_pdf))
         // Import bulk endpoints
         .merge(import_bulk::configure())
+        // Import wizard v2.3.0 endpoints
+        .merge(import_wizard::configure())
         // Thematic maps endpoints
         .route("/thematic/data", get(thematic::get_thematic_data))
         .route("/thematic/classify", post(thematic::classify_data))

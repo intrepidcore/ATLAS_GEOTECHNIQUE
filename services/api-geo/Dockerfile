@@ -17,6 +17,8 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 # Now copy real sources
 COPY . .
+# Activer le mode offline sqlx (utilise les métadonnées .sqlx/)
+ENV SQLX_OFFLINE=true
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release
 

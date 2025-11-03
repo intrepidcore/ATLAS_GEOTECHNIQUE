@@ -7,11 +7,13 @@ import { ThematicMapManager } from './thematic/thematic-maps'
 import { ThematicPanel } from './thematic/thematic-panel'
 // import { ImportBulkWizard } from './import-bulk-wizard' // V2 - désactivé
 import { bootImportWizardV3 } from './import-bulk-wizard_v3'
+import { ImportWizardV2 } from './import-wizard-v2'
 import { APP_VERSION } from './version'
-import { initAccordions, initDropdowns, initKeyboardShortcuts, initFilterListeners, initCloseMailleActions, showMailleActions } from './right-panel'
+import { initAccordions, initDirectButtons, initKeyboardShortcuts, initFilterListeners, initCloseMailleActions, showMailleActions } from './right-panel'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
+import './import-wizard-v2.css'
 
 // Enregistrer tous les composants Chart.js
 Chart.register(...registerables)
@@ -2543,8 +2545,9 @@ const geotechForm = new GeotechnicalFormManager(
   }
 )
 
-// Bouton pour ouvrir le formulaire géotechnique
-safeAddEventListener('newGeotechSurveyBtn', 'click', () => {
+// Écouter l'événement custom pour ouvrir le formulaire géotechnique (depuis dropdown)
+window.addEventListener('open-geotech-form', () => {
+  console.log('[MAIN] Ouverture formulaire géotechnique')
   geotechForm.initForm('geotechFormContainer')
 })
 
@@ -3216,35 +3219,41 @@ safeAddEventListener('showDuplicatesBtn', 'click', () => {
    Bootstrap Import Wizard V3
    ========================= */
 
-function registerImportHandlers(wizard: ReturnType<typeof bootImportWizardV3>) {
-  if (!wizard) {
+function registerImportHandlers(wizardV2: ImportWizardV2) {
+  if (!wizardV2) {
     console.error('[BOOTSTRAP] Wizard non initialisé, handlers non enregistrés')
     return
   }
 
-  safeAddEventListener('importCsvBtn', 'click', () => {
-    console.log('[IMPORT] Ouverture du wizard V3...')
-    wizard.open()
-  })
-
-  // Si vous avez un bouton séparé pour bulk
-  safeAddEventListener('importBulkBtn', 'click', () => {
-    console.log('[IMPORT] Ouverture du wizard V3 (bulk)...')
-    wizard.open()
+  // Écouter l'événement custom depuis les boutons directs
+  window.addEventListener('open-import-wizard', () => {
+    console.log('[IMPORT] Événement open-import-wizard reçu')
+    console.log('[IMPORT] Ouverture Import Wizard v2.3.0...')
+    wizardV2.open()
   })
 
   console.log('[BOOTSTRAP] ✅ Handlers import enregistrés')
 }
 
 function bootstrapImportWizard() {
-  console.log('[BOOTSTRAP] Initialisation Import Bulk Wizard V3...')
-  const wizard = bootImportWizardV3(API_GEO)
+  console.log('[BOOTSTRAP] Initialisation Import Wizard v2.3.0...')
   
-  if (wizard) {
-    console.log('[BOOTSTRAP] ✅ Import Bulk Wizard V3 initialisé')
-    registerImportHandlers(wizard)
+  // Créer le container pour le wizard
+  let wizardContainer = document.getElementById('importWizardV2Container')
+  if (!wizardContainer) {
+    wizardContainer = document.createElement('div')
+    wizardContainer.id = 'importWizardV2Container'
+    wizardContainer.style.display = 'none'
+    document.body.appendChild(wizardContainer)
+  }
+  
+  const wizardV2 = new ImportWizardV2('importWizardV2Container', API_GEO)
+  
+  if (wizardV2) {
+    console.log('[BOOTSTRAP] ✅ Import Wizard v2.3.0 initialisé')
+    registerImportHandlers(wizardV2)
   } else {
-    console.error('[BOOTSTRAP] ❌ Échec initialisation Import Bulk Wizard V3')
+    console.error('[BOOTSTRAP] ❌ Échec initialisation Import Wizard v2.3.0')
   }
 }
 
@@ -3285,9 +3294,9 @@ if (document.readyState === 'loading') {
     updateAppVersion()
     bootstrapImportWizard()
     initTabs()
-    // Panneau droit v2.1.0
+    // Panneau droit v2.3.0
     initAccordions()
-    initDropdowns()
+    initDirectButtons()
     initKeyboardShortcuts()
     initFilterListeners()
     initCloseMailleActions()
@@ -3296,9 +3305,9 @@ if (document.readyState === 'loading') {
   updateAppVersion()
   bootstrapImportWizard()
   initTabs()
-  // Panneau droit v2.1.0
+  // Panneau droit v2.3.0
   initAccordions()
-  initDropdowns()
+  initDirectButtons()
   initKeyboardShortcuts()
   initFilterListeners()
   initCloseMailleActions()

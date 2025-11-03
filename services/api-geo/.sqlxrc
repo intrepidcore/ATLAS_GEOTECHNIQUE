@@ -1,0 +1,3 @@
+# Configuration sqlx
+# Désactiver la vérification en ligne pendant le build Docker
+offline = false

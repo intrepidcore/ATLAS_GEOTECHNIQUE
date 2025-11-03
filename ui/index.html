@@ -422,17 +422,11 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           </div>
           <div class="accordion-content" id="sondages-content">
             
-            <!-- Dropdown Nouveau -->
-            <div class="dropdown">
-              <button class="btn primary dropdown-toggle" id="newSurveyBtn">+ Nouveau ▼</button>
-              <div class="dropdown-menu" id="newSurveyMenu">
-                <a href="#" data-action="new-geotech">🧪 Géotechnique</a>
-                <a href="#" data-action="import-csv">📥 Import CSV</a>
-                <a href="#" data-action="import-bulk">📦 Import Bulk</a>
-              </div>
-            </div>
-
-            <button id="listSurveysBtn" class="btn btn-block">📋 Liste</button>
+            <!-- Boutons directs v2.3.0 -->
+            <button id="newGeotechBtn" class="btn primary btn-block">🧪 Nouveau Géotechnique</button>
+            <button id="importWizardBtn" class="btn primary btn-block" style="margin-top:8px">📥 Import Wizard</button>
+            
+            <button id="listSurveysBtn" class="btn btn-block" style="margin-top:12px">📋 Liste Sondages</button>
             <button id="geocodeSurveysBtn" class="btn btn-block">🗺️ Géocoder</button>
             <button id="suggestionsBtn" class="btn btn-block">🤖 Suggestions</button>
           </div>

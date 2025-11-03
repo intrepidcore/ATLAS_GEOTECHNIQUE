@@ -18,48 +18,27 @@ export function initAccordions() {
   })
 }
 
-// Init dropdowns
-export function initDropdowns() {
-  const newSurveyBtn = document.getElementById('newSurveyBtn')
-  const newSurveyMenu = document.getElementById('newSurveyMenu')
+// Init boutons directs v2.3.0
+export function initDirectButtons() {
+  const newGeotechBtn = document.getElementById('newGeotechBtn')
+  const importWizardBtn = document.getElementById('importWizardBtn')
   
-  if (newSurveyBtn && newSurveyMenu) {
-    newSurveyBtn.addEventListener('click', (e) => {
+  if (newGeotechBtn) {
+    newGeotechBtn.addEventListener('click', (e) => {
       e.preventDefault()
-      e.stopPropagation()
-      newSurveyMenu.classList.toggle('open')
-    })
-    
-    // Actions dropdown
-    newSurveyMenu.querySelectorAll('a').forEach(link => {
-      link.addEventListener('click', (e) => {
-        e.preventDefault()
-        const action = link.getAttribute('data-action')
-        handleDropdownAction(action)
-        newSurveyMenu.classList.remove('open')
-      })
+      console.log('[RIGHT-PANEL] Ouverture formulaire géotechnique')
+      const event = new CustomEvent('open-geotech-form')
+      window.dispatchEvent(event)
     })
   }
   
-  // Fermer au clic extérieur
-  document.addEventListener('click', () => {
-    document.querySelectorAll('.dropdown-menu.open').forEach(menu => {
-      menu.classList.remove('open')
+  if (importWizardBtn) {
+    importWizardBtn.addEventListener('click', (e) => {
+      e.preventDefault()
+      console.log('[RIGHT-PANEL] Ouverture Import Wizard')
+      const event = new CustomEvent('open-import-wizard')
+      window.dispatchEvent(event)
     })
-  })
-}
-
-function handleDropdownAction(action: string | null) {
-  switch (action) {
-    case 'new-geotech':
-      document.getElementById('newGeotechSurveyBtn')?.click()
-      break
-    case 'import-csv':
-      document.getElementById('importCsvBtn')?.click()
-      break
-    case 'import-bulk':
-      document.getElementById('importCsvBtn')?.click()
-      break
   }
 }
 

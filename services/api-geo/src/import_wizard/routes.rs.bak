@@ -1,0 +1,364 @@
+// Import Wizard v2.3.0 - Routes API
+
+use axum::{
+    extract::{Path, State},
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    routing::{get, post},
+    Json, Router,
+};
+use sqlx::PgPool;
+use uuid::Uuid;
+
+use crate::state::AppState;
+use super::types::*;
+use super::batch;
+
+// ============================================================================
+// POST /imports - Créer une session d'import
+// ============================================================================
+
+pub async fn create_import(
+    State(state): State<AppState>,
+    Json(req): Json<CreateImportRequest>,
+) -> Result<Json<CreateImportResponse>, StatusCode> {
+    let batch_id = batch::generate_batch_id();
+    let id = Uuid::new_v4();
+    
+    // Insérer dans la base de données
+    let result = sqlx::query!(
+        r#"
+        INSERT INTO imports (id, batch_id, filename, sha256, status, params, stats)
+        VALUES ($1, $2, $3, $4, 'pending', '{}', '{}')
+        RETURNING id, batch_id, status
+        "#,
+        id,
+        batch_id,
+        req.filename,
+        req.sha256,
+    )
+    .fetch_one(&state.pool)
+    .await;
+    
+    match result {
+        Ok(row) => {
+            let response = CreateImportResponse {
+                id: row.id,
+                batch_id: row.batch_id,
+                status: ImportStatus::Pending,
+                upload_url: format!("/imports/{}/upload", row.id),
+            };
+            Ok(HttpResponse::Ok().json(response))
+        }
+        Err(e) => {
+            eprintln!("[IMPORT] Erreur création import: {}", e);
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Erreur création import",
+                "details": e.to_string()
+            })))
+        }
+    }
+}
+
+// ============================================================================
+// POST /imports/{id}/upload - Upload du fichier
+// ============================================================================
+
+pub async fn upload_file(
+    pool: web::Data<PgPool>,
+    id: web::Path<Uuid>,
+    payload: web::Bytes,
+) -> Result<HttpResponse> {
+    let import_id = id.into_inner();
+    
+    // Vérifier que l'import existe
+    let import = sqlx::query_as!(
+        Import,
+        r#"SELECT * FROM imports WHERE id = $1"#,
+        import_id
+    )
+    .fetch_optional(pool.get_ref())
+    .await;
+    
+    match import {
+        Ok(Some(_)) => {
+            // Sauvegarder le fichier temporairement
+            let file_path = upload::save_temp_file(import_id, &payload).await?;
+            
+            // Détecter l'encodage et le délimiteur
+            let detected = upload::detect_file_properties(&file_path).await?;
+            
+            Ok(HttpResponse::Ok().json(serde_json::json!({
+                "status": "uploaded",
+                "file_path": file_path,
+                "detected": detected
+            })))
+        }
+        Ok(None) => {
+            Ok(HttpResponse::NotFound().json(serde_json::json!({
+                "error": "Import non trouvé"
+            })))
+        }
+        Err(e) => {
+            eprintln!("[IMPORT] Erreur upload: {}", e);
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Erreur upload",
+                "details": e.to_string()
+            })))
+        }
+    }
+}
+
+// ============================================================================
+// POST /imports/{id}/preview - Dry-run avec validation
+// ============================================================================
+
+pub async fn preview_import(
+    pool: web::Data<PgPool>,
+    id: web::Path<Uuid>,
+    req: web::Json<PreviewRequest>,
+) -> Result<HttpResponse> {
+    let import_id = id.into_inner();
+    
+    // Récupérer l'import
+    let import = sqlx::query_as!(
+        Import,
+        r#"SELECT * FROM imports WHERE id = $1"#,
+        import_id
+    )
+    .fetch_optional(pool.get_ref())
+    .await;
+    
+    match import {
+        Ok(Some(import_record)) => {
+            // Charger le fichier temporaire
+            let file_path = format!("/tmp/atlas_import_{}.tmp", import_id);
+            
+            // Valider les données (dry-run)
+            let preview = validation::validate_import(
+                &file_path,
+                &req.mapping,
+                &req.geometry_config,
+                &req.upload_options,
+                &req.conflict_policy,
+                pool.get_ref(),
+            ).await?;
+            
+            // Sauvegarder les erreurs dans la base
+            if !preview.errors.is_empty() {
+                validation::save_errors(pool.get_ref(), import_id, &preview.errors).await?;
+            }
+            
+            Ok(HttpResponse::Ok().json(preview))
+        }
+        Ok(None) => {
+            Ok(HttpResponse::NotFound().json(serde_json::json!({
+                "error": "Import non trouvé"
+            })))
+        }
+        Err(e) => {
+            eprintln!("[IMPORT] Erreur preview: {}", e);
+            Ok(HttpResponse::InternalServerError().json(serde_json::json!({
+                "error": "Erreur preview",
+                "details": e.to_string()
+            })))
+        }
+    }
+}
+
+// ============================================================================
+// POST /imports/{id}/commit - Lancer l'import réel
+// ============================================================================
+
+pub async fn commit_import(
+    pool: web::Data<PgPool>,
+    id: web::Path<Uuid>,
+    req: web::Json<CommitRequest>,
+) -> Result<HttpResponse> {
+    let import_id = id.into_inner();
+    
+    // Mettre à jour le statut
+    sqlx::query!(
+        r#"UPDATE imports SET status = 'running', updated_at = now() WHERE id = $1"#,
+        import_id
+    )
+    .execute(pool.get_ref())
+    .await
+    .map_err(|e| {
+        eprintln!("[IMPORT] Erreur mise à jour statut: {}", e);
+        actix_web::error::ErrorInternalServerError("Erreur mise à jour statut")
+    })?;
+    
+    // Récupérer le batch_id
+    let batch_id = sqlx::query_scalar!(
+        r#"SELECT batch_id FROM imports WHERE id = $1"#,
+        import_id
+    )
+    .fetch_one(pool.get_ref())
+    .await
+    .map_err(|e| {
+        eprintln!("[IMPORT] Erreur récupération batch_id: {}", e);
+        actix_web::error::ErrorInternalServerError("Erreur récupération batch_id")
+    })?;
+    
+    let response = CommitResponse {
+        batch_id,
+        status: ImportStatus::Running,
+    };
+    
+    Ok(HttpResponse::Ok().json(response))
+    
+    // Note: L'import réel sera géré par un worker asynchrone
+    // Pour l'instant, on retourne juste le statut "running"
+}
+
+// ============================================================================
+// GET /imports/{id}/log - Télécharger le rapport
+// ============================================================================
+
+pub async fn get_import_log(
+    pool: web::Data<PgPool>,
+    id: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let import_id = id.into_inner();
+    
+    // Récupérer les erreurs
+    let errors = sqlx::query_as!(
+        ImportError,
+        r#"SELECT * FROM import_errors WHERE import_id = $1 ORDER BY row_no"#,
+        import_id
+    )
+    .fetch_all(pool.get_ref())
+    .await
+    .map_err(|e| {
+        eprintln!("[IMPORT] Erreur récupération log: {}", e);
+        actix_web::error::ErrorInternalServerError("Erreur récupération log")
+    })?;
+    
+    // Générer le CSV
+    let mut csv = String::from("Ligne,Colonne,Code,Message,Sévérité,Valeur,Solution\n");
+    
+    for error in errors {
+        csv.push_str(&format!(
+            "{},{},{},{},{},{},{}\n",
+            error.row_no,
+            error.column_name.unwrap_or_default(),
+            error.error_code,
+            error.message,
+            error.severity,
+            error.value.unwrap_or_default(),
+            error.hint.unwrap_or_default()
+        ));
+    }
+    
+    Ok(HttpResponse::Ok()
+        .content_type("text/csv")
+        .insert_header(("Content-Disposition", "attachment; filename=\"import_errors.csv\""))
+        .body(csv))
+}
+
+// ============================================================================
+// POST /imports/{id}/undo - Annuler un import
+// ============================================================================
+
+pub async fn undo_import(
+    pool: web::Data<PgPool>,
+    id: web::Path<Uuid>,
+) -> Result<HttpResponse> {
+    let import_id = id.into_inner();
+    
+    // Récupérer le batch_id
+    let batch_id = sqlx::query_scalar!(
+        r#"SELECT batch_id FROM imports WHERE id = $1"#,
+        import_id
+    )
+    .fetch_one(pool.get_ref())
+    .await
+    .map_err(|e| {
+        eprintln!("[IMPORT] Erreur récupération batch_id: {}", e);
+        actix_web::error::ErrorInternalServerError("Erreur récupération batch_id")
+    })?;
+    
+    // Soft delete des sondages
+    let sondages_deleted = sqlx::query!(
+        r#"
+        UPDATE sondages 
+        SET deleted_at = now(), deleted_by_batch = $1
+        WHERE created_by_batch = $1 AND deleted_at IS NULL
+        "#,
+        batch_id
+    )
+    .execute(pool.get_ref())
+    .await
+    .map_err(|e| {
+        eprintln!("[IMPORT] Erreur undo sondages: {}", e);
+        actix_web::error::ErrorInternalServerError("Erreur undo sondages")
+    })?
+    .rows_affected() as usize;
+    
+    // Soft delete des essais
+    let essais_deleted = sqlx::query!(
+        r#"
+        UPDATE essais_geotechniques
+        SET deleted_at = now(), deleted_by_batch = $1
+        WHERE created_by_batch = $1 AND deleted_at IS NULL
+        "#,
+        batch_id
+    )
+    .execute(pool.get_ref())
+    .await
+    .map_err(|e| {
+        eprintln!("[IMPORT] Erreur undo essais: {}", e);
+        actix_web::error::ErrorInternalServerError("Erreur undo essais")
+    })?
+    .rows_affected() as usize;
+    
+    // Mettre à jour le statut de l'import
+    sqlx::query!(
+        r#"UPDATE imports SET status = 'undone', updated_at = now() WHERE id = $1"#,
+        import_id
+    )
+    .execute(pool.get_ref())
+    .await
+    .map_err(|e| {
+        eprintln!("[IMPORT] Erreur mise à jour statut: {}", e);
+        actix_web::error::ErrorInternalServerError("Erreur mise à jour statut")
+    })?;
+    
+    let response = UndoResponse {
+        undone: UndoStats {
+            sondages: sondages_deleted,
+            essais: essais_deleted,
+            grids_recalculated: 0, // TODO: implémenter le recalcul
+        },
+        status: "undone".to_string(),
+    };
+    
+    Ok(HttpResponse::Ok().json(response))
+}
+
+// ============================================================================
+// GET /imports/presets - Liste des presets disponibles
+// ============================================================================
+
+pub async fn get_presets() -> Result<HttpResponse> {
+    let presets = get_all_presets();
+    Ok(HttpResponse::Ok().json(presets))
+}
+
+// ============================================================================
+// Configuration des routes
+// ============================================================================
+
+pub fn configure_routes(cfg: &mut web::ServiceConfig) {
+    cfg.service(
+        web::scope("/imports")
+            .route("", web::post().to(create_import))
+            .route("/presets", web::get().to(get_presets))
+            .route("/{id}/upload", web::post().to(upload_file))
+            .route("/{id}/preview", web::post().to(preview_import))
+            .route("/{id}/commit", web::post().to(commit_import))
+            .route("/{id}/log", web::get().to(get_import_log))
+            .route("/{id}/undo", web::post().to(undo_import))
+    );
+}
