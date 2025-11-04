@@ -1,0 +1,5 @@
+Write-Host "=== STATISTIQUES IMPORT ==="
+docker exec -i atlas-db psql -U atlas -d atlas_clean -c "SELECT COUNT(*) as sondages FROM sondages WHERE deleted_at IS NULL"
+docker exec -i atlas-db psql -U atlas -d atlas_clean -c "SELECT COUNT(*) as essais FROM essais_geotechniques WHERE deleted_at IS NULL"
+docker exec -i atlas-db psql -U atlas -d atlas_clean -c "SELECT COUNT(*) as physiques FROM essais_physiques WHERE deleted_at IS NULL"
+docker exec -i atlas-db psql -U atlas -d atlas_clean -c "SELECT COUNT(*) as classif FROM essais_classif WHERE deleted_at IS NULL"

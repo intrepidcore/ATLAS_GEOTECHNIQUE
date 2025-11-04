@@ -12,6 +12,7 @@ import { APP_VERSION } from './version'
 import { initAccordions, initDirectButtons, initKeyboardShortcuts, initFilterListeners, initCloseMailleActions, showMailleActions } from './right-panel'
 import { renderPhysiques, renderClassif, renderSurveys, type CellCompleteOut } from './cell-complete-types'
 import { CONFIG } from './config'
+import { SondagesModal } from './modal/sondages-modal'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -3318,11 +3319,15 @@ function initRightPanel() {
 function initTabsPanel() {
   console.log('[v2.5.0] Initialisation TabsManager')
   
-  const container = document.querySelector('#right-panel')
+  // Chercher #sidebar (ancien nom) ou #right-panel (nouveau nom)
+  const container = document.querySelector('#sidebar') || document.querySelector('#right-panel')
   if (!container) {
-    console.error('[v2.5.0] Container #right-panel not found')
+    console.error('[v2.5.0] Container #sidebar ou #right-panel not found')
     return
   }
+  
+  // Vider le container pour la nouvelle UI
+  container.innerHTML = ''
   
   // Import dynamique pour éviter le chargement si flag OFF
   import('./tabs/tab-manager').then(({ createTabsManager }) => {
@@ -3381,6 +3386,22 @@ function initLegacyPanel() {
   initCloseMailleActions()
 }
 
+/* =========================
+   v2.5.0 - Modal Sondages
+   ========================= */
+
+function initSondagesModal() {
+  const modal = new SondagesModal(API_GEO)
+  
+  // Écouter l'événement d'ouverture
+  window.addEventListener('open-sondages-modal', () => {
+    console.log('[v2.5.0] Ouverture modal Sondages')
+    modal.open()
+  })
+  
+  console.log('[v2.5.0] ✅ Modal Sondages initialisée')
+}
+
 // Garantit l'ordre : d'abord boot, ensuite listeners
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -3389,6 +3410,8 @@ if (document.readyState === 'loading') {
     initTabs()
     // Panneau droit (feature flag)
     initRightPanel()
+    // v2.5.0: Modal Sondages
+    initSondagesModal()
   }, { once: true })
 } else {
   updateAppVersion()
@@ -3396,4 +3419,6 @@ if (document.readyState === 'loading') {
   initTabs()
   // Panneau droit (feature flag)
   initRightPanel()
+  // v2.5.0: Modal Sondages
+  initSondagesModal()
 }

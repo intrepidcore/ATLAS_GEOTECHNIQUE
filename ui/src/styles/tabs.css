@@ -367,6 +367,171 @@
 }
 
 /* ============================================
+   MODAL SONDAGES (Approche Centrale)
+   ============================================ */
+
+.sondages-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(3px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sondages-modal {
+  width: 90vw;
+  max-width: 1200px;
+  height: 85vh;
+  background: var(--bg-panel, #0f172a);
+  border-radius: 12px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.sondages-modal-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--tab-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sondages-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--tab-text-primary);
+}
+
+.modal-close {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--tab-text);
+  font-size: 28px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+
+.modal-close:hover {
+  background: var(--tab-bg-hover);
+  color: var(--tab-text-primary);
+}
+
+.sondages-modal-body {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+/* ============================================
+   ONGLETS VERTICAUX
+   ============================================ */
+
+.sondages-tabs-vertical {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--tab-bg);
+  border-right: 1px solid var(--tab-border);
+  display: flex;
+  flex-direction: column;
+  padding: 12px 0;
+  overflow-y: auto;
+}
+
+.tab-vertical {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  background: transparent;
+  border: none;
+  border-left: 3px solid transparent;
+  color: var(--tab-text);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: left;
+}
+
+.tab-vertical:hover {
+  background: var(--tab-bg-hover);
+  color: var(--tab-text-primary);
+}
+
+.tab-vertical.active {
+  background: var(--tab-bg-active);
+  border-left-color: var(--tab-text-active);
+  color: var(--tab-text-active);
+}
+
+.tab-vertical .tab-icon {
+  font-size: 20px;
+  line-height: 1;
+}
+
+.tab-vertical .tab-label {
+  flex: 1;
+}
+
+/* ============================================
+   CONTENU MODAL
+   ============================================ */
+
+.sondages-content {
+  flex: 1;
+  overflow-y: auto;
+  position: relative;
+}
+
+.sondages-content .tab-pane {
+  display: none;
+  height: 100%;
+  animation: fadeInContent 0.3s ease;
+}
+
+.sondages-content .tab-pane.active {
+  display: block;
+}
+
+@keyframes fadeInContent {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
 

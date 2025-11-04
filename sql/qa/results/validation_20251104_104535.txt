@@ -1,0 +1,61 @@
+============================================================
+QA VALIDATION - RECAP IMPORTS (bleu + Granulom├®trie + limite)
+============================================================
+
+1´©ÅÔâú  COMPTEURS & COUVERTURE
+-----------------------------------------------------------
+ projet  | sondages_actual | sondages_expected | status_sondages | essais_actual | essais_expected | status_essais 
+---------+-----------------+-------------------+-----------------+---------------+-----------------+---------------
+ BLEU    |              72 |                72 | Ô£à PASS         |           213 |             213 | Ô£à PASS
+ GRANULO |              72 |                72 | Ô£à PASS         |           214 |             214 | Ô£à PASS
+ LIMITE  |              32 |                32 | Ô£à PASS         |            94 |              94 | Ô£à PASS
+(3 rows)
+
+
+2´©ÅÔâú  M├ëTHODES GRANULO (distribution tamisage/s├®dimentom├®trie)
+-----------------------------------------------------------
+ methode  | nb_points |  pct   
+----------+-----------+--------
+ tamisage |       214 | 100.00
+(1 row)
+
+
+3´©ÅÔâú  DOUBLONS (essai_id, sieve_mm) - DOIT ├èTRE VIDE
+-----------------------------------------------------------
+         status          
+-------------------------
+ Ô£à PASS - Aucun doublon
+(1 row)
+
+
+4´©ÅÔâú  BORNES % PASSING [0,100] - DOIT ├èTRE VIDE
+-----------------------------------------------------------
+                  status                   
+-------------------------------------------
+ Ô£à PASS - Toutes les valeurs dans [0,100]
+(1 row)
+
+
+5´©ÅÔâú  MONOTONICIT├ë (% passant d├®croissant) - Anomalies ├á documenter
+-----------------------------------------------------------
+           status           
+----------------------------
+ Ô£à PASS - Aucune inversion
+(1 row)
+
+
+6´©ÅÔâú  G├ëOLOCALISATION - Modes & Grid Codes
+-----------------------------------------------------------
+                             status                             
+----------------------------------------------------------------
+ BLEU: exact = 72 sondages (ÔÜá´©Å  216 sans grid_code)
+ --- D├®tail par projet et mode ---
+ GRANULO: exact = 4 sondages (ÔÜá´©Å  12 sans grid_code)
+ LIMITE: exact = 32 sondages (ÔÜá´©Å  94 sans grid_code)
+ Ô£à PASS - Aucun spread, tous les adm_random_cell ont grid_code
+(5 rows)
+
+
+============================================================
+Ô£à VALIDATION TERMIN├ëE
+============================================================

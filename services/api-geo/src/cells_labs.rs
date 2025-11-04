@@ -1,13 +1,13 @@
 // Module pour les données de laboratoire par maille
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
     response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use crate::state::AppState;
+use crate::cells_kpi::fetch_kpi_row;
 
 // ============================================================================
 // Types
@@ -181,6 +181,7 @@ pub struct CompleteKpi {
     pub n_essais: i64,
     pub pct_spread: f64,
     pub depth_max_m: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
 }
 
@@ -226,61 +227,51 @@ pub async fn get_cell_complete(
 ) -> impl IntoResponse {
     let pool = &state.pool;
 
-    // 1) KPI complets
-    let kpi_row = sqlx::query(
-        r#"
-        SELECT
-          COUNT(DISTINCT v.sondage_id)::bigint AS n_sondages,
-          COUNT(DISTINCT e.id)::bigint AS n_echantillons,
-          (COUNT(DISTINCT a.id) + COUNT(DISTINCT vbs.id) + COUNT(DISTINCT p.id) + COUNT(DISTINCT g.id))::bigint AS n_essais,
-          COALESCE(
-            100.0 * COUNT(DISTINCT CASE WHEN s.loc_mode = 'spread' THEN s.id END)::numeric / 
-            NULLIF(COUNT(DISTINCT s.id), 0),
-            0
-          ) AS pct_spread,
-          MAX(e.depth_m) AS depth_max_m
-        FROM v_maille_sondages_all v
-        JOIN sondages s ON s.id = v.sondage_id
-        LEFT JOIN echantillons e ON e.sondage_id = v.sondage_id
-        LEFT JOIN essais_atterberg a ON a.echantillon_id = e.id
-        LEFT JOIN essais_vbs vbs ON vbs.echantillon_id = e.id
-        LEFT JOIN essais_proctor p ON p.echantillon_id = e.id
-        LEFT JOIN essais_gonflement g ON g.echantillon_id = e.id
-        WHERE v.maille_code = $1
-        "#,
-    )
-    .bind(&code)
-    .fetch_one(pool)
-    .await;
+    // 1) KPI complets (v2 - source unique via fetch_kpi_row)
+    let kpi_row = fetch_kpi_row(pool, &code).await;
 
     let kpi = match kpi_row {
-        Ok(row) => CompleteKpi {
-            n_sondages: row.try_get("n_sondages").unwrap_or(0),
-            n_echantillons: row.try_get("n_echantillons").unwrap_or(0),
-            n_essais: row.try_get("n_essais").unwrap_or(0),
-            pct_spread: row.try_get::<f64, _>("pct_spread").unwrap_or(0.0),
-            depth_max_m: row.try_get("depth_max_m").ok(),
-            updated_at: Some(chrono::Utc::now().to_rfc3339()),
+        Ok(Some(r)) => {
+            CompleteKpi {
+                n_sondages: r.n_sondages,
+                n_echantillons: r.n_essais, // Compat
+                n_essais: r.n_essais,
+                pct_spread: r.pct_spread,
+                depth_max_m: r.depth_max_m,
+                updated_at: Some(chrono::Utc::now().to_rfc3339()),
+            }
         },
-        Err(_) => CompleteKpi {
-            n_sondages: 0,
-            n_echantillons: 0,
-            n_essais: 0,
-            pct_spread: 0.0,
-            depth_max_m: None,
-            updated_at: Some(chrono::Utc::now().to_rfc3339()),
+        Ok(None) => {
+            CompleteKpi {
+                n_sondages: 0,
+                n_echantillons: 0,
+                n_essais: 0,
+                pct_spread: 0.0,
+                depth_max_m: None,
+                updated_at: Some(chrono::Utc::now().to_rfc3339()),
+            }
+        },
+        Err(e) => {
+            eprintln!("[ERROR] KPI v2 query failed for code={}: {:?}", code, e);
+            CompleteKpi {
+                n_sondages: 0,
+                n_echantillons: 0,
+                n_essais: 0,
+                pct_spread: 0.0,
+                depth_max_m: None,
+                updated_at: Some(chrono::Utc::now().to_rfc3339()),
+            }
         },
     };
-
-    // 2) Overview (réutilise les requêtes existantes)
+    
+    // 2) Overview (v2 - utilise essais_geotechniques)
     let atterberg = sqlx::query_as::<_, AtterbergPoint>(
         r#"
-        SELECT e.depth_m, a.wl, a.wp
-        FROM v_maille_sondages_all v
-        JOIN echantillons e ON e.sondage_id = v.sondage_id
-        JOIN essais_atterberg a ON a.echantillon_id = e.id
-        WHERE v.maille_code = $1
-        ORDER BY e.depth_m
+        SELECT eg.depth_m, eg.wl, eg.wp
+        FROM essais_geotechniques eg
+        JOIN sondages s ON s.id = eg.sondage_id
+        WHERE s.grid_code = $1 AND eg.wl IS NOT NULL AND eg.deleted_at IS NULL
+        ORDER BY eg.depth_m
         "#,
     )
     .bind(&code)
@@ -290,12 +281,11 @@ pub async fn get_cell_complete(
 
     let vbs = sqlx::query_as::<_, VbsPoint>(
         r#"
-        SELECT e.depth_m, vbs.vbs
-        FROM v_maille_sondages_all v
-        JOIN echantillons e ON e.sondage_id = v.sondage_id
-        JOIN essais_vbs vbs ON vbs.echantillon_id = e.id
-        WHERE v.maille_code = $1
-        ORDER BY e.depth_m
+        SELECT eg.depth_m, eg.vbs
+        FROM essais_geotechniques eg
+        JOIN sondages s ON s.id = eg.sondage_id
+        WHERE s.grid_code = $1 AND eg.vbs IS NOT NULL AND eg.deleted_at IS NULL
+        ORDER BY eg.depth_m
         "#,
     )
     .bind(&code)
@@ -305,10 +295,10 @@ pub async fn get_cell_complete(
 
     let depth_hist = sqlx::query_as::<_, DepthBin>(
         r#"
-        SELECT width_bucket(e.depth_m, 0, 30, 6) AS bin, COUNT(*)::bigint AS n
-        FROM v_maille_sondages_all v
-        JOIN echantillons e ON e.sondage_id = v.sondage_id
-        WHERE v.maille_code = $1
+        SELECT width_bucket(eg.depth_m, 0, 30, 6) AS bin, COUNT(*)::bigint AS n
+        FROM essais_geotechniques eg
+        JOIN sondages s ON s.id = eg.sondage_id
+        WHERE s.grid_code = $1 AND eg.deleted_at IS NULL
         GROUP BY bin
         ORDER BY bin
         "#,

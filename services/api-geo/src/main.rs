@@ -2,7 +2,7 @@ use axum::{routing::{get, post, delete}, Json, Router};
 use axum::http::Method;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer};
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod version;
@@ -21,6 +21,7 @@ mod import_wizard;
 mod thematic;
 mod geocoding;
 mod cells_labs;
+mod cells_kpi;
 mod surveys_compat;
 pub mod state;
 
@@ -88,6 +89,7 @@ async fn main() -> anyhow::Result<()> {
         // Cell labs data (panneau gauche)
         .route("/cells/:code/labs", get(cells_labs::get_cell_labs))
         .route("/cells/:code/complete", get(cells_labs::get_cell_complete))
+        .route("/cells/:code/test-kpi", get(cells_kpi::test_kpi_endpoint))
         .route("/adm/:level", get(routes::list_adm_zones))
         .route("/adm1", get(surveys::list_adm1))
         .route("/adm2", get(surveys::list_adm2))

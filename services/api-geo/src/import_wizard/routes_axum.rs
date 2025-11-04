@@ -58,7 +58,7 @@ pub async fn get_presets() -> Json<Vec<MappingPreset>> {
 }
 
 pub async fn preview_import(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Path(id): Path<Uuid>,
     Json(req): Json<PreviewRequest>,
 ) -> Result<Json<PreviewResponse>, StatusCode> {

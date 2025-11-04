@@ -18,7 +18,7 @@ export function initAccordions() {
   })
 }
 
-// Init boutons directs v2.3.0
+// Init boutons directs v2.3.0 + v2.5.0 Modal
 export function initDirectButtons() {
   const newGeotechBtn = document.getElementById('newGeotechBtn')
   const importWizardBtn = document.getElementById('importWizardBtn')
@@ -37,6 +37,18 @@ export function initDirectButtons() {
       e.preventDefault()
       console.log('[RIGHT-PANEL] Ouverture Import Wizard')
       const event = new CustomEvent('open-import-wizard')
+      window.dispatchEvent(event)
+    })
+  }
+  
+  // v2.5.0: Bouton accordéon Sondages ouvre modal central
+  const sondagesHeader = document.querySelector('[data-section="sondages"]')
+  if (sondagesHeader) {
+    sondagesHeader.addEventListener('click', (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      console.log('[v2.5.0] Ouverture modal Sondages')
+      const event = new CustomEvent('open-sondages-modal')
       window.dispatchEvent(event)
     })
   }

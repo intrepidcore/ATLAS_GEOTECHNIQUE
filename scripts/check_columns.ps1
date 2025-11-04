@@ -1,1 +1,2 @@
-docker compose exec db psql -U atlas -d atlas -c "SELECT column_name FROM information_schema.columns WHERE table_name = 'mailles_geotechnique_stats' ORDER BY ordinal_position;"
+# Vérifier les colonnes de la table essais_geotechniques
+docker exec -i atlas-db psql -U atlas -d atlas_clean -c "\d essais_geotechniques"
