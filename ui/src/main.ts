@@ -3316,10 +3316,53 @@ function initRightPanel() {
 }
 
 function initTabsPanel() {
-  console.log('[v2.5.0] TODO: Implémenter TabsManager (PR2)')
-  // TODO PR2: Créer et initialiser le gestionnaire d'onglets
-  // const manager = createTabsManager()
-  // manager.init(container, tabs)
+  console.log('[v2.5.0] Initialisation TabsManager')
+  
+  const container = document.querySelector('#right-panel')
+  if (!container) {
+    console.error('[v2.5.0] Container #right-panel not found')
+    return
+  }
+  
+  // Import dynamique pour éviter le chargement si flag OFF
+  import('./tabs/tab-manager').then(({ createTabsManager }) => {
+    return Promise.all([
+      import('./tabs/tab-nouveau'),
+      import('./tabs/tab-import-wizard'),
+      import('./tabs/tab-liste-sondages'),
+    ]).then(([tabNouveau, tabImport, tabListe]) => {
+      const tabs = [
+        {
+          id: 'nouveau' as const,
+          label: 'Nouveau',
+          icon: '📝',
+          component: tabNouveau.createTabNouveau(API_GEO),
+        },
+        {
+          id: 'import' as const,
+          label: 'Import',
+          icon: '📥',
+          component: tabImport.createTabImportWizard(),
+        },
+        {
+          id: 'liste' as const,
+          label: 'Liste',
+          icon: '📋',
+          component: tabListe.createTabListeSondages(API_GEO),
+        },
+      ]
+      
+      const manager = createTabsManager()
+      manager.init(container as HTMLElement, tabs)
+      
+      // Exposer pour debug
+      ;(window as any).__tabsManager = manager
+      
+      console.log('[v2.5.0] ✅ TabsManager initialized')
+    })
+  }).catch(err => {
+    console.error('[v2.5.0] Failed to initialize TabsManager:', err)
+  })
 }
 
 function initLegacyPanel() {
