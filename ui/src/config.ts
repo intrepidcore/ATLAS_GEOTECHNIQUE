@@ -18,8 +18,8 @@ export const CONFIG = {
       if (override === 'on') return true;
       if (override === 'off') return false;
       
-      // Valeur par défaut (OFF jusqu'à PR4)
-      return false;
+      // Valeur par défaut (ON - v2.5.0 activée)
+      return true;
     },
   },
   
