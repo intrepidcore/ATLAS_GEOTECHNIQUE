@@ -11,10 +11,12 @@ import { ImportWizardV2 } from './import-wizard-v2'
 import { APP_VERSION } from './version'
 import { initAccordions, initDirectButtons, initKeyboardShortcuts, initFilterListeners, initCloseMailleActions, showMailleActions } from './right-panel'
 import { renderPhysiques, renderClassif, renderSurveys, type CellCompleteOut } from './cell-complete-types'
+import { CONFIG } from './config'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
 import './import-wizard-v2.css'
+import './styles/tabs.css'
 
 // Enregistrer tous les composants Chart.js
 Chart.register(...registerables)
@@ -3297,27 +3299,51 @@ function initTabs() {
   })
 }
 
+/* =========================
+   v2.5.0 - Panneau QGIS-like
+   ========================= */
+
+function initRightPanel() {
+  if (CONFIG.features.uiPanelTabs) {
+    // v2.5.0 - Nouvelle UI à onglets
+    console.log('[v2.5.0] Initialisation panneau à onglets QGIS-like')
+    initTabsPanel()
+  } else {
+    // Ancienne UI (v2.4.x)
+    console.log('[Legacy] Initialisation panneau classique')
+    initLegacyPanel()
+  }
+}
+
+function initTabsPanel() {
+  console.log('[v2.5.0] TODO: Implémenter TabsManager (PR2)')
+  // TODO PR2: Créer et initialiser le gestionnaire d'onglets
+  // const manager = createTabsManager()
+  // manager.init(container, tabs)
+}
+
+function initLegacyPanel() {
+  // Code existant
+  initAccordions()
+  initDirectButtons()
+  initKeyboardShortcuts()
+  initFilterListeners()
+  initCloseMailleActions()
+}
+
 // Garantit l'ordre : d'abord boot, ensuite listeners
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     updateAppVersion()
     bootstrapImportWizard()
     initTabs()
-    // Panneau droit v2.3.0
-    initAccordions()
-    initDirectButtons()
-    initKeyboardShortcuts()
-    initFilterListeners()
-    initCloseMailleActions()
+    // Panneau droit (feature flag)
+    initRightPanel()
   }, { once: true })
 } else {
   updateAppVersion()
   bootstrapImportWizard()
   initTabs()
-  // Panneau droit v2.3.0
-  initAccordions()
-  initDirectButtons()
-  initKeyboardShortcuts()
-  initFilterListeners()
-  initCloseMailleActions()
+  // Panneau droit (feature flag)
+  initRightPanel()
 }
