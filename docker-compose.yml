@@ -32,8 +32,8 @@ services:
       - ./.env
       - ./.env.example
     environment:
-      DATABASE_URL: ${DATABASE_URL}
-      RUST_LOG: ${RUST_LOG}
+      DATABASE_URL: postgres://atlas:atlas@db:5432/atlas_clean
+      RUST_LOG: ${RUST_LOG:-info}
       API_BIND: 0.0.0.0:8000
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
     depends_on:

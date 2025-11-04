@@ -61,13 +61,8 @@ async fn main() -> anyhow::Result<()> {
     let pool = config::pg_pool_with_retry(5).await?;
     tracing::info!("✅ DB connectée avec succès");
     
-    // Appliquer les migrations automatiquement au démarrage
-    tracing::info!("Application des migrations...");
-    sqlx::migrate!("./migrations")
-        .run(&pool)
-        .await
-        .map_err(|e| anyhow::anyhow!("Erreur lors des migrations: {}", e))?;
-    tracing::info!("✅ Migrations appliquées");
+    // Note: Les migrations sont gérées manuellement via scripts SQL
+    // sqlx::migrate!() désactivé car les migrations sont déjà appliquées
     
     let state = AppState { pool };
 
