@@ -546,6 +546,11 @@ ${JSON.stringify(s,null,2)}
 
   private async openGeocodeDrawer(id: string) {
     const drawer = this.modal!.querySelector('#geocode-drawer') as HTMLElement
+    
+    // Charger la liste des ADM3
+    drawer.innerHTML = '<p style="color:var(--muted);padding:10px;">Chargement...</p>'
+    const adm3List = await this.loadAdm3List()
+    
     drawer.innerHTML = `
       <h4>📍 Géocoder — <span style="font-size:12px;color:var(--muted)">${id.slice(0,8)}…</span></h4>
       <div style="display:grid;gap:10px;">
@@ -557,7 +562,12 @@ ${JSON.stringify(s,null,2)}
         </div>
         <div class="card">
           <h5>Mode ADM (point pseudo-aléatoire dans la maille)</h5>
-          <input id="adm3" placeholder="Code ADM3 (ex: TG051515)">
+          <select id="adm3" style="width:100%;padding:10px;border-radius:6px;border:1px solid #22304d;background:#0f172a;color:var(--text);">
+            <option value="">-- Sélectionner une zone ADM3 --</option>
+            ${adm3List.map(a => `
+              <option value="${a.code}">${a.name} (${a.code}) - ${a.adm2_name || ''}</option>
+            `).join('')}
+          </select>
           <button id="btn-apply-adm" class="btn">✅ Enregistrer</button>
         </div>
       </div>
@@ -576,8 +586,8 @@ ${JSON.stringify(s,null,2)}
     }
 
     const applyAdm = async () => {
-      const adm3 = (drawer.querySelector('#adm3') as HTMLInputElement).value.trim()
-      if (!adm3) return alert('Renseigner ADM3')
+      const adm3 = (drawer.querySelector('#adm3') as HTMLSelectElement).value.trim()
+      if (!adm3) return alert('Sélectionner une zone ADM3')
       await fetch(`${this.apiUrl}/surveys/${id}/geocode`, {
         method:'POST', headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ mode:'adm', adm3 })
@@ -589,6 +599,18 @@ ${JSON.stringify(s,null,2)}
 
     drawer.querySelector('#btn-apply-exact')?.addEventListener('click', applyExact)
     drawer.querySelector('#btn-apply-adm')?.addEventListener('click', applyAdm)
+  }
+
+  private async loadAdm3List(): Promise<Array<{code: string, name: string, adm2_name: string}>> {
+    try {
+      const response = await fetch(`${this.apiUrl}/adm3`)
+      if (!response.ok) return []
+      const data = await response.json()
+      return data
+    } catch (err) {
+      console.error('[Geocode] Erreur chargement ADM3:', err)
+      return []
+    }
   }
   
   private switchTab(tabId: TabId) {

@@ -593,11 +593,20 @@ pub async fn list_ungeocode_surveys(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     
-    let surveys = match sqlx::query_as::<_, (String, String, String, Option<String>, Option<String>, Option<String>, i64)>(
+    let surveys = match sqlx::query!(
         r#"
-        SELECT id, code, location_mode, adm1_name, adm2_name, adm3_name, n_essais
-        FROM sondages_non_geocodes
-        ORDER BY created_at DESC
+        SELECT 
+            s.id,
+            s.code,
+            s.date,
+            s.source,
+            s.adm1_name,
+            s.adm2_name,
+            s.adm3_name,
+            s.created_at,
+            (SELECT COUNT(*) FROM essais WHERE sondage_id = s.id AND deleted_at IS NULL) as "n_essais!"
+        FROM sondages_non_geocodes s
+        ORDER BY s.created_at DESC
         "#
     )
     .fetch_all(pool)
@@ -615,15 +624,62 @@ pub async fn list_ungeocode_surveys(
     
     let result: Vec<serde_json::Value> = surveys
         .into_iter()
-        .map(|(id, code, location_mode, adm1, adm2, adm3, n_essais)| {
+        .map(|row| {
             serde_json::json!({
-                "id": id,
-                "code": code,
-                "location_mode": location_mode,
-                "adm1_name": adm1,
-                "adm2_name": adm2,
-                "adm3_name": adm3,
-                "n_essais": n_essais
+                "id": row.id,
+                "code": row.code,
+                "date": row.date,
+                "source": row.source,
+                "adm1_name": row.adm1_name,
+                "adm2_name": row.adm2_name,
+                "adm3_name": row.adm3_name,
+                "n_essais": row.n_essais
+            })
+        })
+        .collect();
+    
+    (StatusCode::OK, Json(result)).into_response()
+}
+
+/// GET /adm3 - Liste des zones ADM3 pour le dropdown
+pub async fn list_adm3(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    let adm3s = match sqlx::query!(
+        r#"
+        SELECT DISTINCT 
+            adm3 as code,
+            adm3_name as name,
+            adm2_name,
+            adm1_name
+        FROM mailles
+        WHERE adm3 IS NOT NULL AND adm3_name IS NOT NULL
+        ORDER BY adm3_name
+        "#
+    )
+    .fetch_all(pool)
+    .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(?e, "Failed to fetch ADM3 list");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "database error"})),
+            ).into_response();
+        }
+    };
+    
+    let result: Vec<serde_json::Value> = adm3s
+        .into_iter()
+        .map(|row| {
+            serde_json::json!({
+                "code": row.code,
+                "name": row.name,
+                "adm2_name": row.adm2_name,
+                "adm1_name": row.adm1_name
             })
         })
         .collect();
