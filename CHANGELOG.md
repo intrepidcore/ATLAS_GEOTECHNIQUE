@@ -1,5 +1,27 @@
 # Changelog - Atlas Géotechnique Togo
 
+## v2.4.1 — Post-import grid codes (2025-11-04)
+
+### 🔧 Corrections & Améliorations
+
+**Script Post-Import**
+- ✅ Script `sql/post_import/calculate_grid_codes.sql`
+- ✅ Calcule `grid_code` pour `exact` (Point-in-Polygon)
+- ✅ Calcule `grid_code` pour `adm_random_cell` (déterministe via ADM3)
+- ✅ Migre automatiquement `spread` → `adm_random_cell`
+- ✅ Crée index manquants (`idx_sondages_grid_code`, `idx_mailles_geom`)
+
+**Vérifications**
+- ✅ 0 sondages `exact` sans `grid_code`
+- ✅ 0 sondages `adm_random_cell` sans `grid_code`
+- ✅ 0 sondages en mode `spread`
+
+**Documentation**
+- ✅ Guide post-import dans `README_API_V2.4.md`
+- ✅ Commandes de vérification SQL
+
+---
+
 ## v2.4.0 — API & UI enrichies (2025-11-04)
 
 ### 🎯 Fonctionnalités

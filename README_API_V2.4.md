@@ -238,3 +238,35 @@ docker compose restart ui
 
 ### v2.1.0 (2025-10-15)
 - Panneau droit unifié
+
+---
+
+## Post-import: calcul des grid_code
+
+Après tout import (BLEU / GRANULO / LIMITE), exécuter :
+
+```powershell
+Get-Content sql\post_import\calculate_grid_codes.sql | docker exec -i atlas-db psql -U atlas -d atlas_clean
+```
+
+**Fonctionnement:**
+- `exact` : affectation par Point-in-Polygon
+- `adm_random_cell` : affectation déterministe via `pick_random_cell_in_adm3(adm3_pcode, seed)`
+- `spread` → migré automatiquement vers `adm_random_cell`
+
+**Vérifications:**
+```sql
+-- A. Tous les sondages exact ont un grid_code
+SELECT COUNT(*) FROM sondages
+WHERE location_mode='exact' AND geom IS NOT NULL AND grid_code IS NULL;
+-- Doit retourner 0
+
+-- B. Tous les sondages adm_random_cell ont un grid_code
+SELECT COUNT(*) FROM sondages
+WHERE location_mode='adm_random_cell' AND grid_code IS NULL;
+-- Doit retourner 0
+
+-- C. Aucun mode spread
+SELECT COUNT(*) FROM sondages WHERE location_mode='spread';
+-- Doit retourner 0
+```
