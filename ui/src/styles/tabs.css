@@ -373,30 +373,23 @@
 .sondages-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(3px);
-  z-index: 2000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  background: rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  z-index: 9999;
+  backdrop-filter: blur(4px);
 }
 
 .sondages-modal {
-  width: 90vw;
-  max-width: 1200px;
-  height: 85vh;
-  background: var(--bg-panel, #0f172a);
+  width: min(70vw, 1400px);
+  height: min(80vh, 900px);
+  background: #0c1424;
+  border: 1px solid #1e2b46;
   border-radius: 12px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   display: flex;
   flex-direction: column;
-  animation: slideUp 0.3s ease;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
 }
 
 @keyframes slideUp {
@@ -411,11 +404,13 @@
 }
 
 .sondages-modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--tab-border);
+  flex: 0 0 auto;
+  padding: 12px 16px;
+  background: #0f1829;
+  border-bottom: 1px solid #16233c;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
 }
 
 .sondages-modal-header h2 {
@@ -444,60 +439,64 @@
 }
 
 .sondages-modal-body {
-  flex: 1;
-  display: flex;
+  flex: 1 1 auto;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 0;
+  min-height: 0;
   overflow: hidden;
 }
 
 /* ============================================
-   ONGLETS VERTICAUX
+   SIDEBAR VERTICALE (Style QGIS)
    ============================================ */
 
-.sondages-tabs-vertical {
-  width: 200px;
-  flex-shrink: 0;
-  background: var(--tab-bg);
-  border-right: 1px solid var(--tab-border);
+.sondages-sidebar {
+  background: #2c3e50;
+  border-right: 1px solid #1a252f;
   display: flex;
   flex-direction: column;
-  padding: 12px 0;
+  padding: 0;
   overflow-y: auto;
 }
 
-.tab-vertical {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 20px;
+.sidebar-item {
+  padding: 16px 20px;
   background: transparent;
-  border: none;
-  border-left: 3px solid transparent;
-  color: var(--tab-text);
-  font-size: 14px;
-  font-weight: 500;
+  border-bottom: 1px solid #1a252f;
   cursor: pointer;
   transition: all 0.2s ease;
-  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.tab-vertical:hover {
-  background: var(--tab-bg-hover);
-  color: var(--tab-text-primary);
+.sidebar-item:hover {
+  background: #34495e;
 }
 
-.tab-vertical.active {
-  background: var(--tab-bg-active);
-  border-left-color: var(--tab-text-active);
-  color: var(--tab-text-active);
+.sidebar-item.active {
+  background: #1a252f;
+  border-left: 3px solid #3498db;
 }
 
-.tab-vertical .tab-icon {
-  font-size: 20px;
+.sidebar-icon {
+  font-size: 32px;
   line-height: 1;
+  margin-bottom: 4px;
 }
 
-.tab-vertical .tab-label {
-  flex: 1;
+.sidebar-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ecf0f1;
+  line-height: 1.3;
+}
+
+.sidebar-desc {
+  font-size: 11px;
+  color: #95a5a6;
+  line-height: 1.4;
 }
 
 /* ============================================
@@ -505,19 +504,176 @@
    ============================================ */
 
 .sondages-content {
-  flex: 1;
   overflow-y: auto;
   position: relative;
+  background: #0b1220;
+  min-width: 0;
 }
 
 .sondages-content .tab-pane {
   display: none;
-  height: 100%;
+  padding: 16px 20px;
   animation: fadeInContent 0.3s ease;
 }
 
 .sondages-content .tab-pane.active {
-  display: block;
+  display: block !important;
+}
+
+/* Classes utilitaires pour contenu */
+.pane-wrap {
+  padding: 24px;
+}
+
+.pane-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.toolbar {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.search-input {
+  flex: 1;
+  padding: 10px;
+  border-radius: 6px;
+  border: 1px solid #22304d;
+  background: #0f172a;
+  color: var(--text);
+}
+
+.list-scroll {
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.loading-block,
+.empty-block,
+.error-block,
+.ok-block {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--muted);
+}
+
+.big-emoji {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.panel {
+  background: #0f172a;
+  border: 1px solid #22304d;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.notes {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.8;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 11px;
+}
+
+.code {
+  color: #3aa6ff;
+  font-size: 14px;
+}
+
+.survey-card,
+.geocode-item {
+  background: #0f172a;
+  border: 1px solid #22304d;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.survey-card:hover,
+.geocode-item:hover {
+  border-color: #3aa6ff;
+}
+
+.card-head,
+.item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.line {
+  font-size: 12px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.inline-error {
+  padding: 24px;
+  color: var(--err);
+}
+
+.card {
+  background: #0f172a;
+  border: 1px solid #22304d;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.card h4, .card h5 {
+  margin: 0 0 10px 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.card ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12px;
+  line-height: 1.8;
+}
+
+.card input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border: 1px solid #22304d;
+  background: #0a1018;
+  color: var(--text);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 11px;
+  border: none;
+  border-radius: 4px;
+  background: #3aa6ff;
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.btn-sm:hover {
+  background: #2a96ef;
 }
 
 @keyframes fadeInContent {
