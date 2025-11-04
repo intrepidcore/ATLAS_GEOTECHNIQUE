@@ -2,16 +2,16 @@
 // Permet de créer des sondages "unknown" et de les géocoder ultérieurement
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
 use serde::{Deserialize, Serialize};
+use sqlx::{types::Uuid, Row};
 use chrono::NaiveDate;
-use uuid::Uuid;
-
-use crate::AppState;
+use crate::state::AppState;
+use crate::surveys::AdmZone;
 
 // ============================================================================
 // Types
@@ -647,16 +647,24 @@ pub async fn list_adm3(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     
-    let adm3s = match sqlx::query!(
+    #[derive(sqlx::FromRow)]
+    struct Adm3Row {
+        code: Option<String>,
+        name: Option<String>,
+        adm2_name: Option<String>,
+        adm1_name: Option<String>,
+    }
+    
+    let adm3s = match sqlx::query_as::<_, Adm3Row>(
         r#"
         SELECT DISTINCT 
-            adm3 as code,
-            adm3_name as name,
-            adm2_name,
-            adm1_name
-        FROM mailles
-        WHERE adm3 IS NOT NULL AND adm3_name IS NOT NULL
-        ORDER BY adm3_name
+            adm3_pcode as code,
+            adm3_fr as name,
+            adm2_fr as adm2_name,
+            adm1_fr as adm1_name
+        FROM adm3
+        WHERE adm3_fr IS NOT NULL
+        ORDER BY adm3_fr
         "#
     )
     .fetch_all(pool)
@@ -672,17 +680,14 @@ pub async fn list_adm3(
         }
     };
     
-    let result: Vec<serde_json::Value> = adm3s
+    let zones: Vec<AdmZone> = adm3s
         .into_iter()
-        .map(|row| {
-            serde_json::json!({
-                "code": row.code,
-                "name": row.name,
-                "adm2_name": row.adm2_name,
-                "adm1_name": row.adm1_name
-            })
+        .map(|row| AdmZone {
+            name: row.name.unwrap_or_default(),
+            code: row.code,
+            bbox: None,
         })
         .collect();
     
-    (StatusCode::OK, Json(result)).into_response()
+    (StatusCode::OK, Json(zones)).into_response()
 }

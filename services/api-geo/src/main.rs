@@ -23,6 +23,7 @@ mod geocoding;
 mod cells_labs;
 mod cells_kpi;
 mod surveys_compat;
+mod surveys_unified;
 pub mod state;
 
 #[derive(Serialize)]
@@ -70,6 +71,10 @@ async fn main() -> anyhow::Result<()> {
         .nest("/grid", routes::grid_router())
         // Survey management endpoints
         .route("/grid/locate", get(surveys::locate_maille))
+        // Unified surveys endpoints (AVANT /surveys/:id pour éviter conflit)
+        .route("/surveys/unified", get(surveys_unified::list_unified_surveys))
+        .route("/surveys/unified/stats", get(surveys_unified::get_unified_stats))
+        .route("/surveys/unified/refresh", post(surveys_unified::refresh_unified_view))
         .route("/surveys", get(surveys::list_surveys).post(surveys_extended::create_survey_v2))
         .route("/surveys/legacy", post(surveys::create_survey))
         .route("/surveys/bulk", post(surveys_bulk::bulk_import_surveys))
@@ -114,7 +119,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/geocode/suggestions", get(geocoding::list_suggestions))
         .route("/geocode/suggestions/:id/accept", post(geocoding::accept_suggestion))
         .route("/geocode/suggestions/:id/reject", post(geocoding::reject_suggestion))
-        .route("/geocode/suggestions/:id/update", post(geocoding::update_suggestion))
         .route("/geocode/apply-accepted", post(geocoding::apply_accepted))
         .route("/geocode/stats", get(geocoding::get_stats))
         .layer(TraceLayer::new_for_http())
