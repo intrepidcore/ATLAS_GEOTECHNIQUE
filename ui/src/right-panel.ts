@@ -41,12 +41,11 @@ export function initDirectButtons() {
     })
   }
   
-  // v2.5.0: Bouton accordéon Sondages ouvre modal central
-  const sondagesHeader = document.querySelector('[data-section="sondages"]')
-  if (sondagesHeader) {
-    sondagesHeader.addEventListener('click', (e) => {
+  // v2.5.0: Bouton Sondages ouvre modal central
+  const sondagesBtn = document.getElementById('openSondagesModalBtn')
+  if (sondagesBtn) {
+    sondagesBtn.addEventListener('click', (e) => {
       e.preventDefault()
-      e.stopPropagation()
       console.log('[v2.5.0] Ouverture modal Sondages')
       const event = new CustomEvent('open-sondages-modal')
       window.dispatchEvent(event)

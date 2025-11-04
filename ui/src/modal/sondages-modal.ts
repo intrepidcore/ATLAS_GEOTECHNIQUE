@@ -101,77 +101,84 @@ export class SondagesModal {
   }
   
   private initComponents() {
-    // Nouveau: Déclenche le formulaire existant
+    // Nouveau: Injecter le formulaire DANS la zone
     const nouveauPane = this.modal?.querySelector('[data-tab="nouveau"]') as HTMLElement
     if (nouveauPane) {
-      nouveauPane.innerHTML = `
-        <div style="padding: 24px; text-align: center;">
-          <div style="font-size: 64px; margin-bottom: 16px;">📝</div>
-          <h3>Nouveau Sondage Géotechnique</h3>
-          <p style="color: var(--muted); margin-bottom: 24px;">Créer un nouveau sondage avec essais géotechniques</p>
-          <button id="trigger-new-geotech" class="btn-primary" style="padding: 12px 24px;">
-            ➕ Créer un Sondage
-          </button>
-        </div>
-      `
-      nouveauPane.querySelector('#trigger-new-geotech')?.addEventListener('click', () => {
-        // Déclenche le bouton existant
-        document.getElementById('newGeotechBtn')?.click()
-      })
+      nouveauPane.innerHTML = '<div id="modal-geotech-form-container"></div>'
+      // Attendre que le DOM soit prêt
+      setTimeout(() => {
+        const container = document.getElementById('modal-geotech-form-container')
+        if (container && (window as any).geotechnicalFormManager) {
+          (window as any).geotechnicalFormManager.initForm('modal-geotech-form-container')
+        }
+      }, 100)
     }
     
-    // Import: Déclenche Import Wizard existant
+    // Import: Injecter Import Wizard DANS la zone
     const importPane = this.modal?.querySelector('[data-tab="import"]') as HTMLElement
     if (importPane) {
       importPane.innerHTML = `
-        <div style="padding: 24px; text-align: center;">
-          <div style="font-size: 64px; margin-bottom: 16px;">📥</div>
-          <h3>Import Wizard</h3>
-          <p style="color: var(--muted); margin-bottom: 24px;">Importez vos données depuis Excel, CSV ou autres formats</p>
-          <button id="trigger-import-wizard" class="btn-primary" style="padding: 12px 24px;">
-            📥 Ouvrir Import Wizard
-          </button>
+        <div style="padding: 24px;">
+          <h3 style="margin-bottom: 16px;">📥 Import Wizard</h3>
+          <div id="modal-import-wizard-container">
+            <p style="color: var(--muted); margin-bottom: 16px;">Chargement...</p>
+          </div>
         </div>
       `
-      importPane.querySelector('#trigger-import-wizard')?.addEventListener('click', () => {
+      // Déclencher l'import wizard mais dans le container
+      setTimeout(() => {
         window.dispatchEvent(new CustomEvent('open-import-wizard'))
-      })
+      }, 100)
     }
     
-    // Suggestions: Déclenche panel existant
+    // Suggestions: Injecter panel DANS la zone
     const suggestionsPane = this.modal?.querySelector('[data-tab="suggestions"]') as HTMLElement
     if (suggestionsPane) {
       suggestionsPane.innerHTML = `
-        <div style="padding: 24px; text-align: center;">
-          <div style="font-size: 64px; margin-bottom: 16px;">🤖</div>
-          <h3>Suggestions ADM</h3>
-          <p style="color: var(--muted); margin-bottom: 24px;">Géocodage automatique par correspondance administrative</p>
-          <button id="trigger-suggestions" class="btn-primary" style="padding: 12px 24px;">
-            🤖 Voir Suggestions
-          </button>
+        <div style="padding: 24px;">
+          <h3 style="margin-bottom: 16px;">🤖 Suggestions ADM</h3>
+          <div id="modal-suggestions-container">
+            <p style="color: var(--muted);">Chargement des suggestions...</p>
+          </div>
         </div>
       `
-      suggestionsPane.querySelector('#trigger-suggestions')?.addEventListener('click', () => {
-        document.getElementById('suggestionsBtn')?.click()
-      })
+      // Charger suggestions
+      setTimeout(() => {
+        if ((window as any).suggestionsPanel) {
+          const container = document.getElementById('modal-suggestions-container')
+          if (container) {
+            container.innerHTML = ''
+            ;(window as any).suggestionsPanel.renderUI(container)
+          }
+        }
+      }, 100)
     }
     
-    // Liste: Nouveau (simple pour l'instant)
+    // Liste: Afficher vraie liste
     const listePane = this.modal?.querySelector('[data-tab="liste"]') as HTMLElement
     if (listePane) {
-      listePane.innerHTML = `
-        <div style="padding: 24px;">
-          <h3>📋 Liste des Sondages</h3>
-          <p>TODO: Implémenter liste filtrable</p>
-        </div>
-      `
+      this.renderListeTab(listePane)
     }
     
-    // Géocoder: Nouveau (amélioré)
+    // Géocoder: Afficher géocodage
     const geocodePane = this.modal?.querySelector('[data-tab="geocode"]') as HTMLElement
     if (geocodePane) {
       this.renderGeocodeTab(geocodePane)
     }
+  }
+  
+  private renderListeTab(container: HTMLElement) {
+    container.innerHTML = `
+      <div style="padding: 24px;">
+        <h3 style="margin-bottom: 16px;">📋 Liste des Sondages</h3>
+        <div style="margin-bottom: 16px;">
+          <input type="text" placeholder="🔍 Rechercher..." style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--tab-border);" />
+        </div>
+        <div style="color: var(--muted); text-align: center; padding: 40px;">
+          <p>Chargement de la liste...</p>
+        </div>
+      </div>
+    `
   }
   
   private renderGeocodeTab(container: HTMLElement) {
