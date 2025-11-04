@@ -1,4 +1,4 @@
-.PHONY: up down logs build db-migrate seed fmt lint
+.PHONY: up down logs build db-migrate seed fmt lint rebuild-api-geo
 
 COMPOSE=docker compose
 
@@ -32,3 +32,12 @@ lint:
 	docker run --rm -v $(PWD)/services/api-geo:/work -w /work rust:1.79 sh -lc "rustup component add clippy && cargo clippy -- -D warnings" || true
 	docker run --rm -v $(PWD)/services/api-infer:/work -w /work rust:1.79 sh -lc "rustup component add clippy && cargo clippy -- -D warnings" || true
 	docker run --rm -v $(PWD)/services/api-opti:/work -w /work rust:1.79 sh -lc "rustup component add clippy && cargo clippy -- -D warnings" || true
+
+rebuild-api-geo:
+	@echo "🔄 Rebuild propre de api-geo..."
+	$(COMPOSE) down api-geo
+	-docker image rm $$(docker images -q '*api-geo*') 2>/dev/null || true
+	$(COMPOSE) build --no-cache api-geo
+	$(COMPOSE) up -d api-geo
+	@echo "✅ api-geo redémarré, vérification des logs..."
+	$(COMPOSE) logs -f api-geo
