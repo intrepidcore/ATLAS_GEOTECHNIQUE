@@ -137,14 +137,38 @@ export class SondagesModal {
     const pane = this.getPane('nouveau')
     if (!pane) return
 
-    pane.innerHTML = '<div id="modal-geotech-form-container"></div>'
+    pane.innerHTML = '<div id="modal-geotech-form-container" style="padding:20px;"><p style="color:var(--muted);">Chargement du formulaire...</p></div>'
     
-    setTimeout(() => {
+    const tryInit = () => {
       const mgr = (window as any).geotechnicalFormManager
-      if (mgr) mgr.initForm('modal-geotech-form-container')
-    }, 0)
+      console.log('[Nouveau] Tentative init, manager:', mgr)
+      if (!mgr) return false
+      
+      const container = document.getElementById('modal-geotech-form-container')
+      if (!container) return false
+      
+      container.innerHTML = '' // Clear loading message
+      mgr.initForm('modal-geotech-form-container')
+      this.loaded.nouveau = true
+      console.log('[Nouveau] Formulaire initialisé!')
+      return true
+    }
 
-    this.loaded.nouveau = true
+    // Tente immédiatement puis réessaie (module chargé async)
+    if (!tryInit()) {
+      let tries = 0
+      const t = setInterval(() => {
+        if (tryInit() || ++tries > 30) { // 4.5s max
+          clearInterval(t)
+          if (tries > 30) {
+            const container = document.getElementById('modal-geotech-form-container')
+            if (container) {
+              container.innerHTML = '<div class="inline-error"><h3>❌ Erreur</h3><p>Le gestionnaire de formulaire géotechnique n\'est pas disponible.</p><p style="font-size:11px;margin-top:8px;">Vérifiez que le module est chargé dans main.ts</p></div>'
+            }
+          }
+        }
+      }, 150)
+    }
   }
 
   private ensureImportLoaded() {
@@ -152,33 +176,69 @@ export class SondagesModal {
     const pane = this.getPane('import')
     if (!pane) return
 
-    pane.innerHTML = '<div id="modal-import-wizard-container"></div>'
+    pane.innerHTML = '<div id="modal-import-wizard-container" style="height:100%;padding:20px;"><p style="color:var(--muted);">Chargement de l\'Import Wizard...</p></div>'
     
     try {
+      // @ts-ignore - selon signature réelle
       this.importWizard = new ImportWizardV2('modal-import-wizard-container', this.apiUrl)
+      console.log('[Import] ImportWizardV2 créé, appel open()...')
+      // @ts-ignore
       this.importWizard.open()
 
-      // Embed hack: move wizard content into pane
-      setTimeout(() => {
-        const iwOverlay = document.querySelector('.iw-overlay') as HTMLElement
-        const iwModal = document.querySelector('.iw-modal') as HTMLElement
-        if (iwOverlay && iwModal) {
-          iwOverlay.remove()
-          pane.querySelector('#modal-import-wizard-container')!.appendChild(iwModal)
-          iwModal.style.width = '100%'
-          iwModal.style.height = 'auto'
-          iwModal.style.maxHeight = 'unset'
-          iwModal.style.position = 'static'
-          iwModal.style.boxShadow = 'none'
-          iwModal.style.border = '1px solid #22304d'
-          iwModal.style.borderRadius = '8px'
-        }
-      }, 50)
+      // Fallback hijack: déplace le contenu dans notre pane
+      // Essaie plusieurs fois car le DOM peut mettre du temps à se créer
+      let attempts = 0
+      const tryHijack = () => {
+        attempts++
+        console.log(`[Import] Tentative hijack #${attempts}`)
+        
+        // Cherche tous les sélecteurs possibles
+        const overlay = document.querySelector('.iw-overlay') || 
+                        document.querySelector('.import-wizard-overlay') ||
+                        document.querySelector('[class*="wizard"][class*="overlay"]')
+        
+        const dialog = overlay?.querySelector('.iw-modal') ||
+                      overlay?.querySelector('.iw-dialog') ||
+                      overlay?.querySelector('.import-wizard') ||
+                      overlay?.querySelector('[class*="wizard"][class*="modal"]')
 
-      this.loaded.import = true
+        console.log('[Import] Overlay:', overlay, 'Dialog:', dialog)
+
+        if (overlay && dialog) {
+          console.log('[Import] Éléments trouvés! Déplacement...')
+          ;(dialog as HTMLElement).style.position = 'static'
+          ;(dialog as HTMLElement).style.inset = 'auto'
+          ;(dialog as HTMLElement).style.width = '100%'
+          ;(dialog as HTMLElement).style.height = '100%'
+          ;(dialog as HTMLElement).style.maxHeight = 'unset'
+          ;(dialog as HTMLElement).style.boxShadow = 'none'
+          ;(dialog as HTMLElement).style.border = '1px solid #22304d'
+          ;(dialog as HTMLElement).style.borderRadius = '8px'
+          
+          const container = pane.querySelector('#modal-import-wizard-container')
+          if (container) {
+            container.innerHTML = '' // Clear loading
+            container.appendChild(dialog as HTMLElement)
+            ;(overlay as HTMLElement).remove() // supprime l'overlay externe
+            this.loaded.import = true
+            console.log('[Import] Hijack réussi!')
+            return true
+          }
+        }
+        
+        if (attempts < 10) {
+          setTimeout(tryHijack, 100)
+        } else {
+          console.error('[Import] Hijack échoué après 10 tentatives')
+          pane.innerHTML = '<div class="inline-error"><h3>❌ Erreur</h3><p>Impossible d\'intégrer Import Wizard (sélecteurs introuvables)</p><p style="font-size:11px;margin-top:8px;">Vérifiez les classes CSS du wizard</p></div>'
+        }
+        return false
+      }
+
+      requestAnimationFrame(tryHijack)
     } catch (err) {
       console.error('[Modal] Erreur Import Wizard:', err)
-      pane.innerHTML = '<div class="inline-error"><h3>❌ Erreur</h3><p>Impossible de charger l\'Import Wizard</p></div>'
+      pane.innerHTML = '<div class="inline-error"><h3>❌ Erreur</h3><p>Impossible de charger l\'Import Wizard</p><pre style="font-size:10px;margin-top:8px;">' + String(err) + '</pre></div>'
     }
   }
 
@@ -205,16 +265,23 @@ export class SondagesModal {
     const pane = this.getPane('suggestions')
     if (!pane) return
 
-    pane.innerHTML = '<div id="modal-suggestions-container"></div>'
+    pane.innerHTML = '<div id="modal-suggestions-container" style="height:100%;"></div>'
     
     try {
       this.suggestionsPanel = new SuggestionsPanel(this.apiUrl)
       this.suggestionsPanel.renderUI(
         'modal-suggestions-container',
-        (msg) => console.log('[Suggestions]', msg),
-        (err) => console.error('[Suggestions]', err)
+        (msg) => {
+          console.log('[Suggestions]', msg)
+          // Toast optionnel
+        },
+        (err) => {
+          console.error('[Suggestions]', err)
+          alert(`Erreur: ${err}`)
+        }
       )
       this.loaded.suggestions = true
+      console.log('[Suggestions] Panel chargé - les suggestions sont automatiquement rafraîchies')
     } catch (err) {
       console.error('[Modal] Erreur Suggestions:', err)
       pane.innerHTML = '<div class="inline-error"><h3>❌ Erreur</h3><p>Impossible de charger les suggestions</p></div>'
@@ -273,21 +340,28 @@ export class SondagesModal {
         return
       }
       
-      listContainer.innerHTML = surveys.map((s: any) => `
-        <div class="survey-card" data-id="${s.id}" style="background: #0f172a; border: 1px solid #22304d; border-radius: 8px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s;">
-          <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-            <strong style="color: #3aa6ff; font-size: 14px;">${s.code || 'Sans code'}</strong>
-            <span style="font-size: 11px; color: var(--muted);">${s.date || ''}</span>
+      listContainer.innerHTML = surveys.map((s: any) => {
+        const title = s.code || s.localite || `Sondage ${String(s.id).slice(0,8)}`
+        const geocoded = s.is_geocoded ? '✅' : '❌'
+        const essais = s.n_essais > 0 ? `${s.n_essais} essais` : 'Aucun essai'
+        
+        return `
+          <div class="survey-card" data-id="${s.id}" style="background: #0f172a; border: 1px solid #22304d; border-radius: 8px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s;">
+            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+              <strong style="color: #3aa6ff; font-size: 14px;">${title}</strong>
+              <span style="font-size: 11px; color: var(--muted);">${s.date || ''}</span>
+            </div>
+            <div style="font-size: 12px; color: var(--text); margin-bottom: 4px;">
+              ${geocoded} ${s.localite || 'Localité inconnue'}${s.source ? ` • ${s.source}` : ''}
+            </div>
+            <div style="font-size: 11px; color: var(--muted);">
+              ${s.maille_code || s.grid_code ? `Maille: ${s.maille_code || s.grid_code}` : 'Pas de maille'}
+              ${s.adm3_name ? ` • ${s.adm3_name}` : ''}
+              • ${essais}
+            </div>
           </div>
-          <div style="font-size: 12px; color: var(--text); margin-bottom: 4px;">
-            📍 ${s.localite || 'Localité inconnue'}
-          </div>
-          <div style="font-size: 11px; color: var(--muted);">
-            ${s.grid_code ? `Maille: ${s.grid_code}` : 'Pas de maille'}
-            ${s.location_mode ? ` • ${s.location_mode}` : ''}
-          </div>
-        </div>
-      `).join('')
+        `
+      }).join('')
       
       // Event listeners sur les cartes
       listContainer.querySelectorAll('.survey-card').forEach(card => {
@@ -418,19 +492,34 @@ ${JSON.stringify(s,null,2)}
         return
       }
       
-      listContainer.innerHTML = surveys.map((s: any) => `
-        <div class="geocode-item" data-id="${s.id}">
-          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
-            <div>
-              <strong style="color:#3aa6ff">${s.code || s.localite || ('Sondage '+String(s.id).slice(0,6))}</strong>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px;">
-                ${s.localite || 'Localité inconnue'}${s.adm3_name ? ` • ${s.adm3_name}` : ''} • id:${String(s.id).slice(0,8)}
+      listContainer.innerHTML = surveys.map((s: any) => {
+        // Construire un titre informatif
+        const title = s.code || s.localite || `Sondage ${String(s.id).slice(0,8)}`
+        
+        // Construire les infos secondaires
+        const infos = []
+        if (s.source) infos.push(`Source: ${s.source}`)
+        if (s.localite && s.localite !== title) infos.push(s.localite)
+        if (s.adm3_name) infos.push(`ADM3: ${s.adm3_name}`)
+        if (s.date) infos.push(`Date: ${s.date}`)
+        if (s.n_essais > 0) infos.push(`${s.n_essais} essais`)
+        
+        const subtitle = infos.length > 0 ? infos.join(' • ') : `ID: ${String(s.id).slice(0,8)}`
+        
+        return `
+          <div class="geocode-item" data-id="${s.id}">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <div style="flex:1;min-width:0;">
+                <strong style="color:#3aa6ff;display:block;margin-bottom:4px;">${title}</strong>
+                <div style="font-size:11px;color:var(--muted);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  ${subtitle}
+                </div>
               </div>
+              <button class="btn-sm geocode-btn" data-id="${s.id}" style="flex-shrink:0;">🗺️ Géocoder</button>
             </div>
-            <button class="btn-sm geocode-btn" data-id="${s.id}">🗺️ Géocoder</button>
           </div>
-        </div>
-      `).join('')
+        `
+      }).join('')
       
       // Event listeners
       listContainer.querySelectorAll('.geocode-btn').forEach(btn => {

@@ -73,6 +73,57 @@ let shapeLayer: L.GeoJSON<any> | null = null
 let duplicateMarkers: L.CircleMarker[] = []
 let currentDuplicates: any[] = []
 
+// Listener pour clignotement ADM (depuis modal géocodage/suggestions)
+window.addEventListener('atlas:flash-adm', async (e: any) => {
+  const { adm3, times = 5, color = '#FFD60A' } = e.detail
+  console.log('[Flash ADM] Clignotement demandé pour:', adm3, 'times:', times)
+  
+  if (!gridLayer) {
+    console.warn('[Flash ADM] gridLayer pas encore chargé')
+    return
+  }
+
+  // Cherche la maille ADM3 dans gridLayer
+  let targetLayer: any = null
+  gridLayer.eachLayer((layer: any) => {
+    const props = layer.feature?.properties
+    if (props?.adm3 === adm3 || props?.code === adm3) {
+      targetLayer = layer
+    }
+  })
+
+  if (!targetLayer) {
+    console.warn('[Flash ADM] Maille introuvable:', adm3)
+    return
+  }
+
+  // Zoom sur la maille
+  const bounds = targetLayer.getBounds()
+  map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12 })
+
+  // Sauvegarde du style original
+  const original = {
+    color: targetLayer.options.color,
+    weight: targetLayer.options.weight,
+    fillOpacity: targetLayer.options.fillOpacity
+  }
+
+  // Clignotement
+  let i = 0
+  const pulse = setInterval(() => {
+    const on = i % 2 === 0
+    targetLayer.setStyle({
+      color: on ? color : original.color,
+      weight: on ? 5 : original.weight,
+      fillOpacity: on ? 0.15 : original.fillOpacity
+    })
+    if (++i >= times * 2) {
+      clearInterval(pulse)
+      targetLayer.setStyle(original)
+    }
+  }, 500)
+})
+
 // Exposer gridLayer globalement pour le gestionnaire de cartes thématiques
 declare global {
   interface Window {
@@ -2556,6 +2607,9 @@ const geotechForm = new GeotechnicalFormManager(
     toast(`❌ Erreur: ${error}`, 'err')
   }
 )
+
+// Exposer pour le modal Sondages
+;(window as any).geotechnicalFormManager = geotechForm
 
 // Écouter l'événement custom pour ouvrir le formulaire géotechnique (depuis dropdown)
 window.addEventListener('open-geotech-form', () => {
