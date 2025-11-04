@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO imports (id, batch_id, filename, sha256, status, params, stats)\n        VALUES ($1, $2, $3, $4, 'pending', '{}', '{}')\n        RETURNING id, batch_id\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "batch_id",
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "1f86ed9a5ccb98e2ef885410bf0ed8e614935e1d05a39304186a258aa91a9f92"
+}

@@ -17,9 +17,9 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 # Now copy real sources
 COPY . .
-# Désactiver SQLX offline pour compiler avec le vrai schéma DB
+# Réactiver SQLX offline car la DB n'est pas accessible pendant le build Docker
 # Les migrations seront appliquées au démarrage via sqlx::migrate!()
-ENV SQLX_OFFLINE=false
+ENV SQLX_OFFLINE=true
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     cargo build --release
 
