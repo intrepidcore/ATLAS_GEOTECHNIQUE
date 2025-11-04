@@ -10,6 +10,7 @@ import { bootImportWizardV3 } from './import-bulk-wizard_v3'
 import { ImportWizardV2 } from './import-wizard-v2'
 import { APP_VERSION } from './version'
 import { initAccordions, initDirectButtons, initKeyboardShortcuts, initFilterListeners, initCloseMailleActions, showMailleActions } from './right-panel'
+import { renderPhysiques, renderClassif, renderSurveys, type CellCompleteOut } from './cell-complete-types'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -423,6 +424,14 @@ async function loadMailleDetails(code: string) {
     renderEssais(data.samples || [], data.kpi.pct_spread || 0, data.source_surveys || [])
     renderSondages(data.surveys || [], data.source_surveys || [])
     renderClassification(data.samples || [])
+    
+    // Rendre les nouveaux accordéons (v2.4.0)
+    const physiquesPanel = document.getElementById('physiques-panel')
+    const classifPanel = document.getElementById('classif-panel')
+    const surveyList = document.getElementById('survey-list')
+    if (physiquesPanel) renderPhysiques(physiquesPanel, data.samples || [])
+    if (classifPanel) renderClassif(classifPanel, data.samples || [])
+    if (surveyList) renderSurveys(surveyList, data.surveys || [])
     
     // Afficher actions maille contextuelles (v2.1.0)
     showMailleActions(code, data.kpi.n_sondages, data.kpi.n_essais)

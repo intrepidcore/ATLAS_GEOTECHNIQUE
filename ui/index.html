@@ -76,7 +76,18 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .essais-table th{text-align:left;color:var(--muted);font-weight:500;padding:6px 4px;border-bottom:1px solid #1c2843}
 .essais-table td{padding:6px 4px;border-bottom:1px solid #1c284333}
 .badge-geo{font-size:10px;padding:3px 8px;border-radius:999px;background:#0bb07b22;color:var(--ok);border:1px solid #0bb07b44}
-.badge-adm{font-size:10px;padding:3px 8px;border-radius:999px;background:#8aa0b522;color:var(--muted);border:1px solid #8aa0b544}
+.badge-adm{font-size:10px;padding:3px 8px;border-radius:999px;background:#eef6ff;color:#1557b0;border:1px solid #3aa6ff44}
+.chip{display:inline-block;padding:2px 6px;border-radius:999px;background:#f1f5f9;margin-right:6px;font-size:12px}
+.chip-aashto{background:#fff1e6;color:#9a5b00}
+.chip-uscs{background:#eaf8f1;color:#0f6848}
+.chip-gtr{background:#f1e8ff;color:#5a36a3}
+.pill{display:inline-block;border:1px solid #e2e8f0;padding:2px 6px;border-radius:999px;margin:2px 4px 2px 0;font-size:12px}
+.sample-row{border-bottom:1px dashed #e5e7eb;padding:6px 0}
+.sample-row .depth{font-weight:600;margin-bottom:4px}
+.chipline{margin:4px 0}
+.empty{opacity:.7;font-style:italic;padding:4px 0}
+.list{list-style:none;padding:0;margin:0}
+.list li{padding:4px 0;border-bottom:1px solid #1c284333}
 #mailleDetails{display:none}
 #mailleDetails.active{display:block;background:#0a1018;padding:10px;border-radius:8px}
 #surveyList{max-height:calc(100vh - 200px);overflow-y:auto}
@@ -296,6 +307,24 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
             <canvas id="chartUSCSPie" width="320" height="180"></canvas>
             <div id="classifRules" style="font-size:11px;color:var(--muted);margin-top:12px"></div>
           </div>
+        </div>
+
+        <!-- Accordéon Essais Physiques -->
+        <div class="section">
+          <h4>⚗️ Essais physiques</h4>
+          <div id="physiques-panel"></div>
+        </div>
+
+        <!-- Accordéon Classifications -->
+        <div class="section">
+          <h4>🏷️ Classifications</h4>
+          <div id="classif-panel"></div>
+        </div>
+
+        <!-- Accordéon Sondages -->
+        <div class="section">
+          <h4>🧭 Sondages</h4>
+          <div id="survey-list"></div>
         </div>
 
         <div class="section">

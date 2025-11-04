@@ -138,6 +138,33 @@ pub async fn get_cell_labs(
 // Complete Cell Data (pour panneau gauche v2.0)
 // ============================================================================
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Physiques {
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub densite_absolue_gcm3: Option<f64>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub teneur_eau_pct: Option<f64>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub source: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClassifItem { 
+    pub class: String, 
+    #[serde(skip_serializing_if="Option::is_none")] 
+    pub reason: Option<String> 
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Classif {
+    #[serde(skip_serializing_if="Option::is_none")] 
+    pub aashto: Option<Vec<ClassifItem>>,
+    #[serde(skip_serializing_if="Option::is_none")] 
+    pub uscs: Option<Vec<ClassifItem>>,
+    #[serde(skip_serializing_if="Option::is_none")] 
+    pub gtr: Option<Vec<ClassifItem>>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct CellCompleteResponse {
     pub kpi: CompleteKpi,
@@ -171,10 +198,13 @@ pub struct SampleComplete {
     pub depth_m: f64,
     pub atterberg: Option<serde_json::Value>,
     pub vbs: Option<serde_json::Value>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub physiques: Option<Physiques>,
     pub granulo: Option<serde_json::Value>,
     pub proctor: Option<serde_json::Value>,
     pub swelling: Option<serde_json::Value>,
-    pub classif: Option<serde_json::Value>,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub classif: Option<Classif>,
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -186,6 +216,8 @@ pub struct SurveyInfo {
     pub adm3_code: Option<String>,
     pub samples: i64,
     pub tests: i64,
+    #[serde(skip_serializing_if="Option::is_none")]
+    pub badge: Option<String>,
 }
 
 pub async fn get_cell_complete(
@@ -286,22 +318,18 @@ pub async fn get_cell_complete(
     .await
     .unwrap_or_default();
 
-    // 3) Échantillons complets (utilise v_samples_complete)
+    // 3) Échantillons complets (utilise v_samples_complete_v4)
     let samples = sqlx::query(
         r#"
         SELECT 
-          sc.id,
-          sc.depth_m,
-          sc.atterberg,
-          sc.vbs,
-          sc.granulo,
-          sc.proctor,
-          sc.swelling,
-          sc.classif
-        FROM v_samples_complete sc
-        JOIN v_maille_sondages_all v ON v.sondage_id = sc.sondage_id
-        WHERE v.maille_code = $1
-        ORDER BY sc.depth_m
+          v.essai_id,
+          v.depth_m,
+          v.wl, v.wp, v.ip, v.vbs,
+          v.physiques,
+          v.classif
+        FROM v_samples_complete_v4 v
+        WHERE v.grid_code = $1
+        ORDER BY v.depth_m
         "#,
     )
     .bind(&code)
@@ -309,43 +337,76 @@ pub async fn get_cell_complete(
     .await
     .unwrap_or_default()
     .into_iter()
-    .map(|row| SampleComplete {
-        id: row.try_get("id").unwrap(),
-        depth_m: row.try_get("depth_m").unwrap_or(0.0),
-        atterberg: row.try_get("atterberg").ok(),
-        vbs: row.try_get("vbs").ok(),
-        granulo: row.try_get("granulo").ok(),
-        proctor: row.try_get("proctor").ok(),
-        swelling: row.try_get("swelling").ok(),
-        classif: row.try_get("classif").ok(),
+    .map(|row| {
+        let physiques_json: Option<serde_json::Value> = row.try_get("physiques").ok();
+        let classif_json: Option<serde_json::Value> = row.try_get("classif").ok();
+        
+        SampleComplete {
+            id: row.try_get("essai_id").unwrap(),
+            depth_m: row.try_get("depth_m").unwrap_or(0.0),
+            atterberg: {
+                let wl: Option<f64> = row.try_get("wl").ok();
+                let wp: Option<f64> = row.try_get("wp").ok();
+                let ip: Option<f64> = row.try_get("ip").ok();
+                if wl.is_some() || wp.is_some() {
+                    Some(serde_json::json!({"wl": wl, "wp": wp, "ip": ip}))
+                } else {
+                    None
+                }
+            },
+            vbs: {
+                let vbs: Option<f64> = row.try_get("vbs").ok();
+                vbs.map(|v| serde_json::json!({"vbs": v}))
+            },
+            physiques: physiques_json.and_then(|v| serde_json::from_value(v).ok()),
+            granulo: None, // TODO: ajouter si disponible
+            proctor: None,
+            swelling: None,
+            classif: classif_json.and_then(|v| serde_json::from_value(v).ok()),
+        }
     })
     .collect();
 
-    // 4) Sondages
-    let surveys = sqlx::query_as::<_, SurveyInfo>(
+    // 4) Sondages (avec badge ADM random cell)
+    let survey_rows = sqlx::query(
         r#"
         SELECT 
           s.id,
-          s.meta->>'code' AS code_site,
-          s.loc_mode AS mode,
-          s.meta->>'date' AS date,
-          s.adm3_code,
-          COUNT(DISTINCT e.id)::bigint AS samples,
-          (COUNT(DISTINCT a.id) + COUNT(DISTINCT vbs.id) + COUNT(DISTINCT p.id))::bigint AS tests
-        FROM v_maille_sondages_all v
-        JOIN sondages s ON s.id = v.sondage_id
-        LEFT JOIN echantillons e ON e.sondage_id = s.id
-        LEFT JOIN essais_atterberg a ON a.echantillon_id = e.id
-        LEFT JOIN essais_vbs vbs ON vbs.echantillon_id = e.id
-        LEFT JOIN essais_proctor p ON p.echantillon_id = e.id
-        WHERE v.maille_code = $1
-        GROUP BY s.id, s.meta, s.loc_mode, s.adm3_code
+          s.code AS code_site,
+          s.location_mode AS mode,
+          s.grid_code,
+          COUNT(DISTINCT eg.id)::bigint AS samples,
+          COUNT(DISTINCT eg.id)::bigint AS tests
+        FROM sondages s
+        LEFT JOIN essais_geotechniques eg ON eg.sondage_id = s.id
+        WHERE s.grid_code = $1
+        GROUP BY s.id, s.code, s.location_mode, s.grid_code
         "#,
     )
     .bind(&code)
     .fetch_all(pool)
     .await
     .unwrap_or_default();
+    
+    let surveys: Vec<SurveyInfo> = survey_rows.into_iter().map(|row| {
+        let mode: String = row.try_get("mode").unwrap_or_else(|_| "unknown".to_string());
+        let badge = if mode == "adm_random_cell" { 
+            Some("ADM random cell".to_string()) 
+        } else { 
+            None 
+        };
+        
+        SurveyInfo {
+            id: row.try_get("id").unwrap(),
+            code_site: row.try_get("code_site").ok(),
+            mode,
+            date: None,
+            adm3_code: None,
+            samples: row.try_get("samples").unwrap_or(0),
+            tests: row.try_get("tests").unwrap_or(0),
+            badge,
+        }
+    }).collect();
 
     // 5) Sondages sources (si spread-only)
     let source_surveys = if kpi.pct_spread > 99.0 && !surveys.is_empty() {
