@@ -1,4 +1,4 @@
-use axum::{routing::{get, post, delete}, Json, Router};
+use axum::{routing::{get, post, patch, delete}, Json, Router};
 use axum::http::Method;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
@@ -20,6 +20,9 @@ mod import_bulk;
 mod import_wizard;
 mod thematic;
 mod geocoding;
+mod geocode_manual;
+mod surveys_canon;
+mod sondages;
 mod cells_labs;
 mod cells_kpi;
 mod surveys_compat;
@@ -124,6 +127,23 @@ async fn main() -> anyhow::Result<()> {
         .route("/geocode/suggestions/:id/reject", post(geocoding::reject_suggestion))
         .route("/geocode/apply-accepted", post(geocoding::apply_accepted))
         .route("/geocode/stats", get(geocoding::get_stats))
+        // Manual geocoding endpoints
+        .route("/geocode/manual", get(geocode_manual::list_without_geometry))
+        .route("/geocode/manual/:id", post(geocode_manual::update_geometry))
+        .route("/geocode/manual/stats", get(geocode_manual::get_manual_stats))
+        // Surveys canoniques (unifiés)
+        .route("/surveys-canon", get(surveys_canon::list_surveys))
+        .route("/surveys-canon/stats", get(surveys_canon::get_surveys_stats))
+        .route("/surveys-canon/resolve", get(surveys_canon::resolve_alias))
+        .route("/surveys-canon/:id", get(surveys_canon::get_survey))
+        .route("/surveys-canon/:id/geometry", patch(surveys_canon::update_geometry))
+        .route("/surveys-canon/:id/adm3-candidates", get(surveys_canon::get_adm3_candidates))
+        // Sondages individuels (géocodage unitaire)
+        .route("/sondages", get(sondages::list_sondages))
+        .route("/sondages/stats", get(sondages::get_sondages_stats))
+        .route("/sondages/:id", get(sondages::get_sondage))
+        .route("/sondages/:id/geometry", patch(sondages::update_sondage_geometry))
+        .route("/sondages/:id/adm3-candidates", get(sondages::get_adm3_candidates))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

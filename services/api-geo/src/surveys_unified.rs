@@ -116,10 +116,10 @@ pub async fn get_unified_stats(
     let stats = sqlx::query_as::<_, (i64, i64, i64, i64)>(
         r#"
         SELECT 
-            COUNT(*) as total_localites,
-            SUM(variants) as total_sondages,
-            SUM(CASE WHEN variants > 1 THEN 1 ELSE 0 END) as avec_doublons,
-            SUM(total_essais) as total_essais
+            COUNT(*)::bigint as total_localites,
+            COALESCE(SUM(variants), 0)::bigint as total_sondages,
+            COALESCE(SUM(CASE WHEN variants > 1 THEN 1 ELSE 0 END), 0)::bigint as avec_doublons,
+            COALESCE(SUM(total_essais), 0)::bigint as total_essais
         FROM atlas.mv_sondages_unifies
         "#
     )

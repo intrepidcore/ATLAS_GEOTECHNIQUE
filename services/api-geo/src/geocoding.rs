@@ -20,6 +20,7 @@ pub struct GeocodeSuggestionRow {
     pub reason: String,
     pub status: String,
     pub payload: serde_json::Value,
+    pub is_unnormalized: Option<bool>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -31,6 +32,7 @@ pub struct GeocodeSuggestion {
     pub reason: String,
     pub status: String,
     pub payload: serde_json::Value,
+    pub is_unnormalized: bool,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
 }
@@ -42,11 +44,28 @@ impl From<GeocodeSuggestionRow> for GeocodeSuggestion {
             sondage_id: row.sondage_id,
             reason: row.reason,
             status: row.status,
-            payload: row.payload,
+            payload: row.payload.clone(),
+            is_unnormalized: check_unnormalized(&row.payload),
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
     }
+}
+
+// Helper pour détecter si le libellé est non normalisé
+fn check_unnormalized(payload: &serde_json::Value) -> bool {
+    if let Some(localite_base) = payload.get("localite_base").and_then(|v| v.as_str()) {
+        let normalized = normalize_text(localite_base);
+        return localite_base != normalized;
+    }
+    false
+}
+
+fn normalize_text(s: &str) -> String {
+    s.to_uppercase()
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .collect()
 }
 
 #[derive(Debug, Deserialize)]
@@ -95,7 +114,10 @@ pub async fn list_suggestions(
     
     let rows = sqlx::query_as::<_, GeocodeSuggestionRow>(
         r#"
-        SELECT id, sondage_id, reason, status, payload, created_at, updated_at
+        SELECT 
+          id, sondage_id, reason, status, payload, 
+          (payload->>'localite_base' != UPPER(REGEXP_REPLACE(payload->>'localite_base', '[^a-zA-Z0-9]+', '', 'g'))) as is_unnormalized,
+          created_at, updated_at
         FROM atlas.geocode_suggestions
         WHERE ($1::text IS NULL OR status = $1)
           AND ($2::text IS NULL OR reason = $2)

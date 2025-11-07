@@ -647,8 +647,9 @@ pub async fn list_adm3(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     
-    #[derive(sqlx::FromRow)]
+    #[derive(sqlx::FromRow, serde::Serialize)]
     struct Adm3Row {
+        gid: i32,
         code: Option<String>,
         name: Option<String>,
         adm2_name: Option<String>,
@@ -658,6 +659,7 @@ pub async fn list_adm3(
     let adm3s = match sqlx::query_as::<_, Adm3Row>(
         r#"
         SELECT DISTINCT 
+            gid,
             adm3_pcode as code,
             adm3_fr as name,
             adm2_fr as adm2_name,
@@ -680,14 +682,5 @@ pub async fn list_adm3(
         }
     };
     
-    let zones: Vec<AdmZone> = adm3s
-        .into_iter()
-        .map(|row| AdmZone {
-            name: row.name.unwrap_or_default(),
-            code: row.code,
-            bbox: None,
-        })
-        .collect();
-    
-    (StatusCode::OK, Json(zones)).into_response()
+    (StatusCode::OK, Json(adm3s)).into_response()
 }
