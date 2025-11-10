@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StagingModal } from '@/components/StagingModal'
@@ -6,32 +6,67 @@ import { FieldCalculator } from '@/components/FieldCalculator'
 import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
-import { Database, Calculator, Upload, Table2, GitCompare } from 'lucide-react'
+import { Database, Calculator, Upload, Table2, GitCompare, Loader2 } from 'lucide-react'
+import { tablesApi, stagingApi, type Table, type Column } from '@/services/api'
 
 function App() {
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<string>('communes')
+  const [selectedSchema, setSelectedSchema] = useState<string>('atlas')
+  const [tables, setTables] = useState<Table[]>([])
+  const [columns, setColumns] = useState<Column[]>([])
+  const [tableData, setTableData] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  // Mock data pour démonstration
-  const mockColumns = [
-    { name: 'id', type: 'integer' },
-    { name: 'nom', type: 'text' },
-    { name: 'population', type: 'integer' },
-    { name: 'superficie', type: 'double' },
-    { name: 'created_at', type: 'timestamp' },
-  ]
+  // Charger les tables au démarrage
+  useEffect(() => {
+    loadTables()
+  }, [])
 
-  const mockData = [
-    { id: 1, nom: 'Lomé', population: 1500000, superficie: 90.0, created_at: '2025-01-01' },
-    { id: 2, nom: 'Sokodé', population: 120000, superficie: 45.5, created_at: '2025-01-02' },
-    { id: 3, nom: 'Kara', population: 95000, superficie: 38.2, created_at: '2025-01-03' },
-  ]
+  // Charger les colonnes et données quand la table change
+  useEffect(() => {
+    if (selectedTable) {
+      loadTableData()
+    }
+  }, [selectedTable, selectedSchema])
 
-  const mockChanges = [
-    { field: 'population', old_value: 1500000, new_value: 1550000, operation: 'UPDATE' as const },
-    { field: 'nom', old_value: null, new_value: 'Atakpamé', operation: 'INSERT' as const },
-    { field: 'superficie', old_value: 45.5, new_value: null, operation: 'DELETE' as const },
-  ]
+  const loadTables = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const data = await tablesApi.list(selectedSchema)
+      setTables(data)
+      if (data.length > 0 && !selectedTable) {
+        setSelectedTable(data[0].name)
+      }
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors du chargement des tables')
+      console.error('Error loading tables:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const loadTableData = async () => {
+    try {
+      setLoading(true)
+      setError(null)
+      const [cols, data] = await Promise.all([
+        tablesApi.getColumns(selectedSchema, selectedTable),
+        tablesApi.getData(selectedSchema, selectedTable, 100, 0)
+      ])
+      setColumns(cols)
+      setTableData(data)
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors du chargement des données')
+      console.error('Error loading table data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const [recentChanges, setRecentChanges] = useState<any[]>([])
 
   const handleCalculate = async (config: any) => {
     console.log('Calculate:', config)
@@ -117,13 +152,23 @@ function App() {
                 </div>
               </div>
 
-              <DataGrid
-                data={mockData}
-                columns={mockColumns.map(col => ({
-                  accessorKey: col.name,
-                  header: col.name,
-                }))}
-              />
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                </div>
+              ) : error ? (
+                <div className="text-red-600 p-4 border border-red-200 rounded-lg">
+                  {error}
+                </div>
+              ) : (
+                <DataGrid
+                  data={tableData}
+                  columns={columns.map(col => ({
+                    accessorKey: col.name,
+                    header: col.name,
+                  }))}
+                />
+              )}
             </div>
           </TabsContent>
 
@@ -151,7 +196,7 @@ function App() {
                 </div>
               </div>
 
-              <DiffViewer changes={mockChanges} title="Changements récents" />
+              <DiffViewer changes={recentChanges} title="Changements récents" />
             </div>
           </TabsContent>
 
@@ -220,7 +265,7 @@ function App() {
           open={true}
           onClose={() => setActiveModal(null)}
           tableName={selectedTable}
-          existingFields={mockColumns}
+          existingFields={columns}
           selectedRowsCount={0}
           onCalculate={handleCalculate}
         />
@@ -231,8 +276,8 @@ function App() {
           open={true}
           onClose={() => setActiveModal(null)}
           tableName={selectedTable}
-          data={mockData}
-          columns={mockColumns}
+          data={tableData}
+          columns={columns}
           onImport={handleImport}
         />
       )}

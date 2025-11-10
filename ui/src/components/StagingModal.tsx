@@ -12,6 +12,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertTriangle, CheckCircle, XCircle, Lock } from 'lucide-react';
+import { stagingApi, type StagingInfo, type StagingLock, type DryRunResult, type ConflictDetail } from '@/services/api';
 
 interface StagingModalProps {
   open: boolean;
@@ -20,43 +21,6 @@ interface StagingModalProps {
   table: string;
   user: string;
   userEmail?: string;
-}
-
-interface StagingInfo {
-  staging_id: string;
-  table_name: string;
-  schema_name: string;
-  created_at: string;
-  reason?: string;
-  row_count: number;
-  operations_count: number;
-}
-
-interface StagingLock {
-  table_name: string;
-  locked_by: string;
-  user_email?: string;
-  locked_at: string;
-  expires_at: string;
-  staging_id?: string;
-  reason?: string;
-}
-
-interface DryRunResult {
-  is_safe: boolean;
-  conflicts: ConflictDetail[];
-  warnings: string[];
-  estimated_duration_ms?: number;
-  affected_rows: number;
-}
-
-interface ConflictDetail {
-  conflict_type: string;
-  table: string;
-  column?: string;
-  constraint_name?: string;
-  affected_rows: number;
-  sample_values: string[];
 }
 
 export const StagingModal: React.FC<StagingModalProps> = ({
@@ -82,38 +46,26 @@ export const StagingModal: React.FC<StagingModalProps> = ({
     }
   }, [open]);
 
+  const acquireLock = async (stagingId: string) => {
+    try {
+      const lock = await stagingApi.acquireLock(stagingId, user, userEmail);
+      setLockInfo(lock);
+    } catch (err: any) {
+      console.error('Erreur lock:', err);
+    }
+  };
+
   const createStaging = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/db/staging', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          schema,
-          table,
-          reason: `Édition par ${user}`,
-          copy_data: false,
-          user,
-          user_email: userEmail,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!data.success) {
-        setError(data.error || 'Erreur création staging');
-        if (data.lock_info) {
-          setLockInfo(data.lock_info);
-        }
-        return;
-      }
-
-      setStagingInfo(data.staging_info);
-      setLockInfo(data.lock_info);
-    } catch (err) {
-      setError(`Erreur réseau: ${err}`);
+      const info = await stagingApi.create(schema, table, `Édition par ${user}`);
+      setStagingInfo(info);
+      // Acquérir le lock
+      await acquireLock(info.staging_id);
+    } catch (err: any) {
+      setError(err.message || 'Erreur création staging');
     } finally {
       setLoading(false);
     }
@@ -126,20 +78,11 @@ export const StagingModal: React.FC<StagingModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`/api/db/staging/${stagingInfo.staging_id}/dryrun`, {
-        method: 'POST',
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setDryRunResult(data.result);
-        setShowDryRun(true);
-      } else {
-        setError(data.error || 'Erreur dry-run');
-      }
-    } catch (err) {
-      setError(`Erreur réseau: ${err}`);
+      const result = await stagingApi.dryrun(stagingInfo.staging_id);
+      setDryRunResult(result);
+      setShowDryRun(true);
+    } catch (err: any) {
+      setError(err.message || 'Erreur dry-run');
     } finally {
       setLoading(false);
     }
@@ -157,27 +100,13 @@ export const StagingModal: React.FC<StagingModalProps> = ({
     setError(null);
 
     try {
-      const response = await fetch(`/api/db/staging/${stagingInfo.staging_id}/commit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          message: `Commit staging ${stagingInfo.staging_id}`,
-          user,
-          backup: true,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        setError(data.error || 'Erreur commit');
-        return;
+      const result = await stagingApi.commit(stagingInfo.staging_id);
+      if (result.success) {
+        alert(`Commit réussi ! ${result.rows_affected} lignes affectées`);
+        onClose();
       }
-
-      // Succès
-      alert('Commit réussi !');
-      onClose();
-    } catch (err) {
-      setError(`Erreur réseau: ${err}`);
+    } catch (err: any) {
+      setError(err.message || 'Erreur commit');
     } finally {
       setLoading(false);
     }
@@ -193,13 +122,10 @@ export const StagingModal: React.FC<StagingModalProps> = ({
     setLoading(true);
 
     try {
-      await fetch(`/api/db/staging/${stagingInfo.staging_id}/cancel`, {
-        method: 'POST',
-      });
-
+      await stagingApi.cancel(stagingInfo.staging_id);
       onClose();
-    } catch (err) {
-      setError(`Erreur réseau: ${err}`);
+    } catch (err: any) {
+      setError(err.message || 'Erreur annulation');
     } finally {
       setLoading(false);
     }
