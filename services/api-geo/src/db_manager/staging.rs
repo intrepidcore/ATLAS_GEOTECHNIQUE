@@ -104,11 +104,7 @@ pub async fn apply_staging_operation(
     match operation.op {
         RowOperation::Insert => {
             let columns: Vec<String> = operation.data.keys().cloned().collect();
-            let values: Vec<String> = operation
-                .data
-                .values()
-                .map(value_to_sql_string)
-                .collect();
+            let values: Vec<String> = operation.data.values().map(value_to_sql_string).collect();
 
             let columns_str = columns
                 .iter()
@@ -366,7 +362,10 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
 
     // Créer un backup automatique avant commit (sécurité)
     let backup_req = crate::db_manager::CreateBackupRequest {
-        tables: vec![format!("{}.{}", staging_info.schema_name, staging_info.table_name)],
+        tables: vec![format!(
+            "{}.{}",
+            staging_info.schema_name, staging_info.table_name
+        )],
         description: Some(format!("Auto-backup avant commit staging {}", staging_id)),
     };
     let _backup = crate::db_manager::create_backup(pool, backup_req).await?;

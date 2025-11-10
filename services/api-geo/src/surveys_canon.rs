@@ -349,10 +349,7 @@ pub async fn get_adm3_candidates(
         _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     })?;
 
-    let search_term = survey
-        .localite
-        .as_ref()
-        .unwrap_or(&survey.localite_canon);
+    let search_term = survey.localite.as_ref().unwrap_or(&survey.localite_canon);
 
     // Rechercher les candidats avec similarité
     let candidates: Vec<Adm3Candidate> = sqlx::query_as(

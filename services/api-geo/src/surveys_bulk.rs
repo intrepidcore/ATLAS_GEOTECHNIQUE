@@ -60,10 +60,7 @@ pub async fn bulk_import_surveys(
 
     for (idx, row) in payload.rows.iter().enumerate() {
         let code = row.code.clone().unwrap_or_else(|| format!("BULK-{}", idx));
-        surveys_map
-            .entry(code)
-            .or_default()
-            .push((idx, row));
+        surveys_map.entry(code).or_default().push((idx, row));
     }
 
     // Traiter chaque sondage

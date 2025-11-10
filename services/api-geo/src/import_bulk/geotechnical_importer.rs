@@ -9,8 +9,7 @@ use sqlx::{PgPool, Postgres, Transaction};
 use std::collections::HashMap;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, serde::Serialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, serde::Serialize, Default)]
 pub struct GeotechnicalImportStats {
     pub sondages_created: i32,
     pub sondages_updated: i32,
@@ -22,7 +21,6 @@ pub struct GeotechnicalImportStats {
     pub errors: Vec<String>,
     pub warnings: Vec<String>,
 }
-
 
 // ============================================================================
 // Import principal

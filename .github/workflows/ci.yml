@@ -7,33 +7,86 @@ on:
 jobs:
   rust:
     runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas_clean
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
     strategy:
       matrix:
         svc: [api-geo, api-infer, api-opti]
+    
     steps:
       - uses: actions/checkout@v4
+      
       - uses: dtolnay/rust-toolchain@stable
+      
+      - name: Run migrations
+        if: matrix.svc == 'api-geo'
+        run: |
+          cd migrations
+          for file in *.sql; do
+            PGPASSWORD=atlas psql -h localhost -U atlas -d atlas_clean -f "$file"
+          done
+        env:
+          DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
+      
       - name: fmt
         run: |
           cd services/${{ matrix.svc }}
           cargo fmt --all -- --check
+      
       - name: clippy
         run: |
           cd services/${{ matrix.svc }}
           cargo clippy -- -D warnings
+      
       - name: check
         run: |
           cd services/${{ matrix.svc }}
           cargo check --all-targets
+      
+      - name: test
+        if: matrix.svc == 'api-geo'
+        run: |
+          cd services/${{ matrix.svc }}
+          cargo test --all-targets
+        env:
+          DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
+  
   ui:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - name: build
+          cache: 'npm'
+          cache-dependency-path: ui/package-lock.json
+      
+      - name: install
         run: |
           cd ui
           npm ci
+      
+      - name: lint
+        run: |
+          cd ui
+          npm run lint || true
+      
+      - name: build
+        run: |
+          cd ui
           npm run build

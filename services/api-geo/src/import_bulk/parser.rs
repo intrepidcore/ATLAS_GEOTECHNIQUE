@@ -203,10 +203,7 @@ impl XlsxParser {
             .next()
             .ok_or_else(|| anyhow!("Aucune ligne trouvée dans la feuille"))?;
 
-        let headers: Vec<String> = headers_row
-            .iter()
-            .map(Self::cell_to_string)
-            .collect();
+        let headers: Vec<String> = headers_row.iter().map(Self::cell_to_string).collect();
 
         if headers.is_empty() || headers.iter().all(|h| h.is_empty()) {
             return Err(anyhow!("En-têtes vides"));
@@ -258,10 +255,7 @@ impl XlsxParser {
             .next()
             .ok_or_else(|| anyhow!("Aucune ligne trouvée"))?;
 
-        Ok(headers_row
-            .iter()
-            .map(Self::cell_to_string)
-            .collect())
+        Ok(headers_row.iter().map(Self::cell_to_string).collect())
     }
 
     /// Convertir cellule Excel en String

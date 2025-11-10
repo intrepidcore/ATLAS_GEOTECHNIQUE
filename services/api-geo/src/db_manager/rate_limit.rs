@@ -1,8 +1,8 @@
 // Rate limiting pour les opérations DB Manager
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
 use std::time::{Duration, Instant};
+use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct RateLimiter {
@@ -24,16 +24,16 @@ impl RateLimiter {
     pub async fn check_rate_limit(&self, key: &str) -> bool {
         let mut requests = self.requests.write().await;
         let now = Instant::now();
-        
+
         // Nettoyer les anciennes requêtes
         let entry = requests.entry(key.to_string()).or_insert_with(Vec::new);
         entry.retain(|&instant| now.duration_since(instant) < self.window);
-        
+
         // Vérifier la limite
         if entry.len() >= self.max_requests {
             return false;
         }
-        
+
         // Ajouter la nouvelle requête
         entry.push(now);
         true
@@ -43,7 +43,7 @@ impl RateLimiter {
     pub async fn cleanup(&self) {
         let mut requests = self.requests.write().await;
         let now = Instant::now();
-        
+
         requests.retain(|_, instants| {
             instants.retain(|&instant| now.duration_since(instant) < self.window);
             !instants.is_empty()

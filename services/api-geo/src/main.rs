@@ -19,9 +19,13 @@ mod geocoding;
 mod geotechnical;
 mod import_bulk;
 mod import_wizard;
+mod metrics;
 mod neighbors;
+mod observability;
+mod rbac;
 mod routes;
 mod sondages;
+mod sql_sanitizer;
 pub mod state;
 mod surveys;
 mod surveys_adm;
@@ -85,6 +89,10 @@ async fn main() -> anyhow::Result<()> {
 
     // Note: Les migrations sont gérées manuellement via scripts SQL
     // sqlx::migrate!() désactivé car les migrations sont déjà appliquées
+
+    // Initialiser les metrics
+    let metrics = std::sync::Arc::new(metrics::Metrics::new());
+    tracing::info!("✅ Metrics Prometheus initialisées");
 
     let state = AppState { pool };
 
@@ -319,6 +327,25 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/db/backup/:id",
             delete(db_manager::routes::delete_backup_handler),
+        )
+        .route(
+            "/metrics",
+            get({
+                let metrics_clone = metrics.clone();
+                move || {
+                    let m = metrics_clone.clone();
+                    async move {
+                        let body = m.to_prometheus().await;
+                        (
+                            [(
+                                axum::http::header::CONTENT_TYPE,
+                                "text/plain; version=0.0.4",
+                            )],
+                            body,
+                        )
+                    }
+                }
+            }),
         )
         .layer(TraceLayer::new_for_http())
         .layer(cors)

@@ -21,8 +21,10 @@ pub fn get_palette(name: &str) -> Option<ColorPalette> {
     match name {
         "Blues" => Some(ColorPalette {
             name: "Blues".to_string(),
-            colors: ["#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5",
-                "#08519c", "#08306b"]
+            colors: [
+                "#f7fbff", "#deebf7", "#c6dbef", "#9ecae1", "#6baed6", "#4292c6", "#2171b5",
+                "#08519c", "#08306b",
+            ]
             .iter()
             .map(|s| s.to_string())
             .collect(),
@@ -30,8 +32,10 @@ pub fn get_palette(name: &str) -> Option<ColorPalette> {
         }),
         "Greens" => Some(ColorPalette {
             name: "Greens".to_string(),
-            colors: ["#f7fcf5", "#e5f5e0", "#c7e9c0", "#a1d99b", "#74c476", "#41ab5d", "#238b45",
-                "#006d2c", "#00441b"]
+            colors: [
+                "#f7fcf5", "#e5f5e0", "#c7e9c0", "#a1d99b", "#74c476", "#41ab5d", "#238b45",
+                "#006d2c", "#00441b",
+            ]
             .iter()
             .map(|s| s.to_string())
             .collect(),
@@ -39,8 +43,10 @@ pub fn get_palette(name: &str) -> Option<ColorPalette> {
         }),
         "Reds" => Some(ColorPalette {
             name: "Reds".to_string(),
-            colors: ["#fff5f0", "#fee0d2", "#fcbba1", "#fc9272", "#fb6a4a", "#ef3b2c", "#cb181d",
-                "#a50f15", "#67000d"]
+            colors: [
+                "#fff5f0", "#fee0d2", "#fcbba1", "#fc9272", "#fb6a4a", "#ef3b2c", "#cb181d",
+                "#a50f15", "#67000d",
+            ]
             .iter()
             .map(|s| s.to_string())
             .collect(),
@@ -48,8 +54,10 @@ pub fn get_palette(name: &str) -> Option<ColorPalette> {
         }),
         "RdYlGn" => Some(ColorPalette {
             name: "RdYlGn".to_string(),
-            colors: ["#d73027", "#f46d43", "#fdae61", "#fee08b", "#ffffbf", "#d9ef8b", "#a6d96a",
-                "#66bd63", "#1a9850"]
+            colors: [
+                "#d73027", "#f46d43", "#fdae61", "#fee08b", "#ffffbf", "#d9ef8b", "#a6d96a",
+                "#66bd63", "#1a9850",
+            ]
             .iter()
             .map(|s| s.to_string())
             .collect(),
@@ -57,8 +65,10 @@ pub fn get_palette(name: &str) -> Option<ColorPalette> {
         }),
         "RdBu" => Some(ColorPalette {
             name: "RdBu".to_string(),
-            colors: ["#b2182b", "#d6604d", "#f4a582", "#fddbc7", "#f7f7f7", "#d1e5f0", "#92c5de",
-                "#4393c3", "#2166ac"]
+            colors: [
+                "#b2182b", "#d6604d", "#f4a582", "#fddbc7", "#f7f7f7", "#d1e5f0", "#92c5de",
+                "#4393c3", "#2166ac",
+            ]
             .iter()
             .map(|s| s.to_string())
             .collect(),
@@ -66,8 +76,10 @@ pub fn get_palette(name: &str) -> Option<ColorPalette> {
         }),
         "Viridis" => Some(ColorPalette {
             name: "Viridis".to_string(),
-            colors: ["#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779",
-                "#6ece58", "#b5de2b", "#fde724"]
+            colors: [
+                "#440154", "#482878", "#3e4989", "#31688e", "#26828e", "#1f9e89", "#35b779",
+                "#6ece58", "#b5de2b", "#fde724",
+            ]
             .iter()
             .map(|s| s.to_string())
             .collect(),

@@ -34,12 +34,14 @@ pub fn transform_large_to_long(
     let localite = mapping
         .localite_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     let code = mapping
         .code_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     let date = mapping
         .date_col
@@ -50,32 +52,38 @@ pub fn transform_large_to_long(
     let source = mapping
         .source_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     let operator = mapping
         .operator_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     let type_sol = mapping
         .type_sol_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     let adm1 = mapping
         .adm1_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     let adm2 = mapping
         .adm2_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     let adm3 = mapping
         .adm3_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     // Pour chaque colonne de profondeur
     for (idx, prof_col) in profondeur_cols.iter().enumerate() {
@@ -111,7 +119,8 @@ pub fn transform_large_to_long(
                 unite: mapping
                     .unite_col
                     .as_ref()
-                    .and_then(|col| row.get(col)).cloned(),
+                    .and_then(|col| row.get(col))
+                    .cloned(),
                 date,
                 source: source.clone(),
                 operator: operator.clone(),
@@ -170,7 +179,8 @@ pub fn map_long_row(
     let analyse_qualitative = mapping
         .analyse_col
         .as_ref()
-        .and_then(|col| row.get(col)).cloned();
+        .and_then(|col| row.get(col))
+        .cloned();
 
     // Vérifier qu'au moins valeur OU analyse est présente
     if valeur.is_none() && analyse_qualitative.is_none() {
@@ -182,11 +192,13 @@ pub fn map_long_row(
         localite: mapping
             .localite_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         code: mapping
             .code_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         type_essai,
         profondeur_m,
         valeur,
@@ -194,7 +206,8 @@ pub fn map_long_row(
         unite: mapping
             .unite_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         date: mapping
             .date_col
             .as_ref()
@@ -203,15 +216,18 @@ pub fn map_long_row(
         source: mapping
             .source_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         operator: mapping
             .operator_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         type_sol: mapping
             .type_sol_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         lon: mapping
             .lon_col
             .as_ref()
@@ -225,19 +241,23 @@ pub fn map_long_row(
         adm1: mapping
             .adm1_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         adm2: mapping
             .adm2_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         adm3: mapping
             .adm3_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
         maille_code: mapping
             .maille_col
             .as_ref()
-            .and_then(|col| row.get(col)).cloned(),
+            .and_then(|col| row.get(col))
+            .cloned(),
     })
 }
 

@@ -13,11 +13,14 @@ interface DataGridState {
   sortDirection: 'asc' | 'desc'
   currentPage: number
   pageSize: number
+  editModeStartTime: number | null
+  editModeTimer: number | null
 }
 
 export class DataGridComponent extends BaseComponent<DataGridState> {
   private schema: string = ''
   private table: string = ''
+  private readonly EDIT_MODE_TIMEOUT_MS = 15 * 60 * 1000 // 15 minutes
   
   constructor(container: HTMLElement) {
     super(container, {
@@ -30,7 +33,9 @@ export class DataGridComponent extends BaseComponent<DataGridState> {
       sortColumn: null,
       sortDirection: 'asc',
       currentPage: 1,
-      pageSize: 100
+      pageSize: 100,
+      editModeStartTime: null,
+      editModeTimer: null
     })
   }
   
@@ -67,7 +72,32 @@ export class DataGridComponent extends BaseComponent<DataGridState> {
    * Change le mode lecture/édition
    */
   public setMode(mode: 'read' | 'edit'): void {
-    this.setState({ mode, editingCell: null })
+    // Nettoyer l'ancien timer
+    if (this.state.editModeTimer) {
+      clearTimeout(this.state.editModeTimer)
+    }
+    
+    if (mode === 'edit') {
+      // Démarrer le timer auto-off
+      const timer = window.setTimeout(() => {
+        this.setMode('read')
+        alert('⏰ Mode édition désactivé automatiquement après 15 minutes d\'inactivité')
+      }, this.EDIT_MODE_TIMEOUT_MS)
+      
+      this.setState({ 
+        mode, 
+        editingCell: null,
+        editModeStartTime: Date.now(),
+        editModeTimer: timer
+      })
+    } else {
+      this.setState({ 
+        mode, 
+        editingCell: null,
+        editModeStartTime: null,
+        editModeTimer: null
+      })
+    }
   }
   
   /**
@@ -126,6 +156,11 @@ export class DataGridComponent extends BaseComponent<DataGridState> {
     const selectedCount = selection.size
     
     return `
+      ${mode === 'edit' ? `
+        <div class="edit-mode-banner">
+          ⚠️ <strong>MODE ÉDITION ACTIF</strong> - Les modifications seront enregistrées immédiatement. Auto-désactivation dans 15 min.
+        </div>
+      ` : ''}
       <div class="data-grid-toolbar">
         <div class="toolbar-left">
           <button 
