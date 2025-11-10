@@ -5,14 +5,16 @@ use std::collections::HashMap;
 use uuid::Uuid;
 
 /// Crée une table de staging
+/// Pattern: Ne copie PAS les données ni les contraintes par défaut pour éviter conflits
 pub async fn create_staging(
     pool: &PgPool,
     schema: &str,
     table: &str,
     request: CreateStagingRequest,
 ) -> Result<StagingInfo, sqlx::Error> {
-    let staging_id = Uuid::new_v4().to_string();
-    let staging_table = format!("staging_{}_{}", table, staging_id.replace("-", "_"));
+    // Utiliser UUID simple (sans tirets) pour noms SQL valides
+    let staging_id = Uuid::new_v4().simple().to_string();
+    let staging_table = format!("staging_{}_{}", table, staging_id);
 
     let schema_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(schema)
@@ -27,19 +29,16 @@ pub async fn create_staging(
         .fetch_one(pool)
         .await?;
 
-    // Créer la table de staging comme copie de la table originale
+    // Créer la table de staging SANS copier contraintes ni données
+    // INCLUDING DEFAULTS pour garder valeurs par défaut, mais pas CONSTRAINTS
     let create_query = format!(
-        "CREATE TABLE {}.{} (LIKE {}.{} INCLUDING ALL)",
+        "CREATE TABLE {}.{} (LIKE {}.{} INCLUDING DEFAULTS EXCLUDING CONSTRAINTS)",
         schema_ident, staging_ident, schema_ident, table_ident
     );
     sqlx::query(&create_query).execute(pool).await?;
 
-    // Copier les données
-    let copy_query = format!(
-        "INSERT INTO {}.{} SELECT * FROM {}.{}",
-        schema_ident, staging_ident, schema_ident, table_ident
-    );
-    sqlx::query(&copy_query).execute(pool).await?;
+    // NE PAS copier les données automatiquement - l'utilisateur peut le faire via UI si besoin
+    // Cela évite les conflits de contraintes UNIQUE/PRIMARY KEY
 
     // Ajouter une colonne pour tracker les opérations
     let alter_query = format!(
@@ -49,6 +48,7 @@ pub async fn create_staging(
     sqlx::query(&alter_query).execute(pool).await?;
 
     // Enregistrer le staging dans une table de métadonnées
+    // staging_id = staging_table pour cohérence
     sqlx::query(
         r#"
         INSERT INTO atlas.staging_metadata 
@@ -56,7 +56,7 @@ pub async fn create_staging(
         VALUES ($1, $2, $3, $4, $5, NOW())
         "#,
     )
-    .bind(&staging_id)
+    .bind(&staging_table)  // Utiliser staging_table comme ID
     .bind(table)
     .bind(schema)
     .bind(&staging_table)
@@ -72,7 +72,7 @@ pub async fn create_staging(
     .await?;
 
     Ok(StagingInfo {
-        staging_id: staging_table,  // Retourner le nom de table complet sans tirets
+        staging_id: staging_table.clone(),  // Nom de table sans tirets
         table_name: table.to_string(),
         schema_name: schema.to_string(),
         created_at: chrono::Utc::now(),
@@ -349,7 +349,10 @@ pub async fn preview_staging(
     })
 }
 
-/// Commit le staging (applique les changements)
+/// Commit le staging (applique les changements) - Pattern atomic swap
+/// 1. Validation
+/// 2. Backup automatique
+/// 3. Transaction: RENAME original -> old, RENAME staging -> original, DROP old
 pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitResult, sqlx::Error> {
     let staging_info = get_staging_info(pool, staging_id).await?;
     let staging_table = get_staging_table_name(pool, staging_id).await?;
@@ -357,7 +360,10 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
     // Valider avant de commiter
     let validation = validate_staging(pool, staging_id).await?;
     if !validation.is_valid {
-        return Err(sqlx::Error::Protocol("Validation échouée".to_string()));
+        return Err(sqlx::Error::Protocol(format!(
+            "Validation échouée: {} erreurs",
+            validation.errors.len()
+        )));
     }
 
     // Créer un backup automatique avant commit (sécurité)
@@ -383,52 +389,51 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
         .fetch_one(pool)
         .await?;
 
-    // Commencer une transaction atomique
-    // Si erreur à n'importe quelle étape → rollback automatique
+    // Compter les lignes avant commit
+    let staging_count: i64 = sqlx::query_scalar(&format!(
+        "SELECT COUNT(*) FROM {}.{}",
+        schema_ident, staging_ident
+    ))
+    .fetch_one(pool)
+    .await?;
+
+    // Transaction atomique - pattern SWAP
     let mut tx = pool.begin().await?;
 
-    // Appliquer les suppressions
-    let delete_query = format!(
-        "DELETE FROM {}.{} WHERE id IN (SELECT id FROM {}.{} WHERE _staging_op = 'DELETE')",
-        schema_ident, table_ident, schema_ident, staging_ident
-    );
-    let deletes_result = sqlx::query(&delete_query).execute(&mut *tx).await?;
-
-    // Appliquer les mises à jour (remplacer la table entière)
-    let temp_table = format!("{}_old", staging_info.table_name);
+    // Nom temporaire pour l'ancienne table
+    let temp_table = format!("{}_old_{}", staging_info.table_name, Uuid::new_v4().simple());
     let temp_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&temp_table)
         .fetch_one(&mut *tx)
         .await?;
 
-    // Renommer la table originale
+    // Supprimer la colonne _staging_op avant le swap
+    let drop_column = format!(
+        "ALTER TABLE {}.{} DROP COLUMN IF EXISTS _staging_op",
+        schema_ident, staging_ident
+    );
+    sqlx::query(&drop_column).execute(&mut *tx).await?;
+
+    // ATOMIC SWAP: Renommer original -> temp
     let rename_old = format!(
         "ALTER TABLE {}.{} RENAME TO {}",
         schema_ident, table_ident, temp_ident
     );
     sqlx::query(&rename_old).execute(&mut *tx).await?;
 
-    // Renommer le staging
+    // ATOMIC SWAP: Renommer staging -> original
     let rename_staging = format!(
         "ALTER TABLE {}.{} RENAME TO {}",
         schema_ident, staging_ident, table_ident
     );
     sqlx::query(&rename_staging).execute(&mut *tx).await?;
 
-    // Supprimer la colonne _staging_op
-    let drop_column = format!(
-        "ALTER TABLE {}.{} DROP COLUMN IF EXISTS _staging_op",
-        schema_ident, table_ident
-    );
-    sqlx::query(&drop_column).execute(&mut *tx).await?;
-
-    // Supprimer l'ancienne table
-    let drop_old = format!("DROP TABLE IF EXISTS {}.{}", schema_ident, temp_ident);
+    // Supprimer l'ancienne table (ou archiver si besoin)
+    let drop_old = format!("DROP TABLE IF EXISTS {}.{} CASCADE", schema_ident, temp_ident);
     sqlx::query(&drop_old).execute(&mut *tx).await?;
 
     // Créer un audit log
-    let audit_id = Uuid::new_v4().to_string();
-    let rows_affected = deletes_result.rows_affected() as i64;
+    let audit_id = Uuid::new_v4().simple().to_string();
 
     sqlx::query(
         r#"
@@ -440,7 +445,7 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
     .bind(&audit_id)
     .bind(&staging_info.table_name)
     .bind(&staging_info.schema_name)
-    .bind(rows_affected)
+    .bind(staging_count)
     .bind(staging_id)
     .execute(&mut *tx)
     .await?;
@@ -456,7 +461,7 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
     // Log structuré pour observabilité
     crate::observability::StructuredLog::new("staging_commit")
         .with_table(&format!("{}.{}", staging_info.schema_name, staging_info.table_name))
-        .with_rows_affected(rows_affected)
+        .with_rows_affected(staging_count)
         .with_details(serde_json::json!({
             "staging_id": staging_id,
             "audit_id": &audit_id
@@ -465,7 +470,7 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
 
     Ok(CommitResult {
         success: true,
-        rows_affected,
+        rows_affected: staging_count,
         audit_id,
     })
 }
@@ -499,7 +504,7 @@ pub async fn cancel_staging(pool: &PgPool, staging_id: &str) -> Result<(), sqlx:
 
 // Fonctions utilitaires
 
-async fn get_staging_info(pool: &PgPool, staging_id: &str) -> Result<StagingInfo, sqlx::Error> {
+pub(crate) async fn get_staging_info(pool: &PgPool, staging_id: &str) -> Result<StagingInfo, sqlx::Error> {
     let row = sqlx::query(
         r#"
         SELECT table_name, schema_name, reason, created_at, operations_count
@@ -522,7 +527,7 @@ async fn get_staging_info(pool: &PgPool, staging_id: &str) -> Result<StagingInfo
     })
 }
 
-async fn get_staging_table_name(pool: &PgPool, staging_id: &str) -> Result<String, sqlx::Error> {
+pub(crate) async fn get_staging_table_name(pool: &PgPool, staging_id: &str) -> Result<String, sqlx::Error> {
     sqlx::query_scalar(
         "SELECT staging_table_name FROM atlas.staging_metadata WHERE staging_id = $1",
     )

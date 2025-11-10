@@ -12,6 +12,7 @@ pub struct Metrics {
     pub staging_commits_total: Arc<AtomicU64>,
     pub staging_rollbacks_total: Arc<AtomicU64>,
     pub staging_commits_failed_total: Arc<AtomicU64>,
+    pub staging_conflicts_total: Arc<AtomicU64>,
     pub ddl_dryrun_total: Arc<AtomicU64>,
     pub backups_created_total: Arc<AtomicU64>,
     pub rate_limit_hits_total: Arc<AtomicU64>,
@@ -28,6 +29,7 @@ impl Metrics {
             staging_commits_total: Arc::new(AtomicU64::new(0)),
             staging_rollbacks_total: Arc::new(AtomicU64::new(0)),
             staging_commits_failed_total: Arc::new(AtomicU64::new(0)),
+            staging_conflicts_total: Arc::new(AtomicU64::new(0)),
             ddl_dryrun_total: Arc::new(AtomicU64::new(0)),
             backups_created_total: Arc::new(AtomicU64::new(0)),
             rate_limit_hits_total: Arc::new(AtomicU64::new(0)),
@@ -65,6 +67,10 @@ impl Metrics {
 
     pub fn inc_ddl_dryrun(&self) {
         self.ddl_dryrun_total.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_staging_conflicts(&self) {
+        self.staging_conflicts_total.fetch_add(1, Ordering::Relaxed);
     }
 
     pub async fn record_duration(&self, operation: &str, duration_ms: u64) {
@@ -134,6 +140,13 @@ impl Metrics {
         output.push_str(&format!(
             "staging_commits_failed_total {}\n",
             self.staging_commits_failed_total.load(Ordering::Relaxed)
+        ));
+
+        output.push_str("# HELP staging_conflicts_total Total staging conflicts detected\n");
+        output.push_str("# TYPE staging_conflicts_total counter\n");
+        output.push_str(&format!(
+            "staging_conflicts_total {}\n",
+            self.staging_conflicts_total.load(Ordering::Relaxed)
         ));
 
         output.push_str("# HELP ddl_dryrun_total Total DDL dry-run operations\n");
