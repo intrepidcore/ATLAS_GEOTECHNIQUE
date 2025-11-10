@@ -64,6 +64,22 @@ jobs:
           cargo test --all-targets
         env:
           DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
+      
+      - name: test-integration
+        if: matrix.svc == 'api-geo'
+        run: |
+          cd services/${{ matrix.svc }}
+          cargo test --test db_manager_tests -- --ignored --test-threads=1
+        env:
+          DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
+      
+      - name: sqlx-prepare-check
+        if: matrix.svc == 'api-geo'
+        run: |
+          cd services/${{ matrix.svc }}
+          cargo sqlx prepare --check
+        env:
+          DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
   
   ui:
     runs-on: ubuntu-latest

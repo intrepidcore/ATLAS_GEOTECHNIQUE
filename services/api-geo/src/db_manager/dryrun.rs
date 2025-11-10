@@ -10,6 +10,8 @@ pub struct DryRunResult {
     pub affected_objects: Vec<AffectedObject>,
     pub warnings: Vec<String>,
     pub is_safe: bool,
+    pub explain_plan: Option<String>,
+    pub sample_rows: Option<Vec<serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,12 +119,20 @@ pub async fn dryrun_add_column(
 
     let is_safe = warnings.is_empty() || warnings.iter().all(|w| !w.contains("nécessite"));
 
+    // Générer EXPLAIN plan pour la table (estimation)
+    let explain_plan = generate_explain_plan(pool, schema, table).await.ok();
+
+    // Récupérer échantillon de données (5 lignes)
+    let sample_rows = get_sample_rows(pool, schema, table, 5).await.ok();
+
     Ok(DryRunResult {
         sql,
         estimated_duration_ms,
         affected_objects,
         warnings,
         is_safe,
+        explain_plan,
+        sample_rows,
     })
 }
 
@@ -196,11 +206,64 @@ pub async fn dryrun_delete_column(
 
     warnings.push("⚠️ OPÉRATION DESTRUCTIVE : Données de la colonne seront perdues".to_string());
 
+    // Générer EXPLAIN plan
+    let explain_plan = generate_explain_plan(pool, schema, table).await.ok();
+
+    // Récupérer échantillon
+    let sample_rows = get_sample_rows(pool, schema, table, 5).await.ok();
+
     Ok(DryRunResult {
         sql,
-        estimated_duration_ms: Some(500),
+        estimated_duration_ms: Some(100),
         affected_objects,
         warnings,
-        is_safe: false, // Suppression jamais "safe"
+        is_safe: false, // Suppression jamais "safe" par défaut
+        explain_plan,
+        sample_rows,
     })
+}
+
+/// Générer un EXPLAIN plan pour une table
+async fn generate_explain_plan(
+    pool: &PgPool,
+    schema: &str,
+    table: &str,
+) -> Result<String, sqlx::Error> {
+    let query = format!("SELECT * FROM {}.{} LIMIT 1", schema, table);
+    let explain_query = format!("EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON) {}", query);
+    
+    let result: serde_json::Value = sqlx::query_scalar(&explain_query)
+        .fetch_one(pool)
+        .await?;
+    
+    Ok(serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string()))
+}
+
+/// Récupérer un échantillon de lignes
+async fn get_sample_rows(
+    pool: &PgPool,
+    schema: &str,
+    table: &str,
+    limit: i32,
+) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+    let query = format!("SELECT * FROM {}.{} LIMIT {}", schema, table, limit);
+    
+    let rows = sqlx::query(&query)
+        .fetch_all(pool)
+        .await?;
+    
+    let mut result = Vec::new();
+    for row in rows {
+        let mut obj = serde_json::Map::new();
+        for (i, col) in row.columns().iter().enumerate() {
+            let value: Option<String> = row.try_get(i).ok();
+            obj.insert(
+                col.name().to_string(),
+                serde_json::Value::String(value.unwrap_or_else(|| "NULL".to_string())),
+            );
+        }
+        result.push(serde_json::Value::Object(obj));
+    }
+    
+    Ok(result)
 }

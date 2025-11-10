@@ -51,9 +51,37 @@ test-staging:
 	@echo "🧪 Tests d'intégration staging..."
 	cd services/api-geo && cargo test --test db_manager_tests -- --nocapture
 
+test-integration:
+	@echo "🧪 Tests d'intégration complets..."
+	cd services/api-geo && cargo test --test db_manager_tests -- --ignored --test-threads=1 --nocapture
+
 check-migrations:
 	@echo "🔍 Vérification des migrations..."
 	@for file in migrations/*.sql; do \
 		echo "Checking $$file..."; \
-		grep -q "IF NOT EXISTS\|IF EXISTS" $$file || echo "⚠️  $$file n'est pas idempotent"; \
+		grep -q "IF NOT EXISTS\\|IF EXISTS" $$file || echo "⚠️  $$file n'est pas idempotent"; \
 	done
+
+backup-db:
+	@echo "💾 Backup de la base de données..."
+	@powershell -ExecutionPolicy Bypass -File scripts/backup_db.ps1
+
+backup-db-encrypted:
+	@echo "🔐 Backup chiffré de la base de données..."
+	@powershell -ExecutionPolicy Bypass -File scripts/backup_db.ps1 -Encrypt
+
+restore-db:
+	@echo "⚠️  Restore de la base de données..."
+	@powershell -ExecutionPolicy Bypass -File scripts/restore_db.ps1
+
+wait-db:
+	@echo "⏳ Attente de la base de données..."
+	@bash scripts/wait-for-db.sh 30
+
+metrics:
+	@echo "📊 Vérification de l'endpoint /metrics..."
+	@curl -s http://localhost:8000/metrics | head -20
+
+health:
+	@echo "🏥 Vérification de l'endpoint /healthz..."
+	@curl -s http://localhost:8000/healthz | jq .

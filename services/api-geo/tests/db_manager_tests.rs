@@ -130,4 +130,179 @@ mod db_manager_tests {
             "Should include column name"
         );
     }
+
+    /// Test d'intégration: commit staging avec succès
+    #[tokio::test]
+    #[ignore] // Run with: cargo test --test db_manager_tests -- --ignored --test-threads=1
+    async fn test_staging_commit_success_integration() {
+        let pool = setup_test_db().await;
+        
+        // Créer une table de test temporaire
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS atlas.test_staging_commit (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                value INTEGER
+            )"
+        )
+        .execute(&pool)
+        .await
+        .expect("Failed to create test table");
+
+        // Créer un staging
+        let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_commit")
+            .await
+            .expect("Failed to create staging");
+
+        // Insérer des données dans le staging
+        let staging_table = format!("staging.{}", staging_info.staging_id);
+        sqlx::query(&format!(
+            "INSERT INTO {} (name, value) VALUES ($1, $2), ($3, $4)",
+            staging_table
+        ))
+        .bind("test1")
+        .bind(100)
+        .bind("test2")
+        .bind(200)
+        .execute(&pool)
+        .await
+        .expect("Failed to insert into staging");
+
+        // Commit staging
+        let commit_result = api_geo::db_manager::commit_staging(&pool, &staging_info.staging_id)
+            .await;
+
+        assert!(commit_result.is_ok(), "Staging commit should succeed");
+
+        // Vérifier que les données sont dans la table réelle
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM atlas.test_staging_commit")
+            .fetch_one(&pool)
+            .await
+            .expect("Failed to count rows");
+
+        assert_eq!(count.0, 2, "Should have 2 rows after commit");
+
+        // Cleanup
+        sqlx::query("DROP TABLE IF EXISTS atlas.test_staging_commit CASCADE")
+            .execute(&pool)
+            .await
+            .ok();
+    }
+
+    /// Test d'intégration: rollback automatique sur erreur
+    #[tokio::test]
+    #[ignore]
+    async fn test_staging_rollback_on_constraint_violation() {
+        let pool = setup_test_db().await;
+        
+        // Créer une table avec contrainte UNIQUE
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS atlas.test_staging_rollback (
+                id SERIAL PRIMARY KEY,
+                code TEXT UNIQUE NOT NULL,
+                name TEXT
+            )"
+        )
+        .execute(&pool)
+        .await
+        .expect("Failed to create test table");
+
+        // Insérer une donnée existante
+        sqlx::query("INSERT INTO atlas.test_staging_rollback (code, name) VALUES ($1, $2)")
+            .bind("DUPLICATE")
+            .bind("Original")
+            .execute(&pool)
+            .await
+            .expect("Failed to insert original row");
+
+        // Créer un staging
+        let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_rollback")
+            .await
+            .expect("Failed to create staging");
+
+        // Insérer une donnée avec code dupliqué dans staging
+        let staging_table = format!("staging.{}", staging_info.staging_id);
+        sqlx::query(&format!(
+            "INSERT INTO {} (code, name) VALUES ($1, $2)",
+            staging_table
+        ))
+        .bind("DUPLICATE") // Violation de contrainte UNIQUE
+        .bind("Duplicate")
+        .execute(&pool)
+        .await
+        .expect("Failed to insert into staging");
+
+        // Tenter le commit (doit échouer)
+        let commit_result = api_geo::db_manager::commit_staging(&pool, &staging_info.staging_id)
+            .await;
+
+        assert!(commit_result.is_err(), "Staging commit should fail on constraint violation");
+
+        // Vérifier qu'aucune nouvelle donnée n'a été ajoutée
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM atlas.test_staging_rollback")
+            .fetch_one(&pool)
+            .await
+            .expect("Failed to count rows");
+
+        assert_eq!(count.0, 1, "Should still have only 1 row (rollback successful)");
+
+        // Cleanup
+        sqlx::query("DROP TABLE IF EXISTS atlas.test_staging_rollback CASCADE")
+            .execute(&pool)
+            .await
+            .ok();
+    }
+
+    /// Test d'intégration: validation détecte les erreurs
+    #[tokio::test]
+    #[ignore]
+    async fn test_staging_validation_detects_errors() {
+        let pool = setup_test_db().await;
+        
+        // Créer une table avec contrainte NOT NULL
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS atlas.test_staging_validation (
+                id SERIAL PRIMARY KEY,
+                required_field TEXT NOT NULL,
+                optional_field TEXT
+            )"
+        )
+        .execute(&pool)
+        .await
+        .expect("Failed to create test table");
+
+        // Créer un staging
+        let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_validation")
+            .await
+            .expect("Failed to create staging");
+
+        // Insérer une donnée invalide (NULL dans champ NOT NULL)
+        let staging_table = format!("staging.{}", staging_info.staging_id);
+        sqlx::query(&format!(
+            "INSERT INTO {} (required_field, optional_field) VALUES ($1, $2)",
+            staging_table
+        ))
+        .bind(None::<String>) // NULL dans champ NOT NULL
+        .bind(Some("optional"))
+        .execute(&pool)
+        .await
+        .ok(); // Peut échouer selon la contrainte au niveau staging
+
+        // Valider (devrait détecter l'erreur)
+        let validation = api_geo::db_manager::validate_staging(&pool, &staging_info.staging_id)
+            .await;
+
+        // La validation peut soit échouer, soit retourner is_valid=false
+        if let Ok(result) = validation {
+            assert!(!result.is_valid || !result.errors.is_empty(), 
+                "Validation should detect NULL constraint violation");
+        }
+
+        // Cleanup
+        let _ = api_geo::db_manager::cancel_staging(&pool, &staging_info.staging_id).await;
+        sqlx::query("DROP TABLE IF EXISTS atlas.test_staging_validation CASCADE")
+            .execute(&pool)
+            .await
+            .ok();
+    }
 }
