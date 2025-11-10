@@ -1,5 +1,11 @@
 // Client API pour le gestionnaire de base de données
-import { http } from '../http'
+const API_GEO = (
+  localStorage.getItem('API_GEO') ?? 
+  (import.meta as any).env?.VITE_API_GEO ?? 
+  (window as any).__API_GEO__ ?? 
+  '/api'
+) as string
+
 import type {
   DatabaseSchema,
   TableInfo,
@@ -30,13 +36,13 @@ const BASE_URL = '/db'
 // ============================================================================
 
 export async function getSchema(): Promise<DatabaseSchema> {
-  const response = await http.get(`${BASE_URL}/schema`)
-  return response.data
+  const response = await fetch(`${API_GEO}${BASE_URL}/schema`)
+  return response.json()
 }
 
 export async function getTableInfo(schema: string, table: string): Promise<TableInfo> {
-  const response = await http.get(`${BASE_URL}/table/${schema}/${table}`)
-  return response.data
+  const response = await fetch(`${API_GEO}${BASE_URL}/table/${schema}/${table}`)
+  return response.json()
 }
 
 // ============================================================================
@@ -55,9 +61,9 @@ export async function getTableData(
   if (query?.order_by) params.append('order_by', query.order_by)
   if (query?.order_dir) params.append('order_dir', query.order_dir)
   
-  const url = `${BASE_URL}/table/${schema}/${table}/data${params.toString() ? '?' + params.toString() : ''}`
-  const response = await http.get(url)
-  return response.data
+  const url = `${API_GEO}${BASE_URL}/table/${schema}/${table}/data${params.toString() ? '?' + params.toString() : ''}`
+  const response = await fetch(url)
+  return response.json()
 }
 
 export async function selectRows(

@@ -1,0 +1,33 @@
+// API simplifiée pour le gestionnaire de BDD
+const API_GEO = (
+  localStorage.getItem('API_GEO') ?? 
+  (import.meta as any).env?.VITE_API_GEO ?? 
+  (window as any).__API_GEO__ ?? 
+  '/api'
+) as string
+
+import type { DatabaseSchema, TableDataResponse, TableDataQuery } from './types'
+
+const BASE_URL = '/db'
+
+export async function getSchema(): Promise<DatabaseSchema> {
+  const response = await fetch(`${API_GEO}${BASE_URL}/schema`)
+  return response.json()
+}
+
+export async function getTableData(
+  schema: string,
+  table: string,
+  query?: TableDataQuery
+): Promise<TableDataResponse> {
+  const params = new URLSearchParams()
+  if (query?.limit) params.append('limit', query.limit.toString())
+  if (query?.offset) params.append('offset', query.offset.toString())
+  if (query?.filter) params.append('filter', query.filter)
+  if (query?.order_by) params.append('order_by', query.order_by)
+  if (query?.order_dir) params.append('order_dir', query.order_dir)
+  
+  const url = `${API_GEO}${BASE_URL}/table/${schema}/${table}/data${params.toString() ? '?' + params.toString() : ''}`
+  const response = await fetch(url)
+  return response.json()
+}

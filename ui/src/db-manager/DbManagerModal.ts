@@ -1,11 +1,8 @@
 // Modal principal du gestionnaire de base de données
-import { html, css, LitElement } from 'lit'
-import { customElement, state, property } from 'lit/decorators.js'
 import type { DatabaseSchema, SchemaInfo, TableInfo, DbManagerState } from './types'
 import * as api from './api'
 
-@customElement('db-manager-modal')
-export class DbManagerModal extends LitElement {
+export class DbManagerModal {
   @property({ type: Boolean }) open = false
   
   @state() private schema?: DatabaseSchema

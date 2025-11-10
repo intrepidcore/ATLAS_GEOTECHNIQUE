@@ -167,7 +167,7 @@ async fn get_views(pool: &PgPool, schema: &str) -> Result<Vec<ViewInfo>, sqlx::E
 }
 
 /// Récupère les colonnes d'une table
-async fn get_columns(
+pub async fn get_columns(
     pool: &PgPool,
     schema: &str,
     table: &str,
@@ -287,7 +287,7 @@ async fn get_foreign_keys(
 }
 
 /// Récupère les informations de géométrie
-async fn get_geometry_info(
+pub async fn get_geometry_info(
     pool: &PgPool,
     schema: &str,
     table: &str,
