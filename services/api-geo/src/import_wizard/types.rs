@@ -19,7 +19,7 @@ pub struct CreateImportRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateImportResponse {
     pub id: Uuid,
-    pub batch_id: String,
+    pub batch_id: Option<String>,
     pub status: ImportStatus,
     pub upload_url: String,
 }
@@ -211,7 +211,7 @@ pub struct CommitRequest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CommitResponse {
-    pub batch_id: String,
+    pub batch_id: Option<String>,
     pub status: ImportStatus,
 }
 

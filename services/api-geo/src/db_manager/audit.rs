@@ -1,6 +1,6 @@
 // Gestion de l'audit et de l'historique
 use super::types::*;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 /// Récupère l'historique d'audit d'une table
 pub async fn get_audit_log(

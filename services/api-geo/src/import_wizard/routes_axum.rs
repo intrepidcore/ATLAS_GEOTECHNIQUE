@@ -41,7 +41,7 @@ pub async fn create_import(
         Ok(row) => {
             Ok(Json(CreateImportResponse {
                 id: row.id,
-                batch_id: row.batch_id,
+                batch_id: row.batch_id.map(|uuid| uuid.to_string()),
                 status: ImportStatus::Pending,
                 upload_url: format!("/imports/{}/upload", row.id),
             }))
@@ -100,7 +100,7 @@ pub async fn commit_import(
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     
     Ok(Json(CommitResponse {
-        batch_id,
+        batch_id: batch_id.map(|uuid| uuid.to_string()),
         status: ImportStatus::Running,
     }))
 }
@@ -117,13 +117,17 @@ pub async fn undo_import(
     .await
     .map_err(|_| StatusCode::NOT_FOUND)?;
     
+    // Convertir Option<Uuid> en Option<String> pour les requêtes
+    let batch_id_str = batch_id.as_ref().map(|uuid| uuid.to_string());
+    let batch_id_ref = batch_id_str.as_deref();
+    
     let sondages_deleted = sqlx::query!(
         r#"
         UPDATE sondages 
         SET deleted_at = now(), deleted_by_batch = $1
         WHERE created_by_batch = $1 AND deleted_at IS NULL
         "#,
-        batch_id
+        batch_id_ref
     )
     .execute(&state.pool)
     .await
@@ -136,7 +140,7 @@ pub async fn undo_import(
         SET deleted_at = now(), deleted_by_batch = $1
         WHERE created_by_batch = $1 AND deleted_at IS NULL
         "#,
-        batch_id
+        batch_id_ref
     )
     .execute(&state.pool)
     .await

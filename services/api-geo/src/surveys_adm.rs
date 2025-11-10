@@ -598,13 +598,13 @@ pub async fn list_ungeocode_surveys(
         SELECT 
             s.id,
             s.code,
-            s.date,
-            s.source,
-            s.adm1_name,
-            s.adm2_name,
-            s.adm3_name,
+            s.date_sondage as date,
+            s.localite as source,
+            s.adm1 as adm1_name,
+            s.adm2 as adm2_name,
+            s.adm3 as adm3_name,
             s.created_at,
-            (SELECT COUNT(*) FROM essais WHERE sondage_id = s.id AND deleted_at IS NULL) as "n_essais!"
+            0::bigint as "n_essais!"
         FROM sondages_non_geocodes s
         ORDER BY s.created_at DESC
         "#
