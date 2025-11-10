@@ -2,8 +2,8 @@
 // Job Queue: Gestion asynchrone des imports
 // ============================================================================
 
-use super::types::*;
 use super::importer::process_import;
+use super::types::*;
 use anyhow::Result;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -101,7 +101,9 @@ impl JobQueue {
         self.jobs.write().await.insert(import_id, status);
 
         // Envoyer job au worker
-        self.tx.send((job, pool)).await
+        self.tx
+            .send((job, pool))
+            .await
             .map_err(|e| anyhow::anyhow!("Erreur soumission job: {}", e))?;
 
         Ok(import_id)
@@ -131,17 +133,26 @@ impl JobQueue {
         let mut jobs = self.jobs.write().await;
 
         if jobs.len() > 1000 {
-            let mut completed: Vec<_> = jobs.iter()
-                .filter(|(_, s)| matches!(s.status,
-                    ImportStatus::Succeeded | ImportStatus::Failed |
-                    ImportStatus::Partial | ImportStatus::Cancelled))
+            let mut completed: Vec<_> = jobs
+                .iter()
+                .filter(|(_, s)| {
+                    matches!(
+                        s.status,
+                        ImportStatus::Succeeded
+                            | ImportStatus::Failed
+                            | ImportStatus::Partial
+                            | ImportStatus::Cancelled
+                    )
+                })
                 .map(|(id, _)| *id)
                 .collect();
 
             // Garder les 1000 plus récents
             if completed.len() > 1000 {
                 completed.sort_by_key(|id| {
-                    jobs.get(id).and_then(|s| s.completed_at).unwrap_or_default()
+                    jobs.get(id)
+                        .and_then(|s| s.completed_at)
+                        .unwrap_or_default()
                 });
 
                 for id in completed.iter().take(completed.len() - 1000) {
@@ -154,7 +165,10 @@ impl JobQueue {
     /// Lister tous les jobs actifs
     #[allow(dead_code)]
     pub async fn list_active_jobs(&self) -> Vec<JobStatus> {
-        self.jobs.read().await.values()
+        self.jobs
+            .read()
+            .await
+            .values()
             .filter(|s| matches!(s.status, ImportStatus::Pending | ImportStatus::Running))
             .cloned()
             .collect()
@@ -183,13 +197,7 @@ async fn process_import_job(
     }
 
     // Exécuter import
-    let result = process_import(
-        &pool,
-        import_id,
-        job.rows,
-        &job.mapping,
-        &job.geoloc_config,
-    ).await;
+    let result = process_import(&pool, import_id, job.rows, &job.mapping, &job.geoloc_config).await;
 
     // Mettre à jour statut final
     {
@@ -207,7 +215,7 @@ async fn process_import_job(
                     status.progress = 100.0;
                     status.stats = Some(stats);
                     status.completed_at = Some(chrono::Utc::now().naive_utc());
-                },
+                }
                 Err(e) => {
                     status.status = ImportStatus::Failed;
                     status.error_message = Some(e.to_string());
@@ -226,7 +234,7 @@ async fn process_import_job(
 
 use once_cell::sync::Lazy;
 
-pub static JOB_QUEUE: Lazy<JobQueue> = Lazy::new(|| JobQueue::new());
+pub static JOB_QUEUE: Lazy<JobQueue> = Lazy::new(JobQueue::new);
 
 // ============================================================================
 // TESTS
@@ -239,9 +247,7 @@ mod tests {
     #[tokio::test]
     async fn test_job_queue_submit_and_status() {
         let queue = JobQueue::new();
-        let pool = Arc::new(
-            PgPool::connect("postgres://test").await.unwrap()
-        );
+        let pool = Arc::new(PgPool::connect("postgres://test").await.unwrap());
 
         let job = ImportJob {
             import_id: Uuid::new_v4(),

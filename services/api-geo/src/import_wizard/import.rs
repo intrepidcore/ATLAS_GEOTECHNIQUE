@@ -15,7 +15,7 @@ pub async fn execute_import(
 ) -> Result<ImportStats, String> {
     // TODO: Implémenter l'import réel
     // Pour l'instant, retourner des stats vides
-    
+
     Ok(ImportStats {
         created: 0,
         updated: 0,

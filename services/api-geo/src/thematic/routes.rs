@@ -1,3 +1,4 @@
+use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -5,12 +6,11 @@ use axum::{
 };
 use sqlx::Row;
 use uuid::Uuid;
-use crate::state::AppState;
 
-use super::types::*;
 use super::classifier::*;
 use super::colors::*;
 use super::statistics::*;
+use super::types::*;
 
 /// Calculer la tolérance de simplification selon le zoom
 fn simplify_tolerance(zoom: Option<u8>) -> f64 {
@@ -31,18 +31,18 @@ pub async fn get_thematic_data(
     let pool = &state.pool;
     let column = req.parameter.sql_column();
     let tolerance = simplify_tolerance(req.zoom);
-    
+
     // Construire la requête SQL dynamiquement
     // Utiliser la MV WGS84 (zéro transform, géométries déjà en 4326)
     let geom_column = if tolerance > 1000.0 {
-        "geom_simplified"  // Zoom out : géométrie simplifiée
+        "geom_simplified" // Zoom out : géométrie simplifiée
     } else {
-        "geom"  // Zoom in : géométrie complète
+        "geom" // Zoom in : géométrie complète
     };
-    
+
     // Construire la requête avec paramètres sécurisés
     let mut param_index = 1;
-    
+
     let base_query = if req.include_geometry {
         format!(
             "SELECT 
@@ -73,38 +73,40 @@ pub async fn get_thematic_data(
             column, column
         )
     };
-    
+
     let mut query = base_query;
-    
+
     // Filtre min_sondages
-    if let Some(_) = req.min_sondages {
+    if req.min_sondages.is_some() {
         query.push_str(&format!(" AND n_sondages >= ${}", param_index));
         param_index += 1;
     }
-    
+
     // Filtres ADM (paramétrés - colonnes maintenant dans la MV)
-    if let Some(_) = &req.adm1 {
+    if req.adm1.is_some() {
         query.push_str(&format!(" AND adm1_name = ${}", param_index));
         param_index += 1;
     }
-    if let Some(_) = &req.adm2 {
+    if req.adm2.is_some() {
         query.push_str(&format!(" AND adm2_name = ${}", param_index));
         param_index += 1;
     }
-    if let Some(_) = &req.adm3 {
+    if req.adm3.is_some() {
         query.push_str(&format!(" AND adm3_name = ${}", param_index));
         param_index += 1;
     }
-    
+
     query.push_str(" ORDER BY code");
-    
+
     // Exécuter requête avec paramètres
     eprintln!("🔍 SQL Query: {}", query);
-    eprintln!("🔒 Params: min_sondages={:?}, adm1={:?}, adm2={:?}, adm3={:?}", 
-              req.min_sondages, req.adm1, req.adm2, req.adm3);
-    
+    eprintln!(
+        "🔒 Params: min_sondages={:?}, adm1={:?}, adm2={:?}, adm3={:?}",
+        req.min_sondages, req.adm1, req.adm2, req.adm3
+    );
+
     let mut query_builder = sqlx::query(&query);
-    
+
     // Bind parameters
     if let Some(min_s) = req.min_sondages {
         query_builder = query_builder.bind(min_s);
@@ -118,21 +120,21 @@ pub async fn get_thematic_data(
     if let Some(adm3) = &req.adm3 {
         query_builder = query_builder.bind(adm3);
     }
-    
-    let rows = query_builder
-        .fetch_all(pool)
-        .await
-        .map_err(|e| {
-            eprintln!("❌ Erreur SQL: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur base de données: {}", e))
-        })?;
-    
+
+    let rows = query_builder.fetch_all(pool).await.map_err(|e| {
+        eprintln!("❌ Erreur SQL: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Erreur base de données: {}", e),
+        )
+    })?;
+
     eprintln!("✅ Rows fetched: {}", rows.len());
-    
+
     // Construire GeoJSON et collecter valeurs
     let mut features = Vec::new();
     let mut values = Vec::new();
-    
+
     for row in rows {
         let value: Option<f64> = match row.try_get("value") {
             Ok(v) => v,
@@ -141,17 +143,17 @@ pub async fn get_thematic_data(
                 None
             }
         };
-        
+
         if let Some(v) = value {
             values.push(v);
-            
+
             let properties = serde_json::json!({
                 "code": row.get::<String, _>("code"),
                 "value": v,
                 "n_sondages": row.get::<i64, _>("n_sondages"),
                 "n_essais_geo": row.get::<i64, _>("n_essais_geo"),
             });
-            
+
             if req.include_geometry {
                 // Géométries toujours présentes dans la MV WGS84
                 match row.try_get::<Option<String>, _>("geom") {
@@ -163,7 +165,7 @@ pub async fn get_thematic_data(
                             "properties": properties
                         });
                         features.push(feature);
-                    },
+                    }
                     Ok(None) | Err(_) => {
                         // Cas rare : skip silencieusement
                     }
@@ -173,10 +175,10 @@ pub async fn get_thematic_data(
             }
         }
     }
-    
+
     // Calculer statistiques
     let stats = calculate_statistics(&values);
-    
+
     // Métadonnées
     let metadata = ResponseMetadata {
         parameter: req.parameter.sql_column().to_string(),
@@ -192,7 +194,7 @@ pub async fn get_thematic_data(
             min_sondages: req.min_sondages,
         },
     };
-    
+
     Ok(Json(ThematicDataResponse {
         feature_type: "FeatureCollection".to_string(),
         features,
@@ -208,16 +210,17 @@ pub async fn classify_data(
     if req.values.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Aucune valeur fournie".to_string()));
     }
-    
+
     if req.n_classes < 2 || req.n_classes > 10 {
-        return Err((StatusCode::BAD_REQUEST, "Nombre de classes doit être entre 2 et 10".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Nombre de classes doit être entre 2 et 10".to_string(),
+        ));
     }
-    
+
     let breaks = match req.method {
-        ClassificationMethod::Quantiles => {
-            classify_quantiles(&req.values, req.n_classes)
-                .map_err(|e| (StatusCode::BAD_REQUEST, e))?
-        }
+        ClassificationMethod::Quantiles => classify_quantiles(&req.values, req.n_classes)
+            .map_err(|e| (StatusCode::BAD_REQUEST, e))?,
         ClassificationMethod::EqualInterval => {
             let min = req.values.iter().cloned().fold(f64::INFINITY, f64::min);
             let max = req.values.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
@@ -225,18 +228,15 @@ pub async fn classify_data(
                 .map_err(|e| (StatusCode::BAD_REQUEST, e))?
         }
         ClassificationMethod::Jenks => {
-            classify_jenks(&req.values, req.n_classes)
-                .map_err(|e| (StatusCode::BAD_REQUEST, e))?
+            classify_jenks(&req.values, req.n_classes).map_err(|e| (StatusCode::BAD_REQUEST, e))?
         }
-        ClassificationMethod::Custom => {
-            req.custom_breaks.clone().unwrap_or_default()
-        }
+        ClassificationMethod::Custom => req.custom_breaks.clone().unwrap_or_default(),
     };
-    
+
     let palette_name = req.palette.as_deref().unwrap_or("Blues");
     let colors = select_colors(palette_name, req.n_classes);
     let labels = generate_labels(&breaks, 1);
-    
+
     Ok(Json(ClassifyResponse {
         breaks,
         colors,
@@ -258,13 +258,13 @@ pub async fn create_config(
         "style": config.style,
         "filters": config.filters,
     });
-    
+
     let map_type_str = format!("{:?}", config.map_type).to_lowercase();
-    
+
     sqlx::query(
         "INSERT INTO thematic_configs 
          (id, name, description, map_type, parameter, config, is_public, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)",
     )
     .bind(id)
     .bind(&config.name)
@@ -278,9 +278,12 @@ pub async fn create_config(
     .await
     .map_err(|e| {
         eprintln!("❌ Erreur création config: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur sauvegarde: {}", e))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Erreur sauvegarde: {}", e),
+        )
     })?;
-    
+
     Ok(Json(ThematicConfig {
         id: Some(id),
         created_at: Some(chrono::Utc::now()),
@@ -300,23 +303,28 @@ pub async fn list_configs(
          FROM thematic_configs
          WHERE is_public = true
          ORDER BY created_at DESC
-         LIMIT 100"
+         LIMIT 100",
     )
     .fetch_all(pool)
     .await
     .map_err(|e| {
         eprintln!("❌ Erreur liste configs: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur récupération: {}", e))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Erreur récupération: {}", e),
+        )
     })?;
-    
+
     let mut configs = Vec::new();
     for row in rows {
         let config_json: serde_json::Value = row.get("config");
-        
-        let classification = config_json.get("classification")
+
+        let classification = config_json
+            .get("classification")
             .and_then(|c| serde_json::from_value(c.clone()).ok());
-        
-        let style: StyleConfig = config_json.get("style")
+
+        let style: StyleConfig = config_json
+            .get("style")
             .and_then(|s| serde_json::from_value(s.clone()).ok())
             .unwrap_or(StyleConfig {
                 palette: "Blues".to_string(),
@@ -324,8 +332,9 @@ pub async fn list_configs(
                 stroke_width: 1.0,
                 stroke_color: "#333".to_string(),
             });
-        
-        let filters: FilterConfig = config_json.get("filters")
+
+        let filters: FilterConfig = config_json
+            .get("filters")
             .and_then(|f| serde_json::from_value(f.clone()).ok())
             .unwrap_or(FilterConfig {
                 bbox: None,
@@ -334,7 +343,7 @@ pub async fn list_configs(
                 adm3: None,
                 min_sondages: None,
             });
-        
+
         let map_type_str: String = row.get("map_type");
         let map_type = match map_type_str.as_str() {
             "choropleth" => MapType::Choropleth,
@@ -342,7 +351,7 @@ pub async fn list_configs(
             "comparative" => MapType::Comparative,
             _ => MapType::Choropleth,
         };
-        
+
         configs.push(ThematicConfig {
             id: Some(row.get("id")),
             name: row.get("name"),
@@ -358,7 +367,7 @@ pub async fn list_configs(
             updated_at: row.get("updated_at"),
         });
     }
-    
+
     Ok(Json(configs))
 }
 
@@ -372,20 +381,30 @@ pub async fn get_config(
         "SELECT id, name, description, map_type, parameter, config, is_public,
                 created_by, created_at, updated_at
          FROM thematic_configs
-         WHERE id = $1"
+         WHERE id = $1",
     )
     .bind(id)
     .fetch_optional(pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur DB: {}", e)))?
-    .ok_or((StatusCode::NOT_FOUND, "Configuration non trouvée".to_string()))?;
-    
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Erreur DB: {}", e),
+        )
+    })?
+    .ok_or((
+        StatusCode::NOT_FOUND,
+        "Configuration non trouvée".to_string(),
+    ))?;
+
     let config_json: serde_json::Value = row.get("config");
-    
-    let classification = config_json.get("classification")
+
+    let classification = config_json
+        .get("classification")
         .and_then(|c| serde_json::from_value(c.clone()).ok());
-    
-    let style: StyleConfig = config_json.get("style")
+
+    let style: StyleConfig = config_json
+        .get("style")
         .and_then(|s| serde_json::from_value(s.clone()).ok())
         .unwrap_or(StyleConfig {
             palette: "Blues".to_string(),
@@ -393,11 +412,12 @@ pub async fn get_config(
             stroke_width: 1.0,
             stroke_color: "#333".to_string(),
         });
-    
-    let filters: FilterConfig = config_json.get("filters")
+
+    let filters: FilterConfig = config_json
+        .get("filters")
         .and_then(|f| serde_json::from_value(f.clone()).ok())
         .unwrap_or_default();
-    
+
     let map_type_str: String = row.get("map_type");
     let map_type = match map_type_str.as_str() {
         "choropleth" => MapType::Choropleth,
@@ -405,7 +425,7 @@ pub async fn get_config(
         "comparative" => MapType::Comparative,
         _ => MapType::Choropleth,
     };
-    
+
     Ok(Json(ThematicConfig {
         id: Some(row.get("id")),
         name: row.get("name"),
@@ -432,12 +452,20 @@ pub async fn delete_config(
         .bind(id)
         .execute(pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur suppression: {}", e)))?;
-    
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur suppression: {}", e),
+            )
+        })?;
+
     if result.rows_affected() == 0 {
-        return Err((StatusCode::NOT_FOUND, "Configuration non trouvée".to_string()));
+        return Err((
+            StatusCode::NOT_FOUND,
+            "Configuration non trouvée".to_string(),
+        ));
     }
-    
+
     Ok(StatusCode::NO_CONTENT)
 }
 

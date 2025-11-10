@@ -17,7 +17,7 @@ pub async fn validate_import(
 ) -> Result<PreviewResponse, String> {
     // TODO: Implémenter la validation complète
     // Pour l'instant, retourner un preview vide
-    
+
     Ok(PreviewResponse {
         stats: PreviewStats {
             total_rows: 0,
@@ -64,17 +64,21 @@ pub async fn save_errors(
             format!("Erreur sauvegarde erreur: {}", e)
         })?;
     }
-    
+
     Ok(())
 }
 
 /// Valide les règles métier Atterberg
-pub fn validate_atterberg(wl: Option<f64>, wp: Option<f64>, ip: Option<f64>) -> Vec<ValidationError> {
+pub fn validate_atterberg(
+    wl: Option<f64>,
+    wp: Option<f64>,
+    ip: Option<f64>,
+) -> Vec<ValidationError> {
     let mut errors = vec![];
-    
+
     // WL doit être entre 0 et 100
     if let Some(wl_val) = wl {
-        if wl_val < 0.0 || wl_val > 100.0 {
+        if !(0.0..=100.0).contains(&wl_val) {
             errors.push(ValidationError {
                 row: 0,
                 column: Some("wl".to_string()),
@@ -86,10 +90,10 @@ pub fn validate_atterberg(wl: Option<f64>, wp: Option<f64>, ip: Option<f64>) -> 
             });
         }
     }
-    
+
     // WP doit être entre 0 et 100
     if let Some(wp_val) = wp {
-        if wp_val < 0.0 || wp_val > 100.0 {
+        if !(0.0..=100.0).contains(&wp_val) {
             errors.push(ValidationError {
                 row: 0,
                 column: Some("wp".to_string()),
@@ -101,7 +105,7 @@ pub fn validate_atterberg(wl: Option<f64>, wp: Option<f64>, ip: Option<f64>) -> 
             });
         }
     }
-    
+
     // WP doit être <= WL
     if let (Some(wl_val), Some(wp_val)) = (wl, wp) {
         if wp_val > wl_val {
@@ -116,7 +120,7 @@ pub fn validate_atterberg(wl: Option<f64>, wp: Option<f64>, ip: Option<f64>) -> 
             });
         }
     }
-    
+
     // IP doit être cohérent avec WL - WP
     if let (Some(wl_val), Some(wp_val), Some(ip_val)) = (wl, wp, ip) {
         let calculated_ip = wl_val - wp_val;
@@ -132,17 +136,17 @@ pub fn validate_atterberg(wl: Option<f64>, wp: Option<f64>, ip: Option<f64>) -> 
             });
         }
     }
-    
+
     errors
 }
 
 /// Valide les coordonnées géographiques
 pub fn validate_coordinates(lon: f64, lat: f64) -> Vec<ValidationError> {
     let mut errors = vec![];
-    
+
     // Vérifier bbox Togo
     let (min_lon, min_lat, max_lon, max_lat) = TOGO_BBOX;
-    
+
     if lon < min_lon || lon > max_lon || lat < min_lat || lat > max_lat {
         errors.push(ValidationError {
             row: 0,
@@ -154,7 +158,7 @@ pub fn validate_coordinates(lon: f64, lat: f64) -> Vec<ValidationError> {
             hint: Some("Vérifier les coordonnées GPS".to_string()),
         });
     }
-    
+
     // Vérifier (0,0)
     if lon == 0.0 && lat == 0.0 {
         errors.push(ValidationError {
@@ -167,14 +171,14 @@ pub fn validate_coordinates(lon: f64, lat: f64) -> Vec<ValidationError> {
             hint: Some("Renseigner les vraies coordonnées".to_string()),
         });
     }
-    
+
     errors
 }
 
 /// Valide VBS
 pub fn validate_vbs(vbs: Option<f64>) -> Vec<ValidationError> {
     let mut errors = vec![];
-    
+
     if let Some(vbs_val) = vbs {
         if vbs_val < 0.0 {
             errors.push(ValidationError {
@@ -187,7 +191,7 @@ pub fn validate_vbs(vbs: Option<f64>) -> Vec<ValidationError> {
                 hint: Some("VBS doit être ≥ 0".to_string()),
             });
         }
-        
+
         if vbs_val > 50.0 {
             errors.push(ValidationError {
                 row: 0,
@@ -200,6 +204,6 @@ pub fn validate_vbs(vbs: Option<f64>) -> Vec<ValidationError> {
             });
         }
     }
-    
+
     errors
 }

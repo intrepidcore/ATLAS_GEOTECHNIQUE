@@ -1,13 +1,13 @@
 // Surveys canoniques (unifiés)
+use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use sqlx::FromRow;
-use crate::state::AppState;
+use uuid::Uuid;
 
 #[derive(Debug, Serialize, FromRow)]
 pub struct SurveyCanon {
@@ -44,18 +44,18 @@ pub async fn list_surveys(
     let pool = &state.pool;
     let limit = params.limit.unwrap_or(100).min(500);
     let offset = params.offset.unwrap_or(0);
-    
+
     // Build WHERE clause based on filters
     let mut where_clauses = vec![];
-    
+
     if params.search.is_some() {
         where_clauses.push(
             "(atlas.norm(code) LIKE '%' || atlas.norm($1) || '%' OR \
              atlas.norm(COALESCE(localite, '')) LIKE '%' || atlas.norm($1) || '%' OR \
-             atlas.norm(localite_canon) LIKE '%' || atlas.norm($1) || '%')"
+             atlas.norm(localite_canon) LIKE '%' || atlas.norm($1) || '%')",
         );
     }
-    
+
     if let Some(ref missing) = params.missing {
         if missing == "geom" {
             where_clauses.push("geom IS NULL");
@@ -63,13 +63,13 @@ pub async fn list_surveys(
             where_clauses.push("adm3_id IS NULL");
         }
     }
-    
+
     let where_sql = if where_clauses.is_empty() {
         String::from("TRUE")
     } else {
         where_clauses.join(" AND ")
     };
-    
+
     let query = format!(
         r#"
         SELECT 
@@ -84,15 +84,15 @@ pub async fn list_surveys(
         "#,
         where_sql
     );
-    
+
     let rows = sqlx::query_as::<_, SurveyCanon>(&query)
-    .bind(&params.search)
-    .bind(limit)
-    .bind(offset)
-    .fetch_all(pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+        .bind(&params.search)
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
     Ok(Json(rows))
 }
 
@@ -102,9 +102,12 @@ pub async fn resolve_alias(
     Query(params): Query<SurveysQuery>,
 ) -> Result<Json<SurveyCanon>, (StatusCode, String)> {
     let pool = &state.pool;
-    
-    let code = params.search.ok_or((StatusCode::BAD_REQUEST, "Missing 'search' parameter".to_string()))?;
-    
+
+    let code = params.search.ok_or((
+        StatusCode::BAD_REQUEST,
+        "Missing 'search' parameter".to_string(),
+    ))?;
+
     let row = sqlx::query_as::<_, SurveyCanon>(
         r#"
         SELECT 
@@ -116,16 +119,19 @@ pub async fn resolve_alias(
         JOIN atlas.surveys s ON s.id = a.survey_id
         WHERE a.alias_code = $1
         LIMIT 1
-        "#
+        "#,
     )
     .bind(&code)
     .fetch_one(pool)
     .await
     .map_err(|e| match e {
-        sqlx::Error::RowNotFound => (StatusCode::NOT_FOUND, format!("No survey found for alias '{}'", code)),
+        sqlx::Error::RowNotFound => (
+            StatusCode::NOT_FOUND,
+            format!("No survey found for alias '{}'", code),
+        ),
         _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     })?;
-    
+
     Ok(Json(row))
 }
 
@@ -135,7 +141,7 @@ pub async fn get_survey(
     Path(id): Path<Uuid>,
 ) -> Result<Json<SurveyCanon>, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     let row = sqlx::query_as::<_, SurveyCanon>(
         r#"
         SELECT 
@@ -145,7 +151,7 @@ pub async fn get_survey(
             date, nb_sondages_source, created_at, updated_at
         FROM atlas.surveys
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(id)
     .fetch_one(pool)
@@ -154,7 +160,7 @@ pub async fn get_survey(
         sqlx::Error::RowNotFound => (StatusCode::NOT_FOUND, "Survey not found".to_string()),
         _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     })?;
-    
+
     Ok(Json(row))
 }
 
@@ -171,7 +177,7 @@ pub async fn get_surveys_stats(
     State(state): State<AppState>,
 ) -> Result<Json<SurveysStats>, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     let (total, geocoded, with_geom, with_adm3): (i64, i64, i64, i64) = sqlx::query_as(
         r#"
         SELECT 
@@ -180,12 +186,12 @@ pub async fn get_surveys_stats(
             COUNT(*) FILTER (WHERE geom IS NOT NULL) as with_geom,
             COUNT(*) FILTER (WHERE adm3_id IS NOT NULL) as with_adm3
         FROM atlas.surveys
-        "#
+        "#,
     )
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(SurveysStats {
         total,
         geocoded,
@@ -200,9 +206,9 @@ pub async fn get_surveys_stats(
 
 #[derive(Debug, Deserialize)]
 pub struct UpdateGeometryPayload {
-    pub mode: String,              // "exact" | "adm"
-    pub geom: Option<serde_json::Value>,  // GeoJSON Point si mode=exact
-    pub adm3_id: Option<i32>,      // ADM3 ID si mode=adm
+    pub mode: String,                    // "exact" | "adm"
+    pub geom: Option<serde_json::Value>, // GeoJSON Point si mode=exact
+    pub adm3_id: Option<i32>,            // ADM3 ID si mode=adm
 }
 
 /// PATCH /surveys-canon/:id/geometry - Mettre à jour la géométrie
@@ -212,25 +218,29 @@ pub async fn update_geometry(
     Json(payload): Json<UpdateGeometryPayload>,
 ) -> Result<Json<SurveyCanon>, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     // Validation
     if payload.mode == "exact" && payload.geom.is_none() {
-        return Err((StatusCode::BAD_REQUEST, "Mode 'exact' requires 'geom'".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Mode 'exact' requires 'geom'".to_string(),
+        ));
     }
     if payload.mode == "adm" && payload.adm3_id.is_none() {
-        return Err((StatusCode::BAD_REQUEST, "Mode 'adm' requires 'adm3_id'".to_string()));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Mode 'adm' requires 'adm3_id'".to_string(),
+        ));
     }
-    
+
     // Trouver le sondage source (premier de la liste des alias)
-    let source_id: Uuid = sqlx::query_scalar(
-        "SELECT id FROM atlas.surveys WHERE id = $1"
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
-    .ok_or((StatusCode::NOT_FOUND, "Survey not found".to_string()))?;
-    
+    let source_id: Uuid = sqlx::query_scalar("SELECT id FROM atlas.surveys WHERE id = $1")
+        .bind(id)
+        .fetch_optional(pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+        .ok_or((StatusCode::NOT_FOUND, "Survey not found".to_string()))?;
+
     // Mettre à jour le sondage source dans la table sondages
     if payload.mode == "exact" {
         let geom_json = payload.geom.as_ref().unwrap();
@@ -241,7 +251,7 @@ pub async fn update_geometry(
                 location_mode = 'exact',
                 updated_at = NOW()
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(geom_json)
         .bind(source_id)
@@ -256,7 +266,7 @@ pub async fn update_geometry(
                 location_mode = 'adm',
                 updated_at = NOW()
             WHERE id = $2
-            "#
+            "#,
         )
         .bind(payload.adm3_id)
         .bind(source_id)
@@ -264,13 +274,13 @@ pub async fn update_geometry(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     }
-    
+
     // Rafraîchir les vues canoniques
     sqlx::query("SELECT atlas.refresh_surveys()")
         .execute(pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     // Retourner le survey mis à jour
     let updated = sqlx::query_as::<_, SurveyCanon>(
         r#"
@@ -281,13 +291,13 @@ pub async fn update_geometry(
             date, nb_sondages_source, created_at, updated_at
         FROM atlas.surveys
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(id)
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(updated))
 }
 
@@ -302,7 +312,7 @@ pub struct Adm3Candidate {
     pub name: String,
     pub code: Option<String>,
     pub adm2_name: Option<String>,
-    pub score: f32,  // similarity() returns FLOAT4
+    pub score: f32, // similarity() returns FLOAT4
 }
 
 #[derive(Debug, Serialize)]
@@ -318,7 +328,7 @@ pub async fn get_adm3_candidates(
     Path(id): Path<Uuid>,
 ) -> Result<Json<Adm3CandidatesResponse>, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     // Récupérer le survey
     let survey: SurveyCanon = sqlx::query_as(
         r#"
@@ -329,7 +339,7 @@ pub async fn get_adm3_candidates(
             date, nb_sondages_source, created_at, updated_at
         FROM atlas.surveys
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(id)
     .fetch_one(pool)
@@ -338,11 +348,12 @@ pub async fn get_adm3_candidates(
         sqlx::Error::RowNotFound => (StatusCode::NOT_FOUND, "Survey not found".to_string()),
         _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
     })?;
-    
-    let search_term = survey.localite.as_ref()
-        .or(Some(&survey.localite_canon))
-        .unwrap();
-    
+
+    let search_term = survey
+        .localite
+        .as_ref()
+        .unwrap_or(&survey.localite_canon);
+
     // Rechercher les candidats avec similarité
     let candidates: Vec<Adm3Candidate> = sqlx::query_as(
         r#"
@@ -357,13 +368,13 @@ pub async fn get_adm3_candidates(
         WHERE similarity(atlas.norm(adm3_fr), atlas.norm($1)) > 0.3
         ORDER BY score DESC
         LIMIT 5
-        "#
+        "#,
     )
     .bind(search_term)
     .fetch_all(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(Adm3CandidatesResponse {
         survey_id: survey.id,
         localite: search_term.clone(),

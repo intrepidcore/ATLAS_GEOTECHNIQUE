@@ -1,3 +1,4 @@
+use crate::state::AppState;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
@@ -6,7 +7,6 @@ use axum::{
 };
 use serde::Serialize;
 use sqlx::Row;
-use crate::state::AppState;
 
 #[derive(Serialize)]
 pub struct NeighborMaille {
@@ -25,7 +25,7 @@ pub async fn get_neighbors(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     // Récupérer le centroïde de la maille actuelle
     let maille_row = sqlx::query(
         r#"
@@ -33,12 +33,12 @@ pub async fn get_neighbors(
                ST_Y(ST_Transform(ST_Centroid(geom), 4326)) as lat
         FROM mailles
         WHERE code = $1
-        "#
+        "#,
     )
     .bind(&code)
     .fetch_optional(pool)
     .await;
-    
+
     let (lon, lat) = match maille_row {
         Ok(Some(row)) => {
             let lon: f64 = row.try_get("lon").unwrap_or(0.0);
@@ -48,11 +48,12 @@ pub async fn get_neighbors(
         _ => {
             return (
                 StatusCode::NOT_FOUND,
-                Json(serde_json::json!({"error": "Maille not found"}))
-            ).into_response();
+                Json(serde_json::json!({"error": "Maille not found"})),
+            )
+                .into_response();
         }
     };
-    
+
     // Récupérer les 4 mailles les plus proches dans chaque direction
     let neighbors_query = r#"
         WITH current_maille AS (
@@ -102,31 +103,32 @@ pub async fn get_neighbors(
         ORDER BY distance_m ASC
         LIMIT 8
     "#;
-    
+
     let rows = sqlx::query(neighbors_query)
         .bind(&code)
         .bind(lon)
         .bind(lat)
         .fetch_all(pool)
         .await;
-    
+
     match rows {
         Ok(rows) => {
             let mut neighbors: Vec<NeighborMaille> = Vec::new();
             let mut seen_directions = std::collections::HashSet::new();
-            
+
             for row in rows {
                 let direction: String = row.try_get("direction").unwrap_or_default();
-                
+
                 // Prendre seulement la première maille de chaque direction
                 if seen_directions.contains(&direction) {
                     continue;
                 }
                 seen_directions.insert(direction.clone());
-                
-                let spt_avg: Option<sqlx::types::BigDecimal> = row.try_get("spt_n_avg").ok().flatten();
+
+                let spt_avg: Option<sqlx::types::BigDecimal> =
+                    row.try_get("spt_n_avg").ok().flatten();
                 let qc_avg: Option<sqlx::types::BigDecimal> = row.try_get("qc_avg").ok().flatten();
-                
+
                 neighbors.push(NeighborMaille {
                     code: row.try_get("code").unwrap_or_default(),
                     direction,
@@ -136,20 +138,21 @@ pub async fn get_neighbors(
                     qc_avg: qc_avg.and_then(|v| v.to_string().parse().ok()),
                     distance_m: row.try_get("distance_m").ok(),
                 });
-                
+
                 if neighbors.len() >= 4 {
                     break;
                 }
             }
-            
+
             Json(neighbors).into_response()
         }
         Err(e) => {
             tracing::error!(?e, "get_neighbors error");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "Database error"}))
-            ).into_response()
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }

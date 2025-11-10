@@ -4,7 +4,6 @@ use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
-    response::IntoResponse,
     Json,
 };
 use std::collections::HashMap;
@@ -85,10 +84,11 @@ pub async fn add_row_handler(
     Path((schema, table)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<DbManagerError>)> {
     // Créer un backup automatique
-    if let Err(e) = backup::create_auto_backup(&state.pool, &schema, &table, "Ajout de ligne").await {
+    if let Err(e) = backup::create_auto_backup(&state.pool, &schema, &table, "Ajout de ligne").await
+    {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
-    
+
     match table::add_empty_row(&state.pool, &schema, &table).await {
         Ok(id) => {
             // Créer un audit log
@@ -102,8 +102,9 @@ pub async fn add_row_handler(
                 None,
                 None,
                 None,
-            ).await;
-            
+            )
+            .await;
+
             Ok(Json(serde_json::json!({ "id": id })))
         }
         Err(e) => Err((
@@ -135,8 +136,9 @@ pub async fn update_cell_handler(
                     "row_id": row_id,
                     "column": column
                 })),
-            ).await;
-            
+            )
+            .await;
+
             Ok(StatusCode::OK)
         }
         Err(e) => Err((
@@ -154,11 +156,13 @@ pub async fn delete_rows_handler(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<DbManagerError>)> {
     if row_ids.len() > 5 {
         // Créer un backup automatique pour les suppressions massives
-        if let Err(e) = backup::create_auto_backup(&state.pool, &schema, &table, "Suppression massive").await {
+        if let Err(e) =
+            backup::create_auto_backup(&state.pool, &schema, &table, "Suppression massive").await
+        {
             eprintln!("Erreur lors de la création du backup: {}", e);
         }
     }
-    
+
     match table::delete_rows(&state.pool, &schema, &table, &row_ids).await {
         Ok(count) => {
             // Créer un audit log
@@ -174,8 +178,9 @@ pub async fn delete_rows_handler(
                 Some(serde_json::json!({
                     "row_ids": row_ids
                 })),
-            ).await;
-            
+            )
+            .await;
+
             Ok(Json(serde_json::json!({ "deleted": count })))
         }
         Err(e) => Err((
@@ -196,10 +201,12 @@ pub async fn create_staging_handler(
     Json(request): Json<CreateStagingRequest>,
 ) -> Result<Json<StagingInfo>, (StatusCode, Json<DbManagerError>)> {
     // Créer un backup automatique
-    if let Err(e) = backup::create_auto_backup(&state.pool, &schema, &table, "Création staging").await {
+    if let Err(e) =
+        backup::create_auto_backup(&state.pool, &schema, &table, "Création staging").await
+    {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
-    
+
     match staging::create_staging(&state.pool, &schema, &table, request).await {
         Ok(info) => Ok(Json(info)),
         Err(e) => Err((
@@ -244,9 +251,8 @@ pub async fn preview_staging_handler(
     Path(staging_id): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<StagingPreview>, (StatusCode, Json<DbManagerError>)> {
-    let limit = params.get("limit")
-        .and_then(|s| s.parse::<i64>().ok());
-    
+    let limit = params.get("limit").and_then(|s| s.parse::<i64>().ok());
+
     match staging::preview_staging(&state.pool, &staging_id, limit).await {
         Ok(preview) => Ok(Json(preview)),
         Err(e) => Err((
@@ -295,10 +301,12 @@ pub async fn add_column_handler(
     Json(request): Json<AddColumnRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
     // Créer un backup automatique
-    if let Err(e) = backup::create_auto_backup(&state.pool, &schema, &table, "Ajout de colonne").await {
+    if let Err(e) =
+        backup::create_auto_backup(&state.pool, &schema, &table, "Ajout de colonne").await
+    {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
-    
+
     // Construire la requête ALTER TABLE
     let schema_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&schema)
@@ -306,55 +314,61 @@ pub async fn add_column_handler(
         .await
     {
         Ok(s) => s,
-        Err(e) => return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
-        )),
+        Err(e) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
+            ))
+        }
     };
-    
+
     let table_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&table)
         .fetch_one(&state.pool)
         .await
     {
         Ok(s) => s,
-        Err(e) => return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
-        )),
+        Err(e) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
+            ))
+        }
     };
-    
+
     let column_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&request.name)
         .fetch_one(&state.pool)
         .await
     {
         Ok(s) => s,
-        Err(e) => return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
-        )),
+        Err(e) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
+            ))
+        }
     };
-    
+
     // Construire le type de données
     let mut data_type = request.data_type.clone();
     if data_type.to_lowercase() == "varchar" || data_type.to_lowercase() == "character varying" {
         let length = request.character_length.unwrap_or(255);
         data_type = format!("VARCHAR({})", length);
     }
-    
+
     let nullable = if request.is_nullable { "" } else { " NOT NULL" };
     let default = if let Some(def) = &request.default_value {
         format!(" DEFAULT {}", def)
     } else {
         String::new()
     };
-    
+
     let alter_query = format!(
         "ALTER TABLE {}.{} ADD COLUMN {} {}{}{}",
         schema_ident, table_ident, column_ident, data_type, nullable, default
     );
-    
+
     match sqlx::query(&alter_query).execute(&state.pool).await {
         Ok(_) => {
             // Créer un audit log
@@ -371,8 +385,9 @@ pub async fn add_column_handler(
                     "column_name": request.name,
                     "data_type": data_type
                 })),
-            ).await;
-            
+            )
+            .await;
+
             Ok(StatusCode::CREATED)
         }
         Err(e) => Err((
@@ -389,10 +404,12 @@ pub async fn delete_column_handler(
     Json(request): Json<DeleteColumnRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
     // Créer un backup automatique
-    if let Err(e) = backup::create_auto_backup(&state.pool, &schema, &table, "Suppression de colonne").await {
+    if let Err(e) =
+        backup::create_auto_backup(&state.pool, &schema, &table, "Suppression de colonne").await
+    {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
-    
+
     match request.mode {
         DeleteMode::Soft => {
             // Mode soft: marquer comme invisible dans les métadonnées
@@ -410,48 +427,54 @@ pub async fn delete_column_handler(
                     )),
                 ));
             }
-            
+
             let schema_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
                 .bind(&schema)
                 .fetch_one(&state.pool)
                 .await
             {
                 Ok(s) => s,
-                Err(e) => return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
-                )),
+                Err(e) => {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
+                    ))
+                }
             };
-            
+
             let table_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
                 .bind(&table)
                 .fetch_one(&state.pool)
                 .await
             {
                 Ok(s) => s,
-                Err(e) => return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
-                )),
+                Err(e) => {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
+                    ))
+                }
             };
-            
+
             let column_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
                 .bind(&column)
                 .fetch_one(&state.pool)
                 .await
             {
                 Ok(s) => s,
-                Err(e) => return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
-                )),
+                Err(e) => {
+                    return Err((
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
+                    ))
+                }
             };
-            
+
             let drop_query = format!(
                 "ALTER TABLE {}.{} DROP COLUMN {}",
                 schema_ident, table_ident, column_ident
             );
-            
+
             match sqlx::query(&drop_query).execute(&state.pool).await {
                 Ok(_) => {
                     // Créer un audit log
@@ -467,8 +490,9 @@ pub async fn delete_column_handler(
                         Some(serde_json::json!({
                             "column_name": column
                         })),
-                    ).await;
-                    
+                    )
+                    .await;
+
                     Ok(StatusCode::OK)
                 }
                 Err(e) => Err((
@@ -492,30 +516,34 @@ pub async fn analyze_column_impact_handler(
         .await
     {
         Ok(s) => s,
-        Err(e) => return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
-        )),
+        Err(e) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
+            ))
+        }
     };
-    
+
     let table_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&table)
         .fetch_one(&state.pool)
         .await
     {
         Ok(s) => s,
-        Err(e) => return Err((
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
-        )),
+        Err(e) => {
+            return Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(DbManagerError::new("DATABASE_ERROR", &e.to_string())),
+            ))
+        }
     };
-    
+
     let count_query = format!("SELECT COUNT(*) FROM {}.{}", schema_ident, table_ident);
     let affected_rows: i64 = sqlx::query_scalar(&count_query)
         .fetch_one(&state.pool)
         .await
         .unwrap_or(0);
-    
+
     // Rechercher les vues dépendantes
     let dependent_views: Vec<String> = sqlx::query_scalar(
         r#"
@@ -524,7 +552,7 @@ pub async fn analyze_column_impact_handler(
         WHERE v.view_schema = $1 
         AND v.table_name = $2
         AND v.column_name = $3
-        "#
+        "#,
     )
     .bind(&schema)
     .bind(&table)
@@ -532,10 +560,10 @@ pub async fn analyze_column_impact_handler(
     .fetch_all(&state.pool)
     .await
     .unwrap_or_default();
-    
+
     // Rechercher les vues matérialisées (approximatif)
     let dependent_materialized_views: Vec<String> = Vec::new(); // TODO: implémenter
-    
+
     Ok(Json(ColumnImpactAnalysis {
         column_name: column,
         affected_rows,
@@ -634,6 +662,39 @@ pub async fn delete_backup_handler(
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(DbManagerError::new("BACKUP_ERROR", &e.to_string())),
+        )),
+    }
+}
+
+// ============================================================================
+// Dry-run Routes
+// ============================================================================
+
+/// POST /db/table/:schema/:table/column/dryrun - Dry-run ajout colonne
+pub async fn dryrun_add_column_handler(
+    State(state): State<AppState>,
+    Path((schema, table)): Path<(String, String)>,
+    Json(request): Json<AddColumnRequest>,
+) -> Result<Json<DryRunResult>, (StatusCode, Json<DbManagerError>)> {
+    match dryrun::dryrun_add_column(&state.pool, &schema, &table, &request).await {
+        Ok(result) => Ok(Json(result)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(DbManagerError::new("DRYRUN_ERROR", &e.to_string())),
+        )),
+    }
+}
+
+/// DELETE /db/table/:schema/:table/column/:column/dryrun - Dry-run suppression colonne
+pub async fn dryrun_delete_column_handler(
+    State(state): State<AppState>,
+    Path((schema, table, column)): Path<(String, String, String)>,
+) -> Result<Json<DryRunResult>, (StatusCode, Json<DbManagerError>)> {
+    match dryrun::dryrun_delete_column(&state.pool, &schema, &table, &column).await {
+        Ok(result) => Ok(Json(result)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(DbManagerError::new("DRYRUN_ERROR", &e.to_string())),
         )),
     }
 }

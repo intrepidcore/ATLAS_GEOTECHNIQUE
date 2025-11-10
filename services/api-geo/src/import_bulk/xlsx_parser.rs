@@ -2,8 +2,8 @@
 // Parser XLSX multi-feuilles pour import géotechnique complet
 // ============================================================================
 
-use anyhow::{Result, Context};
-use calamine::{Reader, Xlsx, open_workbook_from_rs, DataType};
+use anyhow::{Context, Result};
+use calamine::{open_workbook_from_rs, DataType, Reader, Xlsx};
 use std::collections::HashMap;
 use std::io::Read;
 
@@ -68,16 +68,16 @@ pub struct VbsRow {
 pub struct ProctorRow {
     pub code_site: String,
     pub depth_m: f64,
-    pub proctor_type: String,  // "normal" ou "modifie"
+    pub proctor_type: String, // "normal" ou "modifie"
     pub gamma_d_max: f64,
     pub w_opt: f64,
 }
 
 #[derive(Debug, Clone)]
 pub struct GranuloLargeSheet {
-    pub method: String,  // "tamisage" ou "sedimento"
+    pub method: String, // "tamisage" ou "sedimento"
     pub sieve_mm: Vec<f64>,
-    pub samples: HashMap<String, Vec<Option<f64>>>,  // key = "code_site@depth_m"
+    pub samples: HashMap<String, Vec<Option<f64>>>, // key = "code_site@depth_m"
 }
 
 #[derive(Debug, Clone)]
@@ -94,11 +94,11 @@ pub struct GranuloPointRow {
 // ============================================================================
 
 pub fn parse_xlsx_multisheet<R: Read + std::io::Seek>(reader: R) -> Result<XlsxImportData> {
-    let mut workbook: Xlsx<_> = open_workbook_from_rs(reader)
-        .context("Impossible d'ouvrir le fichier XLSX")?;
-    
+    let mut workbook: Xlsx<_> =
+        open_workbook_from_rs(reader).context("Impossible d'ouvrir le fichier XLSX")?;
+
     let sheet_names: Vec<String> = workbook.sheet_names().to_vec();
-    
+
     let mut data = XlsxImportData {
         sondages: Vec::new(),
         echantillons: Vec::new(),
@@ -109,11 +109,11 @@ pub fn parse_xlsx_multisheet<R: Read + std::io::Seek>(reader: R) -> Result<XlsxI
         granulo_sedimento_large: None,
         granulo_points: Vec::new(),
     };
-    
+
     // Parser chaque feuille selon son nom
     for sheet_name in &sheet_names {
         let sheet_lower = sheet_name.to_lowercase();
-        
+
         if sheet_lower == "sondages" {
             data.sondages = parse_sondages_sheet(&mut workbook, sheet_name)?;
         } else if sheet_lower == "echantillons" {
@@ -125,14 +125,22 @@ pub fn parse_xlsx_multisheet<R: Read + std::io::Seek>(reader: R) -> Result<XlsxI
         } else if sheet_lower == "proctor" {
             data.proctor = parse_proctor_sheet(&mut workbook, sheet_name)?;
         } else if sheet_lower == "granulo_tamisage_large" {
-            data.granulo_tamisage_large = Some(parse_granulo_large_sheet(&mut workbook, sheet_name, "tamisage")?);
+            data.granulo_tamisage_large = Some(parse_granulo_large_sheet(
+                &mut workbook,
+                sheet_name,
+                "tamisage",
+            )?);
         } else if sheet_lower == "granulo_sedimento_large" {
-            data.granulo_sedimento_large = Some(parse_granulo_large_sheet(&mut workbook, sheet_name, "sedimento")?);
+            data.granulo_sedimento_large = Some(parse_granulo_large_sheet(
+                &mut workbook,
+                sheet_name,
+                "sedimento",
+            )?);
         } else if sheet_lower == "granulo_points" {
             data.granulo_points = parse_granulo_points_sheet(&mut workbook, sheet_name)?;
         }
     }
-    
+
     Ok(data)
 }
 
@@ -144,12 +152,13 @@ fn parse_sondages_sheet<R: Read + std::io::Seek>(
     workbook: &mut Xlsx<R>,
     sheet_name: &str,
 ) -> Result<Vec<SondageRow>> {
-    let range = workbook.worksheet_range(sheet_name)
+    let range = workbook
+        .worksheet_range(sheet_name)
         .map_err(|_| anyhow::anyhow!("Feuille sondages introuvable"))?;
-    
+
     let mut rows = Vec::new();
     let mut headers: HashMap<String, usize> = HashMap::new();
-    
+
     // Lire les entêtes (ligne 0)
     if let Some(header_row) = range.rows().next() {
         for (idx, cell) in header_row.iter().enumerate() {
@@ -158,16 +167,16 @@ fn parse_sondages_sheet<R: Read + std::io::Seek>(
             }
         }
     }
-    
+
     // Lire les données (lignes 1+)
     for (row_idx, row) in range.rows().enumerate().skip(1) {
         if row.is_empty() {
             continue;
         }
-        
+
         let code_site = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
-        
+
         rows.push(SondageRow {
             code_site,
             localite: get_string_cell(row, &headers, "localite"),
@@ -180,7 +189,7 @@ fn parse_sondages_sheet<R: Read + std::io::Seek>(
             source: get_string_cell(row, &headers, "source"),
         });
     }
-    
+
     Ok(rows)
 }
 
@@ -188,12 +197,13 @@ fn parse_echantillons_sheet<R: Read + std::io::Seek>(
     workbook: &mut Xlsx<R>,
     sheet_name: &str,
 ) -> Result<Vec<EchantillonRow>> {
-    let range = workbook.worksheet_range(sheet_name)
+    let range = workbook
+        .worksheet_range(sheet_name)
         .map_err(|_| anyhow::anyhow!("Feuille echantillons introuvable"))?;
-    
+
     let mut rows = Vec::new();
     let mut headers: HashMap<String, usize> = HashMap::new();
-    
+
     if let Some(header_row) = range.rows().next() {
         for (idx, cell) in header_row.iter().enumerate() {
             if let Some(header) = cell.as_string() {
@@ -201,17 +211,17 @@ fn parse_echantillons_sheet<R: Read + std::io::Seek>(
             }
         }
     }
-    
+
     for (row_idx, row) in range.rows().enumerate().skip(1) {
         if row.is_empty() {
             continue;
         }
-        
+
         let code_site = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
         let depth_m = get_float_cell(row, &headers, "depth_m")
             .context(format!("depth_m manquant ligne {}", row_idx + 1))?;
-        
+
         rows.push(EchantillonRow {
             code_site,
             depth_m,
@@ -225,7 +235,7 @@ fn parse_echantillons_sheet<R: Read + std::io::Seek>(
             commentaire: get_string_cell(row, &headers, "commentaire"),
         });
     }
-    
+
     Ok(rows)
 }
 
@@ -233,12 +243,13 @@ fn parse_atterberg_sheet<R: Read + std::io::Seek>(
     workbook: &mut Xlsx<R>,
     sheet_name: &str,
 ) -> Result<Vec<AtterbergRow>> {
-    let range = workbook.worksheet_range(sheet_name)
+    let range = workbook
+        .worksheet_range(sheet_name)
         .map_err(|_| anyhow::anyhow!("Feuille atterberg introuvable"))?;
-    
+
     let mut rows = Vec::new();
     let mut headers: HashMap<String, usize> = HashMap::new();
-    
+
     if let Some(header_row) = range.rows().next() {
         for (idx, cell) in header_row.iter().enumerate() {
             if let Some(header) = cell.as_string() {
@@ -246,17 +257,17 @@ fn parse_atterberg_sheet<R: Read + std::io::Seek>(
             }
         }
     }
-    
+
     for (row_idx, row) in range.rows().enumerate().skip(1) {
         if row.is_empty() {
             continue;
         }
-        
+
         let code_site = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
         let depth_m = get_float_cell(row, &headers, "depth_m")
             .context(format!("depth_m manquant ligne {}", row_idx + 1))?;
-        
+
         rows.push(AtterbergRow {
             code_site,
             depth_m,
@@ -264,7 +275,7 @@ fn parse_atterberg_sheet<R: Read + std::io::Seek>(
             wp: get_float_cell(row, &headers, "wp"),
         });
     }
-    
+
     Ok(rows)
 }
 
@@ -272,12 +283,13 @@ fn parse_vbs_sheet<R: Read + std::io::Seek>(
     workbook: &mut Xlsx<R>,
     sheet_name: &str,
 ) -> Result<Vec<VbsRow>> {
-    let range = workbook.worksheet_range(sheet_name)
+    let range = workbook
+        .worksheet_range(sheet_name)
         .map_err(|_| anyhow::anyhow!("Feuille vbs introuvable"))?;
-    
+
     let mut rows = Vec::new();
     let mut headers: HashMap<String, usize> = HashMap::new();
-    
+
     if let Some(header_row) = range.rows().next() {
         for (idx, cell) in header_row.iter().enumerate() {
             if let Some(header) = cell.as_string() {
@@ -285,19 +297,19 @@ fn parse_vbs_sheet<R: Read + std::io::Seek>(
             }
         }
     }
-    
+
     for (row_idx, row) in range.rows().enumerate().skip(1) {
         if row.is_empty() {
             continue;
         }
-        
+
         let code_site = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
         let depth_m = get_float_cell(row, &headers, "depth_m")
             .context(format!("depth_m manquant ligne {}", row_idx + 1))?;
         let vbs = get_float_cell(row, &headers, "vbs")
             .context(format!("vbs manquant ligne {}", row_idx + 1))?;
-        
+
         rows.push(VbsRow {
             code_site,
             depth_m,
@@ -305,7 +317,7 @@ fn parse_vbs_sheet<R: Read + std::io::Seek>(
             commentaire: get_string_cell(row, &headers, "commentaire"),
         });
     }
-    
+
     Ok(rows)
 }
 
@@ -313,12 +325,13 @@ fn parse_proctor_sheet<R: Read + std::io::Seek>(
     workbook: &mut Xlsx<R>,
     sheet_name: &str,
 ) -> Result<Vec<ProctorRow>> {
-    let range = workbook.worksheet_range(sheet_name)
+    let range = workbook
+        .worksheet_range(sheet_name)
         .map_err(|_| anyhow::anyhow!("Feuille proctor introuvable"))?;
-    
+
     let mut rows = Vec::new();
     let mut headers: HashMap<String, usize> = HashMap::new();
-    
+
     if let Some(header_row) = range.rows().next() {
         for (idx, cell) in header_row.iter().enumerate() {
             if let Some(header) = cell.as_string() {
@@ -326,12 +339,12 @@ fn parse_proctor_sheet<R: Read + std::io::Seek>(
             }
         }
     }
-    
+
     for (row_idx, row) in range.rows().enumerate().skip(1) {
         if row.is_empty() {
             continue;
         }
-        
+
         let code_site = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
         let depth_m = get_float_cell(row, &headers, "depth_m")
@@ -342,7 +355,7 @@ fn parse_proctor_sheet<R: Read + std::io::Seek>(
             .context(format!("gamma_d_max manquant ligne {}", row_idx + 1))?;
         let w_opt = get_float_cell(row, &headers, "w_opt")
             .context(format!("w_opt manquant ligne {}", row_idx + 1))?;
-        
+
         rows.push(ProctorRow {
             code_site,
             depth_m,
@@ -351,7 +364,7 @@ fn parse_proctor_sheet<R: Read + std::io::Seek>(
             w_opt,
         });
     }
-    
+
     Ok(rows)
 }
 
@@ -360,12 +373,13 @@ fn parse_granulo_large_sheet<R: Read + std::io::Seek>(
     sheet_name: &str,
     method: &str,
 ) -> Result<GranuloLargeSheet> {
-    let range = workbook.worksheet_range(sheet_name)
+    let range = workbook
+        .worksheet_range(sheet_name)
         .map_err(|_| anyhow::anyhow!("Feuille {} introuvable", sheet_name))?;
-    
+
     let mut sieve_mm = Vec::new();
     let mut samples: HashMap<String, Vec<Option<f64>>> = HashMap::new();
-    
+
     // Lire les entêtes (ligne 0)
     let mut sample_cols: Vec<String> = Vec::new();
     if let Some(header_row) = range.rows().next() {
@@ -381,17 +395,17 @@ fn parse_granulo_large_sheet<R: Read + std::io::Seek>(
             }
         }
     }
-    
+
     // Lire les données (lignes 1+)
     for row in range.rows().skip(1) {
         if row.is_empty() {
             continue;
         }
-        
+
         // Première colonne = sieve_mm
         if let Some(sieve) = get_float_from_cell(&row[0]) {
             sieve_mm.push(sieve);
-            
+
             // Colonnes suivantes = passant pour chaque échantillon
             for (idx, sample_key) in sample_cols.iter().enumerate() {
                 let col_idx = idx + 1;
@@ -404,7 +418,7 @@ fn parse_granulo_large_sheet<R: Read + std::io::Seek>(
             }
         }
     }
-    
+
     Ok(GranuloLargeSheet {
         method: method.to_string(),
         sieve_mm,
@@ -416,12 +430,13 @@ fn parse_granulo_points_sheet<R: Read + std::io::Seek>(
     workbook: &mut Xlsx<R>,
     sheet_name: &str,
 ) -> Result<Vec<GranuloPointRow>> {
-    let range = workbook.worksheet_range(sheet_name)
+    let range = workbook
+        .worksheet_range(sheet_name)
         .map_err(|_| anyhow::anyhow!("Feuille granulo_points introuvable"))?;
-    
+
     let mut rows = Vec::new();
     let mut headers: HashMap<String, usize> = HashMap::new();
-    
+
     if let Some(header_row) = range.rows().next() {
         for (idx, cell) in header_row.iter().enumerate() {
             if let Some(header) = cell.as_string() {
@@ -429,12 +444,12 @@ fn parse_granulo_points_sheet<R: Read + std::io::Seek>(
             }
         }
     }
-    
+
     for (row_idx, row) in range.rows().enumerate().skip(1) {
         if row.is_empty() {
             continue;
         }
-        
+
         let code_site = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
         let depth_m = get_float_cell(row, &headers, "depth_m")
@@ -445,7 +460,7 @@ fn parse_granulo_points_sheet<R: Read + std::io::Seek>(
             .context(format!("sieve_mm manquant ligne {}", row_idx + 1))?;
         let passing_pct = get_float_cell(row, &headers, "passing_pct")
             .context(format!("passing_pct manquant ligne {}", row_idx + 1))?;
-        
+
         rows.push(GranuloPointRow {
             code_site,
             depth_m,
@@ -454,7 +469,7 @@ fn parse_granulo_points_sheet<R: Read + std::io::Seek>(
             passing_pct,
         });
     }
-    
+
     Ok(rows)
 }
 
@@ -462,16 +477,26 @@ fn parse_granulo_points_sheet<R: Read + std::io::Seek>(
 // Helpers
 // ============================================================================
 
-fn get_string_cell(row: &[calamine::Data], headers: &HashMap<String, usize>, key: &str) -> Option<String> {
-    headers.get(key)
+fn get_string_cell(
+    row: &[calamine::Data],
+    headers: &HashMap<String, usize>,
+    key: &str,
+) -> Option<String> {
+    headers
+        .get(key)
         .and_then(|&idx| row.get(idx))
         .and_then(|cell| cell.as_string())
         .map(|s| s.to_string())
         .filter(|s| !s.is_empty())
 }
 
-fn get_float_cell(row: &[calamine::Data], headers: &HashMap<String, usize>, key: &str) -> Option<f64> {
-    headers.get(key)
+fn get_float_cell(
+    row: &[calamine::Data],
+    headers: &HashMap<String, usize>,
+    key: &str,
+) -> Option<f64> {
+    headers
+        .get(key)
         .and_then(|&idx| row.get(idx))
         .and_then(get_float_from_cell)
 }
@@ -495,21 +520,21 @@ fn get_float_from_cell(cell: &calamine::Data) -> Option<f64> {
 
 pub fn transform_large_to_long(large: &GranuloLargeSheet) -> Vec<GranuloPointRow> {
     let mut points = Vec::new();
-    
+
     for (sample_key, passings) in &large.samples {
         // Parser "code_site@depth_m"
         let parts: Vec<&str> = sample_key.split('@').collect();
         if parts.len() != 2 {
             continue;
         }
-        
+
         let code_site = parts[0].to_string();
-        let depth_str = parts[1].replace(',', ".");  // Accepter virgule
+        let depth_str = parts[1].replace(',', "."); // Accepter virgule
         let depth_m = match depth_str.parse::<f64>() {
             Ok(d) => d,
             Err(_) => continue,
         };
-        
+
         // Créer un point par tamis
         for (idx, &sieve) in large.sieve_mm.iter().enumerate() {
             if let Some(Some(passing)) = passings.get(idx) {
@@ -523,6 +548,6 @@ pub fn transform_large_to_long(large: &GranuloLargeSheet) -> Vec<GranuloPointRow
             }
         }
     }
-    
+
     points
 }

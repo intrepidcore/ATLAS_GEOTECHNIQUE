@@ -1,13 +1,8 @@
 // Module de compatibilité pour l'ancien endpoint /surveys/ungeocode
-use axum::{
-    extract::State,
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use crate::state::AppState;
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use serde::Serialize;
 use uuid::Uuid;
-use crate::state::AppState;
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
 pub struct UngeocodedSurvey {
@@ -19,11 +14,9 @@ pub struct UngeocodedSurvey {
     pub loc_mode: String,
 }
 
-pub async fn list_ungeocode(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn list_ungeocode(State(state): State<AppState>) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let rows = sqlx::query_as::<_, UngeocodedSurvey>(
         r#"
         SELECT
@@ -46,9 +39,13 @@ pub async fn list_ungeocode(
         Ok(surveys) => Json(surveys).into_response(),
         Err(e) => {
             tracing::error!(?e, "Failed to fetch ungeocode surveys");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({
-                "error": "Failed to fetch surveys"
-            }))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({
+                    "error": "Failed to fetch surveys"
+                })),
+            )
+                .into_response()
         }
     }
 }

@@ -11,7 +11,7 @@ pub fn generate_batch_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_generate_batch_id() {
         let batch_id = generate_batch_id();

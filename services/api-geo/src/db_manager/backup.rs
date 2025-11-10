@@ -1,7 +1,6 @@
 // Gestion des sauvegardes et points de restauration
 use super::types::*;
 use sqlx::{PgPool, Row};
-use std::process::Command;
 
 /// Crée un point de restauration (backup)
 pub async fn create_backup(
@@ -10,16 +9,19 @@ pub async fn create_backup(
 ) -> Result<BackupInfo, sqlx::Error> {
     let backup_id = uuid::Uuid::new_v4().to_string();
     let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
-    
+
     // Créer un schéma de backup temporaire
     let backup_schema = format!("backup_{}_{}", timestamp, &backup_id[..8]);
-    
-    sqlx::query(&format!("CREATE SCHEMA IF NOT EXISTS \"{}\"", backup_schema))
-        .execute(pool)
-        .await?;
-    
+
+    sqlx::query(&format!(
+        "CREATE SCHEMA IF NOT EXISTS \"{}\"",
+        backup_schema
+    ))
+    .execute(pool)
+    .await?;
+
     let mut total_size: i64 = 0;
-    
+
     // Copier chaque table dans le schéma de backup
     for table in &request.tables {
         let parts: Vec<&str> = table.split('.').collect();
@@ -28,7 +30,7 @@ pub async fn create_backup(
         } else {
             ("public", parts[0])
         };
-        
+
         let schema_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
             .bind(schema)
             .fetch_one(pool)
@@ -41,14 +43,14 @@ pub async fn create_backup(
             .bind(&backup_schema)
             .fetch_one(pool)
             .await?;
-        
+
         // Créer la table de backup
         let create_query = format!(
             "CREATE TABLE {}.{} AS SELECT * FROM {}.{}",
             backup_schema_ident, table_ident, schema_ident, table_ident
         );
         sqlx::query(&create_query).execute(pool).await?;
-        
+
         // Calculer la taille
         let size_query = format!(
             "SELECT pg_total_relation_size('{}.{}'::regclass)",
@@ -60,14 +62,14 @@ pub async fn create_backup(
             .unwrap_or(0);
         total_size += size;
     }
-    
+
     // Enregistrer les métadonnées du backup
     sqlx::query(
         r#"
         INSERT INTO atlas.backup_metadata 
         (backup_id, backup_schema, tables, description, size_bytes, created_at)
         VALUES ($1, $2, $3, $4, $5, NOW())
-        "#
+        "#,
     )
     .bind(&backup_id)
     .bind(&backup_schema)
@@ -76,7 +78,7 @@ pub async fn create_backup(
     .bind(total_size)
     .execute(pool)
     .await?;
-    
+
     Ok(BackupInfo {
         backup_id,
         tables: request.tables,
@@ -98,11 +100,11 @@ pub async fn list_backups(pool: &PgPool) -> Result<Vec<BackupInfo>, sqlx::Error>
             created_at
         FROM atlas.backup_metadata
         ORDER BY created_at DESC
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await?;
-    
+
     let mut backups = Vec::new();
     for row in rows {
         backups.push(BackupInfo {
@@ -113,33 +115,30 @@ pub async fn list_backups(pool: &PgPool) -> Result<Vec<BackupInfo>, sqlx::Error>
             description: row.try_get("description").ok(),
         });
     }
-    
+
     Ok(backups)
 }
 
 /// Restaure un backup
-pub async fn restore_backup(
-    pool: &PgPool,
-    backup_id: &str,
-) -> Result<RestoreResult, sqlx::Error> {
+pub async fn restore_backup(pool: &PgPool, backup_id: &str) -> Result<RestoreResult, sqlx::Error> {
     // Récupérer les métadonnées du backup
     let row = sqlx::query(
         r#"
         SELECT backup_schema, tables
         FROM atlas.backup_metadata
         WHERE backup_id = $1
-        "#
+        "#,
     )
     .bind(backup_id)
     .fetch_one(pool)
     .await?;
-    
+
     let backup_schema: String = row.try_get("backup_schema")?;
     let tables: Vec<String> = row.try_get("tables")?;
-    
+
     let mut restored_tables = Vec::new();
     let mut errors = Vec::new();
-    
+
     // Restaurer chaque table
     for table in &tables {
         let parts: Vec<&str> = table.split('.').collect();
@@ -148,13 +147,16 @@ pub async fn restore_backup(
         } else {
             ("public", parts[0])
         };
-        
+
         match restore_table(pool, &backup_schema, schema, table_name).await {
             Ok(_) => restored_tables.push(table.clone()),
-            Err(e) => errors.push(format!("Erreur lors de la restauration de {}: {}", table, e)),
+            Err(e) => errors.push(format!(
+                "Erreur lors de la restauration de {}: {}",
+                table, e
+            )),
         }
     }
-    
+
     Ok(RestoreResult {
         success: errors.is_empty(),
         tables_restored: restored_tables,
@@ -181,73 +183,66 @@ async fn restore_table(
         .bind(table_name)
         .fetch_one(pool)
         .await?;
-    
+
     // Commencer une transaction
     let mut tx = pool.begin().await?;
-    
+
     // Renommer la table actuelle
     let temp_name = format!("{}_old_{}", table_name, chrono::Utc::now().timestamp());
     let temp_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&temp_name)
         .fetch_one(&mut *tx)
         .await?;
-    
+
     let rename_current = format!(
         "ALTER TABLE {}.{} RENAME TO {}",
         target_schema_ident, table_ident, temp_ident
     );
     sqlx::query(&rename_current).execute(&mut *tx).await?;
-    
+
     // Copier la table de backup
     let restore_query = format!(
         "CREATE TABLE {}.{} AS SELECT * FROM {}.{}",
         target_schema_ident, table_ident, backup_schema_ident, table_ident
     );
     sqlx::query(&restore_query).execute(&mut *tx).await?;
-    
+
     // Supprimer l'ancienne table
     let drop_old = format!(
         "DROP TABLE IF EXISTS {}.{}",
         target_schema_ident, temp_ident
     );
     sqlx::query(&drop_old).execute(&mut *tx).await?;
-    
+
     tx.commit().await?;
-    
+
     Ok(())
 }
 
 /// Supprime un backup
-pub async fn delete_backup(
-    pool: &PgPool,
-    backup_id: &str,
-) -> Result<(), sqlx::Error> {
+pub async fn delete_backup(pool: &PgPool, backup_id: &str) -> Result<(), sqlx::Error> {
     // Récupérer le schéma de backup
-    let backup_schema: String = sqlx::query_scalar(
-        "SELECT backup_schema FROM atlas.backup_metadata WHERE backup_id = $1"
-    )
-    .bind(backup_id)
-    .fetch_one(pool)
-    .await?;
-    
+    let backup_schema: String =
+        sqlx::query_scalar("SELECT backup_schema FROM atlas.backup_metadata WHERE backup_id = $1")
+            .bind(backup_id)
+            .fetch_one(pool)
+            .await?;
+
     // Supprimer le schéma
     let backup_schema_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&backup_schema)
         .fetch_one(pool)
         .await?;
-    
-    let drop_schema = format!(
-        "DROP SCHEMA IF EXISTS {} CASCADE",
-        backup_schema_ident
-    );
+
+    let drop_schema = format!("DROP SCHEMA IF EXISTS {} CASCADE", backup_schema_ident);
     sqlx::query(&drop_schema).execute(pool).await?;
-    
+
     // Supprimer les métadonnées
     sqlx::query("DELETE FROM atlas.backup_metadata WHERE backup_id = $1")
         .bind(backup_id)
         .execute(pool)
         .await?;
-    
+
     Ok(())
 }
 

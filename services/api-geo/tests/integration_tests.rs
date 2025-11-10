@@ -11,13 +11,13 @@ mod tests {
     async fn test_audit_list() {
         // Note: Ces tests nécessitent une base de données de test
         // À exécuter avec: cargo test --features test-db
-        
+
         // Simuler une requête GET /audit
         let response = Request::builder()
             .uri("/audit?limit=10")
             .body(Body::empty())
             .unwrap();
-        
+
         // Vérifier que le statut est 200 ou 500 (si DB non disponible)
         // assert!(status == StatusCode::OK || status == StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -42,7 +42,7 @@ mod tests {
     async fn test_coverage_bbox() {
         // Tester avec bbox valide
         let bbox = "0.5,6.0,1.5,7.0";
-        
+
         // Vérifier que seules les mailles dans la bbox sont retournées
         // Vérifier la présence des nouvelles propriétés:
         // - spt_n_avg, qc_avg
@@ -72,7 +72,10 @@ mod tests {
     #[test]
     fn test_bbox_validation() {
         let valid_bbox = "0.5,6.0,1.5,7.0";
-        let parts: Vec<f64> = valid_bbox.split(',').filter_map(|s| s.parse().ok()).collect();
+        let parts: Vec<f64> = valid_bbox
+            .split(',')
+            .filter_map(|s| s.parse().ok())
+            .collect();
         assert_eq!(parts.len(), 4);
         assert!(parts[0] < parts[2]); // west < east
         assert!(parts[1] < parts[3]); // south < north
@@ -87,17 +90,16 @@ mod tests {
         let lon1 = 1.2228;
         let lat2 = 6.1323; // ~44m au nord
         let lon2 = 1.2228;
-        
+
         let r = 6371000.0; // Rayon Terre en mètres
         let d_lat = (lat2 - lat1).to_radians();
         let d_lon = (lon2 - lon1).to_radians();
-        
-        let a = (d_lat / 2.0).sin().powi(2) +
-                lat1.to_radians().cos() * lat2.to_radians().cos() *
-                (d_lon / 2.0).sin().powi(2);
+
+        let a = (d_lat / 2.0).sin().powi(2)
+            + lat1.to_radians().cos() * lat2.to_radians().cos() * (d_lon / 2.0).sin().powi(2);
         let c = 2.0 * a.sqrt().atan2((1.0 - a).sqrt());
         let distance = r * c;
-        
+
         assert!(distance > 40.0 && distance < 50.0);
     }
 
@@ -106,11 +108,11 @@ mod tests {
     fn test_depth_filtering() {
         // Simuler des essais avec différentes profondeurs
         let depths = vec![2.5, 7.0, 15.0, 4.0, 9.5, 12.0];
-        
+
         let depth_0_5: Vec<_> = depths.iter().filter(|&&d| d >= 0.0 && d < 5.0).collect();
         let depth_5_10: Vec<_> = depths.iter().filter(|&&d| d >= 5.0 && d < 10.0).collect();
         let depth_10plus: Vec<_> = depths.iter().filter(|&&d| d >= 10.0).collect();
-        
+
         assert_eq!(depth_0_5.len(), 2);
         assert_eq!(depth_5_10.len(), 2);
         assert_eq!(depth_10plus.len(), 2);
@@ -129,13 +131,13 @@ mod tests {
     fn test_neighbor_direction() {
         let center_lat = 6.0;
         let center_lon = 1.0;
-        
+
         // Nord: lat > center_lat
         let north_lat = 6.1;
         let north_lon = 1.0;
         assert!(north_lat > center_lat);
         assert!((north_lon - center_lon).abs() < (north_lat - center_lat).abs());
-        
+
         // Est: lon > center_lon
         let east_lat = 6.0;
         let east_lon = 1.1;
@@ -159,12 +161,12 @@ mod tests {
             ("id1", "CREATE", "sondage", "payload1"),
             ("id2", "UPDATE", "essai", "payload2"),
         ];
-        
+
         let mut csv = String::from("id,action,entity,payload\n");
         for (id, action, entity, payload) in test_data {
             csv.push_str(&format!("{},{},{},{}\n", id, action, entity, payload));
         }
-        
+
         assert!(csv.contains("id,action,entity,payload"));
         assert!(csv.contains("CREATE"));
         assert!(csv.contains("UPDATE"));
@@ -187,7 +189,7 @@ mod tests {
         let valid_lat = 6.1319;
         assert!(valid_lat >= 5.0 && valid_lat <= 12.0);
         assert!(valid_lon >= -1.0 && valid_lon <= 2.0);
-        
+
         // Coordonnées invalides
         let invalid_lat = 15.0;
         assert!(invalid_lat < 5.0 || invalid_lat > 12.0);

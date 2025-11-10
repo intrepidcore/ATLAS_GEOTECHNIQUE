@@ -1,8 +1,8 @@
 // Import Wizard v2.3.0 - Types et structures de données
 
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 // ============================================================================
@@ -26,13 +26,13 @@ pub struct CreateImportResponse {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UploadOptions {
-    pub encoding: Option<String>,      // UTF-8, ISO-8859-1, Windows-1252
-    pub delimiter: Option<String>,     // auto, ',', ';', '\t', '|'
-    pub decimal: Option<String>,       // '.' ou ','
-    pub thousands: Option<String>,     // '' ou ' ' ou ','
-    pub skip_rows: Option<usize>,      // Nombre de lignes à ignorer
-    pub trim_spaces: Option<bool>,     // Réduire espaces multiples
-    pub empty_as_null: Option<bool>,   // Champs vides → NULL
+    pub encoding: Option<String>,    // UTF-8, ISO-8859-1, Windows-1252
+    pub delimiter: Option<String>,   // auto, ',', ';', '\t', '|'
+    pub decimal: Option<String>,     // '.' ou ','
+    pub thousands: Option<String>,   // '' ou ' ' ou ','
+    pub skip_rows: Option<usize>,    // Nombre de lignes à ignorer
+    pub trim_spaces: Option<bool>,   // Réduire espaces multiples
+    pub empty_as_null: Option<bool>, // Champs vides → NULL
 }
 
 impl Default for UploadOptions {
@@ -82,9 +82,9 @@ pub struct MappingPreset {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ConflictPolicy {
-    Skip,       // Ignorer les doublons
-    Update,     // Mettre à jour si plus récent
-    Duplicate,  // Créer un doublon avec suffixe
+    Skip,      // Ignorer les doublons
+    Update,    // Mettre à jour si plus récent
+    Duplicate, // Créer un doublon avec suffixe
 }
 
 // ============================================================================
@@ -94,22 +94,22 @@ pub enum ConflictPolicy {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GeometryConfig {
     pub mode: GeometryMode,
-    pub crs_in: String,              // EPSG:4326, EPSG:25231, etc.
-    pub crs_out: String,             // Toujours EPSG:25231 pour Atlas
-    pub validate_bbox: bool,         // Vérifier limites Togo
-    pub reject_invalid: bool,        // Rejeter (0,0) ou NULL
-    pub dms_format: Option<bool>,    // Support Degrés Minutes Secondes
+    pub crs_in: String,           // EPSG:4326, EPSG:25231, etc.
+    pub crs_out: String,          // Toujours EPSG:25231 pour Atlas
+    pub validate_bbox: bool,      // Vérifier limites Togo
+    pub reject_invalid: bool,     // Rejeter (0,0) ou NULL
+    pub dms_format: Option<bool>, // Support Degrés Minutes Secondes
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GeometryMode {
-    PointXY,        // Colonnes X/Y
-    PointLonLat,    // Colonnes Lon/Lat
-    PointEN,        // Colonnes E/N (UTM)
-    WKT,            // Colonne WKT
-    EWKT,           // Colonne EWKT
-    None,           // Pas de géométrie
+    PointXY,     // Colonnes X/Y
+    PointLonLat, // Colonnes Lon/Lat
+    PointEN,     // Colonnes E/N (UTM)
+    WKT,         // Colonne WKT
+    EWKT,        // Colonne EWKT
+    None,        // Pas de géométrie
 }
 
 impl Default for GeometryConfig {
@@ -239,7 +239,7 @@ impl std::fmt::Display for ImportStatus {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProgressEvent {
-    pub event: String,  // "progress" | "complete" | "error"
+    pub event: String, // "progress" | "complete" | "error"
     pub data: ProgressData,
 }
 

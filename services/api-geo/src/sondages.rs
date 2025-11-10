@@ -1,3 +1,4 @@
+use crate::AppState;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -5,7 +6,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::types::Uuid;
-use crate::AppState;
 
 // ============================================================================
 // TYPES

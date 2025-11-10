@@ -1,5 +1,14 @@
 // Types pour le gestionnaire de base de données
 
+export interface PostgresType {
+  name: string
+  category: string
+  requires_length: boolean
+  requires_precision: boolean
+  requires_scale: boolean
+  description: string
+}
+
 export interface DatabaseSchema {
   schemas: SchemaInfo[]
 }
@@ -241,7 +250,7 @@ export interface DbManagerState {
   backupBeforeEdit?: BackupInfo
 }
 
-// Types PostgreSQL supportés
+// Types PostgreSQL supportés (liste simple pour compatibilité)
 export const POSTGRES_TYPES = [
   'bigint',
   'bigserial',
@@ -290,4 +299,4 @@ export const POSTGRES_TYPES = [
   'geography'
 ] as const
 
-export type PostgresType = typeof POSTGRES_TYPES[number]
+export type PostgresTypeName = typeof POSTGRES_TYPES[number]

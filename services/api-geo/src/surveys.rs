@@ -1,14 +1,14 @@
-    use axum::{
+use crate::state::AppState;
+use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
     Json,
 };
+use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
 use sqlx::{types::Uuid, Row};
-use num_traits::ToPrimitive;
 use std::str::FromStr;
-use crate::state::AppState;
 
 // ============================================================================
 // DTOs
@@ -162,31 +162,31 @@ pub struct GeocodeRequest {
 // ============================================================================
 
 pub fn validate_togo_bounds(lon: f64, lat: f64) -> Result<(), String> {
-    if lat < 5.0 || lat > 12.0 {
+    if !(5.0..=12.0).contains(&lat) {
         return Err(format!("Latitude {} hors limites Togo [5, 12]", lat));
     }
-    if lon < -1.0 || lon > 2.0 {
+    if !(-1.0..=2.0).contains(&lon) {
         return Err(format!("Longitude {} hors limites Togo [-1, 2]", lon));
     }
     Ok(())
 }
 
 fn validate_depth(depth_m: f64) -> Result<(), String> {
-    if depth_m < 0.5 || depth_m > 60.0 {
+    if !(0.5..=60.0).contains(&depth_m) {
         return Err(format!("Profondeur {} hors limites [0.5, 60] m", depth_m));
     }
     Ok(())
 }
 
 fn validate_spt_n(value: f64) -> Result<(), String> {
-    if value < 0.0 || value > 100.0 || value.fract() != 0.0 {
+    if !(0.0..=100.0).contains(&value) || value.fract() != 0.0 {
         return Err(format!("SPT_N {} invalide (entier 0-100)", value));
     }
     Ok(())
 }
 
 fn validate_qc(value: f64) -> Result<(), String> {
-    if value < 0.1 || value > 50.0 {
+    if !(0.1..=50.0).contains(&value) {
         return Err(format!("qc {} hors limites [0.1, 50] MPa", value));
     }
     Ok(())
@@ -194,13 +194,13 @@ fn validate_qc(value: f64) -> Result<(), String> {
 
 pub fn validate_test(test: &TestInput) -> Result<(), String> {
     validate_depth(test.depth_m)?;
-    
+
     match test.test_type.as_str() {
         "SPT_N" => validate_spt_n(test.value)?,
         "qc" => validate_qc(test.value)?,
         _ => {}
     }
-    
+
     Ok(())
 }
 
@@ -213,7 +213,7 @@ pub fn get_test_unit(test_type: &str) -> &'static str {
         "phi_prime" => "degrees",
         "gamma_d_max" => "kN/m3",
         "w_opt" | "wL" | "wP" => "%",
-        _ => "unit"
+        _ => "unit",
     }
 }
 
@@ -227,7 +227,7 @@ pub async fn locate_maille(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let result = sqlx::query(
         r#"
         SELECT code, adm1_name, adm2_name, adm3_name
@@ -237,34 +237,40 @@ pub async fn locate_maille(
             ST_Transform(ST_SetSRID(ST_MakePoint($1, $2), 4326), 25231)
         )
         LIMIT 1
-        "#
+        "#,
     )
     .bind(q.lon)
     .bind(q.lat)
     .fetch_optional(pool)
     .await;
-    
+
     match result {
         Ok(Some(row)) => {
             let code: String = row.try_get("code").unwrap_or_default();
             let adm1: Option<String> = row.try_get("adm1_name").ok();
             let adm2: Option<String> = row.try_get("adm2_name").ok();
             let adm3: Option<String> = row.try_get("adm3_name").ok();
-            
+
             Json(LocateResponse {
                 code,
                 adm1_name: adm1,
                 adm2_name: adm2,
                 adm3_name: adm3,
-            }).into_response()
+            })
+            .into_response()
         }
         Ok(None) => (
             StatusCode::NOT_FOUND,
-            Json(serde_json::json!({"error": "Point outside grid"}))
-        ).into_response(),
+            Json(serde_json::json!({"error": "Point outside grid"})),
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!(?e, "locate_maille error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -276,20 +282,25 @@ pub async fn create_survey(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     let srid = payload.srid.unwrap_or(4326);
-    
+
     if let (Some(min), Some(max)) = (payload.depth_m_min, payload.depth_m_max) {
         if min > max {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({"error": "depth_m_min must be <= depth_m_max"}))
-            ).into_response();
+                Json(serde_json::json!({"error": "depth_m_min must be <= depth_m_max"})),
+            )
+                .into_response();
         }
     }
-    
+
     let id = Uuid::new_v4();
-    let depth_min_bd = payload.depth_m_min.map(|v| sqlx::types::BigDecimal::from_str(&v.to_string()).unwrap());
-    let depth_max_bd = payload.depth_m_max.map(|v| sqlx::types::BigDecimal::from_str(&v.to_string()).unwrap());
-    
+    let depth_min_bd = payload
+        .depth_m_min
+        .map(|v| sqlx::types::BigDecimal::from_str(&v.to_string()).unwrap());
+    let depth_max_bd = payload
+        .depth_m_max
+        .map(|v| sqlx::types::BigDecimal::from_str(&v.to_string()).unwrap());
+
     let result = sqlx::query(
         r#"
         INSERT INTO sondages (
@@ -305,7 +316,7 @@ pub async fn create_survey(
             ST_X(ST_Transform(geom, 4326)) as lon,
             ST_Y(ST_Transform(geom, 4326)) as lat,
             created_at
-        "#
+        "#,
     )
     .bind(id)
     .bind(&payload.code)
@@ -317,7 +328,7 @@ pub async fn create_survey(
     .bind(&payload.comment)
     .fetch_one(pool)
     .await;
-    
+
     match result {
         Ok(row) => {
             let code: Option<String> = row.try_get("code").ok();
@@ -328,7 +339,7 @@ pub async fn create_survey(
             let lon: Option<f64> = row.try_get("lon").ok();
             let lat: Option<f64> = row.try_get("lat").ok();
             let created_at: Option<time::OffsetDateTime> = row.try_get("created_at").ok();
-            
+
             // Audit log
             let _ = sqlx::query("INSERT INTO audit_log (action, entity, entity_id, payload) VALUES ($1, $2, $3, $4)")
                 .bind("CREATE")
@@ -337,7 +348,7 @@ pub async fn create_survey(
                 .bind(serde_json::json!({"code": code, "lon": payload.lon, "lat": payload.lat}))
                 .execute(pool)
                 .await;
-            
+
             Json(Survey {
                 id: id.to_string(),
                 code: code.unwrap_or_else(|| id.to_string()),
@@ -357,12 +368,22 @@ pub async fn create_survey(
                 notes: payload.notes,
                 comment: payload.comment,
                 n_essais: 0,
-                created_at: created_at.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
-            }).into_response()
+                created_at: created_at
+                    .map(|t| {
+                        t.format(&time::format_description::well_known::Rfc3339)
+                            .unwrap()
+                    })
+                    .unwrap_or_default(),
+            })
+            .into_response()
         }
         Err(e) => {
             tracing::error!(?e, "create_survey error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": format!("{:?}", e)}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": format!("{:?}", e)})),
+            )
+                .into_response()
         }
     }
 }
@@ -373,7 +394,7 @@ pub async fn list_surveys(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let mut query = r#"
         SELECT 
             id::text,
@@ -398,23 +419,26 @@ pub async fn list_surveys(
         FROM sondages
         WHERE deleted_at IS NULL
     "#.to_string();
-    
+
     // Filtres
     let mut conditions = Vec::new();
-    
+
     if let Some(accuracy) = &q.location_accuracy {
-        conditions.push(format!("location_accuracy = '{}'", accuracy.replace("'", "''")));
+        conditions.push(format!(
+            "location_accuracy = '{}'",
+            accuracy.replace("'", "''")
+        ));
     }
-    
+
     if let Some(geocoded) = q.is_geocoded {
         conditions.push(format!("is_geocoded = {}", geocoded));
     }
-    
+
     if !conditions.is_empty() {
         query.push_str(" AND ");
         query.push_str(&conditions.join(" AND "));
     }
-    
+
     if let Some(bbox_str) = &q.bbox {
         let parts: Vec<f64> = bbox_str.split(',').filter_map(|s| s.parse().ok()).collect();
         if parts.len() == 4 {
@@ -424,62 +448,82 @@ pub async fn list_surveys(
             ));
         }
     }
-    
+
     query.push_str(" ORDER BY created_at DESC LIMIT 1000");
-    
+
     let rows = sqlx::query(&query).fetch_all(pool).await;
-    
+
     match rows {
         Ok(rows) => {
-            let surveys: Vec<Survey> = rows.iter().map(|r| {
-                let id: Option<String> = r.try_get("id").ok();
-                let code: String = r.try_get("code").unwrap_or_default();
-                let lon: Option<f64> = r.try_get("lon").ok();
-                let lat: Option<f64> = r.try_get("lat").ok();
-                let depth_min: Option<sqlx::types::BigDecimal> = r.try_get("depth_m_min").ok().flatten();
-                let depth_max: Option<sqlx::types::BigDecimal> = r.try_get("depth_m_max").ok().flatten();
-                let maille: Option<String> = r.try_get("maille_code").ok();
-                let adm1: Option<String> = r.try_get("adm1_name").ok();
-                let adm2: Option<String> = r.try_get("adm2_name").ok();
-                let adm3: Option<String> = r.try_get("adm3_name").ok();
-                let location_accuracy: String = r.try_get("location_accuracy").unwrap_or_else(|_| "exact".to_string());
-                let is_geocoded: bool = r.try_get("is_geocoded").unwrap_or(true);
-                let date: Option<String> = r.try_get::<Option<time::Date>, _>("date").ok().flatten().map(|d| d.to_string());
-                let source: Option<String> = r.try_get("source").ok();
-                let operator: Option<String> = r.try_get("operator").ok();
-                let notes: Option<String> = r.try_get("notes").ok();
-                let comment: Option<String> = r.try_get("comment").ok();
-                let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
-                let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
-                
-                Survey {
-                    id: id.unwrap_or_default(),
-                    code,
-                    lon,
-                    lat,
-                    depth_m_min: depth_min.and_then(|v| v.to_f64()),
-                    depth_m_max: depth_max.and_then(|v| v.to_f64()),
-                    maille_code: maille,
-                    adm1_name: adm1,
-                    adm2_name: adm2,
-                    adm3_name: adm3,
-                    location_accuracy,
-                    is_geocoded,
-                    date,
-                    source,
-                    operator,
-                    notes,
-                    comment,
-                    n_essais,
-                    created_at: created.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
-                }
-            }).collect();
-            
+            let surveys: Vec<Survey> = rows
+                .iter()
+                .map(|r| {
+                    let id: Option<String> = r.try_get("id").ok();
+                    let code: String = r.try_get("code").unwrap_or_default();
+                    let lon: Option<f64> = r.try_get("lon").ok();
+                    let lat: Option<f64> = r.try_get("lat").ok();
+                    let depth_min: Option<sqlx::types::BigDecimal> =
+                        r.try_get("depth_m_min").ok().flatten();
+                    let depth_max: Option<sqlx::types::BigDecimal> =
+                        r.try_get("depth_m_max").ok().flatten();
+                    let maille: Option<String> = r.try_get("maille_code").ok();
+                    let adm1: Option<String> = r.try_get("adm1_name").ok();
+                    let adm2: Option<String> = r.try_get("adm2_name").ok();
+                    let adm3: Option<String> = r.try_get("adm3_name").ok();
+                    let location_accuracy: String = r
+                        .try_get("location_accuracy")
+                        .unwrap_or_else(|_| "exact".to_string());
+                    let is_geocoded: bool = r.try_get("is_geocoded").unwrap_or(true);
+                    let date: Option<String> = r
+                        .try_get::<Option<time::Date>, _>("date")
+                        .ok()
+                        .flatten()
+                        .map(|d| d.to_string());
+                    let source: Option<String> = r.try_get("source").ok();
+                    let operator: Option<String> = r.try_get("operator").ok();
+                    let notes: Option<String> = r.try_get("notes").ok();
+                    let comment: Option<String> = r.try_get("comment").ok();
+                    let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
+                    let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
+
+                    Survey {
+                        id: id.unwrap_or_default(),
+                        code,
+                        lon,
+                        lat,
+                        depth_m_min: depth_min.and_then(|v| v.to_f64()),
+                        depth_m_max: depth_max.and_then(|v| v.to_f64()),
+                        maille_code: maille,
+                        adm1_name: adm1,
+                        adm2_name: adm2,
+                        adm3_name: adm3,
+                        location_accuracy,
+                        is_geocoded,
+                        date,
+                        source,
+                        operator,
+                        notes,
+                        comment,
+                        n_essais,
+                        created_at: created
+                            .map(|t| {
+                                t.format(&time::format_description::well_known::Rfc3339)
+                                    .unwrap()
+                            })
+                            .unwrap_or_default(),
+                    }
+                })
+                .collect();
+
             Json(surveys).into_response()
         }
         Err(e) => {
             tracing::error!(?e, "list_surveys error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -490,32 +534,49 @@ pub async fn delete_survey(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let uuid = match Uuid::parse_str(&id) {
         Ok(u) => u,
-        Err(_) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid UUID"}))).into_response(),
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid UUID"})),
+            )
+                .into_response()
+        }
     };
-    
-    let result = sqlx::query("UPDATE sondages SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL")
-        .bind(uuid)
-        .execute(pool)
-        .await;
-    
+
+    let result =
+        sqlx::query("UPDATE sondages SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL")
+            .bind(uuid)
+            .execute(pool)
+            .await;
+
     match result {
         Ok(r) if r.rows_affected() > 0 => {
-            let _ = sqlx::query("INSERT INTO audit_log (action, entity, entity_id) VALUES ($1, $2, $3)")
-                .bind("DELETE")
-                .bind("sondage")
-                .bind(uuid)
-                .execute(pool)
-                .await;
-            
+            let _ = sqlx::query(
+                "INSERT INTO audit_log (action, entity, entity_id) VALUES ($1, $2, $3)",
+            )
+            .bind("DELETE")
+            .bind("sondage")
+            .bind(uuid)
+            .execute(pool)
+            .await;
+
             (StatusCode::NO_CONTENT, Json(serde_json::json!({}))).into_response()
         }
-        Ok(_) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Survey not found"}))).into_response(),
+        Ok(_) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Survey not found"})),
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!(?e, "delete_survey error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -526,12 +587,18 @@ pub async fn get_survey(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let uuid = match Uuid::parse_str(&id) {
         Ok(u) => u,
-        Err(_) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid UUID"}))).into_response(),
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid UUID"})),
+            )
+                .into_response()
+        }
     };
-    
+
     let row = sqlx::query(
         r#"
         SELECT 
@@ -561,29 +628,37 @@ pub async fn get_survey(
     .bind(uuid)
     .fetch_optional(pool)
     .await;
-    
+
     match row {
         Ok(Some(r)) => {
             let id: Option<String> = r.try_get("id").ok();
             let code: String = r.try_get("code").unwrap_or_default();
             let lon: Option<f64> = r.try_get("lon").ok();
             let lat: Option<f64> = r.try_get("lat").ok();
-            let depth_min: Option<sqlx::types::BigDecimal> = r.try_get("depth_m_min").ok().flatten();
-            let depth_max: Option<sqlx::types::BigDecimal> = r.try_get("depth_m_max").ok().flatten();
+            let depth_min: Option<sqlx::types::BigDecimal> =
+                r.try_get("depth_m_min").ok().flatten();
+            let depth_max: Option<sqlx::types::BigDecimal> =
+                r.try_get("depth_m_max").ok().flatten();
             let maille: Option<String> = r.try_get("maille_code").ok();
             let adm1: Option<String> = r.try_get("adm1_name").ok();
             let adm2: Option<String> = r.try_get("adm2_name").ok();
             let adm3: Option<String> = r.try_get("adm3_name").ok();
-            let location_accuracy: String = r.try_get("location_accuracy").unwrap_or_else(|_| "exact".to_string());
+            let location_accuracy: String = r
+                .try_get("location_accuracy")
+                .unwrap_or_else(|_| "exact".to_string());
             let is_geocoded: bool = r.try_get("is_geocoded").unwrap_or(true);
-            let date: Option<String> = r.try_get::<Option<time::Date>, _>("date").ok().flatten().map(|d| d.to_string());
+            let date: Option<String> = r
+                .try_get::<Option<time::Date>, _>("date")
+                .ok()
+                .flatten()
+                .map(|d| d.to_string());
             let source: Option<String> = r.try_get("source").ok();
             let operator: Option<String> = r.try_get("operator").ok();
             let notes: Option<String> = r.try_get("notes").ok();
             let comment: Option<String> = r.try_get("comment").ok();
             let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
             let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
-            
+
             Json(Survey {
                 id: id.unwrap_or_default(),
                 code,
@@ -603,13 +678,27 @@ pub async fn get_survey(
                 notes,
                 comment,
                 n_essais,
-                created_at: created.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
-            }).into_response()
+                created_at: created
+                    .map(|t| {
+                        t.format(&time::format_description::well_known::Rfc3339)
+                            .unwrap()
+                    })
+                    .unwrap_or_default(),
+            })
+            .into_response()
         }
-        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Survey not found"}))).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Survey not found"})),
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!(?e, "get_survey error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -621,15 +710,21 @@ pub async fn update_survey(
     Json(payload): Json<NewSurvey>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let uuid = match Uuid::parse_str(&id) {
         Ok(u) => u,
-        Err(_) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid UUID"}))).into_response(),
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid UUID"})),
+            )
+                .into_response()
+        }
     };
-    
+
     // Build dynamic UPDATE query
     let mut updates = Vec::new();
-    
+
     if let Some(code) = &payload.code {
         updates.push(format!("code = '{}'", code.replace("'", "''")));
     }
@@ -650,7 +745,10 @@ pub async fn update_survey(
     }
     if let (Some(lon), Some(lat)) = (payload.lon, payload.lat) {
         let srid = payload.srid.unwrap_or(4326);
-        updates.push(format!("geom = ST_Transform(ST_SetSRID(ST_MakePoint({}, {}), {}), 25231)", lon, lat, srid));
+        updates.push(format!(
+            "geom = ST_Transform(ST_SetSRID(ST_MakePoint({}, {}), {}), 25231)",
+            lon, lat, srid
+        ));
     }
     if let Some(min) = payload.depth_m_min {
         updates.push(format!("depth_m_min = {}", min));
@@ -658,23 +756,24 @@ pub async fn update_survey(
     if let Some(max) = payload.depth_m_max {
         updates.push(format!("depth_m_max = {}", max));
     }
-    
+
     if updates.is_empty() {
-        return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "No fields to update"}))).into_response();
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "No fields to update"})),
+        )
+            .into_response();
     }
-    
+
     updates.push("updated_at = now()".to_string());
-    
+
     let query = format!(
         "UPDATE sondages SET {} WHERE id = $1 AND deleted_at IS NULL RETURNING code",
         updates.join(", ")
     );
-    
-    let result = sqlx::query(&query)
-        .bind(uuid)
-        .fetch_optional(pool)
-        .await;
-    
+
+    let result = sqlx::query(&query).bind(uuid).fetch_optional(pool).await;
+
     match result {
         Ok(Some(_)) => {
             // Log audit
@@ -685,13 +784,21 @@ pub async fn update_survey(
                 .bind(serde_json::json!(payload))
                 .execute(pool)
                 .await;
-            
+
             Json(serde_json::json!({"success": true, "id": id})).into_response()
         }
-        Ok(None) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Survey not found"}))).into_response(),
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Survey not found"})),
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!(?e, "update_survey error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -702,19 +809,34 @@ pub async fn get_nearby_surveys(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let lat: f64 = match q.get("lat").and_then(|s| s.parse().ok()) {
         Some(v) => v,
-        None => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Missing or invalid lat"}))).into_response(),
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Missing or invalid lat"})),
+            )
+                .into_response()
+        }
     };
-    
+
     let lon: f64 = match q.get("lon").and_then(|s| s.parse().ok()) {
         Some(v) => v,
-        None => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Missing or invalid lon"}))).into_response(),
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Missing or invalid lon"})),
+            )
+                .into_response()
+        }
     };
-    
-    let radius: f64 = q.get("radius").and_then(|s| s.parse().ok()).unwrap_or(1000.0); // Default 1km
-    
+
+    let radius: f64 = q
+        .get("radius")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(1000.0); // Default 1km
+
     let rows = sqlx::query(
         r#"
         SELECT 
@@ -735,14 +857,14 @@ pub async fn get_nearby_surveys(
               )
         ORDER BY distance_m ASC
         LIMIT 20
-        "#
+        "#,
     )
     .bind(lon)
     .bind(lat)
     .bind(radius)
     .fetch_all(pool)
     .await;
-    
+
     match rows {
         Ok(rows) => {
             let surveys: Vec<serde_json::Value> = rows.iter().map(|r| {
@@ -754,12 +876,16 @@ pub async fn get_nearby_surveys(
                     "distance_m": r.try_get::<f64, _>("distance_m").ok().map(|d| (d * 10.0).round() / 10.0),
                 })
             }).collect();
-            
+
             Json(surveys).into_response()
         }
         Err(e) => {
             tracing::error!(?e, "get_nearby_surveys error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -770,23 +896,31 @@ pub async fn create_test(
     Json(payload): Json<NewTest>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let sondage_id = match Uuid::parse_str(&payload.sondage_id) {
         Ok(u) => u,
-        Err(_) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid sondage_id"}))).into_response(),
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid sondage_id"})),
+            )
+                .into_response()
+        }
     };
-    
+
     // Validate depth bounds
-    let sondage = sqlx::query("SELECT depth_m_min, depth_m_max FROM sondages WHERE id = $1 AND deleted_at IS NULL")
-        .bind(sondage_id)
-        .fetch_optional(pool)
-        .await;
-    
+    let sondage = sqlx::query(
+        "SELECT depth_m_min, depth_m_max FROM sondages WHERE id = $1 AND deleted_at IS NULL",
+    )
+    .bind(sondage_id)
+    .fetch_optional(pool)
+    .await;
+
     match sondage {
         Ok(Some(s)) => {
             let min: Option<sqlx::types::BigDecimal> = s.try_get("depth_m_min").ok().flatten();
             let max: Option<sqlx::types::BigDecimal> = s.try_get("depth_m_max").ok().flatten();
-            
+
             if let (Some(min_bd), Some(max_bd)) = (min, max) {
                 let min_f = min_bd.to_f64().unwrap_or(0.0);
                 let max_f = max_bd.to_f64().unwrap_or(999.0);
@@ -798,17 +932,27 @@ pub async fn create_test(
                 }
             }
         }
-        Ok(None) => return (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Survey not found"}))).into_response(),
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": "Survey not found"})),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!(?e, "validate sondage error");
-            return (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response();
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response();
         }
     }
-    
+
     let id = Uuid::new_v4();
     let value_bd = sqlx::types::BigDecimal::from_str(&payload.value.to_string()).unwrap();
     let depth_bd = sqlx::types::BigDecimal::from_str(&payload.depth_m.to_string()).unwrap();
-    
+
     let result = sqlx::query(
         "INSERT INTO essais (id, sondage_id, type_essai, valeur_numerique, unit, depth_m) VALUES ($1, $2, $3, $4, $5, $6) RETURNING created_at"
     )
@@ -820,11 +964,11 @@ pub async fn create_test(
     .bind(depth_bd)
     .fetch_one(pool)
     .await;
-    
+
     match result {
         Ok(row) => {
             let created: Option<time::OffsetDateTime> = row.try_get("created_at").ok();
-            
+
             let _ = sqlx::query("INSERT INTO audit_log (action, entity, entity_id, payload) VALUES ($1, $2, $3, $4)")
                 .bind("CREATE")
                 .bind("essai")
@@ -832,7 +976,7 @@ pub async fn create_test(
                 .bind(serde_json::json!({"sondage_id": payload.sondage_id, "type": payload.test_type, "depth_m": payload.depth_m}))
                 .execute(pool)
                 .await;
-            
+
             Json(Test {
                 id: id.to_string(),
                 sondage_id: payload.sondage_id,
@@ -840,12 +984,22 @@ pub async fn create_test(
                 value: payload.value,
                 unit: payload.unit,
                 depth_m: payload.depth_m,
-                created_at: created.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
-            }).into_response()
+                created_at: created
+                    .map(|t| {
+                        t.format(&time::format_description::well_known::Rfc3339)
+                            .unwrap()
+                    })
+                    .unwrap_or_default(),
+            })
+            .into_response()
         }
         Err(e) => {
             tracing::error!(?e, "create_test error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": format!("{:?}", e)}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": format!("{:?}", e)})),
+            )
+                .into_response()
         }
     }
 }
@@ -856,45 +1010,64 @@ pub async fn list_tests(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let sondage_id = match Uuid::parse_str(&id) {
         Ok(u) => u,
-        Err(_) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid UUID"}))).into_response(),
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid UUID"})),
+            )
+                .into_response()
+        }
     };
-    
+
     let rows = sqlx::query(
         "SELECT id::text, type, value, unit, depth_m, created_at FROM essais WHERE sondage_id = $1 AND deleted_at IS NULL ORDER BY depth_m ASC"
     )
     .bind(sondage_id)
     .fetch_all(pool)
     .await;
-    
+
     match rows {
         Ok(rows) => {
-            let tests: Vec<Test> = rows.iter().map(|r| {
-                let test_id: Option<String> = r.try_get("id").ok();
-                let test_type: String = r.try_get("type").unwrap_or_default();
-                let value: Option<sqlx::types::BigDecimal> = r.try_get("value").ok().flatten();
-                let unit: Option<String> = r.try_get("unit").ok();
-                let depth: Option<sqlx::types::BigDecimal> = r.try_get("depth_m").ok().flatten();
-                let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
-                
-                Test {
-                    id: test_id.unwrap_or_default(),
-                    sondage_id: id.clone(),
-                    test_type,
-                    value: value.and_then(|v| v.to_f64()).unwrap_or(0.0),
-                    unit: unit.unwrap_or_default(),
-                    depth_m: depth.and_then(|v| v.to_f64()).unwrap_or(0.0),
-                    created_at: created.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
-                }
-            }).collect();
-            
+            let tests: Vec<Test> = rows
+                .iter()
+                .map(|r| {
+                    let test_id: Option<String> = r.try_get("id").ok();
+                    let test_type: String = r.try_get("type").unwrap_or_default();
+                    let value: Option<sqlx::types::BigDecimal> = r.try_get("value").ok().flatten();
+                    let unit: Option<String> = r.try_get("unit").ok();
+                    let depth: Option<sqlx::types::BigDecimal> =
+                        r.try_get("depth_m").ok().flatten();
+                    let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
+
+                    Test {
+                        id: test_id.unwrap_or_default(),
+                        sondage_id: id.clone(),
+                        test_type,
+                        value: value.and_then(|v| v.to_f64()).unwrap_or(0.0),
+                        unit: unit.unwrap_or_default(),
+                        depth_m: depth.and_then(|v| v.to_f64()).unwrap_or(0.0),
+                        created_at: created
+                            .map(|t| {
+                                t.format(&time::format_description::well_known::Rfc3339)
+                                    .unwrap()
+                            })
+                            .unwrap_or_default(),
+                    }
+                })
+                .collect();
+
             Json(tests).into_response()
         }
         Err(e) => {
             tracing::error!(?e, "list_tests error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -905,32 +1078,49 @@ pub async fn delete_test(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let uuid = match Uuid::parse_str(&id) {
         Ok(u) => u,
-        Err(_) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid UUID"}))).into_response(),
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid UUID"})),
+            )
+                .into_response()
+        }
     };
-    
-    let result = sqlx::query("UPDATE essais SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL")
-        .bind(uuid)
-        .execute(pool)
-        .await;
-    
+
+    let result =
+        sqlx::query("UPDATE essais SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL")
+            .bind(uuid)
+            .execute(pool)
+            .await;
+
     match result {
         Ok(r) if r.rows_affected() > 0 => {
-            let _ = sqlx::query("INSERT INTO audit_log (action, entity, entity_id) VALUES ($1, $2, $3)")
-                .bind("DELETE")
-                .bind("essai")
-                .bind(uuid)
-                .execute(pool)
-                .await;
-            
+            let _ = sqlx::query(
+                "INSERT INTO audit_log (action, entity, entity_id) VALUES ($1, $2, $3)",
+            )
+            .bind("DELETE")
+            .bind("essai")
+            .bind(uuid)
+            .execute(pool)
+            .await;
+
             (StatusCode::NO_CONTENT, Json(serde_json::json!({}))).into_response()
         }
-        Ok(_) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Test not found"}))).into_response(),
+        Ok(_) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "Test not found"})),
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!(?e, "delete_test error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -942,7 +1132,7 @@ pub async fn delete_test(
 /// GET /adm1 - Liste des régions
 pub async fn list_adm1(State(state): State<AppState>) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let rows = sqlx::query(
         r#"
         SELECT name, code,
@@ -950,35 +1140,44 @@ pub async fn list_adm1(State(state): State<AppState>) -> impl IntoResponse {
                ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
         FROM adm1_tg
         ORDER BY name
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await;
-    
+
     match rows {
         Ok(rows) => {
-            let zones: Vec<AdmZone> = rows.iter().map(|r| {
-                let xmin: Option<f64> = r.try_get("xmin").ok();
-                let ymin: Option<f64> = r.try_get("ymin").ok();
-                let xmax: Option<f64> = r.try_get("xmax").ok();
-                let ymax: Option<f64> = r.try_get("ymax").ok();
-                let bbox = if let (Some(xmin), Some(ymin), Some(xmax), Some(ymax)) = (xmin, ymin, xmax, ymax) {
-                    Some(vec![xmin, ymin, xmax, ymax])
-                } else {
-                    None
-                };
-                
-                AdmZone {
-                    name: r.try_get("name").unwrap_or_default(),
-                    code: r.try_get("code").ok(),
-                    bbox,
-                }
-            }).collect();
+            let zones: Vec<AdmZone> = rows
+                .iter()
+                .map(|r| {
+                    let xmin: Option<f64> = r.try_get("xmin").ok();
+                    let ymin: Option<f64> = r.try_get("ymin").ok();
+                    let xmax: Option<f64> = r.try_get("xmax").ok();
+                    let ymax: Option<f64> = r.try_get("ymax").ok();
+                    let bbox = if let (Some(xmin), Some(ymin), Some(xmax), Some(ymax)) =
+                        (xmin, ymin, xmax, ymax)
+                    {
+                        Some(vec![xmin, ymin, xmax, ymax])
+                    } else {
+                        None
+                    };
+
+                    AdmZone {
+                        name: r.try_get("name").unwrap_or_default(),
+                        code: r.try_get("code").ok(),
+                        bbox,
+                    }
+                })
+                .collect();
             Json(zones).into_response()
         }
         Err(e) => {
             tracing::error!(?e, "list_adm1 error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -989,7 +1188,7 @@ pub async fn list_adm2(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let query = if let Some(adm1) = q.get("adm1") {
         format!(
             r#"SELECT name, code,
@@ -1002,35 +1201,45 @@ pub async fn list_adm2(
         r#"SELECT name, code,
            ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
            ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-           FROM adm2_tg ORDER BY name"#.to_string()
+           FROM adm2_tg ORDER BY name"#
+            .to_string()
     };
-    
+
     let rows = sqlx::query(&query).fetch_all(pool).await;
-    
+
     match rows {
         Ok(rows) => {
-            let zones: Vec<AdmZone> = rows.iter().map(|r| {
-                let xmin: Option<f64> = r.try_get("xmin").ok();
-                let ymin: Option<f64> = r.try_get("ymin").ok();
-                let xmax: Option<f64> = r.try_get("xmax").ok();
-                let ymax: Option<f64> = r.try_get("ymax").ok();
-                let bbox = if let (Some(xmin), Some(ymin), Some(xmax), Some(ymax)) = (xmin, ymin, xmax, ymax) {
-                    Some(vec![xmin, ymin, xmax, ymax])
-                } else {
-                    None
-                };
-                
-                AdmZone {
-                    name: r.try_get("name").unwrap_or_default(),
-                    code: r.try_get("code").ok(),
-                    bbox,
-                }
-            }).collect();
+            let zones: Vec<AdmZone> = rows
+                .iter()
+                .map(|r| {
+                    let xmin: Option<f64> = r.try_get("xmin").ok();
+                    let ymin: Option<f64> = r.try_get("ymin").ok();
+                    let xmax: Option<f64> = r.try_get("xmax").ok();
+                    let ymax: Option<f64> = r.try_get("ymax").ok();
+                    let bbox = if let (Some(xmin), Some(ymin), Some(xmax), Some(ymax)) =
+                        (xmin, ymin, xmax, ymax)
+                    {
+                        Some(vec![xmin, ymin, xmax, ymax])
+                    } else {
+                        None
+                    };
+
+                    AdmZone {
+                        name: r.try_get("name").unwrap_or_default(),
+                        code: r.try_get("code").ok(),
+                        bbox,
+                    }
+                })
+                .collect();
             Json(zones).into_response()
         }
         Err(e) => {
             tracing::error!(?e, "list_adm2 error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -1041,14 +1250,14 @@ pub async fn list_adm3(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     #[derive(sqlx::FromRow, serde::Serialize)]
     struct Adm3Row {
         gid: i32,
         name: String,
         code: String,
     }
-    
+
     let query = if let Some(adm2) = q.get("adm2") {
         format!(
             r#"SELECT gid, adm3_fr as name, adm3_pcode as code
@@ -1057,14 +1266,19 @@ pub async fn list_adm3(
         )
     } else {
         r#"SELECT gid, adm3_fr as name, adm3_pcode as code
-           FROM adm3 WHERE adm3_fr IS NOT NULL ORDER BY adm3_fr"#.to_string()
+           FROM adm3 WHERE adm3_fr IS NOT NULL ORDER BY adm3_fr"#
+            .to_string()
     };
-    
+
     match sqlx::query_as::<_, Adm3Row>(&query).fetch_all(pool).await {
         Ok(rows) => Json(rows).into_response(),
         Err(e) => {
             tracing::error!(?e, "list_adm3 error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }

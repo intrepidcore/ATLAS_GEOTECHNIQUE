@@ -1,4 +1,5 @@
 // Module pour la vue unifiée des sondages par localité
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -7,7 +8,6 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
-use crate::state::AppState;
 
 // ============================================================================
 // Types
@@ -37,9 +37,9 @@ pub struct UnifiedSurvey {
 
 #[derive(Debug, Deserialize)]
 pub struct UnifiedSurveysQuery {
-    pub q: Option<String>,           // Recherche floue sur localite
-    pub adm3_id: Option<Uuid>,       // Filtrer par ADM3
-    pub has_geometry: Option<bool>,  // Filtrer par présence de géométrie
+    pub q: Option<String>,          // Recherche floue sur localite
+    pub adm3_id: Option<Uuid>,      // Filtrer par ADM3
+    pub has_geometry: Option<bool>, // Filtrer par présence de géométrie
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }
@@ -56,7 +56,7 @@ pub async fn list_unified_surveys(
     let pool = &state.pool;
     let limit = params.limit.unwrap_or(100).min(500);
     let offset = params.offset.unwrap_or(0);
-    
+
     let rows = sqlx::query_as::<_, UnifiedSurvey>(
         r#"
         SELECT 
@@ -84,7 +84,7 @@ pub async fn list_unified_surveys(
           AND ($3::boolean IS NULL OR has_geometry = $3)
         ORDER BY localite
         LIMIT $4 OFFSET $5
-        "#
+        "#,
     )
     .bind(&params.q)
     .bind(params.adm3_id)
@@ -94,7 +94,7 @@ pub async fn list_unified_surveys(
     .fetch_all(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(rows))
 }
 
@@ -112,7 +112,7 @@ pub async fn get_unified_stats(
     State(state): State<AppState>,
 ) -> Result<Json<UnifiedStats>, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     let stats = sqlx::query_as::<_, (i64, i64, i64, i64)>(
         r#"
         SELECT 
@@ -121,19 +121,19 @@ pub async fn get_unified_stats(
             COALESCE(SUM(CASE WHEN variants > 1 THEN 1 ELSE 0 END), 0)::bigint as avec_doublons,
             COALESCE(SUM(total_essais), 0)::bigint as total_essais
         FROM atlas.mv_sondages_unifies
-        "#
+        "#,
     )
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     let sans_geom: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.mv_sondages_unifies WHERE has_geometry = false"
+        "SELECT COUNT(*) FROM atlas.mv_sondages_unifies WHERE has_geometry = false",
     )
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(UnifiedStats {
         total_localites: stats.0,
         total_sondages: stats.1,
@@ -154,11 +154,11 @@ pub async fn refresh_unified_view(
     State(state): State<AppState>,
 ) -> Result<Json<RefreshResponse>, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     let result = sqlx::query("SELECT atlas.refresh_sondages_unifies()")
         .execute(pool)
         .await;
-    
+
     match result {
         Ok(_) => Ok(Json(RefreshResponse {
             success: true,

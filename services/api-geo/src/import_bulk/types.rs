@@ -160,31 +160,31 @@ pub struct MappingConfig {
     // Colonnes identité
     pub localite_col: Option<String>,
     pub code_col: Option<String>,
-    
+
     // Type d'essai
-    pub type_essai: Option<String>, // Si fixe pour tout le fichier
+    pub type_essai: Option<String>,     // Si fixe pour tout le fichier
     pub type_essai_col: Option<String>, // Si colonne variable
-    
+
     // Structure données
     pub structure: DataStructure,
-    
+
     // Format Long
     pub profondeur_col: Option<String>,
     pub valeur_col: Option<String>,
-    
+
     // Format Large
     pub profondeur_cols: Option<Vec<String>>, // Ex: ["1", "1.5", "2"]
-    
+
     // Analyses
     pub analyse_col: Option<String>,
     pub unite_col: Option<String>,
-    
+
     // Métadonnées
     pub date_col: Option<String>,
     pub source_col: Option<String>,
     pub operator_col: Option<String>,
     pub type_sol_col: Option<String>,
-    
+
     // Géolocalisation
     pub lon_col: Option<String>,
     pub lat_col: Option<String>,
@@ -199,7 +199,7 @@ pub struct GeolocationConfig {
     pub mode: GeolocationMode,
     pub seed: Option<i32>,
     pub jitter_radius: Option<i32>, // En mètres (150, 400, 1000)
-    
+
     // Valeurs fixes (si pas de colonnes)
     pub adm1_fixed: Option<String>,
     pub adm2_fixed: Option<String>,

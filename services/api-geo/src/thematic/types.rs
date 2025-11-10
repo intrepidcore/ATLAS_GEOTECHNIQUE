@@ -8,7 +8,7 @@ pub enum ThematicParameter {
     // Densité et couverture
     NSondages,
     NEssaisGeo,
-    
+
     // Granulométrie - avec alias pour compatibilité UI (avec et sans underscore)
     #[serde(alias = "passant80um_avg", alias = "passant_80um_avg")]
     Passant80umAvg,
@@ -16,7 +16,7 @@ pub enum ThematicParameter {
     Passant2mmAvg,
     #[serde(alias = "passant20mm_avg", alias = "passant_20mm_avg")]
     Passant20mmAvg,
-    
+
     // Atterberg
     #[serde(alias = "wl_avg")]
     WlAvg,
@@ -30,7 +30,7 @@ pub enum ThematicParameter {
     IpMin,
     #[serde(alias = "ip_max")]
     IpMax,
-    
+
     // VBS
     #[serde(alias = "vbs_avg")]
     VbsAvg,
@@ -40,7 +40,7 @@ pub enum ThematicParameter {
     VbsMin,
     #[serde(alias = "vbs_max")]
     VbsMax,
-    
+
     // Proctor
     #[serde(alias = "gamma_d_max_avg", alias = "gammadmax_avg")]
     GammaDMaxAvg,
@@ -50,7 +50,7 @@ pub enum ThematicParameter {
     WOptAvg,
     #[serde(alias = "w_opt_stddev", alias = "wopt_stddev")]
     WOptStddev,
-    
+
     // Gonflement
     #[serde(alias = "eg_avg")]
     EgAvg,
@@ -91,7 +91,7 @@ impl ThematicParameter {
             Self::EgMax => "eg_max",
         }
     }
-    
+
     /// Label lisible pour l'UI
     pub fn label(&self) -> &str {
         match self {
@@ -120,28 +120,40 @@ impl ThematicParameter {
             Self::EgMax => "eg maximum",
         }
     }
-    
+
     /// Unité de mesure
     pub fn unit(&self) -> &str {
         match self {
             Self::NSondages | Self::NEssaisGeo => "",
             Self::Passant80umAvg | Self::Passant2mmAvg | Self::Passant20mmAvg => "%",
-            Self::WlAvg | Self::WpAvg | Self::IpAvg | Self::IpStddev | Self::IpMin | Self::IpMax => "%",
+            Self::WlAvg
+            | Self::WpAvg
+            | Self::IpAvg
+            | Self::IpStddev
+            | Self::IpMin
+            | Self::IpMax => "%",
             Self::VbsAvg | Self::VbsStddev | Self::VbsMin | Self::VbsMax => "g/100g",
             Self::GammaDMaxAvg | Self::GammaDMaxStddev => "kN/m³",
             Self::WOptAvg | Self::WOptStddev => "%",
             Self::EgAvg | Self::EgStddev | Self::EgMin | Self::EgMax => "%",
         }
     }
-    
+
     /// Catégorie du paramètre
     pub fn category(&self) -> &str {
         match self {
             Self::NSondages | Self::NEssaisGeo => "density",
             Self::Passant80umAvg | Self::Passant2mmAvg | Self::Passant20mmAvg => "granulo",
-            Self::WlAvg | Self::WpAvg | Self::IpAvg | Self::IpStddev | Self::IpMin | Self::IpMax => "atterberg",
+            Self::WlAvg
+            | Self::WpAvg
+            | Self::IpAvg
+            | Self::IpStddev
+            | Self::IpMin
+            | Self::IpMax => "atterberg",
             Self::VbsAvg | Self::VbsStddev | Self::VbsMin | Self::VbsMax => "vbs",
-            Self::GammaDMaxAvg | Self::GammaDMaxStddev | Self::WOptAvg | Self::WOptStddev => "proctor",
+            Self::GammaDMaxAvg | Self::GammaDMaxStddev | Self::WOptAvg | Self::WOptStddev => {
+                "proctor"
+            }
             Self::EgAvg | Self::EgStddev | Self::EgMin | Self::EgMax => "gonflement",
         }
     }
@@ -152,11 +164,11 @@ impl ThematicParameter {
 pub struct ThematicDataRequest {
     /// Paramètre à visualiser
     pub parameter: ThematicParameter,
-    
+
     /// Filtre géographique (bbox en WGS84)
     #[serde(default)]
     pub bbox: Option<[f64; 4]>, // [west, south, east, north]
-    
+
     /// Filtres administratifs
     #[serde(default)]
     pub adm1: Option<String>,
@@ -164,15 +176,15 @@ pub struct ThematicDataRequest {
     pub adm2: Option<String>,
     #[serde(default)]
     pub adm3: Option<String>,
-    
+
     /// Nombre minimum de sondages par maille
     #[serde(default)]
     pub min_sondages: Option<i32>,
-    
+
     /// Inclure les géométries (false pour stats uniquement)
     #[serde(default = "default_true")]
     pub include_geometry: bool,
-    
+
     /// Niveau de zoom (pour simplification géométrique)
     #[serde(default)]
     pub zoom: Option<u8>,
@@ -208,11 +220,11 @@ pub struct Statistics {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct Quantiles {
-    pub q25: f64,  // 1er quartile
-    pub q50: f64,  // Médiane
-    pub q75: f64,  // 3e quartile
-    pub q90: f64,  // 90e percentile
-    pub q95: f64,  // 95e percentile
+    pub q25: f64, // 1er quartile
+    pub q50: f64, // Médiane
+    pub q75: f64, // 3e quartile
+    pub q90: f64, // 90e percentile
+    pub q95: f64, // 95e percentile
 }
 
 #[derive(Debug, Serialize)]
@@ -273,17 +285,17 @@ pub struct ThematicConfig {
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    
+
     #[serde(rename = "type")]
     pub map_type: MapType,
-    
+
     pub parameter: String,
-    
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub classification: Option<ClassificationConfig>,
     pub style: StyleConfig,
     pub filters: FilterConfig,
-    
+
     pub is_public: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub created_by: Option<String>,
@@ -337,27 +349,29 @@ pub struct FilterConfig {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parameter_sql_column() {
         assert_eq!(ThematicParameter::IpAvg.sql_column(), "ip_avg");
         assert_eq!(ThematicParameter::VbsAvg.sql_column(), "vbs_avg");
         assert_eq!(ThematicParameter::EgAvg.sql_column(), "eg_avg");
     }
-    
+
     #[test]
     fn test_parameter_label() {
-        assert!(ThematicParameter::IpAvg.label().contains("Indice de plasticité"));
+        assert!(ThematicParameter::IpAvg
+            .label()
+            .contains("Indice de plasticité"));
         assert!(ThematicParameter::VbsAvg.label().contains("Valeur de Bleu"));
     }
-    
+
     #[test]
     fn test_parameter_unit() {
         assert_eq!(ThematicParameter::IpAvg.unit(), "%");
         assert_eq!(ThematicParameter::VbsAvg.unit(), "g/100g");
         assert_eq!(ThematicParameter::GammaDMaxAvg.unit(), "kN/m³");
     }
-    
+
     #[test]
     fn test_parameter_category() {
         assert_eq!(ThematicParameter::IpAvg.category(), "atterberg");

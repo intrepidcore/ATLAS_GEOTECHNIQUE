@@ -4,12 +4,12 @@
 
 #![allow(dead_code)]
 
-use super::types::*;
 use super::matcher::*;
-use super::validator::*;
 use super::transformer::*;
+use super::types::*;
+use super::validator::*;
 use anyhow::Result;
-use sqlx::{PgPool, Postgres, Transaction, Row};
+use sqlx::{PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 // ============================================================================
@@ -34,7 +34,7 @@ pub async fn create_import_job(
         )
         VALUES ($1, $2, $3, $4, $5, $6, 'pending', $7)
         RETURNING id
-        "#
+        "#,
     )
     .bind(filename)
     .bind(size_bytes)
@@ -45,7 +45,7 @@ pub async fn create_import_job(
     .bind(file_blob)
     .fetch_one(pool)
     .await?;
-    
+
     Ok(row.try_get("id")?)
 }
 
@@ -61,8 +61,8 @@ pub async fn update_import_status(
     stats: Option<&ImportStats>,
     error_message: Option<&str>,
 ) -> Result<()> {
-    let stats_json = stats.map(|s| serde_json::to_value(s)).transpose()?;
-    
+    let stats_json = stats.map(serde_json::to_value).transpose()?;
+
     sqlx::query(
         r#"
         UPDATE imports
@@ -82,7 +82,7 @@ pub async fn update_import_status(
     .bind(error_message)
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
@@ -101,7 +101,7 @@ pub async fn log_import(
         r#"
         INSERT INTO import_logs (import_id, level, message, context_json)
         VALUES ($1, $2, $3, $4)
-        "#
+        "#,
     )
     .bind(import_id)
     .bind(level)
@@ -109,7 +109,7 @@ pub async fn log_import(
     .bind(context)
     .execute(pool)
     .await?;
-    
+
     Ok(())
 }
 
@@ -123,20 +123,16 @@ pub async fn validate_rows(
     geoloc_mode: &GeolocationMode,
 ) -> Result<Vec<ValidatedRow>> {
     let mut validated = Vec::new();
-    
+
     for row in rows {
         // Validation
         let (errors, warnings) = validate_row(pool, row, geoloc_mode).await;
-        
+
         // Matching ADM3 si nécessaire
         let (adm3_id, match_score) = if let Some(ref localite) = row.adm3 {
-            let matches = match_adm3(
-                pool,
-                localite,
-                row.adm2.as_deref(),
-                row.adm1.as_deref(),
-            ).await?;
-            
+            let matches =
+                match_adm3(pool, localite, row.adm2.as_deref(), row.adm1.as_deref()).await?;
+
             if let Some(best_match) = matches.first() {
                 (Some(best_match.id), Some(best_match.score))
             } else {
@@ -145,10 +141,10 @@ pub async fn validate_rows(
         } else {
             (None, None)
         };
-        
+
         // Fingerprint
         let fingerprint = compute_fingerprint(row);
-        
+
         validated.push(ValidatedRow {
             parsed: row.clone(),
             adm3_id,
@@ -158,7 +154,7 @@ pub async fn validate_rows(
             fingerprint,
         });
     }
-    
+
     Ok(validated)
 }
 
@@ -173,14 +169,12 @@ pub async fn import_surveys(
     geoloc_config: &GeolocationConfig,
 ) -> Result<ImportStats> {
     let mut stats = ImportStats::default();
-    
+
     for (idx, survey) in surveys.iter().enumerate() {
         // Déterminer coordonnées selon mode
         let (lon, lat, location_mode) = match &geoloc_config.mode {
-            GeolocationMode::Exact => {
-                (survey.lon, survey.lat, "exact")
-            }
-            
+            GeolocationMode::Exact => (survey.lon, survey.lat, "exact"),
+
             GeolocationMode::Centroid => {
                 if let Some(adm3_id) = survey.adm3_id {
                     let centroid = get_adm3_centroid(&mut **tx, adm3_id).await?;
@@ -192,7 +186,7 @@ pub async fn import_surveys(
                     (None, None, "unknown")
                 }
             }
-            
+
             GeolocationMode::Random => {
                 if let Some(adm3_id) = survey.adm3_id {
                     let point = generate_random_point_in_adm3(
@@ -201,17 +195,16 @@ pub async fn import_surveys(
                         &survey.code,
                         geoloc_config.seed.unwrap_or(42),
                         geoloc_config.jitter_radius.unwrap_or(400),
-                    ).await?;
+                    )
+                    .await?;
                     (point.map(|p| p.0), point.map(|p| p.1), "random")
                 } else {
                     (None, None, "unknown")
                 }
             }
-            
-            GeolocationMode::Unknown => {
-                (None, None, "unknown")
-            }
-            
+
+            GeolocationMode::Unknown => (None, None, "unknown"),
+
             GeolocationMode::Maille => {
                 if let Some(ref maille_code) = survey.maille_code {
                     let maille = match_maille(&mut **tx, maille_code).await?;
@@ -221,14 +214,17 @@ pub async fn import_surveys(
                 }
             }
         };
-        
+
         // Créer le sondage avec les VRAIS noms de colonnes
         let geom_expr = if let (Some(lon), Some(lat)) = (lon, lat) {
-            format!("ST_Transform(ST_SetSRID(ST_MakePoint({}, {}), 4326), 25231)", lon, lat)
+            format!(
+                "ST_Transform(ST_SetSRID(ST_MakePoint({}, {}), 4326), 25231)",
+                lon, lat
+            )
         } else {
             "NULL".to_string()
         };
-        
+
         let query = format!(
             r#"
             INSERT INTO sondages (
@@ -247,7 +243,7 @@ pub async fn import_surveys(
             "#,
             geom_expr
         );
-        
+
         let row = sqlx::query(&query)
             .bind(&survey.code)
             .bind(survey.date)
@@ -263,10 +259,10 @@ pub async fn import_surveys(
             .bind(idx as i32)
             .fetch_one(&mut **tx)
             .await?;
-        
+
         let survey_id: Uuid = row.try_get("id")?;
         stats.sondages += 1;
-        
+
         // Créer les essais avec les VRAIS noms de colonnes
         for test in &survey.tests {
             sqlx::query(
@@ -281,7 +277,7 @@ pub async fn import_surveys(
                     $4, $5, $6,
                     true, $7
                 )
-                "#
+                "#,
             )
             .bind(survey_id)
             .bind(&test.parsed.type_essai)
@@ -292,9 +288,9 @@ pub async fn import_surveys(
             .bind(import_id)
             .execute(&mut **tx)
             .await?;
-            
+
             stats.essais += 1;
-            
+
             // Créer import_item
             sqlx::query(
                 r#"
@@ -305,12 +301,16 @@ pub async fn import_surveys(
                     warning_msg
                 )
                 VALUES ($1, $2, $3, $4, 1, $5, $6, $7)
-                "#
+                "#,
             )
             .bind(import_id)
             .bind(test.parsed.row_idx)
             .bind(if test.validation_errors.is_empty() {
-                if test.validation_warnings.is_empty() { "ok" } else { "warning" }
+                if test.validation_warnings.is_empty() {
+                    "ok"
+                } else {
+                    "warning"
+                }
             } else {
                 "error"
             })
@@ -324,16 +324,16 @@ pub async fn import_surveys(
             })
             .execute(&mut **tx)
             .await?;
-            
+
             if !test.validation_warnings.is_empty() {
                 stats.warnings += 1;
             }
         }
     }
-    
+
     stats.total_rows = surveys.len() as i32;
     stats.valid_rows = stats.sondages;
-    
+
     Ok(stats)
 }
 
@@ -350,17 +350,17 @@ pub async fn process_import(
 ) -> Result<ImportStats> {
     // 1. Validation
     let validated = validate_rows(pool, &rows, &geoloc.mode).await?;
-    
+
     // 2. Grouper par sondage
     let surveys = group_by_survey(validated.into_iter().map(|v| v.parsed).collect());
-    
+
     // 3. Import dans transaction
     let mut tx = pool.begin().await?;
-    
+
     let stats = import_surveys(&mut tx, import_id, surveys, geoloc).await?;
-    
+
     tx.commit().await?;
-    
+
     // 4. Mise à jour statut (après commit)
     update_import_status(
         pool,
@@ -369,7 +369,8 @@ pub async fn process_import(
         100.0,
         Some(&stats),
         None,
-    ).await?;
-    
+    )
+    .await?;
+
     Ok(stats)
 }

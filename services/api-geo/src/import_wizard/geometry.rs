@@ -6,7 +6,7 @@ use super::types::*;
 pub fn reproject(lon: f64, lat: f64, crs_in: &str, crs_out: &str) -> Result<(f64, f64), String> {
     // TODO: Implémenter la vraie reprojection avec proj
     // Pour l'instant, on suppose que les coordonnées sont déjà en WGS84
-    
+
     if crs_in == "EPSG:4326" && crs_out == "EPSG:25231" {
         // Conversion WGS84 -> UTM 31N (approximation simple)
         // En production, utiliser la bibliothèque proj
@@ -32,12 +32,12 @@ pub fn parse_dms(dms: &str) -> Result<f64, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_validate_bbox() {
         // Coordonnées valides (Lomé)
         assert!(validate_bbox(1.2345, 6.1234));
-        
+
         // Coordonnées invalides (hors Togo)
         assert!(!validate_bbox(10.0, 6.0));
         assert!(!validate_bbox(1.0, 20.0));

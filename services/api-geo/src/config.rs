@@ -1,9 +1,9 @@
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::time::Duration;
 
 pub async fn pg_pool() -> anyhow::Result<PgPool> {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL is required");
-    
+
     // Configuration pool avec timeouts généreux pour Docker
     let pool = PgPoolOptions::new()
         .max_connections(10)
@@ -12,13 +12,13 @@ pub async fn pg_pool() -> anyhow::Result<PgPool> {
         .max_lifetime(Duration::from_secs(1800))
         .connect(&url)
         .await?;
-    
+
     // Health check en runtime (pas de macro compile-time) pour garder les builds Docker
     // indépendants de la DB et éviter d'exiger sqlx-data.json/SQLX_OFFLINE.
     let _one: i32 = sqlx::query_scalar::<_, i32>("SELECT 1")
         .fetch_one(&pool)
         .await?;
-    
+
     Ok(pool)
 }
 
@@ -32,7 +32,10 @@ pub async fn pg_pool_with_retry(max_attempts: u32) -> anyhow::Result<PgPool> {
                 let delay = Duration::from_secs(2_u64.pow(attempt.min(5)));
                 tracing::warn!(
                     "DB connexion échouée (tentative {}/{}): {:?}. Retry dans {:?}",
-                    attempt, max_attempts, e, delay
+                    attempt,
+                    max_attempts,
+                    e,
+                    delay
                 );
                 tokio::time::sleep(delay).await;
                 attempt += 1;

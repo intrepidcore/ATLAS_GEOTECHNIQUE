@@ -2,23 +2,23 @@
 // Routes API pour l'import bulk
 // ============================================================================
 
-use super::types::*;
+use super::importer::*;
+use super::job_queue::{ImportJob, JOB_QUEUE};
 use super::parser::*;
 use super::transformer::*;
-use super::importer::*;
-use super::job_queue::{JOB_QUEUE, ImportJob};
+use super::types::*;
 use crate::state::AppState;
 use axum::{
-    extract::{Path, Query, State, Multipart},
+    extract::{Multipart, Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Json, Router,
 };
+use sha2::{Digest, Sha256};
 use sqlx::Row;
 use std::collections::HashMap;
 use uuid::Uuid;
-use sha2::{Sha256, Digest};
 
 // ============================================================================
 // CONFIGURATION ROUTES
@@ -31,15 +31,33 @@ pub fn configure() -> Router<AppState> {
         .route("/surveys/bulk-import/status/:job_id", get(get_status))
         .route("/surveys/bulk-import/cancel/:job_id", post(cancel_import))
         .route("/surveys/bulk-import/report/:import_id", get(get_report))
-        .route("/surveys/bulk-import/templates/:template_type", get(get_template))
+        .route(
+            "/surveys/bulk-import/templates/:template_type",
+            get(get_template),
+        )
         .route("/surveys/bulk-import/profiles", get(list_profiles))
         .route("/surveys/bulk-import/profiles", post(create_profile))
-        .route("/surveys/bulk-import/profiles/:profile_id", get(get_profile))
-        .route("/surveys/bulk-import/profiles/:profile_id", put(update_profile))
-        .route("/surveys/bulk-import/profiles/:profile_id", delete(delete_profile))
-        .route("/surveys/bulk-import/profiles/:profile_id/use", post(use_profile))
+        .route(
+            "/surveys/bulk-import/profiles/:profile_id",
+            get(get_profile),
+        )
+        .route(
+            "/surveys/bulk-import/profiles/:profile_id",
+            put(update_profile),
+        )
+        .route(
+            "/surveys/bulk-import/profiles/:profile_id",
+            delete(delete_profile),
+        )
+        .route(
+            "/surveys/bulk-import/profiles/:profile_id/use",
+            post(use_profile),
+        )
         // Import géotechnique XLSX multi-feuilles
-        .route("/surveys/bulk-import/geotechnical", post(import_geotechnical_xlsx))
+        .route(
+            "/surveys/bulk-import/geotechnical",
+            post(import_geotechnical_xlsx),
+        )
         // Alias pour compatibilité UI
         .route("/import/bulk", post(import_async))
 }
@@ -54,39 +72,52 @@ pub async fn dry_run_import(
 ) -> Result<Json<DryRunResult>, (StatusCode, String)> {
     let mut file_bytes: Option<Vec<u8>> = None;
     let mut request: Option<ImportRequest> = None;
-    
+
     // Parser multipart
-    while let Some(field) = multipart.next_field().await
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))? 
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
     {
         let name = field.name().unwrap_or("").to_string();
-        
+
         match name.as_str() {
             "file" => {
-                file_bytes = Some(field.bytes().await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
-                    .to_vec());
+                file_bytes = Some(
+                    field
+                        .bytes()
+                        .await
+                        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
+                        .to_vec(),
+                );
             }
             "config" => {
-                let data = field.bytes().await
+                let data = field
+                    .bytes()
+                    .await
                     .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-                request = Some(serde_json::from_slice(&data)
-                    .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?);
+                request = Some(
+                    serde_json::from_slice(&data)
+                        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?,
+                );
             }
             _ => {}
         }
     }
-    
+
     let file_bytes = file_bytes.ok_or((StatusCode::BAD_REQUEST, "Fichier manquant".to_string()))?;
-    let request = request.ok_or((StatusCode::BAD_REQUEST, "Configuration manquante".to_string()))?;
-    
+    let request = request.ok_or((
+        StatusCode::BAD_REQUEST,
+        "Configuration manquante".to_string(),
+    ))?;
+
     // Parser fichier
     let raw_rows = parse_file(&file_bytes, &request.format)
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Erreur parsing: {}", e)))?;
-    
+
     // Transformer selon structure
     let mut parsed_rows = Vec::new();
-    
+
     match request.mapping.structure {
         DataStructure::Long => {
             for (idx, row) in raw_rows.iter().enumerate() {
@@ -101,9 +132,11 @@ pub async fn dry_run_import(
         }
         DataStructure::Large => {
             if let Some(ref prof_cols) = request.mapping.profondeur_cols {
-                let type_essai = request.mapping.type_essai.as_ref()
-                    .ok_or((StatusCode::BAD_REQUEST, "Type essai requis pour format Large".to_string()))?;
-                
+                let type_essai = request.mapping.type_essai.as_ref().ok_or((
+                    StatusCode::BAD_REQUEST,
+                    "Type essai requis pour format Large".to_string(),
+                ))?;
+
                 for row in &raw_rows {
                     match transform_large_to_long(row, prof_cols, type_essai, &request.mapping) {
                         Ok(mut rows) => parsed_rows.append(&mut rows),
@@ -113,42 +146,56 @@ pub async fn dry_run_import(
             }
         }
     }
-    
+
     // Validation
-    let validated = validate_rows(&state.pool, &parsed_rows, &request.geolocation.mode).await
+    let validated = validate_rows(&state.pool, &parsed_rows, &request.geolocation.mode)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     // Statistiques
     let mut stats = ImportStats::default();
     stats.total_rows = validated.len() as i32;
-    stats.valid_rows = validated.iter().filter(|v| v.validation_errors.is_empty()).count() as i32;
-    stats.warnings = validated.iter().filter(|v| !v.validation_warnings.is_empty()).count() as i32;
-    stats.errors = validated.iter().filter(|v| !v.validation_errors.is_empty()).count() as i32;
-    
+    stats.valid_rows = validated
+        .iter()
+        .filter(|v| v.validation_errors.is_empty())
+        .count() as i32;
+    stats.warnings = validated
+        .iter()
+        .filter(|v| !v.validation_warnings.is_empty())
+        .count() as i32;
+    stats.errors = validated
+        .iter()
+        .filter(|v| !v.validation_errors.is_empty())
+        .count() as i32;
+
     // Preview (5 premières lignes)
-    let preview: Vec<PreviewRow> = validated.iter().take(5).map(|v| {
-        PreviewRow {
-            row: v.parsed.row_idx,
-            localite: v.parsed.localite.clone(),
-            code: v.parsed.code.clone(),
-            adm3_matched: None, // TODO
-            match_score: v.adm3_match_score,
-            match_confidence: None,
-            tests_count: 1,
-            status: if v.validation_errors.is_empty() {
-                ItemStatus::Ok
-            } else {
-                ItemStatus::Error
-            },
-            warnings: v.validation_warnings.clone(),
-            errors: v.validation_errors.clone(),
-        }
-    }).collect();
-    
+    let preview: Vec<PreviewRow> = validated
+        .iter()
+        .take(5)
+        .map(|v| {
+            PreviewRow {
+                row: v.parsed.row_idx,
+                localite: v.parsed.localite.clone(),
+                code: v.parsed.code.clone(),
+                adm3_matched: None, // TODO
+                match_score: v.adm3_match_score,
+                match_confidence: None,
+                tests_count: 1,
+                status: if v.validation_errors.is_empty() {
+                    ItemStatus::Ok
+                } else {
+                    ItemStatus::Error
+                },
+                warnings: v.validation_warnings.clone(),
+                errors: v.validation_errors.clone(),
+            }
+        })
+        .collect();
+
     // Messages validation
     let mut warnings = Vec::new();
     let mut errors = Vec::new();
-    
+
     for v in &validated {
         for err in &v.validation_errors {
             errors.push(ValidationMessage {
@@ -167,7 +214,7 @@ pub async fn dry_run_import(
             });
         }
     }
-    
+
     Ok(Json(DryRunResult {
         valid: stats.errors == 0,
         stats,
@@ -189,45 +236,58 @@ pub async fn import_async(
     let mut file_bytes: Option<Vec<u8>> = None;
     let mut filename: Option<String> = None;
     let mut request: Option<ImportRequest> = None;
-    
-    while let Some(field) = multipart.next_field().await
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))? 
+
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
     {
         let name = field.name().unwrap_or("").to_string();
-        
+
         match name.as_str() {
             "file" => {
                 filename = field.file_name().map(|s| s.to_string());
-                file_bytes = Some(field.bytes().await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
-                    .to_vec());
+                file_bytes = Some(
+                    field
+                        .bytes()
+                        .await
+                        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
+                        .to_vec(),
+                );
             }
             "config" => {
-                let data = field.bytes().await
+                let data = field
+                    .bytes()
+                    .await
                     .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
-                request = Some(serde_json::from_slice(&data)
-                    .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?);
+                request = Some(
+                    serde_json::from_slice(&data)
+                        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?,
+                );
             }
             _ => {}
         }
     }
-    
+
     let file_bytes = file_bytes.ok_or((StatusCode::BAD_REQUEST, "Fichier manquant".to_string()))?;
     let filename = filename.ok_or((StatusCode::BAD_REQUEST, "Nom fichier manquant".to_string()))?;
-    let request = request.ok_or((StatusCode::BAD_REQUEST, "Configuration manquante".to_string()))?;
-    
+    let request = request.ok_or((
+        StatusCode::BAD_REQUEST,
+        "Configuration manquante".to_string(),
+    ))?;
+
     // Hash fichier
     let mut hasher = Sha256::new();
     hasher.update(&file_bytes);
     let content_hash = format!("{:x}", hasher.finalize());
-    
+
     // Créer job
     let file_blob = if request.save_file.unwrap_or(false) {
         Some(file_bytes.clone())
     } else {
         None
     };
-    
+
     let import_id = create_import_job(
         &state.pool,
         filename.clone(),
@@ -236,7 +296,8 @@ pub async fn import_async(
         &request.mapping,
         &request.geolocation,
         file_blob,
-    ).await
+    )
+    .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Parser fichier
@@ -255,11 +316,16 @@ pub async fn import_async(
         }
         DataStructure::Large => {
             if let Some(ref prof_cols) = request.mapping.profondeur_cols {
-                let type_essai = request.mapping.type_essai.as_ref()
+                let type_essai = request
+                    .mapping
+                    .type_essai
+                    .as_ref()
                     .ok_or((StatusCode::BAD_REQUEST, "Type essai requis".to_string()))?;
 
                 for row in &raw_rows {
-                    if let Ok(mut rows) = transform_large_to_long(row, prof_cols, type_essai, &request.mapping) {
+                    if let Ok(mut rows) =
+                        transform_large_to_long(row, prof_cols, type_essai, &request.mapping)
+                    {
                         parsed_rows.append(&mut rows);
                     }
                 }
@@ -275,14 +341,19 @@ pub async fn import_async(
         geoloc_config: request.geolocation,
     };
 
-    JOB_QUEUE.submit(job, std::sync::Arc::new(state.pool.clone())).await
+    JOB_QUEUE
+        .submit(job, std::sync::Arc::new(state.pool.clone()))
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Retourner immédiatement avec job_id
     Ok(Json(ImportResponse {
         job_id: import_id,
         status: ImportStatus::Pending,
-        message: format!("Import démarré en arrière-plan. Utilisez /status/{} pour suivre la progression.", import_id),
+        message: format!(
+            "Import démarré en arrière-plan. Utilisez /status/{} pour suivre la progression.",
+            import_id
+        ),
     }))
 }
 
@@ -302,14 +373,14 @@ pub async fn get_status(
             created_at, started_at, completed_at, error_message
         FROM imports
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(job_id)
     .fetch_optional(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .ok_or((StatusCode::NOT_FOUND, "Import not found".to_string()))?;
-    
+
     let record = ImportRecord {
         id: Uuid::parse_str(&row.try_get::<String, _>("id_str").unwrap()).unwrap(),
         filename: row.try_get("filename").unwrap(),
@@ -324,10 +395,10 @@ pub async fn get_status(
         completed_at: row.try_get("completed_at").ok(),
         error_message: row.try_get("error_message").ok(),
     };
-    
-    let stats: ImportStats = serde_json::from_value(record.stats_json.unwrap_or_default())
-        .unwrap_or_default();
-    
+
+    let stats: ImportStats =
+        serde_json::from_value(record.stats_json.unwrap_or_default()).unwrap_or_default();
+
     let status = match record.status.as_str() {
         "pending" => ImportStatus::Pending,
         "running" => ImportStatus::Running,
@@ -337,7 +408,7 @@ pub async fn get_status(
         "cancelled" => ImportStatus::Cancelled,
         _ => ImportStatus::Pending,
     };
-    
+
     let _geoloc_mode = match record.geoloc_mode.as_str() {
         "exact" => GeolocationMode::Exact,
         "centroid" => GeolocationMode::Centroid,
@@ -346,11 +417,12 @@ pub async fn get_status(
         "maille" => GeolocationMode::Maille,
         _ => GeolocationMode::Unknown,
     };
-    
-    let progress = record.progress
+
+    let progress = record
+        .progress
         .and_then(|p| p.to_string().parse::<f32>().ok())
         .unwrap_or(0.0);
-    
+
     Ok(Json(ImportJobResponse {
         job_id: record.id,
         status,
@@ -372,7 +444,9 @@ pub async fn cancel_import(
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     // Annuler dans le job queue
-    JOB_QUEUE.cancel(&job_id).await
+    JOB_QUEUE
+        .cancel(&job_id)
+        .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     // Mettre à jour en DB
@@ -382,7 +456,7 @@ pub async fn cancel_import(
         SET status = 'cancelled', completed_at = now()
         WHERE id = $1 AND status IN ('pending', 'running')
         RETURNING id
-        "#
+        "#,
     )
     .bind(job_id)
     .fetch_optional(&state.pool)
@@ -394,7 +468,10 @@ pub async fn cancel_import(
             "success": true,
             "message": "Import cancelled"
         }))),
-        None => Err((StatusCode::NOT_FOUND, "Import not found or already completed".to_string())),
+        None => Err((
+            StatusCode::NOT_FOUND,
+            "Import not found or already completed".to_string(),
+        )),
     }
 }
 
@@ -408,7 +485,7 @@ pub async fn get_report(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let format = params.get("format").map(|s| s.as_str()).unwrap_or("json");
-    
+
     let rows = sqlx::query(
         r#"
         SELECT 
@@ -417,22 +494,25 @@ pub async fn get_report(
         FROM import_items
         WHERE import_id = $1
         ORDER BY row_idx
-        "#
+        "#,
     )
     .bind(import_id)
     .fetch_all(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
-    let items: Vec<ImportItemReport> = rows.into_iter().map(|r| ImportItemReport {
-        row_idx: r.try_get("row_idx").unwrap(),
-        status: r.try_get("status").unwrap(),
-        error_msg: r.try_get("error_msg").ok(),
-        warning_msg: r.try_get("warning_msg").ok(),
-        created_tests_count: r.try_get("created_tests_count").ok(),
-        raw_json: r.try_get("raw_json").ok(),
-    }).collect();
-    
+
+    let items: Vec<ImportItemReport> = rows
+        .into_iter()
+        .map(|r| ImportItemReport {
+            row_idx: r.try_get("row_idx").unwrap(),
+            status: r.try_get("status").unwrap(),
+            error_msg: r.try_get("error_msg").ok(),
+            warning_msg: r.try_get("warning_msg").ok(),
+            created_tests_count: r.try_get("created_tests_count").ok(),
+            raw_json: r.try_get("raw_json").ok(),
+        })
+        .collect();
+
     if format == "csv" {
         let mut csv = String::from("row,status,tests_created,warnings,errors\n");
         for item in items {
@@ -447,7 +527,11 @@ pub async fn get_report(
         }
         Ok((StatusCode::OK, [("content-type", "text/csv")], csv))
     } else {
-        Ok((StatusCode::OK, [("content-type", "application/json")], serde_json::to_string(&items).unwrap()))
+        Ok((
+            StatusCode::OK,
+            [("content-type", "application/json")],
+            serde_json::to_string(&items).unwrap(),
+        ))
     }
 }
 
@@ -475,16 +559,19 @@ pub async fn get_template(
         }
         _ => return Err((StatusCode::NOT_FOUND, "Template not found".to_string())),
     };
-    
+
     let filename = format!("template_{}.csv", template_type);
-    
+
     Ok((
         StatusCode::OK,
         [
             ("content-type", "text/csv".to_string()),
-            ("content-disposition", format!("attachment; filename=\"{}\"", filename))
+            (
+                "content-disposition",
+                format!("attachment; filename=\"{}\"", filename),
+            ),
         ],
-        csv.to_string()
+        csv.to_string(),
     ))
 }
 
@@ -509,7 +596,7 @@ pub async fn list_profiles(
             FROM import_mapping_profiles
             WHERE user_id = $1
             ORDER BY last_used_at DESC NULLS LAST, created_at DESC
-            "#
+            "#,
         )
         .bind(uid)
     } else {
@@ -522,7 +609,7 @@ pub async fn list_profiles(
             FROM import_mapping_profiles
             ORDER BY use_count DESC, created_at DESC
             LIMIT 100
-            "#
+            "#,
         )
     };
 
@@ -576,7 +663,7 @@ pub async fn create_profile(
             id::text as id_str,
             name, description, mapping_json,
             created_at
-        "#
+        "#,
     )
     .bind(&req.name)
     .bind(&req.description)
@@ -609,7 +696,7 @@ pub async fn get_profile(
             created_at, updated_at, last_used_at, use_count
         FROM import_mapping_profiles
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(profile_id)
     .fetch_optional(&state.pool)
@@ -647,7 +734,7 @@ pub async fn update_profile(
         UPDATE import_mapping_profiles
         SET name = $1, description = $2, mapping_json = $3, updated_at = now()
         WHERE id = $4
-        "#
+        "#,
     )
     .bind(&request.name)
     .bind(&request.description)
@@ -656,7 +743,7 @@ pub async fn update_profile(
     .execute(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(MappingProfile {
         id: profile_id,
         name: request.name,
@@ -677,13 +764,13 @@ pub async fn delete_profile(
         r#"
         DELETE FROM import_mapping_profiles
         WHERE id = $1
-        "#
+        "#,
     )
     .bind(profile_id)
     .execute(&state.pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(serde_json::json!({
         "success": true,
         "message": "Profil supprimé"
@@ -702,7 +789,7 @@ pub async fn use_profile(
             last_used_at = now()
         WHERE id = $1
         RETURNING id
-        "#
+        "#,
     )
     .bind(profile_id)
     .fetch_optional(&state.pool)
@@ -722,14 +809,14 @@ pub async fn use_profile(
 // IMPORT GÉOTECHNIQUE XLSX
 // ============================================================================
 
-use super::xlsx_parser::parse_xlsx_multisheet;
 use super::geotechnical_importer::{import_geotechnical_data, GeotechnicalImportStats};
+use super::xlsx_parser::parse_xlsx_multisheet;
 use std::io::Cursor;
 
 #[derive(Debug, serde::Deserialize)]
 #[allow(dead_code)]
 pub struct GeotechnicalImportRequest {
-    pub geolocation_mode: Option<String>,  // "exact", "centroid", "random", "unknown"
+    pub geolocation_mode: Option<String>, // "exact", "centroid", "random", "unknown"
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -745,21 +832,29 @@ pub async fn import_geotechnical_xlsx(
 ) -> Result<Json<GeotechnicalImportResponse>, (StatusCode, String)> {
     let mut file_bytes: Option<Vec<u8>> = None;
     let mut geoloc_mode = "centroid".to_string();
-    
+
     // Parser multipart
-    while let Some(field) = multipart.next_field().await
-        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))? 
+    while let Some(field) = multipart
+        .next_field()
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
     {
         let name = field.name().unwrap_or("").to_string();
-        
+
         match name.as_str() {
             "file" => {
-                file_bytes = Some(field.bytes().await
-                    .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
-                    .to_vec());
+                file_bytes = Some(
+                    field
+                        .bytes()
+                        .await
+                        .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?
+                        .to_vec(),
+                );
             }
             "geolocation_mode" => {
-                let data = field.bytes().await
+                let data = field
+                    .bytes()
+                    .await
                     .map_err(|e| (StatusCode::BAD_REQUEST, e.to_string()))?;
                 if let Ok(s) = String::from_utf8(data.to_vec()) {
                     geoloc_mode = s;
@@ -768,18 +863,29 @@ pub async fn import_geotechnical_xlsx(
             _ => {}
         }
     }
-    
-    let file_bytes = file_bytes.ok_or((StatusCode::BAD_REQUEST, "Fichier XLSX manquant".to_string()))?;
-    
+
+    let file_bytes =
+        file_bytes.ok_or((StatusCode::BAD_REQUEST, "Fichier XLSX manquant".to_string()))?;
+
     // Parser le fichier XLSX
     let cursor = Cursor::new(file_bytes);
-    let xlsx_data = parse_xlsx_multisheet(cursor)
-        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Erreur parsing XLSX: {}", e)))?;
-    
+    let xlsx_data = parse_xlsx_multisheet(cursor).map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            format!("Erreur parsing XLSX: {}", e),
+        )
+    })?;
+
     // Importer les données
-    let stats = import_geotechnical_data(&state.pool, xlsx_data, &geoloc_mode).await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur import: {}", e)))?;
-    
+    let stats = import_geotechnical_data(&state.pool, xlsx_data, &geoloc_mode)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Erreur import: {}", e),
+            )
+        })?;
+
     let success = stats.errors.is_empty();
     let message = if success {
         format!(
@@ -791,7 +897,7 @@ pub async fn import_geotechnical_xlsx(
     } else {
         format!("Import partiel: {} erreurs", stats.errors.len())
     };
-    
+
     Ok(Json(GeotechnicalImportResponse {
         success,
         stats,

@@ -7,15 +7,9 @@
 
 #[cfg(disabled)]
 use api_geo::import_bulk::{
-    parser::*,
-    types::*,
-    validator::*,
-    matcher::*,
-    transformer::*,
-    importer::*,
-    job_queue::*,
+    importer::*, job_queue::*, matcher::*, parser::*, transformer::*, types::*, validator::*,
 };
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{postgres::PgPoolOptions, PgPool};
 use std::collections::HashMap;
 use uuid::Uuid;
 
@@ -42,10 +36,12 @@ async fn cleanup_test_data(pool: &PgPool, import_id: Uuid) {
         .execute(pool)
         .await;
 
-    let _ = sqlx::query("DELETE FROM mesures WHERE sondage_id IN (SELECT id FROM sondages WHERE import_id = $1)")
-        .bind(import_id)
-        .execute(pool)
-        .await;
+    let _ = sqlx::query(
+        "DELETE FROM mesures WHERE sondage_id IN (SELECT id FROM sondages WHERE import_id = $1)",
+    )
+    .bind(import_id)
+    .execute(pool)
+    .await;
 }
 
 fn create_sample_csv() -> Vec<u8> {
@@ -269,7 +265,7 @@ S001,1.2500,8.5000"#;
     // Vérifier que les coordonnées sont différentes de l'original
     let (lon, lat): (f64, f64) = sqlx::query_as(
         "SELECT ST_X(geometry::geometry) as lon, ST_Y(geometry::geometry) as lat
-         FROM sondages WHERE import_id = $1 LIMIT 1"
+         FROM sondages WHERE import_id = $1 LIMIT 1",
     )
     .bind(import_id)
     .fetch_one(&pool)
@@ -381,21 +377,19 @@ fn test_long_to_large_transformation() {
 
 #[test]
 fn test_large_to_long_transformation() {
-    let rows = vec![
-        ParsedRow {
-            line_number: 1,
-            data: HashMap::from([
-                ("name".to_string(), "S001".to_string()),
-                ("depth_0_silt".to_string(), "20".to_string()),
-                ("depth_0_sand".to_string(), "40".to_string()),
-                ("depth_5_silt".to_string(), "25".to_string()),
-                ("depth_5_sand".to_string(), "35".to_string()),
-            ]),
-            warnings: vec![],
-            errors: vec![],
-            fingerprint: None,
-        },
-    ];
+    let rows = vec![ParsedRow {
+        line_number: 1,
+        data: HashMap::from([
+            ("name".to_string(), "S001".to_string()),
+            ("depth_0_silt".to_string(), "20".to_string()),
+            ("depth_0_sand".to_string(), "40".to_string()),
+            ("depth_5_silt".to_string(), "25".to_string()),
+            ("depth_5_sand".to_string(), "35".to_string()),
+        ]),
+        warnings: vec![],
+        errors: vec![],
+        fingerprint: None,
+    }];
 
     let result = Transformer::large_to_long(&rows);
     assert!(result.is_ok(), "Transformation failed: {:?}", result.err());
@@ -404,13 +398,17 @@ fn test_large_to_long_transformation() {
     assert_eq!(long_rows.len(), 2, "Should have 2 depth records");
 
     // Vérifier depth 0
-    let depth_0 = long_rows.iter().find(|r| r.data.get("depth") == Some(&"0".to_string()));
+    let depth_0 = long_rows
+        .iter()
+        .find(|r| r.data.get("depth") == Some(&"0".to_string()));
     assert!(depth_0.is_some());
     assert_eq!(depth_0.unwrap().data.get("silt").unwrap(), "20");
     assert_eq!(depth_0.unwrap().data.get("sand").unwrap(), "40");
 
     // Vérifier depth 5
-    let depth_5 = long_rows.iter().find(|r| r.data.get("depth") == Some(&"5".to_string()));
+    let depth_5 = long_rows
+        .iter()
+        .find(|r| r.data.get("depth") == Some(&"5".to_string()));
     assert!(depth_5.is_some());
     assert_eq!(depth_5.unwrap().data.get("silt").unwrap(), "25");
     assert_eq!(depth_5.unwrap().data.get("sand").unwrap(), "35");
@@ -461,8 +459,8 @@ async fn test_job_queue_submit_and_status() {
     // Status should be running or completed
     assert!(
         status.status == ImportStatus::Running
-        || status.status == ImportStatus::Succeeded
-        || status.status == ImportStatus::Partial
+            || status.status == ImportStatus::Succeeded
+            || status.status == ImportStatus::Partial
     );
 
     // Wait for completion
@@ -497,7 +495,12 @@ async fn test_cancel_import() {
     // Create a large import to have time to cancel
     let mut csv = "name,longitude,latitude\n".to_string();
     for i in 0..1000 {
-        csv.push_str(&format!("S{:04},{},{}\n", i, 1.25 + (i as f64) * 0.0001, 8.5));
+        csv.push_str(&format!(
+            "S{:04},{},{}\n",
+            i,
+            1.25 + (i as f64) * 0.0001,
+            8.5
+        ));
     }
 
     let rows = CsvParser::parse(csv.as_bytes()).expect("Failed to parse CSV");
@@ -518,7 +521,10 @@ async fn test_cancel_import() {
     let import_id = job.import_id;
 
     // Submit job
-    queue.submit(job, std::sync::Arc::new(pool.clone())).await.unwrap();
+    queue
+        .submit(job, std::sync::Arc::new(pool.clone()))
+        .await
+        .unwrap();
 
     // Wait a bit for it to start
     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
@@ -582,19 +588,17 @@ fn test_format_detection_long() {
 
 #[test]
 fn test_format_detection_large() {
-    let rows = vec![
-        ParsedRow {
-            line_number: 1,
-            data: HashMap::from([
-                ("name".to_string(), "S001".to_string()),
-                ("depth_0_silt".to_string(), "20".to_string()),
-                ("depth_5_silt".to_string(), "25".to_string()),
-            ]),
-            warnings: vec![],
-            errors: vec![],
-            fingerprint: None,
-        },
-    ];
+    let rows = vec![ParsedRow {
+        line_number: 1,
+        data: HashMap::from([
+            ("name".to_string(), "S001".to_string()),
+            ("depth_0_silt".to_string(), "20".to_string()),
+            ("depth_5_silt".to_string(), "25".to_string()),
+        ]),
+        warnings: vec![],
+        errors: vec![],
+        fingerprint: None,
+    }];
 
     let config = MappingConfig::default();
     let format = Transformer::detect_format(&rows, &config);

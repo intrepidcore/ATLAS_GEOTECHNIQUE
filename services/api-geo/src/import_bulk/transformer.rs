@@ -14,7 +14,7 @@ use std::collections::HashMap;
 // ============================================================================
 
 /// Transforme une ligne format "Large" en plusieurs lignes format "Long"
-/// 
+///
 /// Exemple:
 /// Input:  {"localite": "Adjengré", "1": "77.73", "1.5": "81.8", "2": "74.85"}
 /// Output: [
@@ -29,66 +29,77 @@ pub fn transform_large_to_long(
     mapping: &MappingConfig,
 ) -> Result<Vec<ParsedRow>> {
     let mut result = Vec::new();
-    
+
     // Extraire les valeurs communes
-    let localite = mapping.localite_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
-    let code = mapping.code_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
-    let date = mapping.date_col.as_ref()
+    let localite = mapping
+        .localite_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
+    let code = mapping
+        .code_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
+    let date = mapping
+        .date_col
+        .as_ref()
         .and_then(|col| row.get(col))
         .and_then(|s| parse_date(s).ok());
-    
-    let source = mapping.source_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
-    let operator = mapping.operator_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
-    let type_sol = mapping.type_sol_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
-    let adm1 = mapping.adm1_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
-    let adm2 = mapping.adm2_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
-    let adm3 = mapping.adm3_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
+
+    let source = mapping
+        .source_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
+    let operator = mapping
+        .operator_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
+    let type_sol = mapping
+        .type_sol_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
+    let adm1 = mapping
+        .adm1_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
+    let adm2 = mapping
+        .adm2_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
+    let adm3 = mapping
+        .adm3_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
     // Pour chaque colonne de profondeur
     for (idx, prof_col) in profondeur_cols.iter().enumerate() {
         // Parser la profondeur depuis le nom de colonne
-        let profondeur_m = prof_col.parse::<f64>()
+        let profondeur_m = prof_col
+            .parse::<f64>()
             .map_err(|_| anyhow!("Colonne profondeur invalide: {}", prof_col))?;
-        
+
         // Extraire la valeur
         if let Some(valeur_str) = row.get(prof_col) {
             // Ignorer les valeurs vides
             if valeur_str.trim().is_empty() || valeur_str == "NA" || valeur_str == "-" {
                 continue;
             }
-            
+
             let valeur = valeur_str.parse::<f64>().ok();
-            
+
             // Vérifier si c'est une analyse qualitative
             let analyse_qualitative = if valeur.is_none() {
                 Some(valeur_str.clone())
             } else {
                 None
             };
-            
+
             result.push(ParsedRow {
                 row_idx: idx as i32,
                 localite: localite.clone(),
@@ -97,9 +108,10 @@ pub fn transform_large_to_long(
                 profondeur_m,
                 valeur,
                 analyse_qualitative,
-                unite: mapping.unite_col.as_ref()
-                    .and_then(|col| row.get(col))
-                    .map(|s| s.clone()),
+                unite: mapping
+                    .unite_col
+                    .as_ref()
+                    .and_then(|col| row.get(col)).cloned(),
                 date,
                 source: source.clone(),
                 operator: operator.clone(),
@@ -113,7 +125,7 @@ pub fn transform_large_to_long(
             });
         }
     }
-    
+
     Ok(result)
 }
 
@@ -137,74 +149,95 @@ pub fn map_long_row(
     } else {
         return Err(anyhow!("Type d'essai non spécifié"));
     };
-    
+
     // Profondeur (obligatoire)
-    let profondeur_m = mapping.profondeur_col.as_ref()
+    let profondeur_m = mapping
+        .profondeur_col
+        .as_ref()
         .and_then(|col| row.get(col))
         .ok_or_else(|| anyhow!("Colonne profondeur manquante"))?
         .parse::<f64>()
         .map_err(|_| anyhow!("Profondeur invalide"))?;
-    
+
     // Valeur (optionnelle si analyse qualitative)
-    let valeur = mapping.valeur_col.as_ref()
+    let valeur = mapping
+        .valeur_col
+        .as_ref()
         .and_then(|col| row.get(col))
         .and_then(|s| s.parse::<f64>().ok());
-    
+
     // Analyse qualitative
-    let analyse_qualitative = mapping.analyse_col.as_ref()
-        .and_then(|col| row.get(col))
-        .map(|s| s.clone());
-    
+    let analyse_qualitative = mapping
+        .analyse_col
+        .as_ref()
+        .and_then(|col| row.get(col)).cloned();
+
     // Vérifier qu'au moins valeur OU analyse est présente
     if valeur.is_none() && analyse_qualitative.is_none() {
         return Err(anyhow!("Au moins valeur ou analyse_qualitative requis"));
     }
-    
+
     Ok(ParsedRow {
         row_idx,
-        localite: mapping.localite_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
-        code: mapping.code_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
+        localite: mapping
+            .localite_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
+        code: mapping
+            .code_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
         type_essai,
         profondeur_m,
         valeur,
         analyse_qualitative,
-        unite: mapping.unite_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
-        date: mapping.date_col.as_ref()
+        unite: mapping
+            .unite_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
+        date: mapping
+            .date_col
+            .as_ref()
             .and_then(|col| row.get(col))
             .and_then(|s| parse_date(s).ok()),
-        source: mapping.source_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
-        operator: mapping.operator_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
-        type_sol: mapping.type_sol_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
-        lon: mapping.lon_col.as_ref()
+        source: mapping
+            .source_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
+        operator: mapping
+            .operator_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
+        type_sol: mapping
+            .type_sol_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
+        lon: mapping
+            .lon_col
+            .as_ref()
             .and_then(|col| row.get(col))
             .and_then(|s| s.parse::<f64>().ok()),
-        lat: mapping.lat_col.as_ref()
+        lat: mapping
+            .lat_col
+            .as_ref()
             .and_then(|col| row.get(col))
             .and_then(|s| s.parse::<f64>().ok()),
-        adm1: mapping.adm1_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
-        adm2: mapping.adm2_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
-        adm3: mapping.adm3_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
-        maille_code: mapping.maille_col.as_ref()
-            .and_then(|col| row.get(col))
-            .map(|s| s.clone()),
+        adm1: mapping
+            .adm1_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
+        adm2: mapping
+            .adm2_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
+        adm3: mapping
+            .adm3_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
+        maille_code: mapping
+            .maille_col
+            .as_ref()
+            .and_then(|col| row.get(col)).cloned(),
     })
 }
 
@@ -215,17 +248,21 @@ pub fn map_long_row(
 /// Groupe les lignes parsées par sondage (code ou localite+date)
 pub fn group_by_survey(rows: Vec<ParsedRow>) -> Vec<GroupedSurvey> {
     let mut surveys: HashMap<String, GroupedSurvey> = HashMap::new();
-    
+
     for row in rows {
         // Générer une clé unique pour le sondage
         let key = if let Some(ref code) = row.code {
             code.clone()
         } else if let Some(ref localite) = row.localite {
-            format!("{}_{}", localite, row.date.map(|d| d.to_string()).unwrap_or_default())
+            format!(
+                "{}_{}",
+                localite,
+                row.date.map(|d| d.to_string()).unwrap_or_default()
+            )
         } else {
             format!("UNKNOWN_{}", row.row_idx)
         };
-        
+
         surveys.entry(key.clone()).or_insert_with(|| GroupedSurvey {
             code: row.code.clone().unwrap_or_else(|| key.clone()),
             localite: row.localite.clone(),
@@ -242,7 +279,7 @@ pub fn group_by_survey(rows: Vec<ParsedRow>) -> Vec<GroupedSurvey> {
             tests: Vec::new(),
         });
     }
-    
+
     surveys.into_values().collect()
 }
 
@@ -256,23 +293,26 @@ pub fn parse_date(date_str: &str) -> Result<NaiveDate> {
     if let Ok(date) = NaiveDate::parse_from_str(date_str, "%Y-%m-%d") {
         return Ok(date);
     }
-    
+
     // Format français (DD/MM/YYYY) - ATTENTION: ambigu
     if let Ok(date) = NaiveDate::parse_from_str(date_str, "%d/%m/%Y") {
         return Ok(date);
     }
-    
+
     // Format US (MM/DD/YYYY) - ATTENTION: ambigu
     if let Ok(date) = NaiveDate::parse_from_str(date_str, "%m/%d/%Y") {
         return Ok(date);
     }
-    
+
     // Format avec tirets (DD-MM-YYYY)
     if let Ok(date) = NaiveDate::parse_from_str(date_str, "%d-%m-%Y") {
         return Ok(date);
     }
-    
-    Err(anyhow!("Format de date non reconnu: {}. Utilisez YYYY-MM-DD", date_str))
+
+    Err(anyhow!(
+        "Format de date non reconnu: {}. Utilisez YYYY-MM-DD",
+        date_str
+    ))
 }
 
 // ============================================================================
@@ -288,7 +328,8 @@ pub fn generate_survey_code(
     if let Some(pcode) = adm3_pcode {
         format!("AUTO-{}-{:04}", pcode, index)
     } else if let Some(loc) = localite {
-        let clean_loc = loc.chars()
+        let clean_loc = loc
+            .chars()
             .filter(|c| c.is_alphanumeric())
             .take(8)
             .collect::<String>()
@@ -306,7 +347,7 @@ pub fn generate_survey_code(
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_parse_date() {
         assert!(parse_date("2024-01-15").is_ok());
@@ -315,11 +356,17 @@ mod tests {
         assert!(parse_date("15-01-2024").is_ok());
         assert!(parse_date("invalid").is_err());
     }
-    
+
     #[test]
     fn test_generate_survey_code() {
-        assert_eq!(generate_survey_code(Some("Adjengré"), Some("TG040106"), 1), "AUTO-TG040106-0001");
-        assert_eq!(generate_survey_code(Some("Adjengré"), None, 1), "AUTO-ADJENGRE-0001");
+        assert_eq!(
+            generate_survey_code(Some("Adjengré"), Some("TG040106"), 1),
+            "AUTO-TG040106-0001"
+        );
+        assert_eq!(
+            generate_survey_code(Some("Adjengré"), None, 1),
+            "AUTO-ADJENGRE-0001"
+        );
         assert_eq!(generate_survey_code(None, None, 1), "AUTO-UNKNOWN-0001");
     }
 }

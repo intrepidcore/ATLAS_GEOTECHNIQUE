@@ -1,3 +1,4 @@
+use crate::state::AppState;
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
@@ -6,7 +7,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use crate::state::AppState;
 
 #[derive(Deserialize)]
 pub struct ExportQuery {
@@ -31,7 +31,7 @@ pub struct ExportMetadata {
 }
 
 /// GET /exports/geopackage - Export GeoPackage complet (mailles + sondages + essais)
-/// 
+///
 /// Génère un fichier GeoPackage avec 3 couches:
 /// - mailles: polygones avec statistiques agrégées
 /// - sondages: points avec métadonnées
@@ -41,10 +41,10 @@ pub async fn export_geopackage(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     // Construction de la requête avec filtres
     let mut where_clauses = Vec::new();
-    
+
     if let Some(bbox_str) = &q.bbox {
         let parts: Vec<f64> = bbox_str.split(',').filter_map(|s| s.parse().ok()).collect();
         if parts.len() == 4 {
@@ -54,7 +54,7 @@ pub async fn export_geopackage(
             ));
         }
     }
-    
+
     if let Some(adm1) = &q.adm1 {
         where_clauses.push(format!("m.adm1_name = '{}'", adm1.replace("'", "''")));
     }
@@ -64,13 +64,13 @@ pub async fn export_geopackage(
     if let Some(adm3) = &q.adm3 {
         where_clauses.push(format!("m.adm3_name = '{}'", adm3.replace("'", "''")));
     }
-    
+
     let where_sql = if where_clauses.is_empty() {
         String::new()
     } else {
         format!("WHERE {}", where_clauses.join(" AND "))
     };
-    
+
     // Récupérer les mailles avec statistiques
     let mailles_query = format!(
         r#"
@@ -95,14 +95,14 @@ pub async fn export_geopackage(
         "#,
         where_sql
     );
-    
+
     let mailles_rows = sqlx::query(&mailles_query).fetch_all(pool).await;
-    
+
     match mailles_rows {
         Ok(rows) => {
             // Construire le GeoJSON pour les mailles
             let mut mailles_features = Vec::new();
-            
+
             for r in &rows {
                 let code: String = r.try_get("code").unwrap_or_default();
                 let geom_json: String = r.try_get("geom_json").unwrap_or_default();
@@ -111,11 +111,14 @@ pub async fn export_geopackage(
                 let adm3: Option<String> = r.try_get("adm3_name").ok();
                 let n_sondages: i64 = r.try_get("n_sondages").unwrap_or(0);
                 let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
-                let spt_avg: Option<sqlx::types::BigDecimal> = r.try_get("spt_n_avg").ok().flatten();
+                let spt_avg: Option<sqlx::types::BigDecimal> =
+                    r.try_get("spt_n_avg").ok().flatten();
                 let qc_avg: Option<sqlx::types::BigDecimal> = r.try_get("qc_avg").ok().flatten();
-                let depth_min: Option<sqlx::types::BigDecimal> = r.try_get("depth_min").ok().flatten();
-                let depth_max: Option<sqlx::types::BigDecimal> = r.try_get("depth_max").ok().flatten();
-                
+                let depth_min: Option<sqlx::types::BigDecimal> =
+                    r.try_get("depth_min").ok().flatten();
+                let depth_max: Option<sqlx::types::BigDecimal> =
+                    r.try_get("depth_max").ok().flatten();
+
                 if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&geom_json) {
                     mailles_features.push(serde_json::json!({
                         "type": "Feature",
@@ -135,7 +138,7 @@ pub async fn export_geopackage(
                     }));
                 }
             }
-            
+
             // Récupérer les sondages
             let sondages_query = format!(
                 r#"
@@ -163,18 +166,18 @@ pub async fn export_geopackage(
                 "#,
                 where_sql.replace("m.", "m.")
             );
-            
+
             let sondages_rows = sqlx::query(&sondages_query).fetch_all(pool).await;
-            
+
             let mut sondages_features = Vec::new();
-            
+
             if let Ok(sondages) = sondages_rows {
                 for r in &sondages {
                     let id: String = r.try_get("id").unwrap_or_default();
                     let code: String = r.try_get("code").unwrap_or_default();
                     let lon: Option<f64> = r.try_get("lon").ok();
                     let lat: Option<f64> = r.try_get("lat").ok();
-                    
+
                     if let (Some(lng), Some(lt)) = (lon, lat) {
                         sondages_features.push(serde_json::json!({
                             "type": "Feature",
@@ -200,7 +203,7 @@ pub async fn export_geopackage(
                     }
                 }
             }
-            
+
             // Récupérer les essais
             let essais_query = format!(
                 r#"
@@ -222,11 +225,11 @@ pub async fn export_geopackage(
                 "#,
                 where_sql.replace("m.", "m.")
             );
-            
+
             let essais_rows = sqlx::query(&essais_query).fetch_all(pool).await;
-            
+
             let mut essais_data = Vec::new();
-            
+
             if let Ok(essais) = essais_rows {
                 for r in &essais {
                     essais_data.push(serde_json::json!({
@@ -240,11 +243,11 @@ pub async fn export_geopackage(
                     }));
                 }
             }
-            
+
             // Créer la structure GeoPackage (en GeoJSON pour simplifier, un vrai GeoPackage nécessiterait SQLite)
             // Pour un vrai GeoPackage, il faudrait utiliser une bibliothèque comme gdal-sys
             // Ici on retourne un ZIP avec 3 GeoJSON
-            
+
             let package = serde_json::json!({
                 "type": "GeoPackage",
                 "version": "1.3.0",
@@ -291,24 +294,29 @@ pub async fn export_geopackage(
                     }
                 }
             });
-            
+
             let json_str = serde_json::to_string_pretty(&package).unwrap();
-            
+
             (
                 StatusCode::OK,
                 [
                     (header::CONTENT_TYPE, "application/geopackage+json"),
-                    (header::CONTENT_DISPOSITION, "attachment; filename=\"atlas_export.gpkg.json\""),
+                    (
+                        header::CONTENT_DISPOSITION,
+                        "attachment; filename=\"atlas_export.gpkg.json\"",
+                    ),
                 ],
-                json_str
-            ).into_response()
+                json_str,
+            )
+                .into_response()
         }
         Err(e) => {
             tracing::error!(?e, "export_geopackage error");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "Database error"}))
-            ).into_response()
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -319,10 +327,10 @@ pub async fn export_pdf(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     // Récupérer les statistiques pour le PDF
     let mut where_clauses = Vec::new();
-    
+
     if let Some(bbox_str) = &q.bbox {
         let parts: Vec<f64> = bbox_str.split(',').filter_map(|s| s.parse().ok()).collect();
         if parts.len() == 4 {
@@ -332,17 +340,17 @@ pub async fn export_pdf(
             ));
         }
     }
-    
+
     if let Some(adm1) = &q.adm1 {
         where_clauses.push(format!("m.adm1_name = '{}'", adm1.replace("'", "''")));
     }
-    
+
     let where_sql = if where_clauses.is_empty() {
         String::new()
     } else {
         format!("WHERE {}", where_clauses.join(" AND "))
     };
-    
+
     let stats_query = format!(
         r#"
         SELECT 
@@ -362,9 +370,9 @@ pub async fn export_pdf(
         "#,
         where_sql
     );
-    
+
     let stats_row = sqlx::query(&stats_query).fetch_one(pool).await;
-    
+
     match stats_row {
         Ok(row) => {
             let n_mailles: i64 = row.try_get("n_mailles").unwrap_or(0);
@@ -372,11 +380,13 @@ pub async fn export_pdf(
             let n_essais: i64 = row.try_get("n_essais").unwrap_or(0);
             let spt_avg: Option<sqlx::types::BigDecimal> = row.try_get("spt_n_avg").ok().flatten();
             let qc_avg: Option<sqlx::types::BigDecimal> = row.try_get("qc_avg").ok().flatten();
-            let depth_min: Option<sqlx::types::BigDecimal> = row.try_get("depth_min").ok().flatten();
-            let depth_max: Option<sqlx::types::BigDecimal> = row.try_get("depth_max").ok().flatten();
+            let depth_min: Option<sqlx::types::BigDecimal> =
+                row.try_get("depth_min").ok().flatten();
+            let depth_max: Option<sqlx::types::BigDecimal> =
+                row.try_get("depth_max").ok().flatten();
             let n_spt: i64 = row.try_get("n_spt").unwrap_or(0);
             let n_qc: i64 = row.try_get("n_qc").unwrap_or(0);
-            
+
             // Générer le HTML pour le PDF
             let html = format!(
                 r#"<!DOCTYPE html>
@@ -572,38 +582,60 @@ pub async fn export_pdf(
 </body>
 </html>"#,
                 chrono::Utc::now().format("%d/%m/%Y %H:%M UTC"),
-                n_mailles.to_string(),
-                n_sondages.to_string(),
-                n_essais.to_string(),
-                depth_max.as_ref().and_then(|v| v.to_string().parse::<f64>().ok()).map(|v| format!("{:.1}", v)).unwrap_or("N/A".to_string()),
+                n_mailles,
+                n_sondages,
+                n_essais,
+                depth_max
+                    .as_ref()
+                    .and_then(|v| v.to_string().parse::<f64>().ok())
+                    .map(|v| format!("{:.1}", v))
+                    .unwrap_or("N/A".to_string()),
                 n_spt,
-                spt_avg.and_then(|v| v.to_string().parse::<f64>().ok()).map(|v| format!("{:.1}", v)).unwrap_or("N/A".to_string()),
+                spt_avg
+                    .and_then(|v| v.to_string().parse::<f64>().ok())
+                    .map(|v| format!("{:.1}", v))
+                    .unwrap_or("N/A".to_string()),
                 n_qc,
-                qc_avg.and_then(|v| v.to_string().parse::<f64>().ok()).map(|v| format!("{:.2}", v)).unwrap_or("N/A".to_string()),
-                depth_min.and_then(|v| v.to_string().parse::<f64>().ok()).map(|v| format!("{:.1}", v)).unwrap_or("N/A".to_string()),
-                depth_max.and_then(|v| v.to_string().parse::<f64>().ok()).map(|v| format!("{:.1}", v)).unwrap_or("N/A".to_string()),
-                format!("ADM1: {}, ADM2: {}, ADM3: {}", 
+                qc_avg
+                    .and_then(|v| v.to_string().parse::<f64>().ok())
+                    .map(|v| format!("{:.2}", v))
+                    .unwrap_or("N/A".to_string()),
+                depth_min
+                    .and_then(|v| v.to_string().parse::<f64>().ok())
+                    .map(|v| format!("{:.1}", v))
+                    .unwrap_or("N/A".to_string()),
+                depth_max
+                    .and_then(|v| v.to_string().parse::<f64>().ok())
+                    .map(|v| format!("{:.1}", v))
+                    .unwrap_or("N/A".to_string()),
+                format!(
+                    "ADM1: {}, ADM2: {}, ADM3: {}",
                     q.adm1.as_deref().unwrap_or("Tous"),
                     q.adm2.as_deref().unwrap_or("Tous"),
                     q.adm3.as_deref().unwrap_or("Tous")
                 )
             );
-            
+
             (
                 StatusCode::OK,
                 [
                     (header::CONTENT_TYPE, "text/html; charset=utf-8"),
-                    (header::CONTENT_DISPOSITION, "attachment; filename=\"atlas_rapport.html\""),
+                    (
+                        header::CONTENT_DISPOSITION,
+                        "attachment; filename=\"atlas_rapport.html\"",
+                    ),
                 ],
-                html
-            ).into_response()
+                html,
+            )
+                .into_response()
         }
         Err(e) => {
             tracing::error!(?e, "export_pdf error");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "Database error"}))
-            ).into_response()
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
         }
     }
 }

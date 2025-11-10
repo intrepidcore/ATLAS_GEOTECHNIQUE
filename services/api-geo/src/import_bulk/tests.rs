@@ -42,7 +42,10 @@ mod parser_tests {
 
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].get("name").unwrap(), "Sondage 1");
-        assert_eq!(result[0].get("description").unwrap(), "Description avec, virgule");
+        assert_eq!(
+            result[0].get("description").unwrap(),
+            "Description avec, virgule"
+        );
     }
 
     #[test]
@@ -160,8 +163,8 @@ mod parser_tests {
 
 #[cfg(disabled)]
 mod validator_tests {
-    use super::super::validator::*;
     use super::super::types::*;
+    use super::super::validator::*;
 
     // ========================================================================
     // COORDINATE VALIDATION
@@ -191,10 +194,10 @@ mod validator_tests {
     #[test]
     fn test_validate_coordinates_out_of_bounds_togo() {
         let test_cases = vec![
-            (0.0, 8.5),   // Longitude trop à l'ouest
-            (2.0, 5.0),   // Latitude trop au sud
-            (2.0, 12.0),  // Latitude trop au nord
-            (2.5, 8.5),   // Longitude trop à l'est
+            (0.0, 8.5),  // Longitude trop à l'ouest
+            (2.0, 5.0),  // Latitude trop au sud
+            (2.0, 12.0), // Latitude trop au nord
+            (2.5, 8.5),  // Longitude trop à l'est
         ];
 
         for (lon, lat) in test_cases {
@@ -235,9 +238,7 @@ mod validator_tests {
     fn test_validate_coordinates_missing_field() {
         let row = ParsedRow {
             line_number: 1,
-            data: std::collections::HashMap::from([
-                ("latitude".to_string(), "8.5".to_string()),
-            ]),
+            data: std::collections::HashMap::from([("latitude".to_string(), "8.5".to_string())]),
             warnings: vec![],
             errors: vec![],
             fingerprint: None,
@@ -276,9 +277,7 @@ mod validator_tests {
     fn test_fingerprint_different_data() {
         let row1 = ParsedRow {
             line_number: 1,
-            data: std::collections::HashMap::from([
-                ("name".to_string(), "Sondage1".to_string()),
-            ]),
+            data: std::collections::HashMap::from([("name".to_string(), "Sondage1".to_string())]),
             warnings: vec![],
             errors: vec![],
             fingerprint: None,
@@ -286,9 +285,7 @@ mod validator_tests {
 
         let row2 = ParsedRow {
             line_number: 2,
-            data: std::collections::HashMap::from([
-                ("name".to_string(), "Sondage2".to_string()),
-            ]),
+            data: std::collections::HashMap::from([("name".to_string(), "Sondage2".to_string())]),
             warnings: vec![],
             errors: vec![],
             fingerprint: None,
@@ -304,9 +301,7 @@ mod validator_tests {
     fn test_fingerprint_missing_fields() {
         let row = ParsedRow {
             line_number: 1,
-            data: std::collections::HashMap::from([
-                ("name".to_string(), "Sondage1".to_string()),
-            ]),
+            data: std::collections::HashMap::from([("name".to_string(), "Sondage1".to_string())]),
             warnings: vec![],
             errors: vec![],
             fingerprint: None,
@@ -343,9 +338,7 @@ mod validator_tests {
     fn test_validate_required_fields_missing() {
         let row = ParsedRow {
             line_number: 1,
-            data: std::collections::HashMap::from([
-                ("name".to_string(), "Sondage1".to_string()),
-            ]),
+            data: std::collections::HashMap::from([("name".to_string(), "Sondage1".to_string())]),
             warnings: vec![],
             errors: vec![],
             fingerprint: None,
@@ -438,10 +431,7 @@ mod matcher_tests {
 
     #[test]
     fn test_auto_map_no_matches() {
-        let source_columns = vec![
-            "random_field_1".to_string(),
-            "random_field_2".to_string(),
-        ];
+        let source_columns = vec!["random_field_1".to_string(), "random_field_2".to_string()];
 
         let suggestions = Matcher::auto_map(&source_columns);
 
@@ -512,20 +502,18 @@ mod transformer_tests {
 
     #[test]
     fn test_detect_format_large() {
-        let rows = vec![
-            ParsedRow {
-                line_number: 1,
-                data: HashMap::from([
-                    ("name".to_string(), "S1".to_string()),
-                    ("depth_0_silt".to_string(), "20".to_string()),
-                    ("depth_0_sand".to_string(), "40".to_string()),
-                    ("depth_5_silt".to_string(), "25".to_string()),
-                ]),
-                warnings: vec![],
-                errors: vec![],
-                fingerprint: None,
-            },
-        ];
+        let rows = vec![ParsedRow {
+            line_number: 1,
+            data: HashMap::from([
+                ("name".to_string(), "S1".to_string()),
+                ("depth_0_silt".to_string(), "20".to_string()),
+                ("depth_0_sand".to_string(), "40".to_string()),
+                ("depth_5_silt".to_string(), "25".to_string()),
+            ]),
+            warnings: vec![],
+            errors: vec![],
+            fingerprint: None,
+        }];
 
         let format = Transformer::detect_format(&rows, &MappingConfig::default());
         assert_eq!(format, DataFormat::Large);
@@ -593,19 +581,17 @@ mod transformer_tests {
 
     #[test]
     fn test_large_to_long_conversion() {
-        let rows = vec![
-            ParsedRow {
-                line_number: 1,
-                data: HashMap::from([
-                    ("name".to_string(), "S1".to_string()),
-                    ("depth_0_silt".to_string(), "20".to_string()),
-                    ("depth_5_silt".to_string(), "25".to_string()),
-                ]),
-                warnings: vec![],
-                errors: vec![],
-                fingerprint: None,
-            },
-        ];
+        let rows = vec![ParsedRow {
+            line_number: 1,
+            data: HashMap::from([
+                ("name".to_string(), "S1".to_string()),
+                ("depth_0_silt".to_string(), "20".to_string()),
+                ("depth_5_silt".to_string(), "25".to_string()),
+            ]),
+            warnings: vec![],
+            errors: vec![],
+            fingerprint: None,
+        }];
 
         let result = Transformer::large_to_long(&rows);
         assert!(result.is_ok());
@@ -674,13 +660,7 @@ mod tests_disabled {
 
         // 4. Execute import
         let import_id = uuid::Uuid::new_v4();
-        let result = importer::process_import(
-            &pool,
-            import_id,
-            rows,
-            &mapping,
-            &geoloc,
-        ).await;
+        let result = importer::process_import(&pool, import_id, rows, &mapping, &geoloc).await;
 
         assert!(result.is_ok());
 

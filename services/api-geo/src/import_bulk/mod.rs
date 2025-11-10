@@ -7,16 +7,16 @@
 // Référence: docs/CAHIER_CHARGES_IMPORT_BULK.md
 // ============================================================================
 
-pub mod types;
-pub mod parser;
-pub mod validator;
-pub mod matcher;
-pub mod transformer;
+pub mod geotechnical_importer;
 pub mod importer;
 pub mod job_queue;
+pub mod matcher;
+pub mod parser;
 pub mod routes;
+pub mod transformer;
+pub mod types;
+pub mod validator;
 pub mod xlsx_parser;
-pub mod geotechnical_importer;
 
 #[cfg(test)]
 mod tests;

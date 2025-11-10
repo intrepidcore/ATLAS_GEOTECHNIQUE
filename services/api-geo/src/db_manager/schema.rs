@@ -25,7 +25,7 @@ async fn get_schemas(pool: &PgPool) -> Result<Vec<SchemaInfo>, sqlx::Error> {
     for schema_name in schema_names {
         let tables = get_tables(pool, &schema_name).await?;
         let views = get_views(pool, &schema_name).await?;
-        
+
         schemas.push(SchemaInfo {
             name: schema_name,
             tables,
@@ -45,7 +45,7 @@ pub async fn get_table_info(
     let columns = get_columns(pool, schema, table).await?;
     let primary_keys = get_primary_keys(pool, schema, table).await?;
     let foreign_keys = get_foreign_keys(pool, schema, table).await?;
-    
+
     // Récupérer le nombre de lignes
     let row_count_query = format!(
         "SELECT COUNT(*) FROM {}.{}",
@@ -100,7 +100,10 @@ async fn get_tables(pool: &PgPool, schema: &str) -> Result<Vec<TableInfo>, sqlx:
         match get_table_info(pool, schema, &table_name).await {
             Ok(table_info) => tables.push(table_info),
             Err(e) => {
-                eprintln!("Erreur lors de la récupération de la table {}.{}: {}", schema, table_name, e);
+                eprintln!(
+                    "Erreur lors de la récupération de la table {}.{}: {}",
+                    schema, table_name, e
+                );
             }
         }
     }
@@ -132,7 +135,7 @@ async fn get_views(pool: &PgPool, schema: &str) -> Result<Vec<ViewInfo>, sqlx::E
     for row in rows {
         let name: String = row.try_get("table_name")?;
         let is_materialized: bool = row.try_get("is_materialized").unwrap_or(false);
-        
+
         views.push(ViewInfo {
             name,
             schema: schema.to_string(),
@@ -194,14 +197,17 @@ pub async fn get_columns(
 
     let primary_keys = get_primary_keys(pool, schema, table).await?;
     let foreign_keys = get_foreign_keys(pool, schema, table).await?;
-    let fk_columns: Vec<String> = foreign_keys.iter().map(|fk| fk.column_name.clone()).collect();
+    let fk_columns: Vec<String> = foreign_keys
+        .iter()
+        .map(|fk| fk.column_name.clone())
+        .collect();
 
     let mut columns = Vec::new();
     for row in rows {
         let column_name: String = row.try_get("column_name")?;
         let data_type: String = row.try_get("data_type")?;
         let is_nullable: String = row.try_get("is_nullable")?;
-        
+
         columns.push(ColumnInfo {
             name: column_name.clone(),
             data_type,

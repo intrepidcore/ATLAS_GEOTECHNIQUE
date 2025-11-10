@@ -1,10 +1,14 @@
 // Module centralisé pour les KPI de mailles
 // Source unique de vérité pour /labs et /complete
 
-use sqlx::{PgPool, FromRow};
-use serde::Serialize;
-use axum::{extract::{Path, State}, response::IntoResponse, Json};
 use crate::state::AppState;
+use axum::{
+    extract::{Path, State},
+    response::IntoResponse,
+    Json,
+};
+use serde::Serialize;
+use sqlx::{FromRow, PgPool};
 
 #[derive(FromRow, Debug, Clone, Serialize)]
 pub struct KpiRow {
@@ -15,11 +19,11 @@ pub struct KpiRow {
 }
 
 /// Récupère les KPI d'une maille depuis v_maille_kpi_v2
-/// 
+///
 /// # Arguments
 /// * `pool` - Pool de connexion PostgreSQL
 /// * `code` - Code de la maille (ex: "TG-0807-0159-01")
-/// 
+///
 /// # Returns
 /// * `Ok(Some(KpiRow))` - KPI trouvés
 /// * `Ok(None)` - Maille non trouvée
@@ -35,7 +39,7 @@ pub async fn fetch_kpi_row(pool: &PgPool, code: &str) -> sqlx::Result<Option<Kpi
           NULL::float8 AS depth_max_m
         FROM atlas.mv_mailles_geotech
         WHERE code = $1
-        "#
+        "#,
     )
     .bind(code.trim())
     .fetch_optional(pool)
@@ -48,7 +52,7 @@ pub async fn test_kpi_endpoint(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let result = fetch_kpi_row(&state.pool, &code).await;
-    
+
     Json(serde_json::json!({
         "code": code,
         "result": match result {

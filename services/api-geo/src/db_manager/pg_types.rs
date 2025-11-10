@@ -63,7 +63,6 @@ pub fn get_postgres_types() -> Vec<PostgresType> {
             requires_scale: false,
             description: "Nombre flottant 64 bits".to_string(),
         },
-        
         // String types
         PostgresType {
             name: "varchar".to_string(),
@@ -89,7 +88,6 @@ pub fn get_postgres_types() -> Vec<PostgresType> {
             requires_scale: false,
             description: "Chaîne de caractères illimitée".to_string(),
         },
-        
         // Date/Time types
         PostgresType {
             name: "date".to_string(),
@@ -123,7 +121,6 @@ pub fn get_postgres_types() -> Vec<PostgresType> {
             requires_scale: false,
             description: "Date et heure avec fuseau horaire".to_string(),
         },
-        
         // Boolean
         PostgresType {
             name: "boolean".to_string(),
@@ -133,7 +130,6 @@ pub fn get_postgres_types() -> Vec<PostgresType> {
             requires_scale: false,
             description: "Vrai/Faux".to_string(),
         },
-        
         // JSON
         PostgresType {
             name: "json".to_string(),
@@ -151,7 +147,6 @@ pub fn get_postgres_types() -> Vec<PostgresType> {
             requires_scale: false,
             description: "Données JSON binaire (indexable)".to_string(),
         },
-        
         // UUID
         PostgresType {
             name: "uuid".to_string(),
@@ -161,7 +156,6 @@ pub fn get_postgres_types() -> Vec<PostgresType> {
             requires_scale: false,
             description: "Identifiant unique universel".to_string(),
         },
-        
         // Geometry (PostGIS)
         PostgresType {
             name: "geometry(Point, 4326)".to_string(),
@@ -211,7 +205,6 @@ pub fn get_postgres_types() -> Vec<PostgresType> {
             requires_scale: false,
             description: "Multi-polygones géométriques (WGS84)".to_string(),
         },
-        
         // Arrays
         PostgresType {
             name: "text[]".to_string(),

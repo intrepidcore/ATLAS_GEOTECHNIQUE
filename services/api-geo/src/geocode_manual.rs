@@ -1,13 +1,13 @@
 // Module pour le géocodage manuel (Géocodage Amélioré)
+use crate::state::AppState;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     Json,
 };
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use sqlx::FromRow;
-use crate::state::AppState;
+use uuid::Uuid;
 
 #[derive(Debug, FromRow, Serialize)]
 pub struct SondageWithoutGeometry {
@@ -43,7 +43,7 @@ pub async fn list_without_geometry(
     let pool = &state.pool;
     let limit = params.limit.unwrap_or(50).min(200);
     let offset = params.offset.unwrap_or(0);
-    
+
     let rows = sqlx::query_as::<_, SondageWithoutGeometry>(
         r#"
         SELECT 
@@ -57,7 +57,7 @@ pub async fn list_without_geometry(
           AND ($1::text IS NULL OR code ILIKE '%' || $1 || '%' OR adm3_name ILIKE '%' || $1 || '%')
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
-        "#
+        "#,
     )
     .bind(&params.search)
     .bind(limit)
@@ -65,7 +65,7 @@ pub async fn list_without_geometry(
     .fetch_all(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(rows))
 }
 
@@ -76,12 +76,16 @@ pub async fn update_geometry(
     Json(payload): Json<UpdateGeometryPayload>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     if payload.location_mode == "exact" {
         // Mode exact: lon/lat requis
-        let lon = payload.lon.ok_or((StatusCode::BAD_REQUEST, "lon required".to_string()))?;
-        let lat = payload.lat.ok_or((StatusCode::BAD_REQUEST, "lat required".to_string()))?;
-        
+        let lon = payload
+            .lon
+            .ok_or((StatusCode::BAD_REQUEST, "lon required".to_string()))?;
+        let lat = payload
+            .lat
+            .ok_or((StatusCode::BAD_REQUEST, "lat required".to_string()))?;
+
         sqlx::query(
             r#"
             UPDATE sondages
@@ -90,7 +94,7 @@ pub async fn update_geometry(
                 is_geocoded = true,
                 updated_at = NOW()
             WHERE id = $3
-            "#
+            "#,
         )
         .bind(lon)
         .bind(lat)
@@ -98,11 +102,12 @@ pub async fn update_geometry(
         .execute(pool)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-        
     } else if payload.location_mode == "adm" {
         // Mode ADM: adm3_id requis
-        let adm3_id = payload.adm3_id.ok_or((StatusCode::BAD_REQUEST, "adm3_id required".to_string()))?;
-        
+        let adm3_id = payload
+            .adm3_id
+            .ok_or((StatusCode::BAD_REQUEST, "adm3_id required".to_string()))?;
+
         sqlx::query(
             r#"
             UPDATE sondages s
@@ -111,7 +116,7 @@ pub async fn update_geometry(
                 is_geocoded = true,
                 updated_at = NOW()
             WHERE s.id = $2
-            "#
+            "#,
         )
         .bind(adm3_id)
         .bind(id)
@@ -121,7 +126,7 @@ pub async fn update_geometry(
     } else {
         return Err((StatusCode::BAD_REQUEST, "Invalid location_mode".to_string()));
     }
-    
+
     Ok(StatusCode::OK)
 }
 
@@ -137,26 +142,26 @@ pub async fn get_manual_stats(
     State(state): State<AppState>,
 ) -> Result<Json<ManualGeocodeStats>, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     let (without_geom, geocoded): (i64, i64) = sqlx::query_as(
         r#"
         SELECT 
             COUNT(*) FILTER (WHERE geom IS NULL AND adm3_id IS NULL) as without_geom,
             COUNT(*) FILTER (WHERE geom IS NOT NULL OR adm3_id IS NOT NULL) as geocoded
         FROM sondages
-        "#
+        "#,
     )
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     let total = without_geom + geocoded;
     let percent = if total > 0 {
         (geocoded as f64 / total as f64) * 100.0
     } else {
         0.0
     };
-    
+
     Ok(Json(ManualGeocodeStats {
         total_without_geom: without_geom,
         total_geocoded: geocoded,

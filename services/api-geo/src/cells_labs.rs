@@ -1,4 +1,6 @@
 // Module pour les données de laboratoire par maille
+use crate::cells_kpi::fetch_kpi_row;
+use crate::state::AppState;
 use axum::{
     extract::{Path, State},
     response::IntoResponse,
@@ -6,8 +8,6 @@ use axum::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
-use crate::state::AppState;
-use crate::cells_kpi::fetch_kpi_row;
 
 // ============================================================================
 // Types
@@ -140,28 +140,28 @@ pub async fn get_cell_labs(
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Physiques {
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub densite_absolue_gcm3: Option<f64>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub teneur_eau_pct: Option<f64>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub source: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct ClassifItem { 
-    pub class: String, 
-    #[serde(skip_serializing_if="Option::is_none")] 
-    pub reason: Option<String> 
+pub struct ClassifItem {
+    pub class: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Classif {
-    #[serde(skip_serializing_if="Option::is_none")] 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub aashto: Option<Vec<ClassifItem>>,
-    #[serde(skip_serializing_if="Option::is_none")] 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub uscs: Option<Vec<ClassifItem>>,
-    #[serde(skip_serializing_if="Option::is_none")] 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtr: Option<Vec<ClassifItem>>,
 }
 
@@ -199,12 +199,12 @@ pub struct SampleComplete {
     pub depth_m: f64,
     pub atterberg: Option<serde_json::Value>,
     pub vbs: Option<serde_json::Value>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub physiques: Option<Physiques>,
     pub granulo: Option<serde_json::Value>,
     pub proctor: Option<serde_json::Value>,
     pub swelling: Option<serde_json::Value>,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub classif: Option<Classif>,
 }
 
@@ -217,7 +217,7 @@ pub struct SurveyInfo {
     pub adm3_code: Option<String>,
     pub samples: i64,
     pub tests: i64,
-    #[serde(skip_serializing_if="Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub badge: Option<String>,
 }
 
@@ -240,16 +240,14 @@ pub async fn get_cell_complete(
                 depth_max_m: r.depth_max_m,
                 updated_at: Some(chrono::Utc::now().to_rfc3339()),
             }
-        },
-        Ok(None) => {
-            CompleteKpi {
-                n_sondages: 0,
-                n_echantillons: 0,
-                n_essais: 0,
-                pct_spread: 0.0,
-                depth_max_m: None,
-                updated_at: Some(chrono::Utc::now().to_rfc3339()),
-            }
+        }
+        Ok(None) => CompleteKpi {
+            n_sondages: 0,
+            n_echantillons: 0,
+            n_essais: 0,
+            pct_spread: 0.0,
+            depth_max_m: None,
+            updated_at: Some(chrono::Utc::now().to_rfc3339()),
         },
         Err(e) => {
             eprintln!("[ERROR] KPI v2 query failed for code={}: {:?}", code, e);
@@ -261,9 +259,9 @@ pub async fn get_cell_complete(
                 depth_max_m: None,
                 updated_at: Some(chrono::Utc::now().to_rfc3339()),
             }
-        },
+        }
     };
-    
+
     // 2) Overview - utilise echantillons + essais_atterberg
     let atterberg = sqlx::query_as::<_, AtterbergPoint>(
         r#"
@@ -333,26 +331,31 @@ pub async fn get_cell_complete(
     .fetch_all(pool)
     .await
     .unwrap_or_default();
-    
-    let surveys: Vec<SurveyInfo> = survey_rows.into_iter().map(|row| {
-        let mode: String = row.try_get("mode").unwrap_or_else(|_| "unknown".to_string());
-        let badge = if mode == "adm_random_cell" { 
-            Some("ADM random cell".to_string()) 
-        } else { 
-            None 
-        };
-        
-        SurveyInfo {
-            id: row.try_get("id").unwrap(),
-            code_site: row.try_get("code_site").ok(),
-            mode,
-            date: None,
-            adm3_code: None,
-            samples: row.try_get("samples").unwrap_or(0),
-            tests: row.try_get("tests").unwrap_or(0),
-            badge,
-        }
-    }).collect();
+
+    let surveys: Vec<SurveyInfo> = survey_rows
+        .into_iter()
+        .map(|row| {
+            let mode: String = row
+                .try_get("mode")
+                .unwrap_or_else(|_| "unknown".to_string());
+            let badge = if mode == "adm_random_cell" {
+                Some("ADM random cell".to_string())
+            } else {
+                None
+            };
+
+            SurveyInfo {
+                id: row.try_get("id").unwrap(),
+                code_site: row.try_get("code_site").ok(),
+                mode,
+                date: None,
+                adm3_code: None,
+                samples: row.try_get("samples").unwrap_or(0),
+                tests: row.try_get("tests").unwrap_or(0),
+                badge,
+            }
+        })
+        .collect();
 
     // 5) Sondages sources (si spread-only)
     let source_surveys = if kpi.pct_spread > 99.0 && !surveys.is_empty() {

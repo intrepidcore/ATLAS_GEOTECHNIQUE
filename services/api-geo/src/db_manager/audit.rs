@@ -11,30 +11,30 @@ pub async fn get_audit_log(
 ) -> Result<Vec<AuditLog>, sqlx::Error> {
     let limit = query.limit.unwrap_or(100).min(1000);
     let offset = query.offset.unwrap_or(0);
-    
+
     let mut where_clauses = vec![
         format!("schema_name = '{}'", schema.replace("'", "''")),
         format!("table_name = '{}'", table.replace("'", "''")),
     ];
-    
+
     if let Some(operation) = &query.operation {
         where_clauses.push(format!("operation = '{}'", operation.replace("'", "''")));
     }
-    
+
     if let Some(from_date) = &query.from_date {
         where_clauses.push(format!("created_at >= '{}'", from_date.to_rfc3339()));
     }
-    
+
     if let Some(to_date) = &query.to_date {
         where_clauses.push(format!("created_at <= '{}'", to_date.to_rfc3339()));
     }
-    
+
     let where_clause = if where_clauses.is_empty() {
         String::new()
     } else {
         format!("WHERE {}", where_clauses.join(" AND "))
     };
-    
+
     let sql = format!(
         r#"
         SELECT 
@@ -55,9 +55,9 @@ pub async fn get_audit_log(
         "#,
         where_clause, limit, offset
     );
-    
+
     let rows = sqlx::query(&sql).fetch_all(pool).await?;
-    
+
     let mut logs = Vec::new();
     for row in rows {
         logs.push(AuditLog {
@@ -73,7 +73,7 @@ pub async fn get_audit_log(
             metadata: row.try_get("metadata").ok(),
         });
     }
-    
+
     Ok(logs)
 }
 
@@ -90,7 +90,7 @@ pub async fn create_audit_entry(
     metadata: Option<serde_json::Value>,
 ) -> Result<String, sqlx::Error> {
     let id = uuid::Uuid::new_v4().to_string();
-    
+
     sqlx::query(
         r#"
         INSERT INTO atlas.audit_log 
@@ -109,7 +109,7 @@ pub async fn create_audit_entry(
     .bind(metadata)
     .execute(pool)
     .await?;
-    
+
     Ok(id)
 }
 
@@ -133,22 +133,25 @@ pub async fn get_audit_stats(
         schema.replace("'", "''"),
         table.replace("'", "''")
     );
-    
+
     let rows = sqlx::query(&sql).fetch_all(pool).await?;
-    
+
     let mut stats = serde_json::Map::new();
     for row in rows {
         let operation: String = row.try_get("operation")?;
         let count: i64 = row.try_get("count")?;
         let total_rows: i64 = row.try_get("total_rows_affected")?;
         let last_op: Option<chrono::DateTime<chrono::Utc>> = row.try_get("last_operation").ok();
-        
-        stats.insert(operation, serde_json::json!({
-            "count": count,
-            "total_rows_affected": total_rows,
-            "last_operation": last_op
-        }));
+
+        stats.insert(
+            operation,
+            serde_json::json!({
+                "count": count,
+                "total_rows_affected": total_rows,
+                "last_operation": last_op
+            }),
+        );
     }
-    
+
     Ok(serde_json::Value::Object(stats))
 }
