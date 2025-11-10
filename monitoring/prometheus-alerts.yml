@@ -1,0 +1,93 @@
+groups:
+  - name: atlas_staging
+    interval: 30s
+    rules:
+      - alert: StagingLockExpiringSoon
+        expr: staging_locks_expiring_soon > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Staging lock expiring soon"
+          description: "{{ $value }} staging locks will expire in less than 5 minutes"
+
+      - alert: StagingLockStuck
+        expr: staging_lock_duration_seconds > 3600
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Staging lock stuck for over 1 hour"
+          description: "Table {{ $labels.table }} has been locked for {{ $value }} seconds"
+
+      - alert: HighCommitFailureRate
+        expr: rate(staging_commits_failed_total[5m]) / rate(staging_commits_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High staging commit failure rate"
+          description: "{{ $value | humanizePercentage }} of commits are failing"
+
+      - alert: BackupFailed
+        expr: increase(backup_operations_failed_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup operation failed"
+          description: "{{ $value }} backup operations failed in the last 5 minutes"
+
+      - alert: BackupSizeGrowing
+        expr: rate(backup_size_bytes[1h]) > 1e9
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Backup size growing rapidly"
+          description: "Backup size growing at {{ $value | humanize }}B/s"
+
+      - alert: HighDryRunConflicts
+        expr: rate(dryrun_conflicts_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High number of dry-run conflicts"
+          description: "{{ $value }} conflicts detected per second"
+
+      - alert: StagingOperationSlow
+        expr: histogram_quantile(0.95, rate(staging_operation_duration_seconds_bucket[5m])) > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Staging operations are slow"
+          description: "95th percentile operation duration is {{ $value }}s"
+
+      - alert: APIHighErrorRate
+        expr: rate(http_requests_failed_total[5m]) / rate(http_requests_total[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High API error rate"
+          description: "{{ $value | humanizePercentage }} of API requests are failing"
+
+      - alert: DatabaseConnectionPoolExhausted
+        expr: db_connection_pool_active / db_connection_pool_max > 0.9
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "{{ $value | humanizePercentage }} of connection pool in use"
+
+      - alert: TooManyActiveStagings
+        expr: count(staging_active_by_table) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Too many active staging environments"
+          description: "{{ $value }} tables currently have active staging"

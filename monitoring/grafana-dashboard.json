@@ -1,0 +1,143 @@
+{
+  "dashboard": {
+    "title": "Atlas - Database Manager Monitoring",
+    "tags": ["atlas", "database", "staging"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Staging Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(staging_operations_total[5m])",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 }
+      },
+      {
+        "id": 2,
+        "title": "Active Locks",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "staging_locks_active"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 }
+      },
+      {
+        "id": 3,
+        "title": "Lock Expiration Soon",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "staging_locks_expiring_soon"
+          }
+        ],
+        "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 }
+      },
+      {
+        "id": 4,
+        "title": "Commit Success Rate",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "rate(staging_commits_success_total[5m]) / rate(staging_commits_total[5m])"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 4, "w": 12, "h": 4 }
+      },
+      {
+        "id": 5,
+        "title": "Backup Operations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(backup_operations_total[5m])",
+            "legendFormat": "{{status}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 }
+      },
+      {
+        "id": 6,
+        "title": "Backup Size",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "backup_size_bytes",
+            "legendFormat": "{{table}}"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 }
+      },
+      {
+        "id": 7,
+        "title": "Dry-run Conflicts Detected",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(dryrun_conflicts_total[5m])",
+            "legendFormat": "{{conflict_type}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 16, "w": 12, "h": 8 }
+      },
+      {
+        "id": 8,
+        "title": "Operation Duration (p95)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(staging_operation_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{operation}}"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 16, "w": 12, "h": 8 }
+      },
+      {
+        "id": 9,
+        "title": "Tables Under Staging",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "staging_active_by_table",
+            "format": "table"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 24, "w": 24, "h": 8 }
+      },
+      {
+        "id": 10,
+        "title": "Error Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(staging_errors_total[5m])",
+            "legendFormat": "{{error_type}}"
+          }
+        ],
+        "gridPos": { "x": 0, "y": 32, "w": 12, "h": 8 }
+      },
+      {
+        "id": 11,
+        "title": "API Response Time",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "{{endpoint}}"
+          }
+        ],
+        "gridPos": { "x": 12, "y": 32, "w": 12, "h": 8 }
+      }
+    ],
+    "refresh": "30s",
+    "time": {
+      "from": "now-1h",
+      "to": "now"
+    }
+  }
+}

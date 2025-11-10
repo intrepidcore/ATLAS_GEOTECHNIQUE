@@ -6,7 +6,8 @@ import { FieldCalculator } from '@/components/FieldCalculator'
 import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
-import { Database, Calculator, Upload, Table2, GitCompare, Loader2 } from 'lucide-react'
+import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity } from 'lucide-react'
+import { RBACManager } from '@/components/RBACManager'
 import { tablesApi, stagingApi, type Table, type Column } from '@/services/api'
 
 function App() {
@@ -243,6 +244,36 @@ function App() {
                   Ouvrir
                 </Button>
               </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <Shield className="h-12 w-12 text-orange-600 mb-4" />
+                <h3 className="font-semibold mb-2">RBAC - Permissions</h3>
+                <p className="text-sm text-slate-500 mb-4">
+                  Gérer les utilisateurs, rôles et permissions
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setActiveModal('rbac')}
+                >
+                  Ouvrir
+                </Button>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-6">
+                <Activity className="h-12 w-12 text-red-600 mb-4" />
+                <h3 className="font-semibold mb-2">Monitoring</h3>
+                <p className="text-sm text-slate-500 mb-4">
+                  Dashboard Grafana et métriques Prometheus
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => window.open('http://localhost:3000/d/atlas', '_blank')}
+                >
+                  Ouvrir Grafana
+                </Button>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
@@ -279,6 +310,13 @@ function App() {
           data={tableData}
           columns={columns}
           onImport={handleImport}
+        />
+      )}
+
+      {activeModal === 'rbac' && (
+        <RBACManager
+          open={true}
+          onClose={() => setActiveModal(null)}
         />
       )}
     </div>
