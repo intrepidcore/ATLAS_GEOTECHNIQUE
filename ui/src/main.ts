@@ -14,6 +14,7 @@ import { initAccordions, initDirectButtons, initKeyboardShortcuts, initFilterLis
 import { renderPhysiques, renderClassif, renderSurveys, type CellCompleteOut } from './cell-complete-types'
 import { CONFIG } from './config'
 import { SondagesModal } from './modal/sondages-modal'
+import { openDbManager } from './db-manager'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -3492,6 +3493,23 @@ function initSondagesModal() {
   console.log('[v2.5.0] ✅ Modal Sondages initialisée')
 }
 
+/* =========================
+   v2.6.0 - DB Manager
+   ========================= */
+
+function initDbManager() {
+  const btn = document.getElementById('dbManagerBtn')
+  if (btn) {
+    btn.addEventListener('click', () => {
+      console.log('[v2.6.0] Ouverture Gestionnaire BDD')
+      openDbManager()
+    })
+    console.log('[v2.6.0] ✅ Gestionnaire BDD initialisé')
+  } else {
+    console.warn('[v2.6.0] Bouton #dbManagerBtn introuvable')
+  }
+}
+
 // Garantit l'ordre : d'abord boot, ensuite listeners
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -3502,6 +3520,8 @@ if (document.readyState === 'loading') {
     initRightPanel()
     // v2.5.0: Modal Sondages
     initSondagesModal()
+    // v2.6.0: DB Manager
+    initDbManager()
   }, { once: true })
 } else {
   updateAppVersion()
@@ -3511,4 +3531,6 @@ if (document.readyState === 'loading') {
   initRightPanel()
   // v2.5.0: Modal Sondages
   initSondagesModal()
+  // v2.6.0: DB Manager
+  initDbManager()
 }
