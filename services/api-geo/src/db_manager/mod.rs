@@ -1,7 +1,6 @@
 // Module de gestion de base de données pour l'UI admin
 pub mod audit;
 pub mod backup;
-pub mod ddl;
 pub mod dryrun;
 pub mod field_calculator;
 pub mod import_export;
@@ -17,8 +16,9 @@ pub mod versioning;
 
 pub use audit::*;
 pub use backup::*;
-pub use ddl::*;
 pub use dryrun::*;
+pub use field_calculator::*;
+pub use import_export::*;
 pub use pagination::*;
 pub use pg_types::*;
 pub use rate_limit::*;
@@ -26,3 +26,4 @@ pub use schema::*;
 pub use staging::*;
 pub use table::*;
 pub use types::*;
+pub use versioning::*;

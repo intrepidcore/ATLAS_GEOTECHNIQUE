@@ -1,0 +1,785 @@
+   Compiling api-geo v0.1.0 (C:\PROJET_ATLAS_MASTER\atlas\services\api-geo)
+warning: unused imports: `Column` and `Row`
+ --> src\db_manager\versioning.rs:3:12
+  |
+3 | use sqlx::{Column, PgPool, Row};
+  |            ^^^^^^          ^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused variable: `cursor`
+   --> src\db_manager\pagination.rs:110:29
+    |
+110 |     let query = if let Some(cursor) = cursor_value {
+    |                             ^^^^^^ help: if this is intentional, prefix it with an underscore: `_cursor`
+    |
+    = note: `#[warn(unused_variables)]` on by default
+
+warning: unused variable: `table_ident`
+   --> src\db_manager\staging.rs:274:9
+    |
+274 |     let table_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
+    |         ^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_table_ident`
+
+warning: `api-geo` (lib) generated 3 warnings (run `cargo fix --lib -p api-geo` to apply 1 suggestion)
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+  --> tests\db_manager_tests.rs:34:30
+   |
+34 |         let staging_result = api_geo::db_manager::create_staging(&pool, "atlas", "communes").await;
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------- argument #4 of type `CreateStagingRequest` is missing
+   |
+note: function defined here
+  --> C:\PROJET_ATLAS_MASTER\atlas\services\api-geo\src\db_manager\staging.rs:8:14
+   |
+ 8 | pub async fn create_staging(
+   |              ^^^^^^^^^^^^^^
+help: provide the argument
+   |
+34 |         let staging_result = api_geo::db_manager::create_staging(&pool, "atlas", "communes", /* CreateStagingRequest */).await;
+   |                                                                                            ++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+  --> tests\db_manager_tests.rs:51:28
+   |
+51 |         let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "communes")
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------------- argument #4 of type `CreateStagingRequest` is missing
+   |
+note: function defined here
+  --> C:\PROJET_ATLAS_MASTER\atlas\services\api-geo\src\db_manager\staging.rs:8:14
+   |
+ 8 | pub async fn create_staging(
+   |              ^^^^^^^^^^^^^^
+help: provide the argument
+   |
+51 |         let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "communes", /* CreateStagingRequest */)
+   |                                                                                          ++++++++++++++++++++++++++++
+
+error[E0063]: missing field `character_length` in initializer of `AddColumnRequest`
+   --> tests\db_manager_tests.rs:110:23
+    |
+110 |         let request = api_geo::db_manager::AddColumnRequest {
+    |                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ missing `character_length`
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> tests\db_manager_tests.rs:153:28
+    |
+153 |         let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_commit")
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^--------------------------------------- argument #4 of type `CreateStagingRequest` is missing
+    |
+note: function defined here
+   --> C:\PROJET_ATLAS_MASTER\atlas\services\api-geo\src\db_manager\staging.rs:8:14
+    |
+  8 | pub async fn create_staging(
+    |              ^^^^^^^^^^^^^^
+help: provide the argument
+    |
+153 |         let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_commit", /* CreateStagingRequest */)
+    |                                                                                                     ++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> tests\db_manager_tests.rs:219:28
+    |
+219 |         let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_rollback")
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^----------------------------------------- argument #4 of type `CreateStagingRequest` is missing
+    |
+note: function defined here
+   --> C:\PROJET_ATLAS_MASTER\atlas\services\api-geo\src\db_manager\staging.rs:8:14
+    |
+  8 | pub async fn create_staging(
+    |              ^^^^^^^^^^^^^^
+help: provide the argument
+    |
+219 |         let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_rollback", /* CreateStagingRequest */)
+    |                                                                                                       ++++++++++++++++++++++++++++
+
+error[E0061]: this function takes 4 arguments but 3 arguments were supplied
+   --> tests\db_manager_tests.rs:275:28
+    |
+275 |         let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_validation")
+    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^------------------------------------------- argument #4 of type `CreateStagingRequest` is missing
+    |
+note: function defined here
+   --> C:\PROJET_ATLAS_MASTER\atlas\services\api-geo\src\db_manager\staging.rs:8:14
+    |
+  8 | pub async fn create_staging(
+    |              ^^^^^^^^^^^^^^
+help: provide the argument
+    |
+275 |         let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_validation", /* CreateStagingRequest */)
+    |                                                                                                         ++++++++++++++++++++++++++++
+
+Some errors have detailed explanations: E0061, E0063.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `api-geo` (test "db_manager_tests") due to 6 previous errors
+warning: build failed, waiting for other jobs to finish...
+warning: unused import: `audit::*`
+  --> src\db_manager\mod.rs:17:9
+   |
+17 | pub use audit::*;
+   |         ^^^^^^^^
+
+warning: unused import: `field_calculator::*`
+  --> src\db_manager\mod.rs:20:9
+   |
+20 | pub use field_calculator::*;
+   |         ^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `import_export::*`
+  --> src\db_manager\mod.rs:21:9
+   |
+21 | pub use import_export::*;
+   |         ^^^^^^^^^^^^^^^^
+
+warning: unused import: `pagination::*`
+  --> src\db_manager\mod.rs:22:9
+   |
+22 | pub use pagination::*;
+   |         ^^^^^^^^^^^^^
+
+warning: unused import: `rate_limit::*`
+  --> src\db_manager\mod.rs:24:9
+   |
+24 | pub use rate_limit::*;
+   |         ^^^^^^^^^^^^^
+
+warning: unused import: `schema::*`
+  --> src\db_manager\mod.rs:25:9
+   |
+25 | pub use schema::*;
+   |         ^^^^^^^^^
+
+warning: unused import: `staging::*`
+  --> src\db_manager\mod.rs:26:9
+   |
+26 | pub use staging::*;
+   |         ^^^^^^^^^^
+
+warning: unused import: `table::*`
+  --> src\db_manager\mod.rs:27:9
+   |
+27 | pub use table::*;
+   |         ^^^^^^^^
+
+warning: unused import: `versioning::*`
+  --> src\db_manager\mod.rs:29:9
+   |
+29 | pub use versioning::*;
+   |         ^^^^^^^^^^^^^
+
+warning: unused variable: `pool`
+  --> src\import_wizard\import.rs:10:5
+   |
+10 |     pool: &PgPool,
+   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_pool`
+
+warning: unused variable: `batch_id`
+  --> src\import_wizard\import.rs:11:5
+   |
+11 |     batch_id: &str,
+   |     ^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_batch_id`
+
+warning: unused variable: `rows`
+  --> src\import_wizard\import.rs:12:5
+   |
+12 |     rows: Vec<HashMap<String, serde_json::Value>>,
+   |     ^^^^ help: if this is intentional, prefix it with an underscore: `_rows`
+
+warning: unused variable: `mapping`
+  --> src\import_wizard\import.rs:13:5
+   |
+13 |     mapping: &HashMap<String, String>,
+   |     ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_mapping`
+
+warning: unused variable: `conflict_policy`
+  --> src\import_wizard\import.rs:14:5
+   |
+14 |     conflict_policy: &ConflictPolicy,
+   |     ^^^^^^^^^^^^^^^ help: if this is intentional, prefix it with an underscore: `_conflict_policy`
+
+warning: unused variable: `id`
+  --> src\import_wizard\routes_axum.rs:60:10
+   |
+60 |     Path(id): Path<Uuid>,
+   |          ^^ help: if this is intentional, prefix it with an underscore: `_id`
+
+warning: unused variable: `req`
+  --> src\import_wizard\routes_axum.rs:61:10
+   |
+61 |     Json(req): Json<PreviewRequest>,
+   |          ^^^ help: if this is intentional, prefix it with an underscore: `_req`
+
+warning: unused variable: `req`
+  --> src\import_wizard\routes_axum.rs:82:10
+   |
+82 |     Json(req): Json<CommitRequest>,
+   |          ^^^ help: if this is intentional, prefix it with an underscore: `_req`
+
+warning: value assigned to `param_index` is never read
+  --> src\thematic\routes.rs:96:9
+   |
+96 |         param_index += 1;
+   |         ^^^^^^^^^^^
+   |
+   = help: maybe it is overwritten before being read?
+   = note: `#[warn(unused_assignments)]` on by default
+
+warning: unused import: `Row`
+  --> src\surveys_adm.rs:13:25
+   |
+13 | use sqlx::{types::Uuid, Row};
+   |                         ^^^
+
+warning: unused variable: `dms`
+  --> src\import_wizard\geometry.rs:26:18
+   |
+26 | pub fn parse_dms(dms: &str) -> Result<f64, String> {
+   |                  ^^^ help: if this is intentional, prefix it with an underscore: `_dms`
+
+warning: struct `FieldCalculatorRequest` is never constructed
+ --> src\db_manager\field_calculator.rs:6:12
+  |
+6 | pub struct FieldCalculatorRequest {
+  |            ^^^^^^^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(dead_code)]` on by default
+
+warning: struct `FieldCalculatorPreview` is never constructed
+  --> src\db_manager\field_calculator.rs:13:12
+   |
+13 | pub struct FieldCalculatorPreview {
+   |            ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `SampleRow` is never constructed
+  --> src\db_manager\field_calculator.rs:22:12
+   |
+22 | pub struct SampleRow {
+   |            ^^^^^^^^^
+
+warning: function `preview_field_calculation` is never used
+  --> src\db_manager\field_calculator.rs:29:14
+   |
+29 | pub async fn preview_field_calculation(
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `execute_field_calculation` is never used
+   --> src\db_manager\field_calculator.rs:110:14
+    |
+110 | pub async fn execute_field_calculation(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_expression` is never used
+   --> src\db_manager\field_calculator.rs:132:14
+    |
+132 | pub async fn validate_expression(
+    |              ^^^^^^^^^^^^^^^^^^^
+
+warning: struct `ExportRequest` is never constructed
+ --> src\db_manager\import_export.rs:6:12
+  |
+6 | pub struct ExportRequest {
+  |            ^^^^^^^^^^^^^
+
+warning: enum `ExportFormat` is never used
+  --> src\db_manager\import_export.rs:15:10
+   |
+15 | pub enum ExportFormat {
+   |          ^^^^^^^^^^^^
+
+warning: struct `ExportResult` is never constructed
+  --> src\db_manager\import_export.rs:22:12
+   |
+22 | pub struct ExportResult {
+   |            ^^^^^^^^^^^^
+
+warning: struct `ImportRequest` is never constructed
+  --> src\db_manager\import_export.rs:30:12
+   |
+30 | pub struct ImportRequest {
+   |            ^^^^^^^^^^^^^
+
+warning: enum `ImportFormat` is never used
+  --> src\db_manager\import_export.rs:39:10
+   |
+39 | pub enum ImportFormat {
+   |          ^^^^^^^^^^^^
+
+warning: struct `ColumnMapping` is never constructed
+  --> src\db_manager\import_export.rs:45:12
+   |
+45 | pub struct ColumnMapping {
+   |            ^^^^^^^^^^^^^
+
+warning: struct `ImportResult` is never constructed
+  --> src\db_manager\import_export.rs:52:12
+   |
+52 | pub struct ImportResult {
+   |            ^^^^^^^^^^^^
+
+warning: function `export_to_csv` is never used
+  --> src\db_manager\import_export.rs:60:14
+   |
+60 | pub async fn export_to_csv(
+   |              ^^^^^^^^^^^^^
+
+warning: function `export_to_geojson` is never used
+   --> src\db_manager\import_export.rs:108:14
+    |
+108 | pub async fn export_to_geojson(
+    |              ^^^^^^^^^^^^^^^^^
+
+warning: function `import_csv_to_staging` is never used
+   --> src\db_manager\import_export.rs:139:14
+    |
+139 | pub async fn import_csv_to_staging(
+    |              ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `execute_insert` is never used
+   --> src\db_manager\import_export.rs:229:10
+    |
+229 | async fn execute_insert(
+    |          ^^^^^^^^^^^^^^
+
+warning: function `import_geojson_to_staging` is never used
+   --> src\db_manager\import_export.rs:255:14
+    |
+255 | pub async fn import_geojson_to_staging(
+    |              ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: struct `PaginationParams` is never constructed
+ --> src\db_manager\pagination.rs:6:12
+  |
+6 | pub struct PaginationParams {
+  |            ^^^^^^^^^^^^^^^^
+
+warning: struct `PaginatedResponse` is never constructed
+  --> src\db_manager\pagination.rs:27:12
+   |
+27 | pub struct PaginatedResponse<T> {
+   |            ^^^^^^^^^^^^^^^^^
+
+warning: function `paginate_table` is never used
+  --> src\db_manager\pagination.rs:37:14
+   |
+37 | pub async fn paginate_table(
+   |              ^^^^^^^^^^^^^^
+
+warning: function `paginate_table_cursor` is never used
+   --> src\db_manager\pagination.rs:100:14
+    |
+100 | pub async fn paginate_table_cursor(
+    |              ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `stream_table_chunks` is never used
+   --> src\db_manager\pagination.rs:162:14
+    |
+162 | pub async fn stream_table_chunks(
+    |              ^^^^^^^^^^^^^^^^^^^
+
+warning: struct `RateLimiter` is never constructed
+ --> src\db_manager\rate_limit.rs:8:12
+  |
+8 | pub struct RateLimiter {
+  |            ^^^^^^^^^^^
+
+warning: associated items `new`, `check_rate_limit`, and `cleanup` are never used
+  --> src\db_manager\rate_limit.rs:15:12
+   |
+14 | impl RateLimiter {
+   | ---------------- associated items in this implementation
+15 |     pub fn new(max_requests: usize, window_secs: u64) -> Self {
+   |            ^^^
+...
+24 |     pub async fn check_rate_limit(&self, key: &str) -> bool {
+   |                  ^^^^^^^^^^^^^^^^
+...
+43 |     pub async fn cleanup(&self) {
+   |                  ^^^^^^^
+
+warning: function `default_rate_limiter` is never used
+  --> src\db_manager\rate_limit.rs:55:8
+   |
+55 | pub fn default_rate_limiter() -> RateLimiter {
+   |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `strict_rate_limiter` is never used
+  --> src\db_manager\rate_limit.rs:60:8
+   |
+60 | pub fn strict_rate_limiter() -> RateLimiter {
+   |        ^^^^^^^^^^^^^^^^^^^
+
+warning: fields `ui_label` and `ui_unit` are never read
+   --> src\db_manager\types.rs:224:9
+    |
+218 | pub struct AddColumnRequest {
+    |            ---------------- fields in this struct
+...
+224 |     pub ui_label: Option<String>,
+    |         ^^^^^^^^
+225 |     pub ui_unit: Option<String>,
+    |         ^^^^^^^
+    |
+    = note: `AddColumnRequest` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: struct `ReorderColumnsRequest` is never constructed
+   --> src\db_manager\types.rs:252:12
+    |
+252 | pub struct ReorderColumnsRequest {
+    |            ^^^^^^^^^^^^^^^^^^^^^
+
+warning: associated function `with_details` is never used
+   --> src\db_manager\types.rs:329:12
+    |
+320 | impl DbManagerError {
+    | ------------------- associated function in this implementation
+...
+329 |     pub fn with_details(error_type: &str, message: &str, details: serde_json::Value) -> Self {
+    |            ^^^^^^^^^^^^
+
+warning: struct `ChangeSet` is never constructed
+ --> src\db_manager\versioning.rs:7:12
+  |
+7 | pub struct ChangeSet {
+  |            ^^^^^^^^^
+
+warning: enum `ChangeOperation` is never used
+  --> src\db_manager\versioning.rs:19:10
+   |
+19 | pub enum ChangeOperation {
+   |          ^^^^^^^^^^^^^^^
+
+warning: struct `TableVersion` is never constructed
+  --> src\db_manager\versioning.rs:27:12
+   |
+27 | pub struct TableVersion {
+   |            ^^^^^^^^^^^^
+
+warning: function `create_changeset` is never used
+  --> src\db_manager\versioning.rs:37:14
+   |
+37 | pub async fn create_changeset(
+   |              ^^^^^^^^^^^^^^^^
+
+warning: function `get_changesets` is never used
+  --> src\db_manager\versioning.rs:64:14
+   |
+64 | pub async fn get_changesets(
+   |              ^^^^^^^^^^^^^^
+
+warning: function `undo_changeset` is never used
+   --> src\db_manager\versioning.rs:115:14
+    |
+115 | pub async fn undo_changeset(
+    |              ^^^^^^^^^^^^^^
+
+warning: function `create_table_version` is never used
+   --> src\db_manager\versioning.rs:211:14
+    |
+211 | pub async fn create_table_version(
+    |              ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `get_table_schema_json` is never used
+   --> src\db_manager\versioning.rs:245:10
+    |
+245 | async fn get_table_schema_json(
+    |          ^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `list_table_versions` is never used
+   --> src\db_manager\versioning.rs:277:14
+    |
+277 | pub async fn list_table_versions(
+    |              ^^^^^^^^^^^^^^^^^^^
+
+warning: field `is_unnormalized` is never read
+  --> src\geocoding.rs:23:9
+   |
+17 | pub struct GeocodeSuggestionRow {
+   |            -------------------- field in this struct
+...
+23 |     pub is_unnormalized: Option<bool>,
+   |         ^^^^^^^^^^^^^^^
+   |
+   = note: `GeocodeSuggestionRow` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: field `location_mode` is never read
+  --> src\geocoding.rs:84:9
+   |
+80 | pub struct AcceptSuggestionPayload {
+   |            ----------------------- field in this struct
+...
+84 |     pub location_mode: Option<String>,
+   |         ^^^^^^^^^^^^^
+   |
+   = note: `AcceptSuggestionPayload` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+
+warning: function `reproject` is never used
+ --> src\import_wizard\geometry.rs:6:8
+  |
+6 | pub fn reproject(lon: f64, lat: f64, crs_in: &str, crs_out: &str) -> Result<(f64, f64), String> {
+  |        ^^^^^^^^^
+
+warning: function `validate_bbox` is never used
+  --> src\import_wizard\geometry.rs:20:8
+   |
+20 | pub fn validate_bbox(lon: f64, lat: f64) -> bool {
+   |        ^^^^^^^^^^^^^
+
+warning: function `parse_dms` is never used
+  --> src\import_wizard\geometry.rs:26:8
+   |
+26 | pub fn parse_dms(dms: &str) -> Result<f64, String> {
+   |        ^^^^^^^^^
+
+warning: function `execute_import` is never used
+ --> src\import_wizard\import.rs:9:14
+  |
+9 | pub async fn execute_import(
+  |              ^^^^^^^^^^^^^^
+
+warning: struct `ImportStats` is never constructed
+  --> src\import_wizard\import.rs:28:12
+   |
+28 | pub struct ImportStats {
+   |            ^^^^^^^^^^^
+
+warning: function `infer_mapping` is never used
+ --> src\import_wizard\mapping.rs:6:8
+  |
+6 | pub fn infer_mapping(columns: &[String]) -> HashMap<String, String> {
+  |        ^^^^^^^^^^^^^
+
+warning: function `matches_pattern` is never used
+  --> src\import_wizard\mapping.rs:81:4
+   |
+81 | fn matches_pattern(value: &str, patterns: &[&str]) -> bool {
+   |    ^^^^^^^^^^^^^^^
+
+warning: constant `TOGO_BBOX` is never used
+   --> src\import_wizard\types.rs:129:11
+    |
+129 | pub const TOGO_BBOX: (f64, f64, f64, f64) = (-0.15, 6.10, 1.81, 11.14); // (min_lon, min_lat, max_lon, max_lat)
+    |           ^^^^^^^^^
+
+warning: struct `ProgressEvent` is never constructed
+   --> src\import_wizard\types.rs:241:12
+    |
+241 | pub struct ProgressEvent {
+    |            ^^^^^^^^^^^^^
+
+warning: struct `ProgressData` is never constructed
+   --> src\import_wizard\types.rs:247:12
+    |
+247 | pub struct ProgressData {
+    |            ^^^^^^^^^^^^
+
+warning: struct `Import` is never constructed
+   --> src\import_wizard\types.rs:280:12
+    |
+280 | pub struct Import {
+    |            ^^^^^^
+
+warning: struct `DetectedProperties` is never constructed
+ --> src\import_wizard\upload.rs:9:12
+  |
+9 | pub struct DetectedProperties {
+  |            ^^^^^^^^^^^^^^^^^^
+
+warning: function `save_temp_file` is never used
+  --> src\import_wizard\upload.rs:19:14
+   |
+19 | pub async fn save_temp_file(import_id: Uuid, data: &[u8]) -> Result<String, std::io::Error> {
+   |              ^^^^^^^^^^^^^^
+
+warning: function `detect_file_properties` is never used
+  --> src\import_wizard\upload.rs:29:14
+   |
+29 | pub async fn detect_file_properties(file_path: &str) -> Result<DetectedProperties, std::io::Error> {
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_import` is never used
+  --> src\import_wizard\validation.rs:10:14
+   |
+10 | pub async fn validate_import(
+   |              ^^^^^^^^^^^^^^^
+
+warning: function `save_errors` is never used
+  --> src\import_wizard\validation.rs:37:14
+   |
+37 | pub async fn save_errors(
+   |              ^^^^^^^^^^^
+
+warning: function `validate_atterberg` is never used
+  --> src\import_wizard\validation.rs:72:8
+   |
+72 | pub fn validate_atterberg(
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_coordinates` is never used
+   --> src\import_wizard\validation.rs:144:8
+    |
+144 | pub fn validate_coordinates(lon: f64, lat: f64) -> Vec<ValidationError> {
+    |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_vbs` is never used
+   --> src\import_wizard\validation.rs:179:8
+    |
+179 | pub fn validate_vbs(vbs: Option<f64>) -> Vec<ValidationError> {
+    |        ^^^^^^^^^^^^
+
+warning: methods `with_user`, `with_duration`, `with_request_id`, and `with_error` are never used
+  --> src\observability.rs:35:12
+   |
+19 | impl StructuredLog {
+   | ------------------ methods in this implementation
+...
+35 |     pub fn with_user(mut self, user: &str) -> Self {
+   |            ^^^^^^^^^
+...
+50 |     pub fn with_duration(mut self, duration: u128) -> Self {
+   |            ^^^^^^^^^^^^^
+...
+55 |     pub fn with_request_id(mut self, id: &str) -> Self {
+   |            ^^^^^^^^^^^^^^^
+...
+60 |     pub fn with_error(mut self, error: &str) -> Self {
+   |            ^^^^^^^^^^
+
+warning: struct `OperationTimer` is never constructed
+  --> src\observability.rs:78:12
+   |
+78 | pub struct OperationTimer {
+   |            ^^^^^^^^^^^^^^
+
+warning: associated items `new`, `finish`, `finish_with_rows`, and `finish_with_error` are never used
+   --> src\observability.rs:84:12
+    |
+ 83 | impl OperationTimer {
+    | ------------------- associated items in this implementation
+ 84 |     pub fn new(action: &str) -> Self {
+    |            ^^^
+...
+ 91 |     pub fn finish(self) -> u128 {
+    |            ^^^^^^
+...
+ 99 |     pub fn finish_with_rows(self, rows: i64) -> u128 {
+    |            ^^^^^^^^^^^^^^^^
+...
+108 |     pub fn finish_with_error(self, error: &str) -> u128 {
+    |            ^^^^^^^^^^^^^^^^^
+
+warning: enum `Role` is never used
+ --> src\rbac.rs:6:10
+  |
+6 | pub enum Role {
+  |          ^^^^
+
+warning: struct `User` is never constructed
+  --> src\rbac.rs:13:12
+   |
+13 | pub struct User {
+   |            ^^^^
+
+warning: methods `can_read`, `can_write`, `can_ddl`, `can_backup`, and `can_restore` are never used
+  --> src\rbac.rs:20:12
+   |
+19 | impl User {
+   | --------- methods in this implementation
+20 |     pub fn can_read(&self) -> bool {
+   |            ^^^^^^^^
+...
+24 |     pub fn can_write(&self) -> bool {
+   |            ^^^^^^^^^
+...
+28 |     pub fn can_ddl(&self) -> bool {
+   |            ^^^^^^^
+...
+32 |     pub fn can_backup(&self) -> bool {
+   |            ^^^^^^^^^^
+...
+36 |     pub fn can_restore(&self) -> bool {
+   |            ^^^^^^^^^^^
+
+warning: function `extract_user_from_request` is never used
+  --> src\rbac.rs:42:8
+   |
+42 | pub fn extract_user_from_request(req: &Request) -> Option<User> {
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `require_read_permission` is never used
+  --> src\rbac.rs:74:14
+   |
+74 | pub async fn require_read_permission(req: Request, next: Next) -> Result<Response, StatusCode> {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `require_write_permission` is never used
+  --> src\rbac.rs:85:14
+   |
+85 | pub async fn require_write_permission(req: Request, next: Next) -> Result<Response, StatusCode> {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `require_admin_permission` is never used
+  --> src\rbac.rs:96:14
+   |
+96 | pub async fn require_admin_permission(req: Request, next: Next) -> Result<Response, StatusCode> {
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `log_user_middleware` is never used
+   --> src\rbac.rs:107:14
+    |
+107 | pub async fn log_user_middleware(req: Request, next: Next) -> Response {
+    |              ^^^^^^^^^^^^^^^^^^^
+
+warning: enum `SanitizationError` is never used
+  --> src\sql_sanitizer.rs:36:10
+   |
+36 | pub enum SanitizationError {
+   |          ^^^^^^^^^^^^^^^^^
+
+warning: function `validate_identifier` is never used
+  --> src\sql_sanitizer.rs:59:8
+   |
+59 | pub fn validate_identifier(identifier: &str) -> Result<String, SanitizationError> {
+   |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `validate_data_type` is never used
+  --> src\sql_sanitizer.rs:82:8
+   |
+82 | pub fn validate_data_type(data_type: &str) -> Result<String, SanitizationError> {
+   |        ^^^^^^^^^^^^^^^^^^
+
+warning: function `escape_string_value` is never used
+  --> src\sql_sanitizer.rs:94:8
+   |
+94 | pub fn escape_string_value(value: &str) -> String {
+   |        ^^^^^^^^^^^^^^^^^^^
+
+warning: function `quote_identifier` is never used
+   --> src\sql_sanitizer.rs:105:8
+    |
+105 | pub fn quote_identifier(identifier: &str) -> Result<String, SanitizationError> {
+    |        ^^^^^^^^^^^^^^^^
+
+warning: function `validate_identifiers` is never used
+   --> src\sql_sanitizer.rs:112:8
+    |
+112 | pub fn validate_identifiers(identifiers: &[String]) -> Result<Vec<String>, SanitizationError> {
+    |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `detect_sql_injection` is never used
+   --> src\sql_sanitizer.rs:120:8
+    |
+120 | pub fn detect_sql_injection(input: &str) -> bool {
+    |        ^^^^^^^^^^^^^^^^^^^^
+
+warning: function `list_ungeocode_surveys` is never used
+   --> src\surveys_adm.rs:654:14
+    |
+654 | pub async fn list_ungeocode_surveys(State(state): State<AppState>) -> impl IntoResponse {
+    |              ^^^^^^^^^^^^^^^^^^^^^^
+
+warning: function `list_adm3` is never used
+   --> src\surveys_adm.rs:707:14
+    |
+707 | pub async fn list_adm3(State(state): State<AppState>) -> impl IntoResponse {
+    |              ^^^^^^^^^
+
+warning: `api-geo` (bin "api-geo") generated 103 warnings (3 duplicates) (run `cargo fix --bin "api-geo"` to apply 9 suggestions)

@@ -1,6 +1,6 @@
 // Field Calculator - Transformations massives via expressions SQL
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldCalculatorRequest {

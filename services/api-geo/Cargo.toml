@@ -3,6 +3,10 @@ name = "api-geo"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+name = "api_geo"
+path = "src/lib.rs"
+
 [dependencies]
 axum = { version = "0.7", features = ["macros", "multipart"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }

@@ -1,6 +1,6 @@
 // Module de versioning et undo/redo
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{Column, PgPool, Row};
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -72,7 +72,7 @@ pub async fn create_staging(
     .await?;
 
     Ok(StagingInfo {
-        staging_id,
+        staging_id: staging_table,  // Retourner le nom de table complet sans tirets
         table_name: table.to_string(),
         schema_name: schema.to_string(),
         created_at: chrono::Utc::now(),

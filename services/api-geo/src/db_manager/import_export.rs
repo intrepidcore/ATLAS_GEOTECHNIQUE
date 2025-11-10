@@ -1,6 +1,6 @@
 // Module Import/Export pour CSV et GeoJSON
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{Column, PgPool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExportRequest {

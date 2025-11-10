@@ -1,7 +1,7 @@
 // Dry-run pour les opérations DDL (preview sans exécution)
 use super::types::*;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use sqlx::{Column, PgPool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DryRunResult {
