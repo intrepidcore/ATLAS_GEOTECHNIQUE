@@ -5,6 +5,7 @@ pub mod table;
 pub mod staging;
 pub mod audit;
 pub mod backup;
+pub mod pg_types;
 pub mod routes;
 
 pub use types::*;
@@ -13,3 +14,4 @@ pub use table::*;
 pub use staging::*;
 pub use audit::*;
 pub use backup::*;
+pub use pg_types::*;

@@ -13,6 +13,11 @@ use std::collections::HashMap;
 // Schema & Table Info Routes
 // ============================================================================
 
+/// GET /db/types - Récupère la liste des types PostgreSQL disponibles
+pub async fn get_postgres_types_handler() -> Json<Vec<PostgresType>> {
+    Json(pg_types::get_postgres_types())
+}
+
 /// GET /db/schema - Récupère la structure complète de la base
 pub async fn get_schema_handler(
     State(state): State<AppState>,

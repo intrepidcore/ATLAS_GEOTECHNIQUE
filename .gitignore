@@ -1,1 +1,36 @@
+# Build artifacts
+target/
+services/api-geo/target/
+ui/node_modules/
+ui/dist/
 
+# SQLx offline data (on garde pour offline mode)
+# .sqlx/
+
+# Database data - ON GARDE pour pouvoir restore
+# data/db/
+
+# Environment
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Temporary files
+*.tmp
+*.temp

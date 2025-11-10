@@ -146,6 +146,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/sondages/:id/geometry", patch(sondages::update_sondage_geometry))
         .route("/sondages/:id/adm3-candidates", get(sondages::get_adm3_candidates))
         // Database Manager endpoints
+        .route("/db/types", get(db_manager::routes::get_postgres_types_handler))
         .route("/db/schema", get(db_manager::routes::get_schema_handler))
         .route("/db/table/:schema/:table", get(db_manager::routes::get_table_info_handler))
         .route("/db/table/:schema/:table/data", get(db_manager::routes::get_table_data_handler))

@@ -12,7 +12,22 @@ const BASE_URL = '/db'
 
 export async function getSchema(): Promise<DatabaseSchema> {
   const response = await fetch(`${API_GEO}${BASE_URL}/schema`)
-  return response.json()
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+  }
+  
+  const text = await response.text()
+  if (!text || text.trim() === '') {
+    throw new Error('Empty response from server')
+  }
+  
+  try {
+    return JSON.parse(text)
+  } catch (err) {
+    console.error('Failed to parse JSON:', text)
+    throw new Error('Invalid JSON response from server')
+  }
 }
 
 export async function getTableData(
@@ -29,5 +44,20 @@ export async function getTableData(
   
   const url = `${API_GEO}${BASE_URL}/table/${schema}/${table}/data${params.toString() ? '?' + params.toString() : ''}`
   const response = await fetch(url)
-  return response.json()
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+  }
+  
+  const text = await response.text()
+  if (!text || text.trim() === '') {
+    throw new Error('Empty response from server')
+  }
+  
+  try {
+    return JSON.parse(text)
+  } catch (err) {
+    console.error('Failed to parse JSON:', text)
+    throw new Error('Invalid JSON response from server')
+  }
 }
