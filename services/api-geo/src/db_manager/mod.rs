@@ -1,9 +1,11 @@
 // Module de gestion de base de données pour l'UI admin
 pub mod audit;
 pub mod backup;
+pub mod backup_retention;
 pub mod dryrun;
 pub mod field_calculator;
 pub mod import_export;
+pub mod locks;
 pub mod pagination;
 pub mod pg_types;
 pub mod rate_limit;
@@ -11,21 +13,25 @@ pub mod routes;
 pub mod schema;
 pub mod staging;
 pub mod staging_dryrun;
+pub mod staging_routes;
 pub mod table;
 pub mod types;
 pub mod versioning;
 
 pub use audit::*;
 pub use backup::*;
+pub use backup_retention::*;
 pub use dryrun::*;
 pub use field_calculator::*;
 pub use import_export::*;
+pub use locks::*;
 pub use pagination::*;
 pub use pg_types::*;
 pub use rate_limit::*;
 pub use schema::*;
 pub use staging::*;
 pub use staging_dryrun::*;
+pub use staging_routes::*;
 pub use table::*;
 pub use types::*;
 pub use versioning::*;

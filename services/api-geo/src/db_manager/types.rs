@@ -128,7 +128,7 @@ pub struct BBox {
 // Staging
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StagingInfo {
     pub staging_id: String,
     pub table_name: String,

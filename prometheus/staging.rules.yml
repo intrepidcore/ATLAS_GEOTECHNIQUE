@@ -1,0 +1,115 @@
+# Règles d'alertes Prometheus pour staging
+groups:
+  - name: staging.rules
+    interval: 30s
+    rules:
+      # Alerte: Conflits fréquents de staging
+      - alert: FrequentStagingConflicts
+        expr: increase(staging_conflicts_total[5m]) > 0
+        for: 1m
+        labels:
+          severity: warning
+          component: staging
+        annotations:
+          summary: "Conflits de staging détectés"
+          description: "{{ $value }} conflits de staging détectés dans les 5 dernières minutes. Vérifier /metrics et logs."
+          
+      # Alerte: Commits staging échouent fréquemment
+      - alert: HighFailedStagingCommits
+        expr: increase(staging_commits_failed_total[15m]) > 2
+        for: 2m
+        labels:
+          severity: critical
+          component: staging
+        annotations:
+          summary: "Taux élevé d'échecs de commit staging"
+          description: "{{ $value }} commits staging ont échoué dans les 15 dernières minutes. Investigation requise."
+          
+      # Alerte: Aucun commit staging depuis longtemps (stagnation)
+      - alert: NoStagingCommitsRecently
+        expr: increase(staging_commits_total[1h]) == 0 AND staging_commits_total > 0
+        for: 2h
+        labels:
+          severity: info
+          component: staging
+        annotations:
+          summary: "Aucun commit staging récent"
+          description: "Aucun commit staging dans les 2 dernières heures. Vérifier si des stagings sont bloqués."
+          
+      # Alerte: Rollbacks fréquents
+      - alert: FrequentStagingRollbacks
+        expr: increase(staging_rollbacks_total[10m]) > 3
+        for: 1m
+        labels:
+          severity: warning
+          component: staging
+        annotations:
+          summary: "Rollbacks staging fréquents"
+          description: "{{ $value }} rollbacks staging dans les 10 dernières minutes. Possibles problèmes utilisateur ou données."
+          
+      # Alerte: Durée de commit staging anormalement longue
+      - alert: SlowStagingCommits
+        expr: histogram_quantile(0.95, rate(operation_duration_ms_staging_commit_bucket[5m])) > 30000
+        for: 5m
+        labels:
+          severity: warning
+          component: staging
+        annotations:
+          summary: "Commits staging lents"
+          description: "P95 de durée de commit staging > 30s. Vérifier performance DB et taille tables."
+          
+      # Alerte: Erreurs DB fréquentes
+      - alert: HighDatabaseErrors
+        expr: increase(db_errors_total[5m]) > 10
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Taux élevé d'erreurs base de données"
+          description: "{{ $value }} erreurs DB dans les 5 dernières minutes. Vérifier connectivité et logs."
+          
+      # Alerte: Rate limit hits (trop de requêtes)
+      - alert: RateLimitExceeded
+        expr: increase(rate_limit_hits_total[1m]) > 50
+        for: 2m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Rate limit dépassé fréquemment"
+          description: "{{ $value }} hits de rate limit dans la dernière minute. Possibles abus ou bot."
+          
+      # Alerte: Backups échouent
+      - alert: BackupCreationFailed
+        expr: increase(backups_created_total[1h]) == 0 AND hour() % 6 == 0
+        for: 10m
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: "Aucun backup créé récemment"
+          description: "Aucun backup dans la dernière heure. Vérifier système de backup."
+
+  - name: staging.recording_rules
+    interval: 1m
+    rules:
+      # Recording rule: Taux de succès des commits
+      - record: staging:commit_success_rate:5m
+        expr: |
+          (
+            rate(staging_commits_total[5m]) 
+            / 
+            (rate(staging_commits_total[5m]) + rate(staging_commits_failed_total[5m]))
+          ) * 100
+          
+      # Recording rule: Durée moyenne des commits
+      - record: staging:commit_duration_avg:5m
+        expr: |
+          rate(operation_duration_ms_staging_commit_sum[5m]) 
+          / 
+          rate(operation_duration_ms_staging_commit_count[5m])
+          
+      # Recording rule: Taux de conflits
+      - record: staging:conflict_rate:5m
+        expr: rate(staging_conflicts_total[5m])
