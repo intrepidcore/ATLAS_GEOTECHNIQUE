@@ -453,6 +453,16 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
 
     tx.commit().await?;
 
+    // Log structuré pour observabilité
+    crate::observability::StructuredLog::new("staging_commit")
+        .with_table(&format!("{}.{}", staging_info.schema_name, staging_info.table_name))
+        .with_rows_affected(rows_affected)
+        .with_details(serde_json::json!({
+            "staging_id": staging_id,
+            "audit_id": &audit_id
+        }))
+        .log();
+
     Ok(CommitResult {
         success: true,
         rows_affected,

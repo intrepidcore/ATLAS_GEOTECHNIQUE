@@ -41,3 +41,19 @@ rebuild-api-geo:
 	$(COMPOSE) up -d api-geo
 	@echo "✅ api-geo redémarré, vérification des logs..."
 	$(COMPOSE) logs -f api-geo
+
+sqlx-prepare:
+	@echo "📦 Préparation des queries SQLx..."
+	cd services/api-geo && cargo sqlx prepare -- --lib
+	@echo "✅ Fichiers .sqlx générés et prêts à commit"
+
+test-staging:
+	@echo "🧪 Tests d'intégration staging..."
+	cd services/api-geo && cargo test --test db_manager_tests -- --nocapture
+
+check-migrations:
+	@echo "🔍 Vérification des migrations..."
+	@for file in migrations/*.sql; do \
+		echo "Checking $$file..."; \
+		grep -q "IF NOT EXISTS\|IF EXISTS" $$file || echo "⚠️  $$file n'est pas idempotent"; \
+	done

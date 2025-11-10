@@ -10,6 +10,9 @@ pub struct Metrics {
     pub db_operations_total: Arc<AtomicU64>,
     pub db_errors_total: Arc<AtomicU64>,
     pub staging_commits_total: Arc<AtomicU64>,
+    pub staging_rollbacks_total: Arc<AtomicU64>,
+    pub staging_commits_failed_total: Arc<AtomicU64>,
+    pub ddl_dryrun_total: Arc<AtomicU64>,
     pub backups_created_total: Arc<AtomicU64>,
     pub rate_limit_hits_total: Arc<AtomicU64>,
 
@@ -23,6 +26,9 @@ impl Metrics {
             db_operations_total: Arc::new(AtomicU64::new(0)),
             db_errors_total: Arc::new(AtomicU64::new(0)),
             staging_commits_total: Arc::new(AtomicU64::new(0)),
+            staging_rollbacks_total: Arc::new(AtomicU64::new(0)),
+            staging_commits_failed_total: Arc::new(AtomicU64::new(0)),
+            ddl_dryrun_total: Arc::new(AtomicU64::new(0)),
             backups_created_total: Arc::new(AtomicU64::new(0)),
             rate_limit_hits_total: Arc::new(AtomicU64::new(0)),
             operation_durations: Arc::new(RwLock::new(HashMap::new())),
@@ -47,6 +53,18 @@ impl Metrics {
 
     pub fn inc_rate_limit_hits(&self) {
         self.rate_limit_hits_total.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_staging_rollbacks(&self) {
+        self.staging_rollbacks_total.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_staging_commits_failed(&self) {
+        self.staging_commits_failed_total.fetch_add(1, Ordering::Relaxed);
+    }
+
+    pub fn inc_ddl_dryrun(&self) {
+        self.ddl_dryrun_total.fetch_add(1, Ordering::Relaxed);
     }
 
     pub async fn record_duration(&self, operation: &str, duration_ms: u64) {
@@ -102,6 +120,27 @@ impl Metrics {
         output.push_str(&format!(
             "rate_limit_hits_total {}\n",
             self.rate_limit_hits_total.load(Ordering::Relaxed)
+        ));
+
+        output.push_str("# HELP staging_rollbacks_total Total staging rollbacks\n");
+        output.push_str("# TYPE staging_rollbacks_total counter\n");
+        output.push_str(&format!(
+            "staging_rollbacks_total {}\n",
+            self.staging_rollbacks_total.load(Ordering::Relaxed)
+        ));
+
+        output.push_str("# HELP staging_commits_failed_total Total failed staging commits\n");
+        output.push_str("# TYPE staging_commits_failed_total counter\n");
+        output.push_str(&format!(
+            "staging_commits_failed_total {}\n",
+            self.staging_commits_failed_total.load(Ordering::Relaxed)
+        ));
+
+        output.push_str("# HELP ddl_dryrun_total Total DDL dry-run operations\n");
+        output.push_str("# TYPE ddl_dryrun_total counter\n");
+        output.push_str(&format!(
+            "ddl_dryrun_total {}\n",
+            self.ddl_dryrun_total.load(Ordering::Relaxed)
         ));
 
         // Histogrammes

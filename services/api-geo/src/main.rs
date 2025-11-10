@@ -20,12 +20,15 @@ mod geotechnical;
 mod import_bulk;
 mod import_wizard;
 mod metrics;
+mod metrics_handler;
 mod neighbors;
 mod observability;
 mod rbac;
 mod routes;
 mod sondages;
 mod sql_sanitizer;
+
+use metrics_handler::metrics_handler;
 pub mod state;
 mod surveys;
 mod surveys_adm;
@@ -55,7 +58,7 @@ async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
 
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::from_default_env())
+        .with(tracing_subscriber::EnvFilter::new("debug,hyper=info,sqlx=warn"))
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -94,10 +97,15 @@ async fn main() -> anyhow::Result<()> {
     let metrics = std::sync::Arc::new(metrics::Metrics::new());
     tracing::info!("✅ Metrics Prometheus initialisées");
 
-    let state = AppState { pool };
+    let state = AppState { 
+        pool,
+        metrics: metrics.clone(),
+    };
 
     let app = Router::new()
         .route("/healthz", get(|| async { Json(Health { status: "ok" }) }))
+        .route("/ping", get(|| async { "pong" }))
+        .route("/metrics", get(metrics_handler))
         .route("/version", get(version::version))
         .route(
             "/echo",
@@ -328,28 +336,12 @@ async fn main() -> anyhow::Result<()> {
             "/db/backup/:id",
             delete(db_manager::routes::delete_backup_handler),
         )
-        .route(
-            "/metrics",
-            get({
-                let metrics_clone = metrics.clone();
-                move || {
-                    let m = metrics_clone.clone();
-                    async move {
-                        let body = m.to_prometheus().await;
-                        (
-                            [(
-                                axum::http::header::CONTENT_TYPE,
-                                "text/plain; version=0.0.4",
-                            )],
-                            body,
-                        )
-                    }
-                }
-            }),
-        )
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);
+
+    tracing::info!("✅ Router configuré avec {} routes", "toutes");
+    tracing::debug!("Route /metrics ajoutée avec handler metrics_handler");
 
     let port: u16 = std::env::var("API_GEO_PORT")
         .ok()
