@@ -294,11 +294,24 @@ pub async fn update_sondage_geometry(
     if payload.mode == "exact" {
         let geom_json = payload.geom.as_ref().unwrap();
 
+        // Mettre à jour la géométrie ET calculer l'ADM3 par intersection spatiale
         sqlx::query(
             r#"
             UPDATE sondages 
             SET geom = ST_SetSRID(ST_GeomFromGeoJSON($1), 25231),
                 location_mode = 'exact',
+                adm3_id = (
+                    SELECT gid 
+                    FROM adm3 
+                    WHERE ST_Contains(geom, ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($1), 25231), 4326))
+                    LIMIT 1
+                ),
+                adm3_name = (
+                    SELECT adm3_fr 
+                    FROM adm3 
+                    WHERE ST_Contains(geom, ST_Transform(ST_SetSRID(ST_GeomFromGeoJSON($1), 25231), 4326))
+                    LIMIT 1
+                ),
                 updated_at = NOW()
             WHERE id = $2 AND deleted_at IS NULL
             "#,
@@ -315,6 +328,20 @@ pub async fn update_sondage_geometry(
         let adm3_id = payload.adm3_id.unwrap();
         eprintln!("DEBUG: adm3_id = {} (type: i32)", adm3_id);
 
+        // Récupérer le code du sondage pour le seed
+        let sondage_code: String = sqlx::query_scalar(
+            r#"
+            SELECT code FROM sondages WHERE id = $1 AND deleted_at IS NULL
+            "#,
+        )
+        .bind(id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| {
+            eprintln!("Error fetching sondage code: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+        })?;
+
         // Récupérer le nom ADM3
         let adm3_name: Option<String> = sqlx::query_scalar(
             r#"
@@ -329,18 +356,21 @@ pub async fn update_sondage_geometry(
             (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
         })?;
 
+        // Mettre à jour avec génération d'un point aléatoire dans l'ADM3
         sqlx::query(
             r#"
             UPDATE sondages 
             SET adm3_id = $1,
                 adm3_name = $2,
+                geom = get_adm_random_point('ADM3', $1, $3),
                 location_mode = 'adm_random_cell',
                 updated_at = NOW()
-            WHERE id = $3 AND deleted_at IS NULL
+            WHERE id = $4 AND deleted_at IS NULL
             "#,
         )
         .bind(adm3_id)
         .bind(adm3_name)
+        .bind(&sondage_code)
         .bind(id)
         .execute(pool)
         .await

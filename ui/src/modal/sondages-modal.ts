@@ -269,7 +269,11 @@ export class SondagesModal {
         'modal-geocode-container',
         (msg: string) => {
           console.log('[Geocode Canon]', msg)
-          // Toast optionnel
+          // Recharger la grille pour mettre à jour les couleurs des mailles
+          if ((window as any).loadGrid) {
+            console.log('[Geocode Canon] Rechargement de la grille...')
+            ;(window as any).loadGrid(false)
+          }
         },
         (err: string) => {
           console.error('[Geocode Canon]', err)

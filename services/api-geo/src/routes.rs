@@ -144,8 +144,10 @@ pub async fn get_coverage_mailles(
                0::bigint AS n_depth_10plus,
                0::bigint AS n_spt_n,
                0::bigint AS n_qc,
-               has_data
-        FROM mv_mailles_geotech
+               has_data,
+               has_exact_location,
+               has_random_location
+        FROM atlas.mv_mailles_geotech
     "#.to_string();
     
     // Ajouter filtre bbox si présent
@@ -182,10 +184,14 @@ pub async fn get_coverage_mailles(
         let n_spt_n: i64 = r.try_get("n_spt_n").unwrap_or(0);
         let n_qc: i64 = r.try_get("n_qc").unwrap_or(0);
         let has_data = n_sondages > 0;
+        let has_exact_location: bool = r.try_get("has_exact_location").unwrap_or(false);
+        let has_random_location: bool = r.try_get("has_random_location").unwrap_or(false);
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
             let mut props = serde_json::json!({
                 "code": code,
                 "has_data": has_data,
+                "has_exact_location": has_exact_location,
+                "has_random_location": has_random_location,
                 "n_sondages": n_sondages,
                 "n_essais": n_essais
             });

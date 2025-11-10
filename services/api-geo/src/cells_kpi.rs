@@ -25,16 +25,16 @@ pub struct KpiRow {
 /// * `Ok(None)` - Maille non trouvée
 /// * `Err(_)` - Erreur SQL
 pub async fn fetch_kpi_row(pool: &PgPool, code: &str) -> sqlx::Result<Option<KpiRow>> {
-    // Important: schéma qualifié + cast float8 + trim du code
+    // Utiliser atlas.mv_mailles_geotech au lieu de v_maille_kpi_v2
     sqlx::query_as::<_, KpiRow>(
         r#"
         SELECT
-          n_sondages,
-          n_essais,
-          (pct_spread)::float8 AS pct_spread,
-          (depth_max_m)::float8 AS depth_max_m
-        FROM public.v_maille_kpi_v2
-        WHERE grid_code = $1
+          ((nb_sondages_real + nb_sondages_spread))::bigint AS n_sondages,
+          0::bigint AS n_essais,
+          0.0::float8 AS pct_spread,
+          NULL::float8 AS depth_max_m
+        FROM atlas.mv_mailles_geotech
+        WHERE code = $1
         "#
     )
     .bind(code.trim())

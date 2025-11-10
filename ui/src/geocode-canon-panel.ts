@@ -336,18 +336,28 @@ export class GeocodeCanonPanel {
           
           if (mode === 'adm') {
             const adm3Gid = (document.getElementById('adm3-select') as HTMLSelectElement).value;
-            if (!adm3Gid) {
+            console.log('[GEOCODE] ADM3 select value:', adm3Gid);
+            
+            if (!adm3Gid || adm3Gid === '') {
               toast.error('❌ Veuillez sélectionner une commune');
               return;
             }
             
+            const adm3IdNum = parseInt(adm3Gid);
+            if (isNaN(adm3IdNum)) {
+              toast.error('❌ ID commune invalide');
+              console.error('[GEOCODE] Invalid adm3_id:', adm3Gid);
+              return;
+            }
+            
             // Find ADM3 name for success message
-            const adm = this.adm3List.find(a => a.gid === parseInt(adm3Gid));
+            const adm = this.adm3List.find(a => a.gid === adm3IdNum);
+            console.log('[GEOCODE] Sending payload:', { mode: 'adm', adm3_id: adm3IdNum });
             
             // Call API (adm3_id = gid for adm3 table)
             await updateSondageGeometry(this.selectedSurvey!.id, {
               mode: 'adm',
-              adm3_id: parseInt(adm3Gid)
+              adm3_id: adm3IdNum
             });
             
             toast.success(`✅ Sondage "${this.selectedSurvey!.localite || this.selectedSurvey!.code}" géocodé avec ADM3${adm ? ': ' + adm.name : ''}`);

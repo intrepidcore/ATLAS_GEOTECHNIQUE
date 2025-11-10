@@ -1,4 +1,4 @@
-use axum::{
+    use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
@@ -1042,44 +1042,26 @@ pub async fn list_adm3(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     
+    #[derive(sqlx::FromRow, serde::Serialize)]
+    struct Adm3Row {
+        gid: i32,
+        name: String,
+        code: String,
+    }
+    
     let query = if let Some(adm2) = q.get("adm2") {
         format!(
-            r#"SELECT name, code,
-               ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
-               ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-               FROM adm3_tg WHERE adm2_name = '{}' ORDER BY name"#,
+            r#"SELECT gid, adm3_fr as name, adm3_pcode as code
+               FROM adm3 WHERE adm2_fr = '{}' ORDER BY adm3_fr"#,
             adm2.replace("'", "''")
         )
     } else {
-        r#"SELECT name, code,
-           ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
-           ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-           FROM adm3_tg ORDER BY name"#.to_string()
+        r#"SELECT gid, adm3_fr as name, adm3_pcode as code
+           FROM adm3 WHERE adm3_fr IS NOT NULL ORDER BY adm3_fr"#.to_string()
     };
     
-    let rows = sqlx::query(&query).fetch_all(pool).await;
-    
-    match rows {
-        Ok(rows) => {
-            let zones: Vec<AdmZone> = rows.iter().map(|r| {
-                let xmin: Option<f64> = r.try_get("xmin").ok();
-                let ymin: Option<f64> = r.try_get("ymin").ok();
-                let xmax: Option<f64> = r.try_get("xmax").ok();
-                let ymax: Option<f64> = r.try_get("ymax").ok();
-                let bbox = if let (Some(xmin), Some(ymin), Some(xmax), Some(ymax)) = (xmin, ymin, xmax, ymax) {
-                    Some(vec![xmin, ymin, xmax, ymax])
-                } else {
-                    None
-                };
-                
-                AdmZone {
-                    name: r.try_get("name").unwrap_or_default(),
-                    code: r.try_get("code").ok(),
-                    bbox,
-                }
-            }).collect();
-            Json(zones).into_response()
-        }
+    match sqlx::query_as::<_, Adm3Row>(&query).fetch_all(pool).await {
+        Ok(rows) => Json(rows).into_response(),
         Err(e) => {
             tracing::error!(?e, "list_adm3 error");
             (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "Database error"}))).into_response()

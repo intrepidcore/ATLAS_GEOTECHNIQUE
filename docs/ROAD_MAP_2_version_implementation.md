@@ -1,3 +1,4 @@
+#implementation #version #planification
 Parfait. Voici une feuille de route compacte, réaliste et **actionnable** pour aller de **v1.0.0 → v2.0.0** en gardant ton contexte (mono-repo Docker, PostGIS, Rust API, Leaflet UI, usage local/démo mémoire).
 Je te propose des versions mineures bien bornées avec objectifs, livrables, critères d’acceptation et estimation d’effort relative.
 

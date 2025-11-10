@@ -1,5 +1,6 @@
 import L from 'leaflet'
 import { Chart, registerables } from 'chart.js'
+import proj4 from 'proj4'
 import { GeotechnicalFormManager } from './geotechnical-form'
 import { GeocodeManager } from './geocode-manager'
 import { SuggestionsPanel } from './suggestions-panel'
@@ -18,6 +19,12 @@ import './thematic-maps.css'
 import './import-bulk-wizard.css'
 import './import-wizard-v2.css'
 import './styles/tabs.css'
+
+// Définir les systèmes de coordonnées
+// EPSG:25231 - UTM Zone 31N (Togo)
+proj4.defs('EPSG:25231', '+proj=utm +zone=31 +datum=WGS84 +units=m +no_defs')
+// EPSG:4326 - WGS84 (lat/lon)
+proj4.defs('EPSG:4326', '+proj=longlat +datum=WGS84 +no_defs')
 
 // Enregistrer tous les composants Chart.js
 Chart.register(...registerables)
@@ -70,6 +77,7 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 const codeInput = document.getElementById('codeInput') as HTMLInputElement
 let gridLayer: L.GeoJSON<any> | null = null
 let shapeLayer: L.GeoJSON<any> | null = null
+let sondagesLayer: L.LayerGroup | null = null
 let duplicateMarkers: L.CircleMarker[] = []
 let currentDuplicates: any[] = []
 
@@ -162,15 +170,30 @@ function setKpis(total: number, withData: number) {
 // --- Leaflet styles ---
 function styleFeature(f: any) {
   const has = !!f.properties?.has_data
+  const hasExact = !!f.properties?.has_exact_location  // Sondages avec GPS exact
+  const hasRandom = !!f.properties?.has_random_location // Sondages avec position aléatoire
   const zoom = map.getZoom()
+  
   // Contours dynamiques selon le zoom
   const baseWeight = has ? 1.2 : 0.5
   const weight = zoom < 10 ? baseWeight : zoom < 12 ? baseWeight * 1.5 : baseWeight * 2
   
+  // Couleurs selon le type de localisation
+  let fillColor = '#cfd8e3' // Gris par défaut (sans données)
+  if (hasExact && hasRandom) {
+    fillColor = '#51cf66' // Vert si au moins un exact (priorité au GPS)
+  } else if (hasExact) {
+    fillColor = '#51cf66' // Vert pour GPS exact
+  } else if (hasRandom) {
+    fillColor = '#4c6ef5' // Bleu pour position aléatoire
+  } else if (has) {
+    fillColor = '#e85d68' // Rouge pour données sans géométrie
+  }
+  
   return {
-    color: has ? '#e85d68' : '#6b778c55',
+    color: has ? fillColor : '#6b778c55',
     weight,
-    fillColor: has ? '#e85d68' : '#cfd8e3',
+    fillColor,
     fillOpacity: has ? 0.35 : 0.06
   }
 }
@@ -1393,8 +1416,21 @@ async function loadGrid(useBbox = false) {
   }
 }
 
+// Fonction désactivée - Les sondages sont maintenant représentés par la couleur des mailles
+// async function loadSondages() { ... }
+
+// Fonction vide pour compatibilité
+;(window as any).reloadSondages = () => {
+  console.log('[reloadSondages] Fonction désactivée - les sondages sont affichés via les mailles')
+}
+
+// Exposer loadGrid globalement pour le rechargement après géocodage
+;(window as any).loadGrid = loadGrid
+
 // Charger la grille immédiatement au démarrage
-setTimeout(() => loadGrid(false), 100)
+setTimeout(() => {
+  loadGrid(false)
+}, 100)
 
 // Chargement paresseux DÉSACTIVÉ - on charge tout au démarrage
 // Commenté pour revenir au comportement original (chargement total)
