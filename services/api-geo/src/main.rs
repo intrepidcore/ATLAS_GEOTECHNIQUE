@@ -27,6 +27,7 @@ mod cells_labs;
 mod cells_kpi;
 mod surveys_compat;
 mod surveys_unified;
+mod db_manager;
 pub mod state;
 
 #[derive(Serialize)]
@@ -144,6 +145,28 @@ async fn main() -> anyhow::Result<()> {
         .route("/sondages/:id", get(sondages::get_sondage))
         .route("/sondages/:id/geometry", patch(sondages::update_sondage_geometry))
         .route("/sondages/:id/adm3-candidates", get(sondages::get_adm3_candidates))
+        // Database Manager endpoints
+        .route("/db/schema", get(db_manager::routes::get_schema_handler))
+        .route("/db/table/:schema/:table", get(db_manager::routes::get_table_info_handler))
+        .route("/db/table/:schema/:table/data", get(db_manager::routes::get_table_data_handler))
+        .route("/db/table/:schema/:table/select", post(db_manager::routes::select_rows_handler))
+        .route("/db/table/:schema/:table/row", post(db_manager::routes::add_row_handler))
+        .route("/db/table/:schema/:table/row/:id/:column", axum::routing::put(db_manager::routes::update_cell_handler))
+        .route("/db/table/:schema/:table/rows", delete(db_manager::routes::delete_rows_handler))
+        .route("/db/table/:schema/:table/staging", post(db_manager::routes::create_staging_handler))
+        .route("/db/staging/:id/operation", post(db_manager::routes::apply_staging_operation_handler))
+        .route("/db/staging/:id/validate", get(db_manager::routes::validate_staging_handler))
+        .route("/db/staging/:id/preview", get(db_manager::routes::preview_staging_handler))
+        .route("/db/staging/:id/commit", post(db_manager::routes::commit_staging_handler))
+        .route("/db/staging/:id", delete(db_manager::routes::cancel_staging_handler))
+        .route("/db/table/:schema/:table/column", post(db_manager::routes::add_column_handler))
+        .route("/db/table/:schema/:table/column/:column", delete(db_manager::routes::delete_column_handler))
+        .route("/db/table/:schema/:table/column/:column/impact", get(db_manager::routes::analyze_column_impact_handler))
+        .route("/db/table/:schema/:table/audit", get(db_manager::routes::get_audit_log_handler))
+        .route("/db/table/:schema/:table/audit/stats", get(db_manager::routes::get_audit_stats_handler))
+        .route("/db/backup", post(db_manager::routes::create_backup_handler).get(db_manager::routes::list_backups_handler))
+        .route("/db/backup/:id/restore", post(db_manager::routes::restore_backup_handler))
+        .route("/db/backup/:id", delete(db_manager::routes::delete_backup_handler))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);
