@@ -13,6 +13,7 @@ export interface SchemaInfo {
 export interface TableInfo {
   name: string
   schema: string
+  table_type?: 'TABLE' | 'VIEW' | 'MATERIALIZED VIEW'
   row_count: number
   has_geom: boolean
   geom_column?: string

@@ -1,0 +1,518 @@
+/* Styles pour les composants vanilla du gestionnaire de BDD */
+
+/* ============================================================================
+   Schema Tree Component
+   ============================================================================ */
+
+.schema-tree {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.schema-tree-header {
+  padding: 16px;
+  border-bottom: 1px solid #2d3748;
+}
+
+.schema-tree-header h3 {
+  margin: 0 0 12px 0;
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.schema-search {
+  width: 100%;
+  padding: 8px 12px;
+  background: #1e2530;
+  border: 1px solid #2d3748;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.schema-search:focus {
+  border-color: #3b82f6;
+}
+
+.schema-tree-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.schema-tree-footer {
+  padding: 12px 16px;
+  border-top: 1px solid #2d3748;
+  color: #94a3b8;
+  font-size: 11px;
+  text-align: center;
+}
+
+/* Schema items */
+.schema-item {
+  margin-bottom: 4px;
+}
+
+.schema-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 6px;
+  color: #e2e8f0;
+  font-weight: 500;
+  transition: background 0.2s;
+}
+
+.schema-header:hover {
+  background: #374151;
+}
+
+.schema-icon {
+  font-size: 16px;
+  transition: transform 0.2s;
+}
+
+.schema-icon.expanded {
+  transform: rotate(0deg);
+}
+
+.schema-name {
+  flex: 1;
+  font-size: 13px;
+}
+
+.schema-count {
+  font-size: 11px;
+  background: #2d3748;
+  color: #94a3b8;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+/* Table items */
+.schema-tables {
+  margin-left: 12px;
+  margin-top: 4px;
+}
+
+.table-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 2px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.table-item:hover {
+  background: #374151;
+}
+
+.table-item.selected {
+  background: #3b82f6;
+  color: white;
+}
+
+.table-icon {
+  font-size: 14px;
+}
+
+.table-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.table-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.table-meta {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+/* Empty & Loading states */
+.schema-tree-loading,
+.schema-tree-error,
+.schema-tree-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 16px;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  opacity: 0.5;
+}
+
+/* ============================================================================
+   Data Grid Component
+   ============================================================================ */
+
+.data-grid {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #1e2530;
+}
+
+/* Toolbar */
+.data-grid-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #2d3748;
+  background: #252d3a;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.toolbar-left,
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-mode {
+  padding: 8px 16px;
+  border: 1px solid #2d3748;
+  background: #1e2530;
+  color: #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-mode:hover {
+  background: #374151;
+}
+
+.btn-mode.active {
+  background: #3b82f6;
+  border-color: #3b82f6;
+  color: white;
+}
+
+.btn-add,
+.btn-delete,
+.btn-refresh,
+.btn-export {
+  padding: 8px 12px;
+  border: 1px solid #2d3748;
+  background: #1e2530;
+  color: #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-add:hover,
+.btn-refresh:hover,
+.btn-export:hover {
+  background: #374151;
+}
+
+.btn-delete {
+  color: #ef4444;
+  border-color: #7f1d1d;
+}
+
+.btn-delete:hover:not(.disabled) {
+  background: #7f1d1d;
+  color: white;
+}
+
+.btn-delete.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.table-info {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* Table */
+.data-grid-table-container {
+  flex: 1;
+  overflow: auto;
+}
+
+.data-grid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.data-grid-table thead {
+  position: sticky;
+  top: 0;
+  background: #252d3a;
+  z-index: 10;
+}
+
+.data-grid-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #e2e8f0;
+  border-bottom: 2px solid #2d3748;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+}
+
+.col-checkbox {
+  width: 40px;
+  padding: 12px 8px !important;
+  text-align: center;
+}
+
+.col-header {
+  transition: background 0.2s;
+}
+
+.col-header:hover {
+  background: #374151;
+}
+
+.col-header.sorted {
+  background: #374151;
+}
+
+.col-header-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.col-name {
+  font-weight: 600;
+}
+
+.col-type {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: normal;
+}
+
+.sort-icon {
+  margin-left: auto;
+  opacity: 0.5;
+  font-size: 10px;
+}
+
+.col-header:hover .sort-icon {
+  opacity: 1;
+}
+
+.badge-pk,
+.badge-fk {
+  font-size: 9px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.badge-pk {
+  background: #3b82f6;
+  color: white;
+}
+
+.badge-fk {
+  background: #8b5cf6;
+  color: white;
+}
+
+/* Table rows */
+.data-row {
+  border-bottom: 1px solid #2d3748;
+  transition: background 0.2s;
+}
+
+.data-row:hover {
+  background: #374151;
+}
+
+.data-row.selected {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+/* Cells */
+.cell {
+  padding: 10px 16px;
+  color: #e2e8f0;
+  max-width: 300px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cell-editable {
+  cursor: text;
+  position: relative;
+}
+
+.cell-editable:hover {
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.cell-editing {
+  padding: 0;
+}
+
+.cell-input {
+  width: 100%;
+  padding: 10px 16px;
+  background: #1e2530;
+  border: 2px solid #3b82f6;
+  color: #e2e8f0;
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+}
+
+.cell-null .null-value {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.cell-boolean {
+  text-align: center;
+}
+
+.bool-true {
+  color: #10b981;
+  font-weight: bold;
+}
+
+.bool-false {
+  color: #ef4444;
+  font-weight: bold;
+}
+
+.cell-number {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+}
+
+.json-value {
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+}
+
+/* Pagination */
+.data-grid-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-top: 1px solid #2d3748;
+  background: #252d3a;
+}
+
+.pagination-info {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.pagination-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn-page {
+  padding: 6px 12px;
+  border: 1px solid #2d3748;
+  background: #1e2530;
+  color: #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.btn-page:hover:not(:disabled) {
+  background: #374151;
+}
+
+.btn-page:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.page-indicator {
+  color: #94a3b8;
+  font-size: 13px;
+  padding: 0 8px;
+}
+
+/* Empty & Loading states */
+.data-grid-loading,
+.data-grid-error,
+.data-grid-empty,
+.data-grid-no-data {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+  padding: 32px;
+  text-align: center;
+}
+
+/* Checkboxes */
+input[type="checkbox"] {
+  cursor: pointer;
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+}
+
+/* Scrollbars */
+.data-grid-table-container::-webkit-scrollbar,
+.schema-tree-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.data-grid-table-container::-webkit-scrollbar-track,
+.schema-tree-content::-webkit-scrollbar-track {
+  background: #1e2530;
+}
+
+.data-grid-table-container::-webkit-scrollbar-thumb,
+.schema-tree-content::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 4px;
+}
+
+.data-grid-table-container::-webkit-scrollbar-thumb:hover,
+.schema-tree-content::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}

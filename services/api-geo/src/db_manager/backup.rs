@@ -1,6 +1,6 @@
 // Gestion des sauvegardes et points de restauration
 use super::types::*;
-use sqlx::PgPool;
+use sqlx::{PgPool, Row};
 use std::process::Command;
 
 /// Crée un point de restauration (backup)

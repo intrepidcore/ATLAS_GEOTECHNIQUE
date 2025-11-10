@@ -84,7 +84,7 @@ pub async fn get_table_data(
 }
 
 /// Extrait la valeur d'une colonne en fonction de son type
-fn get_column_value(
+pub fn get_column_value(
     row: &sqlx::postgres::PgRow,
     column_name: &str,
     data_type: &str,
