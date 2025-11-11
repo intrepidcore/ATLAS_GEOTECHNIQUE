@@ -8,6 +8,13 @@ import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
 import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity } from 'lucide-react'
 import { RBACManager } from '@/components/RBACManager'
+import { SchemaTableSelector } from '@/components/SchemaTableSelector'
+import { SchemaTree } from '@/components/SchemaTree'
+import { StagingPanel } from '@/components/StagingPanel'
+import { ThreePanelLayout } from '@/components/ThreePanelLayout'
+import { EditModeToggle } from '@/components/EditModeToggle'
+import { UnsavedChangesAlert } from '@/components/UnsavedChangesAlert'
+import { DataGridToolbar } from '@/components/DataGridToolbar'
 import { tablesApi, stagingApi, type Table, type Column } from '@/services/api'
 
 function App() {
@@ -19,6 +26,10 @@ function App() {
   const [tableData, setTableData] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [editMode, setEditMode] = useState(false)
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [stagingChanges, setStagingChanges] = useState<any[]>([])
+  const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
 
   // Charger les tables au démarrage
   useEffect(() => {
@@ -79,6 +90,69 @@ function App() {
     // TODO: Appeler API backend
   }
 
+  // Handlers pour le mode édition
+  const handleSaveChanges = () => {
+    console.log('Saving changes...', stagingChanges)
+    setHasUnsavedChanges(false)
+    setStagingChanges([])
+  }
+
+  const handleCancelChanges = () => {
+    setStagingChanges([])
+    setHasUnsavedChanges(false)
+  }
+
+  const handleTableSelect = (schema: string, table: string) => {
+    setSelectedSchema(schema)
+    setSelectedTable(table)
+  }
+
+  // Handlers toolbar
+  const handleAddRow = () => console.log('Add row')
+  const handleDeleteRow = () => console.log('Delete row')
+  const handleAddColumn = () => console.log('Add column')
+  const handleDeleteColumn = () => console.log('Delete column')
+  const handleSelectAll = () => console.log('Select all')
+  const handleInvertSelection = () => console.log('Invert selection')
+  const handleZoomToSelection = () => console.log('Zoom to selection')
+
+  // Confirmation fermeture
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [hasUnsavedChanges])
+
+  // Auto-save draft toutes les 15 minutes
+  useEffect(() => {
+    if (!editMode || stagingChanges.length === 0) return
+    const interval = setInterval(() => {
+      console.log('Auto-saving draft...', stagingChanges)
+      localStorage.setItem('staging_draft', JSON.stringify(stagingChanges))
+    }, 15 * 60 * 1000)
+    return () => clearInterval(interval)
+  }, [editMode, stagingChanges])
+
+  // Raccourcis clavier
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === 's') {
+        e.preventDefault()
+        if (hasUnsavedChanges) handleSaveChanges()
+      }
+      if (e.key === 'Escape') {
+        if (hasUnsavedChanges) handleCancelChanges()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [hasUnsavedChanges])
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -123,54 +197,89 @@ function App() {
           </TabsList>
 
           {/* Tables Tab */}
-          <TabsContent value="tables" className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-semibold">Table: {selectedTable}</h2>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveModal('calculator')}
-                  >
-                    <Calculator className="h-4 w-4 mr-2" />
-                    Calculatrice
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setActiveModal('import')}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Import/Export
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setActiveModal('staging')}
-                  >
-                    Créer Staging
-                  </Button>
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-                </div>
-              ) : error ? (
-                <div className="text-red-600 p-4 border border-red-200 rounded-lg">
-                  {error}
-                </div>
-              ) : (
-                <DataGrid
-                  data={tableData}
-                  columns={columns.map(col => ({
-                    accessorKey: col.name,
-                    header: col.name,
-                  }))}
+          <TabsContent value="tables" className="h-[calc(100vh-12rem)]">
+            <ThreePanelLayout
+              leftPanel={
+                <SchemaTree
+                  selectedSchema={selectedSchema}
+                  selectedTable={selectedTable}
+                  onSchemaSelect={setSelectedSchema}
+                  onTableSelect={handleTableSelect}
                 />
-              )}
-            </div>
+              }
+              centerPanel={
+                <div className="h-full flex flex-col bg-white">
+                  {/* Header avec sélecteurs et mode édition */}
+                  <div className="p-4 border-b space-y-3">
+                    <div className="flex items-center justify-between">
+                      <SchemaTableSelector
+                        selectedSchema={selectedSchema}
+                        selectedTable={selectedTable}
+                        onSchemaChange={setSelectedSchema}
+                        onTableChange={setSelectedTable}
+                      />
+                      <EditModeToggle
+                        editMode={editMode}
+                        onChange={setEditMode}
+                      />
+                    </div>
+                    {editMode && hasUnsavedChanges && (
+                      <UnsavedChangesAlert
+                        onSave={handleSaveChanges}
+                        onCancel={handleCancelChanges}
+                      />
+                    )}
+                  </div>
+
+                  {/* Toolbar */}
+                  <DataGridToolbar
+                    onAddRow={handleAddRow}
+                    onDeleteRow={handleDeleteRow}
+                    onAddColumn={handleAddColumn}
+                    onDeleteColumn={handleDeleteColumn}
+                    onSelectAll={handleSelectAll}
+                    onInvertSelection={handleInvertSelection}
+                    onZoomToSelection={handleZoomToSelection}
+                    onCalculator={() => setActiveModal('calculator')}
+                    onImport={() => setActiveModal('import')}
+                    editMode={editMode}
+                    hasSelection={selectedRows.size > 0}
+                  />
+
+                  {/* DataGrid */}
+                  <div className="flex-1 overflow-auto p-4">
+                    {loading ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                      </div>
+                    ) : error ? (
+                      <div className="text-red-600 p-4 border border-red-200 rounded-lg">
+                        {error}
+                      </div>
+                    ) : (
+                      <DataGrid
+                        data={tableData}
+                        columns={columns.map(col => ({
+                          accessorKey: col.name,
+                          header: col.name,
+                        }))}
+                        editable={editMode}
+                      />
+                    )}
+                  </div>
+                </div>
+              }
+              rightPanel={
+                <StagingPanel
+                  changes={stagingChanges}
+                  onPreview={() => console.log('Preview')}
+                  onCommit={handleSaveChanges}
+                  onCancel={handleCancelChanges}
+                  onRemoveChange={(id) => setStagingChanges(prev => prev.filter(c => c.id !== id))}
+                />
+              }
+              showRightPanel={editMode}
+            />
           </TabsContent>
 
           {/* Staging Tab */}

@@ -66,15 +66,15 @@ export function DataGrid<TData>({
       </div>
 
       {/* Table */}
-      <div className="rounded-md border">
-        <table className="w-full">
+      <div className="rounded-md border overflow-x-auto">
+        <table className="min-w-full table-auto">
           <thead className="bg-slate-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 text-left text-sm font-medium text-slate-900"
+                    className="px-4 py-3 text-left text-sm font-medium text-slate-900 whitespace-nowrap"
                   >
                     {header.isPlaceholder ? null : (
                       <div
