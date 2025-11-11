@@ -2,7 +2,9 @@
  * Service API centralisé pour toutes les requêtes backend
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080'
+// En dev (port 5173): utilise le proxy Vite vers localhost:8000
+// En prod (port 8080): utilise le proxy nginx /api/ vers api-geo:8000
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
 
 interface ApiError {
   message: string
