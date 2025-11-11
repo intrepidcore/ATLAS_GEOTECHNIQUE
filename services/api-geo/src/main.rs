@@ -17,6 +17,7 @@ mod exports;
 mod geocode_manual;
 mod geocoding;
 mod geotechnical;
+mod health;
 mod import_bulk;
 mod import_wizard;
 mod metrics;
@@ -97,7 +98,8 @@ async fn main() -> anyhow::Result<()> {
     };
 
     let app = Router::new()
-        .route("/healthz", get(|| async { Json(Health { status: "ok" }) }))
+        .route("/healthz", get(health::health_check_simple))
+        .route("/health", get(health::health_check))
         .route("/ping", get(|| async { "pong" }))
         .route("/metrics", get(metrics_handler))
         .route("/version", get(version::version))
