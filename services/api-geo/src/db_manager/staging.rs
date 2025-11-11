@@ -271,7 +271,7 @@ pub async fn preview_staging(
         .bind(&staging_table)
         .fetch_one(pool)
         .await?;
-    let table_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
+    let _table_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&staging_info.table_name)
         .fetch_one(pool)
         .await?;

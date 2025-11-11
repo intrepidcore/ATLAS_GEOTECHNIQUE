@@ -1,6 +1,6 @@
 // Module de versioning et undo/redo
 use serde::{Deserialize, Serialize};
-use sqlx::{Column, PgPool, Row};
+use sqlx::PgPool;
 use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +34,7 @@ pub struct TableVersion {
 }
 
 /// Créer un changeset pour tracking
+#[allow(dead_code)]
 pub async fn create_changeset(
     pool: &PgPool,
     table_name: &str,
@@ -49,7 +50,7 @@ pub async fn create_changeset(
         VALUES ($1, $2, $3, $4, $5)
         "#,
     )
-    .bind(&id)
+    .bind(id)
     .bind(table_name)
     .bind(serde_json::to_string(&operation).unwrap_or_default())
     .bind(&changes)
@@ -274,11 +275,13 @@ async fn get_table_schema_json(
 }
 
 /// Lister les versions d'une table
+type VersionRow = (i32, String, serde_json::Value, i64, chrono::DateTime<chrono::Utc>, Option<String>);
+
 pub async fn list_table_versions(
     pool: &PgPool,
     table_name: &str,
 ) -> Result<Vec<TableVersion>, sqlx::Error> {
-    let rows: Vec<(i32, String, serde_json::Value, i64, chrono::DateTime<chrono::Utc>, Option<String>)> = sqlx::query_as(
+    let rows: Vec<VersionRow> = sqlx::query_as(
         r#"
         SELECT version, table_name, schema_snapshot, row_count, created_at, description
         FROM atlas.table_versions

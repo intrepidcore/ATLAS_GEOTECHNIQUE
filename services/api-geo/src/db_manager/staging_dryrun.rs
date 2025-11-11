@@ -1,5 +1,4 @@
 // Dry-run transactionnel pour staging - détection de conflits avant commit
-use super::types::*;
 use sqlx::{PgPool, Row};
 use serde::{Deserialize, Serialize};
 
@@ -111,11 +110,9 @@ pub async fn dryrun_commit_staging(
     // (si on avait des contraintes, elles seraient vérifiées ici)
     
     // Vérifier les foreign keys si elles existent
-    let fk_check = format!(
-        "SELECT COUNT(*) FROM information_schema.table_constraints 
-         WHERE table_schema = $1 AND table_name = $2 AND constraint_type = 'FOREIGN KEY'"
-    );
-    let fk_count: i64 = sqlx::query_scalar(&fk_check)
+    let fk_check = "SELECT COUNT(*) FROM information_schema.table_constraints 
+         WHERE table_schema = $1 AND table_name = $2 AND constraint_type = 'FOREIGN KEY'";
+    let fk_count: i64 = sqlx::query_scalar(fk_check)
         .bind(&staging_info.schema_name)
         .bind(&staging_info.table_name)
         .fetch_one(&mut *tx)

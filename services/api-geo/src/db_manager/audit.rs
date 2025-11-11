@@ -78,6 +78,7 @@ pub async fn get_audit_log(
 }
 
 /// Crée une entrée d'audit
+#[allow(clippy::too_many_arguments)]
 pub async fn create_audit_entry(
     pool: &PgPool,
     schema: &str,

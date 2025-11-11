@@ -107,7 +107,7 @@ pub async fn paginate_table_cursor(
 ) -> Result<PaginatedResponse<serde_json::Value>, sqlx::Error> {
     let limit = limit.min(1000);
 
-    let query = if let Some(cursor) = cursor_value {
+    let query = if let Some(_cursor) = cursor_value {
         format!(
             "SELECT * FROM {}.{} WHERE {} > $1 ORDER BY {} ASC LIMIT {}",
             schema, table, cursor_column, cursor_column, limit

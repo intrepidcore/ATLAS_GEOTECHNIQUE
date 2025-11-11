@@ -18,20 +18,14 @@ pub mod table;
 pub mod types;
 pub mod versioning;
 
-pub use audit::*;
-pub use backup::*;
-pub use backup_retention::*;
-pub use dryrun::*;
-pub use field_calculator::*;
-pub use import_export::*;
-pub use locks::*;
-pub use pagination::*;
-pub use pg_types::*;
-pub use rate_limit::*;
-pub use schema::*;
-pub use staging::*;
-pub use staging_dryrun::*;
-pub use staging_routes::*;
-pub use table::*;
+// Re-export tous les types publics (nécessaire pour routes)
+#[allow(ambiguous_glob_reexports)]
 pub use types::*;
-pub use versioning::*;
+pub use staging::{create_staging, commit_staging, cancel_staging};
+pub use locks::{StagingLock, acquire_lock, release_lock};
+pub use backup::{create_backup, restore_backup};
+pub use dryrun::DryRunResult;
+pub use schema::get_database_schema;
+pub use table::get_table_data;
+pub use audit::create_audit_entry;
+pub use pg_types::{PostgresType, get_postgres_types};

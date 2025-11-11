@@ -84,13 +84,12 @@ pub async fn create_table_backup(
         cmd.output()
     })
     .await
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("Task join error: {}", e)))?
+    .map_err(|e| std::io::Error::other(format!("Task join error: {}", e)))?
     ?;
 
     if !output.status.success() {
         let error_msg = String::from_utf8_lossy(&output.stderr);
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(std::io::Error::other(
             format!("pg_dump failed: {}", error_msg),
         ));
     }
@@ -210,8 +209,8 @@ pub async fn apply_retention_policy(
 /// Restaure un backup (async via spawn_blocking)
 pub async fn restore_backup(
     backup_path: &Path,
-    schema: &str,
-    table_name: &str,
+    _schema: &str,
+    _table_name: &str,
 ) -> Result<(), std::io::Error> {
     let db_host = std::env::var("DB_HOST").unwrap_or_else(|_| "localhost".to_string());
     let db_port = std::env::var("DB_PORT").unwrap_or_else(|_| "5432".to_string());
@@ -249,13 +248,12 @@ pub async fn restore_backup(
         cmd.output()
     })
     .await
-    .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("Task join error: {}", e)))?
+    .map_err(|e| std::io::Error::other(format!("Task join error: {}", e)))?
     ?;
 
     if !output.status.success() {
         let error_msg = String::from_utf8_lossy(&output.stderr);
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        return Err(std::io::Error::other(
             format!("Restore failed: {}", error_msg),
         ));
     }

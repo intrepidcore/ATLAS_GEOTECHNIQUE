@@ -91,10 +91,7 @@ pub async fn create_staging_api(
     )
     .await;
 
-    let lock_info = match lock_result {
-        Ok(lock) => Some(lock),
-        Err(_) => None, // Lock échoué mais staging créé
-    };
+    let lock_info = lock_result.ok(); // Lock échoué mais staging créé
 
     Ok(Json(StagingApiResponse {
         success: true,
@@ -187,7 +184,7 @@ pub async fn cancel_staging_api(
 /// POST /db/staging/:id/lock - Acquérir lock
 pub async fn acquire_lock_api(
     State(pool): State<PgPool>,
-    Path(staging_id): Path<String>,
+    Path(_staging_id): Path<String>,
     Json(request): Json<AcquireLockRequest>,
 ) -> Result<Json<StagingLock>, AppError> {
     let lock = acquire_lock(&pool, request).await.map_err(|e| {
