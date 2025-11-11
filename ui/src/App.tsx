@@ -13,7 +13,7 @@ import { tablesApi, stagingApi, type Table, type Column } from '@/services/api'
 function App() {
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<string>('sondages')
-  const [selectedSchema, setSelectedSchema] = useState<string>('atlas')
+  const [selectedSchema, setSelectedSchema] = useState<string>('public')
   const [tables, setTables] = useState<Table[]>([])
   const [columns, setColumns] = useState<Column[]>([])
   const [tableData, setTableData] = useState<any[]>([])
