@@ -62,18 +62,12 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // CORS permissif (dev/local). Autoriser localhost:8080 et 127.0.0.1:8080
+    // CORS permissif (dev/local). Autoriser tous les ports localhost
     use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+    use tower_http::cors::Any;
 
     let cors = CorsLayer::new()
-        .allow_origin([
-            "http://localhost:8080"
-                .parse::<axum::http::HeaderValue>()
-                .unwrap(),
-            "http://127.0.0.1:8080"
-                .parse::<axum::http::HeaderValue>()
-                .unwrap(),
-        ])
+        .allow_origin(Any)  // Permet tous les origins en dev (à restreindre en prod)
         .allow_methods([
             Method::GET,
             Method::POST,
@@ -83,7 +77,7 @@ async fn main() -> anyhow::Result<()> {
             Method::OPTIONS,
         ])
         .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
-        .allow_credentials(true);
+        .allow_credentials(false);  // false car Any ne supporte pas credentials
 
     // DB connexion avec retry (5 tentatives max, backoff exponentiel)
     tracing::info!("Connexion à la base de données...");

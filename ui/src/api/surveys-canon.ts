@@ -32,7 +32,7 @@ export interface SurveyCanonQuery {
   missing?: 'geom' | 'adm3';
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
 
 export async function apiGet<T>(path: string, params?: Record<string, any>): Promise<T> {
   const url = new URL(path, API_BASE);
