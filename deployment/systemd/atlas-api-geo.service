@@ -1,0 +1,45 @@
+[Unit]
+Description=Atlas API Geo - Gestionnaire de base de données géospatiales
+Documentation=https://github.com/your-org/atlas
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=simple
+User=atlas
+Group=atlas
+WorkingDirectory=/opt/atlas/services/api-geo
+ExecStart=/opt/atlas/services/api-geo/target/release/api-geo
+Restart=on-failure
+RestartSec=5s
+StartLimitBurst=3
+StartLimitInterval=60s
+
+# Environment
+Environment=RUST_LOG=info
+Environment=DATABASE_URL=postgres://atlas:CHANGE_ME@127.0.0.1:5432/atlas_clean
+Environment=DB_HOST=127.0.0.1
+Environment=DB_PORT=5432
+Environment=DB_USER=atlas
+Environment=DB_NAME=atlas_clean
+Environment=PGPASSWORD=CHANGE_ME
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/atlas/backups /opt/atlas/logs
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=2G
+CPUQuota=200%
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=atlas-api-geo
+
+[Install]
+WantedBy=multi-user.target
