@@ -12,7 +12,7 @@ import { tablesApi, stagingApi, type Table, type Column } from '@/services/api'
 
 function App() {
   const [activeModal, setActiveModal] = useState<string | null>(null)
-  const [selectedTable, setSelectedTable] = useState<string>('communes')
+  const [selectedTable, setSelectedTable] = useState<string>('sondages')
   const [selectedSchema, setSelectedSchema] = useState<string>('atlas')
   const [tables, setTables] = useState<Table[]>([])
   const [columns, setColumns] = useState<Column[]>([])
