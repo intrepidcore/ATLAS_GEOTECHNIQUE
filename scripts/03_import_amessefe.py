@@ -105,7 +105,7 @@ class AmessefeImporter:
         self.conn.close()
     
     def create_sondages(self, localites: set):
-        """Créer les sondages AMESSEFE (1 par localité)"""
+        """Créer les sondages AMESSEFE (1 par localité) - IDEMPOTENT"""
         logger.info(f"\n📍 Création des sondages pour {len(localites)} localités...")
         
         created = 0
@@ -117,18 +117,19 @@ class AmessefeImporter:
                 if not code:
                     continue
                 
-                # Vérifier si le sondage existe déjà
+                # Vérifier si le sondage existe déjà via meta->>'localite' + source
+                # (correspond à l'index unique idx_sondages_amessefe_unique)
                 cur.execute("""
                     SELECT id FROM sondages
-                    WHERE meta->>'code' = %s AND source = %s
-                """, (code, SOURCE))
+                    WHERE meta->>'localite' = %s AND source = %s
+                """, (localite, SOURCE))
                 row = cur.fetchone()
                 
                 if row:
                     sondage_id = row[0]
                     existing += 1
                 else:
-                    # Créer le sondage
+                    # Créer le sondage avec code = localité normalisée (PAS de préfixe)
                     meta = json.dumps({
                         'code': code,
                         'localite': localite,
@@ -240,25 +241,12 @@ class AmessefeImporter:
                         try:
                             # Insérer dans essais_vbs (source of truth)
                             cur.execute("""
-                                INSERT INTO essais_vbs (echantillon_id, vbs, laboratory, created_at)
-                                VALUES (%s, %s, 'FORMATEC', now())
+                                INSERT INTO essais_vbs (echantillon_id, vbs, created_at)
+                                VALUES (%s, %s, now())
                                 ON CONFLICT (echantillon_id)
                                 DO UPDATE SET
-                                  vbs = EXCLUDED.vbs,
-                                  laboratory = EXCLUDED.laboratory,
-                                  updated_at = now();
+                                  vbs = EXCLUDED.vbs;
                             """, (echantillon_id, float(vbs_value)))
-                            
-                            # Insérer le qualificatif dans essais_classif
-                            if vbs_qual:
-                                cur.execute("""
-                                    INSERT INTO essais_classif (echantillon_id, depth_m, vbs_qual, laboratory, created_at)
-                                    VALUES (%s, %s, %s, 'FORMATEC', now())
-                                    ON CONFLICT (echantillon_id)
-                                    DO UPDATE SET
-                                      vbs_qual = EXCLUDED.vbs_qual,
-                                      updated_at = now();
-                                """, (echantillon_id, depth, vbs_qual))
                             
                             total_imported += 1
                         except Exception as e:
