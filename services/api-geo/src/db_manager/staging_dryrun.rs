@@ -1,6 +1,6 @@
 // Dry-run transactionnel pour staging - détection de conflits avant commit
-use sqlx::{PgPool, Row};
 use serde::{Deserialize, Serialize};
+use sqlx::{PgPool, Row};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StagingDryRunResult {
@@ -108,7 +108,7 @@ pub async fn dryrun_commit_staging(
 
     // Vérifier contraintes UNIQUE potentielles
     // (si on avait des contraintes, elles seraient vérifiées ici)
-    
+
     // Vérifier les foreign keys si elles existent
     let fk_check = "SELECT COUNT(*) FROM information_schema.table_constraints 
          WHERE table_schema = $1 AND table_name = $2 AND constraint_type = 'FOREIGN KEY'";

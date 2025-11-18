@@ -1,0 +1,18 @@
+# Mapping colonnes essais_physiques
+# Original -> Snake_case
+id -> id
+essai_id -> essai_id
+densite_apparente_gcm3 -> densite_apparente_gcm3
+densite_absolue_gcm3 -> densite_absolue_gcm3
+teneur_eau_pct -> teneur_eau_pct
+source -> source
+measured_at -> measured_at
+meta -> meta
+created_at -> created_at
+updated_at -> updated_at
+created_by -> created_by
+updated_by -> updated_by
+created_by_batch -> created_by_batch
+updated_by_batch -> updated_by_batch
+deleted_by_batch -> deleted_by_batch
+deleted_at -> deleted_at

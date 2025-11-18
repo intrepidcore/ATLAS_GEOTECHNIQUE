@@ -31,7 +31,15 @@ mod db_manager_tests {
         let pool = setup_test_db().await;
 
         // Créer un staging
-        let staging_result = api_geo::db_manager::create_staging(&pool, "atlas", "communes", api_geo::db_manager::CreateStagingRequest { reason: Some("Test staging".to_string()) }).await;
+        let staging_result = api_geo::db_manager::create_staging(
+            &pool,
+            "atlas",
+            "communes",
+            api_geo::db_manager::CreateStagingRequest {
+                reason: Some("Test staging".to_string()),
+            },
+        )
+        .await;
 
         assert!(staging_result.is_ok(), "Should create staging");
         let staging_info = staging_result.unwrap();
@@ -48,9 +56,16 @@ mod db_manager_tests {
         let pool = setup_test_db().await;
 
         // Créer un staging
-        let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "communes", api_geo::db_manager::CreateStagingRequest { reason: Some("Test staging".to_string()) })
-            .await
-            .unwrap();
+        let staging_info = api_geo::db_manager::create_staging(
+            &pool,
+            "atlas",
+            "communes",
+            api_geo::db_manager::CreateStagingRequest {
+                reason: Some("Test staging".to_string()),
+            },
+        )
+        .await
+        .unwrap();
 
         // Valider
         let validation =
@@ -137,26 +152,35 @@ mod db_manager_tests {
     #[ignore] // Run with: cargo test --test db_manager_tests -- --ignored --test-threads=1
     async fn test_staging_commit_success_integration() {
         let pool = setup_test_db().await;
-        
+
         // Nettoyer et créer une table de test
         sqlx::query("DROP TABLE IF EXISTS atlas.test_staging_commit CASCADE")
             .execute(&pool)
             .await
             .ok();
-    
+
         sqlx::query(
             "CREATE TABLE atlas.test_staging_commit (
                 id SERIAL PRIMARY KEY,
                 name TEXT NOT NULL,
                 value INTEGER
-            )"
+            )",
         )
         .execute(&pool)
         .await
         .expect("Failed to create test table");
 
         // Créer un staging
-        let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_commit", api_geo::db_manager::CreateStagingRequest { reason: Some("Test commit".to_string()) }).await.expect("Failed to create staging");
+        let staging_info = api_geo::db_manager::create_staging(
+            &pool,
+            "atlas",
+            "test_staging_commit",
+            api_geo::db_manager::CreateStagingRequest {
+                reason: Some("Test commit".to_string()),
+            },
+        )
+        .await
+        .expect("Failed to create staging");
 
         // Insérer des données dans le staging
         let staging_table = format!("atlas.{}", staging_info.staging_id);
@@ -173,13 +197,17 @@ mod db_manager_tests {
         .expect("Failed to insert into staging");
 
         // Commit staging
-        let commit_result = api_geo::db_manager::commit_staging(&pool, &staging_info.staging_id)
-            .await;
+        let commit_result =
+            api_geo::db_manager::commit_staging(&pool, &staging_info.staging_id).await;
 
         if let Err(e) = &commit_result {
             eprintln!("Commit error: {:?}", e);
         }
-        assert!(commit_result.is_ok(), "Staging commit should succeed: {:?}", commit_result.err());
+        assert!(
+            commit_result.is_ok(),
+            "Staging commit should succeed: {:?}",
+            commit_result.err()
+        );
 
         // Vérifier que les données sont dans la table réelle
         let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM atlas.test_staging_commit")
@@ -201,19 +229,19 @@ mod db_manager_tests {
     #[ignore]
     async fn test_staging_rollback_on_constraint_violation() {
         let pool = setup_test_db().await;
-        
+
         // Nettoyer et créer une table de test
         sqlx::query("DROP TABLE IF EXISTS atlas.test_staging_simple CASCADE")
             .execute(&pool)
             .await
             .ok();
-        
+
         sqlx::query(
             "CREATE TABLE atlas.test_staging_simple (
                 id SERIAL PRIMARY KEY,
                 code TEXT NOT NULL,
                 name TEXT
-            )"
+            )",
         )
         .execute(&pool)
         .await
@@ -228,7 +256,16 @@ mod db_manager_tests {
             .expect("Failed to insert original row");
 
         // Créer un staging
-        let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_simple", api_geo::db_manager::CreateStagingRequest { reason: Some("Test simple".to_string()) }).await.expect("Failed to create staging");
+        let staging_info = api_geo::db_manager::create_staging(
+            &pool,
+            "atlas",
+            "test_staging_simple",
+            api_geo::db_manager::CreateStagingRequest {
+                reason: Some("Test simple".to_string()),
+            },
+        )
+        .await
+        .expect("Failed to create staging");
 
         // Insérer de nouvelles données dans staging (pas de conflit)
         let staging_table = format!("atlas.{}", staging_info.staging_id);
@@ -245,8 +282,8 @@ mod db_manager_tests {
         .expect("Failed to insert into staging");
 
         // Commit (doit réussir)
-        let commit_result = api_geo::db_manager::commit_staging(&pool, &staging_info.staging_id)
-            .await;
+        let commit_result =
+            api_geo::db_manager::commit_staging(&pool, &staging_info.staging_id).await;
 
         assert!(commit_result.is_ok(), "Staging commit should succeed");
 
@@ -270,26 +307,35 @@ mod db_manager_tests {
     #[ignore]
     async fn test_staging_validation_detects_errors() {
         let pool = setup_test_db().await;
-        
+
         // Nettoyer et créer une table de test
         sqlx::query("DROP TABLE IF EXISTS atlas.test_staging_validation CASCADE")
             .execute(&pool)
             .await
             .ok();
-        
+
         sqlx::query(
             "CREATE TABLE atlas.test_staging_validation (
                 id SERIAL PRIMARY KEY,
                 required_field TEXT NOT NULL,
                 optional_field TEXT
-            )"
+            )",
         )
         .execute(&pool)
         .await
         .expect("Failed to create test table");
 
         // Créer un staging
-        let staging_info = api_geo::db_manager::create_staging(&pool, "atlas", "test_staging_validation", api_geo::db_manager::CreateStagingRequest { reason: Some("Test validation".to_string()) }).await.expect("Failed to create staging");
+        let staging_info = api_geo::db_manager::create_staging(
+            &pool,
+            "atlas",
+            "test_staging_validation",
+            api_geo::db_manager::CreateStagingRequest {
+                reason: Some("Test validation".to_string()),
+            },
+        )
+        .await
+        .expect("Failed to create staging");
 
         // Insérer des données valides
         let staging_table = format!("atlas.{}", staging_info.staging_id);
@@ -304,8 +350,8 @@ mod db_manager_tests {
         .expect("Failed to insert valid data");
 
         // Valider (devrait passer)
-        let validation = api_geo::db_manager::validate_staging(&pool, &staging_info.staging_id)
-            .await;
+        let validation =
+            api_geo::db_manager::validate_staging(&pool, &staging_info.staging_id).await;
 
         assert!(validation.is_ok(), "Validation should succeed");
         let result = validation.unwrap();

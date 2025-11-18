@@ -231,11 +231,9 @@ async fn generate_explain_plan(
 ) -> Result<String, sqlx::Error> {
     let query = format!("SELECT * FROM {}.{} LIMIT 1", schema, table);
     let explain_query = format!("EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON) {}", query);
-    
-    let result: serde_json::Value = sqlx::query_scalar(&explain_query)
-        .fetch_one(pool)
-        .await?;
-    
+
+    let result: serde_json::Value = sqlx::query_scalar(&explain_query).fetch_one(pool).await?;
+
     Ok(serde_json::to_string_pretty(&result).unwrap_or_else(|_| result.to_string()))
 }
 
@@ -247,11 +245,9 @@ async fn get_sample_rows(
     limit: i32,
 ) -> Result<Vec<serde_json::Value>, sqlx::Error> {
     let query = format!("SELECT * FROM {}.{} LIMIT {}", schema, table, limit);
-    
-    let rows = sqlx::query(&query)
-        .fetch_all(pool)
-        .await?;
-    
+
+    let rows = sqlx::query(&query).fetch_all(pool).await?;
+
     let mut result = Vec::new();
     for row in rows {
         let mut obj = serde_json::Map::new();
@@ -264,6 +260,6 @@ async fn get_sample_rows(
         }
         result.push(serde_json::Value::Object(obj));
     }
-    
+
     Ok(result)
 }

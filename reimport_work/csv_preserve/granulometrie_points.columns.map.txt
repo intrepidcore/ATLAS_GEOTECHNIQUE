@@ -1,0 +1,12 @@
+# Mapping colonnes granulometrie_points
+# Original -> Snake_case
+id -> id
+essai_id -> essai_id
+sieve_mm -> sieve_mm
+percent_passing -> percent_passing
+created_at -> created_at
+methode -> methode
+meta -> meta
+created_by_batch -> created_by_batch
+deleted_by_batch -> deleted_by_batch
+deleted_at -> deleted_at

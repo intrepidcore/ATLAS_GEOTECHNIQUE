@@ -1,13 +1,13 @@
 // Panel de géocodage pour sondages individuels
-import { 
-  listSondages, 
-  getSondagesStats, 
+import {
+  listSondages,
+  getSondagesStats,
   getAdm3Candidates,
   updateSondageGeometry,
-  Sondage, 
+  Sondage,
   SondagesStats,
   Adm3Candidate,
-  extractLocaliteFromCode 
+  extractLocaliteFromCode,
 } from './api/sondages';
 import { toast } from './ui/toast';
 
@@ -123,10 +123,23 @@ export class GeocodeCanonPanel {
     return this.surveys.map(survey => {
       const displayName = survey.localite || extractLocaliteFromCode(survey.code) || survey.code;
       const subtitle = [
-        survey.code,
-        survey.adm3_name ? `Commune: ${survey.adm3_name}` : null,
+        `Code: ${survey.code}`,
+        survey.localite_key ? `Localité clé: ${survey.localite_key}` : null,
+        survey.maille_code ? `Maille: ${survey.maille_code}` : null,
       ].filter(Boolean).join(' • ');
-      
+      const admLine = [survey.adm1_name, survey.adm2_name, survey.adm3_name].filter(Boolean).join(' › ') || '—';
+      const importLine = [
+        survey.import_id ? `Import: ${survey.import_id}` : null,
+        survey.import_row_idx ? `Ligne: ${survey.import_row_idx}` : null,
+        `Essais: ${survey.n_essais}`,
+      ].filter(Boolean).join(' • ');
+      const auditLine = `Créé: ${formatDateTime(survey.created_at)}${survey.updated_at ? ` • Maj: ${formatDateTime(survey.updated_at)}` : ''}`;
+      const badges = [
+        survey.location_mode ? `<span class="tag">${survey.location_mode}</span>` : null,
+        survey.is_geocoded ? '<span class="tag tag-ok">Géocodé</span>' : '<span class="tag tag-warn">À localiser</span>',
+        survey.deleted_at ? '<span class="tag tag-err">Supprimé</span>' : null,
+        survey.meta ? '<span class="tag tag-info">Meta</span>' : null,
+      ].filter(Boolean).join(' ');
       const isSelected = this.selectedSurvey?.id === survey.id;
 
       return `
@@ -135,8 +148,16 @@ export class GeocodeCanonPanel {
           data-survey-id="${survey.id}"
           style="padding: 12px; margin-bottom: 8px; background: ${isSelected ? '#1e3a5f' : '#1a2332'}; border: 1px solid ${isSelected ? '#4c6ef5' : '#22304d'}; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
         >
-          <div style="font-weight: 500; color: #ecf2f8; margin-bottom: 4px;">${displayName}</div>
-          <div style="font-size: 12px; color: #8b9bb3;">${subtitle}</div>
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;margin-bottom:6px;">
+            <div style="font-weight: 600; color: #ecf2f8; font-size: 14px;">${displayName}</div>
+            <div>${badges}</div>
+          </div>
+          <div style="font-size:12px;color:#8b9bb3;line-height:1.4;">
+            <div>${subtitle}</div>
+            <div>ADM: ${admLine}</div>
+            <div>${importLine}</div>
+            <div>${auditLine}</div>
+          </div>
         </div>
       `;
     }).join('');
@@ -158,28 +179,60 @@ export class GeocodeCanonPanel {
 
     const s = this.selectedSurvey;
     const displayName = s.localite || extractLocaliteFromCode(s.code) || s.code;
+    const badges = [
+      s.location_mode ? `<span class="tag">${s.location_mode}</span>` : null,
+      s.is_geocoded ? '<span class="tag tag-ok">Géocodé</span>' : '<span class="tag tag-warn">À localiser</span>',
+      s.deleted_at ? '<span class="tag tag-err">Supprimé</span>' : null,
+      s.meta ? '<span class="tag tag-info">Meta</span>' : null,
+    ].filter(Boolean).join(' ');
 
     return `
       <div>
-        <h2 style="margin: 0 0 24px 0; color: #ecf2f8;">${displayName}</h2>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:8px;">
+          <h2 style="margin: 0; color: #ecf2f8;">${displayName}</h2>
+          <div>${badges}</div>
+        </div>
         
-        <div style="background: #1a2332; border: 1px solid #22304d; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
-          <div style="display: grid; grid-template-columns: 120px 1fr; gap: 12px; font-size: 14px;">
-            <div style="color: #8b9bb3;">Code:</div>
-            <div style="color: #ecf2f8; font-family: monospace;">${s.code}</div>
-            
-            <div style="color: #8b9bb3;">Village:</div>
-            <div style="color: #ecf2f8;">${s.localite || '-'}</div>
-            
-            <div style="color: #8b9bb3;">Commune:</div>
-            <div style="color: #ecf2f8;">${s.adm3_name || '-'}</div>
-            
-            <div style="color: #8b9bb3;">Mode:</div>
-            <div style="color: #ecf2f8;">${s.location_mode || 'unknown'}</div>
-          </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-bottom:24px;">
+          ${renderInfoCard('🔖 Identifiants', [
+            ['Code', s.code || '-'],
+            ['Localité clé', s.localite_key || '—'],
+            ['Maille', s.maille_code || '—'],
+            ['Localité base', s.localite_base || '—'],
+            ['Import ID', s.import_id || '—'],
+            ['Import ligne', s.import_row_idx || '—'],
+          ])}
+          ${renderInfoCard('🌍 Localisation', [
+            ['ADM1', formatAdmField(s.adm1_name, s.adm1_id)],
+            ['ADM2', formatAdmField(s.adm2_name, s.adm2_id)],
+            ['ADM3', formatAdmField(s.adm3_name, s.adm3_id?.toString())],
+            ['Mode', s.location_mode || 'unknown'],
+            ['Précision', s.location_accuracy || '—'],
+            ['Géométrie', s.geom ? '✅ Oui' : '❌ Non'],
+          ])}
+          ${renderInfoCard('📦 Import & Batch', [
+            ['Source', s.source || '—'],
+            ['Opérateur', s.operator || '—'],
+            ['Essais', s.n_essais?.toString() || '0'],
+            ['Batch création', s.created_by_batch || '—'],
+            ['Batch mise à jour', s.updated_by_batch || '—'],
+            ['Batch suppression', s.deleted_by_batch || '—'],
+          ])}
+          ${renderInfoCard('🕒 Audit', [
+            ['Créé le', formatDateTime(s.created_at)],
+            ['Mis à jour', formatDateTime(s.updated_at)],
+            ['Supprimé le', formatDateTime(s.deleted_at)],
+          ])}
         </div>
 
-        <div style="background: #1a2332; border: 1px solid #22304d; border-radius: 8px; padding: 16px;">
+        <div style="background: #1a2332; border: 1px solid #22304d; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
+          <h3 style="margin: 0 0 16px 0; color: #ecf2f8; font-size: 16px;">🧾 Meta & Notes</h3>
+          ${formatMetaBlock(s.meta)}
+          ${s.notes ? `<p style="margin-top:12px;color:#ecf2f8;"><strong>Notes:</strong> ${escapeHtml(s.notes)}</p>` : ''}
+          ${s.comment ? `<p style="margin-top:8px;color:#8b9bb3;"><strong>Commentaire:</strong> ${escapeHtml(s.comment)}</p>` : ''}
+        </div>
+
+        <div style="background: #1a2332; border: 1px solid #22304d; border-radius: 8px; padding: 16px; margin-bottom: 24px;">
           <h3 style="margin: 0 0 16px 0; color: #ecf2f8; font-size: 16px;">🎯 Géocodage</h3>
           
           <div style="margin-bottom: 16px;">
@@ -393,4 +446,62 @@ export class GeocodeCanonPanel {
       });
     }
   }
+}
+
+function formatDateTime(value: string | null | undefined): string {
+  if (!value) return '—';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString('fr-FR', {
+    dateStyle: 'short',
+    timeStyle: 'short',
+  });
+}
+
+function renderInfoCard(title: string, rows: Array<[string, string]>): string {
+  return `
+    <div style="background:#1a2332;border:1px solid #22304d;border-radius:8px;padding:14px;min-height:170px;">
+      <h3 style="margin:0 0 10px 0;font-size:14px;color:#8b9bb3;">${title}</h3>
+      <dl style="margin:0;display:grid;grid-template-columns:auto 1fr;row-gap:6px;column-gap:12px;font-size:13px;">
+        ${rows.map(([label, value]) => `
+          <dt style="color:#6c7a99;">${label}</dt>
+          <dd style="margin:0;color:#ecf2f8;">${value || '—'}</dd>
+        `).join('')}
+      </dl>
+    </div>
+  `;
+}
+
+function formatAdmField(name?: string | null, code?: string | null): string {
+  if (!name && !code) return '—';
+  if (name && code) return `${name} <span style="color:#6c7a99;">(${code})</span>`;
+  return name || code || '—';
+}
+
+function formatMetaBlock(meta: string | null): string {
+  if (!meta) {
+    return '<p style="color:#8b9bb3;margin:0;">Pas de métadonnées</p>';
+  }
+
+  let pretty = meta;
+  try {
+    pretty = JSON.stringify(JSON.parse(meta), null, 2);
+  } catch (_err) {
+    // keep raw string
+  }
+
+  return `
+    <pre style="background:#0f172a;border:1px solid #22304d;border-radius:6px;padding:12px;font-size:12px;max-height:220px;overflow:auto;">${escapeHtml(pretty)}</pre>
+  `;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }

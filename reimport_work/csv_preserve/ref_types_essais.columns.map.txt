@@ -1,0 +1,9 @@
+# Mapping colonnes ref_types_essais
+# Original -> Snake_case
+code -> code
+nom_fr -> nom_fr
+nom_en -> nom_en
+categorie -> categorie
+unite_defaut -> unite_defaut
+description -> description
+ordre_affichage -> ordre_affichage

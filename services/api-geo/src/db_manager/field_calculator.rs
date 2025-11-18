@@ -37,10 +37,13 @@ pub async fn preview_field_calculation(
     // Sanitize: vérifier que l'expression ne contient pas de commandes dangereuses
     let dangerous_keywords = ["DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "INSERT"];
     let expr_upper = request.expression.to_uppercase();
-    
+
     for keyword in &dangerous_keywords {
         if expr_upper.contains(keyword) {
-            warnings.push(format!("⚠️ Expression contient le mot-clé dangereux: {}", keyword));
+            warnings.push(format!(
+                "⚠️ Expression contient le mot-clé dangereux: {}",
+                keyword
+            ));
         }
     }
 
@@ -73,10 +76,7 @@ pub async fn preview_field_calculation(
     }
 
     // Estimer le nombre total de lignes affectées
-    let count_sql = format!(
-        "SELECT COUNT(*) FROM {}.{}{}",
-        schema, table, filter_clause
-    );
+    let count_sql = format!("SELECT COUNT(*) FROM {}.{}{}", schema, table, filter_clause);
     let estimated_affected_rows: i64 = sqlx::query_scalar(&count_sql)
         .fetch_one(pool)
         .await

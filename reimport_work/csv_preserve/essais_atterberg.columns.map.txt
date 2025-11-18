@@ -1,0 +1,9 @@
+# Mapping colonnes essais_atterberg
+# Original -> Snake_case
+id -> id
+echantillon_id -> echantillon_id
+wl -> wl
+wp -> wp
+ip_generated -> ip_generated
+meta -> meta
+created_at -> created_at

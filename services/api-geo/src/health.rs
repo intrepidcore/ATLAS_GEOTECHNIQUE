@@ -1,6 +1,6 @@
+use crate::state::AppState;
 use axum::{extract::State, Json};
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct HealthResponse {
@@ -17,7 +17,8 @@ pub struct DatabaseHealth {
 }
 
 /// Healthcheck endpoint avec vérification des tables critiques
-pub async fn health_check(State(pool): State<PgPool>) -> Json<HealthResponse> {
+pub async fn health_check(State(state): State<AppState>) -> Json<HealthResponse> {
+    let pool = state.pool;
     let mut db_health = DatabaseHealth {
         connected: false,
         tables_ok: false,
@@ -50,7 +51,9 @@ pub async fn health_check(State(pool): State<PgPool>) -> Json<HealthResponse> {
             .unwrap_or(false);
 
             if !exists {
-                db_health.missing_tables.push(format!("{}.{}", schema, table));
+                db_health
+                    .missing_tables
+                    .push(format!("{}.{}", schema, table));
             }
         }
 
@@ -73,8 +76,8 @@ pub async fn health_check(State(pool): State<PgPool>) -> Json<HealthResponse> {
 }
 
 /// Healthcheck simple (pour Docker/K8s)
-pub async fn health_check_simple(State(pool): State<PgPool>) -> &'static str {
-    match sqlx::query("SELECT 1").fetch_one(&pool).await {
+pub async fn health_check_simple(State(state): State<AppState>) -> &'static str {
+    match sqlx::query("SELECT 1").fetch_one(&state.pool).await {
         Ok(_) => "ok",
         Err(_) => "error",
     }

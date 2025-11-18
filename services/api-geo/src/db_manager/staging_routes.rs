@@ -8,13 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 
-use super::{
-    locks::*,
-    staging::*,
-    staging_dryrun::*,
-    backup_retention::*,
-    types::*,
-};
+use super::{backup_retention::*, locks::*, staging::*, staging_dryrun::*, types::*};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CreateStagingApiRequest {
@@ -141,16 +135,15 @@ pub async fn commit_staging_api(
     if request.backup.unwrap_or(true) {
         let staging_info = get_staging_info(&pool, &staging_id).await?;
         let config = BackupConfig::default();
-        
-        match create_table_backup(
-            &staging_info.table_name,
-            &staging_info.schema_name,
-            &config,
-        )
-        .await
+
+        match create_table_backup(&staging_info.table_name, &staging_info.schema_name, &config)
+            .await
         {
             Ok(backup_info) => {
-                eprintln!("Backup créé: {:?} ({} bytes)", backup_info.file_path, backup_info.size_bytes);
+                eprintln!(
+                    "Backup créé: {:?} ({} bytes)",
+                    backup_info.file_path, backup_info.size_bytes
+                );
             }
             Err(e) => {
                 eprintln!("Warning: Backup failed: {}", e);
@@ -174,7 +167,7 @@ pub async fn cancel_staging_api(
     Path(staging_id): Path<String>,
 ) -> Result<StatusCode, AppError> {
     cancel_staging(&pool, &staging_id).await?;
-    
+
     // Libérer le lock
     release_lock_by_staging(&pool, &staging_id).await.ok();
 
@@ -187,9 +180,9 @@ pub async fn acquire_lock_api(
     Path(_staging_id): Path<String>,
     Json(request): Json<AcquireLockRequest>,
 ) -> Result<Json<StagingLock>, AppError> {
-    let lock = acquire_lock(&pool, request).await.map_err(|e| {
-        AppError::Conflict(e.message)
-    })?;
+    let lock = acquire_lock(&pool, request)
+        .await
+        .map_err(|e| AppError::Conflict(e.message))?;
 
     Ok(Json(lock))
 }
@@ -202,7 +195,7 @@ pub async fn release_lock_api(
 ) -> Result<StatusCode, AppError> {
     let staging_info = get_staging_info(&pool, &staging_id).await?;
     let table_full = format!("{}.{}", staging_info.schema_name, staging_info.table_name);
-    
+
     release_lock(&pool, &table_full, &user).await?;
 
     Ok(StatusCode::NO_CONTENT)

@@ -12,6 +12,7 @@ import {
 } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { EditableCell } from "@/components/EditableCell"
 import { ArrowUpDown, ChevronLeft, ChevronRight } from "lucide-react"
 
 interface DataGridProps<TData> {
@@ -19,7 +20,12 @@ interface DataGridProps<TData> {
   columns: ColumnDef<TData>[]
   onRowEdit?: (row: TData) => void
   onRowDelete?: (row: TData) => void
+  onCellEdit?: (rowId: string, columnName: string, newValue: any) => void
   editable?: boolean
+  showSelection?: boolean
+  selection?: Set<string>
+  onToggleRow?: (rowId: string, checked: boolean) => void
+  rowIdKey?: string
 }
 
 export function DataGrid<TData>({
@@ -27,7 +33,12 @@ export function DataGrid<TData>({
   columns,
   onRowEdit,
   onRowDelete,
+  onCellEdit,
   editable = false,
+  showSelection = false,
+  selection,
+  onToggleRow,
+  rowIdKey,
 }: DataGridProps<TData>) {
   const [sorting, setSorting] = React.useState<SortingState>([])
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
@@ -71,6 +82,11 @@ export function DataGrid<TData>({
           <thead className="bg-slate-50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
+                {showSelection && (
+                  <th className="w-8 px-2">
+                    {/* Header checkbox (select all) - simple helper if needed later */}
+                  </th>
+                )}
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
@@ -103,7 +119,7 @@ export function DataGrid<TData>({
             {table.getRowModel().rows.length === 0 ? (
               <tr>
                 <td
-                  colSpan={columns.length}
+                  colSpan={columns.length + (showSelection ? 1 : 0)}
                   className="px-4 py-8 text-center text-slate-500"
                 >
                   Aucune donnée
@@ -115,14 +131,62 @@ export function DataGrid<TData>({
                   key={row.id}
                   className="border-t hover:bg-slate-50 transition-colors"
                 >
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="px-4 py-3 text-sm">
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                  {showSelection && (
+                    <td className="px-2 align-middle">
+                      {(() => {
+                        const rowOriginal: any = row.original as any
+                        const primary = (rowIdKey && rowOriginal?.[rowIdKey]) ?? rowOriginal?.id
+                        const normalized = (val: any) => {
+                          if (val === undefined || val === null) return ''
+                          const s = String(val)
+                          if (s.trim() === '' || s.toLowerCase() === 'nan') return ''
+                          return s
+                        }
+                        const rowId = normalized(primary) || String(row.id)
+                        const checked = selection ? selection.has(rowId) : false
+                        return (
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={checked}
+                            onChange={(e) => onToggleRow && onToggleRow(rowId, e.target.checked)}
+                          />
+                        )
+                      })()}
                     </td>
-                  ))}
+                  )}
+                  {row.getVisibleCells().map((cell) => {
+                    const colId = cell.column.id
+                    const rowOriginal: any = cell.row.original as any
+                    const primary = (rowIdKey && rowOriginal?.[rowIdKey]) ?? rowOriginal?.id
+                    const normalized = (val: any) => {
+                      if (val === undefined || val === null) return ''
+                      const s = String(val)
+                      if (s.trim() === '' || s.toLowerCase() === 'nan') return ''
+                      return s
+                    }
+                    const rowId = normalized(primary) || String(cell.row.id)
+                    const value = cell.getValue() as any
+
+                    const canEdit = editable && typeof onCellEdit === "function" && normalized(primary) !== ''
+                    return (
+                      <td key={cell.id} className="px-4 py-2 text-sm align-middle h-8">
+                        {canEdit ? (
+                          <EditableCell
+                            value={value}
+                            columnName={colId}
+                            rowId={rowId}
+                            editable={true}
+                            onChange={(rid, cname, newVal) => onCellEdit(rid, cname, newVal)}
+                          />
+                        ) : (
+                          <div className={normalized(primary) === '' ? "text-gray-400 italic" : ""}>
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </div>
+                        )}
+                      </td>
+                    )
+                  })}
                 </tr>
               ))
             )}

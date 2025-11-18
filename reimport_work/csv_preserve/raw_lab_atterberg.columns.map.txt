@@ -1,0 +1,16 @@
+# Mapping colonnes raw_lab_atterberg
+# Original -> Snake_case
+id -> id
+code_site -> code_site
+depth_m -> depth_m
+test_type -> test_type
+tare_no -> tare_no
+nb_coups -> nb_coups
+poids_total_humide_g -> poids_total_humide_g
+poids_total_sec_g -> poids_total_sec_g
+poids_tare_g -> poids_tare_g
+poids_eau_g -> poids_eau_g
+poids_sol_sec_g -> poids_sol_sec_g
+teneur_eau_pct -> teneur_eau_pct
+echantillon_id -> echantillon_id
+created_at -> created_at

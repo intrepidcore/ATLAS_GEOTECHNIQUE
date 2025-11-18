@@ -1,0 +1,12 @@
+# Mapping colonnes raw_lab_agt
+# Original -> Snake_case
+id -> id
+code_site -> code_site
+depth_m -> depth_m
+sieve_mm -> sieve_mm
+mass_refus_cum_g -> mass_refus_cum_g
+refus_cum_pct -> refus_cum_pct
+passants_pct -> passants_pct
+echantillon_id -> echantillon_id
+created_at -> created_at
+updated_at -> updated_at

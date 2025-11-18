@@ -148,7 +148,7 @@ pub async fn import_csv_to_staging(
 
     // Parser CSV (simple, sans dépendance externe)
     let lines: Vec<&str> = csv_data.lines().collect();
-    
+
     if lines.is_empty() {
         return Ok(ImportResult {
             staging_id: Some(staging_id.to_string()),
@@ -187,7 +187,10 @@ pub async fn import_csv_to_staging(
         let values: Vec<&str> = line.split(',').map(|s| s.trim()).collect();
 
         if values.len() != header.len() {
-            errors.push(format!("Ligne {}: nombre de colonnes incorrect", line_num + 2));
+            errors.push(format!(
+                "Ligne {}: nombre de colonnes incorrect",
+                line_num + 2
+            ));
             continue;
         }
 
@@ -226,11 +229,7 @@ pub async fn import_csv_to_staging(
 }
 
 /// Helper pour exécuter une insertion (simplifié)
-async fn execute_insert(
-    pool: &PgPool,
-    sql: &str,
-    values: &[String],
-) -> Result<(), sqlx::Error> {
+async fn execute_insert(pool: &PgPool, sql: &str, values: &[String]) -> Result<(), sqlx::Error> {
     // Dans une vraie implémentation, utiliser des paramètres bindés
     // Pour l'instant, version simplifiée
     let values_str = values
@@ -238,7 +237,7 @@ async fn execute_insert(
         .map(|v| format!("'{}'", v.replace('\'', "''")))
         .collect::<Vec<_>>()
         .join(", ");
-    
+
     let final_sql = sql.replace(
         &(1..=values.len())
             .map(|i| format!("${}", i))

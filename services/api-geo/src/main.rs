@@ -59,7 +59,9 @@ async fn main() -> anyhow::Result<()> {
     let _ = dotenvy::dotenv();
 
     tracing_subscriber::registry()
-        .with(tracing_subscriber::EnvFilter::new("debug,hyper=info,sqlx=warn"))
+        .with(tracing_subscriber::EnvFilter::new(
+            "debug,hyper=info,sqlx=warn",
+        ))
         .with(tracing_subscriber::fmt::layer())
         .init();
 
@@ -68,7 +70,7 @@ async fn main() -> anyhow::Result<()> {
     use tower_http::cors::Any;
 
     let cors = CorsLayer::new()
-        .allow_origin(Any)  // Permet tous les origins en dev (à restreindre en prod)
+        .allow_origin(Any) // Permet tous les origins en dev (à restreindre en prod)
         .allow_methods([
             Method::GET,
             Method::POST,
@@ -78,7 +80,7 @@ async fn main() -> anyhow::Result<()> {
             Method::OPTIONS,
         ])
         .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
-        .allow_credentials(false);  // false car Any ne supporte pas credentials
+        .allow_credentials(false); // false car Any ne supporte pas credentials
 
     // DB connexion avec retry (5 tentatives max, backoff exponentiel)
     tracing::info!("Connexion à la base de données...");
@@ -92,7 +94,7 @@ async fn main() -> anyhow::Result<()> {
     let metrics = std::sync::Arc::new(metrics::Metrics::new());
     tracing::info!("✅ Metrics Prometheus initialisées");
 
-    let state = AppState { 
+    let state = AppState {
         pool,
         metrics: metrics.clone(),
     };
@@ -199,6 +201,10 @@ async fn main() -> anyhow::Result<()> {
         )
         .route("/geocode/apply-accepted", post(geocoding::apply_accepted))
         .route("/geocode/stats", get(geocoding::get_stats))
+        .route(
+            "/geocode/status/:schema/:table",
+            get(db_manager::routes::geocode_status_handler),
+        )
         // Manual geocoding endpoints
         .route(
             "/geocode/manual",
@@ -254,6 +260,18 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/db/table/:schema/:table/select",
             post(db_manager::routes::select_rows_handler),
+        )
+        .route(
+            "/db/table/:schema/:table/select-bbox",
+            post(db_manager::routes::select_bbox_handler),
+        )
+        .route(
+            "/db/table/:schema/:table/extent",
+            post(db_manager::routes::extent_by_ids_handler),
+        )
+        .route(
+            "/db/table/:schema/:table/extent-related",
+            post(db_manager::routes::extent_by_related_handler),
         )
         .route(
             "/db/table/:schema/:table/row",

@@ -1,0 +1,15 @@
+# Mapping colonnes echantillons
+# Original -> Snake_case
+id -> id
+sondage_id -> sondage_id
+depth_m -> depth_m
+date -> date
+laboratory -> laboratory
+norm -> norm
+rho_s_gcm3 -> rho_s_gcm3
+water_content_w -> water_content_w
+is_index -> is_index
+eg -> eg
+meta -> meta
+created_at -> created_at
+updated_at -> updated_at

@@ -81,7 +81,7 @@ pub async fn acquire_lock(
         // Conflit - table déjà verrouillée
         // Récupérer le lock existant
         let existing = get_lock(pool, &request.table_name).await?;
-        
+
         Err(LockError {
             error_type: "already_locked".to_string(),
             message: format!(
@@ -101,28 +101,22 @@ pub async fn release_lock(
     table_name: &str,
     locked_by: &str,
 ) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "DELETE FROM atlas.staging_locks WHERE table_name = $1 AND locked_by = $2",
-    )
-    .bind(table_name)
-    .bind(locked_by)
-    .execute(pool)
-    .await?;
+    let result =
+        sqlx::query("DELETE FROM atlas.staging_locks WHERE table_name = $1 AND locked_by = $2")
+            .bind(table_name)
+            .bind(locked_by)
+            .execute(pool)
+            .await?;
 
     Ok(result.rows_affected() > 0)
 }
 
 /// Libère un lock par staging_id
-pub async fn release_lock_by_staging(
-    pool: &PgPool,
-    staging_id: &str,
-) -> Result<bool, sqlx::Error> {
-    let result = sqlx::query(
-        "DELETE FROM atlas.staging_locks WHERE staging_id = $1",
-    )
-    .bind(staging_id)
-    .execute(pool)
-    .await?;
+pub async fn release_lock_by_staging(pool: &PgPool, staging_id: &str) -> Result<bool, sqlx::Error> {
+    let result = sqlx::query("DELETE FROM atlas.staging_locks WHERE staging_id = $1")
+        .bind(staging_id)
+        .execute(pool)
+        .await?;
 
     Ok(result.rows_affected() > 0)
 }
@@ -253,13 +247,12 @@ pub async fn extend_lock(
 /// Vérifie si une table est verrouillée
 pub async fn is_locked(pool: &PgPool, table_name: &str) -> Result<bool, sqlx::Error> {
     cleanup_expired_locks(pool).await.ok();
-    
-    let count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.staging_locks WHERE table_name = $1",
-    )
-    .bind(table_name)
-    .fetch_one(pool)
-    .await?;
+
+    let count: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM atlas.staging_locks WHERE table_name = $1")
+            .bind(table_name)
+            .fetch_one(pool)
+            .await?;
 
     Ok(count > 0)
 }

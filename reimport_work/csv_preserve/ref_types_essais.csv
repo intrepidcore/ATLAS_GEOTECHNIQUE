@@ -1,0 +1,10 @@
+code,nom_fr,nom_en,categorie,unite_defaut,description,ordre_affichage
+Granulometrie,Granulométrie (% passant),Grain size distribution,Granulometrie,%,,10
+BleuMethylene_VBS,Valeur au bleu de méthylène (VBS),Methylene blue value,Atterberg,g/100g,,20
+Atterberg_WL,Limite de liquidité (WL),Liquid limit,Atterberg,%,,30
+Atterberg_WP,Limite de plasticité (WP),Plastic limit,Atterberg,%,,40
+Atterberg_IP,Indice de plasticité (IP),Plasticity index,Atterberg,%,,50
+PotentielGonflement_eg,Potentiel de gonflement (eg),Swelling potential,Gonflement,%,,60
+Analyse_Bleu,Analyse qualitative VBS,VBS qualitative analysis,Atterberg,,,25
+Analyse_Atterberg,Analyse qualitative Atterberg,Atterberg qualitative analysis,Atterberg,,,55
+Analyse_Gonflement,Analyse qualitative gonflement,Swelling qualitative analysis,Gonflement,,,65

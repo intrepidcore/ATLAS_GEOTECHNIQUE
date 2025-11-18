@@ -6,7 +6,19 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use serde::Serialize;
 use std::collections::HashMap;
+
+#[derive(Serialize)]
+pub struct GeocodeStatus {
+    pub id: String,
+    pub code: Option<String>,
+    pub is_geocoded: bool,
+    pub location_mode: Option<String>,
+    pub location_accuracy: Option<String>,
+    pub has_geometry: bool,
+    pub adm3_id: Option<i32>,
+}
 
 // ============================================================================
 // Schema & Table Info Routes
@@ -15,6 +27,102 @@ use std::collections::HashMap;
 /// GET /db/types - Récupère la liste des types PostgreSQL disponibles
 pub async fn get_postgres_types_handler() -> Json<Vec<PostgresType>> {
     Json(pg_types::get_postgres_types())
+}
+
+/// POST /db/table/:schema/:table/extent-related
+pub async fn extent_by_related_handler(
+    State(state): State<AppState>,
+    Path((schema, table)): Path<(String, String)>,
+    Json(ids): Json<Vec<String>>,
+) -> Result<Json<Option<BBox>>, (StatusCode, Json<DbManagerError>)> {
+    match table::get_extent_by_related(&state.pool, &schema, &table, &ids).await {
+        Ok(bbox) => Ok(Json(bbox)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(DbManagerError::new("SELECTION_ERROR", &e.to_string())),
+        )),
+    }
+}
+
+// ============================================================================
+// Spatial Selection Routes
+// ============================================================================
+
+/// POST /db/table/:schema/:table/select-bbox
+pub async fn select_bbox_handler(
+    State(state): State<AppState>,
+    Path((schema, table)): Path<(String, String)>,
+    Json(payload): Json<HashMap<String, serde_json::Value>>,
+) -> Result<Json<SelectionResponse>, (StatusCode, Json<DbManagerError>)> {
+    let min_x = payload.get("min_x").and_then(|v| v.as_f64()).ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(DbManagerError::new("BAD_REQUEST", "min_x manquant")),
+    ))?;
+    let min_y = payload.get("min_y").and_then(|v| v.as_f64()).ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(DbManagerError::new("BAD_REQUEST", "min_y manquant")),
+    ))?;
+    let max_x = payload.get("max_x").and_then(|v| v.as_f64()).ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(DbManagerError::new("BAD_REQUEST", "max_x manquant")),
+    ))?;
+    let max_y = payload.get("max_y").and_then(|v| v.as_f64()).ok_or((
+        StatusCode::BAD_REQUEST,
+        Json(DbManagerError::new("BAD_REQUEST", "max_y manquant")),
+    ))?;
+    let srid = payload.get("srid").and_then(|v| v.as_i64()).unwrap_or(4326) as i32;
+
+    match table::select_bbox(
+        &state.pool,
+        &schema,
+        &table,
+        min_x,
+        min_y,
+        max_x,
+        max_y,
+        srid,
+    )
+    .await
+    {
+        Ok(resp) => Ok(Json(resp)),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(DbManagerError::new("SELECTION_ERROR", &e.to_string())),
+        )),
+    }
+}
+
+/// POST /db/table/:schema/:table/extent
+pub async fn extent_by_ids_handler(
+    State(state): State<AppState>,
+    Path((schema, table)): Path<(String, String)>,
+    Json(ids): Json<Vec<String>>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<DbManagerError>)> {
+    if ids.is_empty() {
+        return Ok(Json(serde_json::json!({
+            "bbox": null,
+            "message": "No IDs provided"
+        })));
+    }
+
+    match table::get_extent_by_ids(&state.pool, &schema, &table, &ids).await {
+        Ok(Some(bbox)) => Ok(Json(serde_json::json!({
+            "bbox": bbox,
+            "message": "Extent calculated successfully"
+        }))),
+        Ok(None) => Ok(Json(serde_json::json!({
+            "bbox": null,
+            "message": "No geometries found for the selected rows"
+        }))),
+        Err(e) => {
+            tracing::error!("Extent calculation error for {}.{}: {}", schema, table, e);
+            Ok(Json(serde_json::json!({
+                "bbox": null,
+                "message": format!("Error calculating extent: {}", e),
+                "error": true
+            })))
+        }
+    }
 }
 
 /// GET /db/schema - Récupère la structure complète de la base
@@ -696,5 +804,82 @@ pub async fn dryrun_delete_column_handler(
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(DbManagerError::new("DRYRUN_ERROR", &e.to_string())),
         )),
+    }
+}
+
+// ============================================================================
+// Geocoding Status Routes
+// ============================================================================
+
+/// GET /geocode/status/:schema/:table - Statut de géocodage pour une table
+pub async fn geocode_status_handler(
+    State(state): State<AppState>,
+    Path((schema, table)): Path<(String, String)>,
+) -> Result<Json<Vec<GeocodeStatus>>, (StatusCode, Json<DbManagerError>)> {
+    let query = format!(
+        "SELECT 
+            id::text,
+            code,
+            is_geocoded,
+            location_mode,
+            location_accuracy,
+            (geom IS NOT NULL) as has_geometry,
+            adm3_id
+        FROM {}.{}
+        WHERE deleted_at IS NULL
+        ORDER BY created_at DESC
+        LIMIT 100",
+        schema, table
+    );
+
+    match sqlx::query_as::<
+        _,
+        (
+            String,
+            Option<String>,
+            bool,
+            Option<String>,
+            Option<String>,
+            bool,
+            Option<i32>,
+        ),
+    >(&query)
+    .fetch_all(&state.pool)
+    .await
+    {
+        Ok(rows) => {
+            let statuses: Vec<GeocodeStatus> = rows
+                .into_iter()
+                .map(
+                    |(
+                        id,
+                        code,
+                        is_geocoded,
+                        location_mode,
+                        location_accuracy,
+                        has_geometry,
+                        adm3_id,
+                    )| {
+                        GeocodeStatus {
+                            id,
+                            code,
+                            is_geocoded,
+                            location_mode,
+                            location_accuracy,
+                            has_geometry,
+                            adm3_id,
+                        }
+                    },
+                )
+                .collect();
+            Ok(Json(statuses))
+        }
+        Err(e) => {
+            tracing::error!("Geocode status error for {}.{}: {}", schema, table, e);
+            Err((
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(DbManagerError::new("GEOCODE_STATUS_ERROR", &e.to_string())),
+            ))
+        }
     }
 }

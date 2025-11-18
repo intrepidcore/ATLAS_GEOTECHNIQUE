@@ -1,0 +1,8 @@
+# Mapping colonnes essais_vbs
+# Original -> Snake_case
+id -> id
+echantillon_id -> echantillon_id
+vbs -> vbs
+commentaire -> commentaire
+meta -> meta
+created_at -> created_at

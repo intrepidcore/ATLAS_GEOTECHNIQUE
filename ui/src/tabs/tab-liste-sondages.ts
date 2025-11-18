@@ -7,16 +7,7 @@
 import { TabComponent } from '../types/tabs'
 import { httpJSON } from '../utils/http'
 import { bus } from '../utils/event-bus'
-
-interface Survey {
-  id: string
-  code: string
-  source: string
-  location_mode: string
-  adm3_name: string | null
-  has_geom: boolean
-  created_at: string
-}
+import type { Survey } from '../types/survey'
 
 interface Filters {
   search: string
@@ -112,11 +103,14 @@ export function createTabListeSondages(apiUrl: string): TabComponent {
             <thead style="position: sticky; top: 0; background: var(--tab-bg); z-index: 10;">
               <tr>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Code</th>
-                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Source</th>
+                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Localité</th>
+                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">ADM</th>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Mode</th>
-                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">ADM3</th>
                 <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Géom</th>
-                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Date</th>
+                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Créé</th>
+                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Mis à jour</th>
+                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Supprimé</th>
+                <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: var(--tab-text-primary); border-bottom: 2px solid var(--tab-border);">Meta</th>
               </tr>
             </thead>
             <tbody id="surveys-tbody"></tbody>
@@ -151,6 +145,35 @@ export function createTabListeSondages(apiUrl: string): TabComponent {
         .badge-exact { background: #0bb07b; color: white; }
         .badge-adm_random_cell { background: #3aa6ff; color: white; }
         .badge-spread { background: #ff9f43; color: white; }
+        .badge-unknown { background: #6c757d; color: white; }
+        .pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          border-radius: 999px;
+          font-size: 11px;
+          font-weight: 600;
+        }
+        .pill-geom { background: #0bb07b22; color: #0bb07b; }
+        .pill-no-geom { background: #ff6b6b22; color: #ff6b6b; }
+        .pill-deleted { background: #ff6b6b33; color: #ff6b6b; }
+        .meta-snippet {
+          display: inline-block;
+          max-width: 200px;
+          padding: 2px 6px;
+          border-radius: 4px;
+          background: #111a2b;
+          border: 1px solid #1f2d46;
+          font-size: 11px;
+          color: #8b9bb3;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        tr.row-deleted {
+          opacity: 0.65;
+        }
       </style>
     `
     
@@ -226,17 +249,18 @@ export function createTabListeSondages(apiUrl: string): TabComponent {
       if (filters.search) {
         const searchLower = filters.search.toLowerCase()
         const matchCode = survey.code.toLowerCase().includes(searchLower)
-        const matchSource = survey.source.toLowerCase().includes(searchLower)
+        const matchSource = (survey.source || '').toLowerCase().includes(searchLower)
         if (!matchCode && !matchSource) return false
       }
       
       if (filters.location_mode !== 'all') {
-        if (survey.location_mode !== filters.location_mode) return false
+        const mode = (survey.location_mode || 'unknown')
+        if (mode !== filters.location_mode) return false
       }
       
       if (filters.has_geom !== 'all') {
         const hasGeom = filters.has_geom === 'true'
-        if (survey.has_geom !== hasGeom) return false
+        if ((Boolean(survey.geom)) !== hasGeom) return false
       }
       
       return true
@@ -267,22 +291,56 @@ export function createTabListeSondages(apiUrl: string): TabComponent {
     table.style.display = 'table'
     
     if (tbody) {
-      tbody.innerHTML = filteredSurveys.map(survey => `
-        <tr data-survey-id="${survey.id}">
-          <td><strong>${survey.code}</strong></td>
-          <td>${survey.source}</td>
+      tbody.innerHTML = filteredSurveys.map((survey) => {
+        const localite = survey.localite ?? survey.localite_base ?? '—'
+        const admLabel = formatAdmLabel(survey)
+        const hasGeom = Boolean(survey.geom)
+        const mode = survey.location_mode || 'unknown'
+        const deletedBadge = survey.deleted_at
+          ? `<span class="pill pill-deleted">${formatDateTime(survey.deleted_at)}</span>`
+          : '—'
+        const importInfo = survey.import_id
+          ? `Import: ${survey.import_id}${survey.import_row_idx ? ` · Row ${survey.import_row_idx}` : ''}`
+          : null
+        const batchInfo = [survey.created_by_batch, survey.updated_by_batch, survey.deleted_by_batch]
+          .filter(Boolean)
+          .join(' · ')
+        return `
+        <tr data-survey-id="${survey.id}" class="${survey.deleted_at ? 'row-deleted' : ''}">
           <td>
-            <span class="badge badge-${survey.location_mode}">
-              ${formatLocationMode(survey.location_mode)}
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <strong>${survey.code}</strong>
+              <span style="font-size:11px;color:var(--tab-text-secondary);">${survey.source || 'Source inconnue'}</span>
+              ${importInfo ? `<span style="font-size:10px;color:var(--tab-text-secondary);">${importInfo}</span>` : ''}
+              ${batchInfo ? `<span style="font-size:10px;color:var(--tab-text-secondary);">${batchInfo}</span>` : ''}
+              <span style="font-size:10px;color:var(--tab-text-secondary);">${survey.n_essais ?? 0} essais</span>
+            </div>
+          </td>
+          <td>
+            <div style="display:flex;flex-direction:column;gap:2px;">
+              <span>${localite}</span>
+              ${survey.localite_key ? `<span style="font-size:11px;color:var(--tab-text-secondary);">${survey.localite_key}</span>` : ''}
+              ${survey.localite_base && survey.localite_base !== localite ? `<span style="font-size:11px;color:var(--tab-text-secondary);">Base: ${survey.localite_base}</span>` : ''}
+            </div>
+          </td>
+          <td>${admLabel}</td>
+          <td>
+            <span class="badge badge-${mode}">
+              ${formatLocationMode(mode)}
             </span>
           </td>
-          <td>${survey.adm3_name || '-'}</td>
-          <td style="font-size: 16px;">
-            ${survey.has_geom ? '✅' : '❌'}
+          <td>
+            <span class="pill ${hasGeom ? 'pill-geom' : 'pill-no-geom'}">
+              ${hasGeom ? '✅ Géocodé' : '❌ À localiser'}
+            </span>
           </td>
-          <td>${formatDate(survey.created_at)}</td>
+          <td>${formatDateTime(survey.created_at)}</td>
+          <td>${formatDateTime(survey.updated_at)}</td>
+          <td>${deletedBadge}</td>
+          <td>${formatMeta(survey.meta)}</td>
         </tr>
-      `).join('')
+      `
+      }).join('')
     }
     
     if (countEl) {
@@ -290,22 +348,48 @@ export function createTabListeSondages(apiUrl: string): TabComponent {
     }
   }
   
-  function formatLocationMode(mode: string): string {
+  function formatLocationMode(mode: string | null): string {
+    const normalized = mode || 'unknown'
     const modes: Record<string, string> = {
-      'exact': 'Exact',
-      'adm_random_cell': 'ADM random',
-      'spread': 'Spread',
+      exact: 'Exact',
+      adm_random_cell: 'ADM random',
+      spread: 'Spread',
+      unknown: 'Inconnu',
     }
-    return modes[mode] || mode
+    return modes[normalized] || normalized
   }
   
-  function formatDate(dateStr: string): string {
+  function formatDateTime(dateStr: string | null): string {
+    if (!dateStr) return '—'
     const date = new Date(dateStr)
-    return date.toLocaleDateString('fr-FR', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('fr-FR', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
     })
+  }
+
+  function formatAdmLabel(survey: Survey): string {
+    const segments = [survey.adm1_name, survey.adm2_name, survey.adm3_name].filter(Boolean)
+    return segments.length > 0 ? segments.join(' › ') : '—'
+  }
+
+  function formatMeta(meta: string | null): string {
+    if (!meta) return '—'
+    const trimmed = meta.trim()
+    if (!trimmed || trimmed === '{}' || trimmed === 'null') return '—'
+    return `<code class="meta-snippet">${escapeHtml(trimmed)}</code>`
+  }
+
+  function escapeHtml(value: string): string {
+    return value
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
   }
   
   async function refresh() {

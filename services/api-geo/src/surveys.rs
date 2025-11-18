@@ -7,7 +7,8 @@ use axum::{
 };
 use num_traits::ToPrimitive;
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Uuid, Row};
+use serde_json::Value as JsonValue;
+use sqlx::{postgres::PgRow, types::Uuid, Row};
 use std::str::FromStr;
 
 // ============================================================================
@@ -24,6 +25,149 @@ pub struct NewSurveyRequest {
     #[allow(dead_code)]
     pub snap_to_grid: Option<bool>,
     pub use_commune_centroid: Option<bool>,
+}
+
+const SURVEY_FIELDS: &str = r#"
+    id::text,
+    code,
+    ST_X(ST_Transform(geom, 4326)) as lon,
+    ST_Y(ST_Transform(geom, 4326)) as lat,
+    depth_m_min,
+    depth_m_max,
+    maille_code,
+    adm1_name,
+    adm2_name,
+    adm3_name,
+    adm1_id,
+    adm2_id,
+    adm3_id,
+    localite_base,
+    localite_key,
+    localite,
+    location_mode,
+    location_accuracy,
+    is_geocoded,
+    type_sol,
+    meta,
+    date,
+    date_sondage,
+    source,
+    operator,
+    notes,
+    comment,
+    import_id,
+    import_row_idx,
+    loc_mode,
+    grid_code,
+    created_by_batch,
+    updated_by_batch,
+    deleted_by_batch,
+    deleted_at,
+    (SELECT COUNT(*) FROM essais WHERE sondage_id = sondages.id AND deleted_at IS NULL) as n_essais,
+    created_at,
+    updated_at,
+    ST_AsGeoJSON(geom)::jsonb as geom
+"#;
+
+fn row_to_survey(r: &PgRow) -> Survey {
+    let id: Option<String> = r.try_get("id").ok();
+    let code: String = r.try_get("code").unwrap_or_default();
+    let lon: Option<f64> = r.try_get("lon").ok();
+    let lat: Option<f64> = r.try_get("lat").ok();
+    let depth_min: Option<sqlx::types::BigDecimal> = r.try_get("depth_m_min").ok().flatten();
+    let depth_max: Option<sqlx::types::BigDecimal> = r.try_get("depth_m_max").ok().flatten();
+    let maille: Option<String> = r.try_get("maille_code").ok();
+    let adm1: Option<String> = r.try_get("adm1_name").ok();
+    let adm2: Option<String> = r.try_get("adm2_name").ok();
+    let adm3: Option<String> = r.try_get("adm3_name").ok();
+    let adm1_id: Option<String> = r.try_get("adm1_id").ok();
+    let adm2_id: Option<String> = r.try_get("adm2_id").ok();
+    let adm3_id: Option<i32> = r.try_get("adm3_id").ok();
+    let localite_base: Option<String> = r.try_get("localite_base").ok();
+    let localite_key: Option<String> = r.try_get("localite_key").ok();
+    let localite: Option<String> = r.try_get("localite").ok();
+    let location_mode: Option<String> = r.try_get("location_mode").ok();
+    let location_accuracy: String = r
+        .try_get("location_accuracy")
+        .unwrap_or_else(|_| "exact".to_string());
+    let is_geocoded: bool = r.try_get("is_geocoded").unwrap_or(true);
+    let type_sol: Option<String> = r.try_get("type_sol").ok();
+    let meta: Option<String> = r.try_get("meta").ok();
+    let date: Option<String> = r
+        .try_get::<Option<time::Date>, _>("date")
+        .ok()
+        .flatten()
+        .map(|d| d.to_string());
+    let date_sondage: Option<String> = r.try_get("date_sondage").ok();
+    let source: Option<String> = r.try_get("source").ok();
+    let operator: Option<String> = r.try_get("operator").ok();
+    let notes: Option<String> = r.try_get("notes").ok();
+    let comment: Option<String> = r.try_get("comment").ok();
+    let import_id: Option<String> = r.try_get("import_id").ok();
+    let import_row_idx: Option<String> = r.try_get("import_row_idx").ok();
+    let loc_mode: Option<String> = r.try_get("loc_mode").ok();
+    let grid_code: Option<String> = r.try_get("grid_code").ok();
+    let created_by_batch: Option<String> = r.try_get("created_by_batch").ok();
+    let updated_by_batch: Option<String> = r.try_get("updated_by_batch").ok();
+    let deleted_by_batch: Option<String> = r.try_get("deleted_by_batch").ok();
+    let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
+    let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
+    let updated: Option<time::OffsetDateTime> = r.try_get("updated_at").ok();
+    let deleted: Option<time::OffsetDateTime> = r.try_get("deleted_at").ok();
+    let geom: Option<JsonValue> = r.try_get("geom").ok();
+
+    Survey {
+        id: id.unwrap_or_default(),
+        code,
+        lon,
+        lat,
+        depth_m_min: depth_min.and_then(|v| v.to_f64()),
+        depth_m_max: depth_max.and_then(|v| v.to_f64()),
+        maille_code: maille,
+        adm1_name: adm1,
+        adm2_name: adm2,
+        adm3_name: adm3,
+        adm1_id,
+        adm2_id,
+        adm3_id,
+        localite_base,
+        localite_key,
+        localite,
+        location_mode,
+        location_accuracy,
+        is_geocoded,
+        type_sol,
+        meta,
+        date,
+        date_sondage,
+        source,
+        operator,
+        notes,
+        comment,
+        import_id,
+        import_row_idx,
+        loc_mode,
+        grid_code,
+        created_by_batch,
+        updated_by_batch,
+        deleted_by_batch,
+        n_essais,
+        created_at: created
+            .map(|t| {
+                t.format(&time::format_description::well_known::Rfc3339)
+                    .unwrap()
+            })
+            .unwrap_or_default(),
+        updated_at: updated.map(|t| {
+            t.format(&time::format_description::well_known::Rfc3339)
+                .unwrap()
+        }),
+        deleted_at: deleted.map(|t| {
+            t.format(&time::format_description::well_known::Rfc3339)
+                .unwrap()
+        }),
+        geom,
+    }
 }
 
 #[derive(Deserialize, Debug)]
@@ -95,15 +239,35 @@ pub struct Survey {
     pub adm1_name: Option<String>,
     pub adm2_name: Option<String>,
     pub adm3_name: Option<String>,
+    pub adm1_id: Option<String>,
+    pub adm2_id: Option<String>,
+    pub adm3_id: Option<i32>,
+    pub localite_base: Option<String>,
+    pub localite_key: Option<String>,
+    pub localite: Option<String>,
+    pub location_mode: Option<String>,
     pub location_accuracy: String,
     pub is_geocoded: bool,
+    pub type_sol: Option<String>,
+    pub meta: Option<String>,
     pub date: Option<String>,
+    pub date_sondage: Option<String>,
     pub source: Option<String>,
     pub operator: Option<String>,
     pub notes: Option<String>,
     pub comment: Option<String>,
+    pub import_id: Option<String>,
+    pub import_row_idx: Option<String>,
+    pub loc_mode: Option<String>,
+    pub grid_code: Option<String>,
+    pub created_by_batch: Option<String>,
+    pub updated_by_batch: Option<String>,
+    pub deleted_by_batch: Option<String>,
     pub n_essais: i64,
     pub created_at: String,
+    pub updated_at: Option<String>,
+    pub deleted_at: Option<String>,
+    pub geom: Option<JsonValue>,
 }
 
 #[derive(Deserialize)]
@@ -311,11 +475,6 @@ pub async fn create_survey(
             ST_Transform(ST_SetSRID(ST_MakePoint($3, $4), $5), 25231),
             $6, $7, $8, 'UI-v1.1'
         )
-        RETURNING 
-            code, maille_code, adm1_name, adm2_name, adm3_name,
-            ST_X(ST_Transform(geom, 4326)) as lon,
-            ST_Y(ST_Transform(geom, 4326)) as lat,
-            created_at
         "#,
     )
     .bind(id)
@@ -326,56 +485,41 @@ pub async fn create_survey(
     .bind(depth_min_bd)
     .bind(depth_max_bd)
     .bind(&payload.comment)
-    .fetch_one(pool)
+    .execute(pool)
     .await;
 
     match result {
-        Ok(row) => {
-            let code: Option<String> = row.try_get("code").ok();
-            let maille_code: Option<String> = row.try_get("maille_code").ok();
-            let adm1: Option<String> = row.try_get("adm1_name").ok();
-            let adm2: Option<String> = row.try_get("adm2_name").ok();
-            let adm3: Option<String> = row.try_get("adm3_name").ok();
-            let lon: Option<f64> = row.try_get("lon").ok();
-            let lat: Option<f64> = row.try_get("lat").ok();
-            let created_at: Option<time::OffsetDateTime> = row.try_get("created_at").ok();
+        Ok(_) => {
+            let select_query = format!(
+                "SELECT {} FROM sondages WHERE id = $1 AND deleted_at IS NULL",
+                SURVEY_FIELDS
+            );
+            let row = sqlx::query(&select_query).bind(id).fetch_one(pool).await;
 
-            // Audit log
-            let _ = sqlx::query("INSERT INTO audit_log (action, entity, entity_id, payload) VALUES ($1, $2, $3, $4)")
-                .bind("CREATE")
-                .bind("sondage")
-                .bind(id)
-                .bind(serde_json::json!({"code": code, "lon": payload.lon, "lat": payload.lat}))
-                .execute(pool)
-                .await;
+            match row {
+                Ok(row) => {
+                    // Audit log
+                    let _ = sqlx::query(
+                        "INSERT INTO audit_log (action, entity, entity_id, payload) VALUES ($1, $2, $3, $4)"
+                    )
+                    .bind("CREATE")
+                    .bind("sondage")
+                    .bind(id)
+                    .bind(serde_json::json!({"code": row.try_get::<Option<String>, _>("code").ok(), "lon": payload.lon, "lat": payload.lat}))
+                    .execute(pool)
+                    .await;
 
-            Json(Survey {
-                id: id.to_string(),
-                code: code.unwrap_or_else(|| id.to_string()),
-                lon,
-                lat,
-                depth_m_min: payload.depth_m_min,
-                depth_m_max: payload.depth_m_max,
-                maille_code,
-                adm1_name: adm1,
-                adm2_name: adm2,
-                adm3_name: adm3,
-                location_accuracy: "exact".to_string(),
-                is_geocoded: true,
-                date: payload.date,
-                source: payload.source,
-                operator: payload.operator,
-                notes: payload.notes,
-                comment: payload.comment,
-                n_essais: 0,
-                created_at: created_at
-                    .map(|t| {
-                        t.format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
-                    })
-                    .unwrap_or_default(),
-            })
-            .into_response()
+                    Json(row_to_survey(&row)).into_response()
+                }
+                Err(e) => {
+                    tracing::error!(?e, "create_survey fetch error");
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(serde_json::json!({"error": "Failed to fetch created survey"})),
+                    )
+                        .into_response()
+                }
+            }
         }
         Err(e) => {
             tracing::error!(?e, "create_survey error");
@@ -395,30 +539,10 @@ pub async fn list_surveys(
 ) -> impl IntoResponse {
     let pool = &state.pool;
 
-    let mut query = r#"
-        SELECT 
-            id::text,
-            code,
-            ST_X(ST_Transform(geom, 4326)) as lon,
-            ST_Y(ST_Transform(geom, 4326)) as lat,
-            depth_m_min,
-            depth_m_max,
-            maille_code,
-            adm1_name,
-            adm2_name,
-            adm3_name,
-            location_accuracy,
-            is_geocoded,
-            date,
-            source,
-            operator,
-            notes,
-            comment,
-            (SELECT COUNT(*) FROM essais WHERE sondage_id = sondages.id AND deleted_at IS NULL) as n_essais,
-            created_at
-        FROM sondages
-        WHERE deleted_at IS NULL
-    "#.to_string();
+    let mut query = format!(
+        "SELECT {} FROM sondages WHERE deleted_at IS NULL",
+        SURVEY_FIELDS
+    );
 
     // Filtres
     let mut conditions = Vec::new();
@@ -455,65 +579,7 @@ pub async fn list_surveys(
 
     match rows {
         Ok(rows) => {
-            let surveys: Vec<Survey> = rows
-                .iter()
-                .map(|r| {
-                    let id: Option<String> = r.try_get("id").ok();
-                    let code: String = r.try_get("code").unwrap_or_default();
-                    let lon: Option<f64> = r.try_get("lon").ok();
-                    let lat: Option<f64> = r.try_get("lat").ok();
-                    let depth_min: Option<sqlx::types::BigDecimal> =
-                        r.try_get("depth_m_min").ok().flatten();
-                    let depth_max: Option<sqlx::types::BigDecimal> =
-                        r.try_get("depth_m_max").ok().flatten();
-                    let maille: Option<String> = r.try_get("maille_code").ok();
-                    let adm1: Option<String> = r.try_get("adm1_name").ok();
-                    let adm2: Option<String> = r.try_get("adm2_name").ok();
-                    let adm3: Option<String> = r.try_get("adm3_name").ok();
-                    let location_accuracy: String = r
-                        .try_get("location_accuracy")
-                        .unwrap_or_else(|_| "exact".to_string());
-                    let is_geocoded: bool = r.try_get("is_geocoded").unwrap_or(true);
-                    let date: Option<String> = r
-                        .try_get::<Option<time::Date>, _>("date")
-                        .ok()
-                        .flatten()
-                        .map(|d| d.to_string());
-                    let source: Option<String> = r.try_get("source").ok();
-                    let operator: Option<String> = r.try_get("operator").ok();
-                    let notes: Option<String> = r.try_get("notes").ok();
-                    let comment: Option<String> = r.try_get("comment").ok();
-                    let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
-                    let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
-
-                    Survey {
-                        id: id.unwrap_or_default(),
-                        code,
-                        lon,
-                        lat,
-                        depth_m_min: depth_min.and_then(|v| v.to_f64()),
-                        depth_m_max: depth_max.and_then(|v| v.to_f64()),
-                        maille_code: maille,
-                        adm1_name: adm1,
-                        adm2_name: adm2,
-                        adm3_name: adm3,
-                        location_accuracy,
-                        is_geocoded,
-                        date,
-                        source,
-                        operator,
-                        notes,
-                        comment,
-                        n_essais,
-                        created_at: created
-                            .map(|t| {
-                                t.format(&time::format_description::well_known::Rfc3339)
-                                    .unwrap()
-                            })
-                            .unwrap_or_default(),
-                    }
-                })
-                .collect();
+            let surveys: Vec<Survey> = rows.iter().map(row_to_survey).collect();
 
             Json(surveys).into_response()
         }
@@ -599,94 +665,14 @@ pub async fn get_survey(
         }
     };
 
-    let row = sqlx::query(
-        r#"
-        SELECT 
-            id::text,
-            code,
-            ST_X(ST_Transform(geom, 4326)) as lon,
-            ST_Y(ST_Transform(geom, 4326)) as lat,
-            depth_m_min,
-            depth_m_max,
-            maille_code,
-            adm1_name,
-            adm2_name,
-            adm3_name,
-            location_accuracy,
-            is_geocoded,
-            date,
-            source,
-            operator,
-            notes,
-            comment,
-            (SELECT COUNT(*) FROM essais WHERE sondage_id = sondages.id AND deleted_at IS NULL) as n_essais,
-            created_at
-        FROM sondages
-        WHERE id = $1 AND deleted_at IS NULL
-        "#
-    )
-    .bind(uuid)
-    .fetch_optional(pool)
-    .await;
+    let query = format!(
+        "SELECT {} FROM sondages WHERE id = $1 AND deleted_at IS NULL",
+        SURVEY_FIELDS
+    );
+    let row = sqlx::query(&query).bind(uuid).fetch_optional(pool).await;
 
     match row {
-        Ok(Some(r)) => {
-            let id: Option<String> = r.try_get("id").ok();
-            let code: String = r.try_get("code").unwrap_or_default();
-            let lon: Option<f64> = r.try_get("lon").ok();
-            let lat: Option<f64> = r.try_get("lat").ok();
-            let depth_min: Option<sqlx::types::BigDecimal> =
-                r.try_get("depth_m_min").ok().flatten();
-            let depth_max: Option<sqlx::types::BigDecimal> =
-                r.try_get("depth_m_max").ok().flatten();
-            let maille: Option<String> = r.try_get("maille_code").ok();
-            let adm1: Option<String> = r.try_get("adm1_name").ok();
-            let adm2: Option<String> = r.try_get("adm2_name").ok();
-            let adm3: Option<String> = r.try_get("adm3_name").ok();
-            let location_accuracy: String = r
-                .try_get("location_accuracy")
-                .unwrap_or_else(|_| "exact".to_string());
-            let is_geocoded: bool = r.try_get("is_geocoded").unwrap_or(true);
-            let date: Option<String> = r
-                .try_get::<Option<time::Date>, _>("date")
-                .ok()
-                .flatten()
-                .map(|d| d.to_string());
-            let source: Option<String> = r.try_get("source").ok();
-            let operator: Option<String> = r.try_get("operator").ok();
-            let notes: Option<String> = r.try_get("notes").ok();
-            let comment: Option<String> = r.try_get("comment").ok();
-            let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
-            let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
-
-            Json(Survey {
-                id: id.unwrap_or_default(),
-                code,
-                lon,
-                lat,
-                depth_m_min: depth_min.and_then(|v| v.to_f64()),
-                depth_m_max: depth_max.and_then(|v| v.to_f64()),
-                maille_code: maille,
-                adm1_name: adm1,
-                adm2_name: adm2,
-                adm3_name: adm3,
-                location_accuracy,
-                is_geocoded,
-                date,
-                source,
-                operator,
-                notes,
-                comment,
-                n_essais,
-                created_at: created
-                    .map(|t| {
-                        t.format(&time::format_description::well_known::Rfc3339)
-                            .unwrap()
-                    })
-                    .unwrap_or_default(),
-            })
-            .into_response()
-        }
+        Ok(Some(r)) => Json(row_to_survey(&r)).into_response(),
         Ok(None) => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({"error": "Survey not found"})),

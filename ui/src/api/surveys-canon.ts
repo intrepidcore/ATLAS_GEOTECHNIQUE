@@ -5,17 +5,29 @@ export interface SurveyCanon {
   code: string;
   localite_canon: string;
   localite: string | null;
-  adm3_id: string | null;
+  localite_key: string | null;
+  source: string | null;
+  adm3_id: number | null;
   adm3_name: string | null;
-  geom: any | null;
+  adm2_name: string | null;
+  adm1_name: string | null;
+  geom: Record<string, unknown> | null;
+  geom_geojson: Record<string, unknown> | null;
   location_mode: string | null;
+  location_accuracy: string | null;
   is_geocoded: boolean;
-  has_geom: boolean;          // Nouveau: a une géométrie précise
-  has_adm3: boolean;          // Nouveau: a un rattachement ADM3
+  has_geom: boolean;
+  has_adm3: boolean;
   date: string | null;
+  date_sondage: string | null;
+  operator: string | null;
+  notes: string | null;
+  comment: string | null;
+  meta: string | null;
   nb_sondages_source: number;
   created_at: string;
   updated_at: string;
+  deleted_at: string | null;
 }
 
 export interface SurveyCanonStats {
@@ -32,7 +44,17 @@ export interface SurveyCanonQuery {
   missing?: 'geom' | 'adm3';
 }
 
-const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+// Helper pour obtenir une base URL absolue
+function getApiBase(): string {
+  const envBase = import.meta.env.VITE_API_BASE;
+  if (envBase && envBase.startsWith('http')) {
+    return envBase.replace(/\/+$/, '');
+  }
+  // Fallback: même origine + /api
+  return window.location.origin + '/api';
+}
+
+const API_BASE = getApiBase();
 
 export async function apiGet<T>(path: string, params?: Record<string, any>): Promise<T> {
   const url = new URL(path, API_BASE);

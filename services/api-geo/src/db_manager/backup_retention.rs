@@ -66,7 +66,7 @@ pub async fn create_table_backup(
     // Exécuter pg_dump dans spawn_blocking (std::process est sync)
     let output = tokio::task::spawn_blocking(move || {
         use std::process::Command;
-        
+
         let mut cmd = Command::new("pg_dump");
         cmd.env("PGPASSWORD", db_password);
         cmd.arg("-h").arg(&db_host);
@@ -84,14 +84,14 @@ pub async fn create_table_backup(
         cmd.output()
     })
     .await
-    .map_err(|e| std::io::Error::other(format!("Task join error: {}", e)))?
-    ?;
+    .map_err(|e| std::io::Error::other(format!("Task join error: {}", e)))??;
 
     if !output.status.success() {
         let error_msg = String::from_utf8_lossy(&output.stderr);
-        return Err(std::io::Error::other(
-            format!("pg_dump failed: {}", error_msg),
-        ));
+        return Err(std::io::Error::other(format!(
+            "pg_dump failed: {}",
+            error_msg
+        )));
     }
 
     // Récupérer la taille du fichier
@@ -113,12 +113,12 @@ pub async fn create_table_backup(
 /// Calcule le checksum SHA256 d'un fichier
 async fn calculate_checksum(path: &Path) -> Result<String, std::io::Error> {
     use sha2::{Digest, Sha256};
-    
+
     let content = fs::read(path).await?;
     let mut hasher = Sha256::new();
     hasher.update(&content);
     let result = hasher.finalize();
-    
+
     Ok(format!("{:x}", result))
 }
 
@@ -139,7 +139,9 @@ pub async fn list_table_backups(
     while let Some(entry) = entries.next_entry().await? {
         let path = entry.path();
         if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
-            if filename.contains(&table_safe) && (filename.ends_with(".dump") || filename.ends_with(".sql")) {
+            if filename.contains(&table_safe)
+                && (filename.ends_with(".dump") || filename.ends_with(".sql"))
+            {
                 if let Ok(metadata) = fs::metadata(&path).await {
                     // Parser le timestamp du nom de fichier
                     if let Some(timestamp_str) = extract_timestamp(filename) {
@@ -186,13 +188,15 @@ pub async fn apply_retention_policy(
     let backups = list_table_backups(table_name, config).await?;
     let mut deleted_count = 0;
 
-    let retention_cutoff = chrono::Utc::now() - chrono::Duration::days(config.retention_days as i64);
+    let retention_cutoff =
+        chrono::Utc::now() - chrono::Duration::days(config.retention_days as i64);
 
     for (index, backup) in backups.iter().enumerate() {
         // Supprimer si:
         // 1. Plus vieux que retention_days
         // 2. OU au-delà de max_backups_per_table
-        let should_delete = backup.created_at < retention_cutoff || index >= config.max_backups_per_table;
+        let should_delete =
+            backup.created_at < retention_cutoff || index >= config.max_backups_per_table;
 
         if should_delete {
             if let Err(e) = fs::remove_file(&backup.file_path).await {
@@ -224,7 +228,7 @@ pub async fn restore_backup(
 
     let output = tokio::task::spawn_blocking(move || {
         use std::process::Command;
-        
+
         let mut cmd = if is_compressed {
             let mut c = Command::new("pg_restore");
             c.arg("-Fc");
@@ -248,14 +252,14 @@ pub async fn restore_backup(
         cmd.output()
     })
     .await
-    .map_err(|e| std::io::Error::other(format!("Task join error: {}", e)))?
-    ?;
+    .map_err(|e| std::io::Error::other(format!("Task join error: {}", e)))??;
 
     if !output.status.success() {
         let error_msg = String::from_utf8_lossy(&output.stderr);
-        return Err(std::io::Error::other(
-            format!("Restore failed: {}", error_msg),
-        ));
+        return Err(std::io::Error::other(format!(
+            "Restore failed: {}",
+            error_msg
+        )));
     }
 
     Ok(())
@@ -269,7 +273,8 @@ pub async fn cleanup_all_expired_backups(config: &BackupConfig) -> Result<usize,
         return Ok(0);
     }
 
-    let retention_cutoff = chrono::Utc::now() - chrono::Duration::days(config.retention_days as i64);
+    let retention_cutoff =
+        chrono::Utc::now() - chrono::Duration::days(config.retention_days as i64);
     let mut entries = fs::read_dir(&config.backup_dir).await?;
 
     while let Some(entry) = entries.next_entry().await? {

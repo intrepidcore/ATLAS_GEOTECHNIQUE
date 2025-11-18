@@ -1,0 +1,9 @@
+# Mapping colonnes granulo_points
+# Original -> Snake_case
+id -> id
+echantillon_id -> echantillon_id
+method -> method
+sieve_mm -> sieve_mm
+passing_pct -> passing_pct
+meta -> meta
+created_at -> created_at

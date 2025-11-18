@@ -10,6 +10,7 @@ import {
   Copy,
   Calculator,
   Upload,
+  Search,
 } from 'lucide-react'
 
 interface DataGridToolbarProps {
@@ -19,6 +20,7 @@ interface DataGridToolbarProps {
   onDeleteColumn: () => void
   onSelectAll: () => void
   onInvertSelection: () => void
+  onAdvancedSelection: () => void
   onZoomToSelection: () => void
   onCalculator: () => void
   onImport: () => void
@@ -33,6 +35,7 @@ export function DataGridToolbar({
   onDeleteColumn,
   onSelectAll,
   onInvertSelection,
+  onAdvancedSelection,
   onZoomToSelection,
   onCalculator,
   onImport,
@@ -86,6 +89,9 @@ export function DataGridToolbar({
         </Button>
         <Button size="sm" variant="ghost" onClick={onInvertSelection} title="Inverser sélection">
           <XSquare className="h-4 w-4" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={onAdvancedSelection} title="Sélection avancée (Regex/BBOX)">
+          <Search className="h-4 w-4" />
         </Button>
         <Button
           size="sm"

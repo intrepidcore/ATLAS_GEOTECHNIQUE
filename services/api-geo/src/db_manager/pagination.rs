@@ -132,12 +132,12 @@ pub async fn paginate_table_cursor(
         let mut obj = serde_json::Map::new();
         for (i, col) in row.columns().iter().enumerate() {
             let value: Option<String> = row.try_get(i).ok();
-            
+
             // Capturer la valeur du curseur pour la prochaine page
             if col.name() == cursor_column {
                 next_cursor = value.clone();
             }
-            
+
             obj.insert(
                 col.name().to_string(),
                 serde_json::Value::String(value.unwrap_or_else(|| "NULL".to_string())),

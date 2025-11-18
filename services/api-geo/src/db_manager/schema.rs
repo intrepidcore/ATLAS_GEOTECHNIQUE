@@ -229,7 +229,7 @@ pub async fn get_columns(
 }
 
 /// Récupère les clés primaires
-async fn get_primary_keys(
+pub async fn get_primary_keys(
     pool: &PgPool,
     schema: &str,
     table: &str,
@@ -250,7 +250,7 @@ async fn get_primary_keys(
 }
 
 /// Récupère les clés étrangères
-async fn get_foreign_keys(
+pub async fn get_foreign_keys(
     pool: &PgPool,
     schema: &str,
     table: &str,

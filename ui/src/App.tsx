@@ -15,7 +15,11 @@ import { ThreePanelLayout } from '@/components/ThreePanelLayout'
 import { EditModeToggle } from '@/components/EditModeToggle'
 import { UnsavedChangesAlert } from '@/components/UnsavedChangesAlert'
 import { DataGridToolbar } from '@/components/DataGridToolbar'
-import { tablesApi, stagingApi, type Table, type Column } from '@/services/api'
+import { AdvancedSelectionDialog } from '@/components/AdvancedSelectionDialog'
+import { MapPanel } from '@/components/MapPanel'
+import { selectionApi } from '@/services/selection-api'
+import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/services/api'
+import { stagingApiV2 } from '@/services/staging-api'
 
 function App() {
   const [activeModal, setActiveModal] = useState<string | null>(null)
@@ -29,7 +33,11 @@ function App() {
   const [editMode, setEditMode] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [stagingChanges, setStagingChanges] = useState<any[]>([])
+  const [stagingId, setStagingId] = useState<string | null>(null)
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
+  const [showAdvancedSelection, setShowAdvancedSelection] = useState(false)
+  const [bboxToZoom, setBboxToZoom] = useState<{min_x:number;min_y:number;max_x:number;max_y:number}|null>(null)
+  const [rowIdKey, setRowIdKey] = useState<string>('id')
 
   // Charger les tables au démarrage
   useEffect(() => {
@@ -41,7 +49,7 @@ function App() {
     if (selectedTable) {
       loadTableData()
     }
-  }, [selectedTable, selectedSchema])
+  }, [selectedSchema, selectedTable])
 
   const loadTables = async () => {
     try {
@@ -61,18 +69,21 @@ function App() {
   }
 
   const loadTableData = async () => {
+    if (!selectedTable) return
+    setLoading(true)
     try {
-      setLoading(true)
       setError(null)
-      const [cols, data] = await Promise.all([
+      const [info, cols, data] = await Promise.all([
+        tablesApi.getTableInfo(selectedSchema, selectedTable),
         tablesApi.getColumns(selectedSchema, selectedTable),
         tablesApi.getData(selectedSchema, selectedTable, 100, 0)
       ])
+      const pk = (info?.primary_keys && info.primary_keys[0]) || 'id'
+      setRowIdKey(pk)
       setColumns(cols)
       setTableData(data)
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors du chargement des données')
-      console.error('Error loading table data:', err)
+    } catch (e:any) {
+      setError(e.message)
     } finally {
       setLoading(false)
     }
@@ -91,15 +102,61 @@ function App() {
   }
 
   // Handlers pour le mode édition
-  const handleSaveChanges = () => {
-    console.log('Saving changes...', stagingChanges)
-    setHasUnsavedChanges(false)
-    setStagingChanges([])
+  const handlePreviewDryRun = async () => {
+    try {
+      setLoading(true)
+      if (!stagingId) {
+        const res = await stagingApiV2.create(selectedSchema, selectedTable, 'UI preview dry-run')
+        setStagingId(res.staging_id)
+      }
+      const preview = await stagingApiV2.preview(stagingId || (await (async () => {
+        const r = await stagingApiV2.create(selectedSchema, selectedTable, 'UI preview dry-run')
+        setStagingId(r.staging_id)
+        return r
+      })()).staging_id)
+      alert(`✅ Preview prête. Inserts: ${preview.summary.inserts}, Updates: ${preview.summary.updates}, Deletes: ${preview.summary.deletes}`)
+    } catch (err: any) {
+      alert(`❌ Erreur dry-run: ${err.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const handleCancelChanges = () => {
+  const handleSaveChanges = async () => {
+    try {
+      setLoading(true)
+      if (!stagingId) {
+        const res = await stagingApiV2.create(selectedSchema, selectedTable, 'UI commit')
+        setStagingId(res.staging_id)
+      }
+      await stagingApiV2.validate(stagingId!)
+      await stagingApiV2.commit(stagingId!)
+      
+      alert('✅ Modifications enregistrées avec succès!')
+      setHasUnsavedChanges(false)
+      setStagingChanges([])
+      setStagingId(null)
+      
+      // Recharger les données
+      await loadTableData()
+    } catch (err: any) {
+      alert(`❌ Erreur lors de l'enregistrement: ${err.message}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleCancelChanges = async () => {
+    try {
+      if (stagingId) {
+        await stagingApiV2.cancel(stagingId)
+      }
+    } catch (_) {}
+    setStagingId(null)
     setStagingChanges([])
     setHasUnsavedChanges(false)
+    // Recharger données d'origine
+    await loadTableData()
   }
 
   const handleTableSelect = (schema: string, table: string) => {
@@ -107,14 +164,171 @@ function App() {
     setSelectedTable(table)
   }
 
+  // Handler édition cellule
+  const handleCellEdit = async (rowId: string, columnName: string, newValue: any) => {
+    try {
+      // Créer staging si besoin
+      let sid = stagingId
+      if (!sid) {
+        const res = await stagingApiV2.create(selectedSchema, selectedTable, 'UI editing session')
+        sid = res.staging_id
+        setStagingId(sid)
+      }
+      // Appliquer opération UPDATE au staging
+      await stagingApiV2.applyOperation(sid!, 'update', { [columnName]: newValue }, rowId)
+      // Enregistrer côté UI
+      const change = {
+        id: `${Date.now()}-${rowId}-${columnName}`,
+        type: 'update' as const,
+        table: selectedTable,
+        column: columnName,
+        rowId,
+        newValue,
+      }
+      setStagingChanges(prev => [...prev, change])
+      setHasUnsavedChanges(true)
+      // Mettre à jour localement
+      setTableData(prev => prev.map((row: any) => row.id === rowId ? { ...row, [columnName]: newValue } : row))
+    } catch (e: any) {
+      alert(`Erreur édition: ${e.message}`)
+    }
+  }
+
   // Handlers toolbar
-  const handleAddRow = () => console.log('Add row')
-  const handleDeleteRow = () => console.log('Delete row')
+  const handleAddRow = () => {
+    const newRow = { id: `new-${Date.now()}`, ...Object.fromEntries(columns.map(c => [c.name, null])) }
+    setTableData(prev => [...prev, newRow])
+    const change = {
+      id: `insert-${Date.now()}`,
+      type: 'INSERT' as const,
+      table: selectedTable,
+      newValue: newRow,
+      sql: `INSERT INTO ${selectedSchema}.${selectedTable} (${columns.map(c => c.name).join(', ')}) VALUES (...);`
+    }
+    setStagingChanges(prev => [...prev, change])
+    setHasUnsavedChanges(true)
+  }
+  
+  const handleDeleteRow = () => {
+    if (selectedRows.size === 0) return
+    const rowIds = Array.from(selectedRows)
+    setTableData(prev => prev.filter((row: any) => !rowIds.includes(row.id)))
+    const change = {
+      id: `delete-${Date.now()}`,
+      type: 'DELETE' as const,
+      table: selectedTable,
+      sql: `DELETE FROM ${selectedSchema}.${selectedTable} WHERE id IN (${rowIds.map(id => `'${id}'`).join(', ')});`
+    }
+    setStagingChanges(prev => [...prev, change])
+    setHasUnsavedChanges(true)
+    setSelectedRows(new Set())
+  }
+  
   const handleAddColumn = () => console.log('Add column')
   const handleDeleteColumn = () => console.log('Delete column')
-  const handleSelectAll = () => console.log('Select all')
-  const handleInvertSelection = () => console.log('Invert selection')
-  const handleZoomToSelection = () => console.log('Zoom to selection')
+  const handleSelectAll = () => {
+    setSelectedRows(new Set(tableData.map((row: any) => row.id)))
+  }
+  const handleInvertSelection = () => {
+    const allIds = new Set(tableData.map((row: any) => row.id))
+    const newSelection = new Set<string>()
+    allIds.forEach(id => {
+      if (!selectedRows.has(id)) newSelection.add(id)
+    })
+    setSelectedRows(newSelection)
+  }
+  const handleZoomToSelection = async () => {
+    try {
+      const ids = Array.from(selectedRows)
+      if (ids.length === 0) return
+      
+      console.log('Zoom sur sélection:', ids)
+      
+      const res = await fetch(`${API_BASE_URL}/db/table/${selectedSchema}/${selectedTable}/extent`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(ids)
+      })
+      
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('Erreur extent:', errorText)
+        
+        // Essayer le fallback via relations
+        console.log('Tentative fallback via relations...')
+        const res2 = await fetch(`${API_BASE_URL}/db/table/${selectedSchema}/${selectedTable}/extent-related`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ids)
+        })
+        
+        if (res2.ok) {
+          const bbox = await res2.json().catch(() => null)
+          if (bbox && bbox.min_x != null) {
+            console.log('Extent trouvé via relations:', bbox)
+            setBboxToZoom(bbox)
+            return
+          }
+        }
+        
+        alert('Aucune géométrie trouvée pour cette sélection.\n\nLa table sélectionnée ne contient pas de géométrie directe et aucune relation vers une table géométrique n\'a été trouvée.')
+        return
+      }
+      
+      const bbox = await res.json().catch(() => null)
+      if (bbox && bbox.min_x != null) {
+        console.log('Extent trouvé:', bbox)
+        setBboxToZoom(bbox)
+      } else {
+        // Fallback via relations
+        console.log('Extent vide, tentative fallback via relations...')
+        const res2 = await fetch(`${API_BASE_URL}/db/table/${selectedSchema}/${selectedTable}/extent-related`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(ids)
+        })
+        
+        if (res2.ok) {
+          const bbox2 = await res2.json().catch(() => null)
+          if (bbox2 && bbox2.min_x != null) {
+            console.log('Extent trouvé via relations:', bbox2)
+            setBboxToZoom(bbox2)
+            return
+          }
+        }
+        
+        alert('Aucune géométrie trouvée pour cette sélection.')
+      }
+    } catch (e:any) {
+      console.error('Erreur zoom:', e)
+      alert(`Erreur zoom: ${e.message}`)
+    }
+  }
+  
+  const handleRegexSelection = async (pattern: string, _column?: string) => {
+    try {
+      const res = await selectionApi.selectRegex(selectedSchema, selectedTable, pattern)
+      setSelectedRows(new Set(res.ids))
+      // TODO: Optionnel - récupérer extent pour zoom carte si MapPanel actif
+    } catch (e: any) {
+      alert(`Erreur sélection regex: ${e.message}`)
+    }
+  }
+  
+  const handleBboxSelection = async (bbox: [number, number, number, number]) => {
+    try {
+      const res = await fetch(`${window.location.origin}${API_BASE_URL}/db/table/${selectedSchema}/${selectedTable}/select-bbox`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ min_x: bbox[0], min_y: bbox[1], max_x: bbox[2], max_y: bbox[3], srid: 4326 })
+      })
+      if (!res.ok) throw new Error((await res.json()).message || 'Erreur select bbox')
+      const data = await res.json()
+      setSelectedRows(new Set<string>(data.ids))
+    } catch (e: any) {
+      alert(`Erreur sélection BBOX: ${e.message}`)
+    }
+  }
 
   // Confirmation fermeture
   useEffect(() => {
@@ -157,7 +371,7 @@ function App() {
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <Database className="h-8 w-8 text-blue-600" />
@@ -179,7 +393,7 @@ function App() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
         <Tabs defaultValue="tables" className="space-y-6">
           <TabsList>
             <TabsTrigger value="tables">
@@ -239,6 +453,7 @@ function App() {
                     onDeleteColumn={handleDeleteColumn}
                     onSelectAll={handleSelectAll}
                     onInvertSelection={handleInvertSelection}
+                    onAdvancedSelection={() => setShowAdvancedSelection(true)}
                     onZoomToSelection={handleZoomToSelection}
                     onCalculator={() => setActiveModal('calculator')}
                     onImport={() => setActiveModal('import')}
@@ -264,21 +479,43 @@ function App() {
                           header: col.name,
                         }))}
                         editable={editMode}
+                        onCellEdit={handleCellEdit}
+                        showSelection={true}
+                        selection={selectedRows}
+                        rowIdKey={rowIdKey}
+                        onToggleRow={(rowId, checked) => {
+                          setSelectedRows(prev => {
+                            const next = new Set(prev)
+                            if (checked) next.add(rowId)
+                            else next.delete(rowId)
+                            return next
+                          })
+                        }}
                       />
                     )}
                   </div>
                 </div>
               }
               rightPanel={
-                <StagingPanel
-                  changes={stagingChanges}
-                  onPreview={() => console.log('Preview')}
-                  onCommit={handleSaveChanges}
-                  onCancel={handleCancelChanges}
-                  onRemoveChange={(id) => setStagingChanges(prev => prev.filter(c => c.id !== id))}
-                />
+                editMode ? (
+                  <div className="h-full bg-white">
+                    <StagingPanel
+                      changes={stagingChanges}
+                      onPreview={handlePreviewDryRun}
+                      onCommit={handleSaveChanges}
+                      onCancel={handleCancelChanges}
+                      onRemoveChange={(id) => setStagingChanges(prev => prev.filter(c => c.id !== id))}
+                    />
+                  </div>
+                ) : (
+                  <div className="h-full flex flex-col">
+                    <div className="flex-1 min-h-0">
+                      <MapPanel onBboxDraw={handleBboxSelection} bboxToZoom={bboxToZoom} />
+                    </div>
+                  </div>
+                )
               }
-              showRightPanel={editMode}
+              showRightPanel={true}
             />
           </TabsContent>
 
@@ -426,6 +663,16 @@ function App() {
         <RBACManager
           open={true}
           onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {/* Dialog sélection avancée */}
+      {showAdvancedSelection && (
+        <AdvancedSelectionDialog
+          onRegexSelect={handleRegexSelection}
+          onBboxSelect={handleBboxSelection}
+          onClose={() => setShowAdvancedSelection(false)}
+          columns={columns.map(c => c.name)}
         />
       )}
     </div>

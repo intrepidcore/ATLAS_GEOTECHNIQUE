@@ -1,0 +1,28 @@
+# Mapping colonnes essais_geotechniques
+# Original -> Snake_case
+id -> id
+sondage_id -> sondage_id
+depth_m -> depth_m
+passant_80um -> passant_80um
+passant_2mm -> passant_2mm
+passant_20mm -> passant_20mm
+wl -> wl
+wp -> wp
+ip -> ip
+vbs -> vbs
+gamma_d_max -> gamma_d_max
+w_opt -> w_opt
+proctor_type -> proctor_type
+eg -> eg
+test_date -> test_date
+laboratory -> laboratory
+norm -> norm
+meta -> meta
+created_at -> created_at
+created_by -> created_by
+updated_at -> updated_at
+updated_by -> updated_by
+created_by_batch -> created_by_batch
+updated_by_batch -> updated_by_batch
+deleted_by_batch -> deleted_by_batch
+deleted_at -> deleted_at

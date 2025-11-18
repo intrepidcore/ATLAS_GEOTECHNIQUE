@@ -2,9 +2,19 @@
  * Service API centralisé pour toutes les requêtes backend
  */
 
+// Helper pour obtenir une base URL absolue
+function getApiBaseUrl(): string {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (envUrl && envUrl.startsWith('http')) {
+    return envUrl.replace(/\/+$/, '');
+  }
+  // Fallback: même origine + /api
+  return window.location.origin + '/api';
+}
+
 // En dev (port 5173): utilise le proxy Vite vers localhost:8000
 // En prod (port 8080): utilise le proxy nginx /api/ vers api-geo:8000
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api'
+export const API_BASE_URL = getApiBaseUrl();
 
 interface ApiError {
   message: string
@@ -181,11 +191,19 @@ export const stagingApi = {
 }
 
 export const tablesApi = {
-  list: (schema?: string) =>
-    api.get<any>(`/db/schema${schema ? `?schema=${schema}` : ''}`).then((res: any) => res.tables || []),
+  list: async (schema?: string) => {
+    const res: any = await api.get<any>(`/db/schema`)
+    const schemas = res?.schemas || []
+    if (!schema) return schemas.flatMap((s: any) => s.tables || [])
+    const found = schemas.find((s: any) => s.name === schema)
+    return (found?.tables || []).map((t: any) => ({ name: t.name, row_count: t.row_count }))
+  },
 
   getColumns: (schema: string, table: string) =>
     api.get<any>(`/db/table/${schema}/${table}`).then((info: any) => info.columns || []),
+
+  getTableInfo: (schema: string, table: string) =>
+    api.get<any>(`/db/table/${schema}/${table}`),
 
   getData: (schema: string, table: string, limit = 100, offset = 0) =>
     api.get<any>(`/db/table/${schema}/${table}/data?limit=${limit}&offset=${offset}`).then((res: any) => res.rows || []),

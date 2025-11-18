@@ -15,6 +15,8 @@ import { renderPhysiques, renderClassif, renderSurveys, type CellCompleteOut } f
 import { CONFIG } from './config'
 import { SondagesModal } from './modal/sondages-modal'
 import { openDbManager } from './db-manager'
+import type { Survey } from './types/survey'
+import { httpJSON } from './utils/http'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -2822,19 +2824,14 @@ safeAddEventListener('processCsvBtn', 'click', async () => {
 // Load survey list
 async function loadSurveyList() {
   try {
-    const res = await fetch(`${API_GEO}/surveys`)
-    if (!res.ok) {
-      toast('Erreur chargement sondages', 'err')
-      return
-    }
-    const surveys = await res.json()
+    const surveys = await httpJSON<Survey[]>(`${API_GEO}/surveys`)
     renderSurveyList(surveys)
   } catch (e: any) {
-    toast(`Erreur: ${e.message}`, 'err')
+    toast(e instanceof Error ? `Erreur: ${e.message}` : 'Erreur chargement sondages', 'err')
   }
 }
 
-function renderSurveyList(surveys: any[]) {
+function renderSurveyList(surveys: Survey[]) {
   const list = document.getElementById('surveyList')!
   if (surveys.length === 0) {
     list.innerHTML = '<p style="color:var(--muted);text-align:center;padding:20px">Aucun sondage</p>'
@@ -2843,13 +2840,19 @@ function renderSurveyList(surveys: any[]) {
 
   list.innerHTML = surveys.map(s => {
     const code = s.code || `Sondage-${s.id?.substring(0, 8) || '?'}`
-    const maille = s.maille_code || ''
-    const lon = (typeof s.lon === 'number' && !isNaN(s.lon)) ? s.lon.toFixed(4) : '—'
-    const lat = (typeof s.lat === 'number' && !isNaN(s.lat)) ? s.lat.toFixed(4) : '—'
-    const depthMin = (typeof s.depth_m_min === 'number' && !isNaN(s.depth_m_min)) ? s.depth_m_min.toFixed(1) : '0.0'
-    const depthMax = (typeof s.depth_m_max === 'number' && !isNaN(s.depth_m_max)) ? s.depth_m_max.toFixed(1) : '10.0'
-    const region = s.adm1_name || ''
-    
+    const maille = s.maille_code || '—'
+    const lon = typeof s.lon === 'number' ? s.lon.toFixed(4) : '—'
+    const lat = typeof s.lat === 'number' ? s.lat.toFixed(4) : '—'
+    const depthMin = typeof s.depth_m_min === 'number' ? s.depth_m_min.toFixed(1) : '—'
+    const depthMax = typeof s.depth_m_max === 'number' ? s.depth_m_max.toFixed(1) : '—'
+    const region = [s.adm1_name, s.adm2_name, s.adm3_name].filter(Boolean).join(' › ')
+    const localite = s.localite ?? s.localite_base ?? '-'
+    const badges = [
+      s.location_mode ? `<span class="tag">${s.location_mode}</span>` : null,
+      s.is_geocoded ? '<span class="tag tag-ok">Géocodé</span>' : '<span class="tag tag-warn">À localiser</span>',
+      s.deleted_at ? '<span class="tag tag-err">Supprimé</span>' : null,
+    ].filter(Boolean).join(' ')
+
     return `
       <div class="survey-card" data-id="${s.id}">
         <div class="survey-card-header">
@@ -2858,9 +2861,11 @@ function renderSurveyList(surveys: any[]) {
         </div>
         <div class="survey-card-meta">
           📍 ${lon}, ${lat}<br>
-          📏 ${depthMin}-${depthMax}m<br>
-          ${region ? `📌 ${region}` : ''}
+          📏 ${depthMin} – ${depthMax} m<br>
+          ${region ? `📌 ${region}` : ''}<br>
+          🏷️ ${localite}
         </div>
+        <div class="survey-card-tags">${badges}</div>
         <div style="display:flex;gap:4px;margin-top:8px">
           <button onclick="window.editSurvey('${s.id}')" style="flex:1;padding:6px;background:var(--accent);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">✏️ Modifier</button>
           <button onclick="window.deleteSurvey('${s.id}', '${code}')" style="flex:1;padding:6px;background:var(--err);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">🗑️ Supprimer</button>

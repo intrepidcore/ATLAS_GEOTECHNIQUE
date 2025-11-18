@@ -43,7 +43,7 @@ pub async fn create_changeset(
     user: Option<&str>,
 ) -> Result<Uuid, sqlx::Error> {
     let id = Uuid::new_v4();
-    
+
     sqlx::query(
         r#"
         INSERT INTO atlas.changesets (id, table_name, operation, changes, created_by)
@@ -68,7 +68,17 @@ pub async fn get_changesets(
     limit: i32,
 ) -> Result<Vec<ChangeSet>, sqlx::Error> {
     let query = if let Some(table) = table_name {
-        sqlx::query_as::<_, (Uuid, String, String, serde_json::Value, chrono::DateTime<chrono::Utc>, Option<String>)>(
+        sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                String,
+                String,
+                serde_json::Value,
+                chrono::DateTime<chrono::Utc>,
+                Option<String>,
+            ),
+        >(
             r#"
             SELECT id, table_name, operation, changes, created_at, created_by
             FROM atlas.changesets
@@ -80,7 +90,17 @@ pub async fn get_changesets(
         .bind(table)
         .bind(limit)
     } else {
-        sqlx::query_as::<_, (Uuid, String, String, serde_json::Value, chrono::DateTime<chrono::Utc>, Option<String>)>(
+        sqlx::query_as::<
+            _,
+            (
+                Uuid,
+                String,
+                String,
+                serde_json::Value,
+                chrono::DateTime<chrono::Utc>,
+                Option<String>,
+            ),
+        >(
             r#"
             SELECT id, table_name, operation, changes, created_at, created_by
             FROM atlas.changesets
@@ -95,28 +115,28 @@ pub async fn get_changesets(
 
     let changesets = rows
         .into_iter()
-        .map(|(id, table_name, operation, changes, created_at, created_by)| {
-            let op: ChangeOperation = serde_json::from_str(&operation).unwrap_or(ChangeOperation::Update);
-            ChangeSet {
-                id,
-                table_name,
-                operation: op,
-                changes,
-                created_at,
-                created_by,
-                can_undo: true, // À déterminer selon la logique métier
-            }
-        })
+        .map(
+            |(id, table_name, operation, changes, created_at, created_by)| {
+                let op: ChangeOperation =
+                    serde_json::from_str(&operation).unwrap_or(ChangeOperation::Update);
+                ChangeSet {
+                    id,
+                    table_name,
+                    operation: op,
+                    changes,
+                    created_at,
+                    created_by,
+                    can_undo: true, // À déterminer selon la logique métier
+                }
+            },
+        )
         .collect();
 
     Ok(changesets)
 }
 
 /// Annuler un changeset (undo)
-pub async fn undo_changeset(
-    pool: &PgPool,
-    changeset_id: &Uuid,
-) -> Result<(), sqlx::Error> {
+pub async fn undo_changeset(pool: &PgPool, changeset_id: &Uuid) -> Result<(), sqlx::Error> {
     // Récupérer le changeset
     let (table_name, operation, changes): (String, String, serde_json::Value) = sqlx::query_as(
         r#"
@@ -135,10 +155,10 @@ pub async fn undo_changeset(
     match op {
         ChangeOperation::Insert => {
             // Supprimer les lignes insérées
-            let ids = changes["inserted_ids"].as_array().ok_or_else(|| {
-                sqlx::Error::Protocol("Invalid changeset format".to_string())
-            })?;
-            
+            let ids = changes["inserted_ids"]
+                .as_array()
+                .ok_or_else(|| sqlx::Error::Protocol("Invalid changeset format".to_string()))?;
+
             for id in ids {
                 let delete_sql = format!("DELETE FROM {} WHERE id = $1", table_name);
                 sqlx::query(&delete_sql)
@@ -149,20 +169,17 @@ pub async fn undo_changeset(
         }
         ChangeOperation::Update => {
             // Restaurer les anciennes valeurs
-            let updates = changes["updates"].as_array().ok_or_else(|| {
-                sqlx::Error::Protocol("Invalid changeset format".to_string())
-            })?;
-            
+            let updates = changes["updates"]
+                .as_array()
+                .ok_or_else(|| sqlx::Error::Protocol("Invalid changeset format".to_string()))?;
+
             for update in updates {
                 let id = update["id"].as_str().unwrap_or_default();
                 let old_values = &update["old_values"];
-                
+
                 // Construire UPDATE pour restaurer
                 // (Simplifié - dans la vraie implémentation, parser old_values)
-                let restore_sql = format!(
-                    "UPDATE {} SET data = $1 WHERE id = $2",
-                    table_name
-                );
+                let restore_sql = format!("UPDATE {} SET data = $1 WHERE id = $2", table_name);
                 sqlx::query(&restore_sql)
                     .bind(old_values)
                     .bind(id)
@@ -172,17 +189,17 @@ pub async fn undo_changeset(
         }
         ChangeOperation::Delete => {
             // Réinsérer les lignes supprimées
-            let deleted_rows = changes["deleted_rows"].as_array().ok_or_else(|| {
-                sqlx::Error::Protocol("Invalid changeset format".to_string())
-            })?;
-            
+            let deleted_rows = changes["deleted_rows"]
+                .as_array()
+                .ok_or_else(|| sqlx::Error::Protocol("Invalid changeset format".to_string()))?;
+
             for row in deleted_rows {
                 // Construire INSERT (simplifié)
-                let insert_sql = format!("INSERT INTO {} SELECT * FROM jsonb_populate_record(null::{}, $1)", table_name, table_name);
-                sqlx::query(&insert_sql)
-                    .bind(row)
-                    .execute(pool)
-                    .await?;
+                let insert_sql = format!(
+                    "INSERT INTO {} SELECT * FROM jsonb_populate_record(null::{}, $1)",
+                    table_name, table_name
+                );
+                sqlx::query(&insert_sql).bind(row).execute(pool).await?;
             }
         }
         ChangeOperation::Ddl => {
@@ -275,7 +292,14 @@ async fn get_table_schema_json(
 }
 
 /// Lister les versions d'une table
-type VersionRow = (i32, String, serde_json::Value, i64, chrono::DateTime<chrono::Utc>, Option<String>);
+type VersionRow = (
+    i32,
+    String,
+    serde_json::Value,
+    i64,
+    chrono::DateTime<chrono::Utc>,
+    Option<String>,
+);
 
 pub async fn list_table_versions(
     pool: &PgPool,
@@ -295,16 +319,18 @@ pub async fn list_table_versions(
 
     let versions = rows
         .into_iter()
-        .map(|(version, table_name, schema_snapshot, row_count, created_at, description)| {
-            TableVersion {
-                version,
-                table_name,
-                schema_snapshot,
-                row_count,
-                created_at,
-                description,
-            }
-        })
+        .map(
+            |(version, table_name, schema_snapshot, row_count, created_at, description)| {
+                TableVersion {
+                    version,
+                    table_name,
+                    schema_snapshot,
+                    row_count,
+                    created_at,
+                    description,
+                }
+            },
+        )
         .collect();
 
     Ok(versions)

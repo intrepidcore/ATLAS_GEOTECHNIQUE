@@ -53,7 +53,7 @@ export function SchemaTableSelector({
           <SelectTrigger className="w-[150px]">
             <SelectValue placeholder="Sélectionner..." />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper" className="z-50">
             {schemas.map((schema) => (
               <SelectItem key={schema} value={schema}>
                 {schema}
@@ -71,7 +71,7 @@ export function SchemaTableSelector({
           <SelectTrigger className="w-[200px]">
             <SelectValue placeholder="Sélectionner..." />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent position="popper" className="z-50">
             {tables.map((table) => (
               <SelectItem key={table.name} value={table.name}>
                 <div className="flex items-center justify-between w-full">

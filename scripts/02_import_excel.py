@@ -23,6 +23,7 @@ try:
     import pandas as pd
     import psycopg
     from psycopg import sql
+    import re
 except ImportError as e:
     print(f"❌ Dépendances manquantes: {e}")
     print("Installez avec: pip install pandas openpyxl psycopg[binary]")
@@ -190,6 +191,90 @@ def clean_string(value: Any) -> Optional[str]:
         return None
     s = str(value).strip()
     return s if s else None
+
+# ============================================================================
+# CONVERSION GRANULO WIDE → LONG
+# ============================================================================
+
+def convert_granulo_wide_to_long(df_wide: pd.DataFrame, method: str = 'tamisage') -> pd.DataFrame:
+    """
+    Convertit un DataFrame granulo au format WIDE en format LONG
+    
+    Format WIDE (entrée):
+        sieve_mm | APEHEME@1.0 | APEHEME@1.5 | DZOGBECOPE@1.0
+        ---------|-------------|-------------|----------------
+        0.08     | 37.99       | 50.58       | 47.90
+        0.16     | 47.18       | 58.41       | 58.70
+    
+    Format LONG (sortie):
+        code_site | depth_m | sieve_mm | passing_pct | method
+        ----------|---------|----------|-------------|----------
+        APEHEME   | 1.0     | 0.08     | 37.99       | tamisage
+        APEHEME   | 1.0     | 0.16     | 47.18       | tamisage
+    
+    Args:
+        df_wide: DataFrame au format wide
+        method: 'tamisage' ou 'sedimento'
+    
+    Returns:
+        DataFrame au format long
+    """
+    
+    # Identifier la colonne des tamis (première colonne normalement)
+    sieve_col = df_wide.columns[0]
+    
+    # Colonnes des échantillons (toutes sauf la première)
+    sample_cols = df_wide.columns[1:]
+    
+    # Pivoter le DataFrame
+    df_long = df_wide.melt(
+        id_vars=[sieve_col],
+        value_vars=sample_cols,
+        var_name='sample_id',
+        value_name='passing_pct'
+    )
+    
+    # Renommer la colonne tamis
+    df_long = df_long.rename(columns={sieve_col: 'sieve_mm'})
+    
+    # Parser les identifiants d'échantillons (format: CODE@PROFONDEUR)
+    pattern = r'^(.+?)@([\d.]+)$'
+    
+    def parse_sample_id(sample_id):
+        match = re.match(pattern, str(sample_id))
+        if match:
+            return match.group(1), float(match.group(2))
+        else:
+            # Fallback: essayer split simple
+            parts = str(sample_id).split('@')
+            if len(parts) == 2:
+                try:
+                    return parts[0], float(parts[1])
+                except ValueError:
+                    pass
+            # Si rien ne marche, tout mettre dans code_site
+            return str(sample_id), None
+    
+    df_long[['code_site', 'depth_m']] = df_long['sample_id'].apply(
+        lambda x: pd.Series(parse_sample_id(x))
+    )
+    
+    # Supprimer la colonne temporaire
+    df_long = df_long.drop(columns=['sample_id'])
+    
+    # Supprimer les lignes avec NaN (cellules vides dans le wide)
+    df_long = df_long.dropna(subset=['passing_pct'])
+    
+    # Ajouter la méthode
+    df_long['method'] = method
+    
+    # Réorganiser les colonnes
+    df_long = df_long[['code_site', 'depth_m', 'sieve_mm', 'passing_pct', 'method']]
+    
+    # Trier par code_site, depth_m, sieve_mm
+    df_long = df_long.sort_values(['code_site', 'depth_m', 'sieve_mm']).reset_index(drop=True)
+    
+    return df_long
 
 # ============================================================================
 # LECTURE EXCEL
@@ -369,13 +454,15 @@ class DatabaseImporter:
                 )
             """)
             exists = cur.fetchone()[0]
+            self._adm3_function_exists = exists
             if not exists:
                 logger.warning("⚠️  Fonction match_adm3_from_localite() non trouvée")
                 logger.warning("   Exécutez d'abord: step0_adm3_matching_setup.sql")
+                logger.warning("   Import continuera sans auto-matching ADM3")
             else:
                 logger.info("✓ Fonction match_adm3_from_localite() disponible")
     
-    def match_adm3_from_localite(self, localite: str, adm2_code: str = None) -> Optional[Tuple[str, float, str]]:
+    def match_adm3_from_localite(self, localite: str, adm2_code: Optional[str] = None) -> Optional[Tuple[str, float, str]]:
         """
         Trouve le code ADM3 correspondant à une localité via PostgreSQL (4 passes robustes)
         
@@ -383,6 +470,12 @@ class DatabaseImporter:
             Tuple[adm3_code, score, method] ou None
         """
         if not localite or self.dry_run or not self.conn:
+            return None
+        
+        # Skip si la fonction n'existe pas
+        if not hasattr(self, '_adm3_function_exists'):
+            return None
+        if not self._adm3_function_exists:
             return None
         
         try:
@@ -416,7 +509,7 @@ class DatabaseImporter:
         # Vérifier si sondage existe déjà et faire INSERT ou UPDATE
         check_sql = "SELECT id FROM sondages WHERE meta->>'code' = %s"
         insert_sql = """
-        INSERT INTO sondages (geom, date_sondage, source, meta, created_at, updated_at)
+        INSERT INTO sondages (geom, date, source, meta, created_at, updated_at)
         VALUES (
             CASE 
                 WHEN %s::NUMERIC IS NOT NULL AND %s::NUMERIC IS NOT NULL 
@@ -434,7 +527,7 @@ class DatabaseImporter:
                 THEN ST_Transform(ST_SetSRID(ST_MakePoint(%s::NUMERIC, %s::NUMERIC), 4326), 25231)
                 ELSE NULL
             END,
-            date_sondage = COALESCE(%s, date_sondage),
+            date = COALESCE(%s, date),
             source = COALESCE(%s, source),
             updated_at = now()
         WHERE id = %s
@@ -467,14 +560,18 @@ class DatabaseImporter:
                         logger.warning(f"Sondage {code}: ni coordonnées ni adm3_code (mode orphelin)")
                         # Continue quand même pour permettre l'import
                     
-                    date = validate_date(row.get('date'), 'date')
-                    source = clean_string(row.get('source'))
+                    date = validate_date(row.get('date') or row.get('date_sondage'), 'date')
+                    source = clean_string(row.get('source') or row.get('auteur') or row.get('created_by'))
                     
                     meta = {'code': code}
                     if localite:
                         meta['localite'] = localite
                     if adm3_code:
                         meta['adm3_code'] = adm3_code
+                    if date:
+                        meta['date'] = str(date)
+                    if source:
+                        meta['source'] = source
                     
                     try:
                         # Vérifier si existe
@@ -566,6 +663,10 @@ class DatabaseImporter:
                     stats.errors.append(f"Ligne {idx}: {str(e)}")
         
         logger.info(f"✓ Échantillons: {stats.rows_inserted} créés, {stats.rows_updated} mis à jour")
+        if stats.errors:
+            logger.warning(f"  ⚠️  {len(stats.errors)} erreurs lors de l'import échantillons:")
+            for err in stats.errors[:5]:  # Afficher max 5 erreurs
+                logger.warning(f"     - {err}")
         return stats
     
     def import_atterberg(self, df: pd.DataFrame) -> ImportStats:
@@ -634,6 +735,10 @@ class DatabaseImporter:
                     stats.errors.append(f"Ligne {idx}: {str(e)}")
         
         logger.info(f"✓ Atterberg: {stats.rows_inserted} créés, {stats.rows_updated} mis à jour")
+        if stats.errors:
+            logger.warning(f"  ⚠️  {len(stats.errors)} erreurs lors de l'import Atterberg:")
+            for err in stats.errors[:5]:
+                logger.warning(f"     - {err}")
         return stats
     
     def import_vbs(self, df: pd.DataFrame) -> ImportStats:
@@ -696,6 +801,10 @@ class DatabaseImporter:
                     stats.errors.append(f"Ligne {idx}: {str(e)}")
         
         logger.info(f"✓ VBS: {stats.rows_inserted} créés, {stats.rows_updated} mis à jour")
+        if stats.errors:
+            logger.warning(f"  ⚠️  {len(stats.errors)} erreurs lors de l'import VBS:")
+            for err in stats.errors[:5]:
+                logger.warning(f"     - {err}")
         return stats
     
     def import_proctor(self, df: pd.DataFrame) -> ImportStats:
@@ -1018,23 +1127,235 @@ class DatabaseImporter:
                 logger.info(f"  ✓ {table_name}: {updated} liens mis à jour")
         
         logger.info("✓ Rétro-liaison terminée")
+    
+    def import_teneur_eau(self, df: pd.DataFrame) -> ImportStats:
+        """Import des données de teneur en eau → essais_physiques"""
+        stats = ImportStats(table_name='essais_physiques')
+        stats.rows_read = len(df)
+        
+        if self.dry_run:
+            logger.info(f"[DRY-RUN] Teneur eau: {len(df)} lignes")
+            stats.rows_inserted = len(df)
+            return stats
+        
+        # Récupérer mapping échantillons (même logique que Atterberg/VBS)
+        with self.conn.cursor() as cur:
+            cur.execute("""
+                SELECT e.id, s.meta->>'code' as code, e.depth_m
+                FROM echantillons e
+                JOIN sondages s ON e.sondage_id = s.id
+                WHERE s.meta->>'code' IS NOT NULL
+            """)
+            echantillon_map = {(row[1], round(float(row[2]), 3)): row[0] for row in cur.fetchall()}
+        
+        # Upsert dans essais_physiques (source of truth)
+        upsert_sql = """
+        INSERT INTO essais_physiques (echantillon_id, w, rho_s, laboratory, created_at)
+        VALUES (%s, %s, %s, 'FORMATEC', now())
+        ON CONFLICT (echantillon_id) DO UPDATE
+        SET w = EXCLUDED.w,
+            rho_s = EXCLUDED.rho_s,
+            laboratory = EXCLUDED.laboratory,
+            updated_at = now()
+        """
+        
+        with self.conn.cursor() as cur:
+            for idx, row in df.iterrows():
+                try:
+                    code = clean_string(row.get('code') or row.get('code_site'))
+                    depth_m = validate_numeric(row.get('depth_m'), 'depth_m', 0)
+                    w = validate_percentage(row.get('w') or row.get('teneur_eau'))
+                    rho_s = validate_numeric(row.get('rho_s') or row.get('masse_volumique'), 'rho_s', 1.0, 3.5)
+                    
+                    if not code or depth_m is None:
+                        stats.errors.append(f"Ligne {idx}: code ou depth_m manquant")
+                        continue
+                    
+                    # Arrondir depth_m pour matching
+                    depth_m = round(depth_m, 3)
+                    key = (code, depth_m)
+                    
+                    if key not in echantillon_map:
+                        stats.warnings.append(f"Ligne {idx}: échantillon {code}@{depth_m}m introuvable (skip)")
+                        stats.rows_skipped += 1
+                        continue
+                    
+                    echantillon_id = echantillon_map[key]
+                    
+                    # Upsert dans essais_physiques
+                    cur.execute(upsert_sql, (echantillon_id, w, rho_s))
+                    stats.rows_inserted += 1
+                
+                except Exception as e:
+                    stats.errors.append(f"Ligne {idx}: {str(e)}")
+        
+        logger.info(f"✓ Teneur eau: {stats.rows_inserted} créés/mis à jour")
+        if stats.warnings:
+            logger.warning(f"  ⚠️  {len(stats.warnings)} warnings (voir rapport)")
+        return stats
+    
+    def import_granulo_points(self, df: pd.DataFrame) -> ImportStats:
+        """Import des points de courbes granulométriques"""
+        stats = ImportStats(table_name='granulo_points')
+        stats.rows_read = len(df)
+        
+        if self.dry_run:
+            logger.info(f"[DRY-RUN] Granulo points: {len(df)} lignes")
+            stats.rows_inserted = len(df)
+            return stats
+        
+        # Récupérer mapping échantillons
+        with self.conn.cursor() as cur:
+            cur.execute("""
+                SELECT e.id, s.meta->>'code' as code, e.depth_m
+                FROM echantillons e
+                JOIN sondages s ON e.sondage_id = s.id
+                WHERE s.meta->>'code' IS NOT NULL
+            """)
+            echantillon_map = {(row[1], float(row[2])): row[0] for row in cur.fetchall()}
+        
+        upsert_sql = """
+        INSERT INTO granulo_points (echantillon_id, method, sieve_mm, passing_pct)
+        VALUES (%s, %s, %s, %s)
+        ON CONFLICT (echantillon_id, method, sieve_mm) DO UPDATE SET
+            passing_pct = EXCLUDED.passing_pct
+        RETURNING (xmax = 0) AS inserted
+        """
+        
+        with self.conn.cursor() as cur:
+            for idx, row in df.iterrows():
+                try:
+                    code = clean_string(row.get('code') or row.get('code_site'))
+                    depth_m = validate_numeric(row.get('depth_m'), 'depth_m', 0)
+                    sieve_mm = validate_numeric(row.get('sieve_mm') or row.get('tamis_mm'), 'sieve_mm', 0.0001)
+                    passing_pct = validate_numeric(row.get('passing_pct') or row.get('passant_pct'), 'passing_pct', 0, 100)
+                    method = clean_string(row.get('method') or row.get('methode', 'tamisage'))
+                    
+                    if not code or depth_m is None or sieve_mm is None or passing_pct is None:
+                        stats.errors.append(f"Ligne {idx}: données obligatoires manquantes")
+                        continue
+                    
+                    # Normaliser method
+                    if method and 'sediment' in method.lower():
+                        method = 'sedimento'
+                    else:
+                        method = 'tamisage'
+                    
+                    key = (code, depth_m)
+                    if key not in echantillon_map:
+                        stats.errors.append(f"Ligne {idx}: échantillon {code}@{depth_m}m introuvable")
+                        continue
+                    
+                    echantillon_id = echantillon_map[key]
+                    
+                    cur.execute(upsert_sql, (echantillon_id, method, sieve_mm, passing_pct))
+                    result = cur.fetchone()
+                    
+                    if result[0]:
+                        stats.rows_inserted += 1
+                    else:
+                        stats.rows_updated += 1
+                
+                except Exception as e:
+                    stats.errors.append(f"Ligne {idx}: {str(e)}")
+        
+        logger.info(f"✓ Granulo points: {stats.rows_inserted} créés, {stats.rows_updated} mis à jour")
+        if stats.errors:
+            logger.warning(f"  ⚠️  {len(stats.errors)} erreurs lors de l'import granulo:")
+            for err in stats.errors[:5]:
+                logger.warning(f"     - {err}")
+        return stats
+    
+    def import_classifications(self, df: pd.DataFrame) -> ImportStats:
+        """Import des classifications géotechniques → essais_classif (HRB + Unified)"""
+        stats = ImportStats(table_name='essais_classif')
+        stats.rows_read = len(df)
+        
+        if self.dry_run:
+            logger.info(f"[DRY-RUN] Classifications: {len(df)} lignes")
+            stats.rows_inserted = len(df)
+            return stats
+        
+        # Récupérer mapping échantillons (même logique que Atterberg/VBS)
+        with self.conn.cursor() as cur:
+            cur.execute("""
+                SELECT e.id, s.meta->>'code' as code, e.depth_m
+                FROM echantillons e
+                JOIN sondages s ON e.sondage_id = s.id
+                WHERE s.meta->>'code' IS NOT NULL
+            """)
+            echantillon_map = {(row[1], round(float(row[2]), 3)): row[0] for row in cur.fetchall()}
+        
+        # Upsert dans essais_classif (source of truth)
+        upsert_sql = """
+        INSERT INTO essais_classif (echantillon_id, depth_m, hrb, unified, laboratory, created_at)
+        VALUES (%s, %s, %s, %s, 'FORMATEC', now())
+        ON CONFLICT (echantillon_id) DO UPDATE
+        SET hrb = EXCLUDED.hrb,
+            unified = EXCLUDED.unified,
+            laboratory = EXCLUDED.laboratory,
+            updated_at = now()
+        """
+        
+        with self.conn.cursor() as cur:
+            for idx, row in df.iterrows():
+                try:
+                    code = clean_string(row.get('code') or row.get('code_site'))
+                    depth_m = validate_numeric(row.get('depth_m'), 'depth_m', 0)
+                    hrb = clean_string(row.get('hrb'))
+                    unified = clean_string(row.get('unified'))
+                    
+                    if not code or depth_m is None:
+                        stats.errors.append(f"Ligne {idx}: code ou depth_m manquant")
+                        continue
+                    
+                    # Arrondir depth_m pour matching
+                    depth_m = round(depth_m, 3)
+                    key = (code, depth_m)
+                    
+                    if key not in echantillon_map:
+                        stats.warnings.append(f"Ligne {idx}: échantillon {code}@{depth_m}m introuvable (skip)")
+                        stats.rows_skipped += 1
+                        continue
+                    
+                    echantillon_id = echantillon_map[key]
+                    
+                    # Upsert dans essais_classif
+                    cur.execute(upsert_sql, (echantillon_id, depth_m, hrb, unified))
+                    stats.rows_inserted += 1
+                
+                except Exception as e:
+                    stats.errors.append(f"Ligne {idx}: {str(e)}")
+        
+        logger.info(f"✓ Classifications: {stats.rows_inserted} créés/mis à jour")
+        if stats.warnings:
+            logger.warning(f"  ⚠️  {len(stats.warnings)} warnings (voir rapport)")
+        return stats
 
 # ============================================================================
 # ORCHESTRATION & MAIN
 # ============================================================================
 
+def safe_print(text: str):
+    """Print avec gestion des erreurs d'encodage Windows"""
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # Fallback ASCII pour Windows
+        print(text.encode('ascii', 'ignore').decode('ascii'))
+
 def print_report(report: ImportReport):
     """Affiche le rapport d'import"""
-    print("\n" + "="*70)
-    print("📊 RAPPORT D'IMPORT")
-    print("="*70)
+    safe_print("\n" + "="*70)
+    safe_print("*** RAPPORT D'IMPORT ***")
+    safe_print("="*70)
     print(f"Début: {report.started_at.strftime('%Y-%m-%d %H:%M:%S')}")
     if report.completed_at:
         duration = (report.completed_at - report.started_at).total_seconds()
         print(f"Fin: {report.completed_at.strftime('%Y-%m-%d %H:%M:%S')} (durée: {duration:.1f}s)")
     
     if report.dry_run:
-        print("\n⚠️  MODE DRY-RUN: Aucune donnée écrite en base")
+        safe_print("\n[!] MODE DRY-RUN: Aucune donnée écrite en base")
     
     print(f"\n{'Table':<25} {'Lues':<8} {'Créées':<8} {'MAJ':<8} {'Erreurs':<8} {'Taux':<8}")
     print("-"*70)
@@ -1049,7 +1370,7 @@ def print_report(report: ImportReport):
     
     # Erreurs
     if report.has_errors():
-        print("\n❌ ERREURS DÉTECTÉES:")
+        safe_print("\n[X] ERREURS DETECTEES:")
         for table_name, stats in report.stats_by_table.items():
             if stats.errors:
                 print(f"\n  {table_name}:")
@@ -1147,9 +1468,13 @@ Exemples:
             else:
                 logger.warning("⚠️  Feuille 'echantillons' absente ou vide")
             
-            # 3. Atterberg
+            # 3. Atterberg (ignorer colonne 'ip' si présente)
             df_atterberg = reader.get_sheet('atterberg')
             if df_atterberg is not None and len(df_atterberg) > 0:
+                # Supprimer la colonne 'ip' si elle existe (calculée automatiquement)
+                if 'ip' in df_atterberg.columns:
+                    df_atterberg = df_atterberg.drop(columns=['ip'])
+                    logger.info("  ℹ️  Colonne 'ip' ignorée (calculée automatiquement)")
                 logger.info(f"\n📊 Import Atterberg ({len(df_atterberg)} lignes)...")
                 stats = importer.import_atterberg(df_atterberg)
                 report.add_table_stats(stats)
@@ -1161,15 +1486,85 @@ Exemples:
                 stats = importer.import_vbs(df_vbs)
                 report.add_table_stats(stats)
             
-            # 5. Proctor
+            # 5. Proctor (optionnel)
             df_proctor = reader.get_sheet('proctor')
             if df_proctor is not None and len(df_proctor) > 0:
                 logger.info(f"\n🔨 Import Proctor ({len(df_proctor)} lignes)...")
                 stats = importer.import_proctor(df_proctor)
                 report.add_table_stats(stats)
+            else:
+                logger.info("⚠️  Feuille 'proctor' absente ou vide (OK)")
             
             # ========================================
-            # 6. TABLES RAW (v1.5.3)
+            # 6. TENEUR EN EAU → essais_physiques
+            # ========================================
+            df_teneur_eau = reader.get_sheet('teneur_eau')
+            if df_teneur_eau is not None and len(df_teneur_eau) > 0:
+                logger.info(f"\n💧 Import Teneur en eau ({len(df_teneur_eau)} lignes)...")
+                stats = importer.import_teneur_eau(df_teneur_eau)
+                report.add_table_stats(stats)
+            else:
+                logger.info("⚠️  Feuille 'teneur_eau' absente ou vide")
+            
+            # ========================================
+            # 7. CLASSIFICATIONS → essais_classif
+            # ========================================
+            df_classif = reader.get_sheet('classification')
+            if df_classif is not None and len(df_classif) > 0:
+                logger.info(f"\n🏷️  Import Classifications ({len(df_classif)} lignes)...")
+                stats = importer.import_classifications(df_classif)
+                report.add_table_stats(stats)
+            else:
+                logger.info("⚠️  Feuille 'classification' absente ou vide")
+            
+            # ========================================
+            # 8. GRANULOMÉTRIE → granulo_points
+            # ========================================
+            # Essayer format LONG d'abord, puis fallback sur WIDE
+            
+            # 8a. Tamisage
+            df_granulo_tamisage = reader.get_sheet('granulo_tamisage_long')
+            if df_granulo_tamisage is None or len(df_granulo_tamisage) == 0:
+                # Fallback: chercher format WIDE et convertir
+                df_wide = reader.get_sheet('granulo_tamisage_large')
+                if df_wide is not None and len(df_wide) > 0:
+                    logger.info(f"\n📐 Granulo tamisage WIDE détectée, conversion automatique...")
+                    df_granulo_tamisage = convert_granulo_wide_to_long(df_wide, method='tamisage')
+                    logger.info(f"   → {len(df_granulo_tamisage)} points convertis")
+            
+            if df_granulo_tamisage is not None and len(df_granulo_tamisage) > 0:
+                logger.info(f"\n📐 Import Granulo tamisage ({len(df_granulo_tamisage)} points)...")
+                stats = importer.import_granulo_points(df_granulo_tamisage)
+                report.add_table_stats(stats)
+            
+            # 8b. Sédimentométrie
+            df_granulo_sedimento = reader.get_sheet('granulo_sedimento_long')
+            if df_granulo_sedimento is None or len(df_granulo_sedimento) == 0:
+                # Fallback: chercher format WIDE et convertir
+                df_wide = reader.get_sheet('granulo_sedimento_large')
+                if df_wide is not None and len(df_wide) > 0:
+                    logger.info(f"\n📐 Granulo sédimento WIDE détectée, conversion automatique...")
+                    df_granulo_sedimento = convert_granulo_wide_to_long(df_wide, method='sedimento')
+                    logger.info(f"   → {len(df_granulo_sedimento)} points convertis")
+            
+            if df_granulo_sedimento is not None and len(df_granulo_sedimento) > 0:
+                logger.info(f"\n📐 Import Granulo sédimento ({len(df_granulo_sedimento)} points)...")
+                stats = importer.import_granulo_points(df_granulo_sedimento)
+                report.add_table_stats(stats)
+            
+            # 8c. Fallback générique (anciennes feuilles 'granulo' simples)
+            if (df_granulo_tamisage is None or len(df_granulo_tamisage) == 0) and \
+               (df_granulo_sedimento is None or len(df_granulo_sedimento) == 0):
+                for sheet_name in ['granulo', 'granulo_points', 'granulometrie']:
+                    df_granulo = reader.get_sheet(sheet_name)
+                    if df_granulo is not None and len(df_granulo) > 0:
+                        logger.info(f"\n📐 Import Granulo points ({len(df_granulo)} lignes depuis '{sheet_name}')...")
+                        stats = importer.import_granulo_points(df_granulo)
+                        report.add_table_stats(stats)
+                        break
+            
+            # ========================================
+            # 9. TABLES RAW (v1.5.3)
             # ========================================
             if args.import_raw == 'yes':
                 logger.info("\n" + "="*70)

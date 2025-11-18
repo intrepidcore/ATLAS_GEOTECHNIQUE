@@ -1,25 +1,13 @@
 // API client pour les sondages individuels (géocodage unitaire)
 
 import { apiGet, apiPatch } from './surveys-canon';
+import type { Survey } from '../types/survey';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
-export interface Sondage {
-  id: string;
-  code: string;
-  localite: string | null;
-  adm3_id: number | null;
-  adm3_name: string | null;
-  geom: any | null;
-  location_mode: string | null;
-  is_geocoded: boolean;
-  date: string | null;
-  source: string | null;
-  created_at: string;
-  updated_at: string | null;
-}
+export type Sondage = Survey;
 
 export interface SondagesStats {
   total: number;

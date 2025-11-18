@@ -62,7 +62,8 @@ impl Metrics {
     }
 
     pub fn inc_staging_commits_failed(&self) {
-        self.staging_commits_failed_total.fetch_add(1, Ordering::Relaxed);
+        self.staging_commits_failed_total
+            .fetch_add(1, Ordering::Relaxed);
     }
 
     pub fn inc_ddl_dryrun(&self) {

@@ -1,0 +1,41 @@
+    column_name    |        data_type         
+-------------------+--------------------------
+ geom              | USER-DEFINED
+ date_sondage      | text
+ source            | text
+ meta              | text
+ code              | text
+ depth_m_min       | text
+ depth_m_max       | text
+ maille_code       | text
+ adm1_name         | text
+ adm2_name         | text
+ adm3_name         | text
+ comment           | text
+ location_accuracy | text
+ operator          | text
+ notes             | text
+ type_sol          | text
+ location_mode     | text
+ adm1_id           | text
+ adm2_id           | text
+ import_id         | text
+ import_row_idx    | text
+ loc_mode          | text
+ geom_real         | USER-DEFINED
+ created_by_batch  | text
+ updated_by_batch  | text
+ deleted_by_batch  | text
+ grid_code         | text
+ localite_base     | text
+ localite_key      | text
+ localite          | text
+ id                | uuid
+ date              | date
+ created_at        | timestamp with time zone
+ updated_at        | timestamp with time zone
+ deleted_at        | timestamp with time zone
+ adm3_id           | integer
+ is_geocoded       | boolean
+(37 rows)
+

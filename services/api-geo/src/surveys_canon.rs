@@ -15,17 +15,29 @@ pub struct SurveyCanon {
     pub code: String,
     pub localite_canon: String,
     pub localite: Option<String>,
+    pub localite_key: Option<String>,
+    pub source: Option<String>,
     pub adm3_id: Option<i32>,
     pub adm3_name: Option<String>,
+    pub adm2_name: Option<String>,
+    pub adm1_name: Option<String>,
     pub geom: Option<serde_json::Value>,
+    pub geom_geojson: Option<serde_json::Value>,
     pub location_mode: Option<String>,
+    pub location_accuracy: Option<String>,
     pub is_geocoded: bool,
     pub has_geom: bool,
     pub has_adm3: bool,
     pub date: Option<chrono::NaiveDate>,
+    pub date_sondage: Option<String>,
+    pub operator: Option<String>,
+    pub notes: Option<String>,
+    pub comment: Option<String>,
+    pub meta: Option<String>,
     pub nb_sondages_source: i32,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: chrono::DateTime<chrono::Utc>,
+    pub deleted_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -73,10 +85,33 @@ pub async fn list_surveys(
     let query = format!(
         r#"
         SELECT 
-            id, code, localite_canon, localite, adm3_id, adm3_name,
+            id,
+            code,
+            localite_canon,
+            localite,
+            localite_key,
+            source,
+            adm3_id,
+            adm3_name,
+            adm2_name,
+            adm1_name,
             ST_AsGeoJSON(geom)::jsonb as geom,
-            location_mode::text as location_mode, is_geocoded, has_geom, has_adm3,
-            date, nb_sondages_source, created_at, updated_at
+            geom_geojson,
+            location_mode::text as location_mode,
+            location_accuracy,
+            is_geocoded,
+            has_geom,
+            has_adm3,
+            date,
+            date_sondage,
+            operator,
+            notes,
+            comment,
+            meta,
+            nb_sondages_source,
+            created_at,
+            updated_at,
+            deleted_at
         FROM atlas.surveys
         WHERE {}
         ORDER BY created_at DESC
@@ -111,10 +146,33 @@ pub async fn resolve_alias(
     let row = sqlx::query_as::<_, SurveyCanon>(
         r#"
         SELECT 
-            s.id, s.code, s.localite_canon, s.localite, s.adm3_id, s.adm3_name,
+            s.id,
+            s.code,
+            s.localite_canon,
+            s.localite,
+            s.localite_key,
+            s.source,
+            s.adm3_id,
+            s.adm3_name,
+            s.adm2_name,
+            s.adm1_name,
             ST_AsGeoJSON(s.geom)::jsonb as geom,
-            s.location_mode::text as location_mode, s.is_geocoded, s.has_geom, s.has_adm3,
-            s.date, s.nb_sondages_source, s.created_at, s.updated_at
+            s.geom_geojson,
+            s.location_mode::text as location_mode,
+            s.location_accuracy,
+            s.is_geocoded,
+            s.has_geom,
+            s.has_adm3,
+            s.date,
+            s.date_sondage,
+            s.operator,
+            s.notes,
+            s.comment,
+            s.meta,
+            s.nb_sondages_source,
+            s.created_at,
+            s.updated_at,
+            s.deleted_at
         FROM atlas.survey_aliases a
         JOIN atlas.surveys s ON s.id = a.survey_id
         WHERE a.alias_code = $1
@@ -145,10 +203,33 @@ pub async fn get_survey(
     let row = sqlx::query_as::<_, SurveyCanon>(
         r#"
         SELECT 
-            id, code, localite_canon, localite, adm3_id, adm3_name,
+            id,
+            code,
+            localite_canon,
+            localite,
+            localite_key,
+            source,
+            adm3_id,
+            adm3_name,
+            adm2_name,
+            adm1_name,
             ST_AsGeoJSON(geom)::jsonb as geom,
-            location_mode::text as location_mode, is_geocoded, has_geom, has_adm3,
-            date, nb_sondages_source, created_at, updated_at
+            geom_geojson,
+            location_mode::text as location_mode,
+            location_accuracy,
+            is_geocoded,
+            has_geom,
+            has_adm3,
+            date,
+            date_sondage,
+            operator,
+            notes,
+            comment,
+            meta,
+            nb_sondages_source,
+            created_at,
+            updated_at,
+            deleted_at
         FROM atlas.surveys
         WHERE id = $1
         "#,
@@ -285,10 +366,33 @@ pub async fn update_geometry(
     let updated = sqlx::query_as::<_, SurveyCanon>(
         r#"
         SELECT 
-            id, code, localite_canon, localite, adm3_id, adm3_name,
+            id,
+            code,
+            localite_canon,
+            localite,
+            localite_key,
+            source,
+            adm3_id,
+            adm3_name,
+            adm2_name,
+            adm1_name,
             ST_AsGeoJSON(geom)::jsonb as geom,
-            location_mode::text as location_mode, is_geocoded, has_geom, has_adm3,
-            date, nb_sondages_source, created_at, updated_at
+            geom_geojson,
+            location_mode::text as location_mode,
+            location_accuracy,
+            is_geocoded,
+            has_geom,
+            has_adm3,
+            date,
+            date_sondage,
+            operator,
+            notes,
+            comment,
+            meta,
+            nb_sondages_source,
+            created_at,
+            updated_at,
+            deleted_at
         FROM atlas.surveys
         WHERE id = $1
         "#,
@@ -333,10 +437,33 @@ pub async fn get_adm3_candidates(
     let survey: SurveyCanon = sqlx::query_as(
         r#"
         SELECT 
-            id, code, localite_canon, localite, adm3_id, adm3_name,
+            id,
+            code,
+            localite_canon,
+            localite,
+            localite_key,
+            source,
+            adm3_id,
+            adm3_name,
+            adm2_name,
+            adm1_name,
             ST_AsGeoJSON(geom)::jsonb as geom,
-            location_mode::text as location_mode, is_geocoded, has_geom, has_adm3,
-            date, nb_sondages_source, created_at, updated_at
+            geom_geojson,
+            location_mode::text as location_mode,
+            location_accuracy,
+            is_geocoded,
+            has_geom,
+            has_adm3,
+            date,
+            date_sondage,
+            operator,
+            notes,
+            comment,
+            meta,
+            nb_sondages_source,
+            created_at,
+            updated_at,
+            deleted_at
         FROM atlas.surveys
         WHERE id = $1
         "#,

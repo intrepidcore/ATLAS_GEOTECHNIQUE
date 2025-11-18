@@ -1,0 +1,19 @@
+# Mapping colonnes essais_classif
+# Original -> Snake_case
+id -> id
+essai_id -> essai_id
+systeme -> systeme
+classe -> classe
+reason -> reason
+version -> version
+computed -> computed
+source -> source
+meta -> meta
+created_at -> created_at
+updated_at -> updated_at
+created_by -> created_by
+updated_by -> updated_by
+created_by_batch -> created_by_batch
+updated_by_batch -> updated_by_batch
+deleted_by_batch -> deleted_by_batch
+deleted_at -> deleted_at

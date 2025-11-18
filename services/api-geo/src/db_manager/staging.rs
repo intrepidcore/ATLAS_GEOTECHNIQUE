@@ -56,7 +56,7 @@ pub async fn create_staging(
         VALUES ($1, $2, $3, $4, $5, NOW())
         "#,
     )
-    .bind(&staging_table)  // Utiliser staging_table comme ID
+    .bind(&staging_table) // Utiliser staging_table comme ID
     .bind(table)
     .bind(schema)
     .bind(&staging_table)
@@ -72,7 +72,7 @@ pub async fn create_staging(
     .await?;
 
     Ok(StagingInfo {
-        staging_id: staging_table.clone(),  // Nom de table sans tirets
+        staging_id: staging_table.clone(), // Nom de table sans tirets
         table_name: table.to_string(),
         schema_name: schema.to_string(),
         created_at: chrono::Utc::now(),
@@ -127,22 +127,55 @@ pub async fn apply_staging_operation(
                     .map(|(k, v)| format!("\"{}\" = {}", k, value_to_sql_string(v)))
                     .collect();
 
-                let query = format!(
-                    "UPDATE {}.{} SET {}, _staging_op = 'UPDATE' WHERE id = $1",
-                    schema_ident,
-                    staging_ident,
-                    set_clauses.join(", ")
-                );
-                sqlx::query(&query).bind(&row_id).execute(pool).await?;
+                // Déterminer dynamiquement le type de l'identifiant (uuid, bigint, text)
+                if let Ok(u) = uuid::Uuid::parse_str(&row_id) {
+                    let query = format!(
+                        "UPDATE {}.{} SET {}, _staging_op = 'UPDATE' WHERE id = $1::uuid",
+                        schema_ident,
+                        staging_ident,
+                        set_clauses.join(", ")
+                    );
+                    sqlx::query(&query).bind(u).execute(pool).await?;
+                } else if let Ok(n) = row_id.parse::<i64>() {
+                    let query = format!(
+                        "UPDATE {}.{} SET {}, _staging_op = 'UPDATE' WHERE id = $1::bigint",
+                        schema_ident,
+                        staging_ident,
+                        set_clauses.join(", ")
+                    );
+                    sqlx::query(&query).bind(n).execute(pool).await?;
+                } else {
+                    let query = format!(
+                        "UPDATE {}.{} SET {}, _staging_op = 'UPDATE' WHERE id = $1::text",
+                        schema_ident,
+                        staging_ident,
+                        set_clauses.join(", ")
+                    );
+                    sqlx::query(&query).bind(&row_id).execute(pool).await?;
+                }
             }
         }
         RowOperation::Delete => {
             if let Some(row_id) = operation.row_id {
-                let query = format!(
-                    "UPDATE {}.{} SET _staging_op = 'DELETE' WHERE id = $1",
-                    schema_ident, staging_ident
-                );
-                sqlx::query(&query).bind(&row_id).execute(pool).await?;
+                if let Ok(u) = uuid::Uuid::parse_str(&row_id) {
+                    let query = format!(
+                        "UPDATE {}.{} SET _staging_op = 'DELETE' WHERE id = $1::uuid",
+                        schema_ident, staging_ident
+                    );
+                    sqlx::query(&query).bind(u).execute(pool).await?;
+                } else if let Ok(n) = row_id.parse::<i64>() {
+                    let query = format!(
+                        "UPDATE {}.{} SET _staging_op = 'DELETE' WHERE id = $1::bigint",
+                        schema_ident, staging_ident
+                    );
+                    sqlx::query(&query).bind(n).execute(pool).await?;
+                } else {
+                    let query = format!(
+                        "UPDATE {}.{} SET _staging_op = 'DELETE' WHERE id = $1::text",
+                        schema_ident, staging_ident
+                    );
+                    sqlx::query(&query).bind(&row_id).execute(pool).await?;
+                }
             }
         }
     }
@@ -401,7 +434,11 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
     let mut tx = pool.begin().await?;
 
     // Nom temporaire pour l'ancienne table
-    let temp_table = format!("{}_old_{}", staging_info.table_name, Uuid::new_v4().simple());
+    let temp_table = format!(
+        "{}_old_{}",
+        staging_info.table_name,
+        Uuid::new_v4().simple()
+    );
     let temp_ident = sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&temp_table)
         .fetch_one(&mut *tx)
@@ -429,7 +466,10 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
     sqlx::query(&rename_staging).execute(&mut *tx).await?;
 
     // Supprimer l'ancienne table (ou archiver si besoin)
-    let drop_old = format!("DROP TABLE IF EXISTS {}.{} CASCADE", schema_ident, temp_ident);
+    let drop_old = format!(
+        "DROP TABLE IF EXISTS {}.{} CASCADE",
+        schema_ident, temp_ident
+    );
     sqlx::query(&drop_old).execute(&mut *tx).await?;
 
     // Créer un audit log
@@ -460,7 +500,10 @@ pub async fn commit_staging(pool: &PgPool, staging_id: &str) -> Result<CommitRes
 
     // Log structuré pour observabilité
     crate::observability::StructuredLog::new("staging_commit")
-        .with_table(&format!("{}.{}", staging_info.schema_name, staging_info.table_name))
+        .with_table(&format!(
+            "{}.{}",
+            staging_info.schema_name, staging_info.table_name
+        ))
         .with_rows_affected(staging_count)
         .with_details(serde_json::json!({
             "staging_id": staging_id,
@@ -504,7 +547,10 @@ pub async fn cancel_staging(pool: &PgPool, staging_id: &str) -> Result<(), sqlx:
 
 // Fonctions utilitaires
 
-pub(crate) async fn get_staging_info(pool: &PgPool, staging_id: &str) -> Result<StagingInfo, sqlx::Error> {
+pub(crate) async fn get_staging_info(
+    pool: &PgPool,
+    staging_id: &str,
+) -> Result<StagingInfo, sqlx::Error> {
     let row = sqlx::query(
         r#"
         SELECT table_name, schema_name, reason, created_at, operations_count
@@ -527,7 +573,10 @@ pub(crate) async fn get_staging_info(pool: &PgPool, staging_id: &str) -> Result<
     })
 }
 
-pub(crate) async fn get_staging_table_name(pool: &PgPool, staging_id: &str) -> Result<String, sqlx::Error> {
+pub(crate) async fn get_staging_table_name(
+    pool: &PgPool,
+    staging_id: &str,
+) -> Result<String, sqlx::Error> {
     sqlx::query_scalar(
         "SELECT staging_table_name FROM atlas.staging_metadata WHERE staging_id = $1",
     )
