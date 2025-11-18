@@ -1164,7 +1164,7 @@ class DatabaseImporter:
                 try:
                     code = clean_string(row.get('code') or row.get('code_site'))
                     depth_m = validate_numeric(row.get('depth_m'), 'depth_m', 0)
-                    w = validate_percentage(row.get('w') or row.get('teneur_eau'))
+                    w = validate_percentage(row.get('w') or row.get('teneur_eau'), 'w')
                     rho_s = validate_numeric(row.get('rho_s') or row.get('masse_volumique'), 'rho_s', 1.0, 3.5)
                     
                     if not code or depth_m is None:
