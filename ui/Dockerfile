@@ -14,12 +14,14 @@ RUN npm install --package-lock-only && npm ci
 COPY . .
 
 # Build args pour Vite
+ARG VITE_API_BASE=http://localhost:8000
 ARG VITE_API_URL=/api
 ARG VITE_API_GEO=/api
 ARG VITE_API_INFER=/api-infer
 ARG VITE_API_OPTI=/api-opti
 
 # Convertir ARG en ENV pour que Vite les voie
+ENV VITE_API_BASE=${VITE_API_BASE}
 ENV VITE_API_URL=${VITE_API_URL}
 ENV VITE_API_GEO=${VITE_API_GEO}
 ENV VITE_API_INFER=${VITE_API_INFER}

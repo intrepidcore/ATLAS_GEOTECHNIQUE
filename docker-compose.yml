@@ -95,6 +95,7 @@ services:
     build:
       context: ./ui
       args:
+        - VITE_API_BASE=${VITE_API_BASE:-http://localhost:8000}
         - VITE_API_GEO=${VITE_API_GEO:-/api}
         - VITE_API_INFER=${VITE_API_INFER:-/api-infer}
         - VITE_API_OPTI=${VITE_API_OPTI:-/api-opti}
@@ -103,6 +104,7 @@ services:
       - ./.env
       - ./.env.example
     environment:
+      - VITE_API_BASE=${VITE_API_BASE:-http://localhost:8000}
       - VITE_API_GEO=${VITE_API_GEO}
       - VITE_API_INFER=${VITE_API_INFER}
       - VITE_API_OPTI=${VITE_API_OPTI}

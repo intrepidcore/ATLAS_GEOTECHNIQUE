@@ -47,14 +47,24 @@ export interface SurveyCanonQuery {
 // Helper pour obtenir une base URL absolue
 function getApiBase(): string {
   const envBase = import.meta.env.VITE_API_BASE;
-  if (envBase && envBase.startsWith('http')) {
+  
+  if (!envBase) {
+    console.error('[Atlas UI] VITE_API_BASE manquant ou vide. Vérifiez votre fichier .env.local');
+    console.error('[Atlas UI] Fallback: utilisation de', window.location.origin + '/api');
+    // Fallback: même origine + /api
+    return window.location.origin + '/api';
+  }
+  
+  if (envBase.startsWith('http')) {
     return envBase.replace(/\/+$/, '');
   }
-  // Fallback: même origine + /api
+  
+  console.warn('[Atlas UI] VITE_API_BASE ne commence pas par http://, valeur:', envBase);
   return window.location.origin + '/api';
 }
 
 const API_BASE = getApiBase();
+console.log('[Atlas UI] API_BASE configuré:', API_BASE);
 
 export async function apiGet<T>(path: string, params?: Record<string, any>): Promise<T> {
   const url = new URL(path, API_BASE);
