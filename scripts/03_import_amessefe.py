@@ -257,7 +257,7 @@ class AmessefeImporter:
         return total_imported, total_errors
     
     def import_potentiel_gonflement(self, filepath: Path):
-        """Importer potentielle_de_gonflement.xlsx → essais_classif.cg"""
+        """Importer potentielle_de_gonflement.xlsx → essais_potentiel_gonflement"""
         logger.info(f"\n📈 Import Potentiel de gonflement: {filepath.name}")
         
         xl = pd.ExcelFile(filepath)
@@ -319,18 +319,17 @@ class AmessefeImporter:
                             continue
                         
                         try:
-                            # Insérer dans essais_classif (source of truth)
+                            # Insérer dans essais_potentiel_gonflement (table dédiée)
                             cur.execute("""
-                                INSERT INTO essais_classif (echantillon_id, depth_m, cg, cg_qual, type_sol, laboratory, created_at)
-                                VALUES (%s, %s, %s, %s, %s, 'FORMATEC', now())
+                                INSERT INTO essais_potentiel_gonflement (echantillon_id, cg, cg_qual, type_sol, created_at)
+                                VALUES (%s, %s, %s, %s, now())
                                 ON CONFLICT (echantillon_id)
                                 DO UPDATE SET
                                   cg = EXCLUDED.cg,
                                   cg_qual = EXCLUDED.cg_qual,
-                                  type_sol = COALESCE(EXCLUDED.type_sol, essais_classif.type_sol),
-                                  laboratory = EXCLUDED.laboratory,
+                                  type_sol = COALESCE(EXCLUDED.type_sol, essais_potentiel_gonflement.type_sol),
                                   updated_at = now();
-                            """, (echantillon_id, depth, float(cg_value), cg_qual, type_sol))
+                            """, (echantillon_id, float(cg_value), cg_qual, type_sol))
                             total_imported += 1
                         except Exception as e:
                             logger.error(f"  ✗ Erreur {code}@{depth}m: {e}")
@@ -340,7 +339,7 @@ class AmessefeImporter:
         return total_imported, total_errors
     
     def import_granulometrie(self, filepath: Path):
-        """Importer Granulométrie.xlsx → granulo_points"""
+        """Importer Granulométrie.xlsx → granulo_points (% passant à 0.08mm)"""
         logger.info(f"\n📊 Import Granulométrie: {filepath.name}")
         
         xl = pd.ExcelFile(filepath)
@@ -348,37 +347,76 @@ class AmessefeImporter:
         total_errors = 0
         
         for sheet_name in xl.sheet_names:
-            # Lire en sautant les 2 premières lignes (en-têtes mal placés)
-            df = pd.read_excel(xl, sheet_name, skiprows=2)
+            # Lire d'abord sans header pour trouver la ligne d'en-tête
+            df_raw = pd.read_excel(xl, sheet_name, header=None)
+            
+            # Trouver la ligne qui contient "Localités" ou "Localité"
+            header_row = None
+            for idx, row in df_raw.iterrows():
+                if any('localit' in str(val).lower() for val in row if pd.notna(val)):
+                    header_row = idx
+                    break
+            
+            if header_row is None:
+                logger.warning(f"  ⚠️  Sheet '{sheet_name}': ligne d'en-tête introuvable")
+                continue
+            
+            # Relire avec la bonne ligne d'en-tête
+            df = pd.read_excel(xl, sheet_name, header=header_row)
+            
+            # Normaliser les noms de colonnes (strip + lowercase)
+            df.columns = [str(c).strip().lower() for c in df.columns]
             
             # Identifier la colonne localité
             localite_col = None
             for col in df.columns:
-                if 'localit' in str(col).lower():
+                if 'localit' in col:
                     localite_col = col
                     break
             
             if not localite_col:
-                logger.warning(f"  ⚠️  Sheet '{sheet_name}': colonne localité introuvable")
+                logger.warning(f"  ⚠️  Sheet '{sheet_name}': colonne localité introuvable après normalisation")
                 continue
             
-            # Colonnes de passants (assumées être 1.0, 1.5, 2.0)
-            passant_cols = {1.0: 1.0, 1.5: 1.5, 2.0: 2.0}
+            # Mapping colonnes profondeur → depth_m
+            # Les colonnes sont '1', '1.5', '2' (string après normalisation)
+            depth_map = {
+                '1': 1.0,
+                '1.5': 1.5,
+                '2': 2.0,
+                '1,5': 1.5,  # Au cas où virgule au lieu de point
+            }
             
             with self.conn.cursor() as cur:
                 for idx, row in df.iterrows():
-                    localite = normalize_localite(row.get(localite_col))
+                    localite_raw = row.get(localite_col)
+                    if pd.isna(localite_raw) or not isinstance(localite_raw, str):
+                        continue
+                    
+                    localite = localite_raw.strip()
                     if not localite:
                         continue
                     
                     code = normalize_localite(localite)
                     
-                    for col, depth in passant_cols.items():
-                        if col not in df.columns:
+                    # Pour chaque profondeur (1m, 1.5m, 2m)
+                    for col_name, depth in depth_map.items():
+                        if col_name not in df.columns:
                             continue
                         
-                        passant_value = row.get(col)
+                        passant_value = row.get(col_name)
                         if pd.isna(passant_value):
+                            continue
+                        
+                        # Convertir en float (gérer virgule → point)
+                        if isinstance(passant_value, str):
+                            passant_value = passant_value.replace(',', '.')
+                        
+                        try:
+                            passant_pct = float(passant_value)
+                        except (ValueError, TypeError):
+                            logger.warning(f"  ⚠️  Valeur invalide {code}@{depth}m: {passant_value}")
+                            total_errors += 1
                             continue
                         
                         key = (code, depth)
@@ -390,16 +428,16 @@ class AmessefeImporter:
                             continue
                         
                         try:
-                            # Insérer dans granulo_points (source of truth)
-                            # Assumons tamis 80µm pour l'instant (à ajuster selon contexte)
+                            # Insérer dans granulo_points (% passant à 0.08mm = 80µm)
+                            # Contrainte unique: (echantillon_id, method, sieve_mm)
+                            # On utilise method = NULL pour AMESSEFE (pas de méthode spécifique)
                             cur.execute("""
-                                INSERT INTO granulo_points (echantillon_id, sieve_mm, passing_pct, created_at)
-                                VALUES (%s, 0.08, %s, now())
-                                ON CONFLICT (echantillon_id, sieve_mm)
+                                INSERT INTO granulo_points (echantillon_id, sieve_mm, passing_pct, method, created_at)
+                                VALUES (%s, 0.08, %s, NULL, now())
+                                ON CONFLICT (echantillon_id, method, sieve_mm)
                                 DO UPDATE SET
-                                  passing_pct = EXCLUDED.passing_pct,
-                                  updated_at = now();
-                            """, (echantillon_id, float(passant_value)))
+                                  passing_pct = EXCLUDED.passing_pct;
+                            """, (echantillon_id, passant_pct))
                             total_imported += 1
                         except Exception as e:
                             logger.error(f"  ✗ Erreur {code}@{depth}m: {e}")
