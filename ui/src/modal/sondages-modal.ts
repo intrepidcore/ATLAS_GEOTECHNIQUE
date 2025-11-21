@@ -60,7 +60,12 @@ export class SondagesModal {
       <div class="sondages-modal">
         <div class="sondages-modal-header">
           <h2>📋 Gestionnaire de Sondages</h2>
-          <button class="modal-close" aria-label="Fermer">×</button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="modal-fullpage" aria-label="Ouvrir en pleine page" style="padding: 8px 16px; background: #4c6ef5; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">
+              🚀 Ouvrir en pleine page
+            </button>
+            <button class="modal-close" aria-label="Fermer">×</button>
+          </div>
         </div>
         
         <div class="sondages-modal-body">
@@ -113,6 +118,10 @@ export class SondagesModal {
     
     // Event listeners
     this.modal.querySelector('.modal-close')?.addEventListener('click', () => this.close())
+    this.modal.querySelector('.modal-fullpage')?.addEventListener('click', () => {
+      this.close()
+      window.location.hash = '/sondages'
+    })
     this.modal.addEventListener('click', (e) => {
       if (e.target === this.modal) this.close()
     })

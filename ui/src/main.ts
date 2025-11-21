@@ -23,6 +23,8 @@ import { openDbManager } from './db-manager'
 import type { Survey } from './types/survey'
 import { httpJSON } from './utils/http'
 import { initRealtime, onWsEvent } from './realtime'
+import { router } from './router'
+import { SondagesManagerPage } from './pages/sondages-manager-page'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -3543,6 +3545,72 @@ function initWebSocket() {
   console.log('[REALTIME] ✅ WebSocket initialisé')
 }
 
+// Initialiser le routing et les pages
+let sondagesPage: SondagesManagerPage | null = null
+
+function initRouting() {
+  console.log('[ROUTER] Initialisation routing...')
+  
+  // Route principale (carte)
+  router.on('/', () => {
+    console.log('[ROUTER] Route: Home (carte)')
+    showMainMap()
+  })
+  
+  // Route page sondages
+  router.on('/sondages', async () => {
+    console.log('[ROUTER] Route: Sondages Manager')
+    await showSondagesPage()
+  })
+  
+  console.log('[ROUTER] ✅ Routing initialisé')
+}
+
+function showMainMap() {
+  // Afficher la carte principale
+  const appContainer = document.getElementById('app')
+  if (appContainer) {
+    appContainer.style.display = 'grid'
+  }
+  
+  // Masquer la page sondages
+  const sondagesContainer = document.getElementById('sondages-page-container')
+  if (sondagesContainer) {
+    sondagesContainer.style.display = 'none'
+  }
+  
+  // Détruire l'instance si elle existe
+  if (sondagesPage) {
+    sondagesPage.destroy()
+    sondagesPage = null
+  }
+}
+
+async function showSondagesPage() {
+  // Masquer la carte principale
+  const appContainer = document.getElementById('app')
+  if (appContainer) {
+    appContainer.style.display = 'none'
+  }
+  
+  // Créer le container si nécessaire
+  let sondagesContainer = document.getElementById('sondages-page-container')
+  if (!sondagesContainer) {
+    sondagesContainer = document.createElement('div')
+    sondagesContainer.id = 'sondages-page-container'
+    sondagesContainer.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1000;'
+    document.body.appendChild(sondagesContainer)
+  }
+  
+  sondagesContainer.style.display = 'block'
+  
+  // Créer et afficher la page
+  if (!sondagesPage) {
+    sondagesPage = new SondagesManagerPage(API_GEO)
+    await sondagesPage.render('sondages-page-container')
+  }
+}
+
 // Garantit l'ordre : d'abord boot, ensuite listeners
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -3557,6 +3625,8 @@ if (document.readyState === 'loading') {
     initDbManager()
     // v2.7.0: WebSocket temps réel
     initWebSocket()
+    // v2.8.0: Routing
+    initRouting()
   }, { once: true })
 } else {
   updateAppVersion()
@@ -3570,4 +3640,6 @@ if (document.readyState === 'loading') {
   initDbManager()
   // v2.7.0: WebSocket temps réel
   initWebSocket()
+  // v2.8.0: Routing
+  initRouting()
 }
