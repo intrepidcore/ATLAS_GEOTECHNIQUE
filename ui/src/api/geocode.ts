@@ -151,3 +151,127 @@ export async function getManualStats(): Promise<ManualGeocodeStats> {
   if (!r.ok) throw new Error('Failed to fetch manual geocode stats');
   return r.json();
 }
+
+// ============================================================================
+// Nouvelle API Sondages & Suggestions (api-geo)
+// ============================================================================
+
+export type SondageGeocode = {
+  id: string;
+  code: string;
+  localite: string | null;
+  adm3_id: number | null;
+  adm3_name: string | null;
+  location_mode: string | null;
+  is_geocoded: boolean;
+};
+
+export type GeocodeRequest = 
+  | { mode: 'adm3'; adm3_id: number }
+  | { mode: 'coords'; lon: number; lat: number };
+
+export type SuggestionItem = {
+  id: string;
+  entity: string;
+  entity_id: string;
+  localite: string;
+  adm2_code: string | null;
+  candidates: string | null;
+  top_code: string;
+  top_score: string;
+  top_method: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  decided_at: string | null;
+};
+
+export type SuggestionStats = {
+  total: number;
+  pending: number;
+  accepted: number;
+  rejected: number;
+};
+
+/**
+ * Géocoder un sondage (ADM3 ou coordonnées exactes)
+ */
+export async function geocodeSondageAdm3(sondageId: string, adm3Gid: number): Promise<SondageGeocode> {
+  const r = await fetch(buildUrl(`/sondages/${sondageId}/geocode`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'adm3', adm3_id: adm3Gid }),
+  });
+  if (!r.ok) {
+    const error = await r.text();
+    throw new Error(error || 'Failed to geocode with ADM3');
+  }
+  return r.json();
+}
+
+export async function geocodeSondageCoords(
+  sondageId: string,
+  lon: number,
+  lat: number
+): Promise<SondageGeocode> {
+  const r = await fetch(buildUrl(`/sondages/${sondageId}/geocode`), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode: 'coords', lon, lat }),
+  });
+  if (!r.ok) {
+    const error = await r.text();
+    throw new Error(error || 'Failed to geocode with coordinates');
+  }
+  return r.json();
+}
+
+/**
+ * Lister les suggestions de géocodage
+ */
+export async function listGeocodeSuggestions(params?: {
+  sondage_id?: string;
+  status?: string;
+  limit?: number;
+}): Promise<SuggestionItem[]> {
+  const q = new URLSearchParams(params as any).toString();
+  const r = await fetch(buildUrl(`/suggestions${q ? `?${q}` : ''}`));
+  if (!r.ok) throw new Error('Failed to list suggestions');
+  return r.json();
+}
+
+/**
+ * Statistiques des suggestions
+ */
+export async function getSuggestionStats(): Promise<SuggestionStats> {
+  const r = await fetch(buildUrl('/suggestions/stats'));
+  if (!r.ok) throw new Error('Failed to fetch suggestion stats');
+  return r.json();
+}
+
+/**
+ * Accepter une suggestion (géocode automatiquement le sondage)
+ */
+export async function acceptSuggestion(id: string): Promise<{ success: boolean; sondage_id: string; adm3_pcode: string }> {
+  const r = await fetch(buildUrl(`/suggestions/${id}/accept`), {
+    method: 'POST',
+  });
+  if (!r.ok) {
+    const error = await r.text();
+    throw new Error(error || 'Failed to accept suggestion');
+  }
+  return r.json();
+}
+
+/**
+ * Rejeter une suggestion
+ */
+export async function rejectSuggestion(id: string): Promise<{ success: boolean }> {
+  const r = await fetch(buildUrl(`/suggestions/${id}/reject`), {
+    method: 'POST',
+  });
+  if (!r.ok) {
+    const error = await r.text();
+    throw new Error(error || 'Failed to reject suggestion');
+  }
+  return r.json();
+}

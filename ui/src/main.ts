@@ -22,6 +22,7 @@ import { SondagesModal } from './modal/sondages-modal'
 import { openDbManager } from './db-manager'
 import type { Survey } from './types/survey'
 import { httpJSON } from './utils/http'
+import { initRealtime, onWsEvent } from './realtime'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -3514,6 +3515,34 @@ function initDbManager() {
   }
 }
 
+// Initialiser WebSocket temps réel
+function initWebSocket() {
+  console.log('[REALTIME] Initialisation WebSocket...')
+  const realtime = initRealtime(API_GEO)
+  
+  // Écouter les événements de géocodage
+  onWsEvent('sondage.geocoded', (data: any) => {
+    console.log('[WS] Sondage géocodé:', data)
+    toast(`✅ Sondage ${data.code || data.id} géocodé`, 'ok')
+    // Rafraîchir la grille si nécessaire
+    if (gridLayer) {
+      loadGrid()
+    }
+  })
+  
+  // Écouter les événements de suggestions
+  onWsEvent('suggestion.accepted', (data: any) => {
+    console.log('[WS] Suggestion acceptée:', data)
+    toast(`✅ Suggestion acceptée pour sondage ${data.sondage_id}`, 'ok')
+  })
+  
+  onWsEvent('suggestion.rejected', (data: any) => {
+    console.log('[WS] Suggestion rejetée:', data)
+  })
+  
+  console.log('[REALTIME] ✅ WebSocket initialisé')
+}
+
 // Garantit l'ordre : d'abord boot, ensuite listeners
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -3526,6 +3555,8 @@ if (document.readyState === 'loading') {
     initSondagesModal()
     // v2.6.0: DB Manager
     initDbManager()
+    // v2.7.0: WebSocket temps réel
+    initWebSocket()
   }, { once: true })
 } else {
   updateAppVersion()
@@ -3537,4 +3568,6 @@ if (document.readyState === 'loading') {
   initSondagesModal()
   // v2.6.0: DB Manager
   initDbManager()
+  // v2.7.0: WebSocket temps réel
+  initWebSocket()
 }
