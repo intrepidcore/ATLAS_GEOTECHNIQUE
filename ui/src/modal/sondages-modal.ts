@@ -4,7 +4,7 @@
  */
 
 import { ImportWizardV2 } from '../import-wizard-v2'
-import { SuggestionsCanonPanel } from '../suggestions-canon-panel'
+import { SuggestionsAdmPanel } from '../suggestions-adm-panel'
 import { GeocodeCanonPanel } from '../geocode-canon-panel'
 import { listSondages, getSondage, extractLocaliteFromCode, formatGeocodeLabel } from '../api/sondages'
 import { toast } from '../ui/toast'
@@ -15,7 +15,7 @@ export class SondagesModal {
   private modal: HTMLElement | null = null
   private activeTab: TabId = 'nouveau'
   private importWizard: ImportWizardV2 | null = null
-  private suggestionsPanel: SuggestionsCanonPanel | null = null
+  private suggestionsPanel: SuggestionsAdmPanel | null = null
   private geocodeManualPanel: GeocodeCanonPanel | null = null
   private escHandler?: (e: KeyboardEvent) => void
   private loaded: Record<TabId, boolean> = {
@@ -295,7 +295,7 @@ export class SondagesModal {
     pane.innerHTML = '<div id="modal-suggestions-container" style="height:100%;"></div>'
     
     try {
-      this.suggestionsPanel = new SuggestionsCanonPanel(this.apiUrl)
+      this.suggestionsPanel = new SuggestionsAdmPanel(this.apiUrl)
       await this.suggestionsPanel.refresh()
       this.suggestionsPanel.renderUI(
         'modal-suggestions-container',

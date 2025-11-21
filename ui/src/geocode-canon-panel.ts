@@ -3,12 +3,12 @@ import {
   listSondages,
   getSondagesStats,
   getAdm3Candidates,
-  updateSondageGeometry,
   Sondage,
   SondagesStats,
   Adm3Candidate,
   extractLocaliteFromCode,
 } from './api/sondages';
+import { geocodeSondageAdm3, geocodeSondageCoords } from './api/geocode';
 import { toast } from './ui/toast';
 
 export class GeocodeCanonPanel {
@@ -405,15 +405,12 @@ export class GeocodeCanonPanel {
             
             // Find ADM3 name for success message
             const adm = this.adm3List.find(a => a.gid === adm3IdNum);
-            console.log('[GEOCODE] Sending payload:', { mode: 'adm', adm3_id: adm3IdNum });
+            console.log('[GEOCODE] Sending payload:', { mode: 'adm3', adm3_id: adm3IdNum });
             
-            // Call API (adm3_id = gid for adm3 table)
-            await updateSondageGeometry(this.selectedSurvey!.id, {
-              mode: 'adm',
-              adm3_id: adm3IdNum
-            });
+            // Call new API endpoint
+            const result = await geocodeSondageAdm3(this.selectedSurvey!.id, adm3IdNum);
             
-            toast.success(`✅ Sondage "${this.selectedSurvey!.localite || this.selectedSurvey!.code}" géocodé avec ADM3${adm ? ': ' + adm.name : ''}`);
+            toast.success(`✅ Sondage "${result.code}" géocodé avec ADM3: ${result.adm3_name || adm?.name || ''}`);
           } else {
             const lat = parseFloat((document.getElementById('lat-input') as HTMLInputElement).value);
             const lon = parseFloat((document.getElementById('lon-input') as HTMLInputElement).value);
@@ -423,16 +420,10 @@ export class GeocodeCanonPanel {
               return;
             }
             
-            // Call API
-            await updateSondageGeometry(this.selectedSurvey!.id, {
-              mode: 'exact',
-              geom: {
-                type: 'Point',
-                coordinates: [lon, lat]
-              }
-            });
+            // Call new API endpoint
+            const result = await geocodeSondageCoords(this.selectedSurvey!.id, lon, lat);
             
-            toast.success(`✅ Sondage "${this.selectedSurvey!.localite || this.selectedSurvey!.code}" géocodé avec coordonnées (${lat}, ${lon})`);
+            toast.success(`✅ Sondage "${result.code}" géocodé avec coordonnées (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
           }
           
           // Rafraîchir stats et liste
