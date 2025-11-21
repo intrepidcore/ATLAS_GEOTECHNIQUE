@@ -41,12 +41,16 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 ## ⚙️ ÉTAPE 2 : BACKEND GÉOCODAGE & SUGGESTIONS
 **Objectif** : Faire vivre les boutons de l'UI actuelle
 
-### 2.1 Géocodage manuel (onglet "Géocodage Amélioré")
-- [ ] Vérifier/créer endpoint `POST /sondages/:id/geocode`
-  - [ ] Mode ADM3 : centroïde + `adm3_id`
-  - [ ] Mode GPS : coordonnées exactes
-  - [ ] Mise à jour `location_mode`, `is_geocoded`
-  - [ ] Ajouter audit (qui a géocodé, quand, comment)
+### 2.1 Géocodage manuel (onglet "Géocodage Amélioré") 🔄
+- [x] Créer endpoint `POST /sondages/:id/geocode`
+  - [x] Mode ADM3 : centroïde + `adm3_id` (gid)
+  - [x] Mode GPS : coordonnées exactes
+  - [x] Mise à jour `location_mode`, `is_geocoded`
+  - [x] Ajouter audit dans meta (geocoded_at, geocoded_mode)
+  - [x] Validation coordonnées
+  - [x] Logs de traçabilité
+- [ ] Rebuild Docker API pour déployer l'endpoint
+- [ ] Tester l'endpoint avec Postman/curl
 - [ ] Brancher le bouton "Enregistrer le géocodage" dans l'UI
 - [ ] Rafraîchir la liste après géocodage
 - [ ] Tester le workflow complet
@@ -179,5 +183,5 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-**Dernière mise à jour** : 2025-11-21 16:00
-**Statut global** : 🟢 Étape 1 terminée ! → Étape 2 en cours
+**Dernière mise à jour** : 2025-11-21 17:30
+**Statut global** : 🟢 Étape 1 terminée ! → 🟡 Étape 2 en cours (backend géocodage créé, à tester)
