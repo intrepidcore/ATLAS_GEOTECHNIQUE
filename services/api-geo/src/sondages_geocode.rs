@@ -92,7 +92,6 @@ async fn geocode_by_adm3(
             adm3_id = $2,
             adm3_name = a.adm3_fr,
             location_mode = 'adm3',
-            is_geocoded = true,
             updated_at = now(),
             meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
                 'geocoded_at', now()::text,
@@ -162,7 +161,6 @@ async fn geocode_by_coords(
         SET 
             geom = ST_SetSRID(ST_MakePoint($2, $3), 4326),
             location_mode = 'exact',
-            is_geocoded = true,
             updated_at = now(),
             meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
                 'geocoded_at', now()::text,
