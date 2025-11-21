@@ -60,13 +60,17 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [x] Parcourir sondages avec `location_mode = 'unknown'`
   - [x] Matching fuzzy Levenshtein sur `localite_key` vs `adm3_fr`
   - [x] Calcul de score 0-100
-  - [x] 285 suggestions générées pour 121 sondages
+  - [x] Vider suggestions pending au démarrage
+  - [x] Remplir champ `candidates` avec tous les candidats (JSON)
+  - [x] 98 suggestions générées pour 121 sondages
 - [x] **API suggestions** :
   - [x] `GET /suggestions?sondage_id=...&status=...` 
   - [x] `GET /suggestions/stats`
-  - [x] `POST /suggestions/:id/accept` (géocode + update)
+  - [x] `POST /suggestions/:id/accept` (géocode + update + auto-reject autres)
   - [x] `POST /suggestions/:id/reject`
+  - [x] Correction champ `localite` → utilise `localite_base`
 - [ ] Brancher le bouton "Géocoder" dans l'onglet Suggestions ADM
+- [ ] Trigger auto-génération suggestions lors ajout sondage
 
 ### 2.3 Interaction carte (ADM3 qui clignote) - DÉTAILLÉ
 - [ ] Endpoint pour récupérer géométrie ADM3
@@ -182,5 +186,5 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-**Dernière mise à jour** : 2025-11-21 17:30
-**Statut global** : 🟢 Étape 1 terminée ! → 🟡 Étape 2 en cours (backend géocodage créé, à tester)
+**Dernière mise à jour** : 2025-11-21 19:45
+**Statut global** : 🟢 Étapes 1, 2 & 4 backend terminées ! → 🟡 Étape 3 Frontend en cours
