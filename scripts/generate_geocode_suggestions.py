@@ -103,40 +103,46 @@ def find_adm3_candidates(sondage_localite: str, adm3_list: List[Tuple], top_n: i
     return candidates[:top_n]
 
 def insert_suggestion(conn, sondage_id: str, sondage_code: str, localite: str,
-                     adm3_gid: int, adm3_name: str, adm3_pcode: str, score: float):
-    """Insérer une suggestion"""
+                     candidates_list: List[Tuple[int, str, str, str, str, float]]):
+    """Insérer une suggestion avec tous les candidats"""
     import json
+    
+    if not candidates_list:
+        return
+    
+    # Premier candidat = top
+    top_gid, top_name, top_pcode, _, _, top_score = candidates_list[0]
+    
     with conn.cursor() as cur:
-        # Vérifier si suggestion existe déjà
-        cur.execute("""
-            SELECT id FROM public.geocode_suggestions
-            WHERE entity = 'sondage'
-              AND entity_id = %s 
-              AND top_code = %s
-              AND status = 'pending'
-        """, (sondage_id, adm3_pcode))
-        
-        if cur.fetchone():
-            return  # Déjà existe
-        
         # Créer ID unique
-        suggestion_id = f"sugg_{sondage_id[:8]}_{adm3_pcode}"
+        suggestion_id = f"sugg_{sondage_id[:8]}_{top_pcode}"
+        
+        # Formater tous les candidats en JSON
+        candidates_json = json.dumps([
+            {
+                "code": pcode,
+                "name": name,
+                "score": str(score)
+            }
+            for gid, name, pcode, adm2, adm1, score in candidates_list
+        ])
         
         # Insérer
         cur.execute("""
             INSERT INTO public.geocode_suggestions (
-                id, entity, entity_id, localite, top_code, top_score, 
+                id, entity, entity_id, localite, candidates, top_code, top_score, 
                 top_method, status, created_at
             ) VALUES (
-                %s, 'sondage', %s, %s, %s, %s, 'localite_match', 'pending', %s
+                %s, 'sondage', %s, %s, %s, %s, %s, 'localite_match', 'pending', now()
             )
+            ON CONFLICT (id) DO NOTHING
         """, (
             suggestion_id,
             sondage_id,
             localite,
-            adm3_pcode,
-            str(score),
-            str(int(score))
+            candidates_json,
+            top_pcode,
+            str(int(top_score))
         ))
 
 def main():
@@ -146,6 +152,15 @@ def main():
         conn.autocommit = False
         
         try:
+            # Vider les suggestions pending existantes
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM public.geocode_suggestions 
+                    WHERE status = 'pending' AND entity = 'sondage'
+                """)
+                deleted_count = cur.rowcount
+                logger.info(f"🗑️  {deleted_count} suggestions pending supprimées")
+            
             # Récupérer sondages
             logger.info("📍 Récupération sondages sans géométrie...")
             sondages = get_sondages_without_geom(conn)
@@ -169,12 +184,12 @@ def main():
                 
                 if candidates:
                     logger.info(f"  {code}: {len(candidates)} candidats trouvés")
+                    insert_suggestion(
+                        conn, str(sondage_id), code, search_text,
+                        candidates
+                    )
+                    total_suggestions += 1
                     for gid, adm3_fr, adm3_pcode, adm2_fr, adm1_fr, score in candidates:
-                        insert_suggestion(
-                            conn, str(sondage_id), code, search_text,
-                            gid, adm3_fr, adm3_pcode, score
-                        )
-                        total_suggestions += 1
                         logger.info(f"    → {adm3_fr} (score: {score:.1f}%)")
             
             conn.commit()

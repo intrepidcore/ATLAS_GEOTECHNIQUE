@@ -146,15 +146,29 @@ pub async fn accept_suggestion(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to geocode: {}", e)))?;
     
-    // Marquer la suggestion comme acceptée
+    // Marquer la suggestion comme acceptée et rejeter les autres pour ce sondage
+    let now = chrono::Utc::now().to_rfc3339();
+    
+    // Accepter celle-ci
     sqlx::query(
         "UPDATE public.geocode_suggestions SET status = 'accepted', decided_at = $1 WHERE id = $2"
     )
-    .bind(chrono::Utc::now().to_rfc3339())
+    .bind(&now)
     .bind(&id)
     .execute(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to update suggestion: {}", e)))?;
+    
+    // Rejeter les autres suggestions pending pour ce sondage
+    sqlx::query(
+        "UPDATE public.geocode_suggestions SET status = 'rejected', decided_at = $1 WHERE entity_id = $2 AND id != $3 AND status = 'pending'"
+    )
+    .bind(&now)
+    .bind(&sondage_id)
+    .bind(&id)
+    .execute(pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to reject other suggestions: {}", e)))?;
     
     tracing::info!(
         "Suggestion {} acceptée : sondage {} géocodé avec ADM3 {}",

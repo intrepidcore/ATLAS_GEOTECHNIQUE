@@ -21,7 +21,6 @@ pub struct Sondage {
     pub geom: Option<serde_json::Value>,
     pub location_mode: Option<String>,
     pub is_geocoded: bool,
-    pub date: Option<chrono::NaiveDate>,
     pub source: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
@@ -101,17 +100,21 @@ pub async fn list_sondages(
     let query = format!(
         r#"
         SELECT 
-            id, code, localite, adm3_id, adm3_name,
+            id, code, localite_base AS localite, adm3_id, adm3_name,
             ST_AsGeoJSON(geom)::jsonb as geom,
             location_mode::text,
             is_geocoded,
-            date, source, created_at, updated_at
-        FROM sondages
-        WHERE {}
+            source, created_at, updated_at
+        FROM public.sondages
+        WHERE deleted_at IS NULL {}
         ORDER BY created_at DESC
         LIMIT $2 OFFSET $3
         "#,
-        where_sql
+        if where_clauses.is_empty() {
+            String::new()
+        } else {
+            format!("AND {}", where_clauses.join(" AND "))
+        }
     );
 
     let mut q = sqlx::query_as::<_, Sondage>(&query);
@@ -179,11 +182,11 @@ pub async fn get_sondage(
     let sondage = sqlx::query_as::<_, Sondage>(
         r#"
         SELECT 
-            id, code, localite, adm3_id, adm3_name,
+            id, code, localite_base AS localite, adm3_id, adm3_name,
             ST_AsGeoJSON(geom)::jsonb as geom,
             location_mode::text,
             is_geocoded,
-            date, source, created_at, updated_at
+            source, created_at, updated_at
         FROM sondages
         WHERE id = $1 AND deleted_at IS NULL
         "#,
@@ -210,7 +213,7 @@ pub async fn get_adm3_candidates(
     // Récupérer le sondage
     let sondage: (Uuid, Option<String>) = sqlx::query_as(
         r#"
-        SELECT id, localite
+        SELECT id, localite_base AS localite
         FROM sondages
         WHERE id = $1 AND deleted_at IS NULL
         "#,
