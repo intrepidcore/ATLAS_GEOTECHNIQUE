@@ -14,23 +14,21 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ### 1.1 Clarifier les colonnes canoniques ✅
 - [x] Analyser la structure actuelle de `public.sondages`
-- [ ] Documenter les colonnes canon vs legacy
-- [ ] Décider du rôle de chaque colonne :
-  - `code` : identifiant sondage (code_site Excel)
-  - `localite_base` : texte brut Excel
-  - `localite_key` : version normalisée
+- [x] Documenter les colonnes canon vs legacy
+- [x] Décider du rôle de chaque colonne :
+  - `code` : identifiant sondage (code_site Excel) ✅
+  - `localite_base` : texte brut Excel ✅
+  - `localite_key` : version normalisée ✅
   - `adm3_id` / `adm3_name` : lien ADM3 officielle
 
-### 1.2 Nettoyage des données existantes
-- [ ] **Code** : Remplir depuis `meta->>'code'`
-  ```sql
-  -- Remplacer AUTO_... par vrai code quand disponible
-  UPDATE public.sondages SET code = meta->>'code' WHERE code LIKE 'AUTO_%' AND meta->>'code' IS NOT NULL;
-  ```
-- [ ] **Localité brute** : Remplir `localite_base` depuis `meta->>'localite'`
-- [ ] **Localité normalisée** : Générer `localite_key` depuis `localite_base`
-- [ ] **ADM3 Excel** : Extraire ADM3 depuis `meta` vers colonne dédiée
-- [ ] **Contrainte NOT NULL** : Ajouter sur `code` après nettoyage
+### 1.2 Nettoyage des données existantes ✅
+- [x] **Code** : Rempli depuis `meta->>'code'` (123 sondages)
+- [x] **Localité brute** : Rempli `localite_base` depuis `meta->>'localite'` (123 sondages)
+- [x] **Localité normalisée** : Généré `localite_key` depuis `localite_base` (123 sondages)
+- [x] **Contrainte NOT NULL** : Ajoutée sur `code`
+- [x] **Index** : Créé sur `localite_key`
+- [x] **Test API** : `/sondages?missing=geom` fonctionne sans erreur 500 ✅
+- [ ] **ADM3 Excel** : Extraire ADM3 depuis `meta` vers colonne dédiée (TODO)
 
 ### 1.3 Adapter les scripts d'import
 - [ ] Modifier `02_import_excel.py` pour remplir `code` directement
@@ -156,13 +154,13 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 ## 🎯 PRIORITÉS IMMÉDIATES
 
 1. ✅ **Dump de la base** (backup avant modifications)
-2. 🔥 **Nettoyage données** (code, localite_base, ADM3)
-3. 🔥 **Géocodage manuel fonctionnel**
+2. ✅ **Nettoyage données** (code, localite_base, localite_key) - TERMINÉ !
+3. 🔥 **Géocodage manuel fonctionnel** - EN COURS
 4. 🔥 **Suggestions ADM fonctionnelles**
 5. ⏳ **Refactor UI** (modal → page)
 6. ⏳ **WebSocket temps réel**
 
 ---
 
-**Dernière mise à jour** : 2025-11-21
-**Statut global** : 🟡 En cours (Étape 1 - Données)
+**Dernière mise à jour** : 2025-11-21 16:00
+**Statut global** : 🟢 Étape 1 terminée ! → Étape 2 en cours
