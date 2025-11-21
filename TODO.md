@@ -41,7 +41,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 ## ⚙️ ÉTAPE 2 : BACKEND GÉOCODAGE & SUGGESTIONS
 **Objectif** : Faire vivre les boutons de l'UI actuelle
 
-### 2.1 Géocodage manuel (onglet "Géocodage Amélioré") 🔄
+### 2.1 Géocodage manuel (onglet "Géocodage Amélioré") ✅
 - [x] Créer endpoint `POST /sondages/:id/geocode`
   - [x] Mode ADM3 : centroïde + `adm3_id` (gid)
   - [x] Mode GPS : coordonnées exactes
@@ -49,11 +49,10 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [x] Ajouter audit dans meta (geocoded_at, geocoded_mode)
   - [x] Validation coordonnées
   - [x] Logs de traçabilité
-- [ ] Rebuild Docker API pour déployer l'endpoint
-- [ ] Tester l'endpoint avec Postman/curl
+- [x] Rebuild Docker API pour déployer l'endpoint
+- [x] Tester l'endpoint : ADM3 ✅ coords ✅
 - [ ] Brancher le bouton "Enregistrer le géocodage" dans l'UI
 - [ ] Rafraîchir la liste après géocodage
-- [ ] Tester le workflow complet
 
 ### 2.2 Suggestions ADM basées sur ADM3 Excel + localité
 - [ ] **Script de génération des suggestions** (NOUVEAU) :
