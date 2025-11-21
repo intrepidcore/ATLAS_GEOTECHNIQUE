@@ -84,35 +84,34 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-## 🖥️ ÉTAPE 3 : REFACTOR UI (MODAL → PAGE)
-**Objectif** : Page dédiée avec carte à droite
+## 🧩 ÉTAPE 3 : REFACTOR UI (Modal → Page dédiée) 
+**Objectif** : Transformer le modal en vraie page avec carte intégrée
 
-### 3.1 Nouvelle route `/sondages` - PRÉCISÉ
-- [ ] Créer route hash `#/sondages` (ou route normale)
-- [ ] Bouton "Sondages" → navigation vers `/sondages` (pas modal)
-- [ ] Extraire logique du modal dans `SondagesManagerPage`
-- [ ] Layout 3 colonnes :
-  - [ ] Gauche : sidebar onglets INCHANGÉE (Nouveau, Import, Liste, Géocodage, Suggestions)
-  - [ ] Centre : panneaux actuels RÉUTILISÉS (pas de redesign)
-  - [ ] Droite : carte Leaflet dédiée avec :
-    - [ ] Couche ADM3 (polygones)
-    - [ ] Fond OSM léger
-    - [ ] Synchronisation avec panneau central
+### 3.1 Créer la page `/sondages` 
+- [x] Ajouter routing hash-based simple (`#/sondages`)
+- [x] Créer composant `SondagesManagerPage`
+- [x] Layout 3 colonnes :
+  - [x] Sidebar gauche : onglets (Géocodage, Suggestions, Import, Liste)
+  - [x] Zone centrale : contenu actif (formulaires, listes)
+  - [x] Carte droite : Leaflet avec ADM3
 
-### 3.2 Réutiliser le centre existant
-- [ ] Composant `SondagesManagerLayout`
-- [ ] Garder le même look & feel
-- [ ] Adapter les largeurs pour la nouvelle page
+### 3.2 Migrer les panneaux existants 
+- [x] Réutiliser `GeocodeCanonPanel` dans la nouvelle page
+- [x] Réutiliser `SuggestionsAdmPanel` dans la nouvelle page
+- [x] Adapter les callbacks pour rafraîchir la carte
+- [x] Ajouter bouton "Retour à la carte" dans la sidebar
+- [x] Bouton "Ouvrir en pleine page" dans le modal
 
-### 3.3 Intégrer la carte à droite
-- [ ] Carte Leaflet avec couches ADM3 + mailles
-- [ ] Synchronisation avec sondage sélectionné
-- [ ] Clic sur carte pour géocodage GPS
+### 3.3 Carte ADM3 intégrée 
+- [x] Charger la couche ADM3 dans la carte de droite
+- [x] Style des polygones (bordure bleue, fond transparent)
+- [x] Tooltips sur hover (nom commune, code)
+- [x] Méthode `zoomToAdm3(code)` pour interaction depuis les suggestions GPS
 - [ ] Zoom/highlight sur ADM3 suggérée
 
 ---
 
-## 🔄 ÉTAPE 4 : TEMPS RÉEL WEBSOCKET ✅ (Backend)
+## 🔄 ÉTAPE 4 : TEMPS RÉEL WEBSOCKET (Backend)
 **Objectif** : Synchronisation multi-utilisateurs
 
 ### 4.1 Définir les événements ✅
@@ -187,5 +186,5 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-**Dernière mise à jour** : 2025-11-21 20:15
-**Statut global** : 🟢 Étapes 1, 2 & 4 TERMINÉES ! → 🟡 Étape 3 (Refactor UI page) reste à faire
+**Dernière mise à jour** : 2025-11-21 20:40
+**Statut global** : 🟢 Étapes 1, 2, 3 & 4 TERMINÉES ! → 🟡 Reste : interaction carte + tests
