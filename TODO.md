@@ -107,24 +107,24 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-## 🔄 ÉTAPE 4 : TEMPS RÉEL WEBSOCKET
+## 🔄 ÉTAPE 4 : TEMPS RÉEL WEBSOCKET ✅ (Backend)
 **Objectif** : Synchronisation multi-utilisateurs
 
-### 4.1 Définir les événements - DÉTAILLÉ
-- [ ] `sondage.created` (nouveau sondage)
-- [ ] `sondage.updated` (modification)
-- [ ] `sondage.geocoded` (géocodage réussi) ← PRIORITAIRE
-- [ ] `sondage.deleted` (soft delete)
-- [ ] `mailles.coverage_updated` (plus tard)
-- [ ] Documenter payload de chaque événement
+### 4.1 Définir les événements ✅
+- [x] `sondage.created` (nouveau sondage)
+- [x] `sondage.updated` (modification)
+- [x] `sondage.geocoded` (géocodage réussi)
+- [x] `sondage.deleted` (soft delete)
+- [x] `suggestion.accepted` (suggestion acceptée)
+- [x] `suggestion.rejected` (suggestion rejetée)
 
-### 4.2 Backend Rust/Axum
-- [ ] Endpoint `GET /ws` (WebSocket upgrade)
-- [ ] Canal broadcast partagé dans `AppState`
-- [ ] Émettre événements depuis handlers :
-  - [ ] `POST /sondages`
-  - [ ] `POST /sondages/:id/geocode`
-  - [ ] `POST /geocode/suggestions/:id/accept`
+### 4.2 Backend Rust/Axum ✅
+- [x] Module events.rs avec types WsEvent
+- [x] Module websocket.rs avec handler
+- [x] Endpoint `GET /ws` (WebSocket upgrade)
+- [x] Broadcast channel dans AppState
+- [x] Émission événements dans geocode_suggestions
+- [x] Émission événements dans sondages_geocode
 
 ### 4.3 Frontend TS
 - [ ] Module `realtime.ts` :
@@ -132,11 +132,11 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [ ] Reconnexion automatique
   - [ ] Système d'événements (on/off/emit)
   - [ ] Méthode `disconnect()` pour nettoyage
-- [ ] Intégration dans `main.ts`
-- [ ] Rafraîchissement automatique :
-  - [ ] Sur `sondage.geocoded` :
-    - [ ] MAJ compteur "Sans géométrie"
-    - [ ] Recharger liste si onglet ouvert
+- [ ] Intégrer WebSocket côté frontend (Vite/TS)
+  - [ ] Connexion automatique au WebSocket
+  - [ ] Écoute des événements
+  - [ ] Rafraîchissement auto de la liste des sondages
+  - [ ] Notifications toast pour les événements importants
   - [ ] Carte principale (mailles)
   - [ ] Liste sondages
   - [ ] Compteurs Géocodage/Suggestions
