@@ -46,38 +46,50 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [ ] Mode ADM3 : centroïde + `adm3_id`
   - [ ] Mode GPS : coordonnées exactes
   - [ ] Mise à jour `location_mode`, `is_geocoded`
+  - [ ] Ajouter audit (qui a géocodé, quand, comment)
 - [ ] Brancher le bouton "Enregistrer le géocodage" dans l'UI
 - [ ] Rafraîchir la liste après géocodage
+- [ ] Tester le workflow complet
 
 ### 2.2 Suggestions ADM basées sur ADM3 Excel + localité
-- [ ] **Génération des candidats** :
-  - [ ] Job/endpoint pour calculer suggestions
-  - [ ] Matching sur `localite_key` + `adm3_text_raw`
+- [ ] **Script de génération des suggestions** (NOUVEAU) :
+  - [ ] Créer script Python/SQL pour générer suggestions
+  - [ ] Parcourir sondages avec `location_mode = 'unknown'`
+  - [ ] Extraire ADM3 depuis `meta->>'adm3_excel'` ou `prefecture_excel`
+  - [ ] Matching fuzzy sur `localite_key` vs `adm3.name_normalized`
   - [ ] Calcul de score (Levenshtein, ILIKE)
-  - [ ] Insertion dans `atlas.geocode_suggestions`
+  - [ ] Insertion dans `atlas.geocode_suggestions` avec score
 - [ ] **API suggestions** :
   - [ ] `GET /geocode/suggestions/:sondage_id` (candidats pour un sondage)
   - [ ] `POST /geocode/suggestions/:id/accept` (appliquer suggestion)
   - [ ] `POST /geocode/suggestions/:id/reject` (rejeter suggestion)
 - [ ] Brancher le bouton "Géocoder" dans l'onglet Suggestions ADM
 
-### 2.3 Interaction carte (ADM3 qui clignote)
+### 2.3 Interaction carte (ADM3 qui clignote) - DÉTAILLÉ
 - [ ] Endpoint pour récupérer géométrie ADM3
-- [ ] Frontend : zoom + clignotement sur clic "œil"
-- [ ] Animation : 4-5 clignotements avec style surligné
+- [ ] Frontend : bouton "👁" sur chaque candidat ADM3
+- [ ] Au clic sur "👁" :
+  - [ ] Zoom sur le polygone ADM3 (`map.fitBounds`)
+  - [ ] Style spécial (jaune/épais)
+  - [ ] Clignotement 3-5 fois (toggle style toutes les 400ms)
+- [ ] Restaurer style original après animation
 
 ---
 
 ## 🖥️ ÉTAPE 3 : REFACTOR UI (MODAL → PAGE)
 **Objectif** : Page dédiée avec carte à droite
 
-### 3.1 Nouvelle route `/sondages`
-- [ ] Créer route `/sondages` dans le router
+### 3.1 Nouvelle route `/sondages` - PRÉCISÉ
+- [ ] Créer route hash `#/sondages` (ou route normale)
+- [ ] Bouton "Sondages" → navigation vers `/sondages` (pas modal)
 - [ ] Extraire logique du modal dans `SondagesManagerPage`
 - [ ] Layout 3 colonnes :
-  - [ ] Gauche : sidebar onglets (réutiliser existant)
-  - [ ] Centre : panneaux actuels (Liste, Géocodage, Suggestions)
-  - [ ] Droite : carte Leaflet dédiée
+  - [ ] Gauche : sidebar onglets INCHANGÉE (Nouveau, Import, Liste, Géocodage, Suggestions)
+  - [ ] Centre : panneaux actuels RÉUTILISÉS (pas de redesign)
+  - [ ] Droite : carte Leaflet dédiée avec :
+    - [ ] Couche ADM3 (polygones)
+    - [ ] Fond OSM léger
+    - [ ] Synchronisation avec panneau central
 
 ### 3.2 Réutiliser le centre existant
 - [ ] Composant `SondagesManagerLayout`
@@ -95,12 +107,13 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 ## 🔄 ÉTAPE 4 : TEMPS RÉEL WEBSOCKET
 **Objectif** : Synchronisation multi-utilisateurs
 
-### 4.1 Définir les événements
-- [ ] `sondage.created`
-- [ ] `sondage.updated`
-- [ ] `sondage.geocoded`
-- [ ] `sondage.deleted`
-- [ ] `mailles.coverage_updated`
+### 4.1 Définir les événements - DÉTAILLÉ
+- [ ] `sondage.created` (nouveau sondage)
+- [ ] `sondage.updated` (modification)
+- [ ] `sondage.geocoded` (géocodage réussi) ← PRIORITAIRE
+- [ ] `sondage.deleted` (soft delete)
+- [ ] `mailles.coverage_updated` (plus tard)
+- [ ] Documenter payload de chaque événement
 
 ### 4.2 Backend Rust/Axum
 - [ ] Endpoint `GET /ws` (WebSocket upgrade)
@@ -114,9 +127,13 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [ ] Module `realtime.ts` :
   - [ ] Connexion WebSocket
   - [ ] Reconnexion automatique
-  - [ ] Système d'événements
+  - [ ] Système d'événements (on/off/emit)
+  - [ ] Méthode `disconnect()` pour nettoyage
 - [ ] Intégration dans `main.ts`
 - [ ] Rafraîchissement automatique :
+  - [ ] Sur `sondage.geocoded` :
+    - [ ] MAJ compteur "Sans géométrie"
+    - [ ] Recharger liste si onglet ouvert
   - [ ] Carte principale (mailles)
   - [ ] Liste sondages
   - [ ] Compteurs Géocodage/Suggestions
