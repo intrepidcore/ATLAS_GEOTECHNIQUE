@@ -69,7 +69,7 @@ async fn geocode_by_adm3(
 ) -> Result<Json<GeocodeResponse>, (StatusCode, String)> {
     // Vérifier que l'ADM3 existe
     let adm3_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM adm3 WHERE id = $1)"
+        "SELECT EXISTS(SELECT 1 FROM adm3 WHERE gid = $1)"
     )
     .bind(adm3_id)
     .fetch_one(pool)
@@ -79,7 +79,7 @@ async fn geocode_by_adm3(
     if !adm3_exists {
         return Err((
             StatusCode::NOT_FOUND,
-            format!("ADM3 with id {} not found", adm3_id),
+            format!("ADM3 with gid {} not found", adm3_id),
         ));
     }
 
@@ -90,7 +90,7 @@ async fn geocode_by_adm3(
         SET 
             geom = ST_Centroid(a.geom),
             adm3_id = $2,
-            adm3_name = a.name,
+            adm3_name = a.adm3_fr,
             location_mode = 'adm3',
             is_geocoded = true,
             updated_at = now(),
@@ -100,7 +100,7 @@ async fn geocode_by_adm3(
                 'geocoded_adm3_id', $2
             )
         FROM adm3 a
-        WHERE a.id = $2 AND s.id = $1
+        WHERE a.gid = $2 AND s.id = $1
         RETURNING s.id, s.code, s.location_mode, s.is_geocoded, s.adm3_id, s.adm3_name
         "#
     )
