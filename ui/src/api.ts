@@ -3,34 +3,17 @@
  * Gère toutes les requêtes vers le backend avec configuration unifiée
  */
 
-// Récupérer l'URL de base de l'API (localStorage > env > défaut)
-const getApiBase = (): string => {
-  const fromStorage = localStorage.getItem('API_GEO')
-  const fromEnv = import.meta.env.VITE_API_GEO
-  const fromWindow = (window as any).__API_GEO__
-  const defaultUrl = '/api'
-  
-  const apiBase = (fromStorage || fromEnv || fromWindow || defaultUrl).replace(/\/$/, '')
-  
-  console.log('[API] Configuration:', {
-    localStorage: fromStorage,
-    env: fromEnv,
-    window: fromWindow,
-    effective: apiBase
-  })
-  
-  return apiBase
-}
+import { getApiBase, buildApiUrl } from './api-base'
 
 export const API_GEO = getApiBase()
 
 /**
  * Construit une URL complète pour l'API
+ * @param path - Chemin relatif (ex: "/surveys" ou "surveys")
+ * @returns URL complète (ex: "http://localhost:8000/surveys")
  */
 export function apiUrl(path: string): string {
-  const cleanPath = path.startsWith('/') ? path : `/${path}`
-  const url = `${API_GEO}${cleanPath}`
-  return url
+  return buildApiUrl(path)
 }
 
 /**

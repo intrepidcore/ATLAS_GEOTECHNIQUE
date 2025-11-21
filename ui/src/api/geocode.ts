@@ -46,10 +46,17 @@ export type ApplyAcceptedResponse = {
   refreshed: boolean;
 };
 
+// Helper pour construire les URLs API - utilise le module centralisé
+import { buildApiUrl } from '../api-base'
+
+function buildUrl(path: string): string {
+  return buildApiUrl(path)
+}
+
 const BASE = '/api/geocode';
 
 export async function getStats(): Promise<GeocodeStats> {
-  const r = await fetch(`${BASE}/stats`);
+  const r = await fetch(buildUrl(`${BASE}/stats`));
   if (!r.ok) throw new Error('Failed to fetch stats');
   return r.json();
 }
@@ -61,7 +68,7 @@ export async function listSuggestions(params?: {
   offset?: number;
 }): Promise<Suggestion[]> {
   const q = new URLSearchParams(params as any).toString();
-  const r = await fetch(`${BASE}/suggestions${q ? `?${q}` : ''}`);
+  const r = await fetch(buildUrl(`${BASE}/suggestions${q ? `?${q}` : ''}`));
   if (!r.ok) throw new Error('Failed to list suggestions');
   return r.json();
 }
@@ -70,7 +77,7 @@ export async function accept(
   id: string,
   payload: { adm3_id?: string; lon?: number; lat?: number }
 ): Promise<Suggestion> {
-  const r = await fetch(`${BASE}/suggestions/${id}/accept`, {
+  const r = await fetch(buildUrl(`${BASE}/suggestions/${id}/accept`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -83,7 +90,7 @@ export async function accept(
 }
 
 export async function reject(id: string): Promise<Suggestion> {
-  const r = await fetch(`${BASE}/suggestions/${id}/reject`, {
+  const r = await fetch(buildUrl(`${BASE}/suggestions/${id}/reject`), {
     method: 'POST',
   });
   if (!r.ok) throw new Error('Failed to reject suggestion');
@@ -91,7 +98,7 @@ export async function reject(id: string): Promise<Suggestion> {
 }
 
 export async function applyAccepted(): Promise<ApplyAcceptedResponse> {
-  const r = await fetch(`${BASE}/apply-accepted`, {
+  const r = await fetch(buildUrl(`${BASE}/apply-accepted`), {
     method: 'POST',
   });
   if (!r.ok) throw new Error('Failed to apply accepted suggestions');
@@ -114,7 +121,7 @@ export async function listWithoutGeometry(params?: {
   search?: string;
 }): Promise<SondageWithoutGeometry[]> {
   const q = new URLSearchParams(params as any).toString();
-  const r = await fetch(`${BASE}/manual${q ? `?${q}` : ''}`);
+  const r = await fetch(buildUrl(`${BASE}/manual${q ? `?${q}` : ''}`));
   if (!r.ok) throw new Error('Failed to list sondages without geometry');
   return r.json();
 }
@@ -128,7 +135,7 @@ export async function updateGeometry(
     location_mode: 'exact' | 'adm';
   }
 ): Promise<void> {
-  const r = await fetch(`${BASE}/manual/${id}`, {
+  const r = await fetch(buildUrl(`${BASE}/manual/${id}`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -140,7 +147,7 @@ export async function updateGeometry(
 }
 
 export async function getManualStats(): Promise<ManualGeocodeStats> {
-  const r = await fetch(`${BASE}/manual/stats`);
+  const r = await fetch(buildUrl(`${BASE}/manual/stats`));
   if (!r.ok) throw new Error('Failed to fetch manual geocode stats');
   return r.json();
 }

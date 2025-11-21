@@ -1,3 +1,8 @@
+console.log(
+  "[DEBUG ATLAS UI] Build actif à",
+  new Date().toISOString()
+);
+
 import L from 'leaflet'
 import { Chart, registerables } from 'chart.js'
 import proj4 from 'proj4'
@@ -50,15 +55,9 @@ declare global {
 }
 
 // Base URLs with runtime override support
-// Priorité: localStorage > env > window > défaut
-// En production (Docker), utiliser /api qui est proxyfié par Nginx vers api-geo:8000
-// En dev (Vite), utiliser http://localhost:8000 directement
-const API_GEO = (
-  localStorage.getItem('API_GEO') ?? 
-  import.meta.env.VITE_API_GEO ?? 
-  (window as any).__API_GEO__ ?? 
-  '/api'
-) as string
+import { getApiBase } from './api-base'
+
+const API_GEO = getApiBase()
 console.log('[INIT] API_GEO configuré:', API_GEO)
 
 // Helper pour ajouter des event listeners de manière sûre

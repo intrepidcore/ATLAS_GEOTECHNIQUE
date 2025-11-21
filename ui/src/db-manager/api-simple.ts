@@ -1,10 +1,7 @@
 // API simplifiée pour le gestionnaire de BDD
-const API_GEO = (
-  localStorage.getItem('API_GEO') ?? 
-  (import.meta as any).env?.VITE_API_GEO ?? 
-  (window as any).__API_GEO__ ?? 
-  '/api'
-) as string
+import { getApiBase } from '../api-base'
+
+const API_GEO = getApiBase()
 
 import type { DatabaseSchema, TableDataResponse, TableDataQuery, PostgresType } from './types'
 

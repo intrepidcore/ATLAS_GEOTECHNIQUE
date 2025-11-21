@@ -44,36 +44,36 @@ export interface SurveyCanonQuery {
   missing?: 'geom' | 'adm3';
 }
 
-// Helper pour obtenir une base URL absolue
-function getApiBase(): string {
-  const envBase = import.meta.env.VITE_API_BASE;
-  
-  if (!envBase) {
-    console.error('[Atlas UI] VITE_API_BASE manquant ou vide. Vérifiez votre fichier .env.local');
-    console.error('[Atlas UI] Fallback: utilisation de', window.location.origin + '/api');
-    // Fallback: même origine + /api
-    return window.location.origin + '/api';
-  }
-  
-  if (envBase.startsWith('http')) {
-    return envBase.replace(/\/+$/, '');
-  }
-  
-  console.warn('[Atlas UI] VITE_API_BASE ne commence pas par http://, valeur:', envBase);
-  return window.location.origin + '/api';
-}
+// ============================================================================
+// BASE API - Utilise le module centralisé api-base
+// ============================================================================
 
-const API_BASE = getApiBase();
-console.log('[Atlas UI] API_BASE configuré:', API_BASE);
+import { buildApiUrl as buildUrl, API_BASE } from '../api-base'
+
+console.log('[surveys-canon] ✓ API_BASE:', API_BASE)
+
+// Alias pour compatibilité interne
+const buildApiUrl = buildUrl
 
 export async function apiGet<T>(path: string, params?: Record<string, any>): Promise<T> {
-  const url = new URL(path, API_BASE);
-  Object.entries(params ?? {}).forEach(([k, v]) => {
-    if (v !== undefined && v !== null) {
-      url.searchParams.set(k, String(v));
+  let url = buildApiUrl(path);
+  
+  // Ajouter les query params si présents
+  if (params && Object.keys(params).length > 0) {
+    const searchParams = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null) {
+        searchParams.set(k, String(v));
+      }
+    });
+    const queryString = searchParams.toString();
+    if (queryString) {
+      url += '?' + queryString;
     }
-  });
-  const res = await fetch(url.toString());
+  }
+  
+  console.debug('[API] GET', url);
+  const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`HTTP ${res.status} ${url}`);
   }
@@ -81,8 +81,8 @@ export async function apiGet<T>(path: string, params?: Record<string, any>): Pro
 }
 
 export async function apiPatch<T>(path: string, body: any): Promise<T> {
-  const url = new URL(path, API_BASE);
-  const res = await fetch(url.toString(), {
+  const urlString = buildApiUrl(path);
+  const res = await fetch(urlString, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -163,8 +163,8 @@ export async function updateSurveyGeometry(
   surveyId: string,
   payload: UpdateGeometryPayload
 ): Promise<SurveyCanon> {
-  const url = new URL(`/surveys-canon/${surveyId}/geometry`, API_BASE);
-  const response = await fetch(url.toString(), {
+  const urlString = buildApiUrl(`/surveys-canon/${surveyId}/geometry`);
+  const response = await fetch(urlString, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
