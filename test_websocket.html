@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        #log { border: 1px solid #ccc; padding: 10px; height: 400px; overflow-y: scroll; }
+        .event { margin: 5px 0; padding: 5px; background: #f0f0f0; }
+        .connected { color: green; }
+        .disconnected { color: red; }
+        .message { color: blue; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Test - Atlas API</h1>
+    <button onclick="connect()">Connect</button>
+    <button onclick="disconnect()">Disconnect</button>
+    <div id="status">Disconnected</div>
+    <h2>Events Log:</h2>
+    <div id="log"></div>
+
+    <script>
+        let ws = null;
+        const log = document.getElementById('log');
+        const status = document.getElementById('status');
+
+        function addLog(message, className = '') {
+            const div = document.createElement('div');
+            div.className = 'event ' + className;
+            div.textContent = new Date().toLocaleTimeString() + ' - ' + message;
+            log.appendChild(div);
+            log.scrollTop = log.scrollHeight;
+        }
+
+        function connect() {
+            if (ws) {
+                addLog('Already connected', 'message');
+                return;
+            }
+
+            ws = new WebSocket('ws://localhost:8000/ws');
+
+            ws.onopen = () => {
+                status.textContent = 'Connected';
+                status.className = 'connected';
+                addLog('WebSocket connected', 'connected');
+            };
+
+            ws.onmessage = (event) => {
+                addLog('Event received: ' + event.data, 'message');
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log('Parsed event:', data);
+                } catch (e) {
+                    console.error('Failed to parse event:', e);
+                }
+            };
+
+            ws.onerror = (error) => {
+                addLog('WebSocket error: ' + error, 'disconnected');
+            };
+
+            ws.onclose = () => {
+                status.textContent = 'Disconnected';
+                status.className = 'disconnected';
+                addLog('WebSocket disconnected', 'disconnected');
+                ws = null;
+            };
+        }
+
+        function disconnect() {
+            if (ws) {
+                ws.close();
+            }
+        }
+    </script>
+</body>
+</html>

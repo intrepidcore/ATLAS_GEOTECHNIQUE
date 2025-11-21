@@ -13,6 +13,7 @@ mod cells_kpi;
 mod cells_labs;
 mod config;
 mod db_manager;
+mod events;
 mod exports;
 mod geocode_manual;
 mod geocode_suggestions;
@@ -30,6 +31,7 @@ mod routes;
 mod sondages;
 mod sondages_geocode;
 mod sql_sanitizer;
+mod websocket;
 
 use metrics_handler::metrics_handler;
 pub mod state;
@@ -96,9 +98,14 @@ async fn main() -> anyhow::Result<()> {
     let metrics = std::sync::Arc::new(metrics::Metrics::new());
     tracing::info!("✅ Metrics Prometheus initialisées");
 
+    // Créer le canal broadcast pour WebSocket
+    let (ws_tx, _) = tokio::sync::broadcast::channel(100);
+    tracing::info!("✅ WebSocket broadcast channel créé");
+
     let state = AppState {
         pool,
         metrics: metrics.clone(),
+        ws_tx,
     };
 
     let app = Router::new()
@@ -111,6 +118,8 @@ async fn main() -> anyhow::Result<()> {
             "/echo",
             post(|Json(v): Json<serde_json::Value>| async move { Json(Echo { any: v }) }),
         )
+        // WebSocket endpoint
+        .route("/ws", get(websocket::ws_handler))
         .route("/coverage/mailles", get(routes::get_coverage_mailles))
         .nest("/grid", routes::grid_router())
         // Survey management endpoints

@@ -46,13 +46,14 @@ pub async fn geocode_sondage(
     Json(request): Json<GeocodeRequest>,
 ) -> Result<Json<GeocodeResponse>, (StatusCode, String)> {
     let pool = &state.pool;
+    let ws_tx = &state.ws_tx;
 
     match request {
         GeocodeRequest::Adm3 { adm3_id } => {
-            geocode_by_adm3(pool, id, adm3_id).await
+            geocode_by_adm3(pool, ws_tx, id, adm3_id).await
         }
         GeocodeRequest::Coords { lon, lat } => {
-            geocode_by_coords(pool, id, lon, lat).await
+            geocode_by_coords(pool, ws_tx, id, lon, lat).await
         }
     }
 }
@@ -64,6 +65,7 @@ pub async fn geocode_sondage(
 /// Géocodage par ADM3 (centroïde)
 async fn geocode_by_adm3(
     pool: &PgPool,
+    ws_tx: &tokio::sync::broadcast::Sender<crate::events::WsEvent>,
     sondage_id: Uuid,
     adm3_id: i32,
 ) -> Result<Json<GeocodeResponse>, (StatusCode, String)> {
@@ -121,6 +123,17 @@ async fn geocode_by_adm3(
         adm3_id
     );
 
+    // Broadcaster l'événement WebSocket
+    crate::websocket::broadcast_event(
+        ws_tx,
+        crate::events::WsEvent::SondageGeocoded {
+            id: sondage_id.to_string(),
+            code: result.1.clone(),
+            location_mode: "adm3".to_string(),
+            adm3_name: result.5.clone(),
+        },
+    );
+
     Ok(Json(GeocodeResponse {
         id: result.0,
         code: result.1,
@@ -136,6 +149,7 @@ async fn geocode_by_adm3(
 /// Géocodage par coordonnées exactes
 async fn geocode_by_coords(
     pool: &PgPool,
+    ws_tx: &tokio::sync::broadcast::Sender<crate::events::WsEvent>,
     sondage_id: Uuid,
     lon: f64,
     lat: f64,
@@ -190,6 +204,17 @@ async fn geocode_by_coords(
         sondage_id,
         lon,
         lat
+    );
+
+    // Broadcaster l'événement WebSocket
+    crate::websocket::broadcast_event(
+        ws_tx,
+        crate::events::WsEvent::SondageGeocoded {
+            id: sondage_id.to_string(),
+            code: result.1.clone(),
+            location_mode: "exact".to_string(),
+            adm3_name: None,
+        },
     );
 
     Ok(Json(GeocodeResponse {

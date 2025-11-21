@@ -161,6 +161,16 @@ pub async fn accept_suggestion(
         id, sondage_id, adm3_pcode
     );
     
+    // Broadcaster l'événement WebSocket
+    crate::websocket::broadcast_event(
+        &state.ws_tx,
+        crate::events::WsEvent::SuggestionAccepted {
+            suggestion_id: id.clone(),
+            sondage_id: sondage_id.clone(),
+            adm3_pcode: adm3_pcode.clone(),
+        },
+    );
+    
     Ok(Json(AcceptResponse {
         success: true,
         sondage_id,
@@ -185,6 +195,14 @@ pub async fn reject_suggestion(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     
     tracing::info!("Suggestion {} rejetée", id);
+    
+    // Broadcaster l'événement WebSocket
+    crate::websocket::broadcast_event(
+        &state.ws_tx,
+        crate::events::WsEvent::SuggestionRejected {
+            suggestion_id: id.clone(),
+        },
+    );
     
     Ok(Json(serde_json::json!({
         "success": true,

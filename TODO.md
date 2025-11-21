@@ -54,18 +54,18 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [ ] Brancher le bouton "Enregistrer le géocodage" dans l'UI
 - [ ] Rafraîchir la liste après géocodage
 
-### 2.2 Suggestions ADM basées sur ADM3 Excel + localité
-- [ ] **Script de génération des suggestions** (NOUVEAU) :
-  - [ ] Créer script Python/SQL pour générer suggestions
-  - [ ] Parcourir sondages avec `location_mode = 'unknown'`
-  - [ ] Extraire ADM3 depuis `meta->>'adm3_excel'` ou `prefecture_excel`
-  - [ ] Matching fuzzy sur `localite_key` vs `adm3.name_normalized`
-  - [ ] Calcul de score (Levenshtein, ILIKE)
-  - [ ] Insertion dans `atlas.geocode_suggestions` avec score
-- [ ] **API suggestions** :
-  - [ ] `GET /geocode/suggestions/:sondage_id` (candidats pour un sondage)
-  - [ ] `POST /geocode/suggestions/:id/accept` (appliquer suggestion)
-  - [ ] `POST /geocode/suggestions/:id/reject` (rejeter suggestion)
+### 2.2 Suggestions ADM basées sur ADM3 Excel + localité ✅
+- [x] **Script de génération des suggestions** :
+  - [x] Script Python generate_geocode_suggestions.py
+  - [x] Parcourir sondages avec `location_mode = 'unknown'`
+  - [x] Matching fuzzy Levenshtein sur `localite_key` vs `adm3_fr`
+  - [x] Calcul de score 0-100
+  - [x] 285 suggestions générées pour 121 sondages
+- [x] **API suggestions** :
+  - [x] `GET /suggestions?sondage_id=...&status=...` 
+  - [x] `GET /suggestions/stats`
+  - [x] `POST /suggestions/:id/accept` (géocode + update)
+  - [x] `POST /suggestions/:id/reject`
 - [ ] Brancher le bouton "Géocoder" dans l'onglet Suggestions ADM
 
 ### 2.3 Interaction carte (ADM3 qui clignote) - DÉTAILLÉ
