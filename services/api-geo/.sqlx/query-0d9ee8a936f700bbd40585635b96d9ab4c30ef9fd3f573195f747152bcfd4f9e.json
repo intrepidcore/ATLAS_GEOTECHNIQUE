@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            COUNT(*) FILTER (WHERE status = 'pending') as pending,\n            COUNT(*) FILTER (WHERE status = 'accepted') as accepted,\n            COUNT(*) FILTER (WHERE status = 'rejected') as rejected,\n            COUNT(*) as total\n        FROM public.geocode_suggestions\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "pending",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "accepted",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "rejected",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "total",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "0d9ee8a936f700bbd40585635b96d9ab4c30ef9fd3f573195f747152bcfd4f9e"
+}

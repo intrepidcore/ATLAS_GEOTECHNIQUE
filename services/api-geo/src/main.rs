@@ -15,6 +15,7 @@ mod config;
 mod db_manager;
 mod exports;
 mod geocode_manual;
+mod geocode_suggestions;
 mod geocoding;
 mod geotechnical;
 mod health;
@@ -218,6 +219,11 @@ async fn main() -> anyhow::Result<()> {
         )
         // Unified geocoding endpoint (NEW)
         .route("/sondages/:id/geocode", post(sondages_geocode::geocode_sondage))
+        // New suggestions endpoints (adapted to current schema)
+        .route("/suggestions", get(geocode_suggestions::list_suggestions))
+        .route("/suggestions/stats", get(geocode_suggestions::get_suggestions_stats))
+        .route("/suggestions/:id/accept", post(geocode_suggestions::accept_suggestion))
+        .route("/suggestions/:id/reject", post(geocode_suggestions::reject_suggestion))
         // Surveys canoniques (unifiés)
         .route("/surveys-canon", get(surveys_canon::list_surveys))
         .route(
