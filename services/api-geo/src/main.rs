@@ -27,6 +27,7 @@ mod observability;
 mod rbac;
 mod routes;
 mod sondages;
+mod sondages_geocode;
 mod sql_sanitizer;
 
 use metrics_handler::metrics_handler;
@@ -215,6 +216,8 @@ async fn main() -> anyhow::Result<()> {
             "/geocode/manual/stats",
             get(geocode_manual::get_manual_stats),
         )
+        // Unified geocoding endpoint (NEW)
+        .route("/sondages/:id/geocode", post(sondages_geocode::geocode_sondage))
         // Surveys canoniques (unifiés)
         .route("/surveys-canon", get(surveys_canon::list_surveys))
         .route(
