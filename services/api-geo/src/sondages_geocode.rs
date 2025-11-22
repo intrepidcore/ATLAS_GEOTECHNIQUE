@@ -18,8 +18,16 @@ use uuid::Uuid;
 #[derive(Debug, Deserialize)]
 #[serde(tag = "mode", rename_all = "lowercase")]
 pub enum GeocodeRequest {
-    Adm3 { adm3_id: i32 },
+    Adm3 { 
+        adm3_id: i32,
+        #[serde(default = "default_placement")]
+        placement: String,
+    },
     Coords { lon: f64, lat: f64 },
+}
+
+fn default_placement() -> String {
+    "adm_random_cell".to_string()
 }
 
 #[derive(Debug, Serialize)]
@@ -49,8 +57,8 @@ pub async fn geocode_sondage(
     let ws_tx = &state.ws_tx;
 
     match request {
-        GeocodeRequest::Adm3 { adm3_id } => {
-            geocode_by_adm3(pool, ws_tx, id, adm3_id).await
+        GeocodeRequest::Adm3 { adm3_id, placement } => {
+            geocode_by_adm3(pool, ws_tx, id, adm3_id, &placement).await
         }
         GeocodeRequest::Coords { lon, lat } => {
             geocode_by_coords(pool, ws_tx, id, lon, lat).await
@@ -62,12 +70,13 @@ pub async fn geocode_sondage(
 // Implémentations
 // ============================================================================
 
-/// Géocodage par ADM3 (centroïde)
+/// Géocodage par ADM3 (centroïde ou aléatoire)
 async fn geocode_by_adm3(
     pool: &PgPool,
     ws_tx: &tokio::sync::broadcast::Sender<crate::events::WsEvent>,
     sondage_id: Uuid,
     adm3_id: i32,
+    placement: &str,
 ) -> Result<Json<GeocodeResponse>, (StatusCode, String)> {
     // Vérifier que l'ADM3 existe
     let adm3_exists: bool = sqlx::query_scalar(
@@ -85,37 +94,47 @@ async fn geocode_by_adm3(
         ));
     }
 
-    // Mettre à jour le sondage avec le centroïde de l'ADM3
-    let result = sqlx::query_as::<_, (Uuid, String, String, bool, Option<i32>, Option<String>)>(
+    // Déterminer la fonction de géométrie selon le placement
+    let (geom_func, location_mode_val) = match placement {
+        "adm3_centroid" => ("ST_Centroid(a.geom)", "adm3_centroid"),
+        _ => ("public.random_point_in_polygon(a.geom)", "adm_random_cell"),
+    };
+
+    // Construire la requête SQL dynamiquement
+    let query = format!(
         r#"
         UPDATE public.sondages s
         SET 
-            geom = ST_Centroid(a.geom),
+            geom = {},
             adm3_id = $2,
             adm3_name = a.adm3_fr,
-            location_mode = 'adm3_centroid',
+            location_mode = '{}',
             updated_at = now(),
-            meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
+            meta = COALESCE(meta, '{{}}'::jsonb) || jsonb_build_object(
                 'geocoded_at', now()::text,
                 'geocoded_mode', 'adm3',
+                'geocoded_placement', '{}',
                 'geocoded_adm3_id', $2
             )
         FROM adm3 a
         WHERE a.gid = $2 AND s.id = $1
         RETURNING s.id, s.code, s.location_mode, s.is_geocoded, s.adm3_id, s.adm3_name
-        "#
-    )
-    .bind(sondage_id)
-    .bind(adm3_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::RowNotFound => (
-            StatusCode::NOT_FOUND,
-            format!("Sondage {} not found", sondage_id),
-        ),
-        _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-    })?;
+        "#,
+        geom_func, location_mode_val, placement
+    );
+
+    let result = sqlx::query_as::<_, (Uuid, String, String, bool, Option<i32>, Option<String>)>(&query)
+        .bind(sondage_id)
+        .bind(adm3_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => (
+                StatusCode::NOT_FOUND,
+                format!("Sondage {} not found", sondage_id),
+            ),
+            _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+        })?;
 
     tracing::info!(
         "Sondage {} géocodé par ADM3 (id={})",
@@ -129,7 +148,7 @@ async fn geocode_by_adm3(
         crate::events::WsEvent::SondageGeocoded {
             id: sondage_id.to_string(),
             code: result.1.clone(),
-            location_mode: "adm3_centroid".to_string(),
+            location_mode: location_mode_val.to_string(),
             adm3_name: result.5.clone(),
         },
     );

@@ -123,14 +123,15 @@ pub async fn accept_suggestion(
         r#"
         UPDATE public.sondages s
         SET 
-            geom = ST_Centroid(a.geom),
+            geom = public.random_point_in_polygon(a.geom),
             adm3_id = $2,
             adm3_name = a.adm3_fr,
-            location_mode = 'adm3_centroid',
+            location_mode = 'adm_random_cell',
             updated_at = now(),
             meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
                 'geocoded_at', now()::text,
                 'geocoded_mode', 'suggestion_accepted',
+                'geocoded_placement', 'adm_random_cell',
                 'geocoded_adm3_pcode', $3,
                 'suggestion_id', $4
             )
