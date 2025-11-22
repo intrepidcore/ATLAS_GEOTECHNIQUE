@@ -3604,6 +3604,12 @@ async function showSondagesPage() {
     appContainer.style.display = 'none'
   }
   
+  // Fermer le modal sondages s'il est ouvert
+  const modal = document.getElementById('sondages-modal')
+  if (modal) {
+    modal.style.display = 'none'
+  }
+  
   // Créer le container si nécessaire
   let sondagesContainer = document.getElementById('sondages-page-container')
   if (!sondagesContainer) {
