@@ -272,11 +272,11 @@ export class SondagesManagerPage {
     // TODO: Integrate Import Wizard properly
     // For now, show a proper message
     container.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center;">
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center; background: #0a0e17;">
         <div style="font-size: 64px; margin-bottom: 24px;">📥</div>
-        <h3 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 20px;">Import Wizard</h3>
-        <p style="color: #94a3b8; font-size: 14px; max-width: 500px; line-height: 1.6;">
-          L'Import Wizard permet d'importer des données depuis Excel ou CSV.
+        <h3 style="color: #ecf2f8; margin: 0 0 16px 0; font-size: 22px;">Import Wizard</h3>
+        <p style="color: #94a3b8; font-size: 15px; max-width: 600px; line-height: 1.8; margin-bottom: 24px;">
+          L'Import Wizard permet d'importer des sondages depuis Excel ou CSV. Il est actuellement disponible sur la carte principale.
           Cette fonctionnalité sera intégrée dans une prochaine version.
         </p>
         <button 
