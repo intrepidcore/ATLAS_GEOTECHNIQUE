@@ -195,11 +195,15 @@ export type SuggestionStats = {
 /**
  * Géocoder un sondage (ADM3 ou coordonnées exactes)
  */
-export async function geocodeSondageAdm3(sondageId: string, adm3Gid: number): Promise<SondageGeocode> {
+export async function geocodeSondageAdm3(
+  sondageId: string, 
+  adm3Gid: number, 
+  placement: string = 'adm_random_cell'
+): Promise<SondageGeocode> {
   const r = await fetch(buildUrl(`/sondages/${sondageId}/geocode`), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ mode: 'adm3', adm3_id: adm3Gid }),
+    body: JSON.stringify({ mode: 'adm3', adm3_id: adm3Gid, placement }),
   });
   if (!r.ok) {
     const error = await r.text();

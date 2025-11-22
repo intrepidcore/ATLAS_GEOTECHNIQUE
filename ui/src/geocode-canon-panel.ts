@@ -254,6 +254,20 @@ export class GeocodeCanonPanel {
             </select>
           </div>
 
+          <div id="placement-section" style="margin-bottom: 16px; display: block;">
+            <label style="display: block; margin-bottom: 8px; color: #8b9bb3; font-size: 14px;">
+              📍 Placement dans la commune
+              <span style="color: #64748b; font-size: 12px; font-weight: normal;">(pour mode ADM3)</span>
+            </label>
+            <select id="placement-mode" style="width: 100%; padding: 8px 12px; background: #0a0e17; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8;">
+              <option value="adm_random_cell" selected>🎲 Point aléatoire (recommandé)</option>
+              <option value="adm3_centroid">📍 Centroïde (centre géométrique)</option>
+            </select>
+            <div style="margin-top: 8px; padding: 8px; background: #0f172a; border-left: 3px solid #4c6ef5; border-radius: 4px; font-size: 12px; color: #94a3b8;">
+              <strong style="color: #4c6ef5;">💡 Recommandation :</strong> Le mode aléatoire génère un point réaliste dans la commune, évitant que tous les sondages soient au même endroit.
+            </div>
+          </div>
+
           <div id="adm3-section" style="margin-bottom: 16px;">
             ${this.candidates.length > 0 ? `
               <div style="margin-bottom: 16px; padding: 12px; background: #0f172a; border: 1px solid #4c6ef5; border-radius: 6px;">
@@ -341,15 +355,18 @@ export class GeocodeCanonPanel {
     const modeSelect = document.getElementById('location-mode') as HTMLSelectElement;
     const adm3Section = document.getElementById('adm3-section');
     const coordsSection = document.getElementById('coords-section');
+    const placementSection = document.getElementById('placement-section');
     
     if (modeSelect) {
       modeSelect.addEventListener('change', () => {
         if (modeSelect.value === 'adm') {
           adm3Section!.style.display = 'block';
           coordsSection!.style.display = 'none';
+          placementSection!.style.display = 'block';
         } else {
           adm3Section!.style.display = 'none';
           coordsSection!.style.display = 'block';
+          placementSection!.style.display = 'none';
         }
       });
     }
@@ -400,7 +417,8 @@ export class GeocodeCanonPanel {
           
           if (mode === 'adm') {
             const adm3Gid = (document.getElementById('adm3-select') as HTMLSelectElement).value;
-            console.log('[GEOCODE] ADM3 select value:', adm3Gid);
+            const placement = (document.getElementById('placement-mode') as HTMLSelectElement)?.value || 'adm_random_cell';
+            console.log('[GEOCODE] ADM3 select value:', adm3Gid, 'placement:', placement);
             
             if (!adm3Gid || adm3Gid === '') {
               toast.error('❌ Veuillez sélectionner une commune');
@@ -416,12 +434,13 @@ export class GeocodeCanonPanel {
             
             // Find ADM3 name for success message
             const adm = this.adm3List.find(a => a.gid === adm3IdNum);
-            console.log('[GEOCODE] Sending payload:', { mode: 'adm3', adm3_id: adm3IdNum });
+            console.log('[GEOCODE] Sending payload:', { mode: 'adm3', adm3_id: adm3IdNum, placement });
             
-            // Call new API endpoint
-            const result = await geocodeSondageAdm3(this.selectedSurvey!.id, adm3IdNum);
+            // Call new API endpoint with placement
+            const result = await geocodeSondageAdm3(this.selectedSurvey!.id, adm3IdNum, placement);
             
-            toast.success(`✅ Sondage "${result.code}" géocodé avec ADM3: ${result.adm3_name || adm?.name || ''}`);
+            const placementLabel = placement === 'adm_random_cell' ? '(point aléatoire)' : '(centroïde)';
+            toast.success(`✅ Sondage "${result.code}" géocodé avec ADM3: ${result.adm3_name || adm?.name || ''} ${placementLabel}`);
           } else {
             const lat = parseFloat((document.getElementById('lat-input') as HTMLInputElement).value);
             const lon = parseFloat((document.getElementById('lon-input') as HTMLInputElement).value);

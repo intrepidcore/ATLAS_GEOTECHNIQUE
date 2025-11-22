@@ -243,13 +243,151 @@ export class SondagesListPanel {
     toast.success('Navigation vers géocodage (à implémenter)');
   }
 
-  private handleView(id: string) {
-    // Open sondage details
-    if (this.onSuccessCallback) {
-      this.onSuccessCallback(`Affichage détails de ${id}`);
+  private async handleView(id: string) {
+    try {
+      // Fetch sondage details
+      const response = await fetch(`${this.apiUrl}/sondages/${id}`);
+      if (!response.ok) throw new Error('Failed to fetch sondage');
+      
+      const sondage = await response.json();
+      
+      // Create modal
+      this.showDetailsModal(sondage);
+    } catch (e: any) {
+      toast.error(`Erreur: ${e.message}`);
     }
-    // TODO: Implement sondage details view
-    toast.success('Détails sondage (à implémenter)');
+  }
+
+  private showDetailsModal(s: any) {
+    // Remove existing modal if any
+    const existing = document.getElementById('sondage-details-modal');
+    if (existing) existing.remove();
+
+    // Create modal
+    const modal = document.createElement('div');
+    modal.id = 'sondage-details-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+      padding: 20px;
+    `;
+
+    const isGeocoded = s.is_geocoded || false;
+    const modeLabel = this.getLocationModeLabel(s.location_mode || 'unknown');
+    const coords = s.geom ? this.extractCoords(s.geom) : null;
+
+    modal.innerHTML = `
+      <div style="background: #0a0e17; border: 1px solid #22304d; border-radius: 12px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+        <!-- Header -->
+        <div style="padding: 24px; border-bottom: 1px solid #22304d; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2 style="margin: 0 0 8px 0; color: #ecf2f8; font-size: 20px;">
+              📍 ${this.escapeHtml(s.code || 'N/A')}
+            </h2>
+            <div style="font-size: 14px; color: #94a3b8;">
+              ${this.escapeHtml(s.localite || 'Localité inconnue')}
+            </div>
+          </div>
+          <button id="close-modal-btn" style="background: #22304d; border: none; color: #ecf2f8; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 18px;">
+            ✕
+          </button>
+        </div>
+
+        <!-- Content -->
+        <div style="padding: 24px;">
+          <!-- Status -->
+          <div style="display: flex; gap: 8px; margin-bottom: 24px;">
+            <span style="padding: 6px 12px; background: ${isGeocoded ? '#51cf66' : '#ff6b6b'}22; border: 1px solid ${isGeocoded ? '#51cf66' : '#ff6b6b'}; border-radius: 6px; font-size: 12px; color: ${isGeocoded ? '#51cf66' : '#ff6b6b'}; font-weight: 600;">
+              ${isGeocoded ? '✅ GÉOCODÉ' : '❌ NON GÉOCODÉ'}
+            </span>
+            ${isGeocoded ? `<span style="padding: 6px 12px; background: #4c6ef522; border: 1px solid #4c6ef5; border-radius: 6px; font-size: 12px; color: #4c6ef5; font-weight: 600;">${modeLabel}</span>` : ''}
+          </div>
+
+          <!-- Infos grid -->
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px;">
+            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
+              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">🔖 Identifiants</div>
+              <div style="font-size: 14px; color: #ecf2f8; line-height: 1.6;">
+                <div><strong>Code:</strong> ${this.escapeHtml(s.code || '—')}</div>
+                <div><strong>Localité clé:</strong> ${this.escapeHtml(s.localite_key || '—')}</div>
+                <div><strong>Maille:</strong> ${this.escapeHtml(s.maille_code || '—')}</div>
+              </div>
+            </div>
+
+            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
+              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">🌍 Localisation</div>
+              <div style="font-size: 14px; color: #ecf2f8; line-height: 1.6;">
+                <div><strong>ADM3:</strong> ${this.escapeHtml(s.adm3_name || '—')}</div>
+                <div><strong>Mode:</strong> ${modeLabel}</div>
+                ${coords ? `<div><strong>Coords:</strong> ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}</div>` : ''}
+              </div>
+            </div>
+
+            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
+              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">📦 Import</div>
+              <div style="font-size: 14px; color: #ecf2f8; line-height: 1.6;">
+                <div><strong>Source:</strong> ${this.escapeHtml(s.source || '—')}</div>
+                <div><strong>Opérateur:</strong> ${this.escapeHtml(s.operator || '—')}</div>
+                <div><strong>Essais:</strong> ${s.n_essais || 0}</div>
+              </div>
+            </div>
+
+            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
+              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">🕒 Audit</div>
+              <div style="font-size: 14px; color: #ecf2f8; line-height: 1.6;">
+                <div><strong>Créé:</strong> ${s.created_at ? new Date(s.created_at).toLocaleString('fr-FR') : '—'}</div>
+                <div><strong>Mis à jour:</strong> ${s.updated_at ? new Date(s.updated_at).toLocaleString('fr-FR') : '—'}</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Meta -->
+          ${s.meta ? `
+            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
+              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">🧾 Meta (JSON)</div>
+              <pre style="margin: 0; padding: 12px; background: #0a0e17; border-radius: 6px; font-size: 12px; color: #94a3b8; overflow-x: auto; max-height: 300px;">${JSON.stringify(s.meta, null, 2)}</pre>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    // Close handlers
+    const closeBtn = document.getElementById('close-modal-btn');
+    const closeModal = () => modal.remove();
+    
+    closeBtn?.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) closeModal();
+    });
+    
+    // ESC key
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        closeModal();
+        document.removeEventListener('keydown', handleEsc);
+      }
+    };
+    document.addEventListener('keydown', handleEsc);
+  }
+
+  private extractCoords(geom: string): { lat: number; lon: number } | null {
+    // Parse WKT POINT(lon lat)
+    const match = geom.match(/POINT\(([^ ]+) ([^ ]+)\)/);
+    if (match) {
+      return { lon: parseFloat(match[1]), lat: parseFloat(match[2]) };
+    }
+    return null;
   }
 
   private getLocationModeLabel(mode: string): string {
