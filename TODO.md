@@ -21,14 +21,16 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - `localite_key` : version normalisée ✅
   - `adm3_id` / `adm3_name` : lien ADM3 officielle
 
-### 1.2 Nettoyage des données existantes ✅
+### 1.2 Nettoyage des données existantes ✅ + compléments
 - [x] **Code** : Rempli depuis `meta->>'code'` (123 sondages)
 - [x] **Localité brute** : Rempli `localite_base` depuis `meta->>'localite'` (123 sondages)
 - [x] **Localité normalisée** : Généré `localite_key` depuis `localite_base` (123 sondages)
 - [x] **Contrainte NOT NULL** : Ajoutée sur `code`
 - [x] **Index** : Créé sur `localite_key`
 - [x] **Test API** : `/sondages?missing=geom` fonctionne sans erreur 500 ✅
-- [ ] **ADM3 Excel** : Extraire ADM3 depuis `meta` vers colonne dédiée (TODO)
+- [ ] **Normaliser `location_mode`** : Migrer valeurs actuelles (`adm3` → `adm3_centroid`, documenter `unknown`/`exact`/`random`)
+- [ ] **Clarifier colonnes legacy grid** : Documenter rôle de `loc_mode`, `geom_real`, `grid_code` (actuellement NULL)
+- [ ] **ADM3 Excel** : Extraire ADM3 depuis `meta` vers colonne dédiée (optionnel)
 
 ### 1.3 Adapter les scripts d'import
 - [ ] Modifier `02_import_excel.py` pour remplir `code` directement
@@ -74,40 +76,76 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [ ] Trigger auto-génération suggestions lors ajout sondage
 
 ### 2.3 Interaction carte (ADM3 qui clignote) - DÉTAILLÉ
-- [ ] Endpoint pour récupérer géométrie ADM3
-- [ ] Frontend : bouton "👁" sur chaque candidat ADM3
+- [ ] Endpoint pour récupérer géométrie ADM3 (ou réutiliser `/adm3/geojson` existant)
+- [ ] Frontend : bouton "👁" sur chaque candidat ADM3 dans suggestions-adm-panel
 - [ ] Au clic sur "👁" :
+  - [ ] Appeler `sondagesPage.zoomToAdm3(code)` (méthode déjà créée)
   - [ ] Zoom sur le polygone ADM3 (`map.fitBounds`)
   - [ ] Style spécial (jaune/épais)
   - [ ] Clignotement 3-5 fois (toggle style toutes les 400ms)
 - [ ] Restaurer style original après animation
 
+### 2.4 Propagation vers la grille (mailles) ✅
+**Objectif** : Que le géocodage mette à jour les mailles et les stats de la carte principale
+
+- [x] **Diagnostic SRID** : Identifier que `ST_Contains(maille_25231, sondage_4326)` ne matchait pas
+- [x] **Correction vue matérialisée** : Ajout `ST_Transform(s.geom, 25231)` dans `atlas.mv_mailles_geotech`
+- [x] **Résultat** : 6 mailles avec données détectées (Kovié, Badja, Kpimé, Sola, Kparatao, Adzakpa)
+- [x] **Trigger automatique** : `trigger_refresh_mailles` existe et fonctionne (AFTER INSERT/UPDATE)
+- [ ] **Remplir `geom_real` et `grid_code`** : Optionnel car la vue fonctionne maintenant avec `ST_Transform`
+- [ ] **Normaliser `loc_mode`** : Dériver de `location_mode` si besoin pour compatibilité legacy
+
 ---
 
-## 🧩 ÉTAPE 3 : REFACTOR UI (Modal → Page dédiée) 
+## 🧩 ÉTAPE 3 : REFACTOR UI (Modal → Page dédiée) 🔧 EN COURS
 **Objectif** : Transformer le modal en vraie page avec carte intégrée
 
-### 3.1 Créer la page `/sondages` 
+### 3.1 Layout plein écran du Gestionnaire de Sondages
 - [x] Ajouter routing hash-based simple (`#/sondages`)
 - [x] Créer composant `SondagesManagerPage`
-- [x] Layout 3 colonnes :
-  - [x] Sidebar gauche : onglets (Géocodage, Suggestions, Import, Liste)
-  - [x] Zone centrale : contenu actif (formulaires, listes)
-  - [x] Carte droite : Leaflet avec ADM3
+- [x] Layout 3 colonnes : Sidebar | Contenu | Carte
+- [ ] **PROBLÈME IDENTIFIÉ** : Bloc "Sondages sans géométrie" partagé par tous les onglets
+- [ ] **Supprimer le bloc global** "Sélectionnez un sondage pour le géocoder" du layout parent
+- [ ] **Vérifier hauteur** : `.tab-pane` doit occuper 100% du centre (pas de zone vide en bas)
+- [ ] **Factoriser layout** : 1 onglet = 1 composant principal dans le centre
 
-### 3.2 Migrer les panneaux existants 
+### 3.2 Onglet « Géocodage Manuel » 🔧
 - [x] Réutiliser `GeocodeCanonPanel` dans la nouvelle page
-- [x] Réutiliser `SuggestionsAdmPanel` dans la nouvelle page
-- [x] Adapter les callbacks pour rafraîchir la carte
-- [x] Ajouter bouton "Retour à la carte" dans la sidebar
-- [x] Bouton "Ouvrir en pleine page" dans le modal
+- [ ] **Centrer la logique** : Liste sondages + panneau géocodage dans CE composant uniquement
+- [ ] **Utiliser toute la hauteur** : Plus de zone tronquée en bas
+- [ ] **Message vide** : Uniquement dans ce panneau quand aucun sondage sélectionné
 
-### 3.3 Carte ADM3 intégrée 
+### 3.3 Onglet « Suggestions ADM » 🔧
+- [x] Créer `SuggestionsAdmPanel` avec affichage candidats
+- [ ] **PROBLÈME** : Affiche encore le contenu du géocodage manuel au lieu des suggestions
+- [ ] **Brancher correctement** : Monter `SuggestionsAdmPanel` quand onglet actif
+- [ ] **Corriger bug JSON** : Erreur "Expected property name" lors du chargement `/suggestions/stats`
+- [ ] **Nettoyer textes** : Supprimer références "géocodage manuel" dans cet onglet
+- [ ] **Message dédié** : En cas d'erreur ou absence de suggestions
+
+### 3.4 Onglet « Import » 🔧
+- [ ] **PROBLÈME** : Affiche placeholder "Fonctionnalité en cours de développement"
+- [ ] **Remplacer** : Intégrer le vrai Import Wizard bulk (déjà développé)
+- [ ] **Intégration** : Ne plus ouvrir de modal, afficher dans le centre
+- [ ] **Vérifier navigation** : Retour carte, gestion erreurs, toasts
+
+### 3.5 Onglet « Liste » 🔧
+- [ ] **PROBLÈME** : Affiche placeholder "Fonctionnalité en cours de développement"
+- [ ] **Intégrer** : Vraie Liste de sondages (recherche + filtres, déjà développée)
+- [ ] **Occuper tout le centre** : Pas seulement le bas
+- [ ] **Option** : Lien vers géocodage d'un sondage depuis cette liste
+
+### 3.6 Carte ADM3 intégrée ✅
 - [x] Charger la couche ADM3 dans la carte de droite
 - [x] Style des polygones (bordure bleue, fond transparent)
 - [x] Tooltips sur hover (nom commune, code)
-- [x] Méthode `zoomToAdm3(code)` pour interaction depuis les suggestions GPS
-- [ ] Zoom/highlight sur ADM3 suggérée
+- [x] Méthode `zoomToAdm3(code)` pour interaction depuis les suggestions
+- [ ] Bouton 👁 sur chaque suggestion pour appeler `zoomToAdm3()`
+
+### 3.7 Nettoyage & cohérence
+- [ ] **Supprimer placeholders** : "Fonctionnalité en cours de développement" obsolètes
+- [ ] **Harmoniser messages** : Messages vides et toasts par onglet
+- [ ] **Vérifier responsive** : Pas de zone tronquée, scroll fonctionnel
 
 ---
 
@@ -130,7 +168,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [x] Émission événements dans geocode_suggestions
 - [x] Émission événements dans sondages_geocode
 
-### 4.3 Frontend TS ✅
+### 4.3 Frontend TS ✅ + compléments
 - [x] Module `realtime.ts` :
   - [x] Connexion WebSocket
   - [x] Reconnexion automatique avec backoff exponentiel
@@ -141,27 +179,36 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [x] Connexion automatique au WebSocket dans main.ts
   - [x] Écoute des événements sondage.geocoded, suggestion.accepted/rejected
   - [x] Notifications toast pour les événements importants
-  - [ ] Rafraîchissement auto de la liste des sondages (TODO)
-  - [ ] Carte principale (mailles) (TODO)
-  - [ ] Compteurs Géocodage/Suggestions (TODO)
+- [ ] **Rafraîchissements automatiques** :
+  - [ ] Sur `sondage.geocoded` : Refetch `/grid/stats` ou `/mailles/stats` pour carte principale
+  - [ ] Sur `sondage.geocoded` : Retirer sondage de la liste "missing geom" sans reload
+  - [ ] Sur `suggestion.accepted/rejected` : Mettre à jour liste suggestions
+  - [ ] Compteurs temps réel (Géocodage/Suggestions)
+- [ ] **Option** : Événement backend `grid.updated` quand stats mailles recalculées
 
 ---
 
 ## 🧪 TESTS & VALIDATION
 
 ### Tests fonctionnels
-- [ ] Géocodage manuel ADM3
-- [ ] Géocodage manuel GPS
-- [ ] Acceptation suggestion
-- [ ] Rejet suggestion
-- [ ] Temps réel multi-onglets
-- [ ] Temps réel multi-utilisateurs
+- [ ] **Géocodage manuel ADM3** : Kovié, Kpimé (Séva) → vérifier mailles avec données
+- [ ] **Géocodage manuel GPS** : Badja avec coordonnées → vérifier position exacte
+- [ ] **Acceptation suggestion** : Workflow complet depuis onglet Suggestions ADM
+- [ ] **Rejet suggestion** : Vérifier disparition de la liste
+- [ ] **Temps réel multi-onglets** :
+  - Ouvrir 2 onglets UI
+  - Géocoder dans A
+  - Vérifier mise à jour dans B (liste + compteurs)
+- [ ] **Temps réel multi-utilisateurs** : 2 navigateurs différents
+- [ ] **Stats carte principale** : "Mailles avec données" > 0 après géocodages
 
 ### Tests de données
+- [x] **SRID cohérent** : Vue `mv_mailles_geotech` transforme correctement 4326→25231
 - [ ] Tous les sondages ont un `code` non NULL
 - [ ] `localite_base` remplie quand disponible
 - [ ] ADM3 matchées correctement
 - [ ] Pas de doublons de code
+- [ ] Vérifier Kovié, Kpimé, Badja dans les mailles correspondantes
 
 ---
 
@@ -175,16 +222,35 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-## 🎯 PRIORITÉS IMMÉDIATES
+## 🎯 PRIORITÉS IMMÉDIATES (Ordre d'exécution)
 
-1. ✅ **Dump de la base** (backup avant modifications)
-2. ✅ **Nettoyage données** (code, localite_base, localite_key) - TERMINÉ !
-3. 🔥 **Géocodage manuel fonctionnel** - EN COURS
-4. 🔥 **Suggestions ADM fonctionnelles**
-5. ⏳ **Refactor UI** (modal → page)
-6. ⏳ **WebSocket temps réel**
+### Phase 1 : Corrections critiques DB ✅
+1. ✅ **Diagnostic SRID** : Identifier problème `ST_Contains` avec SRID différents
+2. ✅ **Migration 034** : Corriger vue `mv_mailles_geotech` avec `ST_Transform`
+3. ✅ **Résultat** : 6 mailles avec données (vs 0 avant)
+
+### Phase 2 : Corrections UI (EN COURS)
+4. 🔥 **Corriger layout page `/sondages`** :
+   - Supprimer bloc global "Sondages sans géométrie"
+   - Factoriser : 1 onglet = 1 composant
+   - Éliminer zones vides en bas
+5. 🔥 **Brancher onglets correctement** :
+   - Suggestions ADM → afficher `SuggestionsAdmPanel` (pas géocodage manuel)
+   - Import → intégrer Import Wizard (pas placeholder)
+   - Liste → intégrer vraie liste sondages (pas placeholder)
+6. 🔥 **Corriger bug JSON** : Onglet Suggestions ADM (parsing `/suggestions/stats`)
+
+### Phase 3 : Normalisation & cohérence
+7. ⏳ **Normaliser `location_mode`** : Migrer `adm3` → `adm3_centroid`
+8. ⏳ **Documenter colonnes legacy** : `loc_mode`, `geom_real`, `grid_code`
+9. ⏳ **Interaction carte** : Bouton 👁 + zoom ADM3
+
+### Phase 4 : Temps réel & tests
+10. ⏳ **Rafraîchissements auto** : Listes + compteurs via WebSocket
+11. ⏳ **Tests multi-onglets** : Vérifier synchronisation
+12. ⏳ **Adapter scripts import** : Remplir `code`, `localite_base`, etc.
 
 ---
 
-**Dernière mise à jour** : 2025-11-21 20:40
-**Statut global** : 🟢 Étapes 1, 2, 3 & 4 TERMINÉES ! → 🟡 Reste : interaction carte + tests
+**Dernière mise à jour** : 2025-11-22 06:50
+**Statut global** : 🟢 Backend OK, DB corrigée ! → 🔧 UI en cours de correction (layout + onglets)
