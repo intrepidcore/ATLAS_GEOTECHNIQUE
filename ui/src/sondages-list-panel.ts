@@ -58,7 +58,7 @@ export class SondagesListPanel {
     const notGeocodedCount = this.stats ? this.stats.total - this.stats.with_geom : 0;
 
     container.innerHTML = `
-      <div class="sondages-list-panel" style="display: flex; flex-direction: column; height: 100%; background: #0a0e17; overflow: hidden;">
+      <div class="sondages-list-panel" style="display: flex; flex-direction: column; height: 100%; background: #0a0e17; min-height: 0;">
         <!-- Header -->
         <div style="padding: 20px; border-bottom: 1px solid #22304d;">
           <h3 style="margin: 0 0 16px 0; color: #ecf2f8; font-size: 18px;">
@@ -102,7 +102,7 @@ export class SondagesListPanel {
         </div>
 
         <!-- Liste -->
-        <div id="sondages-list" style="flex: 1; overflow-y: auto; padding: 16px;">
+        <div id="sondages-list" style="flex: 1; min-height: 0; overflow-y: auto; padding: 16px;">
           ${this.renderSondagesList()}
         </div>
       </div>

@@ -62,7 +62,7 @@ export class SuggestionsAdmPanel {
     const allDone = pendingCount === 0;
 
     container.innerHTML = `
-      <div class="suggestions-adm-panel" style="display: flex; flex-direction: column; height: 80vh; background: #0a0e17; border-radius: 8px; overflow: hidden;">
+      <div class="suggestions-adm-panel" style="display: flex; flex-direction: column; height: 100%; background: #0a0e17; overflow: hidden;">
         <!-- Header -->
         <div style="padding: 16px; border-bottom: 1px solid #22304d;">
           <h3 style="margin: 0 0 12px 0; color: #ecf2f8;">
@@ -107,7 +107,13 @@ export class SuggestionsAdmPanel {
 
     return this.suggestions
       .map((s) => {
-        const candidates = s.candidates ? JSON.parse(s.candidates) : [];
+        let candidates: any[] = [];
+        try {
+          candidates = s.candidates ? JSON.parse(s.candidates) : [];
+        } catch (e) {
+          console.error('[SUGGESTIONS ADM] Error parsing candidates for', s.id, e);
+          candidates = [];
+        }
         const topCandidate = candidates[0] || { code: s.top_code, name: '?', score: s.top_score };
 
         return `

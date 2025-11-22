@@ -73,7 +73,7 @@ export class GeocodeCanonPanel {
     this.currentContainerId = containerId;
 
     container.innerHTML = `
-      <div class="geocode-canon-panel" style="display: flex; height: 80vh; background: #0a0e17; border-radius: 8px; overflow: hidden;">
+      <div class="geocode-canon-panel" style="display: flex; height: 100%; background: #0a0e17; overflow: hidden;">
         <!-- Liste gauche -->
         <div class="left-panel" style="width: 400px; border-right: 1px solid #22304d; display: flex; flex-direction: column;">
           <div style="padding: 16px; border-bottom: 1px solid #22304d;">
