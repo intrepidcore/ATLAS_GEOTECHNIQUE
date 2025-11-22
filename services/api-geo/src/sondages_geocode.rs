@@ -93,7 +93,7 @@ async fn geocode_by_adm3(
             geom = ST_Centroid(a.geom),
             adm3_id = $2,
             adm3_name = a.adm3_fr,
-            location_mode = 'adm3',
+            location_mode = 'adm3_centroid',
             updated_at = now(),
             meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
                 'geocoded_at', now()::text,
@@ -129,7 +129,7 @@ async fn geocode_by_adm3(
         crate::events::WsEvent::SondageGeocoded {
             id: sondage_id.to_string(),
             code: result.1.clone(),
-            location_mode: "adm3".to_string(),
+            location_mode: "adm3_centroid".to_string(),
             adm3_name: result.5.clone(),
         },
     );

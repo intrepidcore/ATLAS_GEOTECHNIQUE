@@ -3526,20 +3526,31 @@ function initWebSocket() {
   onWsEvent('sondage.geocoded', (data: any) => {
     console.log('[WS] Sondage géocodé:', data)
     toast(`✅ Sondage ${data.code || data.id} géocodé`, 'ok')
+    
     // Rafraîchir la grille si nécessaire
     if (gridLayer) {
       loadGrid()
     }
+    
+    // Rafraîchir les stats mailles (carte principale)
+    // Dispatch event pour que les composants puissent réagir
+    window.dispatchEvent(new CustomEvent('atlas:refresh-stats'))
   })
   
   // Écouter les événements de suggestions
   onWsEvent('suggestion.accepted', (data: any) => {
     console.log('[WS] Suggestion acceptée:', data)
     toast(`✅ Suggestion acceptée pour sondage ${data.sondage_id}`, 'ok')
+    
+    // Rafraîchir les stats
+    window.dispatchEvent(new CustomEvent('atlas:refresh-stats'))
   })
   
   onWsEvent('suggestion.rejected', (data: any) => {
     console.log('[WS] Suggestion rejetée:', data)
+    
+    // Rafraîchir les stats
+    window.dispatchEvent(new CustomEvent('atlas:refresh-stats'))
   })
   
   console.log('[REALTIME] ✅ WebSocket initialisé')

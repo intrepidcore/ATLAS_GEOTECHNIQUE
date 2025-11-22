@@ -6,6 +6,7 @@
 import L from 'leaflet';
 import { GeocodeCanonPanel } from '../geocode-canon-panel';
 import { SuggestionsAdmPanel } from '../suggestions-adm-panel';
+import { SondagesListPanel } from '../sondages-list-panel';
 import { ImportWizardV2 } from '../import-wizard-v2';
 import { toast } from '../ui/toast';
 
@@ -18,6 +19,7 @@ export class SondagesManagerPage {
   private activeTab: TabId = 'geocode';
   private geocodePanel: GeocodeCanonPanel | null = null;
   private suggestionsPanel: SuggestionsAdmPanel | null = null;
+  private listPanel: SondagesListPanel | null = null;
   private importWizard: ImportWizardV2 | null = null;
   private loaded: Record<TabId, boolean> = {
     geocode: false,
@@ -89,17 +91,11 @@ export class SondagesManagerPage {
           </div>
           
           <div class="tab-pane" data-tab="import" style="flex: 1; overflow: hidden; display: none;">
-            <div id="import-content" style="height: 100%; padding: 20px; overflow-y: auto;">
-              <h3 style="color: #ecf2f8; margin: 0 0 16px 0;">📥 Import de données</h3>
-              <p style="color: #94a3b8; font-size: 14px;">Fonctionnalité en cours de développement...</p>
-            </div>
+            <div id="import-content" style="height: 100%;"></div>
           </div>
           
           <div class="tab-pane" data-tab="liste" style="flex: 1; overflow: hidden; display: none;">
-            <div id="liste-content" style="height: 100%; padding: 20px; overflow-y: auto;">
-              <h3 style="color: #ecf2f8; margin: 0 0 16px 0;">📋 Liste des sondages</h3>
-              <p style="color: #94a3b8; font-size: 14px;">Fonctionnalité en cours de développement...</p>
-            </div>
+            <div id="liste-content" style="height: 100%;"></div>
           </div>
         </div>
 
@@ -118,6 +114,12 @@ export class SondagesManagerPage {
 
     // Initialize map
     await this.initMap();
+
+    // Listen for zoom ADM3 events
+    window.addEventListener('atlas:zoom-adm3', (e: any) => {
+      const { code } = e.detail;
+      this.zoomToAdm3(code);
+    });
 
     // Load first tab
     await this.switchTab('geocode');
@@ -263,14 +265,53 @@ export class SondagesManagerPage {
 
   private async ensureImportLoaded() {
     if (this.loaded.import) return;
-    // TODO: Implement import wizard integration
+
+    const container = document.getElementById('import-content');
+    if (!container) return;
+
+    // TODO: Integrate Import Wizard properly
+    // For now, show a proper message
+    container.innerHTML = `
+      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center;">
+        <div style="font-size: 64px; margin-bottom: 24px;">📥</div>
+        <h3 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 20px;">Import Wizard</h3>
+        <p style="color: #94a3b8; font-size: 14px; max-width: 500px; line-height: 1.6;">
+          L'Import Wizard permet d'importer des données depuis Excel ou CSV.
+          Cette fonctionnalité sera intégrée dans une prochaine version.
+        </p>
+        <button 
+          onclick="window.location.hash = '/'; setTimeout(() => { const btn = document.getElementById('importBtn'); if (btn) btn.click(); }, 100);"
+          style="margin-top: 24px; padding: 12px 24px; background: #4c6ef5; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;"
+        >
+          Ouvrir l'Import Wizard (carte principale)
+        </button>
+      </div>
+    `;
+    
     this.loaded.import = true;
   }
 
   private async ensureListeLoaded() {
     if (this.loaded.liste) return;
-    // TODO: Implement liste integration
-    this.loaded.liste = true;
+
+    try {
+      this.listPanel = new SondagesListPanel(this.apiUrl);
+      await this.listPanel.refresh();
+      this.listPanel.renderUI(
+        'liste-content',
+        (msg: string) => {
+          console.log('[LISTE]', msg);
+        },
+        (err: string) => {
+          console.error('[LISTE]', err);
+          toast.error(err);
+        }
+      );
+      this.loaded.liste = true;
+    } catch (e) {
+      console.error('[SONDAGES PAGE] Error loading list panel:', e);
+      toast.error('Erreur chargement liste');
+    }
   }
 
   /**

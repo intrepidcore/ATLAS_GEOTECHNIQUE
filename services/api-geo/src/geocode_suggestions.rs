@@ -126,7 +126,7 @@ pub async fn accept_suggestion(
             geom = ST_Centroid(a.geom),
             adm3_id = $2,
             adm3_name = a.adm3_fr,
-            location_mode = 'adm3',
+            location_mode = 'adm3_centroid',
             updated_at = now(),
             meta = COALESCE(meta, '{}'::jsonb) || jsonb_build_object(
                 'geocoded_at', now()::text,

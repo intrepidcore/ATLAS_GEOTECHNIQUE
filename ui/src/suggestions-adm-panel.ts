@@ -47,6 +47,17 @@ export class SuggestionsAdmPanel {
     this.onErrorCallback = onError;
     this.currentContainerId = containerId;
 
+    // Listen for refresh events
+    window.addEventListener('atlas:refresh-stats', async () => {
+      console.log('[SUGGESTIONS PANEL] Refreshing after WebSocket event...');
+      try {
+        await this.refresh();
+        this.renderUI(containerId, onSuccess, onError);
+      } catch (e) {
+        console.error('[SUGGESTIONS PANEL] Error refreshing:', e);
+      }
+    });
+
     const pendingCount = this.stats?.pending || 0;
     const allDone = pendingCount === 0;
 
@@ -121,7 +132,17 @@ export class SuggestionsAdmPanel {
 
             <!-- Top Candidate -->
             <div style="background: #0f172a; border: 2px solid #4c6ef5; border-radius: 6px; padding: 12px; margin-bottom: 12px;">
-              <div style="font-size: 11px; color: #94a3b8; margin-bottom: 6px;">🎯 Meilleur candidat</div>
+              <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 6px;">
+                <div style="font-size: 11px; color: #94a3b8;">🎯 Meilleur candidat</div>
+                <button 
+                  class="view-adm3-btn" 
+                  data-code="${topCandidate.code}"
+                  style="padding: 4px 8px; background: #22304d; color: #ecf2f8; border: none; border-radius: 4px; font-size: 11px; cursor: pointer; transition: background 0.2s;"
+                  title="Voir sur la carte"
+                >
+                  👁️ Voir
+                </button>
+              </div>
               <div style="font-size: 14px; font-weight: 600; color: #ecf2f8; margin-bottom: 4px;">
                 ${topCandidate.name || topCandidate.code}
               </div>
@@ -189,6 +210,15 @@ export class SuggestionsAdmPanel {
         await this.handleReject(id);
       });
     });
+
+    // View ADM3 buttons
+    document.querySelectorAll('.view-adm3-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const code = (e.target as HTMLElement).dataset.code!;
+        this.handleViewAdm3(code);
+      });
+    });
   }
 
   private async handleAccept(id: string) {
@@ -237,6 +267,13 @@ export class SuggestionsAdmPanel {
         this.onErrorCallback(e.message || 'Erreur');
       }
     }
+  }
+
+  private handleViewAdm3(code: string) {
+    console.log('[SUGGESTIONS ADM] View ADM3:', code);
+    // Dispatch custom event to trigger zoom on the map
+    window.dispatchEvent(new CustomEvent('atlas:zoom-adm3', { detail: { code } }));
+    toast.success(`🗺️ Zoom sur ${code}`);
   }
 
   private getScoreColor(score: number): string {

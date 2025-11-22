@@ -53,6 +53,17 @@ export class GeocodeCanonPanel {
       return;
     }
 
+    // Listen for refresh events
+    window.addEventListener('atlas:refresh-stats', async () => {
+      console.log('[GEOCODE PANEL] Refreshing after WebSocket event...');
+      try {
+        await this.refresh();
+        this.renderUI(containerId, onSuccess, onError);
+      } catch (e) {
+        console.error('[GEOCODE PANEL] Error refreshing:', e);
+      }
+    });
+
     const missingGeom = this.stats ? this.stats.total - this.stats.with_geom : 0;
     const allGeocoded = missingGeom === 0;
     
