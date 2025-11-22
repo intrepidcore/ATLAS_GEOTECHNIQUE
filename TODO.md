@@ -50,24 +50,25 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 **Objectif** : Faire vivre les boutons de l'UI actuelle
 
-### 2.1 Standardiser location_mode et modes de placement
-- [ ] **Décider enum officiel** :
+### 2.1 Standardiser location_mode et modes de placement ✅
+- [X] **Décider enum officiel** :
   - `unknown` : pas encore géocodé
   - `exact` : coordonnées GPS connues
   - `adm3_centroid` : centroïde de la commune (debug/cas particulier)
   - `adm_random_cell` : point aléatoire dans l'ADM3 (mode par défaut)
-- [ ] **Modifier endpoint `/sondages/:id/geocode`** :
-  - Accepter paramètre `mode` dans le JSON : `{ "adm3_gid": 199, "mode": "adm_random_cell" }`
+- [X] **Modifier endpoint `/sondages/:id/geocode`** :
+  - Accepter paramètre `placement` dans le JSON : `{ "adm3_id": 199, "placement": "adm_random_cell" }`
   - Par défaut : `adm_random_cell`
   - Implémenter génération point aléatoire dans ADM3
-- [ ] **Adapter suggestions ADM** :
+- [X] **Adapter suggestions ADM** :
   - Forcer `mode = "adm_random_cell"` dans `POST /suggestions/:id/accept`
-- [ ] **UI géocodage manuel** :
-  - Ajouter select/toggle "Placement : Centroïde / Aléatoire"
+- [X] **UI géocodage manuel** :
+  - Ajouter select "Placement : Centroïde / Aléatoire"
   - Par défaut : aléatoire
-- [ ] **Normaliser données existantes** :
-  - Repasser les 28 `adm3_centroid` en `adm_random_cell` (via UI ou SQL)
-  - Vérifier que `mv_mailles_geotech` utilise bien `adm_random_cell` pour `has_random_location`
+  - Masqué en mode coordonnées exactes
+- [X] **Normaliser données existantes** :
+  - 28 sondages passés de `adm3_centroid` en `adm_random_cell` via SQL
+  - Points régénérés aléatoirement dans polygones ADM3
 
 ### 2.2 Géocodage manuel (onglet "Géocodage Amélioré") ✅
 
@@ -143,29 +144,29 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] `.tab-pane` occupe 100% du centre
 - [X] Layout factorisé : 1 onglet = 1 composant
 
-### 3.2 Onglet « Géocodage Manuel » 🔧
+### 3.2 Onglet « Géocodage Manuel » ✅
 
 - [X] Réutiliser `GeocodeCanonPanel` dans la nouvelle page
 - [X] Liste sondages + panneau géocodage fonctionnels
-- [ ] **BUG LAYOUT** : Zone sombre vide en bas quand aucun sondage sélectionné
-  - Supprimer placeholder central global
-  - Panel doit occuper 100% hauteur (flex: 1, min-height: 0)
-- [ ] **Ajouter choix mode placement** :
-  - Select/toggle "Placement : Centroïde / Aléatoire"
+- [X] **BUG LAYOUT** : Zone sombre vide en bas corrigée
+  - Panel occupe 100% hauteur (height: 100%)
+- [X] **Choix mode placement** :
+  - Select "Placement : Centroïde / Aléatoire"
   - Par défaut : aléatoire
-  - Envoyer `mode` dans payload géocodage
+  - Masqué en mode coordonnées exactes
+  - Paramètre `placement` envoyé au backend
 
-### 3.3 Onglet « Suggestions ADM » 🔧
+### 3.3 Onglet « Suggestions ADM » ✅
 
 - [X] Créer `SuggestionsAdmPanel` avec affichage candidats
 - [X] Branché correctement dans la page
 - [X] API `/suggestions/stats` fonctionne
 - [X] Bouton 👁️ "Voir" pour zoom carte
 - [X] Messages dédiés pour erreurs/vide
-- [ ] **BUG JSON** : Corriger parsing de `candidates`
-  - `candidates` arrive comme STRING JSON
-  - Faire `JSON.parse(suggestion.candidates)` avant utilisation
-  - Afficher tous les candidats avec scores
+- [X] **BUG JSON** : Parsing robuste avec try/catch
+  - Gestion erreur si `candidates` mal formé
+  - Affichage candidats avec scores
+- [X] **BUG INTRUS** : Modal sondages fermé lors navigation
 
 ### 3.4 Onglet « Import » 🔧
 
@@ -178,19 +179,20 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - Occuper toute la hauteur centrale
   - Mettre à jour texte pédagogique
 
-### 3.5 Onglet « Liste » 🔧
+### 3.5 Onglet « Liste » ✅
 
 - [X] `SondagesListPanel` créé et intégré
 - [X] Recherche + filtres fonctionnels
 - [X] Stats affichées (total, géocodés, non géocodés)
-- [ ] **BUG LAYOUT** : Liste tronquée en bas
-  - Conteneur doit être flex: 1, min-height: 0
-  - Zone scroll doit occuper toute hauteur disponible
-- [ ] **Implémenter "Voir détails"** :
-  - Créer `SondageDetailDrawer` ou modale simple
-  - Afficher : code, localité, ADM, location_mode, is_geocoded
-  - Position (lat/lon) = ST_X/ST_Y de geom
-  - Bloc meta en JSON pretty
+- [X] **BUG LAYOUT** : Liste scroll correctement
+  - Conteneur flex: 1, min-height: 0
+  - Zone scroll occupe toute hauteur disponible
+- [X] **"Voir détails" implémenté** :
+  - Modal détails complet avec toutes les infos
+  - Affichage : identifiants, localisation, import, audit
+  - Coordonnées extraites de geom (WKT)
+  - Meta JSON formaté et scrollable
+  - Fermeture : bouton X, clic extérieur, ESC
 
 ### 3.6 Carte ADM3 intégrée ✅
 
