@@ -109,9 +109,19 @@ export class SuggestionsAdmPanel {
       .map((s) => {
         let candidates: any[] = [];
         try {
-          candidates = s.candidates ? JSON.parse(s.candidates) : [];
+          const raw = (s as any).candidates;
+          
+          if (typeof raw === 'string') {
+            candidates = JSON.parse(raw);
+          } else if (Array.isArray(raw)) {
+            candidates = raw;
+          } else if (raw && typeof raw === 'object') {
+            candidates = [raw];
+          } else {
+            console.warn('[SUGGESTIONS ADM] format inconnu pour candidates:', raw);
+          }
         } catch (e) {
-          console.error('[SUGGESTIONS ADM] Error parsing candidates for', s.id, e);
+          console.error('[SUGGESTIONS ADM] Error parsing candidates for', s.id, e, s);
           candidates = [];
         }
         const topCandidate = candidates[0] || { code: s.top_code, name: '?', score: s.top_score };
