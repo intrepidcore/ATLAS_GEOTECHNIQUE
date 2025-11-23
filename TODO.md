@@ -102,9 +102,10 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [X] Correction champ `localite` → utilise `localite_base`
 - [X] Brancher le bouton "Géocoder" dans l'onglet Suggestions ADM
 - [X] Nouveau panel SuggestionsAdmPanel avec affichage candidats
-- [ ] **BUG À CORRIGER** : `candidates` est une STRING JSON au lieu d'un objet
-  - Frontend doit faire `JSON.parse(suggestion.candidates)` avant d'utiliser
-  - Ou backend doit renvoyer `candidates` comme objet JSON natif
+- [X] **BUG CORRIGÉ** : `candidates` est une STRING JSON
+  - Frontend parse robustement avec try/catch multi-format
+  - Gestion string/array/object
+  - Logs explicites pour debugging
 - [ ] Trigger auto-génération suggestions lors ajout sondage
 
 ### 2.4 Interaction carte (ADM3 qui clignote) - DÉTAILLÉ
@@ -324,5 +325,5 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-**Dernière mise à jour** : 2025-11-22 07:10
-**Statut global** : 🎉 IMPLÉMENTATION COMPLÈTE v2.8.0 ! Backend + Frontend + DB + Tests → Prêt pour validation manuelle
+**Dernière mise à jour** : 2025-11-23 14:30
+**Statut global** : ✅ v2.8.3 - Parsing JSON candidates sécurisé + Layout vérifié + Build Docker OK
