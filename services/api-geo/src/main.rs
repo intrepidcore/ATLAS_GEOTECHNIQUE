@@ -233,6 +233,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/suggestions/stats", get(geocode_suggestions::get_suggestions_stats))
         .route("/suggestions/:id/accept", post(geocode_suggestions::accept_suggestion))
         .route("/suggestions/:id/reject", post(geocode_suggestions::reject_suggestion))
+        .route("/suggestions/auto-geocode", post(geocode_suggestions::auto_geocode_suggestions))
         // Surveys canoniques (unifiés)
         .route("/surveys-canon", get(surveys_canon::list_surveys))
         .route(

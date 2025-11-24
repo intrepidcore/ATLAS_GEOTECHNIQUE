@@ -253,3 +253,49 @@ pub async fn get_suggestions_stats(
         "rejected": stats.rejected.unwrap_or(0)
     })))
 }
+
+/// POST /suggestions/auto-geocode?threshold=0.90
+/// Déclenche l'auto-géocodage des suggestions avec score >= seuil
+pub async fn auto_geocode_suggestions(
+    State(state): State<AppState>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pool;
+    
+    // Récupérer le seuil (défaut 0.90)
+    let threshold: f64 = params
+        .get("threshold")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(0.90);
+    
+    if threshold < 0.0 || threshold > 1.0 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Threshold must be between 0 and 1".to_string(),
+        ));
+    }
+    
+    tracing::info!("Starting auto-geocode batch with threshold {}", threshold);
+    
+    // Appeler la fonction SQL
+    let result: serde_json::Value = sqlx::query_scalar(
+        "SELECT public.run_auto_geocode_batch($1)"
+    )
+    .bind(threshold)
+    .fetch_one(pool)
+    .await
+    .map_err(|e| (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Auto-geocode failed: {}", e),
+    ))?;
+    
+    tracing::info!("Auto-geocode batch completed: {:?}", result);
+    
+    // Broadcaster l'événement WebSocket
+    crate::websocket::broadcast_event(
+        &state.ws_tx,
+        crate::events::WsEvent::RefreshStats,
+    );
+    
+    Ok(Json(result))
+}

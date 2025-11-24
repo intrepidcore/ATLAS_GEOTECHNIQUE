@@ -14,8 +14,16 @@ export class SondagesListPanel {
   private currentContainerId?: string;
   private onSuccessCallback?: (msg: string) => void;
   private onErrorCallback?: (error: string) => void;
+  private onGeocodeRequest?: (surveyId: string) => void;
 
   constructor(private apiUrl: string) {}
+  
+  /**
+   * Set callback for geocode request (called when user clicks Géocoder/Re-géocoder)
+   */
+  setOnGeocodeRequest(callback: (surveyId: string) => void) {
+    this.onGeocodeRequest = callback;
+  }
 
   async refresh() {
     this.loading = true;
@@ -171,7 +179,11 @@ export class SondagesListPanel {
                 <button class="geocode-btn" data-id="${s.id}" style="flex: 1; padding: 8px; background: #4c6ef5; color: #fff; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">
                   🗺️ Géocoder
                 </button>
-              ` : ''}
+              ` : `
+                <button class="regeocode-btn" data-id="${s.id}" style="flex: 1; padding: 8px; background: #ff922b; color: #fff; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">
+                  🔄 Re-géocoder
+                </button>
+              `}
               <button class="view-btn" data-id="${s.id}" style="flex: 1; padding: 8px; background: #22304d; color: #ecf2f8; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">
                 👁️ Voir détails
               </button>
@@ -216,6 +228,15 @@ export class SondagesListPanel {
       });
     });
 
+    // Re-geocode buttons
+    document.querySelectorAll('.regeocode-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = (e.target as HTMLElement).dataset.id!;
+        this.handleGeocode(id); // Same handler as geocode
+      });
+    });
+
     // View buttons
     document.querySelectorAll('.view-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -235,12 +256,13 @@ export class SondagesListPanel {
   }
 
   private handleGeocode(id: string) {
-    // Navigate to geocode tab with this sondage selected
-    if (this.onSuccessCallback) {
-      this.onSuccessCallback(`Navigation vers géocodage de ${id}`);
+    // Call the geocode request callback
+    if (this.onGeocodeRequest) {
+      this.onGeocodeRequest(id);
+    } else {
+      console.warn('[SONDAGES LIST] No geocode request handler set');
+      toast.error('Impossible d\'ouvrir le géocodage');
     }
-    // TODO: Implement navigation to geocode tab with pre-selected sondage
-    toast.success('Navigation vers géocodage (à implémenter)');
   }
 
   private async handleView(id: string) {

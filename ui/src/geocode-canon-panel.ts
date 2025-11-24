@@ -22,6 +22,8 @@ export class GeocodeCanonPanel {
   private onSuccessCallback?: (msg: string) => void;
   private onErrorCallback?: (error: string) => void;
   private currentContainerId?: string;
+  private savedScrollPosition = 0;
+  private selectedSurveyId: string | null = null;
 
   constructor(private apiUrl: string) {}
 
@@ -46,11 +48,51 @@ export class GeocodeCanonPanel {
     }
   }
 
+  /**
+   * Load a specific survey by ID (for re-geocoding from Liste tab)
+   */
+  async loadSurveyById(surveyId: string) {
+    try {
+      // Fetch the survey details
+      const response = await fetch(`${this.apiUrl}/sondages/${surveyId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to load survey ${surveyId}`);
+      }
+      const survey = await response.json();
+      
+      this.selectedSurvey = survey;
+      this.selectedSurveyId = surveyId;
+      
+      // Load ADM3 candidates
+      try {
+        const candidatesResponse = await getAdm3Candidates(surveyId);
+        this.candidates = candidatesResponse.candidates;
+      } catch (e) {
+        console.error('[GEOCODE PANEL] Error loading candidates:', e);
+        this.candidates = [];
+      }
+      
+      // Re-render to show the survey details
+      if (this.currentContainerId && this.onSuccessCallback && this.onErrorCallback) {
+        this.renderUI(this.currentContainerId, this.onSuccessCallback, this.onErrorCallback);
+      }
+    } catch (e) {
+      console.error('[GEOCODE PANEL] Error loading survey by ID:', e);
+      toast.error(`Erreur chargement sondage ${surveyId}`);
+    }
+  }
+
   renderUI(containerId: string, onSuccess: (msg: string) => void, onError: (error: string) => void) {
     const container = document.getElementById(containerId);
     if (!container) {
       console.error(`Container #${containerId} not found`);
       return;
+    }
+
+    // Sauvegarder la position de scroll AVANT le re-rendu
+    const surveysList = document.getElementById('surveys-list');
+    if (surveysList) {
+      this.savedScrollPosition = surveysList.scrollTop;
     }
 
     // Listen for refresh events
@@ -108,6 +150,22 @@ export class GeocodeCanonPanel {
     `;
 
     this.attachEventListeners(onSuccess, onError);
+    
+    // Restaurer la position de scroll APRÈS le re-rendu
+    setTimeout(() => {
+      const newSurveysList = document.getElementById('surveys-list');
+      if (newSurveysList && this.savedScrollPosition > 0) {
+        newSurveysList.scrollTop = this.savedScrollPosition;
+      }
+      
+      // Restaurer le surlignage du sondage sélectionné
+      if (this.selectedSurveyId) {
+        const selectedCard = document.querySelector(`[data-survey-id="${this.selectedSurveyId}"]`);
+        if (selectedCard) {
+          selectedCard.classList.add('selected');
+        }
+      }
+    }, 0);
   }
 
   private renderAllGeocoded(): string {
@@ -155,7 +213,7 @@ export class GeocodeCanonPanel {
 
       return `
         <div 
-          class="survey-item" 
+          class="survey-item ${isSelected ? 'selected' : ''}" 
           data-survey-id="${survey.id}"
           style="padding: 12px; margin-bottom: 8px; background: ${isSelected ? '#1e3a5f' : '#1a2332'}; border: 1px solid ${isSelected ? '#4c6ef5' : '#22304d'}; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
         >
@@ -334,6 +392,7 @@ export class GeocodeCanonPanel {
       item.addEventListener('click', async () => {
         const surveyId = item.getAttribute('data-survey-id');
         this.selectedSurvey = this.surveys.find(s => s.id === surveyId) || null;
+        this.selectedSurveyId = surveyId; // Sauvegarder l'ID pour restaurer le surlignage
         
         // Charger les candidats ADM3
         if (this.selectedSurvey) {

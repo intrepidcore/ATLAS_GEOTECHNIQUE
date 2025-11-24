@@ -21,6 +21,7 @@ export class SondagesManagerPage {
   private suggestionsPanel: SuggestionsAdmPanel | null = null;
   private listPanel: SondagesListPanel | null = null;
   private importWizard: ImportWizardV2 | null = null;
+  private currentGeocodeTargetId: string | null = null;
   private loaded: Record<TabId, boolean> = {
     geocode: false,
     suggestions: false,
@@ -38,6 +39,17 @@ export class SondagesManagerPage {
     }
 
     this.container.innerHTML = `
+      <style>
+        .tab-pane {
+          display: none;
+          flex: 1;
+          overflow: hidden;
+        }
+        .tab-pane.active {
+          display: flex;
+          flex-direction: column;
+        }
+      </style>
       <div class="sondages-page" style="display: flex; height: 100vh; background: #0a0e17; overflow: hidden;">
         <!-- SIDEBAR GAUCHE -->
         <nav class="sondages-sidebar" style="width: 280px; background: #0f172a; border-right: 1px solid #22304d; display: flex; flex-direction: column; overflow-y: auto;">
@@ -82,20 +94,20 @@ export class SondagesManagerPage {
 
         <!-- CONTENU CENTRAL -->
         <div class="sondages-content" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
-          <div class="tab-pane active" data-tab="geocode" style="flex: 1; overflow: hidden;">
-            <div id="geocode-content" style="height: 100%;"></div>
+          <div class="tab-pane active" data-tab="geocode">
+            <div id="geocode-content" style="width: 100%; height: 100%;"></div>
           </div>
           
-          <div class="tab-pane" data-tab="suggestions" style="flex: 1; overflow: hidden; display: none;">
-            <div id="suggestions-content" style="height: 100%;"></div>
+          <div class="tab-pane" data-tab="suggestions">
+            <div id="suggestions-content" style="width: 100%; height: 100%;"></div>
           </div>
           
-          <div class="tab-pane" data-tab="import" style="flex: 1; overflow: hidden; display: none;">
-            <div id="import-content" style="height: 100%;"></div>
+          <div class="tab-pane" data-tab="import">
+            <div id="import-content" style="width: 100%; height: 100%;"></div>
           </div>
           
-          <div class="tab-pane" data-tab="liste" style="flex: 1; overflow: hidden; display: none;">
-            <div id="liste-content" style="height: 100%;"></div>
+          <div class="tab-pane" data-tab="liste">
+            <div id="liste-content" style="width: 100%; height: 100%;"></div>
           </div>
         </div>
 
@@ -190,7 +202,7 @@ export class SondagesManagerPage {
   private async switchTab(tabId: TabId) {
     this.activeTab = tabId;
 
-    // Update sidebar
+    // Update sidebar tabs
     this.container?.querySelectorAll('.sidebar-tab').forEach((tab) => {
       const isActive = tab.getAttribute('data-tab') === tabId;
       if (isActive) {
@@ -202,10 +214,14 @@ export class SondagesManagerPage {
       }
     });
 
-    // Update content panes
+    // Update content panes - USE CLASS TOGGLE INSTEAD OF INLINE STYLES
     this.container?.querySelectorAll('.tab-pane').forEach((pane) => {
       const isActive = pane.getAttribute('data-tab') === tabId;
-      (pane as HTMLElement).style.display = isActive ? 'flex' : 'none';
+      if (isActive) {
+        pane.classList.add('active');
+      } else {
+        pane.classList.remove('active');
+      }
     });
 
     // Lazy load content
@@ -297,6 +313,12 @@ export class SondagesManagerPage {
     try {
       this.listPanel = new SondagesListPanel(this.apiUrl);
       await this.listPanel.refresh();
+      
+      // Set geocode request handler
+      this.listPanel.setOnGeocodeRequest((surveyId: string) => {
+        this.openGeocodeForSurvey(surveyId);
+      });
+      
       this.listPanel.renderUI(
         'liste-content',
         (msg: string) => {
@@ -311,6 +333,22 @@ export class SondagesManagerPage {
     } catch (e) {
       console.error('[SONDAGES PAGE] Error loading list panel:', e);
       toast.error('Erreur chargement liste');
+    }
+  }
+
+  /**
+   * Public method to open geocoding for a specific survey
+   */
+  async openGeocodeForSurvey(surveyId: string) {
+    console.log('[SONDAGES PAGE] Opening geocode for survey:', surveyId);
+    this.currentGeocodeTargetId = surveyId;
+    
+    // Switch to geocode tab
+    await this.switchTab('geocode');
+    
+    // Load the survey in the geocode panel
+    if (this.geocodePanel) {
+      this.geocodePanel.loadSurveyById(surveyId);
     }
   }
 
