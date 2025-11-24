@@ -8,7 +8,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+// use sqlx::PgPool; // Unused import
 
 // ============================================================================
 // Types
@@ -118,7 +118,19 @@ pub async fn accept_suggestion(
     .await
     .map_err(|e| (StatusCode::NOT_FOUND, format!("ADM3 not found: {}", e)))?;
     
-    // Géocoder le sondage
+    // Récupérer les anciennes valeurs pour audit
+    let sondage_uuid = sondage_id.parse::<uuid::Uuid>()
+        .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid UUID: {}", e)))?;
+    
+    let old_values = sqlx::query!(
+        "SELECT location_mode, adm3_name, ST_AsText(geom) as geom_wkt FROM public.sondages WHERE id = $1",
+        sondage_uuid
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to fetch old values: {}", e)))?;
+
+    // Géocoder le sondage avec audit des anciennes valeurs
     sqlx::query(
         r#"
         UPDATE public.sondages s
@@ -133,16 +145,22 @@ pub async fn accept_suggestion(
                 'geocoded_mode', 'suggestion_accepted',
                 'geocoded_placement', 'adm_random_cell',
                 'geocoded_adm3_pcode', $3,
-                'suggestion_id', $4
+                'suggestion_id', $4,
+                'old_location_mode', $5,
+                'old_adm3_name', $6,
+                'old_geom_wkt', $7
             )
         FROM adm3 a
-        WHERE a.gid = $2 AND s.id = $1::uuid
+        WHERE a.gid = $2 AND s.id = $1
         "#
     )
-    .bind(&sondage_id)
+    .bind(sondage_uuid)
     .bind(adm3_gid)
     .bind(&adm3_pcode)
     .bind(&id)
+    .bind(&old_values.location_mode)
+    .bind(&old_values.adm3_name)
+    .bind(&old_values.geom_wkt)
     .execute(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to geocode: {}", e)))?;

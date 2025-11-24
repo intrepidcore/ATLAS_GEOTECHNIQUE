@@ -280,12 +280,12 @@ export class SondagesListPanel {
     }
   }
 
-  private showDetailsModal(s: any) {
+  private async showDetailsModal(basicSondage: any) {
     // Remove existing modal if any
     const existing = document.getElementById('sondage-details-modal');
     if (existing) existing.remove();
 
-    // Create modal
+    // Create modal structure
     const modal = document.createElement('div');
     modal.id = 'sondage-details-modal';
     modal.style.cssText = `
@@ -300,107 +300,237 @@ export class SondagesListPanel {
       justify-content: center;
       z-index: 10000;
       padding: 20px;
+      backdrop-filter: blur(4px);
     `;
 
-    const isGeocoded = s.is_geocoded || false;
-    const modeLabel = this.getLocationModeLabel(s.location_mode || 'unknown');
-    const coords = s.geom ? this.extractCoords(s.geom) : null;
-
+    // Render loading state initially
     modal.innerHTML = `
-      <div style="background: #0a0e17; border: 1px solid #22304d; border-radius: 12px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-        <!-- Header -->
-        <div style="padding: 24px; border-bottom: 1px solid #22304d; display: flex; justify-content: space-between; align-items: center;">
-          <div>
-            <h2 style="margin: 0 0 8px 0; color: #ecf2f8; font-size: 20px;">
-              📍 ${this.escapeHtml(s.code || 'N/A')}
-            </h2>
-            <div style="font-size: 14px; color: #94a3b8;">
-              ${this.escapeHtml(s.localite || 'Localité inconnue')}
-            </div>
-          </div>
-          <button id="close-modal-btn" style="background: #22304d; border: none; color: #ecf2f8; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 18px;">
-            ✕
-          </button>
-        </div>
-
-        <!-- Content -->
-        <div style="padding: 24px;">
-          <!-- Status -->
-          <div style="display: flex; gap: 8px; margin-bottom: 24px;">
-            <span style="padding: 6px 12px; background: ${isGeocoded ? '#51cf66' : '#ff6b6b'}22; border: 1px solid ${isGeocoded ? '#51cf66' : '#ff6b6b'}; border-radius: 6px; font-size: 12px; color: ${isGeocoded ? '#51cf66' : '#ff6b6b'}; font-weight: 600;">
-              ${isGeocoded ? '✅ GÉOCODÉ' : '❌ NON GÉOCODÉ'}
-            </span>
-            ${isGeocoded ? `<span style="padding: 6px 12px; background: #4c6ef522; border: 1px solid #4c6ef5; border-radius: 6px; font-size: 12px; color: #4c6ef5; font-weight: 600;">${modeLabel}</span>` : ''}
-          </div>
-
-          <!-- Infos grid -->
-          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; margin-bottom: 24px;">
-            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
-              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">🔖 Identifiants</div>
-              <div style="font-size: 14px; color: #ecf2f8; line-height: 1.6;">
-                <div><strong>Code:</strong> ${this.escapeHtml(s.code || '—')}</div>
-                <div><strong>Localité clé:</strong> ${this.escapeHtml(s.localite_key || '—')}</div>
-                <div><strong>Maille:</strong> ${this.escapeHtml(s.maille_code || '—')}</div>
-              </div>
-            </div>
-
-            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
-              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">🌍 Localisation</div>
-              <div style="font-size: 14px; color: #ecf2f8; line-height: 1.6;">
-                <div><strong>ADM3:</strong> ${this.escapeHtml(s.adm3_name || '—')}</div>
-                <div><strong>Mode:</strong> ${modeLabel}</div>
-                ${coords ? `<div><strong>Coords:</strong> ${coords.lat.toFixed(6)}, ${coords.lon.toFixed(6)}</div>` : ''}
-              </div>
-            </div>
-
-            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
-              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">📦 Import</div>
-              <div style="font-size: 14px; color: #ecf2f8; line-height: 1.6;">
-                <div><strong>Source:</strong> ${this.escapeHtml(s.source || '—')}</div>
-                <div><strong>Opérateur:</strong> ${this.escapeHtml(s.operator || '—')}</div>
-                <div><strong>Essais:</strong> ${s.n_essais || 0}</div>
-              </div>
-            </div>
-
-            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
-              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">🕒 Audit</div>
-              <div style="font-size: 14px; color: #ecf2f8; line-height: 1.6;">
-                <div><strong>Créé:</strong> ${s.created_at ? new Date(s.created_at).toLocaleString('fr-FR') : '—'}</div>
-                <div><strong>Mis à jour:</strong> ${s.updated_at ? new Date(s.updated_at).toLocaleString('fr-FR') : '—'}</div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Meta -->
-          ${s.meta ? `
-            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
-              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 8px;">🧾 Meta (JSON)</div>
-              <pre style="margin: 0; padding: 12px; background: #0a0e17; border-radius: 6px; font-size: 12px; color: #94a3b8; overflow-x: auto; max-height: 300px;">${JSON.stringify(s.meta, null, 2)}</pre>
-            </div>
-          ` : ''}
-        </div>
+      <div style="background: #0a0e17; border: 1px solid #22304d; border-radius: 12px; width: 600px; height: 400px; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+        <div style="font-size: 32px; margin-bottom: 16px; animation: spin 1s linear infinite;">⏳</div>
+        <div style="color: #ecf2f8; font-size: 16px; font-weight: 600;">Chargement des détails complets...</div>
+        <div style="color: #94a3b8; font-size: 13px; margin-top: 8px;">${basicSondage.code}</div>
       </div>
+      <style>@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }</style>
     `;
 
     document.body.appendChild(modal);
 
-    // Close handlers
-    const closeBtn = document.getElementById('close-modal-btn');
-    const closeModal = () => modal.remove();
-    
-    closeBtn?.addEventListener('click', closeModal);
+    // Close on click outside
     modal.addEventListener('click', (e) => {
-      if (e.target === modal) closeModal();
+      if (e.target === modal) modal.remove();
     });
-    
-    // ESC key
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        closeModal();
-        document.removeEventListener('keydown', handleEsc);
-      }
+
+    try {
+      // Fetch full details
+      const response = await fetch(`${this.apiUrl}/sondages/${basicSondage.id}/details`);
+      if (!response.ok) throw new Error('Erreur chargement détails');
+      
+      const s = await response.json();
+      this.renderDetailsContent(modal, s);
+    } catch (e) {
+      console.error('Error loading details:', e);
+      modal.innerHTML = `
+        <div style="background: #0a0e17; border: 1px solid #ff6b6b; border-radius: 12px; padding: 40px; text-align: center;">
+          <div style="font-size: 32px; margin-bottom: 16px;">⚠️</div>
+          <h3 style="color: #ecf2f8; margin: 0 0 8px 0;">Erreur de chargement</h3>
+          <p style="color: #94a3b8;">Impossible de charger les détails pour ${basicSondage.code}</p>
+          <button id="close-modal-error" style="margin-top: 16px; padding: 8px 16px; background: #22304d; border: none; color: #ecf2f8; border-radius: 6px; cursor: pointer;">Fermer</button>
+        </div>
+      `;
+      document.getElementById('close-modal-error')?.addEventListener('click', () => modal.remove());
+    }
+  }
+
+  private renderDetailsContent(modal: HTMLElement, s: any) {
+    const isGeocoded = s.is_geocoded || false;
+    const modeLabel = this.getLocationModeLabel(s.location_mode || 'unknown');
+    const coords = s.coordinates; // Structure {lat, lon} depuis l'API enrichie
+
+    // Sections helpers
+    const renderSection = (title: string, icon: string, content: string, count?: number) => `
+      <details open style="margin-bottom: 16px; background: #1a2332; border: 1px solid #22304d; border-radius: 8px; overflow: hidden;">
+        <summary style="padding: 12px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: #22304d;">
+          <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #ecf2f8;">
+            <span>${icon}</span> ${title}
+            ${count !== undefined ? `<span style="background: #0a0e17; padding: 2px 8px; border-radius: 10px; font-size: 11px; color: #94a3b8;">${count}</span>` : ''}
+          </div>
+          <span style="font-size: 12px; color: #94a3b8;">▼</span>
+        </summary>
+        <div style="padding: 16px;">${content}</div>
+      </details>
+    `;
+
+    // Tables helpers
+    const renderTable = (headers: string[], rows: any[], renderRow: (item: any) => string) => {
+      if (!rows || rows.length === 0) return '<div style="color: #94a3b8; font-style: italic; text-align: center; padding: 12px;">Aucune donnée disponible</div>';
+      return `
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <thead>
+              <tr style="background: #0a0e17; color: #94a3b8;">
+                ${headers.map(h => `<th style="padding: 8px; text-align: left; border-bottom: 1px solid #22304d;">${h}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+              ${rows.map(renderRow).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
     };
-    document.addEventListener('keydown', handleEsc);
+
+    const html = `
+      <div style="background: #0a0e17; border: 1px solid #22304d; border-radius: 12px; width: 900px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
+        <!-- Header -->
+        <div style="padding: 20px; border-bottom: 1px solid #22304d; display: flex; justify-content: space-between; align-items: center; background: #1a2332; border-radius: 12px 12px 0 0;">
+          <div style="display: flex; align-items: center; gap: 16px;">
+            <div style="background: #0a0e17; width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid #22304d;">
+              📝
+            </div>
+            <div>
+              <h2 style="margin: 0 0 4px 0; color: #ecf2f8; font-size: 20px;">
+                ${this.escapeHtml(s.code || 'N/A')}
+              </h2>
+              <div style="display: flex; gap: 8px; align-items: center;">
+                <span style="font-size: 13px; color: #94a3b8;">${this.escapeHtml(s.localite || 'Localité inconnue')}</span>
+                <span style="color: #22304d;">|</span>
+                <span style="font-size: 12px; color: ${isGeocoded ? '#51cf66' : '#ff6b6b'}; font-weight: 600;">
+                  ${isGeocoded ? '✅ GÉOCODÉ' : '❌ NON GÉOCODÉ'}
+                </span>
+              </div>
+            </div>
+          </div>
+          <button id="close-modal-btn" style="background: #22304d; border: none; color: #ecf2f8; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 18px; transition: background 0.2s;">
+            ✕
+          </button>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div style="flex: 1; overflow-y: auto; padding: 24px;">
+          
+          <!-- 1. Informations Générales -->
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
+            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
+              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px; font-weight: 600; text-transform: uppercase;">📍 Localisation</div>
+              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #ecf2f8;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #94a3b8;">ADM3:</span>
+                  <span>${this.escapeHtml(s.adm3_name || '—')}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #94a3b8;">Mode:</span>
+                  <span>${modeLabel}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #94a3b8;">Coords (WGS84):</span>
+                  <span>${coords ? `${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}` : '—'}</span>
+                </div>
+                ${coords ? `
+                  <button class="zoom-btn" style="margin-top: 8px; padding: 6px; background: #4c6ef5; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">
+                    🔍 Zoomer sur la carte
+                  </button>
+                ` : ''}
+              </div>
+            </div>
+
+            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
+              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px; font-weight: 600; text-transform: uppercase;">📄 Métadonnées</div>
+              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #ecf2f8;">
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #94a3b8;">Source:</span>
+                  <span>${this.escapeHtml(s.source || '—')}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #94a3b8;">Maille:</span>
+                  <span style="font-family: monospace; background: #0a0e17; padding: 2px 6px; border-radius: 4px;">${s.grid_code || '—'}</span>
+                </div>
+                <div style="display: flex; justify-content: space-between;">
+                  <span style="color: #94a3b8;">Mis à jour:</span>
+                  <span>${s.updated_at ? new Date(s.updated_at).toLocaleDateString('fr-FR') : '—'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Essais Géotechniques -->
+          ${renderSection('Atterberg', '💧', renderTable(
+            ['Prof. (m)', 'WL', 'WP', 'IP', 'Class.'],
+            s.atterberg || [],
+            (item) => `
+              <tr style="border-bottom: 1px solid #22304d; color: #ecf2f8;">
+                <td style="padding: 8px;">${item.depth_m.toFixed(1)}</td>
+                <td style="padding: 8px;">${item.wl || '—'}</td>
+                <td style="padding: 8px;">${item.wp || '—'}</td>
+                <td style="padding: 8px; font-weight: 600; color: #4c6ef5;">${item.ip || '—'}</td>
+                <td style="padding: 8px;"><span style="background: #22304d; padding: 2px 6px; border-radius: 4px;">${item.classification || '—'}</span></td>
+              </tr>
+            `
+          ), s.atterberg?.length)}
+
+          ${renderSection('VBS', '🔵', renderTable(
+            ['Prof. (m)', 'VBS', 'Interprétation'],
+            s.vbs || [],
+            (item) => `
+              <tr style="border-bottom: 1px solid #22304d; color: #ecf2f8;">
+                <td style="padding: 8px;">${item.depth_m.toFixed(1)}</td>
+                <td style="padding: 8px; font-weight: 600;">${item.vbs?.toFixed(2) || '—'}</td>
+                <td style="padding: 8px; color: #94a3b8;">${item.interpretation || '—'}</td>
+              </tr>
+            `
+          ), s.vbs?.length)}
+
+          ${renderSection('Granulométrie', '📊', renderTable(
+            ['Prof. (m)', 'D10', 'D30', 'D60', 'Cu', 'Cc', 'Type'],
+            s.granulometrie || [],
+            (item) => `
+              <tr style="border-bottom: 1px solid #22304d; color: #ecf2f8;">
+                <td style="padding: 8px;">${item.depth_m.toFixed(1)}</td>
+                <td style="padding: 8px;">${item.d10 || '—'}</td>
+                <td style="padding: 8px;">${item.d30 || '—'}</td>
+                <td style="padding: 8px;">${item.d60 || '—'}</td>
+                <td style="padding: 8px;">${item.cu || '—'}</td>
+                <td style="padding: 8px;">${item.cc || '—'}</td>
+                <td style="padding: 8px;">${item.type || '—'}</td>
+              </tr>
+            `
+          ), s.granulometrie?.length)}
+
+          ${renderSection('Échantillons', '🧪', renderTable(
+            ['Prof. (m)', 'Type', 'Description'],
+            s.echantillons || [],
+            (item) => `
+              <tr style="border-bottom: 1px solid #22304d; color: #ecf2f8;">
+                <td style="padding: 8px;">${item.depth_m.toFixed(1)}</td>
+                <td style="padding: 8px;"><span style="background: #22304d; padding: 2px 6px; border-radius: 4px;">${item.type || '—'}</span></td>
+                <td style="padding: 8px; color: #94a3b8;">${item.description || '—'}</td>
+              </tr>
+            `
+          ), s.echantillons?.length)}
+
+        </div>
+      </div>
+    `;
+
+    modal.innerHTML = html;
+
+    // Event listeners
+    modal.querySelector('#close-modal-btn')?.addEventListener('click', () => modal.remove());
+    
+    const zoomBtn = modal.querySelector('.zoom-btn');
+    if (zoomBtn && coords) {
+      zoomBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        modal.remove();
+        
+        // Dispatch event to zoom on map
+        // This assumes we have a listener for this event in the main page or map component
+        const event = new CustomEvent('atlas:zoom-coord', { 
+          detail: { lat: coords.lat, lon: coords.lon, zoom: 14 } 
+        });
+        window.dispatchEvent(event);
+        console.log(`[DETAILS] Zoom sur ${s.code} à ${coords.lat}, ${coords.lon}`);
+      });
+    }
   }
 
   private extractCoords(geom: string): { lat: number; lon: number } | null {

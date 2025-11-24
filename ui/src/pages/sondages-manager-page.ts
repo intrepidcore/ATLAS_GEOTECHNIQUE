@@ -286,24 +286,130 @@ export class SondagesManagerPage {
     if (!container) return;
 
     try {
-      // Créer le wizard en mode embedded
-      if (!this.importWizard) {
-        this.importWizard = new ImportWizardV2('import-content', this.apiUrl);
-        console.log('[SONDAGES PAGE] Import Wizard initialisé en mode embedded');
-      }
-      
-      // Ajouter un message explicatif au-dessus
-      const header = document.createElement('div');
-      header.style.cssText = 'padding: 16px; background: #1a2332; border-bottom: 1px solid #22304d;';
-      header.innerHTML = `
-        <h3 style="margin: 0 0 8px 0; color: #ecf2f8; font-size: 18px;">📥 Import de sondages</h3>
-        <p style="margin: 0; color: #94a3b8; font-size: 13px;">
-          Importez vos sondages depuis un fichier Excel ou CSV. Le wizard vous guidera à travers les étapes de mapping et de validation.
-        </p>
+      // Créer un wizard embedded custom (sans overlay modale)
+      container.innerHTML = `
+        <div style="display: flex; flex-direction: column; height: 100%; background: #0a0e17;">
+          <!-- Header -->
+          <div style="padding: 20px; background: #1a2332; border-bottom: 1px solid #22304d;">
+            <h3 style="margin: 0 0 8px 0; color: #ecf2f8; font-size: 20px; font-weight: 600;">
+              📥 Import de sondages géotechniques
+            </h3>
+            <p style="margin: 0; color: #94a3b8; font-size: 14px; line-height: 1.6;">
+              Importez vos sondages depuis un fichier Excel ou CSV. Le wizard vous guidera à travers les étapes de mapping, géométrie et validation.
+            </p>
+          </div>
+          
+          <!-- Wizard Content -->
+          <div style="flex: 1; overflow-y: auto; padding: 24px;">
+            <!-- Upload Zone -->
+            <div id="import-upload-zone" style="max-width: 800px; margin: 0 auto;">
+              <div style="background: #1a2332; border: 2px dashed #4c6ef5; border-radius: 12px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s;" 
+                   onmouseover="this.style.borderColor='#51cf66'; this.style.background='#0f172a';"
+                   onmouseout="this.style.borderColor='#4c6ef5'; this.style.background='#1a2332';">
+                
+                <div style="font-size: 64px; margin-bottom: 20px;">📁</div>
+                
+                <h4 style="margin: 0 0 12px 0; color: #ecf2f8; font-size: 18px; font-weight: 600;">
+                  Glissez-déposez votre fichier ici
+                </h4>
+                
+                <p style="margin: 0 0 20px 0; color: #94a3b8; font-size: 14px;">
+                  ou cliquez pour parcourir
+                </p>
+                
+                <div style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #4c6ef5, #51cf66); color: #fff; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;">
+                  📂 Sélectionner un fichier
+                </div>
+                
+                <p style="margin: 20px 0 0 0; color: #64748b; font-size: 12px;">
+                  Formats acceptés : CSV, XLSX, XLS (max 50 MB)
+                </p>
+                
+                <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display: none;">
+              </div>
+              
+              <!-- Modèles disponibles -->
+              <div style="margin-top: 32px; padding: 20px; background: #1a2332; border: 1px solid #22304d; border-radius: 8px;">
+                <h5 style="margin: 0 0 12px 0; color: #ecf2f8; font-size: 14px; font-weight: 600;">
+                  📋 Modèles disponibles
+                </h5>
+                <p style="margin: 0 0 16px 0; color: #94a3b8; font-size: 13px;">
+                  Téléchargez un modèle pour faciliter votre import :
+                </p>
+                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                  <button style="padding: 10px 16px; background: #22304d; color: #ecf2f8; border: 1px solid #4c6ef5; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.2s;"
+                          onmouseover="this.style.background='#4c6ef5';"
+                          onmouseout="this.style.background='#22304d';">
+                    📄 Modèle Sondages Simple
+                  </button>
+                  <button style="padding: 10px 16px; background: #22304d; color: #ecf2f8; border: 1px solid #4c6ef5; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.2s;"
+                          onmouseover="this.style.background='#4c6ef5';"
+                          onmouseout="this.style.background='#22304d';">
+                    📊 Modèle Complet (avec essais)
+                  </button>
+                </div>
+              </div>
+              
+              <!-- Instructions -->
+              <div style="margin-top: 24px; padding: 16px; background: #0f172a; border-left: 3px solid #51cf66; border-radius: 4px;">
+                <h6 style="margin: 0 0 8px 0; color: #51cf66; font-size: 13px; font-weight: 600;">
+                  💡 Conseils pour un import réussi
+                </h6>
+                <ul style="margin: 0; padding-left: 20px; color: #94a3b8; font-size: 12px; line-height: 1.8;">
+                  <li>Assurez-vous que votre fichier contient au minimum les colonnes : <code>code</code>, <code>localite</code></li>
+                  <li>Les coordonnées peuvent être en format décimal (lat/lon) ou DMS (degrés/minutes/secondes)</li>
+                  <li>Pour les essais géotechniques, utilisez des feuilles séparées (Atterberg, VBS, Granulo, etc.)</li>
+                  <li>Les doublons seront détectés automatiquement et vous pourrez choisir de les mettre à jour ou ignorer</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
       `;
       
-      container.insertBefore(header, container.firstChild);
+      // Attacher les event listeners
+      const uploadZone = container.querySelector('#import-upload-zone > div') as HTMLElement;
+      const fileInput = container.querySelector('#import-file-input') as HTMLInputElement;
       
+      if (uploadZone && fileInput) {
+        // Click to browse
+        uploadZone.addEventListener('click', () => {
+          fileInput.click();
+        });
+        
+        // File selection
+        fileInput.addEventListener('change', (e) => {
+          const file = (e.target as HTMLInputElement).files?.[0];
+          if (file) {
+            this.handleFileUpload(file);
+          }
+        });
+        
+        // Drag & drop
+        uploadZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          uploadZone.style.borderColor = '#51cf66';
+          uploadZone.style.background = '#0f172a';
+        });
+        
+        uploadZone.addEventListener('dragleave', () => {
+          uploadZone.style.borderColor = '#4c6ef5';
+          uploadZone.style.background = '#1a2332';
+        });
+        
+        uploadZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          uploadZone.style.borderColor = '#4c6ef5';
+          uploadZone.style.background = '#1a2332';
+          
+          const file = e.dataTransfer?.files[0];
+          if (file) {
+            this.handleFileUpload(file);
+          }
+        });
+      }
+      
+      console.log('[SONDAGES PAGE] Import Wizard embedded initialisé');
       this.loaded.import = true;
     } catch (e) {
       console.error('[SONDAGES PAGE] Error loading import wizard:', e);
@@ -315,6 +421,24 @@ export class SondagesManagerPage {
         </div>
       `;
     }
+  }
+  
+  private async handleFileUpload(file: File) {
+    console.log('[IMPORT] File selected:', file.name);
+    toast.success(`Fichier sélectionné : ${file.name}`);
+    
+    // TODO: Implémenter le reste du workflow d'import
+    // Pour l'instant, on ouvre le wizard modal existant
+    if (!this.importWizard) {
+      // Créer un container temporaire pour le wizard modal
+      const wizardContainer = document.createElement('div');
+      wizardContainer.id = 'temp-import-wizard';
+      document.body.appendChild(wizardContainer);
+      
+      this.importWizard = new ImportWizardV2('temp-import-wizard', this.apiUrl);
+    }
+    
+    this.importWizard.open();
   }
 
   private async ensureListeLoaded() {

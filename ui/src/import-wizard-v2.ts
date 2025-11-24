@@ -570,6 +570,12 @@ export class ImportWizardV2 {
       nextBtn.addEventListener('click', () => this.nextStep())
     }
 
+    // Import button
+    const importBtn = document.getElementById('wizardImport')
+    if (importBtn) {
+      importBtn.addEventListener('click', () => this.doImport())
+    }
+
     // Step 1: Upload
     if (this.currentStep === 1) {
       this.attachStep1Listeners()
@@ -668,6 +674,63 @@ export class ImportWizardV2 {
   private async exportErrors() {
     console.log('[WIZARD] Export erreurs CSV')
     // TODO: Implémenter export
+  }
+
+  private async doImport() {
+    if (!this.session || !this.previewData) {
+      console.error('[WIZARD] Session ou preview manquant pour import')
+      return
+    }
+
+    try {
+      console.log('[WIZARD] Démarrage import...')
+      
+      // 1. Lancer l'import
+      const importResponse = await fetch(`${this.apiUrl}/imports/${this.session.id}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mapping: this.mapping,
+          geometry_config: this.geometryConfig
+        })
+      })
+
+      if (!importResponse.ok) {
+        throw new Error('Erreur lors de l\'import')
+      }
+
+      const importResult = await importResponse.json()
+      console.log('[WIZARD] Import terminé:', importResult)
+
+      // 2. Déclencher auto-géocodage si des sondages ont été créés
+      if (importResult.created > 0) {
+        console.log('[WIZARD] Déclenchement auto-géocodage pour nouveaux sondages...')
+        
+        try {
+          const autoGeocodeResponse = await fetch(`${this.apiUrl}/suggestions/auto-geocode?threshold=85`, {
+            method: 'POST'
+          })
+          
+          if (autoGeocodeResponse.ok) {
+            const autoResult = await autoGeocodeResponse.json()
+            console.log('[WIZARD] Auto-géocodage terminé:', autoResult)
+          } else {
+            console.warn('[WIZARD] Auto-géocodage échoué, mais import réussi')
+          }
+        } catch (autoError) {
+          console.warn('[WIZARD] Erreur auto-géocodage:', autoError)
+          // Ne pas faire échouer l'import pour autant
+        }
+      }
+
+      // 3. Passer à l'étape suivante (résultats)
+      this.currentStep = 5
+      this.render()
+
+    } catch (error) {
+      console.error('[WIZARD] Erreur import:', error)
+      alert(`Erreur lors de l'import: ${error}`)
+    }
   }
 
   private async undoImport() {

@@ -111,8 +111,23 @@ export class SuggestionsAdmPanel {
         try {
           const raw = (s as any).candidates;
           
-          if (typeof raw === 'string') {
-            candidates = JSON.parse(raw);
+          if (!raw || raw === 'null' || raw === 'NULL') {
+            // Pas de candidates, utiliser top_code
+            candidates = [];
+          } else if (typeof raw === 'string') {
+            // Nettoyer la chaîne avant parsing
+            const cleaned = raw.trim();
+            if (cleaned === '' || cleaned === '{}' || cleaned === 'null') {
+              candidates = [];
+            } else {
+              try {
+                candidates = JSON.parse(cleaned);
+              } catch (parseErr) {
+                // Tentative de correction pour JSON mal formé
+                console.warn('[SUGGESTIONS ADM] JSON mal formé, tentative de correction:', cleaned.substring(0, 50));
+                candidates = [];
+              }
+            }
           } else if (Array.isArray(raw)) {
             candidates = raw;
           } else if (raw && typeof raw === 'object') {
@@ -120,11 +135,21 @@ export class SuggestionsAdmPanel {
           } else {
             console.warn('[SUGGESTIONS ADM] format inconnu pour candidates:', raw);
           }
+          
+          // Valider que candidates est bien un array
+          if (!Array.isArray(candidates)) {
+            console.warn('[SUGGESTIONS ADM] candidates n\'est pas un array après parsing:', candidates);
+            candidates = [];
+          }
         } catch (e) {
-          console.error('[SUGGESTIONS ADM] Error parsing candidates for', s.id, e, s);
+          console.error('[SUGGESTIONS ADM] Error parsing candidates for', s.id, e);
           candidates = [];
         }
-        const topCandidate = candidates[0] || { code: s.top_code, name: '?', score: s.top_score };
+        
+        // Construire topCandidate depuis top_code si candidates est vide
+        const topCandidate = candidates.length > 0 
+          ? candidates[0] 
+          : { code: s.top_code, name: s.top_code, score: s.top_score };
 
         return `
           <div class="suggestion-card" style="background: #1a2332; border: 1px solid #22304d; border-radius: 8px; padding: 16px; margin-bottom: 12px;">
