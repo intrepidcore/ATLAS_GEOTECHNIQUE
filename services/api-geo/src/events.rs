@@ -29,4 +29,5 @@ pub enum WsEvent {
     SuggestionRejected {
         suggestion_id: String,
     },
+    RefreshStats,
 }

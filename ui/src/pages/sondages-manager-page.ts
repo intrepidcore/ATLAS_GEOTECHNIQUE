@@ -285,26 +285,36 @@ export class SondagesManagerPage {
     const container = document.getElementById('import-content');
     if (!container) return;
 
-    // TODO: Integrate Import Wizard properly
-    // For now, show a proper message
-    container.innerHTML = `
-      <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; padding: 40px; text-align: center; background: #0a0e17;">
-        <div style="font-size: 64px; margin-bottom: 24px;">📥</div>
-        <h3 style="color: #ecf2f8; margin: 0 0 16px 0; font-size: 22px;">Import Wizard</h3>
-        <p style="color: #94a3b8; font-size: 15px; max-width: 600px; line-height: 1.8; margin-bottom: 24px;">
-          L'Import Wizard permet d'importer des sondages depuis Excel ou CSV. Il est actuellement disponible sur la carte principale.
-          Cette fonctionnalité sera intégrée dans une prochaine version.
+    try {
+      // Créer le wizard en mode embedded
+      if (!this.importWizard) {
+        this.importWizard = new ImportWizardV2('import-content', this.apiUrl);
+        console.log('[SONDAGES PAGE] Import Wizard initialisé en mode embedded');
+      }
+      
+      // Ajouter un message explicatif au-dessus
+      const header = document.createElement('div');
+      header.style.cssText = 'padding: 16px; background: #1a2332; border-bottom: 1px solid #22304d;';
+      header.innerHTML = `
+        <h3 style="margin: 0 0 8px 0; color: #ecf2f8; font-size: 18px;">📥 Import de sondages</h3>
+        <p style="margin: 0; color: #94a3b8; font-size: 13px;">
+          Importez vos sondages depuis un fichier Excel ou CSV. Le wizard vous guidera à travers les étapes de mapping et de validation.
         </p>
-        <button 
-          onclick="window.location.hash = '/'; setTimeout(() => { const btn = document.getElementById('importBtn'); if (btn) btn.click(); }, 100);"
-          style="margin-top: 24px; padding: 12px 24px; background: #4c6ef5; color: #fff; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer;"
-        >
-          Ouvrir l'Import Wizard (carte principale)
-        </button>
-      </div>
-    `;
-    
-    this.loaded.import = true;
+      `;
+      
+      container.insertBefore(header, container.firstChild);
+      
+      this.loaded.import = true;
+    } catch (e) {
+      console.error('[SONDAGES PAGE] Error loading import wizard:', e);
+      container.innerHTML = `
+        <div style="padding: 40px; text-align: center; color: #ff6b6b;">
+          <div style="font-size: 48px; margin-bottom: 16px;">⚠️</div>
+          <h3 style="margin: 0 0 8px 0;">Erreur de chargement</h3>
+          <p style="margin: 0; color: #94a3b8;">Impossible de charger l'Import Wizard</p>
+        </div>
+      `;
+    }
   }
 
   private async ensureListeLoaded() {

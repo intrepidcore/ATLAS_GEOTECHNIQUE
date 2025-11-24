@@ -254,19 +254,25 @@ pub async fn get_suggestions_stats(
     })))
 }
 
+#[derive(Debug, Deserialize)]
+pub struct AutoGeocodeParams {
+    #[serde(default = "default_threshold")]
+    threshold: f64,
+}
+
+fn default_threshold() -> f64 {
+    0.90
+}
+
 /// POST /suggestions/auto-geocode?threshold=0.90
 /// Déclenche l'auto-géocodage des suggestions avec score >= seuil
 pub async fn auto_geocode_suggestions(
     State(state): State<AppState>,
-    Query(params): Query<std::collections::HashMap<String, String>>,
+    Query(params): Query<AutoGeocodeParams>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pool;
     
-    // Récupérer le seuil (défaut 0.90)
-    let threshold: f64 = params
-        .get("threshold")
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(0.90);
+    let threshold = params.threshold;
     
     if threshold < 0.0 || threshold > 1.0 {
         return Err((
