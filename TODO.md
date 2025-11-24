@@ -325,5 +325,161 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-**Dernière mise à jour** : 2025-11-23 14:30
-**Statut global** : ✅ v2.8.3 - Parsing JSON candidates sécurisé + Layout vérifié + Build Docker OK
+## 🚀 ROADMAP v3.0 - Prochaines fonctionnalités
+
+### 1. Auto-géocodage basé sur les Suggestions ADM
+
+**Objectif** : Accepter automatiquement les suggestions ADM3 avec score élevé (≥ seuil)
+
+#### Règle métier
+- [ ] Définir seuil de score pour auto-acceptation (ex. ≥ 90%)
+- [ ] Définir mode de placement par défaut (`adm_random_cell`, etc.)
+- [ ] Documenter marquage "auto" vs "manuel" dans l'audit
+
+#### Analyse technique
+- [ ] Analyser schéma table `atlas.suggestions` (score, status, candidates)
+- [ ] Analyser schéma table `atlas.sondages` (is_geocoded, location_mode, adm3_id, geom)
+- [ ] Comprendre logique `POST /suggestions/:id/accept` (fichier `geocode_suggestions.rs`)
+- [ ] Identifier triggers/fonctions SQL (ex. `refresh_mailles_geotech`)
+
+#### Backend
+- [ ] Créer fonction SQL `atlas.auto_accept_suggestions(seuil FLOAT)` :
+  - [ ] Sélectionner suggestions `status = 'pending'` avec `score ≥ seuil`
+  - [ ] Filtrer sur `sondages.is_geocoded = false`
+  - [ ] Réutiliser logique d'acceptation existante
+  - [ ] Marquer suggestion comme `accepted`
+  - [ ] Mettre à jour sondage (is_geocoded, location_mode, geom)
+- [ ] Créer endpoint CLI/admin `POST /admin/auto-geocode?threshold=90`
+- [ ] Script one-shot pour sondages existants :
+  - [ ] Créer `scripts/auto_geocode_existing.sql`
+  - [ ] Vérifier compteurs avant/après
+  - [ ] Rafraîchir `mv_mailles_geotech`
+- [ ] Intégrer dans pipeline nouveaux sondages :
+  - [ ] Identifier points de création (Import Wizard, API POST, ETL)
+  - [ ] Appliquer règle auto-acceptation après génération suggestions
+  - [ ] Émettre event WebSocket `atlas:refresh-stats` si auto-accepté
+
+#### UI (optionnel)
+- [ ] Badge "🤖 Auto" dans onglet Suggestions ADM
+- [ ] Afficher "Mode : Automatique" dans Liste / modal détails
+
+---
+
+### 2. UX Géocodage manuel - Conserver position de scroll
+
+**Objectif** : Ne plus remonter en haut de la liste après un géocodage
+
+- [ ] Localiser fonction de rendu liste "Sondages sans géométrie"
+- [ ] Sauvegarder `scrollTop` avant rafraîchissement
+- [ ] Restaurer `scrollTop` après rafraîchissement
+- [ ] (Optionnel) Conserver surlignage du sondage sélectionné
+- [ ] Tester en géocodant plusieurs sondages d'affilée
+
+---
+
+### 3. Re-géocodage depuis l'onglet "Liste"
+
+**Règle** : Géocodage Manuel = sondages `location_mode = 'unknown'` uniquement
+
+#### UX
+- [ ] Dans onglet Liste :
+  - [ ] Si `location_mode = 'unknown'` → bouton "Géocoder"
+  - [ ] Sinon → bouton "Re-géocoder" / "Modifier la localisation"
+- [ ] Au clic sur "Géocoder / Re-géocoder" :
+  - [ ] Activer onglet "Géocodage Manuel"
+  - [ ] Définir `currentGeocodeTargetId = <id du sondage>`
+  - [ ] Liste gauche reste backlog de `location_mode = 'unknown'`
+  - [ ] Panneau droit charge le sondage ciblé (même déjà géocodé)
+
+#### Frontend
+- [ ] Ajouter state `currentGeocodeTargetId` dans `sondages-manager-page`
+- [ ] Permettre à `sondages-list-panel` d'appeler handler "ouvrir géocodage pour ce sondage"
+- [ ] Dans panneau géocodage manuel :
+  - [ ] Écouter `currentGeocodeTargetId`
+  - [ ] Charger sondage par ID et afficher localisation actuelle
+  - [ ] Permettre modification mode/position puis sauvegarder
+  - [ ] (Optionnel) Surligner dans liste gauche si sondage y apparaît
+
+#### Backend
+- [ ] Vérifier que API géocodage accepte mise à jour sondage déjà géocodé
+- [ ] Ajouter événement audit de re-géocodage (old_* vs new_*)
+
+#### Tests
+- [ ] Cas 1 : Liste → Géocoder un sondage non géocodé
+- [ ] Cas 2 : Liste → Re-géocoder un sondage géocodé
+- [ ] Vérifier bascule correcte vers onglet Géocodage Manuel
+- [ ] Vérifier liste gauche reste backlog de `unknown`
+- [ ] Vérifier panneau droit montre bon sondage
+- [ ] Vérifier badges/compteurs Liste mis à jour
+- [ ] Vérifier audit contient entrées de re-géocodage
+
+---
+
+### 4. Intégration Import Wizard dans onglet "Import"
+
+**Objectif** : Wizard complet dans le bloc central (mode embedded)
+
+- [ ] Identifier version wizard réellement utilisée :
+  - [ ] Recherche globale "Import Wizard - Étape 1/5" ou texte upload
+  - [ ] Probable : `import-bulk-wizard_v3.ts` ou `geotechnical-import-wizard.ts`
+- [ ] Factoriser wizard pour supporter deux modes :
+  - [ ] Modal (overlay plein écran depuis carte)
+  - [ ] Embedded (dans container fourni, onglet Import)
+- [ ] Onglet Import :
+  - [ ] Remplacer placeholder par version embedded du wizard
+  - [ ] Ajouter texte explicatif pour utilisateurs
+- [ ] Maintenir wizard accessible depuis carte principale
+- [ ] Tests complets upload → mapping → géométrie → preview → import
+- [ ] Vérifier apparition nouveaux sondages dans Liste/Géocodage/Suggestions
+
+---
+
+### 5. Enrichissement modal "Voir détails"
+
+**Objectif** : Afficher toutes les données géotechniques
+
+#### Contenu cible
+- [ ] Localisation avancée :
+  - [ ] Coordonnées WGS84 (lat, lon)
+  - [ ] Coordonnées UTM (X, Y - EPSG:25231)
+  - [ ] Maille : grid_code, nb sondages dans maille
+  - [ ] Bouton "Zoomer sur la carte"
+- [ ] Géocodage :
+  - [ ] `location_mode` rendu lisible (Exact GPS, Aléatoire ADM3, etc.)
+  - [ ] Origine : Manuel / Automatique
+  - [ ] Dernière suggestion acceptée : ADM3 + score
+- [ ] Données géotechniques :
+  - [ ] Atterberg : wL, wP, IP, classification GTR
+  - [ ] Granulométrie : D10, D30, D60, Cu, Cc + courbe si dispo
+  - [ ] VBS : valeur + interprétation
+  - [ ] Autres essais (penetro, densité in situ, etc.)
+- [ ] Import / Historique :
+  - [ ] Fichier source (nom Excel/CSV, ligne origine)
+  - [ ] "Créé par Import Wizard / saisi manuellement"
+  - [ ] Journal simplifié des mises à jour
+
+#### Backend
+- [ ] Identifier endpoint actuel "Voir détails"
+- [ ] Décider : enrichir route existante ou créer `GET /sondages/:id/details`
+- [ ] Réponse doit contenir toutes infos géotechniques en une fois
+- [ ] Optimiser requêtes (vue SQL agrégée ou jointures)
+
+#### Frontend
+- [ ] Conserver 4 blocs actuels (Identifiants, Localisation, Import, Audit)
+- [ ] Ajouter bloc "Essais géotechniques" avec sous-sections :
+  - [ ] Atterberg
+  - [ ] Granulométrie
+  - [ ] VBS
+  - [ ] Autres essais
+- [ ] Chaque sous-section repliable pour éviter modal interminable
+- [ ] Ajouter bouton "Zoom sur ce sondage" dans bloc Localisation
+- [ ] Gérer affichage propre si données vides ("Aucun essai VBS", etc.)
+
+#### Tests
+- [ ] Sondage très complet (beaucoup d'essais)
+- [ ] Sondage pauvre (peu ou pas de données)
+
+---
+
+**Dernière mise à jour** : 2025-11-24 05:50
+**Statut global** : ✅ v2.8.4 - Layout corrigé + Tab switching propre + Prêt pour v3.0
