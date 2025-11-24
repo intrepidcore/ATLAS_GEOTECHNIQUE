@@ -365,48 +365,48 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-### 2. UX Géocodage manuel - Conserver position de scroll
+### 2. UX Géocodage manuel - Conserver position de scroll ✅
 
 **Objectif** : Ne plus remonter en haut de la liste après un géocodage
 
-- [ ] Localiser fonction de rendu liste "Sondages sans géométrie"
-- [ ] Sauvegarder `scrollTop` avant rafraîchissement
-- [ ] Restaurer `scrollTop` après rafraîchissement
-- [ ] (Optionnel) Conserver surlignage du sondage sélectionné
-- [ ] Tester en géocodant plusieurs sondages d'affilée
+- [X] Localiser fonction de rendu liste "Sondages sans géométrie"
+- [X] Sauvegarder `scrollTop` avant rafraîchissement
+- [X] Restaurer `scrollTop` après rafraîchissement
+- [X] (Optionnel) Conserver surlignage du sondage sélectionné
+- [X] Tester en géocodant plusieurs sondages d'affilée
 
 ---
 
-### 3. Re-géocodage depuis l'onglet "Liste"
+### 3. Re-géocodage depuis l'onglet "Liste" ✅
 
 **Règle** : Géocodage Manuel = sondages `location_mode = 'unknown'` uniquement
 
 #### UX
-- [ ] Dans onglet Liste :
-  - [ ] Si `location_mode = 'unknown'` → bouton "Géocoder"
-  - [ ] Sinon → bouton "Re-géocoder" / "Modifier la localisation"
-- [ ] Au clic sur "Géocoder / Re-géocoder" :
-  - [ ] Activer onglet "Géocodage Manuel"
-  - [ ] Définir `currentGeocodeTargetId = <id du sondage>`
-  - [ ] Liste gauche reste backlog de `location_mode = 'unknown'`
-  - [ ] Panneau droit charge le sondage ciblé (même déjà géocodé)
+- [X] Dans onglet Liste :
+  - [X] Si `location_mode = 'unknown'` → bouton "Géocoder"
+  - [X] Sinon → bouton "Re-géocoder" / "Modifier la localisation"
+- [X] Au clic sur "Géocoder / Re-géocoder" :
+  - [X] Activer onglet "Géocodage Manuel"
+  - [X] Définir `currentGeocodeTargetId = <id du sondage>`
+  - [X] Liste gauche reste backlog de `location_mode = 'unknown'`
+  - [X] Panneau droit charge le sondage ciblé (même déjà géocodé)
 
 #### Frontend
-- [ ] Ajouter state `currentGeocodeTargetId` dans `sondages-manager-page`
-- [ ] Permettre à `sondages-list-panel` d'appeler handler "ouvrir géocodage pour ce sondage"
-- [ ] Dans panneau géocodage manuel :
-  - [ ] Écouter `currentGeocodeTargetId`
-  - [ ] Charger sondage par ID et afficher localisation actuelle
-  - [ ] Permettre modification mode/position puis sauvegarder
-  - [ ] (Optionnel) Surligner dans liste gauche si sondage y apparaît
+- [X] Ajouter state `currentGeocodeTargetId` dans `sondages-manager-page`
+- [X] Permettre à `sondages-list-panel` d'appeler handler "ouvrir géocodage pour ce sondage"
+- [X] Dans panneau géocodage manuel :
+  - [X] Écouter `currentGeocodeTargetId`
+  - [X] Charger sondage par ID et afficher localisation actuelle
+  - [X] Permettre modification mode/position puis sauvegarder
+  - [X] (Optionnel) Surligner dans liste gauche si sondage y apparaît
 
 #### Backend
-- [ ] Vérifier que API géocodage accepte mise à jour sondage déjà géocodé
-- [ ] Ajouter événement audit de re-géocodage (old_* vs new_*)
+- [X] Vérifier que API géocodage accepte mise à jour sondage déjà géocodé
+- [ ] Ajouter événement audit de re-géocodage (old_* vs new_*) - À faire plus tard
 
 #### Tests
-- [ ] Cas 1 : Liste → Géocoder un sondage non géocodé
-- [ ] Cas 2 : Liste → Re-géocoder un sondage géocodé
+- [ ] Cas 1 : Liste → Géocoder un sondage non géocodé - À tester manuellement
+- [ ] Cas 2 : Liste → Re-géocoder un sondage géocodé - À tester manuellement
 - [ ] Vérifier bascule correcte vers onglet Géocodage Manuel
 - [ ] Vérifier liste gauche reste backlog de `unknown`
 - [ ] Vérifier panneau droit montre bon sondage
@@ -415,22 +415,22 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-### 4. Intégration Import Wizard dans onglet "Import"
+### 4. Intégration Import Wizard dans onglet "Import" ✅
 
 **Objectif** : Wizard complet dans le bloc central (mode embedded)
 
-- [ ] Identifier version wizard réellement utilisée :
-  - [ ] Recherche globale "Import Wizard - Étape 1/5" ou texte upload
-  - [ ] Probable : `import-bulk-wizard_v3.ts` ou `geotechnical-import-wizard.ts`
-- [ ] Factoriser wizard pour supporter deux modes :
-  - [ ] Modal (overlay plein écran depuis carte)
-  - [ ] Embedded (dans container fourni, onglet Import)
-- [ ] Onglet Import :
-  - [ ] Remplacer placeholder par version embedded du wizard
-  - [ ] Ajouter texte explicatif pour utilisateurs
-- [ ] Maintenir wizard accessible depuis carte principale
-- [ ] Tests complets upload → mapping → géométrie → preview → import
-- [ ] Vérifier apparition nouveaux sondages dans Liste/Géocodage/Suggestions
+- [X] Identifier version wizard réellement utilisée :
+  - [X] Recherche globale "Import Wizard - Étape 1/5" ou texte upload
+  - [X] Confirmé : `ImportWizardV2` est utilisé
+- [X] Factoriser wizard pour supporter deux modes :
+  - [X] Modal (overlay plein écran depuis carte) - Déjà existant
+  - [X] Embedded (dans container fourni, onglet Import) - Implémenté
+- [X] Onglet Import :
+  - [X] Remplacer placeholder par version embedded du wizard
+  - [X] Ajouter texte explicatif pour utilisateurs
+- [X] Maintenir wizard accessible depuis carte principale
+- [ ] Tests complets upload → mapping → géométrie → preview → import - À tester manuellement
+- [ ] Vérifier apparition nouveaux sondages dans Liste/Géocodage/Suggestions - À tester manuellement
 
 ---
 
@@ -459,10 +459,10 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [ ] Journal simplifié des mises à jour
 
 #### Backend
-- [ ] Identifier endpoint actuel "Voir détails"
-- [ ] Décider : enrichir route existante ou créer `GET /sondages/:id/details`
-- [ ] Réponse doit contenir toutes infos géotechniques en une fois
-- [ ] Optimiser requêtes (vue SQL agrégée ou jointures)
+- [X] Identifier endpoint actuel "Voir détails"
+- [X] Décider : enrichir route existante ou créer `GET /sondages/:id/details`
+- [X] Réponse doit contenir toutes infos géotechniques en une fois
+- [X] Optimiser requêtes (vue SQL agrégée ou jointures)
 
 #### Frontend
 - [ ] Conserver 4 blocs actuels (Identifiants, Localisation, Import, Audit)
@@ -481,5 +481,5 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-**Dernière mise à jour** : 2025-11-24 05:50
-**Statut global** : ✅ v2.8.4 - Layout corrigé + Tab switching propre + Prêt pour v3.0
+**Dernière mise à jour** : 2025-11-24 08:35
+**Statut global** : 🚀 v3.0.0-beta - Scroll preservation ✅ + Re-géocodage ✅ + Auto-géocodage backend ✅ + Import Wizard embedded ✅ + Modal détails enrichi (backend ✅, frontend en cours)

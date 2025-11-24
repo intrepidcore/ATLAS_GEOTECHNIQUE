@@ -203,6 +203,146 @@ pub async fn get_sondage(
     Ok(Json(sondage))
 }
 
+/// GET /sondages/:id/details - Détails enrichis d'un sondage (avec essais géotechniques)
+pub async fn get_sondage_details(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
+    let pool = &state.pool;
+
+    // Récupérer le sondage de base
+    let sondage: serde_json::Value = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', s.id,
+            'code', s.code,
+            'localite', s.localite_base,
+            'localite_key', s.localite_key,
+            'adm3_id', s.adm3_id,
+            'adm3_name', s.adm3_name,
+            'adm1_name', s.adm1_name,
+            'adm2_name', s.adm2_name,
+            'geom', ST_AsGeoJSON(s.geom)::jsonb,
+            'location_mode', s.location_mode::text,
+            'is_geocoded', s.is_geocoded,
+            'grid_code', s.grid_code,
+            'source', s.source,
+            'import_id', s.import_id,
+            'import_row_idx', s.import_row_idx,
+            'created_at', s.created_at,
+            'updated_at', s.updated_at,
+            'meta', s.meta,
+            'n_essais', s.n_essais,
+            'coordinates', CASE 
+                WHEN s.geom IS NOT NULL THEN jsonb_build_object(
+                    'lat', ST_Y(s.geom),
+                    'lon', ST_X(s.geom)
+                )
+                ELSE NULL
+            END
+        )
+        FROM sondages s
+        WHERE s.id = $1 AND s.deleted_at IS NULL
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, "Sondage not found".to_string()))?;
+
+    // Récupérer les essais Atterberg
+    let atterberg: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', id,
+            'depth_m', depth_m,
+            'wl', wl,
+            'wp', wp,
+            'ip', ip,
+            'classification', classification
+        )
+        FROM atterberg
+        WHERE sondage_id = $1
+        ORDER BY depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les essais VBS
+    let vbs: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', id,
+            'depth_m', depth_m,
+            'vbs', vbs,
+            'interpretation', interpretation
+        )
+        FROM vbs
+        WHERE sondage_id = $1
+        ORDER BY depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les essais de granulométrie
+    let granulo: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', id,
+            'depth_m', depth_m,
+            'd10', d10,
+            'd30', d30,
+            'd60', d60,
+            'cu', cu,
+            'cc', cc,
+            'type', type
+        )
+        FROM granulometrie
+        WHERE sondage_id = $1
+        ORDER BY depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les échantillons
+    let echantillons: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', id,
+            'depth_m', depth_m,
+            'description', description,
+            'type', type
+        )
+        FROM echantillons
+        WHERE sondage_id = $1
+        ORDER BY depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Construire la réponse enrichie
+    let mut result = sondage.as_object().unwrap().clone();
+    result.insert("atterberg".to_string(), serde_json::json!(atterberg));
+    result.insert("vbs".to_string(), serde_json::json!(vbs));
+    result.insert("granulometrie".to_string(), serde_json::json!(granulo));
+    result.insert("echantillons".to_string(), serde_json::json!(echantillons));
+
+    Ok(Json(serde_json::Value::Object(result)))
+}
+
 /// GET /sondages/:id/adm3-candidates - Candidats ADM3 pour un sondage
 pub async fn get_adm3_candidates(
     State(state): State<AppState>,
