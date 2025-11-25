@@ -215,7 +215,7 @@ pub async fn get_coverage_mailles(
     let pool = &state.pool;
 
     // Construire la requête avec filtre bbox optionnel
-    // Utilise mv_mailles_geotech qui inclut le spread ADM3
+    // Utilise mv_mailles_geotech qui inclut le spread ADM3 et les compteurs d'essais par type
     let mut query = r#"
         SELECT code,
                ST_AsGeoJSON(ST_Transform(geom,4326)) AS g,
@@ -223,14 +223,12 @@ pub async fn get_coverage_mailles(
                adm2_name,
                adm3_name,
                (nb_sondages_real + nb_sondages_spread)::bigint AS n_sondages,
-               0::bigint AS n_essais,
-               NULL::numeric AS spt_n_avg,
-               NULL::numeric AS qc_avg,
-               0::bigint AS n_depth_0_5,
-               0::bigint AS n_depth_5_10,
-               0::bigint AS n_depth_10plus,
-               0::bigint AS n_spt_n,
-               0::bigint AS n_qc,
+               COALESCE(n_echantillons, 0)::bigint AS n_echantillons,
+               COALESCE(n_essais, 0)::bigint AS n_essais,
+               COALESCE(n_atterberg, 0)::bigint AS n_atterberg,
+               COALESCE(n_vbs, 0)::bigint AS n_vbs,
+               COALESCE(n_physiques, 0)::bigint AS n_physiques,
+               COALESCE(n_classif, 0)::bigint AS n_classif,
                has_data,
                has_exact_location,
                has_random_location
@@ -270,14 +268,12 @@ pub async fn get_coverage_mailles(
         let adm2_name: Option<String> = r.try_get("adm2_name").ok();
         let adm3_name: Option<String> = r.try_get("adm3_name").ok();
         let n_sondages: i64 = r.get("n_sondages");
-        let n_essais: i64 = r.get("n_essais");
-        let spt_n_avg: Option<sqlx::types::BigDecimal> = r.try_get("spt_n_avg").ok().flatten();
-        let qc_avg: Option<sqlx::types::BigDecimal> = r.try_get("qc_avg").ok().flatten();
-        let n_depth_0_5: i64 = r.try_get("n_depth_0_5").unwrap_or(0);
-        let n_depth_5_10: i64 = r.try_get("n_depth_5_10").unwrap_or(0);
-        let n_depth_10plus: i64 = r.try_get("n_depth_10plus").unwrap_or(0);
-        let n_spt_n: i64 = r.try_get("n_spt_n").unwrap_or(0);
-        let n_qc: i64 = r.try_get("n_qc").unwrap_or(0);
+        let n_echantillons: i64 = r.try_get("n_echantillons").unwrap_or(0);
+        let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
+        let n_atterberg: i64 = r.try_get("n_atterberg").unwrap_or(0);
+        let n_vbs: i64 = r.try_get("n_vbs").unwrap_or(0);
+        let n_physiques: i64 = r.try_get("n_physiques").unwrap_or(0);
+        let n_classif: i64 = r.try_get("n_classif").unwrap_or(0);
         let has_data = n_sondages > 0;
         let has_exact_location: bool = r.try_get("has_exact_location").unwrap_or(false);
         let has_random_location: bool = r.try_get("has_random_location").unwrap_or(false);
@@ -288,7 +284,12 @@ pub async fn get_coverage_mailles(
                 "has_exact_location": has_exact_location,
                 "has_random_location": has_random_location,
                 "n_sondages": n_sondages,
-                "n_essais": n_essais
+                "n_echantillons": n_echantillons,
+                "n_essais": n_essais,
+                "n_atterberg": n_atterberg,
+                "n_vbs": n_vbs,
+                "n_physiques": n_physiques,
+                "n_classif": n_classif
             });
             if let Some(adm1) = adm1_name {
                 props["adm1_name"] = serde_json::Value::String(adm1);
@@ -299,21 +300,6 @@ pub async fn get_coverage_mailles(
             if let Some(adm3) = adm3_name {
                 props["adm3_name"] = serde_json::Value::String(adm3);
             }
-            if let Some(spt) = spt_n_avg {
-                if let Ok(val) = spt.to_string().parse::<f64>() {
-                    props["spt_n_avg"] = serde_json::Value::from(val);
-                }
-            }
-            if let Some(qc) = qc_avg {
-                if let Ok(val) = qc.to_string().parse::<f64>() {
-                    props["qc_avg"] = serde_json::Value::from(val);
-                }
-            }
-            props["n_depth_0_5"] = serde_json::Value::from(n_depth_0_5);
-            props["n_depth_5_10"] = serde_json::Value::from(n_depth_5_10);
-            props["n_depth_10plus"] = serde_json::Value::from(n_depth_10plus);
-            props["n_spt_n"] = serde_json::Value::from(n_spt_n);
-            props["n_qc"] = serde_json::Value::from(n_qc);
             features.push(serde_json::json!({
                 "type":"Feature",
                 "geometry": geom,

@@ -213,6 +213,76 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
             <div><strong>Sondages:</strong> <span id="statSondages">0</span></div>
             <div><strong>Essais:</strong> <span id="statEssais">0</span></div>
           </div>
+          
+          <!-- Répartition par type d'essai -->
+          <div id="essaisTypeStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+            <div style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:600">📈 Répartition des essais</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
+              <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Atterberg</span>
+                <span id="statAtterberg" style="color:#51cf66;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">VBS</span>
+                <span id="statVbs" style="color:#4c6ef5;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Physiques</span>
+                <span id="statPhysiques" style="color:#f4b740;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Classif.</span>
+                <span id="statClassif" style="color:#e85d68;font-weight:600">0</span>
+              </div>
+            </div>
+            <!-- Mini graphique de répartition -->
+            <div id="essaisTypeBar" style="margin-top:8px;height:8px;background:#0a1018;border-radius:4px;overflow:hidden;display:flex">
+              <div id="barAtterberg" style="background:#51cf66;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barVbs" style="background:#4c6ef5;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barPhysiques" style="background:#f4b740;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barClassif" style="background:#e85d68;height:100%;width:0%;transition:width 0.3s"></div>
+            </div>
+          </div>
+          
+          <!-- Profondeurs d'investigation -->
+          <div id="depthStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+            <div style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:600">📏 Profondeurs d'investigation (global)</div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:8px">
+              <span style="color:var(--muted)">Min: <strong id="depthMin" style="color:var(--text)">—</strong></span>
+              <span style="color:var(--muted)">Moy: <strong id="depthMoy" style="color:var(--text)">—</strong></span>
+              <span style="color:var(--muted)">Max: <strong id="depthMax" style="color:var(--text)">—</strong></span>
+            </div>
+            <!-- Histogramme Chart.js -->
+            <div style="height:80px;position:relative">
+              <canvas id="depthChartCanvas"></canvas>
+            </div>
+          </div>
+          
+          <!-- Indicateur d'argilosité -->
+          <div id="argilositeStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+            <div style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:600">💧 Indicateur d'argilosité</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px">
+              <div style="text-align:center;padding:6px;background:#0a1018;border-radius:4px">
+                <div style="color:var(--muted);font-size:9px">VBS moy.</div>
+                <div id="vbsMoyen" style="color:#4c6ef5;font-weight:700;font-size:14px">—</div>
+                <div style="color:var(--muted);font-size:9px">g/100g</div>
+              </div>
+              <div style="text-align:center;padding:6px;background:#0a1018;border-radius:4px">
+                <div style="color:var(--muted);font-size:9px">% argileux</div>
+                <div id="pctArgileux" style="color:#e85d68;font-weight:700;font-size:14px">—</div>
+                <div style="color:var(--muted);font-size:9px">VBS > 2.5</div>
+              </div>
+              <div style="text-align:center;padding:6px;background:#0a1018;border-radius:4px">
+                <div style="color:var(--muted);font-size:9px">IP moy.</div>
+                <div id="ipMoyen" style="color:#51cf66;font-weight:700;font-size:14px">—</div>
+                <div style="color:var(--muted);font-size:9px">%</div>
+              </div>
+            </div>
+            <!-- Interprétation automatique -->
+            <div id="argilositeInterpretation" style="margin-top:8px;padding:6px;background:#0a1018;border-radius:4px;font-size:10px;color:var(--muted);font-style:italic;text-align:center">
+              —
+            </div>
+          </div>
         </div>
 
         <!-- Détection de Doublons -->
@@ -270,6 +340,12 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           <!-- Alerte Spread -->
           <div id="spreadAlert" class="alert-spread" style="display:none">
             🔄 Valeurs agrégées depuis <strong id="spreadSource">—</strong> — diffusion ADM3
+          </div>
+
+          <!-- Synthèse géotechnique automatique -->
+          <div id="ficheSummary" style="margin:12px 0;padding:10px;background:#0f172a;border-radius:8px;border-left:3px solid var(--accent);font-size:11px;color:var(--text);line-height:1.5;font-style:italic">
+            <span style="color:var(--accent);font-weight:600">📝 Synthèse :</span>
+            <span id="ficheSummaryText">—</span>
           </div>
 
           <!-- Onglets -->

@@ -31,6 +31,7 @@ mod routes;
 mod sondages;
 mod sondages_geocode;
 mod sql_sanitizer;
+mod stats_global;
 mod websocket;
 
 use metrics_handler::metrics_handler;
@@ -174,6 +175,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/cells/:code/labs", get(cells_labs::get_cell_labs))
         .route("/cells/:code/complete", get(cells_labs::get_cell_complete))
         .route("/cells/:code/test-kpi", get(cells_kpi::test_kpi_endpoint))
+        // Stats globales agrégées (panneau Vue globale)
+        .route("/stats/global", get(stats_global::get_global_stats))
         .route("/adm1", get(surveys::list_adm1))
         .route("/adm2", get(surveys::list_adm2))
         .route("/adm3/test", get(surveys_adm::test_adm3_endpoint))

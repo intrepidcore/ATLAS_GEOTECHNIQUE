@@ -234,7 +234,7 @@ pub async fn get_cell_complete(
         Ok(Some(r)) => {
             CompleteKpi {
                 n_sondages: r.n_sondages,
-                n_echantillons: r.n_essais, // Compat
+                n_echantillons: r.n_echantillons,
                 n_essais: r.n_essais,
                 pct_spread: r.pct_spread,
                 depth_max_m: r.depth_max_m,
@@ -262,14 +262,16 @@ pub async fn get_cell_complete(
         }
     };
 
-    // 2) Overview - utilise echantillons + essais_atterberg
+    // 2) Overview - utilise jointure spatiale maille -> sondages -> echantillons
+    // Note: On utilise st_contains pour lier les sondages aux mailles (même logique que mv_mailles_geotech)
     let atterberg = sqlx::query_as::<_, AtterbergPoint>(
         r#"
         SELECT e.depth_m::float8, ea.wl::float8, ea.wp::float8
-        FROM echantillons e
-        JOIN sondages s ON s.id = e.sondage_id
-        JOIN essais_atterberg ea ON ea.echantillon_id = e.id::text
-        WHERE s.grid_code = $1 AND ea.wl IS NOT NULL
+        FROM mailles m
+        JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
+        JOIN echantillons e ON e.sondage_id = s.id
+        JOIN essais_atterberg ea ON ea.echantillon_id = e.id
+        WHERE m.code = $1 AND ea.wl IS NOT NULL
         ORDER BY e.depth_m
         "#,
     )
@@ -281,10 +283,11 @@ pub async fn get_cell_complete(
     let vbs = sqlx::query_as::<_, VbsPoint>(
         r#"
         SELECT e.depth_m::float8, ev.vbs::float8
-        FROM echantillons e
-        JOIN sondages s ON s.id = e.sondage_id
-        JOIN essais_vbs ev ON ev.echantillon_id = e.id::text
-        WHERE s.grid_code = $1 AND ev.vbs IS NOT NULL
+        FROM mailles m
+        JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
+        JOIN echantillons e ON e.sondage_id = s.id
+        JOIN essais_vbs ev ON ev.echantillon_id = e.id
+        WHERE m.code = $1 AND ev.vbs IS NOT NULL
         ORDER BY e.depth_m
         "#,
     )
@@ -296,9 +299,10 @@ pub async fn get_cell_complete(
     let depth_hist = sqlx::query_as::<_, DepthBin>(
         r#"
         SELECT width_bucket(e.depth_m, 0, 30, 6) AS bin, COUNT(*)::bigint AS n
-        FROM echantillons e
-        JOIN sondages s ON s.id = e.sondage_id
-        WHERE s.grid_code = $1
+        FROM mailles m
+        JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
+        JOIN echantillons e ON e.sondage_id = s.id
+        WHERE m.code = $1
         GROUP BY bin
         ORDER BY bin
         "#,
@@ -308,29 +312,158 @@ pub async fn get_cell_complete(
     .await
     .unwrap_or_default();
 
-    // 3) Échantillons complets - utilise echantillons + essais
-    let samples: Vec<SampleComplete> = vec![]; // Simplifié pour l'instant - retourne vide
+    // 3) Échantillons complets avec tous les essais
+    let samples_rows = sqlx::query(
+        r#"
+        SELECT 
+            e.id,
+            e.depth_m::float8 AS depth_m,
+            ea.wl::float8 AS att_wl,
+            ea.wp::float8 AS att_wp,
+            ev.vbs::float8 AS vbs_val,
+            ep.densite_absolue_gcm3::float8 AS phys_densite,
+            ep.teneur_eau_pct::float8 AS phys_teneur_eau,
+            ec.systeme AS classif_systeme,
+            ec.classe AS classif_classe
+        FROM mailles m
+        JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
+        JOIN echantillons e ON e.sondage_id = s.id
+        LEFT JOIN essais_atterberg ea ON ea.echantillon_id = e.id
+        LEFT JOIN essais_vbs ev ON ev.echantillon_id = e.id
+        LEFT JOIN essais_physiques ep ON ep.echantillon_id = e.id
+        LEFT JOIN essais_classif ec ON ec.echantillon_id = e.id AND ec.deleted_at IS NULL
+        WHERE m.code = $1
+        ORDER BY e.depth_m
+        "#,
+    )
+    .bind(&code)
+    .fetch_all(pool)
+    .await;
 
-    // 4) Sondages (avec badge ADM random cell)
+    let samples_rows = match samples_rows {
+        Ok(rows) => {
+            tracing::debug!(code=%code, count=rows.len(), "Fetched samples rows");
+            rows
+        }
+        Err(e) => {
+            tracing::error!(code=%code, error=?e, "Failed to fetch samples");
+            vec![]
+        }
+    };
+
+    let samples: Vec<SampleComplete> = samples_rows
+        .into_iter()
+        .map(|row| {
+            let att_wl: Option<f64> = row.try_get("att_wl").ok();
+            let att_wp: Option<f64> = row.try_get("att_wp").ok();
+            let vbs_val: Option<f64> = row.try_get("vbs_val").ok();
+            let phys_densite: Option<f64> = row.try_get("phys_densite").ok();
+            let phys_teneur_eau: Option<f64> = row.try_get("phys_teneur_eau").ok();
+            let classif_systeme: Option<String> = row.try_get("classif_systeme").ok();
+            let classif_classe: Option<String> = row.try_get("classif_classe").ok();
+
+            let atterberg = if att_wl.is_some() || att_wp.is_some() {
+                Some(serde_json::json!({
+                    "wl": att_wl,
+                    "wp": att_wp,
+                    "ip": att_wl.zip(att_wp).map(|(wl, wp)| wl - wp)
+                }))
+            } else {
+                None
+            };
+
+            let vbs = vbs_val.map(|v| serde_json::json!({ "vbs": v }));
+
+            let physiques = if phys_densite.is_some() || phys_teneur_eau.is_some() {
+                Some(Physiques {
+                    densite_absolue_gcm3: phys_densite,
+                    teneur_eau_pct: phys_teneur_eau,
+                    source: None,
+                })
+            } else {
+                None
+            };
+
+            let classif = if classif_systeme.is_some() || classif_classe.is_some() {
+                let item = ClassifItem {
+                    class: classif_classe.unwrap_or_default(),
+                    reason: None,
+                };
+                let mut c = Classif {
+                    aashto: None,
+                    uscs: None,
+                    gtr: None,
+                };
+                match classif_systeme.as_deref() {
+                    Some("GTR") => c.gtr = Some(vec![item]),
+                    Some("USCS") => c.uscs = Some(vec![item]),
+                    Some("AASHTO") => c.aashto = Some(vec![item]),
+                    _ => c.gtr = Some(vec![item]), // default
+                }
+                Some(c)
+            } else {
+                None
+            };
+
+            SampleComplete {
+                id: row.try_get("id").unwrap(),
+                depth_m: row.try_get("depth_m").unwrap_or(0.0),
+                atterberg,
+                vbs,
+                physiques,
+                granulo: None,
+                proctor: None,
+                swelling: None,
+                classif,
+            }
+        })
+        .collect();
+
+    // 4) Sondages (avec badge ADM random cell) - jointure spatiale
     let survey_rows = sqlx::query(
         r#"
         SELECT 
           s.id,
           s.code AS code_site,
           s.location_mode AS mode,
-          s.grid_code,
+          s.date::text AS date_str,
+          a3.adm3_fr AS adm3_name,
           COUNT(DISTINCT e.id)::bigint AS samples,
-          COUNT(DISTINCT e.id)::bigint AS tests
-        FROM sondages s
+          (
+            SELECT COUNT(*) FROM echantillons e2
+            JOIN essais_atterberg ea ON ea.echantillon_id = e2.id
+            WHERE e2.sondage_id = s.id
+          ) + (
+            SELECT COUNT(*) FROM echantillons e2
+            JOIN essais_vbs ev ON ev.echantillon_id = e2.id
+            WHERE e2.sondage_id = s.id
+          ) + (
+            SELECT COUNT(*) FROM echantillons e2
+            JOIN essais_physiques ep ON ep.echantillon_id = e2.id
+            WHERE e2.sondage_id = s.id
+          ) AS tests
+        FROM mailles m
+        JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
         LEFT JOIN echantillons e ON e.sondage_id = s.id
-        WHERE s.grid_code = $1
-        GROUP BY s.id, s.code, s.location_mode, s.grid_code
+        LEFT JOIN adm3 a3 ON a3.gid = s.adm3_id
+        WHERE m.code = $1
+        GROUP BY s.id, s.code, s.location_mode, s.date, a3.adm3_fr
         "#,
     )
     .bind(&code)
     .fetch_all(pool)
-    .await
-    .unwrap_or_default();
+    .await;
+
+    let survey_rows = match survey_rows {
+        Ok(rows) => {
+            tracing::debug!(code=%code, count=rows.len(), "Fetched survey rows");
+            rows
+        }
+        Err(e) => {
+            tracing::error!(code=%code, error=?e, "Failed to fetch surveys");
+            vec![]
+        }
+    };
 
     let surveys: Vec<SurveyInfo> = survey_rows
         .into_iter()
@@ -348,8 +481,8 @@ pub async fn get_cell_complete(
                 id: row.try_get("id").unwrap(),
                 code_site: row.try_get("code_site").ok(),
                 mode,
-                date: None,
-                adm3_code: None,
+                date: row.try_get("date_str").ok(),
+                adm3_code: row.try_get("adm3_name").ok(),
                 samples: row.try_get("samples").unwrap_or(0),
                 tests: row.try_get("tests").unwrap_or(0),
                 badge,

@@ -612,5 +612,151 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-**Dernière mise à jour** : 2025-11-25 12:45
-**Statut global** : 🚀 v3.3.0 - Roadmap v3.3 complète ✅ (Données géotech + Badges AUTO/MANUEL + UX Liste + Carte zoom + Wizards)
+### 🚧 ROADMAP v3.6 - Panneau Ingénieur Propre (En cours)
+
+**Objectif** : Interface orientée ingénieur avec séparation claire global/maille et synthèse toujours présente
+
+---
+
+#### 🔧 Chantier 1 : Nettoyer le panneau "Statistiques (filtrées)" ⏳
+
+##### 1.1 Répartition des essais
+- [ ] Retirer "Physiques" de l'affichage (garder en API)
+- [ ] Afficher uniquement : Atterberg | VBS | Classif
+- [ ] Barre colorée avec 3 segments seulement
+
+##### 1.2 Profondeurs d'investigation (global)
+- [ ] Renommer en **"📏 Profondeurs d'investigation (global – filtres ADM)"**
+- [ ] Garder histogramme global Chart.js
+- [ ] Ajouter sous-titre : "Calculé sur X échantillons filtrés"
+
+##### 1.3 Indicateur d'argilosité (global)
+- [ ] Renommer en **"💧 Indicateur d'argilosité (global – filtres ADM)"**
+- [ ] Conserver phrase d'interprétation
+- [ ] Ajouter sous-titre : "Calculé sur X échantillons / Y essais filtrés"
+
+##### 1.4 Légende – adapter aux vraies couleurs
+- [ ] Remplacer légende actuelle par 3 lignes :
+  - `mailles avec sondages (localisation exacte)` → couleur has_exact
+  - `mailles avec sondages (ADM / random cell)` → couleur has_random
+  - `mailles sans sondages` → couleur no-data
+
+---
+
+#### 🧱 Chantier 2 : Nouvelle structure fiche maille (sans onglets) ⏳
+
+##### 2.0 État initial
+- [ ] Message "Cliquez sur une maille pour afficher la fiche géotechnique" quand aucune maille sélectionnée
+
+##### 2.1 En-tête – Identité maille
+- [ ] Code maille (badge)
+- [ ] Chemin ADM : `Région > Préfecture > Commune`
+- [ ] Badge données : `avec données` / `sans données`
+- [ ] Badge localisation : `exact` / `adm_random_cell`
+
+##### 2.2 Instrumentation (KPI)
+- [ ] 4 KPI : Sondages | Échantillons | Essais | (retirer % spread si = 0)
+- [ ] Ligne résumé : "Données issues de X sondage(s), Y échantillon(s), Z essai(s)"
+
+##### 2.3 Profondeur d'investigation – maille
+- [ ] Calculer min/max/moy depuis `samples[]` ou `overview.depth_hist`
+- [ ] Mini histogramme local (0-3 / 3-6 / 6-10 / >10m)
+- [ ] Backend : ajouter `depth_stats_cell` dans `/cells/{code}/complete`
+
+##### 2.4 Essais par type – maille
+- [ ] Compteurs dérivés de `samples[]` :
+  - Atterberg : count(sample.atterberg != null)
+  - VBS : count(sample.vbs != null)
+  - Classif : count(sample.classif != null)
+  - Proctor / Granulo / Gonflement : plus tard
+- [ ] Affichage : `Atterberg: 0 | VBS: 3 | Classif: 0` (0 en gris/italic)
+
+##### 2.5 Indicateurs d'argilosité – maille
+- [ ] Calculer VBS_moy depuis `overview.vbs[]`
+- [ ] Calculer % argileux (VBS > 2.5) pour la maille
+- [ ] IP_moy si Atterberg disponible
+- [ ] Backend : ajouter `argilosite_cell` dans `/cells/{code}/complete`
+
+##### 2.6 Liste des sondages de la maille
+- [ ] Afficher depuis `surveys[]` :
+  - code_site
+  - mode (exact / adm_random_cell)
+  - samples count
+  - tests count
+
+##### 2.7 Échantillons & essais (bloc repliable)
+- [ ] Tableau : Profondeur | VBS | IP | remarques
+- [ ] Section repliable (fermée par défaut)
+
+##### 2.8 Mailles voisines (optionnel)
+- [ ] Garder bloc existant, re-stylé
+- [ ] Format : `↑ TG-xxxx à 1.2 km – Sondages: 1, Essais: 9`
+
+---
+
+#### 🧠 Chantier 3 : Synthèse automatique TOUJOURS présente ⏳
+
+**Objectif** : Ne plus jamais afficher "Pas encore de synthèse disponible"
+
+##### 3.1 Logique 3 niveaux dans `cell-summary.ts`
+- [ ] **Niveau 3 – Complet** (profondeur + VBS_moy ou IP_moy) :
+  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais VBS.
+  > Investigations entre 1 et 2 m (moy. 1.5 m). Sols globalement argileux (VBS moyen 4.3 g/100g) – plasticité moyenne à élevée."
+
+- [ ] **Niveau 2 – Intermédiaire** (profondeur OU argilosité) :
+  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais.
+  > Profondeurs d'investigation : 1–2 m, maille peu explorée en profondeur."
+
+- [ ] **Niveau 1 – Minimal** (seulement KPI) :
+  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais.
+  > Pas encore d'indicateurs synthétiques (VBS, limites d'Atterberg, etc.)."
+
+##### 3.2 Implémentation
+- [ ] Modifier `buildCellSummary()` pour ne jamais retourner null
+- [ ] Commencer par niveau 3, descendre si données manquantes
+- [ ] Retirer message "Pas encore de synthèse…" de l'UI
+
+---
+
+#### 🗄️ Chantier 4 : Backend – ajustements minimum ⏳
+
+##### 4.1 `/cells/{code}/complete` – enrichir réponse
+- [ ] Ajouter `depth_stats_cell` : { min_m, max_m, moy_m }
+- [ ] Ajouter `argilosite_cell` : { vbs_moyen, pct_argileux, ip_moyen }
+- [ ] Calculer en Rust depuis données existantes (pas de nouvelle vue SQL)
+
+##### 4.2 `/stats/global` – RAS
+- [X] Déjà OK : compteurs, histogramme, argilosité
+- [ ] Juste s'assurer que les labels UI mentionnent "(global)"
+
+##### 4.3 Légende
+- [ ] Pas de changement backend, uniquement UI
+
+---
+
+#### ✅ Résumé actions concrètes
+
+| Priorité | Action | Fichier(s) |
+|----------|--------|------------|
+| 1 | Retirer "Physiques" de répartition essais | `index.html`, `global-stats.ts` |
+| 2 | Renommer titres avec "(global – filtres ADM)" | `index.html` |
+| 3 | Adapter légende 3 couleurs | `index.html`, `main.ts` |
+| 4 | Supprimer onglets fiche maille | `index.html`, `main.ts` |
+| 5 | Créer nouvelle structure fiche maille | `main.ts` |
+| 6 | Backend : ajouter `depth_stats_cell` + `argilosite_cell` | `cells_labs.rs` |
+| 7 | Synthèse 3 niveaux (jamais null) | `cell-summary.ts` |
+| 8 | Retirer % spread si = 0 | `main.ts` |
+
+---
+
+#### Note sur % SPREAD
+
+Le KPI "% spread" représente la part de données "diffusées/virtuelles" dans une maille.
+- **Aujourd'hui** : toutes les données viennent de sondages réels → % spread = 0% partout
+- **Action** : masquer ce KPI tant que `nb_sondages_spread = 0`
+- **Plus tard** : réactiver quand pipeline de diffusion ADM3/IA sera en place
+
+---
+
+**Dernière mise à jour** : 2025-11-25 21:15
+**Statut global** : 🚀 v3.6.0 - Panneau ingénieur en cours (4 chantiers définis)

@@ -17,6 +17,7 @@ import { ImportWizardV2 } from './import-wizard-v2'
 import { APP_VERSION } from './version'
 import { initAccordions, initDirectButtons, initKeyboardShortcuts, initFilterListeners, initCloseMailleActions, showMailleActions } from './right-panel'
 import { renderPhysiques, renderClassif, renderSurveys, type CellCompleteOut } from './cell-complete-types'
+import { buildCellSummary } from './cell-summary'
 import { CONFIG } from './config'
 import { SondagesModal } from './modal/sondages-modal'
 import { openDbManager } from './db-manager'
@@ -25,6 +26,18 @@ import { httpJSON } from './utils/http'
 import { initRealtime, onWsEvent } from './realtime'
 import { router } from './router'
 import { SondagesManagerPage } from './pages/sondages-manager-page'
+import { getGridFeatureStyle, COLORS, WEIGHT, OPACITY, CELL_SELECTED_STYLE, GRID_HOVER_STYLE } from './map-style'
+import { 
+  currentFilters, 
+  filteredStats,
+  syncFiltersFromDOM, 
+  featureMatchesFilters, 
+  computeFilteredStats, 
+  updateStatsDOM,
+  notifyFilterChange,
+  resetFilters as resetFiltersState
+} from './filters-state'
+import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -173,51 +186,56 @@ function setKpis(total: number, withData: number) {
   if (b) b.innerHTML = `<span class="dot" style="background:${withData > 0 ? 'var(--ok)' : 'var(--warn)'}"></span> Grille`
 }
 
-// --- Leaflet styles ---
+// --- Leaflet styles (centralisés dans map-style.ts) ---
 function styleFeature(f: any) {
-  const has = !!f.properties?.has_data
-  const hasExact = !!f.properties?.has_exact_location  // Sondages avec GPS exact
-  const hasRandom = !!f.properties?.has_random_location // Sondages avec position aléatoire
-  const zoom = map.getZoom()
-  
-  // Contours dynamiques selon le zoom
-  const baseWeight = has ? 1.2 : 0.5
-  const weight = zoom < 10 ? baseWeight : zoom < 12 ? baseWeight * 1.5 : baseWeight * 2
-  
-  // Couleurs selon le type de localisation
-  let fillColor = '#cfd8e3' // Gris par défaut (sans données)
-  if (hasExact && hasRandom) {
-    fillColor = '#51cf66' // Vert si au moins un exact (priorité au GPS)
-  } else if (hasExact) {
-    fillColor = '#51cf66' // Vert pour GPS exact
-  } else if (hasRandom) {
-    fillColor = '#4c6ef5' // Bleu pour position aléatoire
-  } else if (has) {
-    fillColor = '#e85d68' // Rouge pour données sans géométrie
-  }
-  
-  return {
-    color: has ? fillColor : '#6b778c55',
-    weight,
-    fillColor,
-    fillOpacity: has ? 0.35 : 0.06
+  return getGridFeatureStyle(f, map?.getZoom())
+}
+
+// Variables globales pour les couches de sélection et survol
+let selectedMailleLayer: any = null
+let selectedMailleCode: string | null = null
+let hoverLayer: L.GeoJSON | null = null  // Couche unique pour le survol
+
+/**
+ * Initialise la couche de survol unique
+ * Utilise le style centralisé GRID_HOVER_STYLE
+ */
+function initHoverLayer() {
+  if (!hoverLayer && map) {
+    hoverLayer = L.geoJSON(undefined, {
+      style: GRID_HOVER_STYLE
+    }).addTo(map)
   }
 }
 
-// Variable globale pour la maille sélectionnée
-let selectedMailleLayer: any = null
-let selectedMailleCode: string | null = null
-
+/**
+ * Gère le survol d'une maille - utilise une couche unique
+ */
 function highlightFeature(e: any) {
   // Ne pas highlight si c'est la maille sélectionnée
   if (e.target === selectedMailleLayer) return
-  e.target.setStyle({ weight: 2, color: '#e85d68' })
+  
+  // Utiliser la couche de survol unique au lieu de modifier le style directement
+  if (hoverLayer) {
+    hoverLayer.clearLayers()
+    const feature = e.target.feature
+    if (feature) {
+      hoverLayer.addData(feature)
+    }
+  }
 }
 
+/**
+ * Réinitialise le survol
+ */
 function resetHighlight(e: any) {
   // Ne pas reset si c'est la maille sélectionnée
   if (e.target === selectedMailleLayer) return
-  if (gridLayer) gridLayer.resetStyle(e.target)
+  
+  // Vider la couche de survol
+  if (hoverLayer) {
+    hoverLayer.clearLayers()
+  }
 }
 
 // --- Feature interactions ---
@@ -236,12 +254,13 @@ function onEachFeature(f: any, layer: any) {
         gridLayer.resetStyle(selectedMailleLayer)
       }
       
-      // Mettre en évidence la nouvelle maille (7 secondes)
-      layer.setStyle({
-        weight: 4,
-        color: '#FFD700',
-        fillOpacity: 0.4
-      })
+      // Vider la couche de survol pour éviter les artefacts
+      if (hoverLayer) {
+        hoverLayer.clearLayers()
+      }
+      
+      // Mettre en évidence la nouvelle maille avec le style centralisé
+      layer.setStyle(CELL_SELECTED_STYLE)
       selectedMailleLayer = layer
       selectedMailleCode = p.code
       
@@ -331,8 +350,6 @@ async function loadNeighbors(mailleCode: string) {
     
     const html = neighbors.map((n: any) => {
       const directionIcon = n.direction === 'Nord' ? '⬆️' : n.direction === 'Sud' ? '⬇️' : n.direction === 'Est' ? '➡️' : '⬅️'
-      const sptAvg = n.spt_n_avg ? n.spt_n_avg.toFixed(1) : '—'
-      const qcAvg = n.qc_avg ? n.qc_avg.toFixed(2) : '—'
       const distance = n.distance_m ? `${(n.distance_m / 1000).toFixed(1)} km` : '—'
       
       return `
@@ -343,8 +360,7 @@ async function loadNeighbors(mailleCode: string) {
             <span style="font-size:10px;color:var(--muted)">${distance}</span>
           </div>
           <div style="font-size:10px;line-height:1.5;color:var(--muted)">
-            Sondages: ${n.n_sondages} | Essais: ${n.n_essais}<br>
-            SPT-N: ${sptAvg} | qc: ${qcAvg} MPa
+            Sondages: ${n.n_sondages} | Essais: ${n.n_essais}
           </div>
         </div>
       `
@@ -500,6 +516,13 @@ async function loadMailleDetails(code: string) {
       if (spreadAlert) spreadAlert.style.display = 'block'
     } else {
       if (spreadAlert) spreadAlert.style.display = 'none'
+    }
+    
+    // Générer et afficher la synthèse géotechnique
+    const ficheSummaryText = document.getElementById('ficheSummaryText')
+    if (ficheSummaryText) {
+      const summary = buildCellSummary(data)
+      ficheSummaryText.textContent = summary
     }
     
     // Rendre les onglets
@@ -1389,10 +1412,26 @@ async function loadGrid(useBbox = false) {
     if (gridLayer) {
       map.removeLayer(gridLayer)
     }
+    
+    // Vider les couches de survol et sélection pour éviter les artefacts
+    if (hoverLayer) {
+      hoverLayer.clearLayers()
+    }
+    if (selectedMailleLayer) {
+      selectedMailleLayer = null
+      selectedMailleCode = null
+    }
+    
     gridLayer = L.geoJSON(gj, {
       style: styleFeature,
       onEachFeature
     }).addTo(map)
+    
+    // Initialiser la couche de survol unique (après gridLayer)
+    initHoverLayer()
+    if (hoverLayer) {
+      hoverLayer.bringToFront()
+    }
     
     // Mettre à jour la référence globale
     ;(window as any).gridLayer = gridLayer
@@ -1401,14 +1440,31 @@ async function loadGrid(useBbox = false) {
     if (bounds.isValid() && !useBbox) map.fitBounds(bounds, { padding: [12, 12] })
 
     // Redessiner les mailles lors du zoom pour ajuster les contours
+    // et nettoyer le survol pour éviter les artefacts
     map.on('zoomend', () => {
+      // Nettoyer le survol
+      if (hoverLayer) {
+        hoverLayer.clearLayers()
+      }
+      
+      // Redessiner les mailles avec le nouveau zoom
       if (gridLayer) {
         gridLayer.eachLayer((layer: any) => {
           const feature = layer.feature
           if (feature) {
-            layer.setStyle(styleFeature(feature))
+            // Ne redessiner que les mailles visibles (qui passent les filtres)
+            if (featureMatchesFilters(feature, currentFilters)) {
+              layer.setStyle(styleFeature(feature))
+            }
           }
         })
+      }
+    })
+    
+    // Nettoyer le survol lors du déplacement de la carte
+    map.on('movestart', () => {
+      if (hoverLayer) {
+        hoverLayer.clearLayers()
       }
     })
 
@@ -1599,48 +1655,25 @@ function buildAdmFilters(gj: any) {
     applyFilters()
   })
 
-  // Initial stats
-  updateFilterStats()
+  // Initial stats - appeler applyFilters pour calculer toutes les stats y compris par type d'essai
+  applyFilters()
 }
 
 // Fonction applyFilters déplacée plus bas avec les filtres avancés
 
+/**
+ * Met à jour les statistiques filtrées (utilise l'état centralisé)
+ */
 function updateFilterStats() {
-  const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
-  const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
-  const adm3 = (document.getElementById('filterAdm3') as HTMLSelectElement).value
-  const showHasData = (document.getElementById('filterHasData') as HTMLInputElement).checked
-  const showNoData = (document.getElementById('filterNoData') as HTMLInputElement).checked
-  const minSondages = parseInt((document.getElementById('filterMinSondages') as HTMLInputElement).value) || 0
-
-  const filtered = allFeatures.filter((f: any) => {
-    const prop = f.properties
-    const matchAdm1 = !adm1 || prop.adm1_name === adm1
-    const matchAdm2 = !adm2 || prop.adm2_name === adm2
-    const matchAdm3 = !adm3 || prop.adm3_name === adm3
-    const matchData = (prop.has_data && showHasData) || (!prop.has_data && showNoData)
-    const matchMinSondages = (prop.n_sondages || 0) >= minSondages
-    return matchAdm1 && matchAdm2 && matchAdm3 && matchData && matchMinSondages
-  })
-
-  let withData = 0
-  let totalSondages = 0
-  let totalEssais = 0
-
-  filtered.forEach((f: any) => {
-    if (f.properties?.has_data) withData++
-    totalSondages += f.properties?.n_sondages || 0
-    totalEssais += f.properties?.n_essais || 0
-  })
-
-  const statVisible = document.getElementById('statVisible')
-  const statWithData = document.getElementById('statWithData')
-  const statSondages = document.getElementById('statSondages')
-  const statEssais = document.getElementById('statEssais')
-  if (statVisible) statVisible.textContent = filtered.length.toLocaleString()
-  if (statWithData) statWithData.textContent = withData.toLocaleString()
-  if (statSondages) statSondages.textContent = totalSondages.toLocaleString()
-  if (statEssais) statEssais.textContent = totalEssais.toLocaleString()
+  // Synchroniser les filtres depuis le DOM
+  syncFiltersFromDOM()
+  
+  // Filtrer les features avec l'état centralisé
+  const filtered = allFeatures.filter((f: any) => featureMatchesFilters(f, currentFilters))
+  
+  // Calculer et afficher les stats
+  const stats = computeFilteredStats(filtered)
+  updateStatsDOM(stats)
 }
 
 // --- Button handlers ---
@@ -3160,61 +3193,65 @@ document.getElementById('resetFilters')?.addEventListener('click', () => {
   toast('Filtres réinitialisés', 'ok')
 })
 
+/**
+ * Applique les filtres à toutes les couches de la carte
+ * Utilise l'état centralisé depuis filters-state.ts
+ */
 function applyFilters() {
   if (!gridLayer) return
   
-  const hasData = (document.getElementById('filterHasData') as HTMLInputElement).checked
-  const noData = (document.getElementById('filterNoData') as HTMLInputElement).checked
-  const minSondages = parseInt((document.getElementById('filterMinSondages') as HTMLInputElement).value) || 0
-  const adm1 = (document.getElementById('filterAdm1') as HTMLSelectElement).value
-  const adm2 = (document.getElementById('filterAdm2') as HTMLSelectElement).value
-  const adm3 = (document.getElementById('filterAdm3') as HTMLSelectElement).value
+  // 1. Synchroniser l'état des filtres depuis le DOM
+  syncFiltersFromDOM()
   
-  let visibleCount = 0
-  let withDataCount = 0
-  let sondagesCount = 0
-  let essaisCount = 0
+  // 2. Vider les couches de survol et sélection pour éviter les artefacts
+  clearHoverAndSelection()
+  
+  // 3. Filtrer les features et calculer les stats
+  const filteredFeatures: any[] = []
   
   gridLayer.eachLayer((layer: any) => {
-    const props = layer.feature?.properties
-    if (!props) return
+    const feature = layer.feature
+    if (!feature) return
     
-    let visible = true
-    
-    // Filtre has_data
-    if (props.has_data && !hasData) visible = false
-    if (!props.has_data && !noData) visible = false
-    
-    // Filtre min sondages
-    if ((props.n_sondages || 0) < minSondages) visible = false
-    
-    // Filtre ADM
-    if (adm1 && props.adm1_name !== adm1) visible = false
-    if (adm2 && props.adm2_name !== adm2) visible = false
-    if (adm3 && props.adm3_name !== adm3) visible = false
+    const visible = featureMatchesFilters(feature, currentFilters)
     
     if (visible) {
-      visibleCount++
-      if (props.has_data) withDataCount++
-      sondagesCount += props.n_sondages || 0
-      essaisCount += props.n_essais || 0
-      layer.setStyle({ opacity: 1, fillOpacity: props.has_data ? 0.35 : 0.06 })
+      filteredFeatures.push(feature)
+      // Appliquer le style normal avec opacité visible
+      const style = getGridFeatureStyle(feature, map?.getZoom())
+      layer.setStyle({ ...style, opacity: 1 })
     } else {
+      // Masquer complètement la maille
       layer.setStyle({ opacity: 0, fillOpacity: 0 })
     }
   })
   
-  // Mettre à jour les stats
-  const statVisible = document.getElementById('statVisible')
-  const statWithData = document.getElementById('statWithData')
-  const statSondages = document.getElementById('statSondages')
-  const statEssais = document.getElementById('statEssais')
-  if (statVisible) statVisible.textContent = visibleCount.toLocaleString()
-  if (statWithData) statWithData.textContent = withDataCount.toLocaleString()
-  if (statSondages) statSondages.textContent = sondagesCount.toLocaleString()
-  if (statEssais) statEssais.textContent = essaisCount.toLocaleString()
+  // 4. Calculer et afficher les statistiques
+  const stats = computeFilteredStats(filteredFeatures)
+  updateStatsDOM(stats)
   
-  toast(`Filtres appliqués: ${visibleCount} mailles visibles`, 'ok')
+  // 5. Notifier les autres composants du changement
+  notifyFilterChange()
+  
+  // 6. Charger les stats globales depuis l'API (profondeurs, argilosité)
+  invalidateGlobalStatsCache()
+  loadAndDisplayGlobalStats()
+  
+  console.log(`[applyFilters] ${stats.visibleCount} mailles visibles, ${stats.withDataCount} avec données, ${stats.sondagesCount} sondages, ${stats.essaisCount} essais`)
+}
+
+/**
+ * Vide les couches de survol et de sélection pour éviter les artefacts
+ */
+function clearHoverAndSelection() {
+  if (hoverLayer) {
+    hoverLayer.clearLayers()
+  }
+  if (selectedMailleLayer && gridLayer) {
+    gridLayer.resetStyle(selectedMailleLayer)
+    selectedMailleLayer = null
+    selectedMailleCode = null
+  }
 }
 
 // --- Vues thématiques (OBSOLÈTE - Remplacé par le panneau Cartes Thématiques) ---

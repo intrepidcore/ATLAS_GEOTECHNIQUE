@@ -4,6 +4,7 @@
  */
 
 import L from 'leaflet';
+import { getGridFeatureStyle, COLORS, WEIGHT, OPACITY, ADM3_DEFAULT_STYLE, ADM3_SELECTED_STYLE, CELL_SELECTED_STYLE } from '../map-style';
 import { GeocodeCanonPanel } from '../geocode-canon-panel';
 import { SuggestionsAdmPanel } from '../suggestions-adm-panel';
 import { SondagesListPanel } from '../sondages-list-panel';
@@ -24,6 +25,10 @@ export class SondagesManagerPage {
   private container: HTMLElement | null = null;
   private map: L.Map | null = null;
   private adm3Layer: L.GeoJSON | null = null;
+  private maillesLayer: L.GeoJSON | null = null;
+  private selectedAdm3Layer: L.GeoJSON | null = null;
+  private selectedCellLayer: L.GeoJSON | null = null;
+  private surveyMarker: L.CircleMarker | null = null;
   private activeTab: TabId = 'geocode';
   private geocodePanel: GeocodeCanonPanel | null = null;
   private suggestionsPanel: SuggestionsAdmPanel | null = null;
@@ -182,8 +187,8 @@ export class SondagesManagerPage {
 
     // Listen for ADM3 highlight events
     window.addEventListener('atlas:highlight-adm3', (e: any) => {
-      const { adm3_id, duration = 3000 } = e.detail;
-      this.highlightAdm3ById(adm3_id, duration);
+      const { adm3_id, zoomToFit = true } = e.detail;
+      this.highlightAdm3ById(adm3_id, zoomToFit);
     });
 
     // Show wizard dev panel if debug mode enabled
@@ -298,12 +303,7 @@ export class SondagesManagerPage {
       if (response.ok) {
         const geojson = await response.json();
         this.adm3Layer = L.geoJSON(geojson, {
-          style: {
-            color: '#4c6ef5',
-            weight: 1,
-            fillColor: '#1a2332',
-            fillOpacity: 0.3,
-          },
+          style: ADM3_DEFAULT_STYLE,
           onEachFeature: (feature, layer) => {
             const props = feature.properties || {};
             layer.bindTooltip(`${props.name || props.adm3_fr || 'N/A'}<br>Code: ${props.code || 'N/A'}`, {
@@ -319,7 +319,63 @@ export class SondagesManagerPage {
     } catch (e) {
       console.error('[SONDAGES PAGE] Error loading ADM3:', e);
     }
+
+    // Load mailles layer (like home page)
+    await this.loadMaillesLayer();
   }
+
+  /**
+   * Load mailles layer from /coverage/mailles (same as home page)
+   */
+  private async loadMaillesLayer() {
+    if (!this.map) return;
+
+    try {
+      const response = await fetch(`${this.apiUrl}/coverage/mailles`);
+      if (!response.ok) {
+        console.warn('[SONDAGES PAGE] Mailles layer not available');
+        return;
+      }
+
+      const geojson = await response.json();
+      
+      this.maillesLayer = L.geoJSON(geojson, {
+        style: (feature) => getGridFeatureStyle(feature, this.map?.getZoom()),
+        onEachFeature: (feature, layer) => {
+          const props = feature.properties || {};
+          const tooltip = `
+            <strong>${props.code || 'N/A'}</strong><br>
+            Sondages: ${props.n_sondages || 0}<br>
+            ${props.adm3_name ? `ADM3: ${props.adm3_name}` : ''}
+          `;
+          layer.bindTooltip(tooltip, { sticky: true });
+        },
+      }).addTo(this.map);
+
+      // Put mailles below ADM3 layer
+      if (this.adm3Layer) {
+        this.adm3Layer.bringToFront();
+      }
+
+      // Redessiner les mailles lors du zoom pour ajuster les contours (comme page d'accueil)
+      this.map.on('zoomend', () => {
+        if (this.maillesLayer) {
+          this.maillesLayer.eachLayer((layer: any) => {
+            const feature = layer.feature;
+            if (feature) {
+              layer.setStyle(getGridFeatureStyle(feature, this.map?.getZoom()));
+            }
+          });
+        }
+      });
+
+      console.log('[SONDAGES PAGE] Mailles layer loaded:', geojson.features?.length, 'features');
+    } catch (e) {
+      console.error('[SONDAGES PAGE] Error loading mailles:', e);
+    }
+  }
+
+  // Style des mailles maintenant géré par getGridFeatureStyle() dans map-style.ts
 
   private async switchTab(tabId: TabId) {
     this.activeTab = tabId;
@@ -554,46 +610,172 @@ export class SondagesManagerPage {
   }
 
   /**
-   * Highlight ADM3 by ID with temporary effect and optional zoom
+   * Highlight ADM3 by ID - PERSISTENT until clearSelectionLayers() is called
    */
-  private highlightAdm3ById(adm3Id: number, duration: number = 3000, zoomToFit: boolean = true) {
+  private highlightAdm3ById(adm3Id: number, zoomToFit: boolean = true) {
     if (!this.adm3Layer || !this.map) return;
+
+    // Clear previous ADM3 selection
+    if (this.selectedAdm3Layer) {
+      this.map.removeLayer(this.selectedAdm3Layer);
+      this.selectedAdm3Layer = null;
+    }
 
     this.adm3Layer.eachLayer((layer: any) => {
       const props = layer.feature?.properties;
       if (props?.gid === adm3Id || props?.id === adm3Id) {
-        const originalStyle = {
-          color: layer.options.color || '#4c6ef5',
-          weight: layer.options.weight || 1,
-          fillColor: layer.options.fillColor || '#1a2332',
-          fillOpacity: layer.options.fillOpacity || 0.3,
-        };
-
-        // Apply highlight style - green border, transparent fill
-        layer.setStyle({
-          color: '#00ff55',
-          weight: 4,
-          fillColor: '#00ff55',
-          fillOpacity: 0.1, // Transparent fill
-        });
+        const feature = layer.feature;
+        
+        // Create a new layer for the highlight (persistent) - using centralized style
+        this.selectedAdm3Layer = L.geoJSON(feature, {
+          style: ADM3_SELECTED_STYLE,
+        }).addTo(this.map!);
 
         // Zoom to ADM3 bounds if requested
         if (zoomToFit && layer.getBounds) {
           const bounds = layer.getBounds();
-          this.map?.fitBounds(bounds.pad(0.1), { maxZoom: 12 });
+          this.map?.fitBounds(bounds.pad(0.2), { maxZoom: 13 });
         }
 
-        // Bring to front
-        if (layer.bringToFront) {
-          layer.bringToFront();
-        }
-
-        // Revert after duration
-        setTimeout(() => {
-          layer.setStyle(originalStyle);
-        }, duration);
+        // Bring selection to front
+        this.selectedAdm3Layer.bringToFront();
+        
+        console.log('[SONDAGES PAGE] ADM3 highlighted (persistent):', adm3Id);
       }
     });
+  }
+
+  /**
+   * Highlight maille/cell by code - PERSISTENT until clearSelectionLayers() is called
+   */
+  private highlightCellByCode(cellCode: string) {
+    if (!this.maillesLayer || !this.map) return;
+
+    // Clear previous cell selection
+    if (this.selectedCellLayer) {
+      this.map.removeLayer(this.selectedCellLayer);
+      this.selectedCellLayer = null;
+    }
+
+    let found = false;
+    
+    this.maillesLayer.eachLayer((layer: any) => {
+      const props = layer.feature?.properties;
+      
+      if (props?.code === cellCode) {
+        found = true;
+        const feature = layer.feature;
+        
+        // Create a new layer for the highlight (persistent) - using centralized style
+        this.selectedCellLayer = L.geoJSON(feature, {
+          style: CELL_SELECTED_STYLE,
+        }).addTo(this.map!);
+
+        // Bring selection to front (but below ADM3 selection)
+        this.selectedCellLayer.bringToFront();
+        if (this.selectedAdm3Layer) {
+          this.selectedAdm3Layer.bringToFront();
+        }
+        
+        console.log('[SONDAGES PAGE] Cell highlighted (persistent):', cellCode);
+      }
+    });
+    
+    if (!found) {
+      console.warn('[SONDAGES PAGE] Cell not found:', cellCode);
+    }
+  }
+
+  /**
+   * Highlight maille/cell by coordinates - find which cell contains the point
+   */
+  private highlightCellByCoordinates(lng: number, lat: number) {
+    if (!this.maillesLayer || !this.map) return;
+
+    // Clear previous cell selection
+    if (this.selectedCellLayer) {
+      this.map.removeLayer(this.selectedCellLayer);
+      this.selectedCellLayer = null;
+    }
+
+    let found = false;
+    
+    this.maillesLayer.eachLayer((layer: any) => {
+      if (found) return; // Stop if already found
+      
+      const feature = layer.feature;
+      
+      if (feature && feature.geometry) {
+        // Use Leaflet's built-in point-in-polygon test
+        const latLng = L.latLng(lat, lng);
+        
+        // Create a temporary layer to test if point is inside
+        const tempLayer = L.geoJSON(feature);
+        const bounds = tempLayer.getBounds();
+        
+        // Quick bounds check first
+        if (bounds.contains(latLng)) {
+          // More precise check: create polygon and test containment
+          try {
+            const polygon = L.geoJSON(feature);
+            let isInside = false;
+            
+            polygon.eachLayer((polyLayer: any) => {
+              if (polyLayer instanceof L.Polygon) {
+                // Use bounds check (could be improved with proper point-in-polygon)
+                const polyBounds = polyLayer.getBounds();
+                if (polyBounds.contains(latLng)) {
+                  isInside = true;
+                }
+              }
+            });
+            
+            if (isInside) {
+              found = true;
+              const props = feature.properties;
+              
+              // Create a new layer for the highlight (persistent) - using centralized style
+              this.selectedCellLayer = L.geoJSON(feature, {
+                style: CELL_SELECTED_STYLE,
+              }).addTo(this.map!);
+
+              // Bring selection to front (but below ADM3 selection)
+              this.selectedCellLayer.bringToFront();
+              if (this.selectedAdm3Layer) {
+                this.selectedAdm3Layer.bringToFront();
+              }
+              
+              console.log('[SONDAGES PAGE] Cell highlighted by coordinates (persistent):', props?.code);
+            }
+          } catch (e) {
+            console.warn('[SONDAGES PAGE] Error testing point in polygon:', e);
+          }
+        }
+      }
+    });
+    
+    if (!found) {
+      console.warn('[SONDAGES PAGE] No cell found containing coordinates:', [lng, lat]);
+    }
+  }
+
+  /**
+   * Clear all selection layers (ADM3, cell, marker)
+   */
+  private clearSelectionLayers() {
+    if (this.selectedAdm3Layer && this.map) {
+      this.map.removeLayer(this.selectedAdm3Layer);
+      this.selectedAdm3Layer = null;
+    }
+    if (this.selectedCellLayer && this.map) {
+      this.map.removeLayer(this.selectedCellLayer);
+      this.selectedCellLayer = null;
+    }
+    if (this.surveyMarker && this.map) {
+      this.map.removeLayer(this.surveyMarker);
+      this.surveyMarker = null;
+    }
+    console.log('[SONDAGES PAGE] Selection layers cleared');
   }
 
   destroy() {
@@ -622,6 +804,10 @@ export class SondagesManagerPage {
   private backToList() {
     this.currentView = 'list';
     this.currentDetailId = null;
+    
+    // Clear selection layers when going back to list
+    this.clearSelectionLayers();
+    
     this.renderListeContent();
     
     // Restore scroll position after rendering
@@ -1043,7 +1229,7 @@ export class SondagesManagerPage {
 
   private async focusSurveyOnMap(surveyId: string) {
     try {
-      // Fetch survey details to get coordinates and ADM3
+      // Fetch survey details to get coordinates, ADM3, and grid_code
       const response = await fetch(`${this.apiUrl}/sondages/${surveyId}/details`);
       if (!response.ok) {
         console.warn('[MAP] Failed to fetch survey details for map focus');
@@ -1053,45 +1239,92 @@ export class SondagesManagerPage {
       const survey = await response.json();
 
       // Try coordinates first (simpler format), then geom
-      let lng: number, lat: number;
+      let lng: number | undefined, lat: number | undefined;
       
       if (survey.coordinates && survey.coordinates.lat && survey.coordinates.lon) {
         lng = survey.coordinates.lon;
         lat = survey.coordinates.lat;
       } else if (survey.geom && survey.geom.coordinates) {
         [lng, lat] = survey.geom.coordinates;
-      } else {
-        console.warn('[MAP] Survey has no coordinates for map focus', survey);
-        return;
       }
-      
-      // Emit event for map to focus on survey
-      const focusEvent = new CustomEvent('atlas:focus-survey', {
-        detail: {
-          surveyId,
-          coordinates: [lng, lat],
-          adm3_id: survey.adm3_id,
-          adm3_name: survey.adm3_name,
-          code: survey.code
-        }
-      });
-      
-      window.dispatchEvent(focusEvent);
-      console.log('[MAP] Focus event dispatched for survey:', survey.code, 'at', [lng, lat]);
 
-      // If ADM3 available, also highlight the ADM3 polygon
+      // Log survey data for debugging
+      console.log('[SONDAGES PAGE] Survey data:', {
+        grid_code: survey.grid_code,
+        adm3_id: survey.adm3_id,
+        hasCoordinates: lng !== undefined && lat !== undefined
+      });
+
+      // 1. Highlight ADM3 (persistent, with zoom)
       if (survey.adm3_id) {
-        setTimeout(() => {
-          const highlightEvent = new CustomEvent('atlas:highlight-adm3', {
-            detail: {
-              adm3_id: survey.adm3_id,
-              adm3_name: survey.adm3_name,
-              duration: 3000 // 3 seconds highlight
-            }
-          });
-          window.dispatchEvent(highlightEvent);
-        }, 500); // Small delay to let map focus first
+        this.highlightAdm3ById(survey.adm3_id, true);
       }
+
+      // 2. Highlight maille/cell (persistent) - try multiple field names
+      const cellCode = survey.grid_code || survey.cell_id || survey.maille_code;
+      if (cellCode) {
+        // Wait a bit if mailles layer is not loaded yet
+        if (!this.maillesLayer) {
+          setTimeout(() => {
+            if (this.maillesLayer) {
+              this.highlightCellByCode(cellCode);
+            }
+          }, 1000);
+        } else {
+          this.highlightCellByCode(cellCode);
+        }
+      } else {
+        // Fallback: find cell by coordinates
+        if (lng !== undefined && lat !== undefined) {
+          console.log('[SONDAGES PAGE] No grid_code, finding cell by coordinates:', [lng, lat]);
+          
+          if (!this.maillesLayer) {
+            setTimeout(() => {
+              if (this.maillesLayer) {
+                this.highlightCellByCoordinates(lng, lat);
+              }
+            }, 1000);
+          } else {
+            this.highlightCellByCoordinates(lng, lat);
+          }
+        } else {
+          console.warn('[SONDAGES PAGE] No grid_code or coordinates available for cell lookup');
+        }
+      }
+
+      // 3. Add survey marker (persistent)
+      if (lng !== undefined && lat !== undefined && this.map) {
+        // Remove previous marker
+        if (this.surveyMarker) {
+          this.map.removeLayer(this.surveyMarker);
+        }
+        
+        // Add new marker
+        this.surveyMarker = L.circleMarker([lat, lng], {
+          radius: 10,
+          color: '#FFD60A',
+          fillColor: '#FFD60A',
+          fillOpacity: 0.9,
+          weight: 3
+        }).addTo(this.map);
+        
+        // Bind tooltip with survey code
+        this.surveyMarker.bindTooltip(`📍 ${survey.code || 'Sondage'}`, {
+          permanent: false,
+          direction: 'top'
+        });
+        
+        // Bring marker to front
+        this.surveyMarker.bringToFront();
+        
+        console.log('[MAP] Survey marker added at', [lat, lng], 'for', survey.code);
+      }
+
+      console.log('[MAP] Focus complete for survey:', survey.code, {
+        adm3_id: survey.adm3_id,
+        grid_code: survey.grid_code,
+        coordinates: lng && lat ? [lng, lat] : 'none'
+      });
 
     } catch (error) {
       console.error('[MAP] Error focusing survey on map:', error);

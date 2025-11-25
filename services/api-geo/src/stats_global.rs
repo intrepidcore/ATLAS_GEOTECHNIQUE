@@ -1,0 +1,277 @@
+// Module pour les statistiques globales agrégées
+use crate::state::AppState;
+use axum::{
+    extract::{Query, State},
+    response::IntoResponse,
+    Json,
+};
+use serde::{Deserialize, Serialize};
+use sqlx::Row;
+
+// ============================================================================
+// Types
+// ============================================================================
+
+#[derive(Debug, Deserialize)]
+pub struct GlobalStatsQuery {
+    pub adm1: Option<String>,
+    pub adm2: Option<String>,
+    pub adm3: Option<String>,
+    pub min_sondages: Option<i32>,
+    pub min_essais: Option<i32>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GlobalStatsResponse {
+    pub mailles_total: i64,
+    pub mailles_filtrees: i64,
+    pub mailles_avec_donnees: i64,
+    pub taux_couverture_pct: f64,
+    pub sondages: i64,
+    pub echantillons: i64,
+    pub essais: i64,
+    pub essais_par_type: EssaisParType,
+    pub profondeur: ProfondeurStats,
+    pub gtr: std::collections::HashMap<String, i64>,
+    pub argilosite: ArgilositeStats,
+}
+
+#[derive(Debug, Serialize)]
+pub struct EssaisParType {
+    pub atterberg: i64,
+    pub vbs: i64,
+    pub physiques: i64,
+    pub classif: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProfondeurStats {
+    pub min_m: Option<f64>,
+    pub max_m: Option<f64>,
+    pub moy_m: Option<f64>,
+    pub bins: Vec<ProfondeurBin>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ProfondeurBin {
+    pub range: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ArgilositeStats {
+    pub vbs_moyen: Option<f64>,
+    pub pct_argileux: Option<f64>,  // % échantillons avec VBS > 2.5
+    pub ip_moyen: Option<f64>,
+}
+
+// ============================================================================
+// Handler
+// ============================================================================
+
+pub async fn get_global_stats(
+    Query(params): Query<GlobalStatsQuery>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    // 1) Compteurs de mailles (depuis mv_mailles_geotech)
+    // Note: On utilise une CTE pour simplifier les filtres
+    let mailles_query = r#"
+        WITH filtered AS (
+            SELECT *
+            FROM mv_mailles_geotech
+            WHERE ($1::text IS NULL OR adm1_name = $1)
+              AND ($2::text IS NULL OR adm2_name = $2)
+              AND ($3::text IS NULL OR adm3_name = $3)
+              AND ($4::int IS NULL OR COALESCE(nb_sondages_real, 0) >= $4)
+              AND ($5::int IS NULL OR COALESCE(n_essais, 0) >= $5)
+        )
+        SELECT 
+            (SELECT COUNT(*) FROM mv_mailles_geotech)::bigint AS total,
+            COUNT(*)::bigint AS filtrees,
+            COUNT(*) FILTER (WHERE has_data = true)::bigint AS avec_donnees,
+            COALESCE(SUM(nb_sondages_real), 0)::bigint AS sondages,
+            COALESCE(SUM(n_echantillons), 0)::bigint AS echantillons,
+            COALESCE(SUM(n_essais), 0)::bigint AS essais,
+            COALESCE(SUM(n_atterberg), 0)::bigint AS n_atterberg,
+            COALESCE(SUM(n_vbs), 0)::bigint AS n_vbs,
+            COALESCE(SUM(n_physiques), 0)::bigint AS n_physiques,
+            COALESCE(SUM(n_classif), 0)::bigint AS n_classif
+        FROM filtered
+    "#;
+
+    let mailles_row = sqlx::query(mailles_query)
+        .bind(&params.adm1)
+        .bind(&params.adm2)
+        .bind(&params.adm3)
+        .bind(&params.min_sondages)
+        .bind(&params.min_essais)
+        .fetch_one(pool)
+        .await;
+
+    let (mailles_total, mailles_filtrees, mailles_avec_donnees, sondages, echantillons, essais, n_atterberg, n_vbs, n_physiques, n_classif) = match mailles_row {
+        Ok(row) => (
+            row.try_get::<i64, _>("total").unwrap_or(0),
+            row.try_get::<i64, _>("filtrees").unwrap_or(0),
+            row.try_get::<i64, _>("avec_donnees").unwrap_or(0),
+            row.try_get::<i64, _>("sondages").unwrap_or(0),
+            row.try_get::<i64, _>("echantillons").unwrap_or(0),
+            row.try_get::<i64, _>("essais").unwrap_or(0),
+            row.try_get::<i64, _>("n_atterberg").unwrap_or(0),
+            row.try_get::<i64, _>("n_vbs").unwrap_or(0),
+            row.try_get::<i64, _>("n_physiques").unwrap_or(0),
+            row.try_get::<i64, _>("n_classif").unwrap_or(0),
+        ),
+        Err(e) => {
+            tracing::error!(error=?e, "Failed to fetch mailles stats");
+            (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        }
+    };
+
+    // 2) Profondeurs (depuis echantillons avec filtres ADM via jointure spatiale)
+    let depth_query = r#"
+        WITH filtered_sondages AS (
+            SELECT s.id
+            FROM mailles m
+            JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
+            WHERE ($1::text IS NULL OR m.adm1_name = $1)
+              AND ($2::text IS NULL OR m.adm2_name = $2)
+              AND ($3::text IS NULL OR m.adm3_name = $3)
+        )
+        SELECT 
+            MIN(e.depth_m)::float8 AS min_m,
+            MAX(e.depth_m)::float8 AS max_m,
+            AVG(e.depth_m)::float8 AS moy_m,
+            COUNT(*) FILTER (WHERE e.depth_m >= 0 AND e.depth_m < 3)::bigint AS bin_0_3,
+            COUNT(*) FILTER (WHERE e.depth_m >= 3 AND e.depth_m < 6)::bigint AS bin_3_6,
+            COUNT(*) FILTER (WHERE e.depth_m >= 6 AND e.depth_m < 10)::bigint AS bin_6_10,
+            COUNT(*) FILTER (WHERE e.depth_m >= 10)::bigint AS bin_10_plus
+        FROM echantillons e
+        WHERE e.sondage_id IN (SELECT id FROM filtered_sondages)
+    "#;
+
+    let depth_row = sqlx::query(depth_query)
+        .bind(&params.adm1)
+        .bind(&params.adm2)
+        .bind(&params.adm3)
+        .fetch_one(pool)
+        .await;
+
+    let profondeur = match depth_row {
+        Ok(row) => ProfondeurStats {
+            min_m: row.try_get("min_m").ok(),
+            max_m: row.try_get("max_m").ok(),
+            moy_m: row.try_get("moy_m").ok(),
+            bins: vec![
+                ProfondeurBin { range: "0-3".to_string(), count: row.try_get("bin_0_3").unwrap_or(0) },
+                ProfondeurBin { range: "3-6".to_string(), count: row.try_get("bin_3_6").unwrap_or(0) },
+                ProfondeurBin { range: "6-10".to_string(), count: row.try_get("bin_6_10").unwrap_or(0) },
+                ProfondeurBin { range: ">10".to_string(), count: row.try_get("bin_10_plus").unwrap_or(0) },
+            ],
+        },
+        Err(e) => {
+            tracing::error!(error=?e, "Failed to fetch depth stats");
+            ProfondeurStats {
+                min_m: None,
+                max_m: None,
+                moy_m: None,
+                bins: vec![],
+            }
+        }
+    };
+
+    // 3) GTR (depuis essais_classif - stats globales)
+    // Note: Pour l'instant, on utilise les classifications disponibles sans filtre par maille
+    let gtr_query = r#"
+        SELECT 
+            COALESCE(NULLIF(ec.classe, ''), 'Non classé') AS classe,
+            COUNT(*)::bigint AS count
+        FROM essais_classif ec
+        WHERE ec.deleted_at IS NULL
+          AND ec.classe IS NOT NULL
+          AND ec.classe != ''
+        GROUP BY ec.classe
+        ORDER BY count DESC
+        LIMIT 10
+    "#;
+
+    let gtr_rows = sqlx::query(gtr_query)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
+
+    let mut gtr: std::collections::HashMap<String, i64> = std::collections::HashMap::new();
+    for row in gtr_rows {
+        let classe: String = row.try_get("classe").unwrap_or_else(|_| "?".to_string());
+        let count: i64 = row.try_get("count").unwrap_or(0);
+        gtr.insert(classe, count);
+    }
+
+    // 4) Argilosité (VBS moyen, IP moyen) - avec filtres ADM
+    let argilosite_query = r#"
+        WITH filtered_echantillons AS (
+            SELECT e.id
+            FROM mailles m
+            JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
+            JOIN echantillons e ON e.sondage_id = s.id
+            WHERE ($1::text IS NULL OR m.adm1_name = $1)
+              AND ($2::text IS NULL OR m.adm2_name = $2)
+              AND ($3::text IS NULL OR m.adm3_name = $3)
+        )
+        SELECT 
+            (SELECT AVG(vbs)::float8 FROM essais_vbs WHERE vbs IS NOT NULL AND echantillon_id IN (SELECT id FROM filtered_echantillons)) AS vbs_moyen,
+            (SELECT (COUNT(*) FILTER (WHERE vbs > 2.5)::float8 / NULLIF(COUNT(*)::float8, 0) * 100) FROM essais_vbs WHERE vbs IS NOT NULL AND echantillon_id IN (SELECT id FROM filtered_echantillons)) AS pct_argileux,
+            (SELECT AVG(wl - wp)::float8 FROM essais_atterberg WHERE wl IS NOT NULL AND wp IS NOT NULL AND echantillon_id IN (SELECT id FROM filtered_echantillons)) AS ip_moyen
+    "#;
+
+    let argilosite_row = sqlx::query(argilosite_query)
+        .bind(&params.adm1)
+        .bind(&params.adm2)
+        .bind(&params.adm3)
+        .fetch_one(pool)
+        .await;
+
+    let argilosite = match argilosite_row {
+        Ok(row) => ArgilositeStats {
+            vbs_moyen: row.try_get("vbs_moyen").ok(),
+            pct_argileux: row.try_get("pct_argileux").ok(),
+            ip_moyen: row.try_get("ip_moyen").ok(),
+        },
+        Err(e) => {
+            tracing::error!(error=?e, "Failed to fetch argilosite stats");
+            ArgilositeStats {
+                vbs_moyen: None,
+                pct_argileux: None,
+                ip_moyen: None,
+            }
+        }
+    };
+
+    // Calcul du taux de couverture
+    let taux_couverture_pct = if mailles_filtrees > 0 {
+        (mailles_avec_donnees as f64 / mailles_filtrees as f64) * 100.0
+    } else {
+        0.0
+    };
+
+    Json(GlobalStatsResponse {
+        mailles_total,
+        mailles_filtrees,
+        mailles_avec_donnees,
+        taux_couverture_pct,
+        sondages,
+        echantillons,
+        essais,
+        essais_par_type: EssaisParType {
+            atterberg: n_atterberg,
+            vbs: n_vbs,
+            physiques: n_physiques,
+            classif: n_classif,
+        },
+        profondeur,
+        gtr,
+        argilosite,
+    })
+    .into_response()
+}

@@ -13,6 +13,7 @@ use sqlx::{FromRow, PgPool};
 #[derive(FromRow, Debug, Clone, Serialize)]
 pub struct KpiRow {
     pub n_sondages: i64,
+    pub n_echantillons: i64,
     pub n_essais: i64,
     pub pct_spread: f64,
     pub depth_max_m: Option<f64>,
@@ -29,12 +30,13 @@ pub struct KpiRow {
 /// * `Ok(None)` - Maille non trouvée
 /// * `Err(_)` - Erreur SQL
 pub async fn fetch_kpi_row(pool: &PgPool, code: &str) -> sqlx::Result<Option<KpiRow>> {
-    // Utiliser atlas.mv_mailles_geotech au lieu de v_maille_kpi_v2
+    // Utiliser atlas.mv_mailles_geotech avec les vraies colonnes n_echantillons et n_essais
     sqlx::query_as::<_, KpiRow>(
         r#"
         SELECT
           ((nb_sondages_real + nb_sondages_spread))::bigint AS n_sondages,
-          0::bigint AS n_essais,
+          COALESCE(n_echantillons, 0)::bigint AS n_echantillons,
+          COALESCE(n_essais, 0)::bigint AS n_essais,
           0.0::float8 AS pct_spread,
           NULL::float8 AS depth_max_m
         FROM atlas.mv_mailles_geotech

@@ -14,8 +14,7 @@ pub struct NeighborMaille {
     pub direction: String,
     pub n_sondages: i64,
     pub n_essais: i64,
-    pub spt_n_avg: Option<f64>,
-    pub qc_avg: Option<f64>,
+    // SPT-N et qc retirés - ces essais n'existent pas dans l'atlas actuel
     pub distance_m: Option<f64>,
 }
 
@@ -68,8 +67,7 @@ pub async fn get_neighbors(
                 ST_Y(ST_Transform(ST_Centroid(m.geom), 4326)) as m_lat,
                 COALESCE(COUNT(DISTINCT s.id), 0)::bigint AS n_sondages,
                 COALESCE(COUNT(e.id), 0)::bigint AS n_essais,
-                AVG(CASE WHEN e.type_essai = 'SPT_N' THEN e.valeur_numerique::numeric ELSE NULL END) AS spt_n_avg,
-                AVG(CASE WHEN e.type_essai = 'qc' THEN e.valeur_numerique::numeric ELSE NULL END) AS qc_avg,
+                -- SPT-N et qc retirés - ces essais n'existent pas dans l'atlas actuel
                 ST_Distance(
                     ST_Transform(ST_Centroid(m.geom), 4326)::geography,
                     (SELECT centroid::geography FROM current_maille)
@@ -96,8 +94,6 @@ pub async fn get_neighbors(
             END as direction,
             n_sondages,
             n_essais,
-            spt_n_avg,
-            qc_avg,
             distance_m
         FROM neighbor_stats
         ORDER BY distance_m ASC
@@ -125,17 +121,11 @@ pub async fn get_neighbors(
                 }
                 seen_directions.insert(direction.clone());
 
-                let spt_avg: Option<sqlx::types::BigDecimal> =
-                    row.try_get("spt_n_avg").ok().flatten();
-                let qc_avg: Option<sqlx::types::BigDecimal> = row.try_get("qc_avg").ok().flatten();
-
                 neighbors.push(NeighborMaille {
                     code: row.try_get("code").unwrap_or_default(),
                     direction,
                     n_sondages: row.try_get("n_sondages").unwrap_or(0),
                     n_essais: row.try_get("n_essais").unwrap_or(0),
-                    spt_n_avg: spt_avg.and_then(|v| v.to_string().parse().ok()),
-                    qc_avg: qc_avg.and_then(|v| v.to_string().parse().ok()),
                     distance_m: row.try_get("distance_m").ok(),
                 });
 
