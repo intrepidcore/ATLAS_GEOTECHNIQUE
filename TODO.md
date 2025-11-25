@@ -553,7 +553,49 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-### 🚧 ROADMAP v3.3 - Prochaines fonctionnalités
+### ✅ ROADMAP v3.3 - Implémenté (2025-11-25)
+
+#### Chantier A : Données géotechniques complètes ✅
+- [X] **API enrichie** : `/sondages/:id/details` expose tous les essais
+  - [X] `classif` : Classification des sols (HRB, Unified, Chassagneux)
+  - [X] `gonflement` : Potentiel de gonflement (CG, qualification)
+  - [X] `physiques` : Essais physiques (densités, teneur eau)
+  - [X] `proctor` : Essais Proctor (ρd max, w opt)
+- [X] **Types TypeScript** : `ClassifRow`, `GonflementRow`, `PhysiquesRow`, `ProctorRow`
+- [X] **Affichage UI** : Tableaux spécialisés avec badges colorés
+
+#### Chantier B : Logique métier badges AUTO/MANUEL ✅
+- [X] **API enrichie** : `geocoded_mode` et `geocoded_score` exposés
+  - [X] Jointure `geocode_suggestions` pour récupérer le score
+  - [X] Score exposé dans `/sondages`, `/sondages/:id`, `/sondages/:id/details`
+- [X] **Règles métier v3.3** :
+  - AUTO : `geocoded_mode='suggestion_accepted'` avec `score >= 80%`
+  - MANUEL : `geocoded_mode in {'adm3', 'gps', 'manual_override'}` OU `score < 80%`
+  - UNKNOWN : non géocodé ou cas non couverts
+- [X] **Fonction `computeGeocodeBadgeFromSurvey`** mise à jour
+
+#### Chantier C : Corrections UX Liste ✅
+- [X] **Recherche** : Soft refresh avec `rerenderList()` (pas de re-render complet)
+- [X] **Tri** : Listeners séparés (contrôles vs items) pour éviter perte de focus
+- [X] **Scroll conservé** : `listScrollTop` sauvegardé/restauré lors navigation liste↔détails
+
+#### Chantier D : Carte - Zoom & highlight ADM3 amélioré ✅
+- [X] **Zoom automatique** : `fitBounds()` sur l'ADM3 lors du highlight
+- [X] **Style amélioré** : Contour vert (#00ff55), fond transparent (fillOpacity: 0.1)
+- [X] **Bring to front** : ADM3 mis en avant pendant le highlight
+
+#### Chantier E : Boutons Test Wizards (DEV) ✅
+- [X] **Registry global** : Support `window.atlasWizards` pour accès aux wizards
+- [X] **Fallback intelligent** : Redirection vers onglet Import si wizard non disponible
+- [X] **Messages toast** : Notifications claires au lieu d'alertes
+
+#### Chantier F : Corrections API ✅
+- [X] **`/suggestions`** : Fonctionne correctement (cast UUID→TEXT corrigé)
+- [X] **`/adm3/geojson`** : 373 features exposées
+
+---
+
+### 🚧 ROADMAP v3.4 - Prochaines fonctionnalités
 
 #### Couche mailles colorée
 - [ ] Ré-affichage avec code couleur selon nombre de sondages
@@ -564,7 +606,11 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [ ] Graphique courbe granulométrique
 - [ ] Édition inline des champs
 
+#### Temps réel avancé
+- [ ] Rafraîchissement auto stats carte sur `sondage.geocoded`
+- [ ] Compteurs temps réel dans les onglets
+
 ---
 
-**Dernière mise à jour** : 2025-11-25 07:30
-**Statut global** : 🚀 v3.2.0 - Roadmap v3.2 complète ✅ (Wizards doc + Détails page + Badges + Carte zoom + UI harmonisée)
+**Dernière mise à jour** : 2025-11-25 12:45
+**Statut global** : 🚀 v3.3.0 - Roadmap v3.3 complète ✅ (Données géotech + Badges AUTO/MANUEL + UX Liste + Carte zoom + Wizards)

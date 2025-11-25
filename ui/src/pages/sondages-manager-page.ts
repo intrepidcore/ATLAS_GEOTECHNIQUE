@@ -31,6 +31,7 @@ export class SondagesManagerPage {
   private currentGeocodeTargetId: string | null = null;
   private currentView: 'list' | 'details' = 'list';
   private currentDetailId: string | null = null;
+  private listScrollTop: number = 0; // Preserve scroll position
   private loaded: Record<TabId, boolean> = {
     geocode: false,
     suggestions: false,
@@ -227,47 +228,52 @@ export class SondagesManagerPage {
     console.log('[SONDAGES PAGE] Launching test wizard:', wizard);
     
     try {
+      // Check for global atlasWizards registry first
+      const atlasWizards = (window as any).atlasWizards;
+      
       switch (wizard) {
         case 'v2':
           // ImportWizard v2 (canonique)
-          const ImportWizardV2 = (window as any).ImportWizardV2;
-          if (ImportWizardV2) {
-            ImportWizardV2.openModal();
+          if (atlasWizards?.importWizardV2) {
+            atlasWizards.importWizardV2();
+          } else if ((window as any).ImportWizardV2?.openModal) {
+            (window as any).ImportWizardV2.openModal();
           } else {
-            console.error('[WIZARD] ImportWizardV2 not found');
-            alert('ImportWizardV2 non disponible');
+            // Try to import and use directly
+            toast.info('ImportWizardV2 non disponible - utilisez l\'onglet Import');
+            this.switchTab('import');
           }
           break;
           
         case 'bulk_v3':
           // ImportBulkWizard v3
-          const ImportBulkWizard = (window as any).ImportBulkWizard;
-          if (ImportBulkWizard) {
-            ImportBulkWizard.openModal();
+          if (atlasWizards?.importBulkWizardV3) {
+            atlasWizards.importBulkWizardV3();
+          } else if ((window as any).ImportBulkWizard?.openModal) {
+            (window as any).ImportBulkWizard.openModal();
           } else {
-            console.error('[WIZARD] ImportBulkWizard not found');
-            alert('ImportBulkWizard non disponible');
+            toast.info('ImportBulkWizard non disponible');
           }
           break;
           
         case 'geo':
           // GeotechnicalImportWizard
-          const GeotechnicalImportWizard = (window as any).GeotechnicalImportWizard;
-          if (GeotechnicalImportWizard) {
-            GeotechnicalImportWizard.openModal();
+          if (atlasWizards?.geotechnicalImportWizard) {
+            atlasWizards.geotechnicalImportWizard();
+          } else if ((window as any).GeotechnicalImportWizard?.openModal) {
+            (window as any).GeotechnicalImportWizard.openModal();
           } else {
-            console.error('[WIZARD] GeotechnicalImportWizard not found');
-            alert('GeotechnicalImportWizard non disponible');
+            toast.info('GeotechnicalImportWizard non disponible');
           }
           break;
           
         default:
           console.warn('[WIZARD] Unknown wizard:', wizard);
-          alert(`Wizard "${wizard}" inconnu`);
+          toast.error(`Wizard "${wizard}" inconnu`);
       }
     } catch (error) {
       console.error('[WIZARD] Error launching wizard:', error);
-      alert(`Erreur lors du lancement du wizard: ${error}`);
+      toast.error(`Erreur lors du lancement du wizard: ${error}`);
     }
   }
 
@@ -548,9 +554,9 @@ export class SondagesManagerPage {
   }
 
   /**
-   * Highlight ADM3 by ID with temporary effect
+   * Highlight ADM3 by ID with temporary effect and optional zoom
    */
-  private highlightAdm3ById(adm3Id: number, duration: number = 3000) {
+  private highlightAdm3ById(adm3Id: number, duration: number = 3000, zoomToFit: boolean = true) {
     if (!this.adm3Layer || !this.map) return;
 
     this.adm3Layer.eachLayer((layer: any) => {
@@ -563,13 +569,24 @@ export class SondagesManagerPage {
           fillOpacity: layer.options.fillOpacity || 0.3,
         };
 
-        // Apply highlight style
+        // Apply highlight style - green border, transparent fill
         layer.setStyle({
-          color: '#51cf66',
-          weight: 3,
-          fillColor: '#51cf66',
-          fillOpacity: 0.3,
+          color: '#00ff55',
+          weight: 4,
+          fillColor: '#00ff55',
+          fillOpacity: 0.1, // Transparent fill
         });
+
+        // Zoom to ADM3 bounds if requested
+        if (zoomToFit && layer.getBounds) {
+          const bounds = layer.getBounds();
+          this.map?.fitBounds(bounds.pad(0.1), { maxZoom: 12 });
+        }
+
+        // Bring to front
+        if (layer.bringToFront) {
+          layer.bringToFront();
+        }
 
         // Revert after duration
         setTimeout(() => {
@@ -590,6 +607,12 @@ export class SondagesManagerPage {
   }
 
   private showDetailsView(surveyId: string) {
+    // Save scroll position before switching to details
+    const listEl = document.querySelector('#sondages-list') as HTMLElement;
+    if (listEl) {
+      this.listScrollTop = listEl.scrollTop;
+    }
+    
     this.currentView = 'details';
     this.currentDetailId = surveyId;
     this.renderListeContent();
@@ -600,6 +623,14 @@ export class SondagesManagerPage {
     this.currentView = 'list';
     this.currentDetailId = null;
     this.renderListeContent();
+    
+    // Restore scroll position after rendering
+    requestAnimationFrame(() => {
+      const listEl = document.querySelector('#sondages-list') as HTMLElement;
+      if (listEl && this.listScrollTop > 0) {
+        listEl.scrollTop = this.listScrollTop;
+      }
+    });
   }
 
   private async renderListeContent() {

@@ -181,6 +181,11 @@ export function computeGeocodeBadge(
 /**
  * Version simplifiée pour la liste des sondages
  * Utilise les champs geocoded_mode et geocoded_score exposés par l'API
+ * 
+ * RÈGLES MÉTIER v3.3:
+ * - AUTO: geocoded_mode='suggestion_accepted' avec score >= 80%
+ * - MANUEL: geocoded_mode in {'adm3', 'gps', 'manual_override'} OU score < 80%
+ * - UNKNOWN: non géocodé ou cas non couverts
  */
 export function computeGeocodeBadgeFromSurvey(survey: {
   is_geocoded: boolean;
@@ -195,11 +200,14 @@ export function computeGeocodeBadgeFromSurvey(survey: {
   const mode = survey.geocoded_mode ?? survey.meta?.geocoded_mode ?? null;
   const score = survey.geocoded_score ?? 0;
   
-  if (mode === 'suggestion_accepted' && score >= 0.8) return 'auto';
-  if (mode === 'suggestion_accepted') return 'auto'; // même avec score faible
-  if (mode === 'adm3' || mode === 'gps' || mode === 'manual_override') return 'manual';
+  // RÈGLE AUTO: suggestion acceptée avec score >= 80%
+  if (mode === 'suggestion_accepted' && score >= 80) return 'auto';
   
-  // Fallback sur location_mode
+  // RÈGLE MANUEL: modes manuels OU score faible
+  if (mode === 'adm3' || mode === 'gps' || mode === 'manual_override') return 'manual';
+  if (mode === 'suggestion_accepted' && score < 80) return 'manual'; // Score faible = validation humaine
+  
+  // Fallback sur location_mode (legacy)
   if (survey.location_mode === 'adm_random_cell') return 'auto';
   if (survey.location_mode === 'exact' || survey.location_mode === 'gps') return 'manual';
   if (survey.location_mode === 'adm3_centroid') return 'manual';

@@ -103,16 +103,22 @@ pub async fn list_sondages(
     let query = format!(
         r#"
         SELECT 
-            id, code, localite_base AS localite, adm3_id, adm3_name,
-            ST_AsGeoJSON(geom)::jsonb as geom,
-            location_mode::text,
-            is_geocoded,
-            source, created_at, updated_at,
-            meta->>'geocoded_mode' as geocoded_mode,
-            (meta->>'geocoded_score')::float8 as geocoded_score
-        FROM public.sondages
-        WHERE deleted_at IS NULL {}
-        ORDER BY created_at DESC
+            s.id, s.code, s.localite_base AS localite, s.adm3_id, s.adm3_name,
+            ST_AsGeoJSON(s.geom)::jsonb as geom,
+            s.location_mode::text,
+            s.is_geocoded,
+            s.source, s.created_at, s.updated_at,
+            s.meta->>'geocoded_mode' as geocoded_mode,
+            COALESCE(
+                (s.meta->>'geocoded_score')::float8,
+                gs.top_score::float8
+            ) as geocoded_score
+        FROM public.sondages s
+        LEFT JOIN geocode_suggestions gs ON s.id = gs.entity_id 
+            AND s.meta->>'geocoded_mode' = 'suggestion_accepted'
+            AND gs.status = 'accepted'
+        WHERE s.deleted_at IS NULL {}
+        ORDER BY s.created_at DESC
         LIMIT $2 OFFSET $3
         "#,
         if where_clauses.is_empty() {
@@ -187,15 +193,21 @@ pub async fn get_sondage(
     let sondage = sqlx::query_as::<_, Sondage>(
         r#"
         SELECT 
-            id, code, localite_base AS localite, adm3_id, adm3_name,
-            ST_AsGeoJSON(geom)::jsonb as geom,
-            location_mode::text,
-            is_geocoded,
-            source, created_at, updated_at,
-            meta->>'geocoded_mode' as geocoded_mode,
-            (meta->>'geocoded_score')::float8 as geocoded_score
-        FROM sondages
-        WHERE id = $1 AND deleted_at IS NULL
+            s.id, s.code, s.localite_base AS localite, s.adm3_id, s.adm3_name,
+            ST_AsGeoJSON(s.geom)::jsonb as geom,
+            s.location_mode::text,
+            s.is_geocoded,
+            s.source, s.created_at, s.updated_at,
+            s.meta->>'geocoded_mode' as geocoded_mode,
+            COALESCE(
+                (s.meta->>'geocoded_score')::float8,
+                gs.top_score::float8
+            ) as geocoded_score
+        FROM sondages s
+        LEFT JOIN geocode_suggestions gs ON s.id = gs.entity_id 
+            AND s.meta->>'geocoded_mode' = 'suggestion_accepted'
+            AND gs.status = 'accepted'
+        WHERE s.id = $1 AND s.deleted_at IS NULL
         "#,
     )
     .bind(id)
@@ -239,6 +251,11 @@ pub async fn get_sondage_details(
             'created_at', s.created_at,
             'updated_at', s.updated_at,
             'meta', s.meta,
+            'geocoded_mode', s.meta->>'geocoded_mode',
+            'geocoded_score', COALESCE(
+                (s.meta->>'geocoded_score')::float8,
+                gs.top_score::float8
+            ),
             'coordinates', CASE 
                 WHEN s.geom IS NOT NULL THEN jsonb_build_object(
                     'lat', ST_Y(s.geom),
@@ -248,6 +265,9 @@ pub async fn get_sondage_details(
             END
         )
         FROM sondages s
+        LEFT JOIN geocode_suggestions gs ON s.id = gs.entity_id 
+            AND s.meta->>'geocoded_mode' = 'suggestion_accepted'
+            AND gs.status = 'accepted'
         WHERE s.id = $1 AND s.deleted_at IS NULL
         "#,
     )
