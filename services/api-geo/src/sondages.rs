@@ -232,7 +232,6 @@ pub async fn get_sondage_details(
             'created_at', s.created_at,
             'updated_at', s.updated_at,
             'meta', s.meta,
-            'n_essais', s.n_essais,
             'coordinates', CASE 
                 WHEN s.geom IS NOT NULL THEN jsonb_build_object(
                     'lat', ST_Y(s.geom),
@@ -251,20 +250,21 @@ pub async fn get_sondage_details(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
     .ok_or_else(|| (StatusCode::NOT_FOUND, "Sondage not found".to_string()))?;
 
-    // Récupérer les essais Atterberg
+    // Récupérer les essais Atterberg via échantillons
     let atterberg: Vec<serde_json::Value> = sqlx::query_scalar(
         r#"
         SELECT jsonb_build_object(
-            'id', id,
-            'depth_m', depth_m,
-            'wl', wl,
-            'wp', wp,
-            'ip', ip,
-            'classification', classification
+            'id', ea.id,
+            'depth_m', e.depth_m,
+            'wl', ea.wl,
+            'wp', ea.wp,
+            'ip', ea.ip_generated,
+            'echantillon_id', e.id
         )
-        FROM atterberg
-        WHERE sondage_id = $1
-        ORDER BY depth_m
+        FROM essais_atterberg ea
+        INNER JOIN echantillons e ON ea.echantillon_id = e.id
+        WHERE e.sondage_id = $1
+        ORDER BY e.depth_m
         "#,
     )
     .bind(id)
@@ -272,18 +272,20 @@ pub async fn get_sondage_details(
     .await
     .unwrap_or_default();
 
-    // Récupérer les essais VBS
+    // Récupérer les essais VBS via échantillons
     let vbs: Vec<serde_json::Value> = sqlx::query_scalar(
         r#"
         SELECT jsonb_build_object(
-            'id', id,
-            'depth_m', depth_m,
-            'vbs', vbs,
-            'interpretation', interpretation
+            'id', ev.id,
+            'depth_m', e.depth_m,
+            'vbs', ev.vbs,
+            'commentaire', ev.commentaire,
+            'echantillon_id', e.id
         )
-        FROM vbs
-        WHERE sondage_id = $1
-        ORDER BY depth_m
+        FROM essais_vbs ev
+        INNER JOIN echantillons e ON ev.echantillon_id = e.id
+        WHERE e.sondage_id = $1
+        ORDER BY e.depth_m
         "#,
     )
     .bind(id)
@@ -291,22 +293,25 @@ pub async fn get_sondage_details(
     .await
     .unwrap_or_default();
 
-    // Récupérer les essais de granulométrie
+    // Récupérer les points de granulométrie via échantillons (agrégés par échantillon)
     let granulo: Vec<serde_json::Value> = sqlx::query_scalar(
         r#"
         SELECT jsonb_build_object(
-            'id', id,
-            'depth_m', depth_m,
-            'd10', d10,
-            'd30', d30,
-            'd60', d60,
-            'cu', cu,
-            'cc', cc,
-            'type', type
+            'echantillon_id', e.id,
+            'depth_m', e.depth_m,
+            'method', gp.method,
+            'points', jsonb_agg(
+                jsonb_build_object(
+                    'sieve_mm', gp.sieve_mm,
+                    'passing_pct', gp.passing_pct
+                ) ORDER BY gp.sieve_mm
+            )
         )
-        FROM granulometrie
-        WHERE sondage_id = $1
-        ORDER BY depth_m
+        FROM granulo_points gp
+        INNER JOIN echantillons e ON gp.echantillon_id = e.id
+        WHERE e.sondage_id = $1
+        GROUP BY e.id, e.depth_m, gp.method
+        ORDER BY e.depth_m, gp.method
         "#,
     )
     .bind(id)
@@ -320,8 +325,11 @@ pub async fn get_sondage_details(
         SELECT jsonb_build_object(
             'id', id,
             'depth_m', depth_m,
-            'description', description,
-            'type', type
+            'laboratory', laboratory,
+            'norm', norm,
+            'rho_s_gcm3', rho_s_gcm3,
+            'water_content_w', water_content_w,
+            'date', date
         )
         FROM echantillons
         WHERE sondage_id = $1

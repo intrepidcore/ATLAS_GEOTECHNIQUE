@@ -122,10 +122,10 @@ pub async fn accept_suggestion(
     let sondage_uuid = sondage_id.parse::<uuid::Uuid>()
         .map_err(|e| (StatusCode::BAD_REQUEST, format!("Invalid UUID: {}", e)))?;
     
-    let old_values = sqlx::query!(
-        "SELECT location_mode, adm3_name, ST_AsText(geom) as geom_wkt FROM public.sondages WHERE id = $1",
-        sondage_uuid
+    let old_values: (Option<String>, Option<String>, Option<String>) = sqlx::query_as(
+        "SELECT location_mode::text, adm3_name, ST_AsText(geom) FROM public.sondages WHERE id = $1"
     )
+    .bind(sondage_uuid)
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to fetch old values: {}", e)))?;
@@ -158,9 +158,9 @@ pub async fn accept_suggestion(
     .bind(adm3_gid)
     .bind(&adm3_pcode)
     .bind(&id)
-    .bind(&old_values.location_mode)
-    .bind(&old_values.adm3_name)
-    .bind(&old_values.geom_wkt)
+    .bind(&old_values.0)
+    .bind(&old_values.1)
+    .bind(&old_values.2)
     .execute(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to geocode: {}", e)))?;

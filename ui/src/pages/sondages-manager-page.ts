@@ -7,8 +7,16 @@ import L from 'leaflet';
 import { GeocodeCanonPanel } from '../geocode-canon-panel';
 import { SuggestionsAdmPanel } from '../suggestions-adm-panel';
 import { SondagesListPanel } from '../sondages-list-panel';
-import { ImportWizardV2 } from '../import-wizard-v2';
+import { ImportWizardV2 } from '../import-wizard-v2.js';
 import { toast } from '../ui/toast';
+import { dedupeByDepth, computeGeocodeBadge, type SurveyDetails, type GranuloSerie } from '../types/survey-details';
+
+// Dev mode flag for wizard testing panel
+declare global {
+  interface Window {
+    ATLAS_DEBUG_WIZARDS?: boolean;
+  }
+}
 
 type TabId = 'geocode' | 'suggestions' | 'import' | 'liste';
 
@@ -20,8 +28,9 @@ export class SondagesManagerPage {
   private geocodePanel: GeocodeCanonPanel | null = null;
   private suggestionsPanel: SuggestionsAdmPanel | null = null;
   private listPanel: SondagesListPanel | null = null;
-  private importWizard: ImportWizardV2 | null = null;
   private currentGeocodeTargetId: string | null = null;
+  private currentView: 'list' | 'details' = 'list';
+  private currentDetailId: string | null = null;
   private loaded: Record<TabId, boolean> = {
     geocode: false,
     suggestions: false,
@@ -117,6 +126,22 @@ export class SondagesManagerPage {
             <h3 style="margin: 0; color: #ecf2f8; font-size: 14px; font-weight: 600;">🗺️ Carte ADM3</h3>
           </div>
           <div id="sondages-map-container" style="flex: 1;"></div>
+          
+          <!-- Panneau dev wizards (visible seulement en mode debug) -->
+          <div id="wizard-dev-panel" style="display: none; padding: 12px; border-top: 1px solid #22304d; background: #1a2332;">
+            <h4 style="margin: 0 0 8px 0; color: #fbbf24; font-size: 12px;">🧪 Test Wizards (DEV)</h4>
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+              <button class="wizard-test-btn" data-wizard="v2" style="padding: 6px 10px; background: #22304d; color: #ecf2f8; border: 1px solid #4c6ef5; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                ImportWizard v2 (canonique)
+              </button>
+              <button class="wizard-test-btn" data-wizard="bulk_v3" style="padding: 6px 10px; background: #22304d; color: #ecf2f8; border: 1px solid #22304d; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                ImportBulkWizard v3
+              </button>
+              <button class="wizard-test-btn" data-wizard="geo" style="padding: 6px 10px; background: #22304d; color: #ecf2f8; border: 1px solid #22304d; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                GeotechnicalImportWizard
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     `;
@@ -132,6 +157,41 @@ export class SondagesManagerPage {
       const { code } = e.detail;
       this.zoomToAdm3(code);
     });
+
+    // Listen for focus survey events (Chantier D)
+    window.addEventListener('atlas:focus-survey', (e: any) => {
+      const { coordinates, adm3_id } = e.detail;
+      if (coordinates && this.map) {
+        const [lng, lat] = coordinates;
+        this.map.setView([lat, lng], 13);
+        
+        // Add temporary marker
+        const marker = L.circleMarker([lat, lng], {
+          radius: 10,
+          color: '#FFD60A',
+          fillColor: '#FFD60A',
+          fillOpacity: 0.8,
+          weight: 3
+        }).addTo(this.map);
+        
+        // Remove marker after 5 seconds
+        setTimeout(() => marker.remove(), 5000);
+      }
+    });
+
+    // Listen for ADM3 highlight events
+    window.addEventListener('atlas:highlight-adm3', (e: any) => {
+      const { adm3_id, duration = 3000 } = e.detail;
+      this.highlightAdm3ById(adm3_id, duration);
+    });
+
+    // Show wizard dev panel if debug mode enabled
+    if (window.ATLAS_DEBUG_WIZARDS || import.meta.env?.DEV) {
+      const devPanel = this.container?.querySelector('#wizard-dev-panel') as HTMLElement;
+      if (devPanel) {
+        devPanel.style.display = 'block';
+      }
+    }
 
     // Load first tab
     await this.switchTab('geocode');
@@ -286,130 +346,55 @@ export class SondagesManagerPage {
     if (!container) return;
 
     try {
-      // Créer un wizard embedded custom (sans overlay modale)
+      // Créer un container pour le wizard embedded
       container.innerHTML = `
-        <div style="display: flex; flex-direction: column; height: 100%; background: #0a0e17;">
-          <!-- Header -->
-          <div style="padding: 20px; background: #1a2332; border-bottom: 1px solid #22304d;">
-            <h3 style="margin: 0 0 8px 0; color: #ecf2f8; font-size: 20px; font-weight: 600;">
-              📥 Import de sondages géotechniques
-            </h3>
-            <p style="margin: 0; color: #94a3b8; font-size: 14px; line-height: 1.6;">
-              Importez vos sondages depuis un fichier Excel ou CSV. Le wizard vous guidera à travers les étapes de mapping, géométrie et validation.
-            </p>
-          </div>
-          
-          <!-- Wizard Content -->
-          <div style="flex: 1; overflow-y: auto; padding: 24px;">
-            <!-- Upload Zone -->
-            <div id="import-upload-zone" style="max-width: 800px; margin: 0 auto;">
-              <div style="background: #1a2332; border: 2px dashed #4c6ef5; border-radius: 12px; padding: 60px 40px; text-align: center; cursor: pointer; transition: all 0.3s;" 
-                   onmouseover="this.style.borderColor='#51cf66'; this.style.background='#0f172a';"
-                   onmouseout="this.style.borderColor='#4c6ef5'; this.style.background='#1a2332';">
-                
-                <div style="font-size: 64px; margin-bottom: 20px;">📁</div>
-                
-                <h4 style="margin: 0 0 12px 0; color: #ecf2f8; font-size: 18px; font-weight: 600;">
-                  Glissez-déposez votre fichier ici
-                </h4>
-                
-                <p style="margin: 0 0 20px 0; color: #94a3b8; font-size: 14px;">
-                  ou cliquez pour parcourir
-                </p>
-                
-                <div style="display: inline-block; padding: 12px 24px; background: linear-gradient(135deg, #4c6ef5, #51cf66); color: #fff; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;">
-                  📂 Sélectionner un fichier
-                </div>
-                
-                <p style="margin: 20px 0 0 0; color: #64748b; font-size: 12px;">
-                  Formats acceptés : CSV, XLSX, XLS (max 50 MB)
-                </p>
-                
-                <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display: none;">
-              </div>
-              
-              <!-- Modèles disponibles -->
-              <div style="margin-top: 32px; padding: 20px; background: #1a2332; border: 1px solid #22304d; border-radius: 8px;">
-                <h5 style="margin: 0 0 12px 0; color: #ecf2f8; font-size: 14px; font-weight: 600;">
-                  📋 Modèles disponibles
-                </h5>
-                <p style="margin: 0 0 16px 0; color: #94a3b8; font-size: 13px;">
-                  Téléchargez un modèle pour faciliter votre import :
-                </p>
-                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                  <button style="padding: 10px 16px; background: #22304d; color: #ecf2f8; border: 1px solid #4c6ef5; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.2s;"
-                          onmouseover="this.style.background='#4c6ef5';"
-                          onmouseout="this.style.background='#22304d';">
-                    📄 Modèle Sondages Simple
-                  </button>
-                  <button style="padding: 10px 16px; background: #22304d; color: #ecf2f8; border: 1px solid #4c6ef5; border-radius: 6px; font-size: 13px; cursor: pointer; transition: all 0.2s;"
-                          onmouseover="this.style.background='#4c6ef5';"
-                          onmouseout="this.style.background='#22304d';">
-                    📊 Modèle Complet (avec essais)
-                  </button>
-                </div>
-              </div>
-              
-              <!-- Instructions -->
-              <div style="margin-top: 24px; padding: 16px; background: #0f172a; border-left: 3px solid #51cf66; border-radius: 4px;">
-                <h6 style="margin: 0 0 8px 0; color: #51cf66; font-size: 13px; font-weight: 600;">
-                  💡 Conseils pour un import réussi
-                </h6>
-                <ul style="margin: 0; padding-left: 20px; color: #94a3b8; font-size: 12px; line-height: 1.8;">
-                  <li>Assurez-vous que votre fichier contient au minimum les colonnes : <code>code</code>, <code>localite</code></li>
-                  <li>Les coordonnées peuvent être en format décimal (lat/lon) ou DMS (degrés/minutes/secondes)</li>
-                  <li>Pour les essais géotechniques, utilisez des feuilles séparées (Atterberg, VBS, Granulo, etc.)</li>
-                  <li>Les doublons seront détectés automatiquement et vous pourrez choisir de les mettre à jour ou ignorer</li>
-                </ul>
-              </div>
+        <div style="width: 100%; height: 100%; background: #0a0e17; padding: 20px; overflow-y: auto;">
+          <div style="max-width: 1000px; margin: 0 auto;">
+            <div style="margin-bottom: 24px;">
+              <h2 style="color: #ecf2f8; margin: 0 0 8px 0; font-size: 24px; font-weight: 600;">
+                📥 Import de sondages géotechniques
+              </h2>
+              <p style="color: #94a3b8; margin: 0; font-size: 16px;">
+                Importez vos données depuis Excel ou CSV avec validation automatique et géocodage
+              </p>
             </div>
+            <div id="import-wizard-embedded"></div>
           </div>
         </div>
       `;
       
-      // Attacher les event listeners
-      const uploadZone = container.querySelector('#import-upload-zone > div') as HTMLElement;
-      const fileInput = container.querySelector('#import-file-input') as HTMLInputElement;
+      // Initialiser le wizard V2 directement dans le container
+      const wizard = new ImportWizardV2('import-wizard-embedded', this.apiUrl);
       
-      if (uploadZone && fileInput) {
-        // Click to browse
-        uploadZone.addEventListener('click', () => {
-          fileInput.click();
-        });
+      // Modifier le wizard pour qu'il s'affiche sans overlay modal
+      const wizardContainer = document.getElementById('import-wizard-embedded');
+      if (wizardContainer) {
+        // Ouvrir le wizard et modifier son style pour l'embedded
+        wizard.open();
         
-        // File selection
-        fileInput.addEventListener('change', (e) => {
-          const file = (e.target as HTMLInputElement).files?.[0];
-          if (file) {
-            this.handleFileUpload(file);
+        // Supprimer l'overlay modal et adapter les styles
+        setTimeout(() => {
+          const overlay = wizardContainer.querySelector('.wizard-overlay') as HTMLElement;
+          if (overlay) {
+            overlay.style.position = 'relative';
+            overlay.style.background = 'transparent';
+            overlay.style.display = 'block';
+            overlay.style.alignItems = 'stretch';
+            overlay.style.justifyContent = 'stretch';
+            
+            const modal = overlay.querySelector('.wizard-modal') as HTMLElement;
+            if (modal) {
+              modal.style.width = '100%';
+              modal.style.maxWidth = 'none';
+              modal.style.maxHeight = 'none';
+              modal.style.margin = '0';
+              modal.style.borderRadius = '8px';
+            }
           }
-        });
-        
-        // Drag & drop
-        uploadZone.addEventListener('dragover', (e) => {
-          e.preventDefault();
-          uploadZone.style.borderColor = '#51cf66';
-          uploadZone.style.background = '#0f172a';
-        });
-        
-        uploadZone.addEventListener('dragleave', () => {
-          uploadZone.style.borderColor = '#4c6ef5';
-          uploadZone.style.background = '#1a2332';
-        });
-        
-        uploadZone.addEventListener('drop', (e) => {
-          e.preventDefault();
-          uploadZone.style.borderColor = '#4c6ef5';
-          uploadZone.style.background = '#1a2332';
-          
-          const file = e.dataTransfer?.files[0];
-          if (file) {
-            this.handleFileUpload(file);
-          }
-        });
+        }, 100);
       }
       
-      console.log('[SONDAGES PAGE] Import Wizard embedded initialisé');
+      console.log('[SONDAGES PAGE] Import Wizard V2 embedded initialisé');
       this.loaded.import = true;
     } catch (e) {
       console.error('[SONDAGES PAGE] Error loading import wizard:', e);
@@ -421,24 +406,6 @@ export class SondagesManagerPage {
         </div>
       `;
     }
-  }
-  
-  private async handleFileUpload(file: File) {
-    console.log('[IMPORT] File selected:', file.name);
-    toast.success(`Fichier sélectionné : ${file.name}`);
-    
-    // TODO: Implémenter le reste du workflow d'import
-    // Pour l'instant, on ouvre le wizard modal existant
-    if (!this.importWizard) {
-      // Créer un container temporaire pour le wizard modal
-      const wizardContainer = document.createElement('div');
-      wizardContainer.id = 'temp-import-wizard';
-      document.body.appendChild(wizardContainer);
-      
-      this.importWizard = new ImportWizardV2('temp-import-wizard', this.apiUrl);
-    }
-    
-    this.importWizard.open();
   }
 
   private async ensureListeLoaded() {
@@ -453,16 +420,13 @@ export class SondagesManagerPage {
         this.openGeocodeForSurvey(surveyId);
       });
       
-      this.listPanel.renderUI(
-        'liste-content',
-        (msg: string) => {
-          console.log('[LISTE]', msg);
-        },
-        (err: string) => {
-          console.error('[LISTE]', err);
-          toast.error(err);
-        }
-      );
+      // Set details view handler
+      this.listPanel.setOnDetailsRequest((surveyId: string) => {
+        this.showDetailsView(surveyId);
+      });
+      
+      // Initial render
+      this.renderListeContent();
       this.loaded.liste = true;
     } catch (e) {
       console.error('[SONDAGES PAGE] Error loading list panel:', e);
@@ -527,6 +491,38 @@ export class SondagesManagerPage {
     }
   }
 
+  /**
+   * Highlight ADM3 by ID with temporary effect
+   */
+  private highlightAdm3ById(adm3Id: number, duration: number = 3000) {
+    if (!this.adm3Layer || !this.map) return;
+
+    this.adm3Layer.eachLayer((layer: any) => {
+      const props = layer.feature?.properties;
+      if (props?.gid === adm3Id || props?.id === adm3Id) {
+        const originalStyle = {
+          color: layer.options.color || '#4c6ef5',
+          weight: layer.options.weight || 1,
+          fillColor: layer.options.fillColor || '#1a2332',
+          fillOpacity: layer.options.fillOpacity || 0.3,
+        };
+
+        // Apply highlight style
+        layer.setStyle({
+          color: '#51cf66',
+          weight: 3,
+          fillColor: '#51cf66',
+          fillOpacity: 0.3,
+        });
+
+        // Revert after duration
+        setTimeout(() => {
+          layer.setStyle(originalStyle);
+        }, duration);
+      }
+    });
+  }
+
   destroy() {
     if (this.map) {
       this.map.remove();
@@ -534,6 +530,347 @@ export class SondagesManagerPage {
     }
     if (this.container) {
       this.container.innerHTML = '';
+    }
+  }
+
+  private showDetailsView(surveyId: string) {
+    this.currentView = 'details';
+    this.currentDetailId = surveyId;
+    this.renderListeContent();
+    this.focusSurveyOnMap(surveyId);
+  }
+
+  private backToList() {
+    this.currentView = 'list';
+    this.currentDetailId = null;
+    this.renderListeContent();
+  }
+
+  private async renderListeContent() {
+    const container = document.getElementById('liste-content');
+    if (!container) return;
+
+    if (this.currentView === 'details' && this.currentDetailId) {
+      // Render details view
+      try {
+        const response = await fetch(`${this.apiUrl}/sondages/${this.currentDetailId}/details`);
+        if (!response.ok) throw new Error('Failed to fetch details');
+        
+        const details = await response.json();
+        
+        container.innerHTML = `
+          <div style="padding: 20px; height: 100%; overflow-y: auto;">
+            <div style="margin-bottom: 20px;">
+              <button id="backToList" style="padding: 8px 16px; background: #22304d; color: #ecf2f8; border: none; border-radius: 6px; cursor: pointer; margin-bottom: 16px;">
+                ← Retour à la liste
+              </button>
+              <h2 style="color: #ecf2f8; margin: 0; font-size: 20px;">
+                📋 Détails du sondage ${details.code || 'N/A'}
+              </h2>
+            </div>
+            
+            <div style="background: #1a2332; border: 1px solid #22304d; border-radius: 8px; padding: 20px;">
+              ${this.renderDetailsContent(details)}
+            </div>
+          </div>
+        `;
+        
+        // Attach back button listener
+        const backBtn = document.getElementById('backToList');
+        if (backBtn) {
+          backBtn.addEventListener('click', () => this.backToList());
+        }
+        
+        // Attach zoom button listener
+        const zoomBtn = document.getElementById('zoomOnMapBtn');
+        if (zoomBtn) {
+          zoomBtn.addEventListener('click', () => {
+            this.focusSurveyOnMap(this.currentDetailId!);
+          });
+        }
+        
+        // Attach granulometrie accordion listeners
+        container.querySelectorAll('.granulo-header').forEach((header) => {
+          header.addEventListener('click', () => {
+            const idx = (header as HTMLElement).dataset.idx;
+            const body = container.querySelector(`.granulo-body[data-idx="${idx}"]`) as HTMLElement;
+            const chevron = header.querySelector('.granulo-chevron') as HTMLElement;
+            if (body) {
+              const isOpen = body.style.display !== 'none';
+              body.style.display = isOpen ? 'none' : 'block';
+              if (chevron) chevron.textContent = isOpen ? '▼' : '▲';
+            }
+          });
+        });
+        
+      } catch (error) {
+        console.error('[DETAILS] Error loading details:', error);
+        container.innerHTML = `
+          <div style="padding: 20px; text-align: center; color: #ff6b6b;">
+            <h3>Erreur de chargement</h3>
+            <p>Impossible de charger les détails du sondage</p>
+            <button id="backToList" style="padding: 8px 16px; background: #22304d; color: #ecf2f8; border: none; border-radius: 6px; cursor: pointer;">
+              ← Retour à la liste
+            </button>
+          </div>
+        `;
+        
+        const backBtn = document.getElementById('backToList');
+        if (backBtn) {
+          backBtn.addEventListener('click', () => this.backToList());
+        }
+      }
+    } else {
+      // Render list view
+      if (this.listPanel) {
+        this.listPanel.renderUI(
+          'liste-content',
+          (msg: string) => console.log('[LISTE]', msg),
+          (err: string) => {
+            console.error('[LISTE]', err);
+            toast.error(err);
+          }
+        );
+      }
+    }
+  }
+
+  private renderDetailsContent(details: SurveyDetails): string {
+    const isGeocoded = details.is_geocoded || false;
+    const coords = details.coordinates || (details.geom ? { lat: details.geom.coordinates[1], lon: details.geom.coordinates[0] } : null);
+    
+    // Compute geocode badge (Chantier C)
+    const geocodeBadge = computeGeocodeBadge(details.location_mode, details.meta?.geocoded_mode);
+    const badgeClass = geocodeBadge.type === 'auto' ? 'background: #22c55e;' : 
+                       geocodeBadge.type === 'manual' ? 'background: #3b82f6;' : 'background: #6b7280;';
+    
+    // Deduplicate essais by depth (Chantier F)
+    const atterbergDeduped = details.atterberg ? dedupeByDepth(details.atterberg) : [];
+    const vbsDeduped = details.vbs ? dedupeByDepth(details.vbs) : [];
+    
+    return `
+      <div style="display: grid; gap: 24px;">
+        <!-- Section 1: Localisation avec badges -->
+        <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0; font-size: 16px;">📍 Localisation</h4>
+            <div style="display: flex; gap: 8px;">
+              <span style="padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: white; ${isGeocoded ? 'background: #22c55e;' : 'background: #ef4444;'}">
+                ${isGeocoded ? '✓ GÉOCODÉ' : '✗ NON GÉOCODÉ'}
+              </span>
+              ${isGeocoded ? `<span style="padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; color: white; ${badgeClass}">
+                ${geocodeBadge.label}
+              </span>` : ''}
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 14px; color: #94a3b8;">
+            <div><strong style="color: #ecf2f8;">Code:</strong> ${details.code || 'N/A'}</div>
+            <div><strong style="color: #ecf2f8;">Localité:</strong> ${details.localite || 'N/A'}</div>
+            <div><strong style="color: #ecf2f8;">ADM3:</strong> ${details.adm3_name || 'N/A'}</div>
+            ${coords ? `<div><strong style="color: #ecf2f8;">Coords (WGS84):</strong> ${coords.lat?.toFixed(6)}, ${coords.lon?.toFixed(6)}</div>` : ''}
+          </div>
+          ${isGeocoded && coords ? `
+            <button id="zoomOnMapBtn" style="margin-top: 12px; padding: 8px 16px; background: #22304d; color: #ecf2f8; border: 1px solid #4c6ef5; border-radius: 6px; cursor: pointer; font-size: 13px;">
+              🔍 Zoomer sur la carte
+            </button>
+          ` : ''}
+        </div>
+        
+        <!-- Section 2: Métadonnées -->
+        <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+          <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">📊 Métadonnées</h4>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; font-size: 14px; color: #94a3b8;">
+            <div><strong style="color: #ecf2f8;">Source:</strong> ${details.source || 'N/A'}</div>
+            <div><strong style="color: #ecf2f8;">Mode localisation:</strong> ${details.location_mode || 'N/A'}</div>
+            <div><strong style="color: #ecf2f8;">Créé le:</strong> ${details.created_at ? new Date(details.created_at).toLocaleDateString('fr-FR') : 'N/A'}</div>
+            <div><strong style="color: #ecf2f8;">Modifié le:</strong> ${details.updated_at ? new Date(details.updated_at).toLocaleDateString('fr-FR') : 'N/A'}</div>
+          </div>
+        </div>
+        
+        <!-- Section 3: Essais Atterberg (dédupliqués par profondeur) -->
+        ${atterbergDeduped.length > 0 ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">🧪 Essais Atterberg (${atterbergDeduped.length} profondeurs)</h4>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                  <tr style="background: #22304d;">
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8; border-radius: 4px 0 0 0;">Profondeur (m)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">WL (%)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">WP (%)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8; border-radius: 0 4px 0 0;">IP (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${atterbergDeduped.map((a, i) => `
+                    <tr style="background: ${i % 2 === 0 ? '#1a2332' : '#0f172a'};">
+                      <td style="padding: 10px; color: #ecf2f8; font-weight: 500;">${a.depth_m?.toFixed(2) || 'N/A'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${a.wl?.toFixed(1) || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${a.wp?.toFixed(1) || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${a.ip?.toFixed(1) || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Section 4: Essais VBS (dédupliqués par profondeur) -->
+        ${vbsDeduped.length > 0 ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">🧪 Essais VBS (${vbsDeduped.length} profondeurs)</h4>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                  <tr style="background: #22304d;">
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8;">Profondeur (m)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Valeur VBS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${vbsDeduped.map((v, i) => `
+                    <tr style="background: ${i % 2 === 0 ? '#1a2332' : '#0f172a'};">
+                      <td style="padding: 10px; color: #ecf2f8; font-weight: 500;">${v.depth_m?.toFixed(2) || 'N/A'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${v.vbs?.toFixed(2) || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Section 5: Granulométrie (accordion par profondeur) -->
+        ${details.granulometrie?.length > 0 ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">📊 Granulométrie (${details.granulometrie.length} profondeurs)</h4>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              ${details.granulometrie.map((serie: GranuloSerie, idx: number) => `
+                <div class="granulo-card" style="background: #1a2332; border-radius: 6px; overflow: hidden;">
+                  <div class="granulo-header" data-idx="${idx}" style="padding: 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #22304d;">
+                    <span style="color: #ecf2f8; font-weight: 500;">Profondeur ${serie.depth_m?.toFixed(2) || 'N/A'} m</span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                      <span style="color: #94a3b8; font-size: 12px;">${serie.method || 'Méthode non spécifiée'}</span>
+                      <span style="background: #22304d; padding: 2px 8px; border-radius: 10px; font-size: 11px; color: #94a3b8;">${serie.points?.length || 0} points</span>
+                      <span class="granulo-chevron" style="color: #94a3b8;">▼</span>
+                    </div>
+                  </div>
+                  <div class="granulo-body" data-idx="${idx}" style="display: none; padding: 12px;">
+                    ${serie.points?.length > 0 ? `
+                      <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+                        <thead>
+                          <tr style="background: #22304d;">
+                            <th style="padding: 8px; text-align: left; color: #ecf2f8;">Tamis (mm)</th>
+                            <th style="padding: 8px; text-align: right; color: #ecf2f8;">Passant (%)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          ${serie.points.map((p, pi) => `
+                            <tr style="background: ${pi % 2 === 0 ? '#0f172a' : '#1a2332'};">
+                              <td style="padding: 6px 8px; color: #94a3b8;">${p.sieve_mm}</td>
+                              <td style="padding: 6px 8px; text-align: right; color: #94a3b8;">${p.passing_pct?.toFixed(2)}</td>
+                            </tr>
+                          `).join('')}
+                        </tbody>
+                      </table>
+                    ` : '<p style="color: #94a3b8; margin: 0;">Aucun point de mesure</p>'}
+                  </div>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Section 6: Échantillons -->
+        ${details.echantillons?.length > 0 ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">🧫 Échantillons (${details.echantillons.length})</h4>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                  <tr style="background: #22304d;">
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8;">Profondeur (m)</th>
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8;">Laboratoire</th>
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8;">Norme</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">W (%)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${details.echantillons.map((e, i) => `
+                    <tr style="background: ${i % 2 === 0 ? '#1a2332' : '#0f172a'};">
+                      <td style="padding: 10px; color: #ecf2f8; font-weight: 500;">${e.depth_m?.toFixed(2) || 'N/A'}</td>
+                      <td style="padding: 10px; color: #94a3b8;">${e.laboratory || '—'}</td>
+                      <td style="padding: 10px; color: #94a3b8;">${e.norm || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${e.water_content_w?.toFixed(1) || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Message si aucun essai -->
+        ${!atterbergDeduped.length && !vbsDeduped.length && !details.granulometrie?.length && !details.echantillons?.length ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 24px; text-align: center;">
+            <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
+            <p style="color: #94a3b8; margin: 0;">Aucun essai géotechnique enregistré pour ce sondage</p>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private async focusSurveyOnMap(surveyId: string) {
+    try {
+      // Fetch survey details to get coordinates and ADM3
+      const response = await fetch(`${this.apiUrl}/sondages/${surveyId}/details`);
+      if (!response.ok) {
+        console.warn('[MAP] Failed to fetch survey details for map focus');
+        return;
+      }
+
+      const details = await response.json();
+      const survey = details.sondage;
+
+      if (!survey.geom || !survey.geom.coordinates) {
+        console.warn('[MAP] Survey has no coordinates for map focus');
+        return;
+      }
+
+      const [lng, lat] = survey.geom.coordinates;
+      
+      // Emit event for map to focus on survey
+      const focusEvent = new CustomEvent('atlas:focus-survey', {
+        detail: {
+          surveyId,
+          coordinates: [lng, lat],
+          adm3_id: survey.adm3_id,
+          adm3_name: survey.adm3_name,
+          code: survey.code
+        }
+      });
+      
+      window.dispatchEvent(focusEvent);
+      console.log('[MAP] Focus event dispatched for survey:', survey.code, 'at', [lng, lat]);
+
+      // If ADM3 available, also highlight the ADM3 polygon
+      if (survey.adm3_id) {
+        setTimeout(() => {
+          const highlightEvent = new CustomEvent('atlas:highlight-adm3', {
+            detail: {
+              adm3_id: survey.adm3_id,
+              adm3_name: survey.adm3_name,
+              duration: 3000 // 3 seconds highlight
+            }
+          });
+          window.dispatchEvent(highlightEvent);
+        }, 500); // Small delay to let map focus first
+      }
+
+    } catch (error) {
+      console.error('[MAP] Error focusing survey on map:', error);
     }
   }
 }

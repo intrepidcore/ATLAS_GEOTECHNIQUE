@@ -11,10 +11,16 @@ export class SondagesListPanel {
   private loading = false;
   private searchQuery = '';
   private filterGeocoded: 'all' | 'geocoded' | 'not_geocoded' = 'all';
+  private filterSource: 'all' | string = 'all';
+  private filterAdm3: 'all' | string = 'all';
+  private filterGeocodingMode: 'all' | 'auto' | 'manual' = 'all';
+  private sortBy: 'created_at' | 'code' | 'localite' | 'is_geocoded' = 'created_at';
+  private sortOrder: 'asc' | 'desc' = 'desc';
   private currentContainerId?: string;
   private onSuccessCallback?: (msg: string) => void;
   private onErrorCallback?: (error: string) => void;
   private onGeocodeRequest?: (surveyId: string) => void;
+  private onDetailsRequest?: (surveyId: string) => void;
 
   constructor(private apiUrl: string) {}
   
@@ -23,6 +29,13 @@ export class SondagesListPanel {
    */
   setOnGeocodeRequest(callback: (surveyId: string) => void) {
     this.onGeocodeRequest = callback;
+  }
+
+  /**
+   * Set callback for details request (called when user clicks Voir détails)
+   */
+  setOnDetailsRequest(callback: (surveyId: string) => void) {
+    this.onDetailsRequest = callback;
   }
 
   async refresh() {
@@ -41,6 +54,9 @@ export class SondagesListPanel {
       } else if (this.filterGeocoded === 'not_geocoded') {
         params.missing = 'geom';
       }
+
+      // Filtres avancés seront appliqués côté client pour l'instant
+      // TODO: Implémenter côté serveur pour de meilleures performances
 
       this.sondages = await listSondages(params);
     } catch (e: any) {
@@ -90,13 +106,13 @@ export class SondagesListPanel {
           </div>
 
           <!-- Filtres -->
-          <div style="display: flex; gap: 12px; margin-bottom: 12px;">
+          <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
             <input 
               type="text" 
               id="search-input" 
               placeholder="🔍 Rechercher un sondage..." 
               value="${this.searchQuery}"
-              style="flex: 1; padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px;"
+              style="flex: 1; min-width: 200px; padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px;"
             />
             <select 
               id="filter-geocoded" 
@@ -106,6 +122,48 @@ export class SondagesListPanel {
               <option value="geocoded" ${this.filterGeocoded === 'geocoded' ? 'selected' : ''}>Géocodés</option>
               <option value="not_geocoded" ${this.filterGeocoded === 'not_geocoded' ? 'selected' : ''}>Non géocodés</option>
             </select>
+            <select 
+              id="filter-geocoding-mode" 
+              style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
+            >
+              <option value="all" ${this.filterGeocodingMode === 'all' ? 'selected' : ''}>Tous modes</option>
+              <option value="auto" ${this.filterGeocodingMode === 'auto' ? 'selected' : ''}>🤖 Auto</option>
+              <option value="manual" ${this.filterGeocodingMode === 'manual' ? 'selected' : ''}>👤 Manuel</option>
+            </select>
+          </div>
+          
+          <!-- Filtres avancés (ligne 2) -->
+          <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+            <select 
+              id="filter-source" 
+              style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
+            >
+              <option value="all" ${this.filterSource === 'all' ? 'selected' : ''}>Toutes sources</option>
+              ${this.getUniqueSourcesOptions()}
+            </select>
+            <select 
+              id="filter-adm3" 
+              style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
+            >
+              <option value="all" ${this.filterAdm3 === 'all' ? 'selected' : ''}>Toutes ADM3</option>
+              ${this.getUniqueAdm3Options()}
+            </select>
+            <select 
+              id="sort-by" 
+              style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
+            >
+              <option value="created_at" ${this.sortBy === 'created_at' ? 'selected' : ''}>📅 Date création</option>
+              <option value="code" ${this.sortBy === 'code' ? 'selected' : ''}>🏷️ Code</option>
+              <option value="localite" ${this.sortBy === 'localite' ? 'selected' : ''}>📍 Localité</option>
+              <option value="is_geocoded" ${this.sortBy === 'is_geocoded' ? 'selected' : ''}>🎯 Géocodage</option>
+            </select>
+            <button 
+              id="sort-order" 
+              style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
+              title="Ordre de tri"
+            >
+              ${this.sortOrder === 'desc' ? '⬇️ Desc' : '⬆️ Asc'}
+            </button>
           </div>
         </div>
 
@@ -117,6 +175,28 @@ export class SondagesListPanel {
     `;
 
     this.attachListeners();
+  }
+
+  private getUniqueSourcesOptions(): string {
+    const uniqueSources = [...new Set(this.sondages.map(s => s.source).filter(Boolean))];
+    return uniqueSources.map(source => 
+      `<option value="${source}" ${this.filterSource === source ? 'selected' : ''}>${source}</option>`
+    ).join('');
+  }
+
+  private getUniqueAdm3Options(): string {
+    const uniqueAdm3 = [...new Set(this.sondages.map(s => s.adm3_name).filter(Boolean))];
+    return uniqueAdm3.map(adm3 => 
+      `<option value="${adm3}" ${this.filterAdm3 === adm3 ? 'selected' : ''}>${adm3}</option>`
+    ).join('');
+  }
+
+  private rerenderList() {
+    const listContainer = document.getElementById('sondages-list');
+    if (listContainer) {
+      listContainer.innerHTML = this.renderSondagesList();
+      this.attachListeners(); // Re-attach listeners for new elements
+    }
   }
 
   private renderSondagesList(): string {
@@ -138,10 +218,72 @@ export class SondagesListPanel {
       `;
     }
 
-    return this.sondages
+    // Appliquer les filtres et le tri
+    let filteredSondages = this.sondages.slice();
+
+    // Filtrage par source
+    if (this.filterSource !== 'all') {
+      filteredSondages = filteredSondages.filter(s => s.source === this.filterSource);
+    }
+
+    // Filtrage par ADM3
+    if (this.filterAdm3 !== 'all') {
+      filteredSondages = filteredSondages.filter(s => s.adm3_name === this.filterAdm3);
+    }
+
+    // Filtrage par mode de géocodage
+    if (this.filterGeocodingMode !== 'all') {
+      filteredSondages = filteredSondages.filter(s => {
+        const geocodedMode = s.meta && s.meta.geocoded_mode ? s.meta.geocoded_mode : null;
+        const isAutoAccepted = geocodedMode === 'suggestion_accepted';
+        const isManualAdm = geocodedMode === 'adm3';
+        
+        if (this.filterGeocodingMode === 'auto') {
+          return isAutoAccepted || s.location_mode === 'adm_random_cell';
+        } else if (this.filterGeocodingMode === 'manual') {
+          return isManualAdm || s.location_mode === 'exact';
+        }
+        return false;
+      });
+    }
+
+    // Tri
+    filteredSondages.sort((a, b) => {
+      let aVal: any, bVal: any;
+      
+      switch (this.sortBy) {
+        case 'code':
+          aVal = a.code || '';
+          bVal = b.code || '';
+          break;
+        case 'localite':
+          aVal = a.localite || '';
+          bVal = b.localite || '';
+          break;
+        case 'is_geocoded':
+          aVal = a.is_geocoded ? 1 : 0;
+          bVal = b.is_geocoded ? 1 : 0;
+          break;
+        case 'created_at':
+        default:
+          aVal = new Date(a.created_at || 0);
+          bVal = new Date(b.created_at || 0);
+          break;
+      }
+
+      if (aVal < bVal) return this.sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this.sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filteredSondages
       .map((s) => {
         const isGeocoded = s.is_geocoded;
         const locationMode = s.location_mode || 'unknown';
+        const isAutoGeocoded = locationMode === 'adm_random_cell';
+        const geocodedMode = s.meta && s.meta.geocoded_mode ? s.meta.geocoded_mode : null;
+        const isAutoAccepted = geocodedMode === 'suggestion_accepted';
+        const isManualAdm = geocodedMode === 'adm3';
         const statusColor = isGeocoded ? '#51cf66' : '#ff6b6b';
         const statusIcon = isGeocoded ? '✅' : '❌';
         const modeLabel = this.getLocationModeLabel(locationMode);
@@ -162,6 +304,8 @@ export class SondagesListPanel {
                 <div style="padding: 4px 8px; background: ${statusColor}22; border: 1px solid ${statusColor}; border-radius: 4px; font-size: 11px; color: ${statusColor}; font-weight: 600; margin-bottom: 4px;">
                   ${isGeocoded ? 'GÉOCODÉ' : 'NON GÉOCODÉ'}
                 </div>
+                ${isAutoAccepted ? `<div style="padding: 2px 6px; background: #4c6ef522; border: 1px solid #4c6ef5; border-radius: 4px; font-size: 10px; color: #4c6ef5; font-weight: 600; margin-bottom: 2px;">🤖 AUTO</div>` : ''}
+                ${isManualAdm ? `<div style="padding: 2px 6px; background: #ff922b22; border: 1px solid #ff922b; border-radius: 4px; font-size: 10px; color: #ff922b; font-weight: 600; margin-bottom: 2px;">👤 MANUEL</div>` : ''}
                 ${isGeocoded ? `<div style="font-size: 11px; color: #94a3b8;">${modeLabel}</div>` : ''}
               </div>
             </div>
@@ -219,6 +363,47 @@ export class SondagesListPanel {
       });
     }
 
+    // Advanced filters
+    const filterGeocodingMode = document.getElementById('filter-geocoding-mode') as HTMLSelectElement;
+    if (filterGeocodingMode) {
+      filterGeocodingMode.addEventListener('change', () => {
+        this.filterGeocodingMode = filterGeocodingMode.value as any;
+        this.rerenderList();
+      });
+    }
+
+    const filterSource = document.getElementById('filter-source') as HTMLSelectElement;
+    if (filterSource) {
+      filterSource.addEventListener('change', () => {
+        this.filterSource = filterSource.value;
+        this.rerenderList();
+      });
+    }
+
+    const filterAdm3 = document.getElementById('filter-adm3') as HTMLSelectElement;
+    if (filterAdm3) {
+      filterAdm3.addEventListener('change', () => {
+        this.filterAdm3 = filterAdm3.value;
+        this.rerenderList();
+      });
+    }
+
+    const sortBy = document.getElementById('sort-by') as HTMLSelectElement;
+    if (sortBy) {
+      sortBy.addEventListener('change', () => {
+        this.sortBy = sortBy.value as any;
+        this.rerenderList();
+      });
+    }
+
+    const sortOrder = document.getElementById('sort-order') as HTMLButtonElement;
+    if (sortOrder) {
+      sortOrder.addEventListener('click', () => {
+        this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+        this.rerenderList();
+      });
+    }
+
     // Geocode buttons
     document.querySelectorAll('.geocode-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {
@@ -266,17 +451,20 @@ export class SondagesListPanel {
   }
 
   private async handleView(id: string) {
-    try {
-      // Fetch sondage details
-      const response = await fetch(`${this.apiUrl}/sondages/${id}`);
-      if (!response.ok) throw new Error('Failed to fetch sondage');
-      
-      const sondage = await response.json();
-      
-      // Create modal
-      this.showDetailsModal(sondage);
-    } catch (e: any) {
-      toast.error(`Erreur: ${e.message}`);
+    if (this.onDetailsRequest) {
+      // Use callback to request details view
+      this.onDetailsRequest(id);
+    } else {
+      // Fallback to modal (legacy behavior)
+      try {
+        const response = await fetch(`${this.apiUrl}/sondages/${id}`);
+        if (!response.ok) throw new Error('Failed to fetch sondage');
+        
+        const sondage = await response.json();
+        this.showDetailsModal(sondage);
+      } catch (e: any) {
+        toast.error(`Erreur: ${e.message}`);
+      }
     }
   }
 

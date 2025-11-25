@@ -745,3 +745,76 @@ pub async fn list_adm3(State(state): State<AppState>) -> impl IntoResponse {
 
     (StatusCode::OK, Json(adm3s)).into_response()
 }
+
+/// GET /adm3/geojson - Géométries ADM3 en GeoJSON
+pub async fn get_adm3_geojson(State(state): State<AppState>) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    #[derive(sqlx::FromRow)]
+    struct Adm3Feature {
+        gid: i32,
+        code: Option<String>,
+        name: Option<String>,
+        adm2_name: Option<String>,
+        adm1_name: Option<String>,
+        geometry: serde_json::Value,
+    }
+
+    let features = match sqlx::query_as::<_, Adm3Feature>(
+        r#"
+        SELECT 
+            gid,
+            adm3_pcode as code,
+            adm3_fr as name,
+            adm2_fr as adm2_name,
+            adm1_fr as adm1_name,
+            ST_AsGeoJSON(ST_Transform(geom, 4326))::jsonb as geometry
+        FROM adm3
+        WHERE adm3_fr IS NOT NULL AND geom IS NOT NULL
+        ORDER BY adm3_fr
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    {
+        Ok(rows) => rows,
+        Err(e) => {
+            tracing::error!(?e, "Failed to fetch ADM3 geometries");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "database error"})),
+            )
+                .into_response();
+        }
+    };
+
+    let geojson_features: Vec<serde_json::Value> = features
+        .into_iter()
+        .map(|row| {
+            serde_json::json!({
+                "type": "Feature",
+                "id": row.gid,
+                "properties": {
+                    "gid": row.gid,
+                    "code": row.code,
+                    "name": row.name,
+                    "adm2_name": row.adm2_name,
+                    "adm1_name": row.adm1_name
+                },
+                "geometry": row.geometry
+            })
+        })
+        .collect();
+
+    let geojson = serde_json::json!({
+        "type": "FeatureCollection",
+        "features": geojson_features
+    });
+
+    (StatusCode::OK, Json(geojson)).into_response()
+}
+
+/// GET /adm3/test - Test endpoint
+pub async fn test_adm3_endpoint() -> impl IntoResponse {
+    (StatusCode::OK, Json(serde_json::json!({"message": "ADM3 test endpoint works"}))).into_response()
+}

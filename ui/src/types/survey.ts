@@ -19,7 +19,7 @@ export interface Survey {
   location_accuracy: string;
   is_geocoded: boolean;
   type_sol: string | null;
-  meta: string | null;
+  meta: { geocoded_mode?: string; [key: string]: any } | null;
   date: string | null;
   date_sondage: string | null;
   source: string | null;

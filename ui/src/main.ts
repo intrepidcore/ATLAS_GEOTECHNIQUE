@@ -30,6 +30,7 @@ import './thematic-maps.css'
 import './import-bulk-wizard.css'
 import './import-wizard-v2.css'
 import './styles/tabs.css'
+import './styles/import-wizard.css'
 
 // Définir les systèmes de coordonnées
 // EPSG:25231 - UTM Zone 31N (Togo)

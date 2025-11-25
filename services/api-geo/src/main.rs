@@ -174,10 +174,12 @@ async fn main() -> anyhow::Result<()> {
         .route("/cells/:code/labs", get(cells_labs::get_cell_labs))
         .route("/cells/:code/complete", get(cells_labs::get_cell_complete))
         .route("/cells/:code/test-kpi", get(cells_kpi::test_kpi_endpoint))
-        .route("/adm/:level", get(routes::list_adm_zones))
         .route("/adm1", get(surveys::list_adm1))
         .route("/adm2", get(surveys::list_adm2))
+        .route("/adm3/test", get(surveys_adm::test_adm3_endpoint))
+        .route("/adm3/geojson", get(surveys_adm::get_adm3_geojson))
         .route("/adm3", get(surveys::list_adm3))
+        .route("/adm/:level", get(routes::list_adm_zones))
         // Audit log endpoints
         .route("/audit", get(audit::list_audit_logs))
         .route("/audit/export/csv", get(audit::export_audit_csv))

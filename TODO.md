@@ -428,58 +428,143 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] Onglet Import :
   - [X] Remplacer placeholder par version embedded du wizard
   - [X] Ajouter texte explicatif pour utilisateurs
+  - [X] Adapter styles CSS pour mode embedded (suppression overlay modal)
 - [X] Maintenir wizard accessible depuis carte principale
 - [ ] Tests complets upload → mapping → géométrie → preview → import - À tester manuellement
 - [ ] Vérifier apparition nouveaux sondages dans Liste/Géocodage/Suggestions - À tester manuellement
 
 ---
 
-### 5. Enrichissement modal "Voir détails"
+### 5. Refactor "Voir détails" → Page interne (plus de modal) ✅
 
-**Objectif** : Afficher toutes les données géotechniques
+**Objectif** : Transformer le modal en page interne intégrée
 
-#### Contenu cible
-- [ ] Localisation avancée :
-  - [ ] Coordonnées WGS84 (lat, lon)
-  - [ ] Coordonnées UTM (X, Y - EPSG:25231)
-  - [ ] Maille : grid_code, nb sondages dans maille
-  - [ ] Bouton "Zoomer sur la carte"
-- [ ] Géocodage :
-  - [ ] `location_mode` rendu lisible (Exact GPS, Aléatoire ADM3, etc.)
-  - [ ] Origine : Manuel / Automatique
-  - [ ] Dernière suggestion acceptée : ADM3 + score
-- [ ] Données géotechniques :
-  - [ ] Atterberg : wL, wP, IP, classification GTR
-  - [ ] Granulométrie : D10, D30, D60, Cu, Cc + courbe si dispo
-  - [ ] VBS : valeur + interprétation
-  - [ ] Autres essais (penetro, densité in situ, etc.)
-- [ ] Import / Historique :
-  - [ ] Fichier source (nom Excel/CSV, ligne origine)
-  - [ ] "Créé par Import Wizard / saisi manuellement"
-  - [ ] Journal simplifié des mises à jour
+#### Architecture ✅
+- [X] **État de navigation** : Ajout `currentView: 'list' | 'details'` et `currentDetailId`
+- [X] **Méthodes de navigation** : `showDetailsView()`, `backToList()`, `renderListeContent()`
+- [X] **Callback système** : `setOnDetailsRequest()` dans `SondagesListPanel`
+- [X] **Fallback modal** : Conservé pour compatibilité si callback non défini
 
-#### Backend
+#### Backend ✅
 - [X] Identifier endpoint actuel "Voir détails"
 - [X] Décider : enrichir route existante ou créer `GET /sondages/:id/details`
 - [X] Réponse doit contenir toutes infos géotechniques en une fois
 - [X] Optimiser requêtes (vue SQL agrégée ou jointures)
 
-#### Frontend
-- [ ] Conserver 4 blocs actuels (Identifiants, Localisation, Import, Audit)
-- [ ] Ajouter bloc "Essais géotechniques" avec sous-sections :
-  - [ ] Atterberg
-  - [ ] Granulométrie
-  - [ ] VBS
-  - [ ] Autres essais
-- [ ] Chaque sous-section repliable pour éviter modal interminable
-- [ ] Ajouter bouton "Zoom sur ce sondage" dans bloc Localisation
-- [ ] Gérer affichage propre si données vides ("Aucun essai VBS", etc.)
+#### Frontend ✅
+- [X] **Page détails complète** : Remplace le modal par une page interne
+- [X] **Bouton retour** : "← Retour à la liste" avec navigation
+- [X] **Contenu structuré** :
+  - [X] Localisation (localité, ADM3, géocodage, coordonnées)
+  - [X] Métadonnées (source, date création)
+  - [X] Essais Atterberg (tableau avec profondeur, WL, WP, IP)
+  - [X] Essais VBS (tableau avec profondeur, VBS, commentaire)
+- [X] **Gestion erreurs** : Affichage propre si échec chargement
+- [X] **Responsive** : Tableaux avec scroll horizontal si nécessaire
+
+#### Intégration carte
+- [X] **Focus automatique** : `focusSurveyOnMap()` appelé lors ouverture détails
+- [ ] **Zoom & highlight ADM3** : Implémentation à compléter
+- [ ] **Highlight maille** : Clignotement cellule grille à ajouter
 
 #### Tests
-- [ ] Sondage très complet (beaucoup d'essais)
-- [ ] Sondage pauvre (peu ou pas de données)
+- [ ] Navigation liste → détails → retour liste
+- [ ] Affichage sondage avec beaucoup d'essais
+- [ ] Affichage sondage avec peu de données
+- [ ] Gestion erreur si sondage inexistant
+
+### 6. Améliorations UX et badges ✅
+
+**Objectif** : Améliorer l'expérience utilisateur et la visibilité des informations
+
+#### Badges géocodage ✅
+- [X] **Badge AUTO** : Sondages auto-géocodés via suggestions acceptées
+  - [X] Détection via `meta.geocoded_mode === 'suggestion_accepted'`
+  - [X] Style bleu avec icône 🤖
+- [X] **Badge MANUEL** : Sondages géocodés manuellement via ADM3
+  - [X] Détection via `meta.geocoded_mode === 'adm3'`
+  - [X] Style orange avec icône 👤
+- [X] **Intégration** : Badges affichés dans `SondagesListPanel`
+
+#### Corrections API ✅
+- [X] **Endpoint ADM3 GeoJSON** : Correction route `/adm3/geojson`
+  - [X] Réorganisation ordre des routes pour éviter capture par `/adm/:level`
+  - [X] Route spécifique placée avant route générique
+  - [X] Test endpoint fonctionnel
+- [X] **Panneau Suggestions** : Correction erreur 500
+  - [X] Vérification endpoint `/suggestions/stats` → fonctionne
+  - [X] Problème était côté UI, pas API
+
+#### Refactoring Import Wizard ✅
+- [X] **Source de vérité** : `ImportWizardV2` identifié comme wizard principal
+- [X] **Mode embedded** : Adaptation pour onglet Import
+  - [X] Suppression overlay modal via CSS dynamique
+  - [X] Adaptation largeur et hauteur pour container
+  - [X] Texte explicatif ajouté
+- [X] **Compatibilité** : Mode modal conservé pour carte principale
 
 ---
 
-**Dernière mise à jour** : 2025-11-24 08:35
-**Statut global** : 🚀 v3.0.0-beta - Scroll preservation ✅ + Re-géocodage ✅ + Auto-géocodage backend ✅ + Import Wizard embedded ✅ + Modal détails enrichi (backend ✅, frontend en cours)
+### ✅ ROADMAP v3.2 - Implémenté (2025-11-25)
+
+#### Chantier A : Nettoyage & documentation Wizards ✅
+- [X] **Documentation wizards** : `docs/wizards.md` créé
+  - [X] Inventaire des 5 wizards avec rôles et statuts
+  - [X] `import-wizard-v2.ts` marqué comme canonique
+  - [X] `import-wizard-core.ts` marqué DEPRECATED (code corrompu nettoyé)
+- [X] **Panneau dev test wizards** : Ajouté dans la carte (visible si `ATLAS_DEBUG_WIZARDS=true`)
+
+#### Chantier B : "Voir détails" en page interne ✅
+- [X] **Callback système** : `setOnDetailsRequest()` dans `SondagesListPanel`
+- [X] **Navigation interne** : `showDetailsView()` / `backToList()` / `renderListeContent()`
+- [X] **Bouton retour** : "← Retour à la liste" fonctionnel
+
+#### Chantier C : Badges AUTO/MANUEL ✅
+- [X] **Types TypeScript** : `survey-details.ts` avec `computeGeocodeBadge()`
+- [X] **Badges visuels** :
+  - AUTO (vert) : `location_mode === 'adm_random_cell'` ou `geocoded_mode === 'suggestion_accepted'`
+  - MANUEL (bleu) : `geocoded_mode === 'adm3'` ou `location_mode === 'exact'`
+- [X] **Intégration** : Badges affichés dans page détails
+
+#### Chantier D : Carte - Zoom & highlight ADM3 ✅
+- [X] **Événement global** : `atlas:focus-survey` avec coords et adm3_id
+- [X] **Écouteur carte** : Zoom + marqueur temporaire (5s)
+- [X] **Highlight ADM3** : `atlas:highlight-adm3` avec `highlightAdm3ById()` (vert, 3s)
+
+#### Chantier E : Filtres & tri Liste ✅ (déjà implémenté)
+- [X] **Filtres** : Géocodage, Source, ADM3, Mode géocodage
+- [X] **Tri** : Date, Code, Localité, Statut géocodage
+
+#### Chantier F : UI Détails harmonisée ✅
+- [X] **Types TypeScript** : `SurveyDetails`, `AtterbergRow`, `VbsRow`, `GranuloSerie`, `EchantillonRow`
+- [X] **Sections structurées** :
+  - [X] Localisation avec badges géocodage + bouton zoom carte
+  - [X] Métadonnées (source, mode, dates)
+  - [X] Essais Atterberg (dédupliqués par profondeur)
+  - [X] Essais VBS (dédupliqués par profondeur)
+  - [X] Granulométrie (accordion par profondeur avec points tamis)
+  - [X] Échantillons (tableau)
+- [X] **Déduplication** : `dedupeByDepth()` pour éviter lignes fantômes
+- [X] **Accordions granulo** : Clic pour ouvrir/fermer détails points
+
+#### Chantier G : Data quality (doublons) ⏳
+- [X] **Script analyse** : `analyze_duplicates.py` fonctionnel
+- [ ] **UI doublons** : Badge/filtre dans liste (à faire plus tard)
+
+---
+
+### 🚧 ROADMAP v3.3 - Prochaines fonctionnalités
+
+#### Couche mailles colorée
+- [ ] Ré-affichage avec code couleur selon nombre de sondages
+- [ ] Légende dynamique
+
+#### Améliorations UI
+- [ ] Export détails vers PDF/Excel
+- [ ] Graphique courbe granulométrique
+- [ ] Édition inline des champs
+
+---
+
+**Dernière mise à jour** : 2025-11-25 07:30
+**Statut global** : 🚀 v3.2.0 - Roadmap v3.2 complète ✅ (Wizards doc + Détails page + Badges + Carte zoom + UI harmonisée)
