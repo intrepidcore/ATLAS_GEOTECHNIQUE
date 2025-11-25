@@ -213,6 +213,62 @@ export class SondagesManagerPage {
         window.location.hash = '/';
       });
     }
+
+    // Wizard test buttons (dev mode)
+    this.container?.querySelectorAll('.wizard-test-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        const wizard = (e.currentTarget as HTMLElement).dataset.wizard;
+        this.launchTestWizard(wizard!);
+      });
+    });
+  }
+
+  private launchTestWizard(wizard: string) {
+    console.log('[SONDAGES PAGE] Launching test wizard:', wizard);
+    
+    try {
+      switch (wizard) {
+        case 'v2':
+          // ImportWizard v2 (canonique)
+          const ImportWizardV2 = (window as any).ImportWizardV2;
+          if (ImportWizardV2) {
+            ImportWizardV2.openModal();
+          } else {
+            console.error('[WIZARD] ImportWizardV2 not found');
+            alert('ImportWizardV2 non disponible');
+          }
+          break;
+          
+        case 'bulk_v3':
+          // ImportBulkWizard v3
+          const ImportBulkWizard = (window as any).ImportBulkWizard;
+          if (ImportBulkWizard) {
+            ImportBulkWizard.openModal();
+          } else {
+            console.error('[WIZARD] ImportBulkWizard not found');
+            alert('ImportBulkWizard non disponible');
+          }
+          break;
+          
+        case 'geo':
+          // GeotechnicalImportWizard
+          const GeotechnicalImportWizard = (window as any).GeotechnicalImportWizard;
+          if (GeotechnicalImportWizard) {
+            GeotechnicalImportWizard.openModal();
+          } else {
+            console.error('[WIZARD] GeotechnicalImportWizard not found');
+            alert('GeotechnicalImportWizard non disponible');
+          }
+          break;
+          
+        default:
+          console.warn('[WIZARD] Unknown wizard:', wizard);
+          alert(`Wizard "${wizard}" inconnu`);
+      }
+    } catch (error) {
+      console.error('[WIZARD] Error launching wizard:', error);
+      alert(`Erreur lors du lancement du wizard: ${error}`);
+    }
   }
 
   private async initMap() {
@@ -831,15 +887,20 @@ export class SondagesManagerPage {
         return;
       }
 
-      const details = await response.json();
-      const survey = details.sondage;
+      const survey = await response.json();
 
-      if (!survey.geom || !survey.geom.coordinates) {
-        console.warn('[MAP] Survey has no coordinates for map focus');
+      // Try coordinates first (simpler format), then geom
+      let lng: number, lat: number;
+      
+      if (survey.coordinates && survey.coordinates.lat && survey.coordinates.lon) {
+        lng = survey.coordinates.lon;
+        lat = survey.coordinates.lat;
+      } else if (survey.geom && survey.geom.coordinates) {
+        [lng, lat] = survey.geom.coordinates;
+      } else {
+        console.warn('[MAP] Survey has no coordinates for map focus', survey);
         return;
       }
-
-      const [lng, lat] = survey.geom.coordinates;
       
       // Emit event for map to focus on survey
       const focusEvent = new CustomEvent('atlas:focus-survey', {

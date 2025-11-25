@@ -24,6 +24,9 @@ pub struct Sondage {
     pub source: Option<String>,
     pub created_at: chrono::DateTime<chrono::Utc>,
     pub updated_at: Option<chrono::DateTime<chrono::Utc>>,
+    // Champs extraits de meta pour badges AUTO/MANUEL
+    pub geocoded_mode: Option<String>,
+    pub geocoded_score: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]
@@ -104,7 +107,9 @@ pub async fn list_sondages(
             ST_AsGeoJSON(geom)::jsonb as geom,
             location_mode::text,
             is_geocoded,
-            source, created_at, updated_at
+            source, created_at, updated_at,
+            meta->>'geocoded_mode' as geocoded_mode,
+            (meta->>'geocoded_score')::float8 as geocoded_score
         FROM public.sondages
         WHERE deleted_at IS NULL {}
         ORDER BY created_at DESC
@@ -186,7 +191,9 @@ pub async fn get_sondage(
             ST_AsGeoJSON(geom)::jsonb as geom,
             location_mode::text,
             is_geocoded,
-            source, created_at, updated_at
+            source, created_at, updated_at,
+            meta->>'geocoded_mode' as geocoded_mode,
+            (meta->>'geocoded_score')::float8 as geocoded_score
         FROM sondages
         WHERE id = $1 AND deleted_at IS NULL
         "#,

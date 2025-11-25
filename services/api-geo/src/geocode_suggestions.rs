@@ -62,7 +62,7 @@ pub async fn list_suggestions(
     let limit = params.limit.unwrap_or(50).min(200);
     
     let mut query = String::from(
-        "SELECT * FROM public.geocode_suggestions WHERE 1=1"
+        "SELECT id, entity, entity_id::text as entity_id, localite, adm2_code, candidates, top_code, top_score::text as top_score, top_method, status, created_at, decided_at FROM public.geocode_suggestions WHERE 1=1"
     );
     
     if let Some(sondage_id) = &params.sondage_id {
@@ -92,7 +92,7 @@ pub async fn accept_suggestion(
     
     // Récupérer la suggestion
     let suggestion = sqlx::query_as::<_, Suggestion>(
-        "SELECT * FROM public.geocode_suggestions WHERE id = $1"
+        "SELECT id, entity, entity_id::text as entity_id, localite, adm2_code, candidates, top_code, top_score::text as top_score, top_method, status, created_at, decided_at FROM public.geocode_suggestions WHERE id = $1"
     )
     .bind(&id)
     .fetch_one(pool)

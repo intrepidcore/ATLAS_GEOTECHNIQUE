@@ -4,6 +4,7 @@
 
 import { listSondages, getSondagesStats, Sondage, SondagesStats } from './api/sondages';
 import { toast } from './ui/toast';
+import { computeGeocodeBadgeFromSurvey, GeocodeBadgeType } from './types/survey-details';
 
 export class SondagesListPanel {
   private sondages: Sondage[] = [];
@@ -195,7 +196,7 @@ export class SondagesListPanel {
     const listContainer = document.getElementById('sondages-list');
     if (listContainer) {
       listContainer.innerHTML = this.renderSondagesList();
-      this.attachListeners(); // Re-attach listeners for new elements
+      this.attachItemListeners(); // Re-attach only item listeners (not filter/sort)
     }
   }
 
@@ -234,16 +235,8 @@ export class SondagesListPanel {
     // Filtrage par mode de géocodage
     if (this.filterGeocodingMode !== 'all') {
       filteredSondages = filteredSondages.filter(s => {
-        const geocodedMode = s.meta && s.meta.geocoded_mode ? s.meta.geocoded_mode : null;
-        const isAutoAccepted = geocodedMode === 'suggestion_accepted';
-        const isManualAdm = geocodedMode === 'adm3';
-        
-        if (this.filterGeocodingMode === 'auto') {
-          return isAutoAccepted || s.location_mode === 'adm_random_cell';
-        } else if (this.filterGeocodingMode === 'manual') {
-          return isManualAdm || s.location_mode === 'exact';
-        }
-        return false;
+        const badgeType = computeGeocodeBadgeFromSurvey(s);
+        return badgeType === this.filterGeocodingMode;
       });
     }
 
@@ -280,13 +273,22 @@ export class SondagesListPanel {
       .map((s) => {
         const isGeocoded = s.is_geocoded;
         const locationMode = s.location_mode || 'unknown';
-        const isAutoGeocoded = locationMode === 'adm_random_cell';
-        const geocodedMode = s.meta && s.meta.geocoded_mode ? s.meta.geocoded_mode : null;
-        const isAutoAccepted = geocodedMode === 'suggestion_accepted';
-        const isManualAdm = geocodedMode === 'adm3';
+        const badgeType = computeGeocodeBadgeFromSurvey(s);
         const statusColor = isGeocoded ? '#51cf66' : '#ff6b6b';
         const statusIcon = isGeocoded ? '✅' : '❌';
         const modeLabel = this.getLocationModeLabel(locationMode);
+        
+        // Badges AUTO/MANUEL
+        const getBadgeHtml = (type: GeocodeBadgeType) => {
+          switch (type) {
+            case 'auto':
+              return `<div style="padding: 2px 6px; background: #4c6ef522; border: 1px solid #4c6ef5; border-radius: 4px; font-size: 10px; color: #4c6ef5; font-weight: 600; margin-bottom: 2px;">🤖 AUTO</div>`;
+            case 'manual':
+              return `<div style="padding: 2px 6px; background: #ff922b22; border: 1px solid #ff922b; border-radius: 4px; font-size: 10px; color: #ff922b; font-weight: 600; margin-bottom: 2px;">👤 MANUEL</div>`;
+            default:
+              return '';
+          }
+        };
 
         return `
           <div class="sondage-card" style="background: #1a2332; border: 1px solid #22304d; border-radius: 8px; padding: 16px; margin-bottom: 12px; transition: border-color 0.2s; cursor: pointer;" data-id="${s.id}">
@@ -304,8 +306,7 @@ export class SondagesListPanel {
                 <div style="padding: 4px 8px; background: ${statusColor}22; border: 1px solid ${statusColor}; border-radius: 4px; font-size: 11px; color: ${statusColor}; font-weight: 600; margin-bottom: 4px;">
                   ${isGeocoded ? 'GÉOCODÉ' : 'NON GÉOCODÉ'}
                 </div>
-                ${isAutoAccepted ? `<div style="padding: 2px 6px; background: #4c6ef522; border: 1px solid #4c6ef5; border-radius: 4px; font-size: 10px; color: #4c6ef5; font-weight: 600; margin-bottom: 2px;">🤖 AUTO</div>` : ''}
-                ${isManualAdm ? `<div style="padding: 2px 6px; background: #ff922b22; border: 1px solid #ff922b; border-radius: 4px; font-size: 10px; color: #ff922b; font-weight: 600; margin-bottom: 2px;">👤 MANUEL</div>` : ''}
+                ${getBadgeHtml(badgeType)}
                 ${isGeocoded ? `<div style="font-size: 11px; color: #94a3b8;">${modeLabel}</div>` : ''}
               </div>
             </div>
@@ -339,15 +340,20 @@ export class SondagesListPanel {
   }
 
   private attachListeners() {
+    this.attachControlListeners();
+    this.attachItemListeners();
+  }
+
+  private attachControlListeners() {
     // Search input
     const searchInput = document.getElementById('search-input') as HTMLInputElement;
     if (searchInput) {
       searchInput.addEventListener('input', async (e) => {
         this.searchQuery = (e.target as HTMLInputElement).value;
+        console.log('[LIST] Search query:', this.searchQuery);
         await this.refresh();
-        if (this.currentContainerId && this.onSuccessCallback && this.onErrorCallback) {
-          this.renderUI(this.currentContainerId, this.onSuccessCallback, this.onErrorCallback);
-        }
+        // Ne pas recréer tout le HTML, juste la liste
+        this.rerenderList();
       });
     }
 
@@ -357,9 +363,8 @@ export class SondagesListPanel {
       filterSelect.addEventListener('change', async (e) => {
         this.filterGeocoded = (e.target as HTMLSelectElement).value as any;
         await this.refresh();
-        if (this.currentContainerId && this.onSuccessCallback && this.onErrorCallback) {
-          this.renderUI(this.currentContainerId, this.onSuccessCallback, this.onErrorCallback);
-        }
+        // Ne pas recréer tout le HTML, juste la liste
+        this.rerenderList();
       });
     }
 
@@ -368,6 +373,7 @@ export class SondagesListPanel {
     if (filterGeocodingMode) {
       filterGeocodingMode.addEventListener('change', () => {
         this.filterGeocodingMode = filterGeocodingMode.value as any;
+        console.log('[LIST] Filter geocoding mode:', this.filterGeocodingMode);
         this.rerenderList();
       });
     }
@@ -376,6 +382,7 @@ export class SondagesListPanel {
     if (filterSource) {
       filterSource.addEventListener('change', () => {
         this.filterSource = filterSource.value;
+        console.log('[LIST] Filter source:', this.filterSource);
         this.rerenderList();
       });
     }
@@ -384,6 +391,7 @@ export class SondagesListPanel {
     if (filterAdm3) {
       filterAdm3.addEventListener('change', () => {
         this.filterAdm3 = filterAdm3.value;
+        console.log('[LIST] Filter ADM3:', this.filterAdm3);
         this.rerenderList();
       });
     }
@@ -392,6 +400,7 @@ export class SondagesListPanel {
     if (sortBy) {
       sortBy.addEventListener('change', () => {
         this.sortBy = sortBy.value as any;
+        console.log('[LIST] Sort by:', this.sortBy);
         this.rerenderList();
       });
     }
@@ -400,10 +409,15 @@ export class SondagesListPanel {
     if (sortOrder) {
       sortOrder.addEventListener('click', () => {
         this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
+        console.log('[LIST] Sort order:', this.sortOrder);
+        // Update button text
+        sortOrder.textContent = this.sortOrder === 'asc' ? '⬆️ Asc' : '⬇️ Desc';
         this.rerenderList();
       });
     }
+  }
 
+  private attachItemListeners() {
     // Geocode buttons
     document.querySelectorAll('.geocode-btn').forEach((btn) => {
       btn.addEventListener('click', (e) => {

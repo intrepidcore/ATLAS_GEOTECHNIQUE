@@ -38,4 +38,7 @@ export interface Survey {
   updated_at: string | null;
   deleted_at: string | null;
   geom: Record<string, unknown> | null;
+  // Champs extraits de meta pour badges AUTO/MANUEL (exposés par API)
+  geocoded_mode?: string | null;
+  geocoded_score?: number | null;
 }

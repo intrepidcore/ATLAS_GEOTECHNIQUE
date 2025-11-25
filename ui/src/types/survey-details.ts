@@ -76,16 +76,38 @@ export function dedupeByDepth<T extends { depth_m: number }>(rows: T[]): T[] {
   return [...map.values()].sort((a, b) => a.depth_m - b.depth_m);
 }
 
+export type GeocodeBadgeType = 'auto' | 'manual' | 'unknown';
+
+export interface GeocodeBadgeResult {
+  label: string;
+  type: GeocodeBadgeType;
+  score?: number;
+}
+
 /**
  * Calcule le badge de géocodage basé sur location_mode et geocoded_mode
+ * Règles v3.3:
+ * - AUTO: geocoded_mode='suggestion_accepted' avec score >= 0.8
+ * - MANUEL: geocoded_mode in {'adm3', 'gps', 'manual_override'} ou location_mode='exact'
+ * - UNKNOWN: sinon
  */
-export function computeGeocodeBadge(locationMode: string, geocodedMode?: string): { label: string; type: 'auto' | 'manual' | 'unknown' } {
+export function computeGeocodeBadge(
+  locationMode: string,
+  geocodedMode?: string | null,
+  geocodedScore?: number | null
+): GeocodeBadgeResult {
   // Priorité au geocoded_mode si disponible
   if (geocodedMode === 'suggestion_accepted') {
-    return { label: 'AUTO (suggestion)', type: 'auto' };
+    const score = geocodedScore ?? 0;
+    if (score >= 0.8) {
+      return { label: 'AUTO', type: 'auto', score };
+    }
+    // Score faible = considéré comme manuel (validation humaine requise)
+    return { label: 'AUTO (score faible)', type: 'auto', score };
   }
-  if (geocodedMode === 'adm3') {
-    return { label: 'MANUEL (ADM3)', type: 'manual' };
+  
+  if (geocodedMode === 'adm3' || geocodedMode === 'gps' || geocodedMode === 'manual_override') {
+    return { label: 'MANUEL', type: 'manual' };
   }
   
   // Fallback sur location_mode
@@ -96,8 +118,37 @@ export function computeGeocodeBadge(locationMode: string, geocodedMode?: string)
     return { label: 'MANUEL', type: 'manual' };
   }
   if (locationMode === 'adm3_centroid') {
-    return { label: 'MANUEL (centroïde)', type: 'manual' };
+    return { label: 'MANUEL', type: 'manual' };
   }
   
   return { label: 'INCONNU', type: 'unknown' };
+}
+
+/**
+ * Version simplifiée pour la liste des sondages
+ * Utilise les champs geocoded_mode et geocoded_score exposés par l'API
+ */
+export function computeGeocodeBadgeFromSurvey(survey: {
+  is_geocoded: boolean;
+  location_mode?: string | null;
+  geocoded_mode?: string | null;
+  geocoded_score?: number | null;
+  meta?: { geocoded_mode?: string } | null;
+}): GeocodeBadgeType {
+  if (!survey.is_geocoded) return 'unknown';
+  
+  // Utiliser les champs directs de l'API (prioritaire)
+  const mode = survey.geocoded_mode ?? survey.meta?.geocoded_mode ?? null;
+  const score = survey.geocoded_score ?? 0;
+  
+  if (mode === 'suggestion_accepted' && score >= 0.8) return 'auto';
+  if (mode === 'suggestion_accepted') return 'auto'; // même avec score faible
+  if (mode === 'adm3' || mode === 'gps' || mode === 'manual_override') return 'manual';
+  
+  // Fallback sur location_mode
+  if (survey.location_mode === 'adm_random_cell') return 'auto';
+  if (survey.location_mode === 'exact' || survey.location_mode === 'gps') return 'manual';
+  if (survey.location_mode === 'adm3_centroid') return 'manual';
+  
+  return 'unknown';
 }
