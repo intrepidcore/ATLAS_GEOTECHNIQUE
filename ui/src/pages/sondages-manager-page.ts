@@ -608,7 +608,7 @@ export class SondagesManagerPage {
 
   private showDetailsView(surveyId: string) {
     // Save scroll position before switching to details
-    const listEl = document.querySelector('#sondages-list') as HTMLElement;
+    const listEl = document.querySelector('#list-sondages-list') as HTMLElement;
     if (listEl) {
       this.listScrollTop = listEl.scrollTop;
     }
@@ -626,7 +626,7 @@ export class SondagesManagerPage {
     
     // Restore scroll position after rendering
     requestAnimationFrame(() => {
-      const listEl = document.querySelector('#sondages-list') as HTMLElement;
+      const listEl = document.querySelector('#list-sondages-list') as HTMLElement;
       if (listEl && this.listScrollTop > 0) {
         listEl.scrollTop = this.listScrollTop;
       }

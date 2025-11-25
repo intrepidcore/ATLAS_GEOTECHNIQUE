@@ -84,21 +84,30 @@ pub async fn list_sondages(
     let limit = params.limit.unwrap_or(100).min(500);
     let offset = params.offset.unwrap_or(0);
 
-    let mut where_clauses: Vec<String> = vec!["deleted_at IS NULL".to_string()];
+    let mut where_clauses: Vec<String> = vec![];
+    let has_search = params.search.as_ref().map(|s| !s.is_empty()).unwrap_or(false);
 
-    // Filtre recherche
-    if params.search.is_some() {
-        where_clauses.push("(atlas.norm(code) LIKE '%' || atlas.norm($1) || '%' OR atlas.norm(localite) LIKE '%' || atlas.norm($1) || '%')".to_string());
+    // Filtre recherche - $1 sera le terme de recherche
+    if has_search {
+        where_clauses.push("(atlas.norm(s.code) LIKE '%' || atlas.norm($1) || '%' OR atlas.norm(s.localite_base) LIKE '%' || atlas.norm($1) || '%')".to_string());
     }
 
     // Filtre missing
     match params.missing.as_deref() {
-        Some("geom") => where_clauses.push("geom IS NULL".to_string()),
-        Some("adm3") => where_clauses.push("adm3_id IS NULL".to_string()),
+        Some("geom") => where_clauses.push("s.geom IS NULL".to_string()),
+        Some("adm3") => where_clauses.push("s.adm3_id IS NULL".to_string()),
         _ => {}
     }
 
-    let where_sql = where_clauses.join(" AND ");
+    // Construire la clause WHERE additionnelle
+    let additional_where = if where_clauses.is_empty() {
+        String::new()
+    } else {
+        format!("AND {}", where_clauses.join(" AND "))
+    };
+
+    // Indices des paramètres: $1 = search (si présent), puis limit et offset
+    let (limit_idx, offset_idx) = if has_search { ("$2", "$3") } else { ("$1", "$2") };
 
     let query = format!(
         r#"
@@ -119,23 +128,21 @@ pub async fn list_sondages(
             AND gs.status = 'accepted'
         WHERE s.deleted_at IS NULL {}
         ORDER BY s.created_at DESC
-        LIMIT $2 OFFSET $3
+        LIMIT {} OFFSET {}
         "#,
-        if where_clauses.is_empty() {
-            String::new()
-        } else {
-            format!("AND {}", where_clauses.join(" AND "))
-        }
+        additional_where,
+        limit_idx,
+        offset_idx
     );
 
     let mut q = sqlx::query_as::<_, Sondage>(&query);
 
-    if let Some(ref search) = params.search {
-        q = q.bind(search);
-    } else {
-        q = q.bind(""); // Bind vide si pas de recherche
+    // Bind search si présent
+    if has_search {
+        q = q.bind(params.search.as_ref().unwrap());
     }
 
+    // Bind limit et offset
     let rows = q
         .bind(limit)
         .bind(offset)

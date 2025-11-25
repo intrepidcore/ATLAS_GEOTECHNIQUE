@@ -110,13 +110,13 @@ export class SondagesListPanel {
           <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
             <input 
               type="text" 
-              id="search-input" 
+              id="list-search-input" 
               placeholder="🔍 Rechercher un sondage..." 
               value="${this.searchQuery}"
               style="flex: 1; min-width: 200px; padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px;"
             />
             <select 
-              id="filter-geocoded" 
+              id="list-filter-geocoded" 
               style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
             >
               <option value="all" ${this.filterGeocoded === 'all' ? 'selected' : ''}>Tous</option>
@@ -124,7 +124,7 @@ export class SondagesListPanel {
               <option value="not_geocoded" ${this.filterGeocoded === 'not_geocoded' ? 'selected' : ''}>Non géocodés</option>
             </select>
             <select 
-              id="filter-geocoding-mode" 
+              id="list-filter-geocoding-mode" 
               style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
             >
               <option value="all" ${this.filterGeocodingMode === 'all' ? 'selected' : ''}>Tous modes</option>
@@ -136,21 +136,21 @@ export class SondagesListPanel {
           <!-- Filtres avancés (ligne 2) -->
           <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
             <select 
-              id="filter-source" 
+              id="list-filter-source" 
               style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
             >
               <option value="all" ${this.filterSource === 'all' ? 'selected' : ''}>Toutes sources</option>
               ${this.getUniqueSourcesOptions()}
             </select>
             <select 
-              id="filter-adm3" 
+              id="list-filter-adm3" 
               style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
             >
               <option value="all" ${this.filterAdm3 === 'all' ? 'selected' : ''}>Toutes ADM3</option>
               ${this.getUniqueAdm3Options()}
             </select>
             <select 
-              id="sort-by" 
+              id="list-sort-by" 
               style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
             >
               <option value="created_at" ${this.sortBy === 'created_at' ? 'selected' : ''}>📅 Date création</option>
@@ -159,7 +159,7 @@ export class SondagesListPanel {
               <option value="is_geocoded" ${this.sortBy === 'is_geocoded' ? 'selected' : ''}>🎯 Géocodage</option>
             </select>
             <button 
-              id="sort-order" 
+              id="list-sort-order" 
               style="padding: 10px 12px; background: #1a2332; border: 1px solid #22304d; border-radius: 6px; color: #ecf2f8; font-size: 14px; cursor: pointer;"
               title="Ordre de tri"
             >
@@ -169,7 +169,7 @@ export class SondagesListPanel {
         </div>
 
         <!-- Liste -->
-        <div id="sondages-list" style="flex: 1; min-height: 0; overflow-y: auto; padding: 16px;">
+        <div id="list-sondages-list" style="flex: 1; min-height: 0; overflow-y: auto; padding: 16px;">
           ${this.renderSondagesList()}
         </div>
       </div>
@@ -193,7 +193,7 @@ export class SondagesListPanel {
   }
 
   private rerenderList() {
-    const listContainer = document.getElementById('sondages-list');
+    const listContainer = document.getElementById('list-sondages-list');
     if (listContainer) {
       listContainer.innerHTML = this.renderSondagesList();
       this.attachItemListeners(); // Re-attach only item listeners (not filter/sort)
@@ -346,7 +346,7 @@ export class SondagesListPanel {
 
   private attachControlListeners() {
     // Search input
-    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    const searchInput = document.getElementById('list-search-input') as HTMLInputElement;
     if (searchInput) {
       searchInput.addEventListener('input', async (e) => {
         this.searchQuery = (e.target as HTMLInputElement).value;
@@ -358,7 +358,7 @@ export class SondagesListPanel {
     }
 
     // Filter select
-    const filterSelect = document.getElementById('filter-geocoded') as HTMLSelectElement;
+    const filterSelect = document.getElementById('list-filter-geocoded') as HTMLSelectElement;
     if (filterSelect) {
       filterSelect.addEventListener('change', async (e) => {
         this.filterGeocoded = (e.target as HTMLSelectElement).value as any;
@@ -369,7 +369,7 @@ export class SondagesListPanel {
     }
 
     // Advanced filters
-    const filterGeocodingMode = document.getElementById('filter-geocoding-mode') as HTMLSelectElement;
+    const filterGeocodingMode = document.getElementById('list-filter-geocoding-mode') as HTMLSelectElement;
     if (filterGeocodingMode) {
       filterGeocodingMode.addEventListener('change', () => {
         this.filterGeocodingMode = filterGeocodingMode.value as any;
@@ -378,7 +378,7 @@ export class SondagesListPanel {
       });
     }
 
-    const filterSource = document.getElementById('filter-source') as HTMLSelectElement;
+    const filterSource = document.getElementById('list-filter-source') as HTMLSelectElement;
     if (filterSource) {
       filterSource.addEventListener('change', () => {
         this.filterSource = filterSource.value;
@@ -387,7 +387,7 @@ export class SondagesListPanel {
       });
     }
 
-    const filterAdm3 = document.getElementById('filter-adm3') as HTMLSelectElement;
+    const filterAdm3 = document.getElementById('list-filter-adm3') as HTMLSelectElement;
     if (filterAdm3) {
       filterAdm3.addEventListener('change', () => {
         this.filterAdm3 = filterAdm3.value;
@@ -396,7 +396,7 @@ export class SondagesListPanel {
       });
     }
 
-    const sortBy = document.getElementById('sort-by') as HTMLSelectElement;
+    const sortBy = document.getElementById('list-sort-by') as HTMLSelectElement;
     if (sortBy) {
       sortBy.addEventListener('change', () => {
         this.sortBy = sortBy.value as any;
@@ -405,7 +405,7 @@ export class SondagesListPanel {
       });
     }
 
-    const sortOrder = document.getElementById('sort-order') as HTMLButtonElement;
+    const sortOrder = document.getElementById('list-sort-order') as HTMLButtonElement;
     if (sortOrder) {
       sortOrder.addEventListener('click', () => {
         this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';

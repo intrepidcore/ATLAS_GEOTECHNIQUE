@@ -376,23 +376,35 @@ export class GeocodeCanonPanel {
     `;
   }
 
-  private attachEventListeners(onSuccess: (msg: string) => void, onError: (error: string) => void) {
-    // Search
-    const searchInput = document.getElementById('search-input') as HTMLInputElement;
-    if (searchInput) {
-      searchInput.addEventListener('input', async (e) => {
-        this.searchQuery = (e.target as HTMLInputElement).value;
-        await this.refresh();
-        this.renderUI(searchInput.closest('.geocode-canon-panel')?.parentElement?.id || '', onSuccess, onError);
-      });
+  /**
+   * Re-render only the surveys list without recreating the entire UI
+   */
+  private rerenderSurveysList() {
+    const listContainer = document.getElementById('surveys-list');
+    if (listContainer) {
+      const missingGeom = this.stats ? this.stats.total - this.stats.with_geom : 0;
+      const allGeocoded = missingGeom === 0;
+      listContainer.innerHTML = allGeocoded ? this.renderAllGeocoded() : this.renderSurveysList();
+      
+      // Update count badge
+      const countBadge = document.getElementById('count-badge');
+      if (countBadge) {
+        countBadge.textContent = String(missingGeom);
+        countBadge.style.background = allGeocoded ? '#51cf66' : '#ff6b6b';
+      }
+      
+      // Re-attach only survey item listeners
+      this.attachSurveyItemListeners();
     }
+  }
 
+  private attachSurveyItemListeners() {
     // Survey selection
     document.querySelectorAll('.survey-item').forEach(item => {
       item.addEventListener('click', async () => {
         const surveyId = item.getAttribute('data-survey-id');
         this.selectedSurvey = this.surveys.find(s => s.id === surveyId) || null;
-        this.selectedSurveyId = surveyId; // Sauvegarder l'ID pour restaurer le surlignage
+        this.selectedSurveyId = surveyId;
         
         // Charger les candidats ADM3
         if (this.selectedSurvey) {
@@ -405,126 +417,156 @@ export class GeocodeCanonPanel {
           }
         }
         
-        const containerId = item.closest('.geocode-canon-panel')?.parentElement?.id || '';
-        this.renderUI(containerId, onSuccess, onError);
+        // Update right panel
+        const detailsContainer = document.getElementById('survey-details');
+        if (detailsContainer) {
+          detailsContainer.innerHTML = this.selectedSurvey ? this.renderSurveyDetails() : this.renderEmptyState();
+          this.attachDetailsPanelListeners();
+        }
+        
+        // Update selection highlight
+        document.querySelectorAll('.survey-item').forEach(el => {
+          el.classList.remove('selected');
+          (el as HTMLElement).style.background = '#1a2332';
+          (el as HTMLElement).style.borderColor = '#22304d';
+        });
+        item.classList.add('selected');
+        (item as HTMLElement).style.background = '#1e3a5f';
+        (item as HTMLElement).style.borderColor = '#4c6ef5';
       });
     });
+  }
 
+  private attachDetailsPanelListeners() {
+    // Attach listeners for the details panel (geocode buttons, etc.)
+    // This will be called after updating the details panel
+    if (this.onSuccessCallback && this.onErrorCallback) {
+      this.attachGeocodeListeners(this.onSuccessCallback, this.onErrorCallback);
+    }
+  }
+
+  private attachGeocodeListeners(onSuccess: (msg: string) => void, onError: (error: string) => void) {
     // Mode toggle
-    const modeSelect = document.getElementById('location-mode') as HTMLSelectElement;
+    const modeSelect = document.getElementById('geocode-mode') as HTMLSelectElement;
     const adm3Section = document.getElementById('adm3-section');
     const coordsSection = document.getElementById('coords-section');
     const placementSection = document.getElementById('placement-section');
     
     if (modeSelect) {
       modeSelect.addEventListener('change', () => {
-        if (modeSelect.value === 'adm') {
-          adm3Section!.style.display = 'block';
-          coordsSection!.style.display = 'none';
-          placementSection!.style.display = 'block';
-        } else {
-          adm3Section!.style.display = 'none';
-          coordsSection!.style.display = 'block';
-          placementSection!.style.display = 'none';
-        }
+        const mode = modeSelect.value;
+        if (adm3Section) adm3Section.style.display = mode === 'adm' ? 'block' : 'none';
+        if (coordsSection) coordsSection.style.display = mode === 'coords' ? 'block' : 'none';
+        if (placementSection) placementSection.style.display = mode === 'adm' ? 'block' : 'none';
       });
     }
 
-    // Candidate selection (click on suggestion)
-    document.querySelectorAll('.candidate-item').forEach(item => {
-      item.addEventListener('click', () => {
-        const adm3Id = item.getAttribute('data-adm3-id');
-        const select = document.getElementById('adm3-select') as HTMLSelectElement;
-        if (select && adm3Id) {
-          // Find the corresponding option by adm3_id
-          const candidate = this.candidates.find(c => c.adm3_id === parseInt(adm3Id));
-          if (candidate) {
-            // Set the select value to gid
-            select.value = candidate.gid.toString();
-            // Trigger change event
-            select.dispatchEvent(new Event('change', { bubbles: true }));
-            // Visual feedback
-            (item as HTMLElement).style.borderColor = '#51cf66';
-            (item as HTMLElement).style.background = '#1e3a5f';
-            // Reset other items
-            document.querySelectorAll('.candidate-item').forEach(other => {
-              if (other !== item) {
-                (other as HTMLElement).style.borderColor = '#22304d';
-                (other as HTMLElement).style.background = '#1a2332';
-              }
+    // ADM3 search
+    const adm3Search = document.getElementById('adm3-search') as HTMLInputElement;
+    const adm3Results = document.getElementById('adm3-results');
+    if (adm3Search && adm3Results) {
+      adm3Search.addEventListener('input', () => {
+        const query = adm3Search.value.toLowerCase();
+        if (query.length < 2) {
+          adm3Results.innerHTML = '<div style="padding: 8px; color: #8b9bb3;">Tapez au moins 2 caractères...</div>';
+          return;
+        }
+        const matches = this.adm3List.filter(a => 
+          a.adm3_fr?.toLowerCase().includes(query) || 
+          a.adm3_pcode?.toLowerCase().includes(query)
+        ).slice(0, 10);
+        
+        if (matches.length === 0) {
+          adm3Results.innerHTML = '<div style="padding: 8px; color: #8b9bb3;">Aucun résultat</div>';
+        } else {
+          adm3Results.innerHTML = matches.map(a => `
+            <div class="adm3-result" data-gid="${a.gid}" data-name="${a.adm3_fr}" style="padding: 8px; cursor: pointer; border-bottom: 1px solid #22304d;">
+              <strong>${a.adm3_fr}</strong> <span style="color: #8b9bb3;">(${a.adm3_pcode})</span>
+            </div>
+          `).join('');
+          
+          adm3Results.querySelectorAll('.adm3-result').forEach(el => {
+            el.addEventListener('click', () => {
+              const gid = el.getAttribute('data-gid');
+              const name = el.getAttribute('data-name');
+              adm3Search.value = name || '';
+              adm3Search.dataset.selectedGid = gid || '';
+              adm3Results.innerHTML = '';
             });
-            console.log('[SONDAGES] Suggestion sélectionnée:', candidate.name, 'gid:', candidate.gid);
-          }
+          });
         }
       });
-      
-      item.addEventListener('mouseenter', () => {
-        (item as HTMLElement).style.borderColor = '#4c6ef5';
-      });
-      
-      item.addEventListener('mouseleave', () => {
-        (item as HTMLElement).style.borderColor = '#22304d';
-      });
-    });
+    }
 
     // Save button
     const saveBtn = document.getElementById('save-geocode-btn');
-    if (saveBtn && this.selectedSurvey) {
+    if (saveBtn) {
       saveBtn.addEventListener('click', async () => {
+        if (!this.selectedSurvey) return;
+        
+        const mode = (document.getElementById('geocode-mode') as HTMLSelectElement)?.value;
+        
         try {
-          const mode = (document.getElementById('location-mode') as HTMLSelectElement).value;
-          
           if (mode === 'adm') {
-            const adm3Gid = (document.getElementById('adm3-select') as HTMLSelectElement).value;
+            const gid = (document.getElementById('adm3-search') as HTMLInputElement)?.dataset.selectedGid;
             const placement = (document.getElementById('placement-mode') as HTMLSelectElement)?.value || 'adm_random_cell';
-            console.log('[GEOCODE] ADM3 select value:', adm3Gid, 'placement:', placement);
-            
-            if (!adm3Gid || adm3Gid === '') {
-              toast.error('❌ Veuillez sélectionner une commune');
+            if (!gid) {
+              onError('Veuillez sélectionner une commune ADM3');
               return;
             }
-            
-            const adm3IdNum = parseInt(adm3Gid);
-            if (isNaN(adm3IdNum)) {
-              toast.error('❌ ID commune invalide');
-              console.error('[GEOCODE] Invalid adm3_id:', adm3Gid);
-              return;
-            }
-            
-            // Find ADM3 name for success message
-            const adm = this.adm3List.find(a => a.gid === adm3IdNum);
-            console.log('[GEOCODE] Sending payload:', { mode: 'adm3', adm3_id: adm3IdNum, placement });
-            
-            // Call new API endpoint with placement
-            const result = await geocodeSondageAdm3(this.selectedSurvey!.id, adm3IdNum, placement);
-            
-            const placementLabel = placement === 'adm_random_cell' ? '(point aléatoire)' : '(centroïde)';
-            toast.success(`✅ Sondage "${result.code}" géocodé avec ADM3: ${result.adm3_name || adm?.name || ''} ${placementLabel}`);
+            await geocodeSondageAdm3(this.selectedSurvey.id, parseInt(gid), placement);
           } else {
-            const lat = parseFloat((document.getElementById('lat-input') as HTMLInputElement).value);
-            const lon = parseFloat((document.getElementById('lon-input') as HTMLInputElement).value);
-            
+            const lat = parseFloat((document.getElementById('coord-lat') as HTMLInputElement)?.value);
+            const lon = parseFloat((document.getElementById('coord-lon') as HTMLInputElement)?.value);
             if (isNaN(lat) || isNaN(lon)) {
-              toast.error('❌ Coordonnées invalides');
+              onError('Coordonnées invalides');
               return;
             }
-            
-            // Call new API endpoint
-            const result = await geocodeSondageCoords(this.selectedSurvey!.id, lon, lat);
-            
-            toast.success(`✅ Sondage "${result.code}" géocodé avec coordonnées (${lat.toFixed(6)}, ${lon.toFixed(6)})`);
+            await geocodeSondageCoords(this.selectedSurvey.id, lat, lon);
           }
           
-          // Rafraîchir stats et liste
+          onSuccess('Géocodage enregistré avec succès');
+          
+          // Sauvegarder la position de scroll avant refresh
+          const surveysList = document.getElementById('surveys-list');
+          if (surveysList) {
+            this.savedScrollPosition = surveysList.scrollTop;
+          }
+          
           await this.refresh();
+          this.rerenderSurveysList();
+          
+          // Clear selection
           this.selectedSurvey = null;
-          this.candidates = [];
-          this.renderUI(saveBtn.closest('.geocode-canon-panel')?.parentElement?.id || '', onSuccess, onError);
+          this.selectedSurveyId = null;
+          const detailsContainer = document.getElementById('survey-details');
+          if (detailsContainer) {
+            detailsContainer.innerHTML = this.renderEmptyState();
+          }
         } catch (e: any) {
-          toast.error(e.message || '❌ Erreur lors du géocodage');
+          onError(e.message || 'Erreur lors du géocodage');
         }
       });
     }
+  }
+
+  private attachEventListeners(onSuccess: (msg: string) => void, onError: (error: string) => void) {
+    // Search - use soft refresh (only re-render list)
+    const searchInput = document.getElementById('search-input') as HTMLInputElement;
+    if (searchInput) {
+      searchInput.addEventListener('input', async (e) => {
+        this.searchQuery = (e.target as HTMLInputElement).value;
+        console.log('[GEOCODE PANEL] Search query:', this.searchQuery);
+        await this.refresh();
+        this.rerenderSurveysList(); // Soft refresh - only update list
+      });
+    }
+    
+    // Attach survey item listeners
+    this.attachSurveyItemListeners();
+    
+    // Attach geocode listeners if survey is selected
+    this.attachGeocodeListeners(onSuccess, onError);
   }
 }
 
@@ -560,16 +602,20 @@ function formatAdmField(name?: string | null, code?: string | null): string {
   return name || code || '—';
 }
 
-function formatMetaBlock(meta: string | null): string {
+function formatMetaBlock(meta: Record<string, any> | string | null): string {
   if (!meta) {
     return '<p style="color:#8b9bb3;margin:0;">Pas de métadonnées</p>';
   }
 
-  let pretty = meta;
-  try {
-    pretty = JSON.stringify(JSON.parse(meta), null, 2);
-  } catch (_err) {
-    // keep raw string
+  let pretty: string;
+  if (typeof meta === 'string') {
+    try {
+      pretty = JSON.stringify(JSON.parse(meta), null, 2);
+    } catch (_err) {
+      pretty = meta;
+    }
+  } else {
+    pretty = JSON.stringify(meta, null, 2);
   }
 
   return `
