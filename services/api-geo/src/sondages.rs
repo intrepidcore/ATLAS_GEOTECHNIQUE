@@ -300,6 +300,107 @@ pub async fn get_sondage_details(
     .await
     .unwrap_or_default();
 
+    // Récupérer les essais de classification via échantillons
+    let classif: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', ec.id,
+            'depth_m', e.depth_m,
+            'systeme', ec.systeme,
+            'classe', ec.classe,
+            'hrb', ec.hrb,
+            'unified', ec.unified,
+            'class_chassagneux', ec.class_chassagneux,
+            'class_daksha', ec.class_daksha,
+            'class_seed', ec.class_seed,
+            'class_vijay', ec.class_vijay,
+            'type_sol', ec.type_sol,
+            'cg', ec.cg,
+            'cg_qual', ec.cg_qual,
+            'echantillon_id', e.id
+        )
+        FROM essais_classif ec
+        INNER JOIN echantillons e ON ec.echantillon_id = e.id
+        WHERE e.sondage_id = $1 AND ec.deleted_at IS NULL
+        ORDER BY e.depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les essais de potentiel de gonflement via échantillons
+    let gonflement: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', epg.id,
+            'depth_m', e.depth_m,
+            'cg', epg.cg,
+            'cg_qual', epg.cg_qual,
+            'type_sol', epg.type_sol,
+            'echantillon_id', e.id
+        )
+        FROM essais_potentiel_gonflement epg
+        INNER JOIN echantillons e ON epg.echantillon_id = e.id
+        WHERE e.sondage_id = $1
+        ORDER BY e.depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les essais physiques via échantillons
+    let physiques: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', ep.id,
+            'depth_m', e.depth_m,
+            'densite_apparente_gcm3', ep.densite_apparente_gcm3,
+            'densite_absolue_gcm3', ep.densite_absolue_gcm3,
+            'teneur_eau_pct', ep.teneur_eau_pct,
+            'w', ep.w,
+            'rho_s', ep.rho_s,
+            'laboratory', ep.laboratory,
+            'measured_at', ep.measured_at,
+            'echantillon_id', e.id
+        )
+        FROM essais_physiques ep
+        INNER JOIN echantillons e ON ep.echantillon_id = e.id
+        WHERE e.sondage_id = $1 AND ep.deleted_at IS NULL
+        ORDER BY e.depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les essais Proctor via échantillons
+    let proctor: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', epr.id,
+            'depth_m', e.depth_m,
+            'rho_d_max', epr.rho_d_max,
+            'w_opt', epr.w_opt,
+            'laboratory', epr.laboratory,
+            'test_date', epr.test_date,
+            'echantillon_id', e.id
+        )
+        FROM essais_proctor epr
+        INNER JOIN echantillons e ON epr.echantillon_id = e.id
+        WHERE e.sondage_id = $1
+        ORDER BY e.depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
     // Récupérer les points de granulométrie via échantillons (agrégés par échantillon)
     let granulo: Vec<serde_json::Value> = sqlx::query_scalar(
         r#"
@@ -352,6 +453,10 @@ pub async fn get_sondage_details(
     let mut result = sondage.as_object().unwrap().clone();
     result.insert("atterberg".to_string(), serde_json::json!(atterberg));
     result.insert("vbs".to_string(), serde_json::json!(vbs));
+    result.insert("classif".to_string(), serde_json::json!(classif));
+    result.insert("gonflement".to_string(), serde_json::json!(gonflement));
+    result.insert("physiques".to_string(), serde_json::json!(physiques));
+    result.insert("proctor".to_string(), serde_json::json!(proctor));
     result.insert("granulometrie".to_string(), serde_json::json!(granulo));
     result.insert("echantillons".to_string(), serde_json::json!(echantillons));
 

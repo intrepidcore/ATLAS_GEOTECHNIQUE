@@ -797,7 +797,139 @@ export class SondagesManagerPage {
           </div>
         ` : ''}
         
-        <!-- Section 5: Granulométrie (accordion par profondeur) -->
+        <!-- Section 5: Classification des sols -->
+        ${details.classif?.length > 0 ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">🏷️ Classification des sols (${details.classif.length} profondeurs)</h4>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                  <tr style="background: #22304d;">
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8;">Prof. (m)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">HRB</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Unified</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Chassagneux</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Type Sol</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">CG</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${details.classif.map((c, i) => `
+                    <tr style="background: ${i % 2 === 0 ? '#1a2332' : '#0f172a'};">
+                      <td style="padding: 10px; color: #ecf2f8; font-weight: 500;">${c.depth_m?.toFixed(2) || 'N/A'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${c.hrb || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${c.unified || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${c.class_chassagneux || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${c.type_sol || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${c.cg?.toFixed(1) || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Section 6: Potentiel de gonflement -->
+        ${details.gonflement?.length > 0 ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">📈 Potentiel de gonflement (${details.gonflement.length} profondeurs)</h4>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                  <tr style="background: #22304d;">
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8;">Prof. (m)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">CG</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Qualification</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Type Sol</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${details.gonflement.map((g, i) => `
+                    <tr style="background: ${i % 2 === 0 ? '#1a2332' : '#0f172a'};">
+                      <td style="padding: 10px; color: #ecf2f8; font-weight: 500;">${g.depth_m?.toFixed(2) || 'N/A'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${g.cg?.toFixed(2) || '—'}</td>
+                      <td style="padding: 10px; text-align: center;">
+                        <span style="background: ${g.cg_qual === 'Faible' ? '#22c55e22' : g.cg_qual === 'Moyen' ? '#f59e0b22' : g.cg_qual === 'Fort' ? '#ef444422' : '#6b728022'}; 
+                                     color: ${g.cg_qual === 'Faible' ? '#22c55e' : g.cg_qual === 'Moyen' ? '#f59e0b' : g.cg_qual === 'Fort' ? '#ef4444' : '#6b7280'}; 
+                                     padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600;">
+                          ${g.cg_qual || '—'}
+                        </span>
+                      </td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${g.type_sol || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Section 7: Essais physiques -->
+        ${details.physiques?.length > 0 ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">⚖️ Essais physiques (${details.physiques.length} profondeurs)</h4>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                  <tr style="background: #22304d;">
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8;">Prof. (m)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">ρ app. (g/cm³)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">ρ abs. (g/cm³)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">w (%)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">ρs</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Labo</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${details.physiques.map((p, i) => `
+                    <tr style="background: ${i % 2 === 0 ? '#1a2332' : '#0f172a'};">
+                      <td style="padding: 10px; color: #ecf2f8; font-weight: 500;">${p.depth_m?.toFixed(2) || 'N/A'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${p.densite_apparente_gcm3?.toFixed(2) || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${p.densite_absolue_gcm3?.toFixed(2) || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${p.teneur_eau_pct?.toFixed(1) || p.w?.toFixed(1) || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${p.rho_s?.toFixed(2) || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8; font-size: 11px;">${p.laboratory || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Section 8: Essais Proctor -->
+        ${details.proctor?.length > 0 ? `
+          <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
+            <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">🔨 Essais Proctor (${details.proctor.length} profondeurs)</h4>
+            <div style="overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead>
+                  <tr style="background: #22304d;">
+                    <th style="padding: 10px; text-align: left; color: #ecf2f8;">Prof. (m)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">ρd max (g/cm³)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">w opt (%)</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Labo</th>
+                    <th style="padding: 10px; text-align: center; color: #ecf2f8;">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${details.proctor.map((pr, i) => `
+                    <tr style="background: ${i % 2 === 0 ? '#1a2332' : '#0f172a'};">
+                      <td style="padding: 10px; color: #ecf2f8; font-weight: 500;">${pr.depth_m?.toFixed(2) || 'N/A'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${pr.rho_d_max?.toFixed(2) || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8;">${pr.w_opt?.toFixed(1) || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8; font-size: 11px;">${pr.laboratory || '—'}</td>
+                      <td style="padding: 10px; text-align: center; color: #94a3b8; font-size: 11px;">${pr.test_date || '—'}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ` : ''}
+        
+        <!-- Section 9: Granulométrie (accordion par profondeur) -->
         ${details.granulometrie?.length > 0 ? `
           <div style="background: #0f172a; border-radius: 8px; padding: 16px;">
             <h4 style="color: #ecf2f8; margin: 0 0 12px 0; font-size: 16px;">📊 Granulométrie (${details.granulometrie.length} profondeurs)</h4>
@@ -868,7 +1000,7 @@ export class SondagesManagerPage {
         ` : ''}
         
         <!-- Message si aucun essai -->
-        ${!atterbergDeduped.length && !vbsDeduped.length && !details.granulometrie?.length && !details.echantillons?.length ? `
+        ${!atterbergDeduped.length && !vbsDeduped.length && !details.classif?.length && !details.gonflement?.length && !details.physiques?.length && !details.proctor?.length && !details.granulometrie?.length && !details.echantillons?.length ? `
           <div style="background: #0f172a; border-radius: 8px; padding: 24px; text-align: center;">
             <div style="font-size: 32px; margin-bottom: 8px;">📭</div>
             <p style="color: #94a3b8; margin: 0;">Aucun essai géotechnique enregistré pour ce sondage</p>

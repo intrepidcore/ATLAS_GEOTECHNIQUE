@@ -26,6 +26,10 @@ export interface SurveyDetails {
 
   atterberg: AtterbergRow[];
   vbs: VbsRow[];
+  classif: ClassifRow[];
+  gonflement: GonflementRow[];
+  physiques: PhysiquesRow[];
+  proctor: ProctorRow[];
   granulometrie: GranuloSerie[];
   echantillons: EchantillonRow[];
 }
@@ -61,8 +65,58 @@ export interface EchantillonRow {
   depth_m: number;
   laboratory?: string | null;
   norm?: string | null;
-  water_content_w?: number | null;
   rho_s_gcm3?: number | null;
+  water_content_w?: number | null;
+  date?: string | null;
+}
+
+export interface ClassifRow {
+  id: string;
+  depth_m: number;
+  systeme?: string | null;
+  classe?: string | null;
+  hrb?: string | null;
+  unified?: string | null;
+  class_chassagneux?: string | null;
+  class_daksha?: string | null;
+  class_seed?: string | null;
+  class_vijay?: string | null;
+  type_sol?: string | null;
+  cg?: number | null;
+  cg_qual?: string | null;
+  echantillon_id?: string;
+}
+
+export interface GonflementRow {
+  id: string;
+  depth_m: number;
+  cg?: number | null;
+  cg_qual?: string | null;
+  type_sol?: string | null;
+  echantillon_id?: string;
+}
+
+export interface PhysiquesRow {
+  id: string;
+  depth_m: number;
+  densite_apparente_gcm3?: number | null;
+  densite_absolue_gcm3?: number | null;
+  teneur_eau_pct?: number | null;
+  w?: number | null;
+  rho_s?: number | null;
+  laboratory?: string | null;
+  measured_at?: string | null;
+  echantillon_id?: string;
+}
+
+export interface ProctorRow {
+  id: string;
+  depth_m: number;
+  rho_d_max?: number | null;
+  w_opt?: number | null;
+  laboratory?: string | null;
+  test_date?: string | null;
+  echantillon_id?: string;
 }
 
 /**
