@@ -1052,9 +1052,12 @@ curl "http://localhost:8081/"
 - [X] Route `/sondages?grid=XXX` fonctionne correctement
 - [X] Nouvelle méthode `getQueryParams()` pour récupérer les params
 
-##### 2. Tuiles offline - URL corrigée
-- [X] URL changée de `/styles/basic-preview/` vers `/data/togo_map/`
-- [X] Format correct pour tileserver-gl-light
+##### 2. Tuiles offline - Auto-configuration via TileJSON
+- [X] Nouvelle fonction `initOfflineTiles()` qui récupère le TileJSON du tileserver
+- [X] Configuration automatique de l'URL, minZoom (5), maxZoom (15), bounds
+- [X] Fallback gracieux si tileserver indisponible (reste sur OSM)
+- [X] Contrôle affiche le statut du tileserver (disponible ou non)
+- [X] Plus de carte grise : zooms et bounds respectés
 
 ##### 3. Onglet "Nouveau Sondage Géotechnique"
 - [X] Ajouté dans la sidebar du gestionnaire sondages

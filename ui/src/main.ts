@@ -39,7 +39,7 @@ import {
   resetFilters as resetFiltersState
 } from './filters-state'
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
-import { initTileLayer, createTileControl } from './tile-manager'
+import { initTileLayer, initOfflineTiles, createTileControl } from './tile-manager'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -92,8 +92,12 @@ function safeAddEventListener(id: string, event: string, handler: EventListener)
 const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7)
 
 // Initialiser les tuiles avec gestion online/offline automatique
-initTileLayer(map)
-createTileControl(map).addTo(map)
+// 1) D'abord configurer le tileserver (async), puis initialiser les layers
+initOfflineTiles().then(() => {
+  initTileLayer(map)
+  createTileControl(map).addTo(map)
+  console.log('[INIT] Tile layers initialized')
+})
 
 const codeInput = document.getElementById('codeInput') as HTMLInputElement
 let gridLayer: L.GeoJSON<any> | null = null
