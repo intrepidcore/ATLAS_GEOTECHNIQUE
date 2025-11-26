@@ -45,6 +45,7 @@ pub struct ListSondagesQuery {
     pub offset: Option<i64>,
     pub search: Option<String>,
     pub missing: Option<String>, // "geom" | "adm3"
+    pub grid_code: Option<String>, // Filtre par code maille
 }
 
 #[derive(Debug, Serialize, sqlx::FromRow)]
@@ -86,10 +87,21 @@ pub async fn list_sondages(
 
     let mut where_clauses: Vec<String> = vec![];
     let has_search = params.search.as_ref().map(|s| !s.is_empty()).unwrap_or(false);
+    let has_grid_code = params.grid_code.as_ref().map(|s| !s.is_empty()).unwrap_or(false);
 
-    // Filtre recherche - $1 sera le terme de recherche
+    // Compteur de paramètres pour les bindings dynamiques
+    let mut param_idx = 1;
+
+    // Filtre recherche
     if has_search {
-        where_clauses.push("(atlas.norm(s.code) LIKE '%' || atlas.norm($1) || '%' OR atlas.norm(s.localite_base) LIKE '%' || atlas.norm($1) || '%')".to_string());
+        where_clauses.push(format!("(atlas.norm(s.code) LIKE '%' || atlas.norm(${}) || '%' OR atlas.norm(s.localite_base) LIKE '%' || atlas.norm(${}) || '%')", param_idx, param_idx));
+        param_idx += 1;
+    }
+
+    // Filtre grid_code (maille)
+    if has_grid_code {
+        where_clauses.push(format!("s.grid_code = ${}", param_idx));
+        param_idx += 1;
     }
 
     // Filtre missing
@@ -106,8 +118,9 @@ pub async fn list_sondages(
         format!("AND {}", where_clauses.join(" AND "))
     };
 
-    // Indices des paramètres: $1 = search (si présent), puis limit et offset
-    let (limit_idx, offset_idx) = if has_search { ("$2", "$3") } else { ("$1", "$2") };
+    // Indices pour limit et offset
+    let limit_idx = format!("${}", param_idx);
+    let offset_idx = format!("${}", param_idx + 1);
 
     let query = format!(
         r#"
@@ -140,6 +153,11 @@ pub async fn list_sondages(
     // Bind search si présent
     if has_search {
         q = q.bind(params.search.as_ref().unwrap());
+    }
+
+    // Bind grid_code si présent
+    if has_grid_code {
+        q = q.bind(params.grid_code.as_ref().unwrap());
     }
 
     // Bind limit et offset

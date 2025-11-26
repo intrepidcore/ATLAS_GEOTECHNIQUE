@@ -51,6 +51,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 **Objectif** : Faire vivre les boutons de l'UI actuelle
 
 ### 2.1 Standardiser location_mode et modes de placement ✅
+
 - [X] **Décider enum officiel** :
   - `unknown` : pas encore géocodé
   - `exact` : coordonnées GPS connues
@@ -332,17 +333,20 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 **Objectif** : Accepter automatiquement les suggestions ADM3 avec score élevé (≥ seuil)
 
 #### Règle métier
+
 - [ ] Définir seuil de score pour auto-acceptation (ex. ≥ 90%)
 - [ ] Définir mode de placement par défaut (`adm_random_cell`, etc.)
 - [ ] Documenter marquage "auto" vs "manuel" dans l'audit
 
 #### Analyse technique
+
 - [ ] Analyser schéma table `atlas.suggestions` (score, status, candidates)
 - [ ] Analyser schéma table `atlas.sondages` (is_geocoded, location_mode, adm3_id, geom)
 - [ ] Comprendre logique `POST /suggestions/:id/accept` (fichier `geocode_suggestions.rs`)
 - [ ] Identifier triggers/fonctions SQL (ex. `refresh_mailles_geotech`)
 
 #### Backend
+
 - [ ] Créer fonction SQL `atlas.auto_accept_suggestions(seuil FLOAT)` :
   - [ ] Sélectionner suggestions `status = 'pending'` avec `score ≥ seuil`
   - [ ] Filtrer sur `sondages.is_geocoded = false`
@@ -360,6 +364,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [ ] Émettre event WebSocket `atlas:refresh-stats` si auto-accepté
 
 #### UI (optionnel)
+
 - [ ] Badge "🤖 Auto" dans onglet Suggestions ADM
 - [ ] Afficher "Mode : Automatique" dans Liste / modal détails
 
@@ -382,6 +387,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 **Règle** : Géocodage Manuel = sondages `location_mode = 'unknown'` uniquement
 
 #### UX
+
 - [X] Dans onglet Liste :
   - [X] Si `location_mode = 'unknown'` → bouton "Géocoder"
   - [X] Sinon → bouton "Re-géocoder" / "Modifier la localisation"
@@ -392,6 +398,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [X] Panneau droit charge le sondage ciblé (même déjà géocodé)
 
 #### Frontend
+
 - [X] Ajouter state `currentGeocodeTargetId` dans `sondages-manager-page`
 - [X] Permettre à `sondages-list-panel` d'appeler handler "ouvrir géocodage pour ce sondage"
 - [X] Dans panneau géocodage manuel :
@@ -401,10 +408,12 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [X] (Optionnel) Surligner dans liste gauche si sondage y apparaît
 
 #### Backend
+
 - [X] Vérifier que API géocodage accepte mise à jour sondage déjà géocodé
 - [ ] Ajouter événement audit de re-géocodage (old_* vs new_*) - À faire plus tard
 
 #### Tests
+
 - [ ] Cas 1 : Liste → Géocoder un sondage non géocodé - À tester manuellement
 - [ ] Cas 2 : Liste → Re-géocoder un sondage géocodé - À tester manuellement
 - [ ] Vérifier bascule correcte vers onglet Géocodage Manuel
@@ -440,18 +449,21 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 **Objectif** : Transformer le modal en page interne intégrée
 
 #### Architecture ✅
+
 - [X] **État de navigation** : Ajout `currentView: 'list' | 'details'` et `currentDetailId`
 - [X] **Méthodes de navigation** : `showDetailsView()`, `backToList()`, `renderListeContent()`
 - [X] **Callback système** : `setOnDetailsRequest()` dans `SondagesListPanel`
 - [X] **Fallback modal** : Conservé pour compatibilité si callback non défini
 
 #### Backend ✅
+
 - [X] Identifier endpoint actuel "Voir détails"
 - [X] Décider : enrichir route existante ou créer `GET /sondages/:id/details`
 - [X] Réponse doit contenir toutes infos géotechniques en une fois
 - [X] Optimiser requêtes (vue SQL agrégée ou jointures)
 
 #### Frontend ✅
+
 - [X] **Page détails complète** : Remplace le modal par une page interne
 - [X] **Bouton retour** : "← Retour à la liste" avec navigation
 - [X] **Contenu structuré** :
@@ -463,11 +475,13 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] **Responsive** : Tableaux avec scroll horizontal si nécessaire
 
 #### Intégration carte
+
 - [X] **Focus automatique** : `focusSurveyOnMap()` appelé lors ouverture détails
-- [ ] **Zoom & highlight ADM3** : Implémentation à compléter
-- [ ] **Highlight maille** : Clignotement cellule grille à ajouter
+- [X] **Zoom & highlight ADM3** : Implémentation à compléter
+- [X] **Highlight maille** : Clignotement cellule grille à ajouter
 
 #### Tests
+
 - [ ] Navigation liste → détails → retour liste
 - [ ] Affichage sondage avec beaucoup d'essais
 - [ ] Affichage sondage avec peu de données
@@ -478,6 +492,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 **Objectif** : Améliorer l'expérience utilisateur et la visibilité des informations
 
 #### Badges géocodage ✅
+
 - [X] **Badge AUTO** : Sondages auto-géocodés via suggestions acceptées
   - [X] Détection via `meta.geocoded_mode === 'suggestion_accepted'`
   - [X] Style bleu avec icône 🤖
@@ -487,6 +502,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] **Intégration** : Badges affichés dans `SondagesListPanel`
 
 #### Corrections API ✅
+
 - [X] **Endpoint ADM3 GeoJSON** : Correction route `/adm3/geojson`
   - [X] Réorganisation ordre des routes pour éviter capture par `/adm/:level`
   - [X] Route spécifique placée avant route générique
@@ -496,6 +512,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
   - [X] Problème était côté UI, pas API
 
 #### Refactoring Import Wizard ✅
+
 - [X] **Source de vérité** : `ImportWizardV2` identifié comme wizard principal
 - [X] **Mode embedded** : Adaptation pour onglet Import
   - [X] Suppression overlay modal via CSS dynamique
@@ -508,6 +525,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 ### ✅ ROADMAP v3.2 - Implémenté (2025-11-25)
 
 #### Chantier A : Nettoyage & documentation Wizards ✅
+
 - [X] **Documentation wizards** : `docs/wizards.md` créé
   - [X] Inventaire des 5 wizards avec rôles et statuts
   - [X] `import-wizard-v2.ts` marqué comme canonique
@@ -515,11 +533,13 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] **Panneau dev test wizards** : Ajouté dans la carte (visible si `ATLAS_DEBUG_WIZARDS=true`)
 
 #### Chantier B : "Voir détails" en page interne ✅
+
 - [X] **Callback système** : `setOnDetailsRequest()` dans `SondagesListPanel`
 - [X] **Navigation interne** : `showDetailsView()` / `backToList()` / `renderListeContent()`
 - [X] **Bouton retour** : "← Retour à la liste" fonctionnel
 
 #### Chantier C : Badges AUTO/MANUEL ✅
+
 - [X] **Types TypeScript** : `survey-details.ts` avec `computeGeocodeBadge()`
 - [X] **Badges visuels** :
   - AUTO (vert) : `location_mode === 'adm_random_cell'` ou `geocoded_mode === 'suggestion_accepted'`
@@ -527,15 +547,18 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] **Intégration** : Badges affichés dans page détails
 
 #### Chantier D : Carte - Zoom & highlight ADM3 ✅
+
 - [X] **Événement global** : `atlas:focus-survey` avec coords et adm3_id
 - [X] **Écouteur carte** : Zoom + marqueur temporaire (5s)
 - [X] **Highlight ADM3** : `atlas:highlight-adm3` avec `highlightAdm3ById()` (vert, 3s)
 
 #### Chantier E : Filtres & tri Liste ✅ (déjà implémenté)
+
 - [X] **Filtres** : Géocodage, Source, ADM3, Mode géocodage
 - [X] **Tri** : Date, Code, Localité, Statut géocodage
 
 #### Chantier F : UI Détails harmonisée ✅
+
 - [X] **Types TypeScript** : `SurveyDetails`, `AtterbergRow`, `VbsRow`, `GranuloSerie`, `EchantillonRow`
 - [X] **Sections structurées** :
   - [X] Localisation avec badges géocodage + bouton zoom carte
@@ -548,6 +571,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] **Accordions granulo** : Clic pour ouvrir/fermer détails points
 
 #### Chantier G : Data quality (doublons) ⏳
+
 - [X] **Script analyse** : `analyze_duplicates.py` fonctionnel
 - [ ] **UI doublons** : Badge/filtre dans liste (à faire plus tard)
 
@@ -556,6 +580,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 ### ✅ ROADMAP v3.3 - Implémenté (2025-11-25)
 
 #### Chantier A : Données géotechniques complètes ✅
+
 - [X] **API enrichie** : `/sondages/:id/details` expose tous les essais
   - [X] `classif` : Classification des sols (HRB, Unified, Chassagneux)
   - [X] `gonflement` : Potentiel de gonflement (CG, qualification)
@@ -565,6 +590,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] **Affichage UI** : Tableaux spécialisés avec badges colorés
 
 #### Chantier B : Logique métier badges AUTO/MANUEL ✅
+
 - [X] **API enrichie** : `geocoded_mode` et `geocoded_score` exposés
   - [X] Jointure `geocode_suggestions` pour récupérer le score
   - [X] Score exposé dans `/sondages`, `/sondages/:id`, `/sondages/:id/details`
@@ -575,21 +601,25 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] **Fonction `computeGeocodeBadgeFromSurvey`** mise à jour
 
 #### Chantier C : Corrections UX Liste ✅
+
 - [X] **Recherche** : Soft refresh avec `rerenderList()` (pas de re-render complet)
 - [X] **Tri** : Listeners séparés (contrôles vs items) pour éviter perte de focus
 - [X] **Scroll conservé** : `listScrollTop` sauvegardé/restauré lors navigation liste↔détails
 
 #### Chantier D : Carte - Zoom & highlight ADM3 amélioré ✅
+
 - [X] **Zoom automatique** : `fitBounds()` sur l'ADM3 lors du highlight
 - [X] **Style amélioré** : Contour vert (#00ff55), fond transparent (fillOpacity: 0.1)
 - [X] **Bring to front** : ADM3 mis en avant pendant le highlight
 
 #### Chantier E : Boutons Test Wizards (DEV) ✅
+
 - [X] **Registry global** : Support `window.atlasWizards` pour accès aux wizards
 - [X] **Fallback intelligent** : Redirection vers onglet Import si wizard non disponible
 - [X] **Messages toast** : Notifications claires au lieu d'alertes
 
 #### Chantier F : Corrections API ✅
+
 - [X] **`/suggestions`** : Fonctionne correctement (cast UUID→TEXT corrigé)
 - [X] **`/adm3/geojson`** : 373 features exposées
 
@@ -598,15 +628,18 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 ### 🚧 ROADMAP v3.4 - Prochaines fonctionnalités
 
 #### Couche mailles colorée
+
 - [ ] Ré-affichage avec code couleur selon nombre de sondages
 - [ ] Légende dynamique
 
 #### Améliorations UI
+
 - [ ] Export détails vers PDF/Excel
 - [ ] Graphique courbe granulométrique
 - [ ] Édition inline des champs
 
 #### Temps réel avancé
+
 - [ ] Rafraîchissement auto stats carte sur `sondage.geocoded`
 - [ ] Compteurs temps réel dans les onglets
 
@@ -618,145 +651,340 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 
 ---
 
-#### 🔧 Chantier 1 : Nettoyer le panneau "Statistiques (filtrées)" ⏳
+#### 🔧 Chantier 1 : Nettoyer le panneau "Statistiques (filtrées)" ✅
 
 ##### 1.1 Répartition des essais
-- [ ] Retirer "Physiques" de l'affichage (garder en API)
-- [ ] Afficher uniquement : Atterberg | VBS | Classif
-- [ ] Barre colorée avec 3 segments seulement
+
+- [X] Retirer "Physiques" de l'affichage (garder en API)
+- [X] Afficher uniquement : Atterberg | VBS | Classif
+- [X] Barre colorée avec 3 segments seulement
 
 ##### 1.2 Profondeurs d'investigation (global)
-- [ ] Renommer en **"📏 Profondeurs d'investigation (global – filtres ADM)"**
-- [ ] Garder histogramme global Chart.js
-- [ ] Ajouter sous-titre : "Calculé sur X échantillons filtrés"
+
+- [X] Renommer en **"📏 Profondeurs d'investigation (global – filtres ADM)"**
+- [X] Garder histogramme global Chart.js
+- [X] Ajouter sous-titre : "Calculé sur X échantillons filtrés"
 
 ##### 1.3 Indicateur d'argilosité (global)
-- [ ] Renommer en **"💧 Indicateur d'argilosité (global – filtres ADM)"**
-- [ ] Conserver phrase d'interprétation
-- [ ] Ajouter sous-titre : "Calculé sur X échantillons / Y essais filtrés"
+
+- [X] Renommer en **"💧 Indicateur d'argilosité (global – filtres ADM)"**
+- [X] Conserver phrase d'interprétation
+- [X] Ajouter sous-titre : "Calculé sur X échantillons / Y essais filtrés"
 
 ##### 1.4 Légende – adapter aux vraies couleurs
-- [ ] Remplacer légende actuelle par 3 lignes :
-  - `mailles avec sondages (localisation exacte)` → couleur has_exact
-  - `mailles avec sondages (ADM / random cell)` → couleur has_random
+
+- [X] Remplacer légende actuelle par 3 lignes :
+  - `mailles avec sondages (localisation exacte)` → couleur #22c55e
+  - `mailles avec sondages (ADM / random cell)` → couleur #f97316
   - `mailles sans sondages` → couleur no-data
 
 ---
 
-#### 🧱 Chantier 2 : Nouvelle structure fiche maille (sans onglets) ⏳
+#### 🧱 Chantier 2 : Nouvelle structure fiche maille (sans onglets) ✅
 
 ##### 2.0 État initial
-- [ ] Message "Cliquez sur une maille pour afficher la fiche géotechnique" quand aucune maille sélectionnée
+
+- [X] Message "Cliquez sur une maille pour afficher la fiche géotechnique" quand aucune maille sélectionnée
 
 ##### 2.1 En-tête – Identité maille
-- [ ] Code maille (badge)
-- [ ] Chemin ADM : `Région > Préfecture > Commune`
-- [ ] Badge données : `avec données` / `sans données`
-- [ ] Badge localisation : `exact` / `adm_random_cell`
+
+- [X] Code maille (badge)
+- [X] Chemin ADM : `Région > Préfecture > Commune`
+- [X] Badge données : `avec données` / `sans données`
+- [X] Badge localisation : `exact` / `adm_random_cell`
 
 ##### 2.2 Instrumentation (KPI)
-- [ ] 4 KPI : Sondages | Échantillons | Essais | (retirer % spread si = 0)
-- [ ] Ligne résumé : "Données issues de X sondage(s), Y échantillon(s), Z essai(s)"
+
+- [X] 3 KPI : Sondages | Échantillons | Essais (% spread retiré car toujours 0)
+- [X] Ligne résumé : "Données issues de X sondage(s), Y échantillon(s), Z essai(s)"
 
 ##### 2.3 Profondeur d'investigation – maille
-- [ ] Calculer min/max/moy depuis `samples[]` ou `overview.depth_hist`
-- [ ] Mini histogramme local (0-3 / 3-6 / 6-10 / >10m)
-- [ ] Backend : ajouter `depth_stats_cell` dans `/cells/{code}/complete`
+
+- [X] Calculer min/max/moy depuis `samples[]`
+- [X] Mini histogramme local (0-3 / 3-6 / 6-10 / >10m) avec barres verticales
+- [X] Calcul côté frontend (pas besoin de backend supplémentaire)
 
 ##### 2.4 Essais par type – maille
-- [ ] Compteurs dérivés de `samples[]` :
+
+- [X] Compteurs dérivés de `samples[]` :
   - Atterberg : count(sample.atterberg != null)
   - VBS : count(sample.vbs != null)
   - Classif : count(sample.classif != null)
-  - Proctor / Granulo / Gonflement : plus tard
-- [ ] Affichage : `Atterberg: 0 | VBS: 3 | Classif: 0` (0 en gris/italic)
+- [X] Affichage : `Atterberg: 0 | VBS: 3 | Classif: 0` (0 en opacité réduite)
 
 ##### 2.5 Indicateurs d'argilosité – maille
-- [ ] Calculer VBS_moy depuis `overview.vbs[]`
-- [ ] Calculer % argileux (VBS > 2.5) pour la maille
-- [ ] IP_moy si Atterberg disponible
-- [ ] Backend : ajouter `argilosite_cell` dans `/cells/{code}/complete`
+
+- [X] Calculer VBS_moy depuis `overview.vbs[]`
+- [X] Calculer % argileux (VBS > 2.5) pour la maille
+- [X] IP_moy si Atterberg disponible
+- [X] Calcul côté frontend (pas besoin de backend supplémentaire)
 
 ##### 2.6 Liste des sondages de la maille
-- [ ] Afficher depuis `surveys[]` :
+
+- [X] Afficher depuis `surveys[]` :
   - code_site
   - mode (exact / adm_random_cell)
   - samples count
   - tests count
 
 ##### 2.7 Échantillons & essais (bloc repliable)
-- [ ] Tableau : Profondeur | VBS | IP | remarques
-- [ ] Section repliable (fermée par défaut)
 
-##### 2.8 Mailles voisines (optionnel)
-- [ ] Garder bloc existant, re-stylé
-- [ ] Format : `↑ TG-xxxx à 1.2 km – Sondages: 1, Essais: 9`
+- [X] Tableau : Profondeur | VBS | IP
+- [X] Section repliable avec `<details>` (fermée par défaut)
+
+##### 2.8 Mailles voisines
+
+- [X] Bloc existant conservé (section séparée)
 
 ---
 
-#### 🧠 Chantier 3 : Synthèse automatique TOUJOURS présente ⏳
+#### 🧠 Chantier 3 : Synthèse automatique TOUJOURS présente ✅
 
 **Objectif** : Ne plus jamais afficher "Pas encore de synthèse disponible"
 
 ##### 3.1 Logique 3 niveaux dans `cell-summary.ts`
-- [ ] **Niveau 3 – Complet** (profondeur + VBS_moy ou IP_moy) :
-  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais VBS.
-  > Investigations entre 1 et 2 m (moy. 1.5 m). Sols globalement argileux (VBS moyen 4.3 g/100g) – plasticité moyenne à élevée."
 
-- [ ] **Niveau 2 – Intermédiaire** (profondeur OU argilosité) :
-  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais.
-  > Profondeurs d'investigation : 1–2 m, maille peu explorée en profondeur."
+- [X] **Niveau 3 – Complet** (profondeur + VBS_moy ou IP_moy) :
 
-- [ ] **Niveau 1 – Minimal** (seulement KPI) :
-  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais.
-  > Pas encore d'indicateurs synthétiques (VBS, limites d'Atterberg, etc.)."
+  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais. Investigations entre 1.0 à 2.0 m (moy. 1.5 m). Sols argileux (VBS moy. 5.9 g/100g)."
+  >
+- [X] **Niveau 2 – Intermédiaire** (profondeur OU argilosité) :
+
+  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais. Profondeurs d'investigation : 1.0–2.0 m, maille peu explorée en profondeur."
+  >
+- [X] **Niveau 1 – Minimal** (seulement KPI) :
+
+  > "Maille instrumentée : 1 sondage, 3 échantillons, 9 essais. Pas encore d'indicateurs synthétiques (VBS, limites d'Atterberg, etc.)."
+  >
 
 ##### 3.2 Implémentation
-- [ ] Modifier `buildCellSummary()` pour ne jamais retourner null
-- [ ] Commencer par niveau 3, descendre si données manquantes
-- [ ] Retirer message "Pas encore de synthèse…" de l'UI
+
+- [X] Modifier `buildCellSummary()` pour ne jamais retourner null
+- [X] Commencer par niveau 3, descendre si données manquantes
+- [X] Retirer message "Pas encore de synthèse…" de l'UI
 
 ---
 
-#### 🗄️ Chantier 4 : Backend – ajustements minimum ⏳
+#### 🗄️ Chantier 4 : Backend – ajustements minimum ✅
 
 ##### 4.1 `/cells/{code}/complete` – enrichir réponse
-- [ ] Ajouter `depth_stats_cell` : { min_m, max_m, moy_m }
-- [ ] Ajouter `argilosite_cell` : { vbs_moyen, pct_argileux, ip_moyen }
-- [ ] Calculer en Rust depuis données existantes (pas de nouvelle vue SQL)
+
+- [X] Stats calculées côté frontend (pas besoin de modifier le backend)
+- [X] `depth_stats` calculé depuis `samples[].depth_m`
+- [X] `argilosite` calculé depuis `overview.vbs[]` et `overview.atterberg[]`
 
 ##### 4.2 `/stats/global` – RAS
+
 - [X] Déjà OK : compteurs, histogramme, argilosité
-- [ ] Juste s'assurer que les labels UI mentionnent "(global)"
+- [X] Labels UI mentionnent "(global – filtres ADM)"
 
 ##### 4.3 Légende
-- [ ] Pas de changement backend, uniquement UI
+
+- [X] Adapté en UI avec 3 couleurs
 
 ---
 
 #### ✅ Résumé actions concrètes
 
-| Priorité | Action | Fichier(s) |
-|----------|--------|------------|
-| 1 | Retirer "Physiques" de répartition essais | `index.html`, `global-stats.ts` |
-| 2 | Renommer titres avec "(global – filtres ADM)" | `index.html` |
-| 3 | Adapter légende 3 couleurs | `index.html`, `main.ts` |
-| 4 | Supprimer onglets fiche maille | `index.html`, `main.ts` |
-| 5 | Créer nouvelle structure fiche maille | `main.ts` |
-| 6 | Backend : ajouter `depth_stats_cell` + `argilosite_cell` | `cells_labs.rs` |
-| 7 | Synthèse 3 niveaux (jamais null) | `cell-summary.ts` |
-| 8 | Retirer % spread si = 0 | `main.ts` |
+| Priorité | Action                                         | Statut |
+| --------- | ---------------------------------------------- | ------ |
+| 1         | Retirer "Physiques" de répartition essais     | ✅     |
+| 2         | Renommer titres avec "(global – filtres ADM)" | ✅     |
+| 3         | Adapter légende 3 couleurs                    | ✅     |
+| 4         | Supprimer onglets fiche maille                 | ✅     |
+| 5         | Créer nouvelle structure fiche maille         | ✅     |
+| 6         | Stats calculées côté frontend               | ✅     |
+| 7         | Synthèse 3 niveaux (jamais null)              | ✅     |
+| 8         | Retirer % spread (toujours 0)                  | ✅     |
 
 ---
 
 #### Note sur % SPREAD
 
 Le KPI "% spread" représente la part de données "diffusées/virtuelles" dans une maille.
+
 - **Aujourd'hui** : toutes les données viennent de sondages réels → % spread = 0% partout
-- **Action** : masquer ce KPI tant que `nb_sondages_spread = 0`
+- **Action** : KPI retiré de l'affichage
 - **Plus tard** : réactiver quand pipeline de diffusion ADM3/IA sera en place
 
 ---
 
-**Dernière mise à jour** : 2025-11-25 21:15
-**Statut global** : 🚀 v3.6.0 - Panneau ingénieur en cours (4 chantiers définis)
+### 🚧 ROADMAP v3.7 - Extension types d'essais (En cours)
+
+**Objectif** : Intégrer Proctor, Granulo, Gonflement dans la chaîne complète
+
+#### ✅ Étape A – Vue matérialisée mv_mailles_geotech
+
+- [X] Migration 045: Ajouter n_proctor, n_granulo, n_gonflement
+- [X] Mettre à jour n_essais = somme des 7 types
+- [X] Ajouter colonne IP calculée dans essais_atterberg
+
+#### ✅ Étape B – API Backend
+
+- [X] `/stats/global`: exposer 6 types (Atterberg, VBS, Classif, Proctor, Granulo, Gonflement)
+- [X] `/cells/{code}/complete`: ajouter IP calculé, flags proctor/granulo/gonflement
+- [X] Corriger comptage essais dans surveys (6 types au lieu de 3)
+- [X] Bins de profondeur adaptés: 0-1 / 1-1.5 / 1.5-2 / >2
+
+#### ✅ Étape C – UI Frontend
+
+- [X] Panneau global: 6 types d'essais avec barre colorée
+- [X] Fiche maille: 6 types d'essais avec opacité réduite si 0
+- [X] Histogramme profondeur: bins 0-1 / 1-1.5 / 1.5-2 / >2
+- [X] Tableau échantillons: IP lu depuis BDD
+
+---
+
+### ✅ ROADMAP v3.8 - Corrections UX & Cohérence Données (2025-11-26)
+
+**Objectif** : Stabiliser l'UX carte et unifier les sources de données
+
+---
+
+#### 🔧 Chantier A – Stabiliser survol & clic carte (fin du clignotement) ✅
+
+**Problème** : Clignotement au survol et clics capricieux sur les mailles
+
+##### A.1 Simplifier la pile de couches ✅
+
+- [X] Supprimer `hoverLayer` (couche séparée pour le survol)
+- [X] Supprimer `selectedMailleLayer` (remplacé par `selectedCell`)
+- [X] Une seule couche interactive : `gridLayer`
+
+##### A.2 Logique de survol sans clignotement ✅
+
+- [X] Pattern robuste : `hoveredCell` et `selectedCell` comme références
+- [X] `handleMouseOver()` : applique style survol directement sur le layer
+- [X] `handleMouseOut()` : restaure style par défaut (sauf si sélectionné)
+- [X] `handleClick()` : gère la sélection sans couche supplémentaire
+
+##### A.3 Nettoyage handlers carte ✅
+
+- [X] `zoomend` : réinitialise survol, redessine mailles (sauf sélectionnée)
+- [X] `movestart` : réinitialise survol
+- [X] `clearHoverAndSelection()` : utilise les nouvelles variables
+
+---
+
+#### 📊 Chantier B – Données : unifier les stats & éliminer les undefined ✅
+
+**Problème** : `undefined` affiché pour Proctor/Granulo/Gonflement dans stats globales
+
+##### B.1 Types et helpers centralisés ✅
+
+- [X] Nouveau fichier `cell-metrics.ts` avec :
+  - `EssaisTypeCounts` : 6 types d'essais
+  - `CellMetrics` : métriques complètes d'une maille
+  - `normalizeEssaisTypes()` : garantit jamais undefined
+  - `fmtNumber()` : formatage avec '—' si null
+  - `computeCellMetrics()` : calcul unique depuis données API
+  - `buildSynthese()` : génération synthèse textuelle
+
+##### B.2 Normalisation API globale ✅
+
+- [X] `global-stats.ts` : normalise `essais_par_type` avec `normalizeEssaisTypes()`
+- [X] Profondeur et argilosité normalisées avec `?? null`
+
+---
+
+#### 🧱 Chantier C – Panneau maille : structure ingénieur ✅
+
+**Problème** : Calculs dispersés, risque d'incohérence
+
+##### C.1 Pipeline clair côté frontend ✅
+
+- [X] `loadMailleDetails()` appelle `computeCellMetrics()` une seule fois
+- [X] Toutes les fonctions de rendu utilisent `CellMetrics`
+
+##### C.2 Fonctions de rendu modulaires ✅
+
+- [X] `renderMailleHeader()` : en-tête avec badges
+- [X] `renderMailleKpis()` : compteurs sondages/échantillons/essais
+- [X] `renderMailleDepth()` : profondeur min/moy/max + histogramme
+- [X] `renderMailleEssaisParType()` : 6 types avec opacité
+- [X] `renderMailleArgilosite()` : VBS moy, % argileux, IP moy
+- [X] `renderMailleSynthese()` : utilise `buildSynthese()`
+- [X] `renderMailleSondages()` : liste des sondages
+- [X] `renderMailleEchantillons()` : tableau échantillons
+
+##### C.3 Synthèse robuste ✅
+
+- [X] `buildSynthese()` dans `cell-metrics.ts`
+- [X] Toujours présente dès qu'il y a au moins 1 sondage
+- [X] Niveaux : complet → intermédiaire → minimal
+
+---
+
+#### ✅ Résumé actions concrètes
+
+| Priorité | Action                                        | Statut |
+| -------- | --------------------------------------------- | ------ |
+| 1        | Supprimer hoverLayer (clignotement)           | ✅     |
+| 2        | Pattern robuste survol/clic                   | ✅     |
+| 3        | Normaliser essais_par_type (plus de undefined)| ✅     |
+| 4        | Créer cell-metrics.ts (source unique)         | ✅     |
+| 5        | Refactorer loadMailleDetails avec metrics     | ✅     |
+| 6        | Fonctions de rendu modulaires                 | ✅     |
+| 7        | Synthèse toujours présente                    | ✅     |
+
+---
+
+### ✅ ROADMAP v3.9 - Améliorations UX & Workflow (2025-11-26)
+
+**Objectif** : Améliorer l'expérience utilisateur et le workflow maille → sondages
+
+---
+
+#### 📊 Chantier 1 – Stats essais complètes (6 types) ✅
+
+- [X] API `/stats/global` expose Proctor, Granulo, Gonflement
+- [X] Vue matérialisée `mv_mailles_geotech` compte les 6 types
+- [X] UI normalise les données (plus de `undefined`)
+- [X] Bins de profondeur adaptés : 0-1 / 1-1.5 / 1.5-2 / >2
+
+#### 🎨 Chantier 2 – Légende mailles ✅
+
+- [X] Couleur bleue (#4c6ef5) pour mailles ADM/random
+- [X] Légende HTML mise à jour
+
+#### 🗺️ Chantier 3 – Tuiles online/offline ✅
+
+- [X] Service `tileserver` dans docker-compose (profile "tiles")
+- [X] Module `tile-manager.ts` avec bascule automatique
+- [X] Contrôle Leaflet pour changer de mode (auto/online/offline)
+- [X] Détection `navigator.onLine` et fallback sur erreur
+
+#### 🔗 Chantier 4 – Workflow Maille → Sondages manager ✅
+
+##### 4.1 Backend
+
+- [X] Migration 047 : remplir `grid_code` pour sondages existants
+- [X] Trigger `trg_set_sondage_grid_code` pour nouveaux sondages
+- [X] Paramètre `grid_code` sur `GET /sondages`
+
+##### 4.2 Frontend
+
+- [X] Bouton "📂 Gérer" dans panneau maille (visible si sondages)
+- [X] Navigation vers `#/sondages?grid=<code>`
+- [X] `SondagesManagerPage` lit le paramètre `grid` de l'URL
+- [X] `SondagesListPanel.setGridCodeFilter()` pour filtrer
+- [X] Bandeau bleu avec filtre actif + bouton "✕ Retirer le filtre"
+
+---
+
+#### ✅ Résumé actions concrètes
+
+| Priorité | Action                                        | Statut |
+| -------- | --------------------------------------------- | ------ |
+| 1        | API expose 6 types d'essais                   | ✅     |
+| 2        | Légende bleue pour mailles random             | ✅     |
+| 3        | Module tile-manager.ts                        | ✅     |
+| 4        | Migration grid_code + trigger                 | ✅     |
+| 5        | Paramètre grid_code sur API sondages          | ✅     |
+| 6        | Bouton "Gérer" dans panneau maille            | ✅     |
+| 7        | Bandeau filtre maille dans liste sondages     | ✅     |
+
+---
+
+**Dernière mise à jour** : 2025-11-26 12:30
+**Statut global** : 🚀 v3.9.0 - Améliorations UX & Workflow COMPLET ✅

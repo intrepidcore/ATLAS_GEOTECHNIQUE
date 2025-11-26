@@ -141,6 +141,19 @@ services:
       - ./migrations:/migrations:ro
       - ./data:/data:ro
 
+  tileserver:
+    image: maptiler/tileserver-gl-light:latest
+    container_name: atlas-tileserver
+    restart: unless-stopped
+    profiles: ["tiles"]
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./data/tiles:/data:ro
+    command: ["-p", "8080", "/data/togo_map.mbtiles"]
+    networks:
+      - atlas-net
+
 networks:
   atlas-net:
     driver: bridge

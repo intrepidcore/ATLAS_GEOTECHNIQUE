@@ -15,6 +15,7 @@ export class SondagesListPanel {
   private filterSource: 'all' | string = 'all';
   private filterAdm3: 'all' | string = 'all';
   private filterGeocodingMode: 'all' | 'auto' | 'manual' = 'all';
+  private gridCodeFilter: string | null = null; // Filtre par code maille
   private sortBy: 'created_at' | 'code' | 'localite' | 'is_geocoded' = 'created_at';
   private sortOrder: 'asc' | 'desc' = 'desc';
   private currentContainerId?: string;
@@ -24,6 +25,27 @@ export class SondagesListPanel {
   private onDetailsRequest?: (surveyId: string) => void;
 
   constructor(private apiUrl: string) {}
+  
+  /**
+   * Set grid code filter (workflow maille → sondages)
+   */
+  setGridCodeFilter(gridCode: string | null) {
+    this.gridCodeFilter = gridCode;
+  }
+  
+  /**
+   * Clear grid code filter
+   */
+  clearGridCodeFilter() {
+    this.gridCodeFilter = null;
+  }
+  
+  /**
+   * Get current grid code filter
+   */
+  getGridCodeFilter(): string | null {
+    return this.gridCodeFilter;
+  }
   
   /**
    * Set callback for geocode request (called when user clicks Géocoder/Re-géocoder)
@@ -55,6 +77,11 @@ export class SondagesListPanel {
       } else if (this.filterGeocoded === 'not_geocoded') {
         params.missing = 'geom';
       }
+      
+      // Filtre par code maille (workflow maille → sondages)
+      if (this.gridCodeFilter) {
+        params.grid_code = this.gridCodeFilter;
+      }
 
       // Filtres avancés seront appliqués côté client pour l'instant
       // TODO: Implémenter côté serveur pour de meilleures performances
@@ -82,8 +109,25 @@ export class SondagesListPanel {
     const geocodedCount = this.stats ? this.stats.with_geom : 0;
     const notGeocodedCount = this.stats ? this.stats.total - this.stats.with_geom : 0;
 
+    // Bandeau filtre maille
+    const gridFilterBanner = this.gridCodeFilter ? `
+      <div id="grid-filter-banner" style="padding: 12px 20px; background: #1a365d; border-bottom: 1px solid #2563eb; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 16px;">📍</span>
+          <span style="color: #93c5fd; font-size: 13px;">
+            Filtre maille actif : <strong style="color: #ecf2f8;">${this.gridCodeFilter}</strong>
+            <span style="color: #94a3b8; margin-left: 8px;">(${this.sondages.length} sondage${this.sondages.length > 1 ? 's' : ''})</span>
+          </span>
+        </div>
+        <button id="clear-grid-filter-btn" style="padding: 4px 10px; background: #22304d; color: #ecf2f8; border: 1px solid #4c6ef5; border-radius: 4px; cursor: pointer; font-size: 11px;">
+          ✕ Retirer le filtre
+        </button>
+      </div>
+    ` : '';
+
     container.innerHTML = `
       <div class="sondages-list-panel" style="display: flex; flex-direction: column; height: 100%; background: #0a0e17; min-height: 0;">
+        ${gridFilterBanner}
         <!-- Header -->
         <div style="padding: 20px; border-bottom: 1px solid #22304d;">
           <h3 style="margin: 0 0 16px 0; color: #ecf2f8; font-size: 18px;">
@@ -345,6 +389,21 @@ export class SondagesListPanel {
   }
 
   private attachControlListeners() {
+    // Bouton retirer filtre maille
+    const clearGridFilterBtn = document.getElementById('clear-grid-filter-btn');
+    if (clearGridFilterBtn) {
+      clearGridFilterBtn.addEventListener('click', async () => {
+        this.gridCodeFilter = null;
+        // Retirer le paramètre grid de l'URL
+        window.location.hash = '#/sondages';
+        await this.refresh();
+        // Re-render complet pour retirer le bandeau
+        if (this.currentContainerId && this.onSuccessCallback && this.onErrorCallback) {
+          this.renderUI(this.currentContainerId, this.onSuccessCallback, this.onErrorCallback);
+        }
+      });
+    }
+    
     // Search input
     const searchInput = document.getElementById('list-search-input') as HTMLInputElement;
     if (searchInput) {

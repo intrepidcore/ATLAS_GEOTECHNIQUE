@@ -18,6 +18,7 @@ import { APP_VERSION } from './version'
 import { initAccordions, initDirectButtons, initKeyboardShortcuts, initFilterListeners, initCloseMailleActions, showMailleActions } from './right-panel'
 import { renderPhysiques, renderClassif, renderSurveys, type CellCompleteOut } from './cell-complete-types'
 import { buildCellSummary } from './cell-summary'
+import { computeCellMetrics, buildSynthese, fmtNumber, type CellMetrics } from './cell-metrics'
 import { CONFIG } from './config'
 import { SondagesModal } from './modal/sondages-modal'
 import { openDbManager } from './db-manager'
@@ -38,6 +39,7 @@ import {
   resetFilters as resetFiltersState
 } from './filters-state'
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
+import { initTileLayer, createTileControl } from './tile-manager'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -88,10 +90,10 @@ function safeAddEventListener(id: string, event: string, handler: EventListener)
 }
 
 const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7)
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 18,
-  attribution: '&copy; OpenStreetMap'
-}).addTo(map)
+
+// Initialiser les tuiles avec gestion online/offline automatique
+initTileLayer(map)
+createTileControl(map).addTo(map)
 
 const codeInput = document.getElementById('codeInput') as HTMLInputElement
 let gridLayer: L.GeoJSON<any> | null = null
@@ -191,51 +193,75 @@ function styleFeature(f: any) {
   return getGridFeatureStyle(f, map?.getZoom())
 }
 
-// Variables globales pour les couches de sélection et survol
-let selectedMailleLayer: any = null
+// Variables globales pour la sélection et le survol (Chantier A - pattern robuste)
+let selectedCell: L.Path | null = null
+let hoveredCell: L.Path | null = null
 let selectedMailleCode: string | null = null
-let hoverLayer: L.GeoJSON | null = null  // Couche unique pour le survol
+let selectedMailleProps: any = null  // Propriétés de la maille sélectionnée
 
 /**
- * Initialise la couche de survol unique
- * Utilise le style centralisé GRID_HOVER_STYLE
+ * Retourne le style par défaut pour une feature (selon ses données)
  */
-function initHoverLayer() {
-  if (!hoverLayer && map) {
-    hoverLayer = L.geoJSON(undefined, {
-      style: GRID_HOVER_STYLE
-    }).addTo(map)
+function getDefaultStyle(feature: any): L.PathOptions {
+  return getGridFeatureStyle(feature, map?.getZoom())
+}
+
+/**
+ * Gère le survol d'une maille - modifie le style directement (pas de couche séparée)
+ * Pattern robuste : pas de clignotement, pas de couche supplémentaire
+ */
+function handleMouseOver(layer: L.Path, feature: any) {
+  // Si on survole la maille déjà sélectionnée, ne rien faire
+  if (layer === selectedCell) return
+  
+  // Réinitialiser l'ancienne maille survolée (si différente de la sélectionnée)
+  if (hoveredCell && hoveredCell !== selectedCell && hoveredCell !== layer) {
+    hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))
+  }
+  
+  // Appliquer le style de survol
+  hoveredCell = layer
+  layer.setStyle(GRID_HOVER_STYLE)
+  layer.bringToFront()
+  
+  // Remettre la sélection au premier plan si elle existe
+  if (selectedCell) {
+    selectedCell.bringToFront()
   }
 }
 
 /**
- * Gère le survol d'une maille - utilise une couche unique
+ * Gère la sortie du survol
  */
-function highlightFeature(e: any) {
-  // Ne pas highlight si c'est la maille sélectionnée
-  if (e.target === selectedMailleLayer) return
+function handleMouseOut(layer: L.Path, feature: any) {
+  // Si c'est la maille sélectionnée, ne pas réinitialiser
+  if (layer === selectedCell) return
   
-  // Utiliser la couche de survol unique au lieu de modifier le style directement
-  if (hoverLayer) {
-    hoverLayer.clearLayers()
-    const feature = e.target.feature
-    if (feature) {
-      hoverLayer.addData(feature)
-    }
+  // Réinitialiser le style
+  layer.setStyle(getDefaultStyle(feature))
+  
+  if (hoveredCell === layer) {
+    hoveredCell = null
   }
 }
 
 /**
- * Réinitialise le survol
+ * Gère le clic sur une maille
  */
-function resetHighlight(e: any) {
-  // Ne pas reset si c'est la maille sélectionnée
-  if (e.target === selectedMailleLayer) return
+function handleClick(layer: L.Path, feature: any, p: any) {
+  console.log('[handleClick] Clic sur maille:', p.code)
   
-  // Vider la couche de survol
-  if (hoverLayer) {
-    hoverLayer.clearLayers()
+  // Réinitialiser l'ancienne sélection
+  if (selectedCell && selectedCell !== layer) {
+    selectedCell.setStyle(getDefaultStyle((selectedCell as any).feature))
   }
+  
+  // Appliquer le style de sélection
+  selectedCell = layer
+  selectedMailleCode = p.code
+  selectedMailleProps = p
+  layer.setStyle(CELL_SELECTED_STYLE)
+  layer.bringToFront()
 }
 
 // --- Feature interactions ---
@@ -244,34 +270,14 @@ function onEachFeature(f: any, layer: any) {
   const p = f.properties || {}
   const title = `Code: ${p.code || '—'}${p.adm1_name ? `\nRégion: ${p.adm1_name}` : ''}${p.n_sondages != null ? `\nSondages: ${p.n_sondages}` : ''}`
   layer.bindTooltip(title, { sticky: true, opacity: 0.9 })
+  
+  // Chantier A - Pattern robuste : survol et clic sur la même couche
   layer.on({
-    mouseover: highlightFeature,
-    mouseout: resetHighlight,
+    mouseover: () => handleMouseOver(layer, f),
+    mouseout: () => handleMouseOut(layer, f),
     click: async () => {
-      console.log('[onEachFeature] Clic sur maille:', p.code)
-      // Réinitialiser l'ancienne sélection
-      if (selectedMailleLayer && gridLayer) {
-        gridLayer.resetStyle(selectedMailleLayer)
-      }
-      
-      // Vider la couche de survol pour éviter les artefacts
-      if (hoverLayer) {
-        hoverLayer.clearLayers()
-      }
-      
-      // Mettre en évidence la nouvelle maille avec le style centralisé
-      layer.setStyle(CELL_SELECTED_STYLE)
-      selectedMailleLayer = layer
-      selectedMailleCode = p.code
-      
-      // Réinitialiser le style après 7 secondes
-      setTimeout(() => {
-        if (selectedMailleLayer === layer && gridLayer) {
-          gridLayer.resetStyle(layer)
-          selectedMailleLayer = null
-          selectedMailleCode = null
-        }
-      }, 7000)
+      // Appeler le handler de clic centralisé
+      handleClick(layer, f, p)
       
       // Zoomer
       map.fitBounds(layer.getBounds(), { maxZoom: 14 })
@@ -459,13 +465,12 @@ function renderSondagesList(sondages: any[]) {
   toast('Édition du sondage (à implémenter)', 'ok')
 }
 
-// Charger les détails complets d'une maille
+// Charger les détails complets d'une maille (v3.7 - Chantier C avec computeCellMetrics)
 async function loadMailleDetails(code: string) {
   console.log('[loadMailleDetails] Chargement des détails pour:', code)
   try {
     // Appel au nouvel endpoint /cells/{code}/complete
     const res = await fetch(`${API_GEO}/cells/${code}/complete`)
-    console.log('[loadMailleDetails] Réponse API:', res.status, res.statusText)
     if (!res.ok) {
       toast('Erreur chargement détails maille', 'err')
       return
@@ -474,88 +479,232 @@ async function loadMailleDetails(code: string) {
     const data = await res.json()
     console.log('[loadMailleDetails] Données reçues:', data)
     
-    // Afficher la fiche AVANT de rendre les graphiques
+    // Chantier C - Calculer toutes les métriques une seule fois
+    const metrics = computeCellMetrics({
+      ...data,
+      code,
+      adm1_name: selectedMailleProps?.adm1_name,
+      adm2_name: selectedMailleProps?.adm2_name,
+      adm3_name: selectedMailleProps?.adm3_name,
+    })
+    console.log('[loadMailleDetails] Métriques calculées:', metrics)
+    
+    // Afficher le contenu de la fiche et masquer le message vide
+    const mailleEmpty = document.getElementById('mailleEmpty')
+    const mailleContent = document.getElementById('mailleContent')
+    if (mailleEmpty) mailleEmpty.style.display = 'none'
+    if (mailleContent) mailleContent.style.display = 'block'
+    
+    // Scroller vers la fiche
     const ficheDiv = document.getElementById('mailleDetails')
-    console.log('[loadMailleDetails] Element #mailleDetails:', ficheDiv)
-    if (!ficheDiv) {
-      console.error('[loadMailleDetails] Element #mailleDetails introuvable !')
-      return
-    }
-    ficheDiv.classList.add('active')
-    console.log('[loadMailleDetails] Classe active ajoutée à #mailleDetails')
-    
-    // Scroller automatiquement vers la fiche dans le panneau gauche
-    setTimeout(() => {
-      ficheDiv.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    }, 100)
-    
-    // En-tête
-    const ficheCode = document.getElementById('ficheCode')
-    const ficheStatus = document.getElementById('ficheStatus')
-    if (ficheCode) ficheCode.textContent = code
-    if (ficheStatus) ficheStatus.innerHTML = data.kpi.n_sondages > 0 
-      ? '✅ avec données' 
-      : '— sans données'
-    
-    // KPIs
-    const kpiSondages = document.getElementById('kpiSondages')
-    const kpiEchantillons = document.getElementById('kpiEchantillons')
-    const kpiEssais = document.getElementById('kpiEssais')
-    const kpiSpread = document.getElementById('kpiSpread')
-    if (kpiSondages) kpiSondages.textContent = data.kpi.n_sondages.toString()
-    if (kpiEchantillons) kpiEchantillons.textContent = data.kpi.n_echantillons.toString()
-    if (kpiEssais) kpiEssais.textContent = data.kpi.n_essais.toString()
-    if (kpiSpread) kpiSpread.textContent = `${data.kpi.pct_spread.toFixed(0)}%`
-    
-    // Alerte Spread
-    const spreadAlert = document.getElementById('spreadAlert')
-    const spreadSource = document.getElementById('spreadSource')
-    if (data.kpi.pct_spread > 99 && data.source_surveys && data.source_surveys.length > 0) {
-      const source = data.source_surveys[0]
-      if (spreadSource) spreadSource.textContent = `${source.code_site || 'N/A'} (${source.adm3_code || 'N/A'})`
-      if (spreadAlert) spreadAlert.style.display = 'block'
-    } else {
-      if (spreadAlert) spreadAlert.style.display = 'none'
+    if (ficheDiv) {
+      ficheDiv.classList.add('active')
+      setTimeout(() => ficheDiv.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     }
     
-    // Générer et afficher la synthèse géotechnique
-    const ficheSummaryText = document.getElementById('ficheSummaryText')
-    if (ficheSummaryText) {
-      const summary = buildCellSummary(data)
-      ficheSummaryText.textContent = summary
-    }
+    // === RENDU DU PANNEAU MAILLE (Chantier C) ===
+    renderMailleHeader(code, metrics, data)
+    renderMailleKpis(metrics)
+    renderMailleDepth(metrics)
+    renderMailleEssaisParType(metrics)
+    renderMailleArgilosite(metrics)
+    renderMailleSynthese(metrics)
+    renderMailleSondages(data, code)
+    renderMailleEchantillons(data)
     
-    // Rendre les onglets
-    renderOverview(data.overview)
-    renderEssais(data.samples || [], data.kpi.pct_spread || 0, data.source_surveys || [])
-    renderSondages(data.surveys || [], data.source_surveys || [])
-    renderClassification(data.samples || [])
-    
-    // Rendre les nouveaux accordéons (v2.4.0)
-    const physiquesPanel = document.getElementById('physiques-panel')
-    const classifPanel = document.getElementById('classif-panel')
-    const surveyList = document.getElementById('survey-list')
-    if (physiquesPanel) renderPhysiques(physiquesPanel, data.samples || [])
-    if (classifPanel) renderClassif(classifPanel, data.samples || [])
-    if (surveyList) renderSurveys(surveyList, data.surveys || [])
-    
-    // Afficher actions maille contextuelles (v2.1.0)
-    showMailleActions(code, data.kpi.n_sondages, data.kpi.n_essais)
-    
-    // Boutons actions
-    const ficheRecalc = document.getElementById('ficheRecalculate')
-    const ficheExport = document.getElementById('ficheExportGeoJSON')
-    const ficheAdd = document.getElementById('ficheAddSurvey')
-    if (ficheRecalc) ficheRecalc.onclick = () => recomputeIdw(code)
-    if (ficheExport) ficheExport.onclick = () => exportMailleGeoJSON(code)
-    if (ficheAdd) ficheAdd.onclick = () => {
-      codeInput.value = code
-      const newSurveyBtn = document.getElementById('newSurveyBtn')
-      if (newSurveyBtn) newSurveyBtn.click()
-    }
+    // Charger les mailles voisines
+    loadNeighbors(code)
     
   } catch (e: any) {
+    console.error('[loadMailleDetails] Erreur:', e)
     toast(`Erreur: ${e.message}`, 'err')
+  }
+}
+
+// === FONCTIONS DE RENDU PANNEAU MAILLE (Chantier C) ===
+
+function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
+  const ficheCode = document.getElementById('ficheCode')
+  const ficheAdm = document.getElementById('ficheAdm')
+  const ficheDataBadge = document.getElementById('ficheDataBadge') as HTMLElement
+  const ficheLocBadge = document.getElementById('ficheLocBadge') as HTMLElement
+  
+  if (ficheCode) ficheCode.textContent = code
+  
+  // ADM path
+  if (ficheAdm) {
+    const admPath = [metrics.region, metrics.prefecture, metrics.commune]
+      .filter(Boolean).join(' > ')
+    ficheAdm.textContent = admPath || '—'
+  }
+  
+  // Badges
+  const hasData = metrics.nSondages > 0
+  if (ficheDataBadge) {
+    ficheDataBadge.textContent = hasData ? '✅ avec données' : '— sans données'
+    ficheDataBadge.style.display = 'inline-block'
+    ficheDataBadge.style.background = hasData ? '#22c55e22' : '#64748b22'
+    ficheDataBadge.style.color = hasData ? '#22c55e' : '#64748b'
+    ficheDataBadge.style.padding = '2px 6px'
+    ficheDataBadge.style.borderRadius = '4px'
+    ficheDataBadge.style.fontSize = '10px'
+  }
+  
+  // Badge localisation (depuis surveys)
+  const locMode = data.surveys?.[0]?.mode || 'unknown'
+  if (ficheLocBadge) {
+    if (locMode === 'exact') {
+      ficheLocBadge.textContent = '📍 exact'
+      ficheLocBadge.style.background = '#22c55e22'
+      ficheLocBadge.style.color = '#22c55e'
+    } else if (locMode === 'adm_random_cell') {
+      ficheLocBadge.textContent = '🎲 ADM random'
+      ficheLocBadge.style.background = '#f9731622'
+      ficheLocBadge.style.color = '#f97316'
+    } else {
+      ficheLocBadge.textContent = '❓ inconnu'
+      ficheLocBadge.style.background = '#64748b22'
+      ficheLocBadge.style.color = '#64748b'
+    }
+    ficheLocBadge.style.display = hasData ? 'inline-block' : 'none'
+    ficheLocBadge.style.padding = '2px 6px'
+    ficheLocBadge.style.borderRadius = '4px'
+    ficheLocBadge.style.fontSize = '10px'
+  }
+}
+
+function renderMailleKpis(metrics: CellMetrics) {
+  const kpiSondages = document.getElementById('kpiSondages')
+  const kpiEchantillons = document.getElementById('kpiEchantillons')
+  const kpiEssais = document.getElementById('kpiEssais')
+  const kpiSummaryLine = document.getElementById('kpiSummaryLine')
+  
+  if (kpiSondages) kpiSondages.textContent = metrics.nSondages.toString()
+  if (kpiEchantillons) kpiEchantillons.textContent = metrics.nEchantillons.toString()
+  if (kpiEssais) kpiEssais.textContent = metrics.nEssais.toString()
+  if (kpiSummaryLine) {
+    kpiSummaryLine.textContent = `Données issues de ${metrics.nSondages} sondage(s), ${metrics.nEchantillons} échantillon(s), ${metrics.nEssais} essai(s)`
+  }
+}
+
+function renderMailleDepth(metrics: CellMetrics) {
+  const cellDepthMin = document.getElementById('cellDepthMin')
+  const cellDepthMoy = document.getElementById('cellDepthMoy')
+  const cellDepthMax = document.getElementById('cellDepthMax')
+  
+  if (cellDepthMin) cellDepthMin.textContent = fmtNumber(metrics.depthMin, 'm')
+  if (cellDepthMoy) cellDepthMoy.textContent = fmtNumber(metrics.depthMean, 'm')
+  if (cellDepthMax) cellDepthMax.textContent = fmtNumber(metrics.depthMax, 'm')
+  
+  // Mini histogramme profondeur maille
+  const [bin0_1, bin1_15, bin15_2, bin2_plus] = metrics.depthBins
+  const maxBin = Math.max(...metrics.depthBins, 1)
+  
+  const cellBar0_1 = document.getElementById('cellBar0_1')
+  const cellBar1_15 = document.getElementById('cellBar1_15')
+  const cellBar15_2 = document.getElementById('cellBar15_2')
+  const cellBar2_plus = document.getElementById('cellBar2_plus')
+  
+  if (cellBar0_1) cellBar0_1.style.height = `${(bin0_1 / maxBin) * 100}%`
+  if (cellBar1_15) cellBar1_15.style.height = `${(bin1_15 / maxBin) * 100}%`
+  if (cellBar15_2) cellBar15_2.style.height = `${(bin15_2 / maxBin) * 100}%`
+  if (cellBar2_plus) cellBar2_plus.style.height = `${(bin2_plus / maxBin) * 100}%`
+}
+
+function renderMailleEssaisParType(metrics: CellMetrics) {
+  const types = metrics.essaisParType
+  
+  const setTypeCount = (id: string, count: number) => {
+    const el = document.getElementById(id)
+    if (el) {
+      el.textContent = count.toString()
+      el.style.opacity = count > 0 ? '1' : '0.4'
+    }
+  }
+  
+  setTypeCount('cellAtterberg', types.atterberg)
+  setTypeCount('cellVbs', types.vbs)
+  setTypeCount('cellClassif', types.classif)
+  setTypeCount('cellProctor', types.proctor)
+  setTypeCount('cellGranulo', types.granulo)
+  setTypeCount('cellGonflement', types.gonflement)
+}
+
+function renderMailleArgilosite(metrics: CellMetrics) {
+  const cellVbsMoy = document.getElementById('cellVbsMoy')
+  const cellPctArgileux = document.getElementById('cellPctArgileux')
+  const cellIpMoy = document.getElementById('cellIpMoy')
+  
+  if (cellVbsMoy) cellVbsMoy.textContent = fmtNumber(metrics.vbsMean, '', 1)
+  if (cellPctArgileux) cellPctArgileux.textContent = metrics.pctArgileux != null ? `${metrics.pctArgileux.toFixed(0)}%` : '—'
+  if (cellIpMoy) cellIpMoy.textContent = fmtNumber(metrics.ipMean, '', 0)
+}
+
+function renderMailleSynthese(metrics: CellMetrics) {
+  const ficheSummaryText = document.getElementById('ficheSummaryText')
+  if (ficheSummaryText) {
+    ficheSummaryText.textContent = buildSynthese(metrics)
+  }
+}
+
+function renderMailleSondages(data: any, gridCode: string) {
+  const cellSurveysList = document.getElementById('cellSurveysList')
+  const btnOpenSondagesManager = document.getElementById('btnOpenSondagesManager') as HTMLButtonElement | null
+  
+  if (!cellSurveysList) return
+  
+  const surveys = data.surveys || []
+  
+  // Afficher/masquer le bouton "Gérer" selon s'il y a des sondages
+  if (btnOpenSondagesManager) {
+    if (surveys.length > 0) {
+      btnOpenSondagesManager.style.display = 'inline-block'
+      btnOpenSondagesManager.onclick = () => {
+        // Ouvrir le gestionnaire de sondages avec le filtre maille
+        window.location.hash = `#/sondages?grid=${encodeURIComponent(gridCode)}`
+      }
+    } else {
+      btnOpenSondagesManager.style.display = 'none'
+    }
+  }
+  
+  if (surveys.length === 0) {
+    cellSurveysList.innerHTML = '<span style="color:var(--muted);font-style:italic">Aucun sondage dans cette maille</span>'
+  } else {
+    cellSurveysList.innerHTML = surveys.map((s: any) => `
+      <div style="padding:6px 8px;background:#0a1018;border-radius:4px;margin-bottom:4px">
+        <div style="font-weight:600;color:var(--text)">${s.code_site || 'N/A'}</div>
+        <div style="display:flex;gap:8px;margin-top:2px;color:var(--muted);font-size:10px">
+          <span>${s.mode === 'exact' ? '📍 exact' : '🎲 random'}</span>
+          <span>•</span>
+          <span>${s.samples || 0} éch.</span>
+          <span>•</span>
+          <span>${s.tests || 0} essais</span>
+        </div>
+      </div>
+    `).join('')
+  }
+}
+
+function renderMailleEchantillons(data: any) {
+  const cellSamplesBody = document.getElementById('cellSamplesBody')
+  if (!cellSamplesBody) return
+  
+  const samples = data.samples || []
+  if (samples.length === 0) {
+    cellSamplesBody.innerHTML = '<tr><td colspan="3" style="padding:8px;text-align:center;color:var(--muted)">Aucun échantillon</td></tr>'
+  } else {
+    cellSamplesBody.innerHTML = samples.map((s: any) => {
+      const vbs = s.vbs?.vbs != null ? s.vbs.vbs.toFixed(2) : '—'
+      const ip = s.atterberg?.ip != null ? s.atterberg.ip.toFixed(0) : '—'
+      return `
+        <tr style="border-bottom:1px solid #1c2843">
+          <td style="padding:4px;color:var(--text)">${s.depth_m?.toFixed(1) || '—'}m</td>
+          <td style="padding:4px;text-align:center;color:#4c6ef5">${vbs}</td>
+          <td style="padding:4px;text-align:center;color:#51cf66">${ip}</td>
+        </tr>
+      `
+    }).join('')
   }
 }
 
@@ -1413,25 +1562,18 @@ async function loadGrid(useBbox = false) {
       map.removeLayer(gridLayer)
     }
     
-    // Vider les couches de survol et sélection pour éviter les artefacts
-    if (hoverLayer) {
-      hoverLayer.clearLayers()
-    }
-    if (selectedMailleLayer) {
-      selectedMailleLayer = null
+    // Chantier A - Réinitialiser les états de survol et sélection
+    if (selectedCell) {
+      selectedCell = null
       selectedMailleCode = null
+      selectedMailleProps = null
     }
+    hoveredCell = null
     
     gridLayer = L.geoJSON(gj, {
       style: styleFeature,
       onEachFeature
     }).addTo(map)
-    
-    // Initialiser la couche de survol unique (après gridLayer)
-    initHoverLayer()
-    if (hoverLayer) {
-      hoverLayer.bringToFront()
-    }
     
     // Mettre à jour la référence globale
     ;(window as any).gridLayer = gridLayer
@@ -1440,18 +1582,18 @@ async function loadGrid(useBbox = false) {
     if (bounds.isValid() && !useBbox) map.fitBounds(bounds, { padding: [12, 12] })
 
     // Redessiner les mailles lors du zoom pour ajuster les contours
-    // et nettoyer le survol pour éviter les artefacts
     map.on('zoomend', () => {
-      // Nettoyer le survol
-      if (hoverLayer) {
-        hoverLayer.clearLayers()
+      // Chantier A - Réinitialiser le survol lors du zoom
+      if (hoveredCell && hoveredCell !== selectedCell) {
+        hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))
+        hoveredCell = null
       }
       
       // Redessiner les mailles avec le nouveau zoom
       if (gridLayer) {
         gridLayer.eachLayer((layer: any) => {
           const feature = layer.feature
-          if (feature) {
+          if (feature && layer !== selectedCell) {
             // Ne redessiner que les mailles visibles (qui passent les filtres)
             if (featureMatchesFilters(feature, currentFilters)) {
               layer.setStyle(styleFeature(feature))
@@ -1461,10 +1603,11 @@ async function loadGrid(useBbox = false) {
       }
     })
     
-    // Nettoyer le survol lors du déplacement de la carte
+    // Chantier A - Réinitialiser le survol lors du déplacement
     map.on('movestart', () => {
-      if (hoverLayer) {
-        hoverLayer.clearLayers()
+      if (hoveredCell && hoveredCell !== selectedCell) {
+        hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))
+        hoveredCell = null
       }
     })
 
@@ -3241,16 +3384,20 @@ function applyFilters() {
 }
 
 /**
- * Vide les couches de survol et de sélection pour éviter les artefacts
+ * Chantier A - Vide les états de survol et de sélection
  */
 function clearHoverAndSelection() {
-  if (hoverLayer) {
-    hoverLayer.clearLayers()
+  // Réinitialiser le survol
+  if (hoveredCell) {
+    hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))
+    hoveredCell = null
   }
-  if (selectedMailleLayer && gridLayer) {
-    gridLayer.resetStyle(selectedMailleLayer)
-    selectedMailleLayer = null
+  // Réinitialiser la sélection
+  if (selectedCell && gridLayer) {
+    selectedCell.setStyle(getDefaultStyle((selectedCell as any).feature))
+    selectedCell = null
     selectedMailleCode = null
+    selectedMailleProps = null
   }
 }
 

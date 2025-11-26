@@ -51,6 +51,7 @@ export async function listSondages(params?: {
   offset?: number;
   search?: string;
   missing?: 'geom' | 'adm3';
+  grid_code?: string; // Filtre par code maille
 }): Promise<Sondage[]> {
   return apiGet<Sondage[]>('/sondages', params);
 }

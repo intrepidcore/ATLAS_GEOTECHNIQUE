@@ -6,7 +6,7 @@
 import type { CellCompleteOut } from './cell-complete-types'
 
 // Types pour les données de synthèse
-interface CellSummaryData {
+export interface CellSummaryData {
   kpi: {
     n_sondages: number
     n_echantillons: number
@@ -23,59 +23,110 @@ interface CellSummaryData {
     gtr_dominant?: string
     uscs_dominant?: string
   }
+  // Stats calculées côté frontend (v3.6)
+  depth_stats?: {
+    min_m: number | null
+    max_m: number | null
+    moy_m: number | null
+  }
+  argilosite?: {
+    vbs_moyen: number | null
+    pct_argileux: number | null
+    ip_moyen: number | null
+  }
+  samples?: any[]  // Échantillons bruts
 }
 
 /**
  * Construit une synthèse textuelle géotechnique pour une maille
+ * Logique 3 niveaux (v3.6) - Ne retourne JAMAIS null
  */
 export function buildCellSummary(data: CellSummaryData): string {
-  const parts: string[] = []
+  const { kpi, depth_stats, argilosite, overview } = data
   
-  // Cas 1: On a des données détaillées (overview non vide)
-  const hasOverviewData = (data.overview?.atterberg?.length ?? 0) > 0 || (data.overview?.vbs?.length ?? 0) > 0
+  // Déterminer le niveau de synthèse disponible
+  const hasDepth = depth_stats?.min_m != null && depth_stats?.max_m != null
+  const hasVbs = argilosite?.vbs_moyen != null
+  const hasIp = argilosite?.ip_moyen != null
+  const hasOverviewData = (overview?.atterberg?.length ?? 0) > 0 || (overview?.vbs?.length ?? 0) > 0
   
-  if (hasOverviewData) {
-    // 1) Profondeur d'investigation
-    const depthPart = buildDepthPart(data)
-    if (depthPart) parts.push(depthPart)
+  // NIVEAU 3 - Complet (profondeur + VBS ou IP)
+  if (hasDepth && (hasVbs || hasIp)) {
+    const parts: string[] = []
     
-    // 2) Argilosité (VBS)
-    const vbsPart = buildVbsPart(data)
-    if (vbsPart) parts.push(vbsPart)
+    // Instrumentation
+    parts.push(`Maille instrumentée : ${kpi.n_sondages} sondage(s), ${kpi.n_echantillons} échantillon(s), ${kpi.n_essais} essai(s)`)
     
-    // 3) Plasticité (IP)
-    const ipPart = buildIpPart(data)
-    if (ipPart) parts.push(ipPart)
+    // Profondeur
+    if (depth_stats) {
+      const depthRange = depth_stats.min_m === depth_stats.max_m
+        ? `${depth_stats.min_m?.toFixed(1)} m`
+        : `${depth_stats.min_m?.toFixed(1)} à ${depth_stats.max_m?.toFixed(1)} m`
+      const moyStr = depth_stats.moy_m != null ? ` (moy. ${depth_stats.moy_m.toFixed(1)} m)` : ''
+      parts.push(`Investigations entre ${depthRange}${moyStr}`)
+    }
     
-    // 4) Classification dominante
-    const classPart = buildClassPart(data)
-    if (classPart) parts.push(classPart)
+    // Argilosité
+    const argiloParts: string[] = []
+    if (hasVbs) {
+      const vbs = argilosite!.vbs_moyen!
+      let soilType = 'sols peu argileux'
+      if (vbs >= 6) soilType = 'sols très argileux'
+      else if (vbs >= 2.5) soilType = 'sols argileux'
+      else if (vbs >= 1) soilType = 'sols limono-argileux'
+      argiloParts.push(`${soilType} (VBS moy. ${vbs.toFixed(1)} g/100g)`)
+    }
+    if (hasIp) {
+      const ip = argilosite!.ip_moyen!
+      let plasticity = 'plasticité faible'
+      if (ip > 35) plasticity = 'plasticité très élevée'
+      else if (ip > 17) plasticity = 'plasticité élevée'
+      else if (ip >= 7) plasticity = 'plasticité moyenne'
+      argiloParts.push(plasticity)
+    }
+    if (argiloParts.length > 0) {
+      parts.push(argiloParts.join(', '))
+    }
     
-    // 5) Source des données (spread ou réel)
-    const sourcePart = buildSourcePart(data)
-    if (sourcePart) parts.push(sourcePart)
-    
-    // Assembler avec une majuscule au début
-    const summary = parts.join(' ; ')
-    return summary.charAt(0).toUpperCase() + summary.slice(1) + '.'
+    return parts.join('. ') + '.'
   }
   
-  // Cas 2: On n'a que les KPI (pas de données détaillées)
-  if (data.kpi.n_essais > 0 || data.kpi.n_echantillons > 0) {
-    let summary = `Maille instrumentée : ${data.kpi.n_sondages} sondage(s), ${data.kpi.n_echantillons} échantillon(s), ${data.kpi.n_essais} essai(s).`
+  // NIVEAU 2 - Intermédiaire (profondeur OU argilosité)
+  if (hasDepth || hasVbs || hasIp || hasOverviewData) {
+    const parts: string[] = []
     
-    if (data.kpi.depth_max_m != null) {
-      summary += ` Profondeur max. ${data.kpi.depth_max_m.toFixed(1)} m.`
+    // Instrumentation
+    parts.push(`Maille instrumentée : ${kpi.n_sondages} sondage(s), ${kpi.n_echantillons} échantillon(s), ${kpi.n_essais} essai(s)`)
+    
+    // Profondeur si disponible
+    if (hasDepth && depth_stats) {
+      const depthRange = depth_stats.min_m === depth_stats.max_m
+        ? `${depth_stats.min_m?.toFixed(1)} m`
+        : `${depth_stats.min_m?.toFixed(1)}–${depth_stats.max_m?.toFixed(1)} m`
+      
+      const depthQualif = (depth_stats.max_m ?? 0) < 3 ? 'peu explorée en profondeur' : 'exploration moyenne'
+      parts.push(`Profondeurs d'investigation : ${depthRange}, maille ${depthQualif}`)
+    } else if (hasVbs && argilosite) {
+      // Argilosité seule
+      const vbs = argilosite.vbs_moyen!
+      let soilType = 'sols peu argileux'
+      if (vbs >= 6) soilType = 'sols très argileux'
+      else if (vbs >= 2.5) soilType = 'sols argileux'
+      else if (vbs >= 1) soilType = 'sols limono-argileux'
+      parts.push(`Indicateur VBS : ${soilType} (moy. ${vbs.toFixed(1)} g/100g)`)
     }
     
-    if (data.kpi.pct_spread > 99) {
-      summary += ` Données issues de diffusion ADM3.`
-    }
-    
+    return parts.join('. ') + '.'
+  }
+  
+  // NIVEAU 1 - Minimal (seulement KPI)
+  if (kpi.n_sondages > 0 || kpi.n_echantillons > 0 || kpi.n_essais > 0) {
+    let summary = `Maille instrumentée : ${kpi.n_sondages} sondage(s), ${kpi.n_echantillons} échantillon(s), ${kpi.n_essais} essai(s).`
+    summary += ` Pas encore d'indicateurs synthétiques (VBS, limites d'Atterberg, etc.).`
     return summary
   }
   
-  // Cas 3: Aucune donnée
+  // Cas sans données
   return "Aucun essai géotechnique enregistré pour cette maille."
 }
 

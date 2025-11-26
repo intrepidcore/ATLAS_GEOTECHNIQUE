@@ -43,6 +43,9 @@ export class SondagesManagerPage {
     import: false,
     liste: false,
   };
+  
+  // Filtre maille depuis l'URL (workflow maille → sondages)
+  private gridCodeFilter: string | null = null;
 
   constructor(private apiUrl: string) {}
 
@@ -199,8 +202,18 @@ export class SondagesManagerPage {
       }
     }
 
-    // Load first tab
-    await this.switchTab('geocode');
+    // Lire le paramètre grid depuis l'URL (workflow maille → sondages)
+    const hashParams = new URLSearchParams(window.location.hash.split('?')[1] || '');
+    this.gridCodeFilter = hashParams.get('grid');
+    
+    if (this.gridCodeFilter) {
+      console.log('[SONDAGES PAGE] Filtre maille actif:', this.gridCodeFilter);
+      // Si un filtre maille est actif, aller directement sur l'onglet Liste
+      await this.switchTab('liste');
+    } else {
+      // Load first tab
+      await this.switchTab('geocode');
+    }
   }
 
   private attachListeners() {
@@ -531,6 +544,12 @@ export class SondagesManagerPage {
 
     try {
       this.listPanel = new SondagesListPanel(this.apiUrl);
+      
+      // Si un filtre maille est actif, le passer au panel
+      if (this.gridCodeFilter) {
+        this.listPanel.setGridCodeFilter(this.gridCodeFilter);
+      }
+      
       await this.listPanel.refresh();
       
       // Set geocode request handler

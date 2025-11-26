@@ -214,39 +214,50 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
             <div><strong>Essais:</strong> <span id="statEssais">0</span></div>
           </div>
           
-          <!-- Répartition par type d'essai -->
+          <!-- Répartition par type d'essai (6 types) -->
           <div id="essaisTypeStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
             <div style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:600">📈 Répartition des essais</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;font-size:11px">
-              <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#0a1018;border-radius:4px">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px">
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
                 <span style="color:var(--muted)">Atterberg</span>
                 <span id="statAtterberg" style="color:#51cf66;font-weight:600">0</span>
               </div>
-              <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#0a1018;border-radius:4px">
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
                 <span style="color:var(--muted)">VBS</span>
                 <span id="statVbs" style="color:#4c6ef5;font-weight:600">0</span>
               </div>
-              <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#0a1018;border-radius:4px">
-                <span style="color:var(--muted)">Physiques</span>
-                <span id="statPhysiques" style="color:#f4b740;font-weight:600">0</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:4px 8px;background:#0a1018;border-radius:4px">
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
                 <span style="color:var(--muted)">Classif.</span>
                 <span id="statClassif" style="color:#e85d68;font-weight:600">0</span>
               </div>
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Proctor</span>
+                <span id="statProctor" style="color:#f59e0b;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Granulo</span>
+                <span id="statGranulo" style="color:#8b5cf6;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Gonfl.</span>
+                <span id="statGonflement" style="color:#ec4899;font-weight:600">0</span>
+              </div>
             </div>
-            <!-- Mini graphique de répartition -->
+            <!-- Mini graphique de répartition (6 segments) -->
             <div id="essaisTypeBar" style="margin-top:8px;height:8px;background:#0a1018;border-radius:4px;overflow:hidden;display:flex">
               <div id="barAtterberg" style="background:#51cf66;height:100%;width:0%;transition:width 0.3s"></div>
               <div id="barVbs" style="background:#4c6ef5;height:100%;width:0%;transition:width 0.3s"></div>
-              <div id="barPhysiques" style="background:#f4b740;height:100%;width:0%;transition:width 0.3s"></div>
               <div id="barClassif" style="background:#e85d68;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barProctor" style="background:#f59e0b;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barGranulo" style="background:#8b5cf6;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barGonflement" style="background:#ec4899;height:100%;width:0%;transition:width 0.3s"></div>
             </div>
           </div>
           
           <!-- Profondeurs d'investigation -->
           <div id="depthStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
-            <div style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:600">📏 Profondeurs d'investigation (global)</div>
+            <div style="font-size:11px;color:var(--accent);margin-bottom:4px;font-weight:600">📏 Profondeurs d'investigation (global – filtres ADM)</div>
+            <div id="depthSubtitle" style="font-size:9px;color:var(--muted);margin-bottom:8px">Calculé sur — échantillons filtrés</div>
             <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:8px">
               <span style="color:var(--muted)">Min: <strong id="depthMin" style="color:var(--text)">—</strong></span>
               <span style="color:var(--muted)">Moy: <strong id="depthMoy" style="color:var(--text)">—</strong></span>
@@ -260,7 +271,8 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           
           <!-- Indicateur d'argilosité -->
           <div id="argilositeStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
-            <div style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:600">💧 Indicateur d'argilosité</div>
+            <div style="font-size:11px;color:var(--accent);margin-bottom:4px;font-weight:600">💧 Indicateur d'argilosité (global – filtres ADM)</div>
+            <div id="argiloSubtitle" style="font-size:9px;color:var(--muted);margin-bottom:8px">Calculé sur — échantillons / — essais</div>
             <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px">
               <div style="text-align:center;padding:6px;background:#0a1018;border-radius:4px">
                 <div style="color:var(--muted);font-size:9px">VBS moy.</div>
@@ -299,113 +311,161 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
         <div class="section">
           <h4>Légende</h4>
           <div class="legend">
-            <div class="row"><span class="swatch" style="background:var(--with-data)"></span> mailles avec sondages</div>
+            <div class="row"><span class="swatch" style="background:#22c55e"></span> mailles avec sondages (localisation exacte)</div>
+            <div class="row"><span class="swatch" style="background:#4c6ef5"></span> mailles avec sondages (ADM / random cell)</div>
             <div class="row"><span class="swatch" style="background:var(--no-data)"></span> mailles sans sondages</div>
           </div>
         </div>
 
-        <!-- Fiche Géotechnique de la Maille -->
+        <!-- Fiche Géotechnique de la Maille (sans onglets) -->
         <div id="mailleDetails" class="section">
-          <div class="maille-header">
-            <div class="maille-code-badge" id="ficheCode">—</div>
-            <div class="maille-adm" id="ficheAdm">—</div>
-            <div class="maille-status" id="ficheStatus">—</div>
-            <div class="maille-actions">
-              <button class="btn-sm" id="ficheRecalculate">🔄 Recalculer</button>
-              <button class="btn-sm" id="ficheExportGeoJSON">📦 GeoJSON</button>
-              <button class="btn-sm" id="ficheAddSurvey">+ Sondage</button>
+          <!-- État initial: aucune maille sélectionnée -->
+          <div id="mailleEmpty" style="padding:20px;text-align:center;color:var(--muted);font-size:12px">
+            <div style="font-size:32px;margin-bottom:8px">📍</div>
+            <div>Cliquez sur une maille pour afficher la fiche géotechnique</div>
+          </div>
+          
+          <!-- Contenu de la fiche (masqué par défaut) -->
+          <div id="mailleContent" style="display:none">
+            <!-- 1. En-tête – Identité maille -->
+            <div class="maille-header">
+              <div class="maille-code-badge" id="ficheCode">—</div>
+              <div class="maille-adm" id="ficheAdm">—</div>
+              <div class="maille-badges" style="display:flex;gap:6px;margin-top:4px">
+                <span id="ficheDataBadge" class="badge-sm" style="display:none">avec données</span>
+                <span id="ficheLocBadge" class="badge-sm" style="display:none">exact</span>
+              </div>
             </div>
-          </div>
 
-          <!-- KPIs Grid 2x4 -->
-          <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
-            <div class="kpi-card">
-              <span class="kpi-label">Sondages</span>
-              <span class="kpi-value" id="kpiSondages">0</span>
+            <!-- 2. Instrumentation (KPI) -->
+            <div style="margin-top:12px">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px">📊 INSTRUMENTATION</div>
+              <div class="kpi-grid" style="grid-template-columns:1fr 1fr 1fr">
+                <div class="kpi-card">
+                  <span class="kpi-label">Sondages</span>
+                  <span class="kpi-value" id="kpiSondages">0</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-label">Échantillons</span>
+                  <span class="kpi-value" id="kpiEchantillons">0</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-label">Essais</span>
+                  <span class="kpi-value" id="kpiEssais">0</span>
+                </div>
+              </div>
+              <div id="kpiSummaryLine" style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center">
+                Données issues de — sondage(s), — échantillon(s), — essai(s)
+              </div>
             </div>
-            <div class="kpi-card">
-              <span class="kpi-label">Échantillons</span>
-              <span class="kpi-value" id="kpiEchantillons">0</span>
+
+            <!-- 3. Profondeur d'investigation – maille (bins adaptés 0-1 / 1-1.5 / 1.5-2 / >2) -->
+            <div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px">📏 PROFONDEUR D'INVESTIGATION (maille)</div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+                <span style="color:var(--muted)">Min: <strong id="cellDepthMin" style="color:var(--text)">—</strong></span>
+                <span style="color:var(--muted)">Moy: <strong id="cellDepthMoy" style="color:var(--text)">—</strong></span>
+                <span style="color:var(--muted)">Max: <strong id="cellDepthMax" style="color:var(--text)">—</strong></span>
+              </div>
+              <div id="cellDepthHist" style="display:flex;gap:4px;height:40px">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                  <div style="flex:1;width:100%;background:#0a1018;border-radius:2px;position:relative;overflow:hidden">
+                    <div id="cellBar0_1" style="position:absolute;bottom:0;width:100%;background:#22c55e;height:0%;transition:height 0.3s"></div>
+                  </div>
+                  <div style="font-size:7px;color:var(--muted);margin-top:2px">0-1</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                  <div style="flex:1;width:100%;background:#0a1018;border-radius:2px;position:relative;overflow:hidden">
+                    <div id="cellBar1_15" style="position:absolute;bottom:0;width:100%;background:#3b82f6;height:0%;transition:height 0.3s"></div>
+                  </div>
+                  <div style="font-size:7px;color:var(--muted);margin-top:2px">1-1.5</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                  <div style="flex:1;width:100%;background:#0a1018;border-radius:2px;position:relative;overflow:hidden">
+                    <div id="cellBar15_2" style="position:absolute;bottom:0;width:100%;background:#f59e0b;height:0%;transition:height 0.3s"></div>
+                  </div>
+                  <div style="font-size:7px;color:var(--muted);margin-top:2px">1.5-2</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                  <div style="flex:1;width:100%;background:#0a1018;border-radius:2px;position:relative;overflow:hidden">
+                    <div id="cellBar2_plus" style="position:absolute;bottom:0;width:100%;background:#ef4444;height:0%;transition:height 0.3s"></div>
+                  </div>
+                  <div style="font-size:7px;color:var(--muted);margin-top:2px">>2</div>
+                </div>
+              </div>
             </div>
-            <div class="kpi-card">
-              <span class="kpi-label">Essais</span>
-              <span class="kpi-value" id="kpiEssais">0</span>
+
+            <!-- 4. Essais par type – maille (6 types) -->
+            <div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px">🔬 ESSAIS PAR TYPE (maille)</div>
+              <div id="cellEssaisTypes" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:4px;font-size:10px">
+                <span><strong id="cellAtterberg" style="color:#51cf66">0</strong> <span style="color:var(--muted)">Atterberg</span></span>
+                <span><strong id="cellVbs" style="color:#4c6ef5">0</strong> <span style="color:var(--muted)">VBS</span></span>
+                <span><strong id="cellClassif" style="color:#e85d68">0</strong> <span style="color:var(--muted)">Classif</span></span>
+                <span><strong id="cellProctor" style="color:#f59e0b">0</strong> <span style="color:var(--muted)">Proctor</span></span>
+                <span><strong id="cellGranulo" style="color:#8b5cf6">0</strong> <span style="color:var(--muted)">Granulo</span></span>
+                <span><strong id="cellGonflement" style="color:#ec4899">0</strong> <span style="color:var(--muted)">Gonfl.</span></span>
+              </div>
             </div>
-            <div class="kpi-card">
-              <span class="kpi-label">% Spread</span>
-              <span class="kpi-value" id="kpiSpread">0%</span>
+
+            <!-- 5. Indicateurs d'argilosité – maille -->
+            <div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px">💧 ARGILOSITÉ (maille)</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px">
+                <div style="text-align:center;padding:4px;background:#0a1018;border-radius:4px">
+                  <div style="color:var(--muted);font-size:9px">VBS moy.</div>
+                  <div id="cellVbsMoy" style="color:#4c6ef5;font-weight:700;font-size:12px">—</div>
+                </div>
+                <div style="text-align:center;padding:4px;background:#0a1018;border-radius:4px">
+                  <div style="color:var(--muted);font-size:9px">% argileux</div>
+                  <div id="cellPctArgileux" style="color:#e85d68;font-weight:700;font-size:12px">—</div>
+                </div>
+                <div style="text-align:center;padding:4px;background:#0a1018;border-radius:4px">
+                  <div style="color:var(--muted);font-size:9px">IP moy.</div>
+                  <div id="cellIpMoy" style="color:#51cf66;font-weight:700;font-size:12px">—</div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <!-- Alerte Spread -->
-          <div id="spreadAlert" class="alert-spread" style="display:none">
-            🔄 Valeurs agrégées depuis <strong id="spreadSource">—</strong> — diffusion ADM3
-          </div>
-
-          <!-- Synthèse géotechnique automatique -->
-          <div id="ficheSummary" style="margin:12px 0;padding:10px;background:#0f172a;border-radius:8px;border-left:3px solid var(--accent);font-size:11px;color:var(--text);line-height:1.5;font-style:italic">
-            <span style="color:var(--accent);font-weight:600">📝 Synthèse :</span>
-            <span id="ficheSummaryText">—</span>
-          </div>
-
-          <!-- Onglets -->
-          <div class="tabs">
-            <button class="tab active" data-tab="overview">📊 Vue</button>
-            <button class="tab" data-tab="essais">🔬 Essais</button>
-            <button class="tab" data-tab="sondages">📋 Sondages</button>
-            <button class="tab" data-tab="classif">🏷️ Classification</button>
-          </div>
-
-          <!-- Contenu Onglet 1: Vue d'ensemble -->
-          <div class="tab-content active" id="tab-overview">
-            <div class="charts-section">
-              <canvas id="chartAtterberg" width="320" height="120"></canvas>
-              <canvas id="chartVBS" width="320" height="120"></canvas>
-              <canvas id="chartGranulo" width="320" height="120"></canvas>
-              <canvas id="chartDepth" width="320" height="100"></canvas>
+            <!-- 6. Synthèse automatique -->
+            <div id="ficheSummary" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border-left:3px solid var(--accent);font-size:11px;color:var(--text);line-height:1.5">
+              <div style="color:var(--accent);font-weight:600;margin-bottom:4px">📝 SYNTHÈSE</div>
+              <div id="ficheSummaryText" style="font-style:italic">—</div>
             </div>
-          </div>
 
-          <!-- Contenu Onglet 2: Essais détaillés -->
-          <div class="tab-content" id="tab-essais">
-            <div class="essais-header">
-              <button class="btn-sm" id="expandAll">Déployer tout</button>
-              <button class="btn-sm" id="collapseAll">Replier tout</button>
+            <!-- 7. Liste des sondages de la maille -->
+            <div style="margin-top:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <div style="font-size:10px;color:var(--accent);font-weight:600">🧭 SONDAGES DE LA MAILLE</div>
+                <button id="btnOpenSondagesManager" style="font-size:9px;padding:2px 6px;background:#4c6ef5;color:white;border:none;border-radius:3px;cursor:pointer;display:none" title="Ouvrir le gestionnaire de sondages filtré sur cette maille">
+                  📂 Gérer
+                </button>
+              </div>
+              <div id="cellSurveysList" style="font-size:11px;color:var(--muted)">Aucun sondage</div>
             </div>
-            <div id="essaisList" class="essais-list"></div>
-          </div>
 
-          <!-- Contenu Onglet 3: Sondages -->
-          <div class="tab-content" id="tab-sondages">
-            <div id="sondagesList"></div>
-          </div>
-
-          <!-- Contenu Onglet 4: Classification -->
-          <div class="tab-content" id="tab-classif">
-            <canvas id="chartCasagrande" width="320" height="200"></canvas>
-            <canvas id="chartUSCSPie" width="320" height="180"></canvas>
-            <div id="classifRules" style="font-size:11px;color:var(--muted);margin-top:12px"></div>
+            <!-- 8. Échantillons & essais (bloc repliable) -->
+            <details style="margin-top:12px">
+              <summary style="cursor:pointer;font-size:10px;color:var(--accent);font-weight:600;padding:6px 0">
+                📋 ÉCHANTILLONS & ESSAIS (détail)
+              </summary>
+              <div id="cellSamplesTable" style="margin-top:8px;font-size:10px;max-height:200px;overflow-y:auto">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead>
+                    <tr style="background:#0a1018">
+                      <th style="padding:4px;text-align:left;color:var(--muted)">Prof.</th>
+                      <th style="padding:4px;text-align:center;color:var(--muted)">VBS</th>
+                      <th style="padding:4px;text-align:center;color:var(--muted)">IP</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cellSamplesBody"></tbody>
+                </table>
+              </div>
+            </details>
           </div>
         </div>
 
-        <!-- Accordéon Essais Physiques -->
-        <div class="section">
-          <h4>⚗️ Essais physiques</h4>
-          <div id="physiques-panel"></div>
-        </div>
-
-        <!-- Accordéon Classifications -->
-        <div class="section">
-          <h4>🏷️ Classifications</h4>
-          <div id="classif-panel"></div>
-        </div>
-
-        <!-- Accordéon Sondages -->
-        <div class="section">
-          <h4>🧭 Sondages</h4>
-          <div id="survey-list"></div>
-        </div>
-
+        <!-- Mailles voisines -->
         <div class="section">
           <h4>🔀 Mailles voisines</h4>
           <div id="neighbors" style="font-size:11px;color:var(--muted)">Sélectionnez une maille</div>

@@ -320,11 +320,15 @@ pub async fn get_cell_complete(
             e.depth_m::float8 AS depth_m,
             ea.wl::float8 AS att_wl,
             ea.wp::float8 AS att_wp,
+            CASE WHEN ea.wl IS NOT NULL AND ea.wp IS NOT NULL THEN (ea.wl - ea.wp)::float8 ELSE NULL END AS att_ip,
             ev.vbs::float8 AS vbs_val,
             ep.densite_absolue_gcm3::float8 AS phys_densite,
             ep.teneur_eau_pct::float8 AS phys_teneur_eau,
             ec.systeme AS classif_systeme,
-            ec.classe AS classif_classe
+            ec.classe AS classif_classe,
+            epr.id IS NOT NULL AS has_proctor,
+            gp.id IS NOT NULL AS has_granulo,
+            epg.id IS NOT NULL AS has_gonflement
         FROM mailles m
         JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
         JOIN echantillons e ON e.sondage_id = s.id
@@ -332,6 +336,9 @@ pub async fn get_cell_complete(
         LEFT JOIN essais_vbs ev ON ev.echantillon_id = e.id
         LEFT JOIN essais_physiques ep ON ep.echantillon_id = e.id
         LEFT JOIN essais_classif ec ON ec.echantillon_id = e.id AND ec.deleted_at IS NULL
+        LEFT JOIN essais_proctor epr ON epr.echantillon_id = e.id
+        LEFT JOIN granulo_points gp ON gp.echantillon_id = e.id
+        LEFT JOIN essais_potentiel_gonflement epg ON epg.echantillon_id = e.id
         WHERE m.code = $1
         ORDER BY e.depth_m
         "#,
@@ -356,17 +363,21 @@ pub async fn get_cell_complete(
         .map(|row| {
             let att_wl: Option<f64> = row.try_get("att_wl").ok();
             let att_wp: Option<f64> = row.try_get("att_wp").ok();
+            let att_ip: Option<f64> = row.try_get("att_ip").ok();
             let vbs_val: Option<f64> = row.try_get("vbs_val").ok();
             let phys_densite: Option<f64> = row.try_get("phys_densite").ok();
             let phys_teneur_eau: Option<f64> = row.try_get("phys_teneur_eau").ok();
             let classif_systeme: Option<String> = row.try_get("classif_systeme").ok();
             let classif_classe: Option<String> = row.try_get("classif_classe").ok();
+            let has_proctor: bool = row.try_get("has_proctor").unwrap_or(false);
+            let has_granulo: bool = row.try_get("has_granulo").unwrap_or(false);
+            let has_gonflement: bool = row.try_get("has_gonflement").unwrap_or(false);
 
             let atterberg = if att_wl.is_some() || att_wp.is_some() {
                 Some(serde_json::json!({
                     "wl": att_wl,
                     "wp": att_wp,
-                    "ip": att_wl.zip(att_wp).map(|(wl, wp)| wl - wp)
+                    "ip": att_ip
                 }))
             } else {
                 None
@@ -405,15 +416,20 @@ pub async fn get_cell_complete(
                 None
             };
 
+            // Flags pour proctor/granulo/gonflement (présence d'essai)
+            let proctor = if has_proctor { Some(serde_json::json!({"present": true})) } else { None };
+            let granulo = if has_granulo { Some(serde_json::json!({"present": true})) } else { None };
+            let swelling = if has_gonflement { Some(serde_json::json!({"present": true})) } else { None };
+
             SampleComplete {
                 id: row.try_get("id").unwrap(),
                 depth_m: row.try_get("depth_m").unwrap_or(0.0),
                 atterberg,
                 vbs,
                 physiques,
-                granulo: None,
-                proctor: None,
-                swelling: None,
+                granulo,
+                proctor,
+                swelling,
                 classif,
             }
         })
@@ -430,16 +446,28 @@ pub async fn get_cell_complete(
           a3.adm3_fr AS adm3_name,
           COUNT(DISTINCT e.id)::bigint AS samples,
           (
-            SELECT COUNT(*) FROM echantillons e2
+            SELECT COUNT(DISTINCT ea.echantillon_id) FROM echantillons e2
             JOIN essais_atterberg ea ON ea.echantillon_id = e2.id
             WHERE e2.sondage_id = s.id
           ) + (
-            SELECT COUNT(*) FROM echantillons e2
+            SELECT COUNT(DISTINCT ev.echantillon_id) FROM echantillons e2
             JOIN essais_vbs ev ON ev.echantillon_id = e2.id
             WHERE e2.sondage_id = s.id
           ) + (
-            SELECT COUNT(*) FROM echantillons e2
-            JOIN essais_physiques ep ON ep.echantillon_id = e2.id
+            SELECT COUNT(DISTINCT ec.echantillon_id) FROM echantillons e2
+            JOIN essais_classif ec ON ec.echantillon_id = e2.id
+            WHERE e2.sondage_id = s.id
+          ) + (
+            SELECT COALESCE(COUNT(DISTINCT ep.echantillon_id), 0) FROM echantillons e2
+            JOIN essais_proctor ep ON ep.echantillon_id = e2.id
+            WHERE e2.sondage_id = s.id
+          ) + (
+            SELECT COALESCE(COUNT(DISTINCT gp.echantillon_id), 0) FROM echantillons e2
+            JOIN granulo_points gp ON gp.echantillon_id = e2.id
+            WHERE e2.sondage_id = s.id
+          ) + (
+            SELECT COALESCE(COUNT(DISTINCT epg.echantillon_id), 0) FROM echantillons e2
+            JOIN essais_potentiel_gonflement epg ON epg.echantillon_id = e2.id
             WHERE e2.sondage_id = s.id
           ) AS tests
         FROM mailles m

@@ -1,11 +1,13 @@
 /**
  * Module pour les statistiques globales agrégées (panneau Vue Globale)
  * Phase 2 - Panneau d'accueil géotechnique
+ * Chantier B - Source unique de vérité pour les stats globales
  */
 
 import { getApiBase } from './api-base'
 import { currentFilters } from './filters-state'
 import { Chart, registerables } from 'chart.js'
+import { normalizeEssaisTypes, type EssaisTypeCounts } from './cell-metrics'
 
 // Enregistrer les composants Chart.js
 Chart.register(...registerables)
@@ -25,8 +27,10 @@ export interface GlobalStats {
   essais_par_type: {
     atterberg: number
     vbs: number
-    physiques: number
     classif: number
+    proctor: number
+    granulo: number
+    gonflement: number
   }
   profondeur: {
     min_m: number | null
@@ -71,7 +75,25 @@ export async function fetchGlobalStats(): Promise<GlobalStats | null> {
       return null
     }
 
-    const stats: GlobalStats = await res.json()
+    const raw = await res.json()
+    
+    // Chantier B - Normaliser les données pour éviter les undefined
+    const stats: GlobalStats = {
+      ...raw,
+      essais_par_type: normalizeEssaisTypes(raw.essais_par_type),
+      profondeur: {
+        min_m: raw.profondeur?.min_m ?? null,
+        max_m: raw.profondeur?.max_m ?? null,
+        moy_m: raw.profondeur?.moy_m ?? null,
+        bins: raw.profondeur?.bins ?? [],
+      },
+      argilosite: {
+        vbs_moyen: raw.argilosite?.vbs_moyen ?? null,
+        pct_argileux: raw.argilosite?.pct_argileux ?? null,
+        ip_moyen: raw.argilosite?.ip_moyen ?? null,
+      },
+    }
+    
     cachedStats = stats
     lastFetchTime = now
     return stats
@@ -89,34 +111,49 @@ export function updateGlobalStatsPanel(stats: GlobalStats): void {
   const depthMin = document.getElementById('depthMin')
   const depthMoy = document.getElementById('depthMoy')
   const depthMax = document.getElementById('depthMax')
+  const depthSubtitle = document.getElementById('depthSubtitle')
   
   if (depthMin) depthMin.textContent = stats.profondeur.min_m != null ? `${stats.profondeur.min_m.toFixed(1)}m` : '—'
   if (depthMoy) depthMoy.textContent = stats.profondeur.moy_m != null ? `${stats.profondeur.moy_m.toFixed(1)}m` : '—'
   if (depthMax) depthMax.textContent = stats.profondeur.max_m != null ? `${stats.profondeur.max_m.toFixed(1)}m` : '—'
-
-  // Histogramme des profondeurs avec Chart.js
-  const bins = stats.profondeur.bins
-  const bin0_3 = bins.find(b => b.range === '0-3')?.count || 0
-  const bin3_6 = bins.find(b => b.range === '3-6')?.count || 0
-  const bin6_10 = bins.find(b => b.range === '6-10')?.count || 0
-  const bin10_plus = bins.find(b => b.range === '>10')?.count || 0
   
-  updateDepthChart([bin0_3, bin3_6, bin6_10, bin10_plus])
+  // Sous-titre avec nombre d'échantillons
+  if (depthSubtitle) {
+    depthSubtitle.textContent = `Calculé sur ${stats.echantillons.toLocaleString()} échantillons filtrés`
+  }
+
+  // Histogramme des profondeurs avec Chart.js (bins adaptés 0-1 / 1-1.5 / 1.5-2 / >2)
+  const bins = stats.profondeur.bins
+  const bin0_1 = bins.find(b => b.range === '0-1')?.count || 0
+  const bin1_15 = bins.find(b => b.range === '1-1.5')?.count || 0
+  const bin15_2 = bins.find(b => b.range === '1.5-2')?.count || 0
+  const bin2_plus = bins.find(b => b.range === '>2')?.count || 0
+  
+  updateDepthChart([bin0_1, bin1_15, bin15_2, bin2_plus])
 
   // 2) Argilosité
   const vbsMoyen = document.getElementById('vbsMoyen')
   const pctArgileux = document.getElementById('pctArgileux')
   const ipMoyen = document.getElementById('ipMoyen')
   const interpretation = document.getElementById('argilositeInterpretation')
+  const argiloSubtitle = document.getElementById('argiloSubtitle')
   
   if (vbsMoyen) vbsMoyen.textContent = stats.argilosite.vbs_moyen != null ? stats.argilosite.vbs_moyen.toFixed(1) : '—'
   if (pctArgileux) pctArgileux.textContent = stats.argilosite.pct_argileux != null ? `${stats.argilosite.pct_argileux.toFixed(0)}%` : '—'
   if (ipMoyen) ipMoyen.textContent = stats.argilosite.ip_moyen != null ? stats.argilosite.ip_moyen.toFixed(0) : '—'
   
+  // Sous-titre avec nombre d'échantillons/essais
+  if (argiloSubtitle) {
+    argiloSubtitle.textContent = `Calculé sur ${stats.echantillons.toLocaleString()} échantillons / ${stats.essais.toLocaleString()} essais`
+  }
+  
   // Interprétation automatique
   if (interpretation) {
     interpretation.textContent = buildArgilositeInterpretation(stats.argilosite)
   }
+  
+  // 3) Répartition des essais (6 types)
+  updateEssaisTypeBar(stats.essais_par_type)
 }
 
 /**
@@ -139,7 +176,7 @@ function updateDepthChart(data: number[]): void {
   depthChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: ['0-3m', '3-6m', '6-10m', '>10m'],
+      labels: ['0-1m', '1-1.5m', '1.5-2m', '>2m'],
       datasets: [{
         label: 'Échantillons',
         data: data,
@@ -172,6 +209,53 @@ function updateDepthChart(data: number[]): void {
       }
     }
   })
+}
+
+/**
+ * Met à jour la barre de répartition des essais (6 types)
+ */
+function updateEssaisTypeBar(essais: GlobalStats['essais_par_type']): void {
+  const { atterberg, vbs, classif, proctor, granulo, gonflement } = essais
+  const total = atterberg + vbs + classif + proctor + granulo + gonflement
+  
+  // Mise à jour des compteurs
+  const statAtterberg = document.getElementById('statAtterberg')
+  const statVbs = document.getElementById('statVbs')
+  const statClassif = document.getElementById('statClassif')
+  const statProctor = document.getElementById('statProctor')
+  const statGranulo = document.getElementById('statGranulo')
+  const statGonflement = document.getElementById('statGonflement')
+  
+  if (statAtterberg) statAtterberg.textContent = String(atterberg)
+  if (statVbs) statVbs.textContent = String(vbs)
+  if (statClassif) statClassif.textContent = String(classif)
+  if (statProctor) statProctor.textContent = String(proctor)
+  if (statGranulo) statGranulo.textContent = String(granulo)
+  if (statGonflement) statGonflement.textContent = String(gonflement)
+  
+  // Mise à jour de la barre de progression (6 segments)
+  const barAtterberg = document.getElementById('barAtterberg')
+  const barVbs = document.getElementById('barVbs')
+  const barClassif = document.getElementById('barClassif')
+  const barProctor = document.getElementById('barProctor')
+  const barGranulo = document.getElementById('barGranulo')
+  const barGonflement = document.getElementById('barGonflement')
+  
+  if (total > 0) {
+    if (barAtterberg) barAtterberg.style.width = `${(atterberg / total) * 100}%`
+    if (barVbs) barVbs.style.width = `${(vbs / total) * 100}%`
+    if (barClassif) barClassif.style.width = `${(classif / total) * 100}%`
+    if (barProctor) barProctor.style.width = `${(proctor / total) * 100}%`
+    if (barGranulo) barGranulo.style.width = `${(granulo / total) * 100}%`
+    if (barGonflement) barGonflement.style.width = `${(gonflement / total) * 100}%`
+  } else {
+    if (barAtterberg) barAtterberg.style.width = '0%'
+    if (barVbs) barVbs.style.width = '0%'
+    if (barClassif) barClassif.style.width = '0%'
+    if (barProctor) barProctor.style.width = '0%'
+    if (barGranulo) barGranulo.style.width = '0%'
+    if (barGonflement) barGonflement.style.width = '0%'
+  }
 }
 
 /**
