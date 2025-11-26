@@ -102,9 +102,40 @@ initOfflineTiles().then(() => {
 const codeInput = document.getElementById('codeInput') as HTMLInputElement
 let gridLayer: L.GeoJSON<any> | null = null
 let shapeLayer: L.GeoJSON<any> | null = null
+let boundaryLayer: L.GeoJSON<any> | null = null  // Contour ADM0 (Togo)
 let sondagesLayer: L.LayerGroup | null = null
 let duplicateMarkers: L.CircleMarker[] = []
 let currentDuplicates: any[] = []
+
+// Charger et afficher le contour du Togo (ADM0)
+async function loadBoundaryLayer() {
+  try {
+    // Charger depuis l'API
+    const response = await fetch(`${API_GEO}/adm0/geojson`)
+    if (!response.ok) throw new Error('Contour non trouvé')
+    const geojson = await response.json()
+    
+    boundaryLayer = L.geoJSON(geojson, {
+      style: {
+        color: '#374151',
+        weight: 2.5,
+        fillColor: 'transparent',
+        fillOpacity: 0,
+        dashArray: '8, 4'
+      },
+      interactive: false  // Ne pas interférer avec les clics
+    }).addTo(map)
+    
+    // Mettre en arrière-plan
+    boundaryLayer.bringToBack()
+    console.log('[INIT] ✅ Contour Togo (ADM0) chargé depuis API')
+  } catch (error) {
+    console.warn('[INIT] Impossible de charger le contour Togo:', error)
+  }
+}
+
+// Charger le contour au démarrage
+loadBoundaryLayer()
 
 // Listener pour clignotement ADM (depuis modal géocodage/suggestions)
 window.addEventListener('atlas:flash-adm', async (e: any) => {

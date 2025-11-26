@@ -12,6 +12,7 @@ export class ThematicMapManager {
   private apiUrl: string
   private polygonLayer: L.GeoJSON | null = null  // Couche des polygones (mailles)
   private circleLayer: L.LayerGroup | null = null // Couche des cercles proportionnels
+  private admOverlayLayer: L.LayerGroup  // Couche des contours ADM
   private currentConfig: ThematicMapConfig | null = null
   private legendControl: L.Control | null = null
   private currentClassification: Classification | null = null
@@ -20,6 +21,7 @@ export class ThematicMapManager {
   constructor(map: L.Map, apiUrl: string) {
     this.map = map
     this.apiUrl = apiUrl
+    this.admOverlayLayer = L.layerGroup().addTo(map)
   }
   
   /**
@@ -51,12 +53,15 @@ export class ThematicMapManager {
       // 4. Afficher la légende
       this.showLegend(classification, data.statistics, config)
       
-      // 5. Sauvegarder la config et les données actuelles
+      // 5. Afficher le contour ADM sélectionné
+      await this.showAdmOverlay(config)
+      
+      // 6. Sauvegarder la config et les données actuelles
       this.currentConfig = config
       this.currentClassification = classification
       this.currentData = data
       
-      // 6. Émettre événement
+      // 7. Émettre événement
       this.map.fire('thematicmap:loaded', { config, data, classification })
       
     } catch (error) {
@@ -75,9 +80,12 @@ export class ThematicMapManager {
       zoom: this.map.getZoom().toString()
     })
     
-    if (config.filters.adm1) params.append('adm1', config.filters.adm1)
-    if (config.filters.adm2) params.append('adm2', config.filters.adm2)
-    if (config.filters.adm3) params.append('adm3', config.filters.adm3)
+    // Filtres ADM - envoyer seulement si exclude_outside_adm est activé ou si un ADM est sélectionné
+    if (config.filters.exclude_outside_adm) {
+      if (config.filters.adm1) params.append('adm1', config.filters.adm1)
+      if (config.filters.adm2) params.append('adm2', config.filters.adm2)
+      if (config.filters.adm3) params.append('adm3', config.filters.adm3)
+    }
     if (config.filters.min_sondages) params.append('min_sondages', config.filters.min_sondages.toString())
     
     if (config.filters.bbox) {
@@ -94,6 +102,90 @@ export class ThematicMapManager {
     }
     
     return response.json()
+  }
+  
+  /**
+   * Afficher le contour de la zone ADM sélectionnée (depuis config)
+   */
+  private async showAdmOverlay(config: ThematicMapConfig): Promise<void> {
+    await this.updateAdmOverlay(
+      config.filters.adm1 || null,
+      config.filters.adm2 || null,
+      config.filters.adm3 || null
+    )
+  }
+  
+  /**
+   * Mettre à jour le contour ADM (méthode publique)
+   * Affiche le contour du niveau le plus précis sélectionné
+   */
+  async updateAdmOverlay(
+    adm1: string | null,
+    adm2: string | null,
+    adm3: string | null
+  ): Promise<void> {
+    // Nettoyer les contours précédents
+    this.admOverlayLayer.clearLayers()
+    
+    // Déterminer le niveau ADM le plus précis sélectionné
+    let level: 'adm1' | 'adm2' | 'adm3' | null = null
+    let name: string | null = null
+    
+    if (adm3) {
+      level = 'adm3'
+      name = adm3
+    } else if (adm2) {
+      level = 'adm2'
+      name = adm2
+    } else if (adm1) {
+      level = 'adm1'
+      name = adm1
+    }
+    
+    if (!level || !name) {
+      console.log('[ThematicMap] Pas de filtre ADM, pas de contour')
+      return
+    }
+    
+    try {
+      const url = `${this.apiUrl}/adm-geojson?level=${level}&name=${encodeURIComponent(name)}`
+      console.log('[ThematicMap] Chargement contour ADM:', url)
+      
+      const response = await fetch(url)
+      if (!response.ok) {
+        console.warn('[ThematicMap] Erreur chargement contour ADM:', response.status)
+        return
+      }
+      
+      const geojson = await response.json()
+      
+      if (!geojson.features || geojson.features.length === 0) {
+        console.warn('[ThematicMap] Contour ADM vide pour:', level, name)
+        return
+      }
+      
+      // Style du contour selon le niveau
+      const colors: Record<string, string> = {
+        adm1: '#6366F1', // Indigo
+        adm2: '#8B5CF6', // Violet
+        adm3: '#EC4899'  // Rose
+      }
+      
+      L.geoJSON(geojson, {
+        style: {
+          color: colors[level] || '#6366F1',
+          weight: 3,
+          fillOpacity: 0,
+          dashArray: level === 'adm1' ? '10, 5' : level === 'adm2' ? '5, 5' : ''
+        },
+        interactive: false
+      }).addTo(this.admOverlayLayer)
+      
+      console.log('[ThematicMap] ✅ Contour ADM affiché:', level, name)
+      
+    } catch (error) {
+      console.error('[ThematicMap] Erreur contour ADM:', error)
+    }
   }
   
   /**
@@ -282,6 +374,8 @@ export class ThematicMapManager {
       this.map.removeLayer(this.circleLayer)
       this.circleLayer = null
     }
+    // Nettoyer aussi le contour ADM
+    this.admOverlayLayer.clearLayers()
   }
   
   /**

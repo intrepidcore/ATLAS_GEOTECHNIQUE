@@ -177,6 +177,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/cells/:code/test-kpi", get(cells_kpi::test_kpi_endpoint))
         // Stats globales agrégées (panneau Vue globale)
         .route("/stats/global", get(stats_global::get_global_stats))
+        .route("/adm0/geojson", get(surveys::get_adm0_geojson))
+        .route("/adm-geojson", get(surveys::get_adm_geojson))
         .route("/adm1", get(surveys::list_adm1))
         .route("/adm2", get(surveys::list_adm2))
         .route("/adm3/test", get(surveys_adm::test_adm3_endpoint))

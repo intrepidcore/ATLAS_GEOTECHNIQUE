@@ -373,6 +373,7 @@ export interface ThematicMapConfig {
     min_sondages: number
     min_essais_param?: number
     exclude_no_data: boolean
+    exclude_outside_adm?: boolean  // Exclure mailles hors sélection ADM
     
     // Géotechnique (avancé)
     depth_min?: number

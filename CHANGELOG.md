@@ -1,5 +1,34 @@
 # Changelog - Atlas Géotechnique Togo
 
+## v2.6.0 — Cartes Thématiques v2 & Filtres ADM (2025-11-26)
+
+### 🎯 Fonctionnalités
+
+**Panneau Thématique v2.0**
+- ✅ Nouvelle UI organisée en 4 blocs métier (Objectif, Visualisation, Filtres, Actions)
+- ✅ Sélection par objectif métier (Couverture, Argilosité, Gonflement, Compacité, Granulométrie)
+- ✅ 6 méthodes de classification (Quantiles, Jenks, Equal Interval, StdDev, Manual, Logarithmic)
+- ✅ Support cercles proportionnels et choroplèthes
+- ✅ Palettes de couleurs multiples (Blues, Reds, Greens, RdYlGn, Viridis, etc.)
+
+**Filtres ADM en cascade**
+- ✅ Cascade ADM1 → ADM2 → ADM3 fonctionnelle
+- ✅ API `/adm-geojson?level=adm1|adm2|adm3&name=...` pour contours
+- ✅ Contour ADM affiché sur la carte lors de la sélection
+- ✅ Checkbox "Exclure mailles hors sélection ADM"
+- ✅ Résumé des filtres ADM actifs avec bouton "Effacer"
+
+**API Backend**
+- ✅ Endpoint `/adm-geojson` pour récupérer les contours GeoJSON des zones ADM
+- ✅ Filtrage thématique par ADM1/ADM2/ADM3 dans `/thematic/data`
+
+### 🔧 Corrections
+
+- 🐛 Fix conflit d'IDs entre panneau thématique et panneau principal (filterAdm1 → thematicAdm1)
+- 🐛 Fix population des selects ADM avec `fillSelect()` utilitaire
+
+---
+
 ## v2.4.1 — Post-import grid codes (2025-11-04)
 
 ### 🔧 Corrections & Améliorations

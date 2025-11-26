@@ -41,6 +41,7 @@ export class ThematicPanel {
     adm3Select?: HTMLSelectElement
     minSondagesInput?: HTMLInputElement
     excludeNoDataCheckbox?: HTMLInputElement
+    excludeOutsideAdmCheckbox?: HTMLInputElement
     depthMinInput?: HTMLInputElement
     depthMaxInput?: HTMLInputElement
     summaryText?: HTMLElement
@@ -60,11 +61,19 @@ export class ThematicPanel {
   }
   
   private init(): void {
+    console.log('[ThematicPanel] Initialisation...')
+    
     // Render the panel HTML
     this.renderPanel()
+    console.log('[ThematicPanel] HTML rendu')
     
     // Cache DOM elements
     this.cacheElements()
+    console.log('[ThematicPanel] Elements cachés:', {
+      adm1: !!this.elements.adm1Select,
+      adm2: !!this.elements.adm2Select,
+      adm3: !!this.elements.adm3Select
+    })
     
     // Populate selects
     this.populateObjectifSelect()
@@ -78,6 +87,8 @@ export class ThematicPanel {
     
     // Initialize with default values
     this.applyConfigToUI(this.currentConfig)
+    
+    console.log('[ThematicPanel] ✅ Initialisation terminée')
   }
   
   /**
@@ -150,22 +161,30 @@ export class ThematicPanel {
         
         <div class="thematic-section">
           <div class="section-label">Région (ADM1)</div>
-          <select id="filterAdm1" class="thematic-select"></select>
+          <select id="thematicAdm1" class="thematic-select">
+            <option value="">— toutes régions —</option>
+          </select>
         </div>
         
         <div class="thematic-section">
           <div class="section-label">Préfecture (ADM2)</div>
-          <select id="filterAdm2" class="thematic-select">
+          <select id="thematicAdm2" class="thematic-select">
             <option value="">— toutes préfectures —</option>
           </select>
         </div>
         
         <div class="thematic-section">
           <div class="section-label">Commune (ADM3)</div>
-          <select id="filterAdm3" class="thematic-select">
+          <select id="thematicAdm3" class="thematic-select">
             <option value="">— toutes communes —</option>
           </select>
         </div>
+        
+        <div id="admFilterSummary" class="adm-filter-summary" style="display:none;"></div>
+        
+        <button id="clearAdmFilters" class="btn-small full-width" style="margin-bottom:12px;">
+          🧹 Effacer filtres géographiques
+        </button>
         
         <div class="thematic-divider">
           <span>Filtres données</span>
@@ -180,6 +199,13 @@ export class ThematicPanel {
           <label class="checkbox-label">
             <input type="checkbox" id="excludeNoData" checked>
             <span>Exclure mailles sans données</span>
+          </label>
+        </div>
+        
+        <div class="thematic-section checkbox-section">
+          <label class="checkbox-label">
+            <input type="checkbox" id="excludeOutsideAdm">
+            <span>Exclure mailles hors sélection ADM</span>
           </label>
         </div>
         
@@ -263,11 +289,12 @@ export class ThematicPanel {
       paletteSelect: document.getElementById('colorPalette') as HTMLSelectElement,
       opacityInput: document.getElementById('opacity') as HTMLInputElement,
       opacityValue: document.getElementById('opacityValue') as HTMLElement,
-      adm1Select: document.getElementById('filterAdm1') as HTMLSelectElement,
-      adm2Select: document.getElementById('filterAdm2') as HTMLSelectElement,
-      adm3Select: document.getElementById('filterAdm3') as HTMLSelectElement,
+      adm1Select: document.getElementById('thematicAdm1') as HTMLSelectElement,
+      adm2Select: document.getElementById('thematicAdm2') as HTMLSelectElement,
+      adm3Select: document.getElementById('thematicAdm3') as HTMLSelectElement,
       minSondagesInput: document.getElementById('minSondages') as HTMLInputElement,
       excludeNoDataCheckbox: document.getElementById('excludeNoData') as HTMLInputElement,
+      excludeOutsideAdmCheckbox: document.getElementById('excludeOutsideAdm') as HTMLInputElement,
       depthMinInput: document.getElementById('depthMin') as HTMLInputElement,
       depthMaxInput: document.getElementById('depthMax') as HTMLInputElement,
       summaryText: document.getElementById('dataSummary') as HTMLElement,
@@ -377,45 +404,82 @@ export class ThematicPanel {
   }
   
   /**
+   * Utilitaire pour remplir un select de manière fiable
+   */
+  private fillSelect(
+    select: HTMLSelectElement, 
+    options: { value: string; label: string }[], 
+    defaultLabel: string = '— toutes —'
+  ): void {
+    // Vider complètement le select
+    select.innerHTML = ''
+    
+    // Ajouter l'option par défaut
+    const defaultOpt = document.createElement('option')
+    defaultOpt.value = ''
+    defaultOpt.textContent = defaultLabel
+    select.appendChild(defaultOpt)
+    
+    // Ajouter les autres options
+    for (const opt of options) {
+      if (opt.value === '') continue // Skip si c'est l'option par défaut déjà ajoutée
+      const option = document.createElement('option')
+      option.value = opt.value
+      option.textContent = opt.label
+      select.appendChild(option)
+    }
+  }
+  
+  /**
    * Populate ADM selects
    */
   private populateAdmSelects(): void {
     const adm1Select = this.elements.adm1Select
-    if (!adm1Select) return
+    if (!adm1Select) {
+      console.warn('[ThematicPanel] ADM1 select not found')
+      return
+    }
     
-    adm1Select.innerHTML = ADM1_OPTIONS.map(o => 
-      `<option value="${o.value}">${o.label}</option>`
-    ).join('')
+    // Utiliser fillSelect pour peupler ADM1
+    const adm1Options = ADM1_OPTIONS.filter(o => o.value !== '')
+    this.fillSelect(adm1Select, adm1Options, '— toutes régions —')
+    
+    console.log('[ThematicPanel] ADM1 options populated:', adm1Select.options.length, 'options')
   }
   
   /**
    * Cascade ADM1 → ADM2 : charger les préfectures de la région sélectionnée
    */
-  private async loadAdm2ForAdm1(adm1Code: string | null): Promise<void> {
+  private async loadAdm2ForAdm1(adm1Name: string | null): Promise<void> {
     const adm2Select = this.elements.adm2Select
     const adm3Select = this.elements.adm3Select
     if (!adm2Select) return
     
     // Reset ADM2 et ADM3
-    adm2Select.innerHTML = '<option value="">— toutes préfectures —</option>'
+    this.fillSelect(adm2Select, [], '— toutes préfectures —')
     adm2Select.disabled = true
     if (adm3Select) {
-      adm3Select.innerHTML = '<option value="">— toutes communes —</option>'
+      this.fillSelect(adm3Select, [], '— toutes communes —')
       adm3Select.disabled = true
     }
     
-    if (!adm1Code) return
+    if (!adm1Name) {
+      adm2Select.disabled = false
+      if (adm3Select) adm3Select.disabled = false
+      return
+    }
     
     try {
       // Appeler l'API pour récupérer les ADM2 de cette région
       const apiUrl = (window as any).__API_GEO__ || 'http://localhost:8000'
-      const response = await fetch(`${apiUrl}/adm/adm2?adm1_code=${adm1Code}`)
+      const response = await fetch(`${apiUrl}/adm2?adm1=${encodeURIComponent(adm1Name)}`)
       if (!response.ok) throw new Error('Erreur chargement ADM2')
       
       const adm2List = await response.json()
+      console.log('[ThematicPanel] ADM2 chargés:', adm2List.length)
       
-      adm2Select.innerHTML = '<option value="">— toutes préfectures —</option>' +
-        adm2List.map((a: any) => `<option value="${a.code}">${a.name}</option>`).join('')
+      const options = adm2List.map((a: any) => ({ value: a.name, label: a.name }))
+      this.fillSelect(adm2Select, options, '— toutes préfectures —')
       adm2Select.disabled = false
       
     } catch (error) {
@@ -427,25 +491,29 @@ export class ThematicPanel {
   /**
    * Cascade ADM2 → ADM3 : charger les communes de la préfecture sélectionnée
    */
-  private async loadAdm3ForAdm2(adm2Code: string | null): Promise<void> {
+  private async loadAdm3ForAdm2(adm2Name: string | null): Promise<void> {
     const adm3Select = this.elements.adm3Select
     if (!adm3Select) return
     
     // Reset ADM3
-    adm3Select.innerHTML = '<option value="">— toutes communes —</option>'
+    this.fillSelect(adm3Select, [], '— toutes communes —')
     adm3Select.disabled = true
     
-    if (!adm2Code) return
+    if (!adm2Name) {
+      adm3Select.disabled = false
+      return
+    }
     
     try {
       const apiUrl = (window as any).__API_GEO__ || 'http://localhost:8000'
-      const response = await fetch(`${apiUrl}/adm/adm3?adm2_code=${adm2Code}`)
+      const response = await fetch(`${apiUrl}/adm3?adm2=${encodeURIComponent(adm2Name)}`)
       if (!response.ok) throw new Error('Erreur chargement ADM3')
       
       const adm3List = await response.json()
+      console.log('[ThematicPanel] ADM3 chargés:', adm3List.length)
       
-      adm3Select.innerHTML = '<option value="">— toutes communes —</option>' +
-        adm3List.map((a: any) => `<option value="${a.code}">${a.name}</option>`).join('')
+      const options = adm3List.map((a: any) => ({ value: a.name, label: a.name }))
+      this.fillSelect(adm3Select, options, '— toutes communes —')
       adm3Select.disabled = false
       
     } catch (error) {
@@ -540,16 +608,33 @@ export class ThematicPanel {
       }
     })
     
-    // ADM1 change -> cascade to ADM2
+    // ADM1 change -> cascade to ADM2 + update overlay
     this.elements.adm1Select?.addEventListener('change', (e) => {
-      const adm1Code = (e.target as HTMLSelectElement).value || null
-      this.loadAdm2ForAdm1(adm1Code)
+      const adm1Name = (e.target as HTMLSelectElement).value || null
+      this.loadAdm2ForAdm1(adm1Name)
+      this.updateAdmFilterSummary()
+      // Mettre à jour le contour ADM immédiatement
+      this.manager.updateAdmOverlay(adm1Name, null, null)
     })
     
-    // ADM2 change -> cascade to ADM3
+    // ADM2 change -> cascade to ADM3 + update overlay
     this.elements.adm2Select?.addEventListener('change', (e) => {
-      const adm2Code = (e.target as HTMLSelectElement).value || null
-      this.loadAdm3ForAdm2(adm2Code)
+      const adm1Name = this.elements.adm1Select?.value || null
+      const adm2Name = (e.target as HTMLSelectElement).value || null
+      this.loadAdm3ForAdm2(adm2Name)
+      this.updateAdmFilterSummary()
+      // Mettre à jour le contour ADM immédiatement
+      this.manager.updateAdmOverlay(adm1Name, adm2Name, null)
+    })
+    
+    // ADM3 change -> update summary + overlay
+    this.elements.adm3Select?.addEventListener('change', (e) => {
+      const adm1Name = this.elements.adm1Select?.value || null
+      const adm2Name = this.elements.adm2Select?.value || null
+      const adm3Name = (e.target as HTMLSelectElement).value || null
+      this.updateAdmFilterSummary()
+      // Mettre à jour le contour ADM immédiatement
+      this.manager.updateAdmOverlay(adm1Name, adm2Name, adm3Name)
     })
     
     // Apply button
@@ -572,6 +657,55 @@ export class ThematicPanel {
     this.elements.toggleGridCheckbox?.addEventListener('change', (e) => {
       this.toggleGridLayer((e.target as HTMLInputElement).checked)
     })
+    
+    // Clear ADM filters button
+    document.getElementById('clearAdmFilters')?.addEventListener('click', () => {
+      this.clearAdmFilters()
+    })
+  }
+  
+  /**
+   * Effacer tous les filtres ADM
+   */
+  private clearAdmFilters(): void {
+    if (this.elements.adm1Select) {
+      this.elements.adm1Select.value = ''
+    }
+    if (this.elements.adm2Select) {
+      this.fillSelect(this.elements.adm2Select, [], '— toutes préfectures —')
+    }
+    if (this.elements.adm3Select) {
+      this.fillSelect(this.elements.adm3Select, [], '— toutes communes —')
+    }
+    this.updateAdmFilterSummary()
+    // Effacer le contour ADM
+    this.manager.updateAdmOverlay(null, null, null)
+    this.toast('Filtres géographiques effacés', 'success')
+  }
+  
+  /**
+   * Mettre à jour le résumé des filtres ADM
+   */
+  private updateAdmFilterSummary(): void {
+    const summary = document.getElementById('admFilterSummary')
+    if (!summary) return
+    
+    const adm1 = this.elements.adm1Select?.value
+    const adm2 = this.elements.adm2Select?.value
+    const adm3 = this.elements.adm3Select?.value
+    
+    if (!adm1 && !adm2 && !adm3) {
+      summary.style.display = 'none'
+      return
+    }
+    
+    const parts: string[] = []
+    if (adm1) parts.push(`Région: <strong>${adm1}</strong>`)
+    if (adm2) parts.push(`Préfecture: <strong>${adm2}</strong>`)
+    if (adm3) parts.push(`Commune: <strong>${adm3}</strong>`)
+    
+    summary.innerHTML = `<div class="filter-badge">📍 ${parts.join(' → ')}</div>`
+    summary.style.display = 'block'
   }
   
   /**
@@ -662,8 +796,10 @@ export class ThematicPanel {
     const adm1 = this.elements.adm1Select?.value || undefined
     const adm2 = this.elements.adm2Select?.value || undefined
     const adm3 = this.elements.adm3Select?.value || undefined
+    console.log('[ThematicPanel] ADM filters:', { adm1, adm2, adm3, adm1El: this.elements.adm1Select })
     const minSondages = parseInt(this.elements.minSondagesInput?.value || '1')
     const excludeNoData = this.elements.excludeNoDataCheckbox?.checked ?? true
+    const excludeOutsideAdm = this.elements.excludeOutsideAdmCheckbox?.checked ?? false
     const depthMin = this.elements.depthMinInput?.value ? parseFloat(this.elements.depthMinInput.value) : undefined
     const depthMax = this.elements.depthMaxInput?.value ? parseFloat(this.elements.depthMaxInput.value) : undefined
     
@@ -689,6 +825,7 @@ export class ThematicPanel {
         adm3,
         min_sondages: minSondages,
         exclude_no_data: excludeNoData,
+        exclude_outside_adm: excludeOutsideAdm,
         depth_min: depthMin,
         depth_max: depthMax
       }

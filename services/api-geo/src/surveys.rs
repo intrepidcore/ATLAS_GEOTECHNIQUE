@@ -1268,3 +1268,152 @@ pub async fn list_adm3(
         }
     }
 }
+
+/// GET /adm0/geojson - Contour du pays (Togo) en GeoJSON
+pub async fn get_adm0_geojson(State(state): State<AppState>) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    let result = sqlx::query_scalar::<_, serde_json::Value>(
+        r#"
+        SELECT json_build_object(
+            'type', 'FeatureCollection',
+            'features', json_agg(
+                json_build_object(
+                    'type', 'Feature',
+                    'properties', json_build_object(
+                        'name', adm0_fr,
+                        'code', adm0_pcode
+                    ),
+                    'geometry', ST_AsGeoJSON(geom)::json
+                )
+            )
+        )
+        FROM public.adm0_raw
+        "#,
+    )
+    .fetch_one(pool)
+    .await;
+
+    match result {
+        Ok(geojson) => Json(geojson).into_response(),
+        Err(e) => {
+            tracing::error!(?e, "get_adm0_geojson error");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+/// GET /adm-geojson?level=adm1&name=... - Contour d'une zone ADM en GeoJSON
+pub async fn get_adm_geojson(
+    Query(q): Query<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    let level = q.get("level").map(|s| s.as_str()).unwrap_or("adm1");
+    let name = match q.get("name") {
+        Some(n) if !n.is_empty() => n,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Parameter 'name' is required"})),
+            ).into_response();
+        }
+    };
+    
+    // Construire la requête selon le niveau ADM
+    let query = match level {
+        "adm1" => format!(
+            r#"
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', json_agg(
+                    json_build_object(
+                        'type', 'Feature',
+                        'properties', json_build_object(
+                            'name', name,
+                            'code', code,
+                            'level', 'adm1'
+                        ),
+                        'geometry', ST_AsGeoJSON(geom)::json
+                    )
+                )
+            )
+            FROM adm1_tg
+            WHERE name = '{}'
+            "#,
+            name.replace("'", "''")
+        ),
+        "adm2" => format!(
+            r#"
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', json_agg(
+                    json_build_object(
+                        'type', 'Feature',
+                        'properties', json_build_object(
+                            'name', name,
+                            'code', code,
+                            'adm1', adm1_name,
+                            'level', 'adm2'
+                        ),
+                        'geometry', ST_AsGeoJSON(geom)::json
+                    )
+                )
+            )
+            FROM adm2_tg
+            WHERE name = '{}'
+            "#,
+            name.replace("'", "''")
+        ),
+        "adm3" => format!(
+            r#"
+            SELECT json_build_object(
+                'type', 'FeatureCollection',
+                'features', json_agg(
+                    json_build_object(
+                        'type', 'Feature',
+                        'properties', json_build_object(
+                            'name', adm3_fr,
+                            'code', adm3_pcode,
+                            'adm2', adm2_fr,
+                            'adm1', adm1_fr,
+                            'level', 'adm3'
+                        ),
+                        'geometry', ST_AsGeoJSON(geom)::json
+                    )
+                )
+            )
+            FROM adm3
+            WHERE adm3_fr = '{}'
+            "#,
+            name.replace("'", "''")
+        ),
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid level. Use adm1, adm2, or adm3"})),
+            ).into_response();
+        }
+    };
+    
+    let result = sqlx::query_scalar::<_, serde_json::Value>(&query)
+        .fetch_one(pool)
+        .await;
+
+    match result {
+        Ok(geojson) => Json(geojson).into_response(),
+        Err(e) => {
+            tracing::error!(?e, level, name, "get_adm_geojson error");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            )
+                .into_response()
+        }
+    }
+}
