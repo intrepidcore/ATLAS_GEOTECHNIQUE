@@ -215,7 +215,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 
 /* Opacity control */
 #thematicPanel .opacity-control{display:flex;align-items:center;gap:10px}
-#thematicPanel .opacity-control input[type="range"]{flex:1;height:6px;-webkit-appearance:none;background:#22304d;border-radius:3px}
+#thematicPanel .opacity-control input[type="range"]{flex:1;height:6px;-webkit-appearance:none;appearance:none;background:#22304d;border-radius:3px}
 #thematicPanel .opacity-control input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--accent);border-radius:50%;cursor:pointer}
 #thematicPanel .opacity-value{font-size:12px;color:var(--text);min-width:36px;text-align:right}
 
@@ -261,6 +261,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 #thematicPanel .btn-small:hover{border-color:#3aa6ff}
 #thematicPanel .btn-small.full-width{flex:none;width:100%}
 #thematicPanel .btn-icon{font-size:14px}
+#thematicPanel .export-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
 
 /* ADM Filter Summary */
 #thematicPanel .adm-filter-summary{background:#1e3a5f;border:1px solid #3aa6ff;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:11px;color:#e0f2fe}

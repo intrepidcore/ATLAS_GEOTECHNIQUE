@@ -1,9 +1,13 @@
 import L from 'leaflet'
+import html2canvas from 'html2canvas'
+import { jsPDF } from 'jspdf'
 import type {
   ThematicMapConfig,
   ThematicData,
   Classification,
-  Statistics
+  Statistics,
+  ThematicExportState,
+  ThematicClassBreak
 } from './thematic-types'
 import { getParameterById } from './thematic-types'
 
@@ -17,6 +21,7 @@ export class ThematicMapManager {
   private legendControl: L.Control | null = null
   private currentClassification: Classification | null = null
   private currentData: ThematicData | null = null
+  private currentExportState: ThematicExportState | null = null
   
   constructor(map: L.Map, apiUrl: string) {
     this.map = map
@@ -61,7 +66,10 @@ export class ThematicMapManager {
       this.currentClassification = classification
       this.currentData = data
       
-      // 7. Émettre événement
+      // 7. Mettre à jour l'état d'export
+      this.updateExportState()
+      
+      // 8. Émettre événement
       this.map.fire('thematicmap:loaded', { config, data, classification })
       
     } catch (error) {
@@ -859,5 +867,270 @@ export class ThematicMapManager {
    */
   getCurrentClassification(): Classification | null {
     return this.currentClassification
+  }
+  
+  // ============================================================================
+  // EXPORT STATE
+  // ============================================================================
+  
+  /**
+   * Obtenir l'état d'export actuel
+   */
+  getCurrentExportState(): ThematicExportState | null {
+    return this.currentExportState
+  }
+  
+  /**
+   * Mettre à jour l'état d'export (appelé après chaque apply)
+   */
+  updateExportState(): void {
+    if (!this.currentConfig || !this.currentClassification || !this.currentData) {
+      this.currentExportState = null
+      return
+    }
+    
+    const param = getParameterById(this.currentConfig.parameter)
+    const classification = this.currentClassification
+    const stats = this.currentData.statistics
+    
+    // Construire les classes avec bornes
+    const classes: ThematicClassBreak[] = []
+    for (let i = 0; i < classification.n_classes; i++) {
+      classes.push({
+        index: i,
+        min: i === 0 ? null : classification.breaks[i],
+        max: i === classification.n_classes - 1 ? null : classification.breaks[i + 1],
+        color: classification.colors[i],
+        label: classification.labels[i]
+      })
+    }
+    
+    this.currentExportState = {
+      parameterId: this.currentConfig.parameter,
+      parameterLabel: param?.label || this.currentConfig.parameter,
+      unit: param?.unit || '',
+      mapType: this.currentConfig.type as 'choropleth' | 'proportional' | 'binary',
+      classes,
+      filters: {
+        adm1: this.currentConfig.filters.adm1 || null,
+        adm2: this.currentConfig.filters.adm2 || null,
+        adm3: this.currentConfig.filters.adm3 || null,
+        minSondages: this.currentConfig.filters.min_sondages || null
+      },
+      stats: {
+        min: stats.min,
+        max: stats.max,
+        mean: stats.mean,
+        median: stats.median
+      }
+    }
+    
+    console.log('[ThematicMap] Export state updated:', this.currentExportState)
+  }
+  
+  // ============================================================================
+  // EXPORT PNG
+  // ============================================================================
+  
+  /**
+   * Exporter la carte actuelle en PNG
+   */
+  async exportCurrentMapAsPng(): Promise<void> {
+    const mapContainer = document.getElementById('map')
+    if (!mapContainer) {
+      alert('Impossible de trouver le conteneur de carte.')
+      return
+    }
+    
+    try {
+      console.log('[ThematicMap] Export PNG en cours...')
+      
+      const canvas = await html2canvas(mapContainer, {
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        backgroundColor: '#1a1a2e'
+      })
+      
+      canvas.toBlob((blob) => {
+        if (!blob) {
+          alert('Erreur lors de la génération du PNG.')
+          return
+        }
+        
+        const state = this.currentExportState
+        const param = state?.parameterId ?? 'carte'
+        const ts = new Date().toISOString().slice(0, 10)
+        
+        const a = document.createElement('a')
+        a.href = URL.createObjectURL(blob)
+        a.download = `atlas_${param}_${ts}.png`
+        document.body.appendChild(a)
+        a.click()
+        a.remove()
+        URL.revokeObjectURL(a.href)
+        
+        console.log('[ThematicMap] ✅ Export PNG terminé')
+      }, 'image/png')
+      
+    } catch (error) {
+      console.error('[ThematicMap] Erreur export PNG:', error)
+      alert('Erreur lors de l\'export PNG. Voir la console pour les détails.')
+    }
+  }
+  
+  // ============================================================================
+  // EXPORT PDF
+  // ============================================================================
+  
+  /**
+   * Exporter la carte actuelle en PDF (A4 paysage)
+   */
+  async exportCurrentMapAsPdf(): Promise<void> {
+    const mapContainer = document.getElementById('map')
+    if (!mapContainer) {
+      alert('Impossible de trouver le conteneur de carte.')
+      return
+    }
+    
+    try {
+      console.log('[ThematicMap] Export PDF en cours...')
+      
+      const canvas = await html2canvas(mapContainer, {
+        useCORS: true,
+        logging: false,
+        allowTaint: true,
+        backgroundColor: '#1a1a2e'
+      })
+      
+      const imgData = canvas.toDataURL('image/png')
+      
+      // A4 paysage
+      const pdf = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+      })
+      
+      const pageWidth = pdf.internal.pageSize.getWidth()
+      const pageHeight = pdf.internal.pageSize.getHeight()
+      
+      // Calculer les dimensions de l'image
+      const imgWidth = pageWidth - 20  // marges 10 mm
+      const imgHeight = (canvas.height * imgWidth) / canvas.width
+      
+      const x = 10
+      const y = Math.max(15, (pageHeight - imgHeight) / 2)
+      
+      // Titre en haut
+      const state = this.currentExportState
+      const title = state
+        ? `${state.parameterLabel} – ${state.filters.adm1 ?? 'Togo'}`
+        : 'Carte Atlas Géotechnique'
+      
+      pdf.setFontSize(12)
+      pdf.setTextColor(51, 51, 51)
+      pdf.text(title, 10, 10)
+      
+      // Date en haut à droite
+      const dateStr = new Date().toLocaleDateString('fr-FR')
+      pdf.setFontSize(8)
+      pdf.text(dateStr, pageWidth - 30, 10)
+      
+      // Image de la carte
+      pdf.addImage(imgData, 'PNG', x, y, imgWidth, Math.min(imgHeight, pageHeight - 25))
+      
+      // Légende en bas si on a les classes
+      if (state && state.classes.length > 0) {
+        const legendY = pageHeight - 8
+        pdf.setFontSize(7)
+        pdf.text('Légende:', 10, legendY)
+        
+        let legendX = 25
+        for (const cls of state.classes) {
+          // Rectangle de couleur
+          pdf.setFillColor(cls.color)
+          pdf.rect(legendX, legendY - 3, 4, 3, 'F')
+          // Label
+          pdf.setTextColor(51, 51, 51)
+          pdf.text(cls.label, legendX + 5, legendY)
+          legendX += 30
+          if (legendX > pageWidth - 40) break
+        }
+      }
+      
+      // Sauvegarder
+      const ts = new Date().toISOString().slice(0, 10)
+      const param = state?.parameterId ?? 'carte'
+      pdf.save(`atlas_${param}_${ts}.pdf`)
+      
+      console.log('[ThematicMap] ✅ Export PDF terminé')
+      
+    } catch (error) {
+      console.error('[ThematicMap] Erreur export PDF:', error)
+      alert('Erreur lors de l\'export PDF. Voir la console pour les détails.')
+    }
+  }
+  
+  // ============================================================================
+  // EXPORT QGIS (GeoJSON + QML)
+  // ============================================================================
+  
+  /**
+   * Exporter le package QGIS (GeoJSON + style QML dans un ZIP)
+   */
+  async exportQgisPackage(): Promise<void> {
+    const state = this.currentExportState
+    if (!state) {
+      alert('Appliquez d\'abord une carte thématique.')
+      return
+    }
+    
+    try {
+      console.log('[ThematicMap] Export QGIS en cours...')
+      
+      const payload = {
+        parameter_id: state.parameterId,
+        parameter_label: state.parameterLabel,
+        unit: state.unit,
+        map_type: state.mapType,
+        classes: state.classes,
+        filters: {
+          adm1: state.filters.adm1,
+          adm2: state.filters.adm2,
+          adm3: state.filters.adm3,
+          min_sondages: state.filters.minSondages
+        }
+      }
+      
+      const response = await fetch(`${this.apiUrl}/thematic/export/qgis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      })
+      
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`Erreur serveur ${response.status}: ${errorText}`)
+      }
+      
+      const blob = await response.blob()
+      const ts = new Date().toISOString().slice(0, 10)
+      const fileName = `atlas_${state.parameterId}_${ts}_qgis.zip`
+      
+      const a = document.createElement('a')
+      a.href = URL.createObjectURL(blob)
+      a.download = fileName
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(a.href)
+      
+      console.log('[ThematicMap] ✅ Export QGIS terminé')
+      
+    } catch (error) {
+      console.error('[ThematicMap] Erreur export QGIS:', error)
+      alert('Échec de l\'export QGIS. Voir la console pour les détails.')
+    }
   }
 }

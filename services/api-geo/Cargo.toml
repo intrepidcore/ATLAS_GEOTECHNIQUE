@@ -39,6 +39,7 @@ ordered-float = "4.0"
 moka = { version = "0.12", features = ["sync"] }
 lazy_static = "1.4"
 regex = "1.10"
+zip = "0.6"
 
 [build-dependencies]
 chrono = "0.4"

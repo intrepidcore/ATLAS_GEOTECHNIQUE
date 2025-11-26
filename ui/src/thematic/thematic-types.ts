@@ -435,6 +435,40 @@ export interface Classification {
   n_classes: number
 }
 
+// ============================================================================
+// TYPES EXPORT
+// ============================================================================
+
+export interface ThematicClassBreak {
+  index: number        // 0,1,2,...
+  min: number | null   // borne inf (null => "-∞")
+  max: number | null   // borne sup (null => "+∞")
+  color: string        // "#RRGGBB"
+  label: string        // "2.5 - 6.0"
+}
+
+export interface ThematicExportFilters {
+  adm1?: string | null
+  adm2?: string | null
+  adm3?: string | null
+  minSondages?: number | null
+}
+
+export interface ThematicExportState {
+  parameterId: string       // "vbs_avg"
+  parameterLabel: string    // "VBS moyen"
+  unit: string              // "g/100g"
+  mapType: 'choropleth' | 'proportional' | 'binary'
+  classes: ThematicClassBreak[]
+  filters: ThematicExportFilters
+  stats: {
+    min: number
+    max: number
+    mean: number
+    median: number
+  } | null
+}
+
 export interface SavedConfig {
   id: string
   name: string

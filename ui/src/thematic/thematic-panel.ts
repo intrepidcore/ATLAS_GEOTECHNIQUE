@@ -255,18 +255,24 @@ export class ThematicPanel {
           <span>Exports</span>
         </div>
         
-        <div class="thematic-actions">
-          <button id="saveThematicConfig" class="btn-small">
-            <span class="btn-icon">💾</span> Sauvegarder
+        <div class="thematic-actions export-grid">
+          <button id="exportThematicPNG" class="btn-small" title="Capture rapide de la carte">
+            <span class="btn-icon">🖼️</span> PNG
           </button>
-          <button id="exportThematicGeoJSON" class="btn-small">
-            <span class="btn-icon">📥</span> GeoJSON
+          <button id="exportThematicPDF" class="btn-small" title="PDF A4 paysage avec légende">
+            <span class="btn-icon">📄</span> PDF
+          </button>
+          <button id="exportThematicQGIS" class="btn-small" title="GeoJSON + style QML pour QGIS">
+            <span class="btn-icon">🗺️</span> QGIS
           </button>
         </div>
         
         <div class="thematic-actions">
-          <button id="exportThematicPNG" class="btn-small full-width">
-            <span class="btn-icon">🖼️</span> Export PNG
+          <button id="exportThematicGeoJSON" class="btn-small">
+            <span class="btn-icon">📥</span> GeoJSON brut
+          </button>
+          <button id="saveThematicConfig" class="btn-small">
+            <span class="btn-icon">💾</span> Sauvegarder config
           </button>
         </div>
       </div>
@@ -652,6 +658,8 @@ export class ThematicPanel {
     // Export buttons
     document.getElementById('exportThematicGeoJSON')?.addEventListener('click', () => this.exportGeoJSON())
     document.getElementById('exportThematicPNG')?.addEventListener('click', () => this.exportPNG())
+    document.getElementById('exportThematicPDF')?.addEventListener('click', () => this.exportPDF())
+    document.getElementById('exportThematicQGIS')?.addEventListener('click', () => this.exportQGIS())
     
     // Toggle grid layer
     this.elements.toggleGridCheckbox?.addEventListener('change', (e) => {
@@ -957,10 +965,27 @@ export class ThematicPanel {
   }
   
   /**
-   * Export as PNG
+   * Export as PNG (capture de la carte)
    */
   private async exportPNG(): Promise<void> {
-    this.toast('Export PNG non implémenté (Phase 3)', 'info')
+    this.toast('Export PNG en cours...', 'info')
+    await this.manager.exportCurrentMapAsPng()
+  }
+  
+  /**
+   * Export as PDF (A4 paysage avec légende)
+   */
+  private async exportPDF(): Promise<void> {
+    this.toast('Export PDF en cours...', 'info')
+    await this.manager.exportCurrentMapAsPdf()
+  }
+  
+  /**
+   * Export package QGIS (GeoJSON + style QML)
+   */
+  private async exportQGIS(): Promise<void> {
+    this.toast('Export QGIS en cours...', 'info')
+    await this.manager.exportQgisPackage()
   }
   
   /**

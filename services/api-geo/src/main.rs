@@ -198,6 +198,7 @@ async fn main() -> anyhow::Result<()> {
         // Thematic maps endpoints
         .route("/thematic/data", get(thematic::get_thematic_data))
         .route("/thematic/classify", post(thematic::classify_data))
+        .route("/thematic/export/qgis", post(thematic::export_qgis_package))
         .route(
             "/thematic/configs",
             get(thematic::list_configs).post(thematic::create_config),
