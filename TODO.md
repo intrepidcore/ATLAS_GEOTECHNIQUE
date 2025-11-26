@@ -1043,6 +1043,39 @@ curl "http://localhost:8081/"
 
 ---
 
+### ✅ ROADMAP v3.9.3 - Cartes Thématiques Refactor (2025-11-26)
+
+#### 🔧 Phase 1 : Vue matérialisée complète (Migration 044)
+
+##### Problème identifié
+- La vue `mailles_geotechnique_stats` utilisait l'ancienne table `essais_geotechniques`
+- Les nouvelles tables source of truth (`essais_atterberg`, `essais_vbs`, etc.) n'étaient pas agrégées
+- Résultat : cartes thématiques "belles mais fausses"
+
+##### Solution implémentée
+- [X] Nouvelle vue matérialisée `atlas.mv_mailles_geotech` avec agrégats complets
+- [X] CTEs pour chaque type d'essai (Atterberg, VBS, Proctor, Gonflement, Granulo, Classif)
+- [X] Vue de compatibilité `mailles_geotechnique_stats_wgs84` pour l'API existante
+- [X] Fonction `refresh_mv_mailles_geotech()` pour rafraîchissement
+
+##### Colonnes disponibles pour cartes thématiques
+- **Instrumentation** : n_sondages, n_echantillons, n_essais_total, n_essais_* par type
+- **Profondeur** : depth_min_m, depth_max_m, depth_mean_m
+- **Atterberg** : wl_avg, wp_avg, ip_avg, ip_min, ip_max, ip_stddev
+- **VBS** : vbs_avg, vbs_min, vbs_max, vbs_stddev + comptages par classe
+- **Proctor** : gamma_d_max_avg, w_opt_avg
+- **Gonflement** : eg_avg, eg_min, eg_max + comptages par classe
+- **Granulo** : passant_80um_avg, passant_2mm_avg, passant_20mm_avg
+- **Qualité** : has_data, has_exact_location, has_random_location
+
+##### Résultats après migration
+- 29407 mailles totales
+- 106 mailles avec données
+- 114 sondages, 306 échantillons, 991 essais
+- API `/thematic/data` fonctionne avec tous les paramètres
+
+---
+
 ### ✅ ROADMAP v3.9.2 - Onglet Nouveau Sondage + Corrections (2025-11-26)
 
 #### 🔧 Corrections apportées
