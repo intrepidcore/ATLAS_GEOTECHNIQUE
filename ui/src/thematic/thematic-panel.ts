@@ -389,6 +389,107 @@ export class ThematicPanel {
   }
   
   /**
+   * Cascade ADM1 → ADM2 : charger les préfectures de la région sélectionnée
+   */
+  private async loadAdm2ForAdm1(adm1Code: string | null): Promise<void> {
+    const adm2Select = this.elements.adm2Select
+    const adm3Select = this.elements.adm3Select
+    if (!adm2Select) return
+    
+    // Reset ADM2 et ADM3
+    adm2Select.innerHTML = '<option value="">— toutes préfectures —</option>'
+    adm2Select.disabled = true
+    if (adm3Select) {
+      adm3Select.innerHTML = '<option value="">— toutes communes —</option>'
+      adm3Select.disabled = true
+    }
+    
+    if (!adm1Code) return
+    
+    try {
+      // Appeler l'API pour récupérer les ADM2 de cette région
+      const apiUrl = (window as any).__API_GEO__ || 'http://localhost:8000'
+      const response = await fetch(`${apiUrl}/adm/adm2?adm1_code=${adm1Code}`)
+      if (!response.ok) throw new Error('Erreur chargement ADM2')
+      
+      const adm2List = await response.json()
+      
+      adm2Select.innerHTML = '<option value="">— toutes préfectures —</option>' +
+        adm2List.map((a: any) => `<option value="${a.code}">${a.name}</option>`).join('')
+      adm2Select.disabled = false
+      
+    } catch (error) {
+      console.error('[ThematicPanel] Erreur chargement ADM2:', error)
+      adm2Select.disabled = false
+    }
+  }
+  
+  /**
+   * Cascade ADM2 → ADM3 : charger les communes de la préfecture sélectionnée
+   */
+  private async loadAdm3ForAdm2(adm2Code: string | null): Promise<void> {
+    const adm3Select = this.elements.adm3Select
+    if (!adm3Select) return
+    
+    // Reset ADM3
+    adm3Select.innerHTML = '<option value="">— toutes communes —</option>'
+    adm3Select.disabled = true
+    
+    if (!adm2Code) return
+    
+    try {
+      const apiUrl = (window as any).__API_GEO__ || 'http://localhost:8000'
+      const response = await fetch(`${apiUrl}/adm/adm3?adm2_code=${adm2Code}`)
+      if (!response.ok) throw new Error('Erreur chargement ADM3')
+      
+      const adm3List = await response.json()
+      
+      adm3Select.innerHTML = '<option value="">— toutes communes —</option>' +
+        adm3List.map((a: any) => `<option value="${a.code}">${a.name}</option>`).join('')
+      adm3Select.disabled = false
+      
+    } catch (error) {
+      console.error('[ThematicPanel] Erreur chargement ADM3:', error)
+      adm3Select.disabled = false
+    }
+  }
+  
+  /**
+   * Mettre à jour les contrôles de classification selon le type de carte
+   */
+  private updateClassificationControls(mapType: string): void {
+    const methodSelect = this.elements.methodSelect
+    const nClassesInput = this.elements.nClassesInput
+    const manualBreaksContainer = this.elements.manualBreaksContainer
+    
+    if (mapType === 'binary') {
+      // Carte binaire : griser méthode et nombre de classes
+      if (methodSelect) {
+        methodSelect.disabled = true
+        methodSelect.style.opacity = '0.5'
+      }
+      if (nClassesInput) {
+        nClassesInput.disabled = true
+        nClassesInput.style.opacity = '0.5'
+      }
+      if (manualBreaksContainer) {
+        manualBreaksContainer.style.display = 'none'
+      }
+      // TODO: Afficher un champ pour le seuil binaire
+    } else {
+      // Autres types : réactiver les contrôles
+      if (methodSelect) {
+        methodSelect.disabled = false
+        methodSelect.style.opacity = '1'
+      }
+      if (nClassesInput) {
+        nClassesInput.disabled = false
+        nClassesInput.style.opacity = '1'
+      }
+    }
+  }
+  
+  /**
    * Attach all event listeners
    */
   private attachEventListeners(): void {
@@ -417,6 +518,12 @@ export class ThematicPanel {
       this.updatePaletteFromParameter()
     })
     
+    // Map type change -> update classification controls
+    this.elements.mapTypeSelect?.addEventListener('change', (e) => {
+      const mapType = (e.target as HTMLSelectElement).value
+      this.updateClassificationControls(mapType)
+    })
+    
     // Classification method change -> show/hide manual breaks
     this.elements.methodSelect?.addEventListener('change', (e) => {
       const method = (e.target as HTMLSelectElement).value
@@ -431,6 +538,18 @@ export class ThematicPanel {
       if (this.elements.opacityValue) {
         this.elements.opacityValue.textContent = `${Math.round(value * 100)}%`
       }
+    })
+    
+    // ADM1 change -> cascade to ADM2
+    this.elements.adm1Select?.addEventListener('change', (e) => {
+      const adm1Code = (e.target as HTMLSelectElement).value || null
+      this.loadAdm2ForAdm1(adm1Code)
+    })
+    
+    // ADM2 change -> cascade to ADM3
+    this.elements.adm2Select?.addEventListener('change', (e) => {
+      const adm2Code = (e.target as HTMLSelectElement).value || null
+      this.loadAdm3ForAdm2(adm2Code)
     })
     
     // Apply button
@@ -649,16 +768,16 @@ export class ThematicPanel {
    * Auto-zoom to data extent
    */
   private autoZoomToData(): void {
-    const currentLayer = this.manager['currentLayer']
+    const polygonLayer = this.manager['polygonLayer']
     const map = this.manager['map']
     
-    if (!currentLayer || !map) {
+    if (!polygonLayer || !map) {
       this.toast('Aucune carte thématique active', 'error')
       return
     }
     
     try {
-      const bounds = currentLayer.getBounds()
+      const bounds = polygonLayer.getBounds()
       if (bounds.isValid()) {
         map.fitBounds(bounds.pad(0.1))
         this.toast('Zoom ajusté aux données', 'success')

@@ -352,6 +352,7 @@ export interface ThematicMapConfig {
     method: ClassificationMethod
     n_classes: number
     manual_breaks?: number[]
+    binary_threshold?: number  // Seuil pour carte binaire
   }
   style: {
     palette: string

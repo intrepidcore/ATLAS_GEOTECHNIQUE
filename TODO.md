@@ -1108,10 +1108,34 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [X] Affichage du nom du paramètre et de l'unité dans la légende
 - [X] Styles CSS complets pour le panneau et la légende
 
+#### 🔧 Phase 2.1 : Corrections cartes thématiques (2025-11-26)
+
+##### 1. Cercles proportionnels corrigés
+- [X] Mailles en fond gris clair avec contour fin (couche polygonLayer)
+- [X] Cercles L.circleMarker au centroïde de chaque maille (couche circleLayer)
+- [X] Rayon proportionnel à √valeur (perception visuelle correcte)
+- [X] Couleur issue de la palette de classification
+
+##### 2. Carte binaire (présence/absence)
+- [X] 2 classes uniquement : < seuil (gris) / ≥ seuil (vert)
+- [X] Seuil par défaut = médiane (configurable via binary_threshold)
+- [X] Méthode et nombre de classes grisés quand type = binary
+
+##### 3. Cascade ADM1 → ADM2 → ADM3
+- [X] ADM1 change → recharge ADM2 via API `/adm/adm2?adm1_code=`
+- [X] ADM2 change → recharge ADM3 via API `/adm/adm3?adm2_code=`
+- [X] Reset cascade si "toutes régions" sélectionné
+
+##### 4. Algorithme de classes anti-dégénérées
+- [X] Fonction `sanitizeBreaks()` : supprime doublons, arrondit à 1 décimale
+- [X] Réduction automatique du nombre de classes si données concentrées
+- [X] Labels lisibles : ≤ b0, b0-b1, ..., > bN
+- [X] Log console si classes réduites
+
 ##### Fichiers modifiés
 - `ui/src/thematic/thematic-types.ts` - Nouveaux types métier (ObjectifMetier, etc.)
-- `ui/src/thematic/thematic-panel.ts` - Panneau refactorisé avec 4 blocs
-- `ui/src/thematic/thematic-maps.ts` - Support breaks par défaut, contraste légende
+- `ui/src/thematic/thematic-panel.ts` - Panneau refactorisé avec 4 blocs + cascade ADM
+- `ui/src/thematic/thematic-maps.ts` - Cercles proportionnels, binaire, sanitizeBreaks
 - `ui/index.html` - Styles CSS complets pour panneau v2.0
 
 ---
