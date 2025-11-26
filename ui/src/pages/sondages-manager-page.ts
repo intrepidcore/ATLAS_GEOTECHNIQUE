@@ -11,6 +11,7 @@ import { SondagesListPanel } from '../sondages-list-panel';
 import { ImportWizardV2 } from '../import-wizard-v2.js';
 import { toast } from '../ui/toast';
 import { dedupeByDepth, computeGeocodeBadge, type SurveyDetails, type GranuloSerie } from '../types/survey-details';
+import { GeotechnicalFormManager } from '../geotechnical-form';
 
 // Dev mode flag for wizard testing panel
 declare global {
@@ -19,7 +20,7 @@ declare global {
   }
 }
 
-type TabId = 'geocode' | 'suggestions' | 'import' | 'liste';
+type TabId = 'nouveau' | 'geocode' | 'suggestions' | 'import' | 'liste';
 
 export class SondagesManagerPage {
   private container: HTMLElement | null = null;
@@ -33,11 +34,13 @@ export class SondagesManagerPage {
   private geocodePanel: GeocodeCanonPanel | null = null;
   private suggestionsPanel: SuggestionsAdmPanel | null = null;
   private listPanel: SondagesListPanel | null = null;
+  private nouveauFormManager: GeotechnicalFormManager | null = null;
   private currentGeocodeTargetId: string | null = null;
   private currentView: 'list' | 'details' = 'list';
   private currentDetailId: string | null = null;
   private listScrollTop: number = 0; // Preserve scroll position
   private loaded: Record<TabId, boolean> = {
+    nouveau: false,
     geocode: false,
     suggestions: false,
     import: false,
@@ -78,6 +81,12 @@ export class SondagesManagerPage {
           </div>
           
           <div class="sidebar-tabs" style="flex: 1; padding: 12px;">
+            <div class="sidebar-tab" data-tab="nouveau" style="padding: 16px; margin-bottom: 8px; background: #1a2332; border: 1px solid #22304d; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
+              <div style="font-size: 24px; margin-bottom: 8px;">🧪</div>
+              <div style="font-size: 14px; font-weight: 600; color: #ecf2f8; margin-bottom: 4px;">Nouveau Sondage</div>
+              <div style="font-size: 11px; color: #94a3b8;">Créer un sondage géotechnique</div>
+            </div>
+            
             <div class="sidebar-tab active" data-tab="geocode" style="padding: 16px; margin-bottom: 8px; background: #1a2332; border: 1px solid #4c6ef5; border-radius: 8px; cursor: pointer; transition: all 0.2s;">
               <div style="font-size: 24px; margin-bottom: 8px;">🗺️</div>
               <div style="font-size: 14px; font-weight: 600; color: #ecf2f8; margin-bottom: 4px;">Géocodage Manuel</div>
@@ -112,6 +121,10 @@ export class SondagesManagerPage {
 
         <!-- CONTENU CENTRAL -->
         <div class="sondages-content" style="flex: 1; display: flex; flex-direction: column; overflow: hidden;">
+          <div class="tab-pane" data-tab="nouveau">
+            <div id="nouveau-content" style="width: 100%; height: 100%;"></div>
+          </div>
+          
           <div class="tab-pane active" data-tab="geocode">
             <div id="geocode-content" style="width: 100%; height: 100%;"></div>
           </div>
@@ -416,10 +429,46 @@ export class SondagesManagerPage {
     });
 
     // Lazy load content
+    if (tabId === 'nouveau') await this.ensureNouveauLoaded();
     if (tabId === 'geocode') await this.ensureGeocodeLoaded();
     if (tabId === 'suggestions') await this.ensureSuggestionsLoaded();
     if (tabId === 'import') await this.ensureImportLoaded();
     if (tabId === 'liste') await this.ensureListeLoaded();
+  }
+  
+  private async ensureNouveauLoaded() {
+    if (this.loaded.nouveau) return;
+    
+    const container = document.getElementById('nouveau-content');
+    if (!container) return;
+    
+    try {
+      // Utiliser le composant GeotechnicalFormManager existant
+      this.nouveauFormManager = new GeotechnicalFormManager(
+        this.apiUrl,
+        (response: any) => {
+          console.log('[SONDAGES PAGE] Survey created:', response);
+          toast.success('Sondage créé avec succès');
+          // Rafraîchir la liste si elle est chargée
+          if (this.listPanel) {
+            this.listPanel.refresh();
+          }
+        },
+        (error: string) => {
+          console.error('[SONDAGES PAGE] Error creating survey:', error);
+          toast.error(error);
+        }
+      );
+      
+      // Créer un wrapper pour le formulaire avec l'ID attendu
+      container.innerHTML = '<div id="nouveau-form-container" style="height: 100%; overflow-y: auto;"></div>';
+      this.nouveauFormManager.initForm('nouveau-form-container');
+      
+      this.loaded.nouveau = true;
+    } catch (e) {
+      console.error('[SONDAGES PAGE] Error loading nouveau tab:', e);
+      toast.error('Erreur chargement formulaire');
+    }
   }
 
   private async ensureGeocodeLoaded() {

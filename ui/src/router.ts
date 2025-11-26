@@ -43,8 +43,11 @@ class Router {
 
     console.log('[ROUTER] Navigating to:', hash);
 
-    // Find matching route
-    const handler = this.routes.get(hash);
+    // Extraire le path sans les query params pour le matching
+    const [path] = hash.split('?');
+    
+    // Find matching route (match sur le path, pas les query params)
+    const handler = this.routes.get(path);
     if (handler) {
       try {
         await handler();
@@ -54,10 +57,20 @@ class Router {
     } else {
       console.warn('[ROUTER] No handler for route:', hash);
       // Fallback to home
-      if (hash !== '/') {
+      if (path !== '/') {
         this.navigate('/');
       }
     }
+  }
+  
+  /**
+   * Get query params from current route
+   */
+  getQueryParams(): URLSearchParams {
+    const hash = window.location.hash.slice(1) || '/';
+    const queryIndex = hash.indexOf('?');
+    if (queryIndex === -1) return new URLSearchParams();
+    return new URLSearchParams(hash.slice(queryIndex + 1));
   }
 }
 

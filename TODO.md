@@ -1043,5 +1043,31 @@ curl "http://localhost:8081/"
 
 ---
 
-**Dernière mise à jour** : 2025-11-26 13:35
-**Statut global** : 🚀 v3.9.1 - Corrections & Améliorations COMPLET ✅
+### ✅ ROADMAP v3.9.2 - Onglet Nouveau Sondage + Corrections (2025-11-26)
+
+#### 🔧 Corrections apportées
+
+##### 1. Router - Support des query params
+- [X] Le router matche maintenant sur le path sans les query params
+- [X] Route `/sondages?grid=XXX` fonctionne correctement
+- [X] Nouvelle méthode `getQueryParams()` pour récupérer les params
+
+##### 2. Tuiles offline - URL corrigée
+- [X] URL changée de `/styles/basic-preview/` vers `/data/togo_map/`
+- [X] Format correct pour tileserver-gl-light
+
+##### 3. Onglet "Nouveau Sondage Géotechnique"
+- [X] Ajouté dans la sidebar du gestionnaire sondages
+- [X] Réutilisation du composant `GeotechnicalFormManager` existant
+- [X] Formulaire complet avec :
+  - Informations générales (code, date, type de sol, source, opérateur, notes)
+  - Mode de localisation (GPS exact, ADM, centroïde, aléatoire)
+  - Sélection de maille sur carte
+  - Gestion des profondeurs et essais
+  - Classifications géotechniques
+- [X] Rafraîchissement automatique de la liste après création
+
+---
+
+**Dernière mise à jour** : 2025-11-26 13:50
+**Statut global** : 🚀 v3.9.2 - Onglet Nouveau Sondage + Corrections COMPLET ✅

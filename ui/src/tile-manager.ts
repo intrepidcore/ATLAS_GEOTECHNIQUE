@@ -16,9 +16,10 @@ const TILE_SOURCES = {
   },
   offline: {
     // URL du tileserver local (docker-compose service tileserver)
-    url: 'http://localhost:8081/styles/basic-preview/{z}/{x}/{y}.png',
+    // Format: /data/{tileset_name}/{z}/{x}/{y}.png
+    url: 'http://localhost:8081/data/togo_map/{z}/{x}/{y}.png',
     attribution: '&copy; OpenStreetMap (offline)',
-    maxZoom: 18,
+    maxZoom: 14, // MBTiles peut avoir un zoom max inférieur
   },
 };
 
