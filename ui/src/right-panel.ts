@@ -41,14 +41,23 @@ export function initDirectButtons() {
     })
   }
   
-  // v2.5.0: Bouton Sondages ouvre modal central
+  // v3.9.0: Bouton Sondages navigue vers la page plein écran
   const sondagesBtn = document.getElementById('openSondagesModalBtn')
   if (sondagesBtn) {
     sondagesBtn.addEventListener('click', (e) => {
       e.preventDefault()
-      console.log('[v2.5.0] Ouverture modal Sondages')
-      const event = new CustomEvent('open-sondages-modal')
-      window.dispatchEvent(event)
+      console.log('[v3.9.0] Navigation vers gestionnaire sondages')
+      // Récupérer le code maille sélectionné s'il existe
+      const mailleCodeEl = document.getElementById('mailleCode')
+      const gridCode = mailleCodeEl?.textContent?.trim()
+      
+      if (gridCode && gridCode !== '') {
+        // Naviguer avec le filtre maille
+        window.location.hash = `#/sondages?grid=${encodeURIComponent(gridCode)}`
+      } else {
+        // Naviguer sans filtre
+        window.location.hash = '#/sondages'
+      }
     })
   }
 }

@@ -986,5 +986,62 @@ Le KPI "% spread" représente la part de données "diffusées/virtuelles" dans u
 
 ---
 
-**Dernière mise à jour** : 2025-11-26 12:30
-**Statut global** : 🚀 v3.9.0 - Améliorations UX & Workflow COMPLET ✅
+### ✅ ROADMAP v3.9.1 - Corrections & Améliorations (2025-11-26)
+
+**Objectif** : Corriger les problèmes identifiés lors de la revue de code
+
+---
+
+#### 🔧 Corrections apportées
+
+##### 1. Stats globales - COUNT DISTINCT (plus de double comptage)
+
+- [X] Requête SQL séparée pour compter les essais directement dans les tables
+- [X] Résultats corrects : granulo=249, gonflement=228, atterberg=51, vbs=502, classif=250
+- [X] Plus de SUM sur la vue matérialisée (qui gonflait les chiffres)
+
+##### 2. Bouton Sondages → Navigation directe (plus de modal)
+
+- [X] `right-panel.ts` : bouton "Sondages" navigue vers `#/sondages?grid=<code>`
+- [X] Plus besoin de passer par le modal central
+- [X] Si une maille est sélectionnée, le filtre est automatiquement appliqué
+
+##### 3. Recherche par grid_code dans API /sondages
+
+- [X] Le paramètre `search` inclut maintenant : code, localité, adm3_name ET grid_code
+- [X] On peut coller `TG-0753-0209-01` dans la barre de recherche
+
+##### 4. Contrôle tuiles - Style lisible
+
+- [X] Fond clair (#f9fafb) avec texte foncé
+- [X] Bordure et ombre pour contraste sur carte sombre
+- [X] Couleurs de statut : vert (online), orange (offline), violet (auto)
+- [X] Effet hover
+
+##### 5. Tileserver Docker - Configuration corrigée
+
+- [X] Utilisation de variable d'environnement `MBTILES_FILE` au lieu d'arguments
+- [X] Service accessible sur http://localhost:8081/
+
+---
+
+#### ✅ Tests curl validés
+
+```bash
+# Stats globales avec COUNT DISTINCT
+curl "http://localhost:8000/stats/global"
+# → granulo:249, gonflement:228 (valeurs correctes)
+
+# Recherche par code maille
+curl "http://localhost:8000/sondages?search=TG-0575-0220-01"
+# → Retourne le sondage "Katore"
+
+# Tileserver
+curl "http://localhost:8081/"
+# → 200 OK
+```
+
+---
+
+**Dernière mise à jour** : 2025-11-26 13:35
+**Statut global** : 🚀 v3.9.1 - Corrections & Améliorations COMPLET ✅

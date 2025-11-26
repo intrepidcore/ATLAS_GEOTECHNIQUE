@@ -155,6 +155,7 @@ export function getCurrentTileMode(): 'online' | 'offline' | 'auto' {
 
 /**
  * Crée un contrôle Leaflet pour changer de mode de tuiles
+ * Style clair et lisible sur fond de carte sombre
  */
 export function createTileControl(map: L.Map): L.Control {
   const TileControl = L.Control.extend({
@@ -162,15 +163,39 @@ export function createTileControl(map: L.Map): L.Control {
     
     onAdd: function() {
       const container = L.DomUtil.create('div', 'leaflet-bar leaflet-control tile-control');
-      container.style.cssText = 'background:white;padding:4px 8px;font-size:11px;cursor:pointer;';
+      container.style.cssText = `
+        background: #f9fafb;
+        color: #111827;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+        font-size: 11px;
+        font-weight: 600;
+        padding: 6px 10px;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      `;
       
       const updateLabel = () => {
         const mode = getCurrentTileMode();
         const icon = mode === 'online' ? '🌐' : mode === 'offline' ? '💾' : '🔄';
-        container.innerHTML = `${icon} ${mode}`;
+        const label = mode === 'online' ? 'Online' : mode === 'offline' ? 'Offline' : 'Auto';
+        const statusColor = mode === 'online' ? '#059669' : mode === 'offline' ? '#d97706' : '#6366f1';
+        container.innerHTML = `<span style="font-size:14px">${icon}</span> <span style="color:${statusColor}">${label}</span>`;
       };
       
       updateLabel();
+      
+      // Hover effect
+      container.addEventListener('mouseenter', () => {
+        container.style.background = '#e5e7eb';
+      });
+      container.addEventListener('mouseleave', () => {
+        container.style.background = '#f9fafb';
+      });
       
       L.DomEvent.on(container, 'click', (e) => {
         L.DomEvent.stopPropagation(e);

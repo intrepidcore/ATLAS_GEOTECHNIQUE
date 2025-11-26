@@ -150,7 +150,8 @@ services:
       - "8081:8080"
     volumes:
       - ./data/tiles:/data:ro
-    command: ["-p", "8080", "/data/togo_map.mbtiles"]
+    environment:
+      - MBTILES_FILE=/data/togo_map.mbtiles
     networks:
       - atlas-net
 

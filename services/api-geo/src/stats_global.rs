@@ -77,7 +77,7 @@ pub async fn get_global_stats(
 ) -> impl IntoResponse {
     let pool = &state.pool;
 
-    // 1) Compteurs de mailles (depuis mv_mailles_geotech)
+    // 1) Compteurs de mailles (depuis mv_mailles_geotech pour les compteurs mailles)
     // Note: On utilise une CTE pour simplifier les filtres
     let mailles_query = r#"
         WITH filtered AS (
@@ -95,14 +95,19 @@ pub async fn get_global_stats(
             COUNT(*) FILTER (WHERE has_data = true)::bigint AS avec_donnees,
             COALESCE(SUM(nb_sondages_real), 0)::bigint AS sondages,
             COALESCE(SUM(n_echantillons), 0)::bigint AS echantillons,
-            COALESCE(SUM(n_essais), 0)::bigint AS essais,
-            COALESCE(SUM(n_atterberg), 0)::bigint AS n_atterberg,
-            COALESCE(SUM(n_vbs), 0)::bigint AS n_vbs,
-            COALESCE(SUM(n_classif), 0)::bigint AS n_classif,
-            COALESCE(SUM(COALESCE(n_proctor, 0)), 0)::bigint AS n_proctor,
-            COALESCE(SUM(COALESCE(n_granulo, 0)), 0)::bigint AS n_granulo,
-            COALESCE(SUM(COALESCE(n_gonflement, 0)), 0)::bigint AS n_gonflement
+            COALESCE(SUM(n_essais), 0)::bigint AS essais
         FROM filtered
+    "#;
+    
+    // 1b) Compteurs d'essais par type - directement depuis les tables (pas de double comptage)
+    let essais_query = r#"
+        SELECT
+            (SELECT COUNT(DISTINCT echantillon_id) FROM essais_atterberg)::bigint AS n_atterberg,
+            (SELECT COUNT(DISTINCT echantillon_id) FROM essais_vbs)::bigint AS n_vbs,
+            (SELECT COUNT(DISTINCT echantillon_id) FROM essais_classif WHERE deleted_at IS NULL)::bigint AS n_classif,
+            (SELECT COUNT(DISTINCT echantillon_id) FROM essais_proctor)::bigint AS n_proctor,
+            (SELECT COUNT(DISTINCT echantillon_id) FROM granulo_points)::bigint AS n_granulo,
+            (SELECT COUNT(DISTINCT echantillon_id) FROM essais_potentiel_gonflement)::bigint AS n_gonflement
     "#;
 
     let mailles_row = sqlx::query(mailles_query)
@@ -114,7 +119,7 @@ pub async fn get_global_stats(
         .fetch_one(pool)
         .await;
 
-    let (mailles_total, mailles_filtrees, mailles_avec_donnees, sondages, echantillons, essais, n_atterberg, n_vbs, n_classif, n_proctor, n_granulo, n_gonflement) = match mailles_row {
+    let (mailles_total, mailles_filtrees, mailles_avec_donnees, sondages, echantillons, essais) = match mailles_row {
         Ok(row) => (
             row.try_get::<i64, _>("total").unwrap_or(0),
             row.try_get::<i64, _>("filtrees").unwrap_or(0),
@@ -122,6 +127,20 @@ pub async fn get_global_stats(
             row.try_get::<i64, _>("sondages").unwrap_or(0),
             row.try_get::<i64, _>("echantillons").unwrap_or(0),
             row.try_get::<i64, _>("essais").unwrap_or(0),
+        ),
+        Err(e) => {
+            tracing::error!(error=?e, "Failed to fetch mailles stats");
+            (0, 0, 0, 0, 0, 0)
+        }
+    };
+    
+    // Récupérer les compteurs d'essais par type (COUNT DISTINCT depuis les tables)
+    let essais_row = sqlx::query(essais_query)
+        .fetch_one(pool)
+        .await;
+    
+    let (n_atterberg, n_vbs, n_classif, n_proctor, n_granulo, n_gonflement) = match essais_row {
+        Ok(row) => (
             row.try_get::<i64, _>("n_atterberg").unwrap_or(0),
             row.try_get::<i64, _>("n_vbs").unwrap_or(0),
             row.try_get::<i64, _>("n_classif").unwrap_or(0),
@@ -130,8 +149,8 @@ pub async fn get_global_stats(
             row.try_get::<i64, _>("n_gonflement").unwrap_or(0),
         ),
         Err(e) => {
-            tracing::error!(error=?e, "Failed to fetch mailles stats");
-            (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            tracing::error!(error=?e, "Failed to fetch essais counts");
+            (0, 0, 0, 0, 0, 0)
         }
     };
 

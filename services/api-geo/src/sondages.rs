@@ -92,9 +92,15 @@ pub async fn list_sondages(
     // Compteur de paramètres pour les bindings dynamiques
     let mut param_idx = 1;
 
-    // Filtre recherche
+    // Filtre recherche (inclut code, localité, adm3_name ET grid_code)
     if has_search {
-        where_clauses.push(format!("(atlas.norm(s.code) LIKE '%' || atlas.norm(${}) || '%' OR atlas.norm(s.localite_base) LIKE '%' || atlas.norm(${}) || '%')", param_idx, param_idx));
+        where_clauses.push(format!(
+            "(atlas.norm(s.code) LIKE '%' || atlas.norm(${p}) || '%' \
+             OR atlas.norm(s.localite_base) LIKE '%' || atlas.norm(${p}) || '%' \
+             OR atlas.norm(s.adm3_name) LIKE '%' || atlas.norm(${p}) || '%' \
+             OR s.grid_code ILIKE '%' || ${p} || '%')",
+            p = param_idx
+        ));
         param_idx += 1;
     }
 
