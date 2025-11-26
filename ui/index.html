@@ -189,6 +189,109 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .badge-vbs-eleve{background:#ef476f22;color:#ef476f;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:500}
 .mini-chart-btn{background:#3aa6ff22;border:1px solid #3aa6ff44;color:#3aa6ff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-top:6px}
 .mini-chart-btn:hover{background:#3aa6ff33}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* PANNEAU CARTES THÉMATIQUES v2.0 */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+#thematicPanel{position:fixed;top:52px;right:0;width:320px;height:calc(100vh - 52px);background:var(--panel);border-left:1px solid #1b2740;z-index:1500;overflow-y:auto;box-shadow:-4px 0 20px rgba(0,0,0,0.3)}
+#thematicPanel .thematic-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#0a1018;border-bottom:1px solid #1b2740;position:sticky;top:0;z-index:10}
+#thematicPanel .thematic-panel-header h3{margin:0;font-size:15px;font-weight:600;color:var(--text)}
+#thematicPanel .btn-close{background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:4px}
+#thematicPanel .btn-close:hover{background:#1b2740;color:var(--text)}
+#thematicPanel .thematic-panel-body{padding:12px 16px 20px}
+
+/* Sections */
+#thematicPanel .thematic-section{margin-bottom:12px}
+#thematicPanel .section-label{font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
+#thematicPanel .param-description{font-size:11px;color:#6b8299;margin-top:4px;line-height:1.4}
+#thematicPanel .param-description code.formula{display:block;background:#0a1018;padding:4px 8px;border-radius:4px;margin-top:4px;font-family:monospace;font-size:10px;color:var(--accent)}
+
+/* Inputs & Selects */
+#thematicPanel .thematic-select,
+#thematicPanel .thematic-input{width:100%;padding:8px 10px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:13px}
+#thematicPanel .thematic-select:focus,
+#thematicPanel .thematic-input:focus{outline:none;border-color:var(--accent)}
+#thematicPanel .thematic-input.small{width:calc(50% - 12px)}
+
+/* Opacity control */
+#thematicPanel .opacity-control{display:flex;align-items:center;gap:10px}
+#thematicPanel .opacity-control input[type="range"]{flex:1;height:6px;-webkit-appearance:none;background:#22304d;border-radius:3px}
+#thematicPanel .opacity-control input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--accent);border-radius:50%;cursor:pointer}
+#thematicPanel .opacity-value{font-size:12px;color:var(--text);min-width:36px;text-align:right}
+
+/* Dividers */
+#thematicPanel .thematic-divider{display:flex;align-items:center;margin:16px 0 12px;gap:10px}
+#thematicPanel .thematic-divider::before,
+#thematicPanel .thematic-divider::after{content:'';flex:1;height:1px;background:#1b2740}
+#thematicPanel .thematic-divider span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+
+/* Checkboxes */
+#thematicPanel .checkbox-section{margin-bottom:8px}
+#thematicPanel .checkbox-label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text)}
+#thematicPanel .checkbox-label input[type="checkbox"]{width:16px;height:16px;accent-color:var(--accent)}
+
+/* Range inputs */
+#thematicPanel .range-inputs{display:flex;align-items:center;gap:8px}
+#thematicPanel .range-separator{color:var(--muted)}
+
+/* Advanced filters */
+#thematicPanel .advanced-filters{margin:12px 0;border:1px solid #1b2740;border-radius:6px}
+#thematicPanel .advanced-filters summary{padding:10px 12px;cursor:pointer;font-size:12px;color:var(--muted);list-style:none}
+#thematicPanel .advanced-filters summary::-webkit-details-marker{display:none}
+#thematicPanel .advanced-filters[open] summary{border-bottom:1px solid #1b2740}
+#thematicPanel .advanced-content{padding:12px}
+
+/* Data summary */
+#thematicPanel .data-summary{background:#0a1018;border:1px solid #1b2740;border-radius:6px;padding:10px 12px;margin:12px 0;display:none}
+#thematicPanel .summary-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}
+#thematicPanel .summary-row:last-child{margin-bottom:0}
+#thematicPanel .summary-label{color:var(--muted)}
+#thematicPanel .summary-value{color:var(--text);font-weight:500}
+
+/* Buttons */
+#thematicPanel .thematic-actions{display:flex;gap:8px;margin-bottom:8px}
+#thematicPanel .btn-primary{flex:1;padding:10px 14px;background:var(--accent);border:none;border-radius:6px;color:#0d1526;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel .btn-primary:hover{background:#5ab8ff}
+#thematicPanel .btn-primary:disabled{opacity:0.6;cursor:not-allowed}
+#thematicPanel .btn-secondary{flex:1;padding:10px 14px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel .btn-secondary:hover{border-color:#3aa6ff;background:#131d30}
+#thematicPanel .btn-outline{flex:1;padding:10px 14px;background:transparent;border:1px solid #22304d;border-radius:6px;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel .btn-outline:hover{border-color:var(--accent);color:var(--text)}
+#thematicPanel .btn-small{flex:1;padding:8px 12px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+#thematicPanel .btn-small:hover{border-color:#3aa6ff}
+#thematicPanel .btn-small.full-width{flex:none;width:100%}
+#thematicPanel .btn-icon{font-size:14px}
+
+/* Floating button */
+#openThematicPanel{position:fixed;bottom:80px;right:20px;width:50px;height:50px;background:var(--accent);border:none;border-radius:50%;font-size:22px;cursor:pointer;box-shadow:0 4px 12px rgba(58,166,255,0.3);z-index:1000;transition:transform 0.2s}
+#openThematicPanel:hover{transform:scale(1.1)}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* LÉGENDE THÉMATIQUE */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.thematic-legend{background:#111a2a;border:1px solid #1b2740;border-radius:8px;padding:0;min-width:180px;max-width:220px;box-shadow:0 4px 12px rgba(0,0,0,0.3);font-family:system-ui,-apple-system,sans-serif}
+.thematic-legend .legend-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #1b2740;background:#0a1018;border-radius:8px 8px 0 0}
+.thematic-legend .legend-header h4{margin:0;font-size:12px;font-weight:600;color:#ecf2f8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px}
+.thematic-legend .legend-close{background:transparent;border:none;color:#8aa0b5;font-size:16px;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1}
+.thematic-legend .legend-close:hover{background:#1b2740;color:#ecf2f8}
+.thematic-legend .legend-body{padding:8px 12px}
+.thematic-legend .legend-item{display:flex;align-items:center;gap:8px;padding:4px 0;cursor:pointer;transition:opacity 0.2s}
+.thematic-legend .legend-item.disabled{opacity:0.3}
+.thematic-legend .legend-color{width:24px;height:16px;border-radius:3px;border:1px solid rgba(0,0,0,0.2);flex-shrink:0}
+.thematic-legend .legend-label{font-size:11px;color:#c9d7e3}
+.thematic-legend .legend-stats{padding:8px 12px;border-top:1px solid #1b2740;background:#0a1018;border-radius:0 0 8px 8px}
+.thematic-legend .stat-row{display:flex;justify-content:space-between;font-size:10px;padding:2px 0}
+.thematic-legend .stat-row span{color:#8aa0b5}
+.thematic-legend .stat-row b{color:#ecf2f8;font-weight:500}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* TOAST NOTIFICATIONS */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.thematic-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(100px);background:#111a2a;border:1px solid #1b2740;color:#ecf2f8;padding:12px 20px;border-radius:8px;font-size:13px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease}
+.thematic-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.thematic-toast-success{border-color:#0bb07b;background:#0bb07b22}
+.thematic-toast-error{border-color:#ef476f;background:#ef476f22}
+.thematic-toast-info{border-color:#3aa6ff;background:#3aa6ff22}
     </style>
   </head>
   <body>
@@ -870,144 +973,11 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
     <!-- Import Bulk Wizard -->
     <div id="importBulkWizard" style="display:none"></div>
     
-    <!-- Panneau Cartes Thématiques -->
-    <div id="thematicPanel" class="panel" style="display:none;">
-      <div class="panel-header">
-        <h3>🗺️ Cartes Thématiques</h3>
-        <button id="closeThematicPanel" class="btn-close">×</button>
-      </div>
-      
-      <div class="panel-body">
-        <!-- Catégorie -->
-        <div class="form-group">
-          <label>Catégorie</label>
-          <select id="thematicCategory">
-            <option value="all">Toutes</option>
-            <option value="density">Densité & Couverture</option>
-            <option value="granulo">Granulométrie</option>
-            <option value="atterberg">Atterberg</option>
-            <option value="vbs">Bleu de Méthylène</option>
-            <option value="proctor">Proctor</option>
-            <option value="gonflement">Gonflement</option>
-          </select>
-        </div>
-        
-        <!-- Paramètre -->
-        <div class="form-group">
-          <label>Paramètre</label>
-          <select id="thematicParameter"></select>
-          <small id="parameterDescription"></small>
-        </div>
-        
-        <!-- Type de carte -->
-        <div class="form-group">
-          <label>Type de carte</label>
-          <select id="mapType">
-            <option value="choropleth">Choroplèthe (aplats)</option>
-            <option value="proportional">Symboles proportionnels</option>
-          </select>
-        </div>
-        
-        <!-- Classification -->
-        <div class="form-group">
-          <label>Méthode de classification</label>
-          <select id="classificationMethod">
-            <option value="quantiles">Quantiles</option>
-            <option value="equal_interval">Intervalles égaux</option>
-            <option value="jenks">Jenks (seuils naturels)</option>
-            <option value="custom">Personnalisé</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Nombre de classes</label>
-          <input type="number" id="nClasses" value="5" min="3" max="10">
-        </div>
-        
-        <!-- Palette -->
-        <div class="form-group">
-          <label>Palette de couleurs</label>
-          <select id="colorPalette">
-            <option value="Blues">Bleus</option>
-            <option value="Greens">Verts</option>
-            <option value="Reds">Rouges</option>
-            <option value="RdYlGn">Rouge-Jaune-Vert</option>
-            <option value="RdBu">Rouge-Bleu</option>
-            <option value="Viridis">Viridis</option>
-          </select>
-        </div>
-        
-        <!-- Opacité -->
-        <div class="form-group">
-          <label>Opacité</label>
-          <input type="range" id="opacity" min="0" max="1" step="0.1" value="0.7">
-        </div>
-        
-        <!-- Filtres -->
-        <div class="form-group">
-          <label>Région (ADM1)</label>
-          <select id="filterAdm1">
-            <option value="">— toutes régions —</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Préfecture (ADM2)</label>
-          <select id="filterAdm2">
-            <option value="">— toutes préfectures —</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Commune (ADM3)</label>
-          <select id="filterAdm3">
-            <option value="">— toutes communes —</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Sondages minimum</label>
-          <input type="number" id="minSondages" value="3" min="0">
-        </div>
-        
-        <!-- Options d'affichage -->
-        <div class="form-group">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" id="toggleGridLayer" checked>
-            <span>Afficher la grille de fond</span>
-          </label>
-        </div>
-        
-        <!-- Actions -->
-        <div class="button-group">
-          <button id="applyThematic" class="btn-primary">📊 Appliquer</button>
-          <button id="autoAOI" class="btn-secondary">🎯 Auto-Zoom</button>
-        </div>
-        <div class="button-group">
-          <button id="resetThematic" class="btn-secondary">🔄 Réinitialiser</button>
-        </div>
-        
-        <!-- Statistiques -->
-        <div id="thematicStats" class="stats-box" style="display:none;">
-          <h4>Statistiques</h4>
-          <div id="statsContent"></div>
-        </div>
-        
-        <!-- Sauvegarde -->
-        <div class="button-group" style="margin-top:12px">
-          <button id="saveThematicConfig" class="btn-secondary">💾 Sauvegarder</button>
-          <button id="exportThematicGeoJSON" class="btn-secondary">📥 Export GeoJSON</button>
-        </div>
-        <div class="button-group">
-          <button id="exportThematicPNG" class="btn-secondary">🖼️ Export PNG</button>
-        </div>
-      </div>
-    </div>
+    <!-- Panneau Cartes Thématiques v2.0 (contenu généré dynamiquement par JS) -->
+    <div id="thematicPanel" style="display:none;"></div>
     
     <!-- Bouton flottant pour ouvrir le panneau -->
-    <button id="openThematicPanel" class="floating-btn" title="Cartes Thématiques">
-      🗺️
-    </button>
+    <button id="openThematicPanel" title="Cartes Thématiques">🗺️</button>
     
     <script>
       // Runtime overrides for API base URLs

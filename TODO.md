@@ -1074,6 +1074,46 @@ curl "http://localhost:8081/"
 - 114 sondages, 306 échantillons, 991 essais
 - API `/thematic/data` fonctionne avec tous les paramètres
 
+#### 🔧 Phase 2 : UI Panneau Thématique v2.0
+
+##### Refactorisation complète du panneau
+Organisation en 4 blocs métier pour ingénieurs géotechniciens :
+
+**Bloc A - Objectif métier**
+- [X] Sélecteur d'objectif : Couverture, Argilosité, Gonflement, Compacité, Granulométrie, Personnalisé
+- [X] Paramètres filtrés par objectif avec description et formule
+- [X] Palette par défaut selon l'objectif
+
+**Bloc B - Style & Classification**
+- [X] Types de carte : Choroplèthe, Cercles proportionnels, Binaire
+- [X] Méthodes : Quantiles, Intervalles égaux, Jenks, Seuils manuels
+- [X] Nombre de classes (3-9)
+- [X] Palettes avec preview
+- [X] Slider opacité avec affichage %
+
+**Bloc C - Filtres**
+- [X] Filtres géographiques (ADM1/2/3)
+- [X] Sondages minimum (échelle 1-5 pour n_sondages)
+- [X] Checkbox "Exclure mailles sans données"
+- [X] Filtres avancés repliables (profondeur min/max)
+
+**Bloc D - Actions & Exports**
+- [X] Boutons Appliquer / Auto-Zoom / Réinitialiser
+- [X] Sauvegarde configuration
+- [X] Export GeoJSON / PNG
+
+##### Corrections apportées
+- [X] Classification avec breaks par défaut pour n_sondages (1, 2, 3, 4, 5)
+- [X] Légende avec contraste automatique du texte (noir/blanc selon luminosité)
+- [X] Affichage du nom du paramètre et de l'unité dans la légende
+- [X] Styles CSS complets pour le panneau et la légende
+
+##### Fichiers modifiés
+- `ui/src/thematic/thematic-types.ts` - Nouveaux types métier (ObjectifMetier, etc.)
+- `ui/src/thematic/thematic-panel.ts` - Panneau refactorisé avec 4 blocs
+- `ui/src/thematic/thematic-maps.ts` - Support breaks par défaut, contraste légende
+- `ui/index.html` - Styles CSS complets pour panneau v2.0
+
 ---
 
 ### ✅ ROADMAP v3.9.2 - Onglet Nouveau Sondage + Corrections (2025-11-26)

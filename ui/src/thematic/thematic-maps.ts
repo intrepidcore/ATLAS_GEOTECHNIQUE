@@ -3,10 +3,9 @@ import type {
   ThematicMapConfig,
   ThematicData,
   Classification,
-  Statistics,
-  ThematicParameter,
-  THEMATIC_PARAMETERS
+  Statistics
 } from './thematic-types'
+import { getParameterById } from './thematic-types'
 
 export class ThematicMapManager {
   private map: L.Map
@@ -15,6 +14,7 @@ export class ThematicMapManager {
   private currentConfig: ThematicMapConfig | null = null
   private legendControl: L.Control | null = null
   private currentClassification: Classification | null = null
+  private currentData: ThematicData | null = null
   
   constructor(map: L.Map, apiUrl: string) {
     this.map = map
@@ -46,9 +46,10 @@ export class ThematicMapManager {
       // 4. Afficher la légende
       this.showLegend(classification, data.statistics, config)
       
-      // 5. Sauvegarder la config actuelle
+      // 5. Sauvegarder la config et les données actuelles
       this.currentConfig = config
       this.currentClassification = classification
+      this.currentData = data
       
       // 6. Émettre événement
       this.map.fire('thematicmap:loaded', { config, data, classification })
@@ -103,14 +104,28 @@ export class ThematicMapManager {
       throw new Error('Aucune valeur à classifier')
     }
     
-    // Utiliser classification personnalisée si fournie
-    if (config.classification?.method === 'custom' && config.classification.custom_breaks) {
+    // Utiliser classification manuelle si fournie
+    if (config.classification?.method === 'manual' && config.classification.manual_breaks) {
       return {
-        breaks: config.classification.custom_breaks,
-        colors: await this.getColors(config.style.palette, config.classification.custom_breaks.length + 1),
-        labels: this.generateLabels(config.classification.custom_breaks),
-        method: 'custom',
-        n_classes: config.classification.custom_breaks.length + 1
+        breaks: config.classification.manual_breaks,
+        colors: await this.getColors(config.style.palette, config.classification.manual_breaks.length + 1),
+        labels: this.generateLabels(config.classification.manual_breaks),
+        method: 'manual',
+        n_classes: config.classification.manual_breaks.length + 1
+      }
+    }
+    
+    // Pour les paramètres de densité (n_sondages, etc.), utiliser des breaks fixes
+    const param = getParameterById(config.parameter)
+    if (param?.defaultBreaks && config.classification?.method !== 'equal_interval') {
+      // Utiliser les breaks par défaut du paramètre pour une meilleure lisibilité
+      const breaks = param.defaultBreaks
+      return {
+        breaks,
+        colors: await this.getColors(config.style.palette, breaks.length + 1),
+        labels: this.generateLabels(breaks),
+        method: 'default_breaks',
+        n_classes: breaks.length + 1
       }
     }
     
@@ -332,28 +347,39 @@ export class ThematicMapManager {
     }
     
     const legend = new L.Control({ position: 'bottomright' })
+    const param = getParameterById(config.parameter)
+    const paramLabel = param?.label || config.parameter
+    const unit = param?.unit || ''
     
     legend.onAdd = () => {
       const div = L.DomUtil.create('div', 'thematic-legend')
       
+      // Déterminer si on a besoin de texte clair ou foncé selon la palette
+      const isDarkPalette = ['Viridis', 'Blues', 'Greens'].includes(config.style.palette)
+      
       div.innerHTML = `
         <div class="legend-header">
-          <h4>${config.parameter}</h4>
+          <h4>${paramLabel}</h4>
           <button class="legend-close" title="Fermer">×</button>
         </div>
         <div class="legend-body">
-          ${classification.labels.map((label, i) => `
-            <div class="legend-item" data-class="${i}">
-              <span class="legend-color" style="background:${classification.colors[i]}"></span>
-              <span class="legend-label">${label}</span>
-            </div>
-          `).join('')}
+          ${classification.labels.map((label, i) => {
+            // Déterminer la couleur du texte selon la luminosité du fond
+            const bgColor = classification.colors[i]
+            const textColor = this.getContrastColor(bgColor)
+            return `
+              <div class="legend-item" data-class="${i}">
+                <span class="legend-color" style="background:${bgColor}"></span>
+                <span class="legend-label" style="color:${textColor}">${label}</span>
+              </div>
+            `
+          }).join('')}
         </div>
         <div class="legend-stats">
-          <div class="stat-row"><span>Min:</span><b>${stats.min.toFixed(2)}</b></div>
-          <div class="stat-row"><span>Max:</span><b>${stats.max.toFixed(2)}</b></div>
-          <div class="stat-row"><span>Moyenne:</span><b>${stats.mean.toFixed(2)}</b></div>
-          <div class="stat-row"><span>Médiane:</span><b>${stats.median.toFixed(2)}</b></div>
+          <div class="stat-row"><span>Min:</span><b>${stats.min.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+          <div class="stat-row"><span>Max:</span><b>${stats.max.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+          <div class="stat-row"><span>Moyenne:</span><b>${stats.mean.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+          <div class="stat-row"><span>Médiane:</span><b>${stats.median.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
           <div class="stat-row"><span>Mailles:</span><b>${stats.count}</b></div>
         </div>
       `
@@ -384,6 +410,23 @@ export class ThematicMapManager {
     
     legend.addTo(this.map)
     this.legendControl = legend
+  }
+  
+  /**
+   * Calculer la couleur de contraste (noir ou blanc) pour un fond donné
+   */
+  private getContrastColor(hexColor: string): string {
+    // Convertir hex en RGB
+    const hex = hexColor.replace('#', '')
+    const r = parseInt(hex.substr(0, 2), 16)
+    const g = parseInt(hex.substr(2, 2), 16)
+    const b = parseInt(hex.substr(4, 2), 16)
+    
+    // Calculer la luminosité relative (formule W3C)
+    const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+    
+    // Retourner noir pour fond clair, blanc pour fond sombre
+    return luminance > 0.5 ? '#1a1a2e' : '#ffffff'
   }
   
   /**
