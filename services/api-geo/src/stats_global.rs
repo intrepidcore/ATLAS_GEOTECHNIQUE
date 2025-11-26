@@ -82,20 +82,20 @@ pub async fn get_global_stats(
     let mailles_query = r#"
         WITH filtered AS (
             SELECT *
-            FROM mv_mailles_geotech
+            FROM atlas.mv_mailles_geotech
             WHERE ($1::text IS NULL OR adm1_name = $1)
               AND ($2::text IS NULL OR adm2_name = $2)
               AND ($3::text IS NULL OR adm3_name = $3)
-              AND ($4::int IS NULL OR COALESCE(nb_sondages_real, 0) >= $4)
-              AND ($5::int IS NULL OR COALESCE(n_essais, 0) >= $5)
+              AND ($4::int IS NULL OR COALESCE(n_sondages, 0) >= $4)
+              AND ($5::int IS NULL OR COALESCE(n_essais_total, 0) >= $5)
         )
         SELECT 
-            (SELECT COUNT(*) FROM mv_mailles_geotech)::bigint AS total,
+            (SELECT COUNT(*) FROM atlas.mv_mailles_geotech)::bigint AS total,
             COUNT(*)::bigint AS filtrees,
             COUNT(*) FILTER (WHERE has_data = true)::bigint AS avec_donnees,
-            COALESCE(SUM(nb_sondages_real), 0)::bigint AS sondages,
+            COALESCE(SUM(n_sondages), 0)::bigint AS sondages,
             COALESCE(SUM(n_echantillons), 0)::bigint AS echantillons,
-            COALESCE(SUM(n_essais), 0)::bigint AS essais
+            COALESCE(SUM(n_essais_total), 0)::bigint AS essais
         FROM filtered
     "#;
     

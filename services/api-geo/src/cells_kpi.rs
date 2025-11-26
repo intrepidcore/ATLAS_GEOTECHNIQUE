@@ -30,15 +30,15 @@ pub struct KpiRow {
 /// * `Ok(None)` - Maille non trouvée
 /// * `Err(_)` - Erreur SQL
 pub async fn fetch_kpi_row(pool: &PgPool, code: &str) -> sqlx::Result<Option<KpiRow>> {
-    // Utiliser atlas.mv_mailles_geotech avec les vraies colonnes n_echantillons et n_essais
+    // Utiliser atlas.mv_mailles_geotech avec les vraies colonnes n_sondages, n_echantillons et n_essais_total
     sqlx::query_as::<_, KpiRow>(
         r#"
         SELECT
-          ((nb_sondages_real + nb_sondages_spread))::bigint AS n_sondages,
+          COALESCE(n_sondages, 0)::bigint AS n_sondages,
           COALESCE(n_echantillons, 0)::bigint AS n_echantillons,
-          COALESCE(n_essais, 0)::bigint AS n_essais,
+          COALESCE(n_essais_total, 0)::bigint AS n_essais,
           0.0::float8 AS pct_spread,
-          NULL::float8 AS depth_max_m
+          depth_max_m::float8 AS depth_max_m
         FROM atlas.mv_mailles_geotech
         WHERE code = $1
         "#,
