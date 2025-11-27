@@ -13,9 +13,16 @@
 | Phase 1 - RBAC + Auth + UI | ✅ Terminé | 100% |
 | Phase 2 - Atlas Colab (Missions) | ✅ Terminé | 100% |
 | Phase 3 - PWA Mobile Terrain | ✅ Terminé | 100% |
-| Phase 4 - Collaboration | ✅ Terminé | 100% |
-| Phase 5 - Q&A Knowledge Base | ✅ Terminé | 100% |
+| Phase 4 - Collaboration | 🟡 Backend OK | 80% |
+| Phase 5 - Q&A Knowledge Base | 🟡 UI Web OK | 70% |
 | Phase 6 - Atlas Lab (Calculs) | 🔲 À faire | 0% |
+
+### Détail Phase 4-5 restant à faire :
+- [ ] UI commentaires dans détail mission (Web)
+- [ ] Bloc Q&A dans détail mission PWA
+- [ ] Notifications (badge cloche + onglet Activité PWA)
+- [ ] Profil utilisateur avec badges/réputation
+- [ ] Leaderboard page complète
 
 ---
 
