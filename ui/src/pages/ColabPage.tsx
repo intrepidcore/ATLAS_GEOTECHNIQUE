@@ -23,7 +23,10 @@ import {
   Pause,
   XCircle,
   BarChart3,
+  MessageCircleQuestion,
+  ClipboardList,
 } from 'lucide-react';
+import ColabQAPage from './ColabQAPage';
 import {
   missionsApi,
   supervisorsApi,
@@ -406,6 +409,7 @@ const ColabPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [activeTab, setActiveTab] = useState<'missions' | 'qa'>('missions');
 
   // Vérifier l'authentification
   const isAuthenticated = !!tokenStorage.getAccessToken();
@@ -476,203 +480,240 @@ const ColabPage: React.FC = () => {
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Atlas Colab Studio</h1>
-              <p className="text-sm text-gray-500 mt-1">Gestion des missions terrain</p>
+              <p className="text-sm text-gray-500 mt-1">Gestion des missions terrain & partage de connaissances</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" onClick={loadData} disabled={loading}>
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Nouvelle mission
-              </Button>
+              {activeTab === 'missions' && (
+                <>
+                  <Button variant="outline" onClick={loadData} disabled={loading}>
+                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                    Actualiser
+                  </Button>
+                  <Button onClick={() => setShowCreateModal(true)}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Nouvelle mission
+                  </Button>
+                </>
+              )}
             </div>
+          </div>
+          
+          {/* Onglets */}
+          <div className="flex gap-1 mt-4 -mb-4">
+            <button
+              onClick={() => setActiveTab('missions')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                activeTab === 'missions'
+                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <ClipboardList className="w-4 h-4" />
+              Missions
+            </button>
+            <button
+              onClick={() => setActiveTab('qa')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                activeTab === 'qa'
+                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <MessageCircleQuestion className="w-4 h-4" />
+              Questions & Réponses
+            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Stats */}
-        {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-            <StatsCard
-              title="Total Missions"
-              value={stats.total_missions}
-              icon={<BarChart3 className="w-6 h-6" />}
-              color="bg-blue-50 text-blue-900"
-            />
-            <StatsCard
-              title="Étudiants"
-              value={stats.total_students}
-              icon={<Users className="w-6 h-6" />}
-              color="bg-green-50 text-green-900"
-            />
-            <StatsCard
-              title="Superviseurs"
-              value={stats.total_supervisors}
-              icon={<Users className="w-6 h-6" />}
-              color="bg-purple-50 text-purple-900"
-            />
-            <StatsCard
-              title="Documents"
-              value={stats.total_documents}
-              icon={<FileText className="w-6 h-6" />}
-              color="bg-orange-50 text-orange-900"
-            />
-          </div>
-        )}
-
-        {/* Search & Filters */}
-        <div className="bg-white rounded-xl border p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 flex gap-2">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Rechercher par code ou titre..."
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                  className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                />
-              </div>
-              <Button variant="secondary" onClick={handleSearch}>
-                Rechercher
-              </Button>
-            </div>
-            <Button
-              variant={showFilters ? 'primary' : 'outline'}
-              onClick={() => setShowFilters(!showFilters)}
-            >
-              <Filter className="w-4 h-4 mr-2" />
-              Filtres
-            </Button>
-          </div>
-
-          {showFilters && (
-            <div className="mt-4 pt-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Thème</label>
-                <Select
-                  value={filters.theme || ''}
-                  onChange={e => handleFilterChange('theme', e.target.value)}
-                  options={MISSION_THEMES}
-                  placeholder="Tous les thèmes"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Statut</label>
-                <Select
-                  value={filters.status || ''}
-                  onChange={e => handleFilterChange('status', e.target.value)}
-                  options={MISSION_STATUSES}
-                  placeholder="Tous les statuts"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Commune</label>
-                <Input
-                  placeholder="Filtrer par commune"
-                  value={filters.commune || ''}
-                  onChange={e => handleFilterChange('commune', e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">Région</label>
-                <Input
-                  placeholder="Filtrer par région"
-                  value={filters.region || ''}
-                  onChange={e => handleFilterChange('region', e.target.value)}
-                />
-              </div>
-              <div className="col-span-2 md:col-span-4 flex justify-end">
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  <X className="w-4 h-4 mr-1" />
-                  Réinitialiser les filtres
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5" />
-            <span>{error}</span>
-          </div>
-        )}
-
-        {/* Loading */}
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-          </div>
-        )}
-
-        {/* Missions Grid */}
-        {!loading && missions.length > 0 && (
+        {/* Contenu selon l'onglet actif */}
+        {activeTab === 'qa' ? (
+          <ColabQAPage />
+        ) : (
           <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-              {missions.map(mission => (
-                <MissionCard
-                  key={mission.id}
-                  mission={mission}
-                  onClick={() => {
-                    // TODO: Ouvrir le détail de la mission
-                    console.log('Mission clicked:', mission.id);
-                  }}
+            {/* Stats */}
+            {stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatsCard
+                  title="Total Missions"
+                  value={stats.total_missions}
+                  icon={<BarChart3 className="w-6 h-6" />}
+                  color="bg-blue-50 text-blue-900"
                 />
-              ))}
-            </div>
+                <StatsCard
+                  title="Étudiants"
+                  value={stats.total_students}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-green-50 text-green-900"
+                />
+                <StatsCard
+                  title="Superviseurs"
+                  value={stats.total_supervisors}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-purple-50 text-purple-900"
+                />
+                <StatsCard
+                  title="Documents"
+                  value={stats.total_documents}
+                  icon={<FileText className="w-6 h-6" />}
+                  color="bg-orange-50 text-orange-900"
+                />
+              </div>
+            )}
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between bg-white rounded-xl border p-4">
-              <p className="text-sm text-gray-600">
-                {total} mission{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
-              </p>
-              <div className="flex items-center gap-2">
+            {/* Search & Filters */}
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex-1 flex gap-2">
+                  <div className="flex-1 relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Rechercher par code ou titre..."
+                      value={searchInput}
+                      onChange={e => setSearchInput(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && handleSearch()}
+                      className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                    />
+                  </div>
+                  <Button variant="secondary" onClick={handleSearch}>
+                    Rechercher
+                  </Button>
+                </div>
                 <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={filters.page === 1}
-                  onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}
+                  variant={showFilters ? 'primary' : 'outline'}
+                  onClick={() => setShowFilters(!showFilters)}
                 >
-                  <ChevronLeft className="w-4 h-4" />
-                </Button>
-                <span className="text-sm text-gray-600">
-                  Page {filters.page || 1} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  disabled={(filters.page || 1) >= totalPages}
-                  onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
-                >
-                  <ChevronRight className="w-4 h-4" />
+                  <Filter className="w-4 h-4 mr-2" />
+                  Filtres
                 </Button>
               </div>
-            </div>
-          </>
-        )}
 
-        {/* Empty State */}
-        {!loading && missions.length === 0 && !error && (
-          <div className="text-center py-12">
-            <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune mission trouvée</h3>
-            <p className="text-gray-500 mb-4">
-              {filters.search || filters.theme || filters.status
-                ? 'Essayez de modifier vos filtres'
-                : 'Créez votre première mission terrain'}
-            </p>
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Créer une mission
-            </Button>
-          </div>
+              {showFilters && (
+                <div className="mt-4 pt-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Thème</label>
+                    <Select
+                      value={filters.theme || ''}
+                      onChange={e => handleFilterChange('theme', e.target.value)}
+                      options={MISSION_THEMES}
+                      placeholder="Tous les thèmes"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Statut</label>
+                    <Select
+                      value={filters.status || ''}
+                      onChange={e => handleFilterChange('status', e.target.value)}
+                      options={MISSION_STATUSES}
+                      placeholder="Tous les statuts"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Commune</label>
+                    <Input
+                      placeholder="Filtrer par commune"
+                      value={filters.commune || ''}
+                      onChange={e => handleFilterChange('commune', e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Région</label>
+                    <Input
+                      placeholder="Filtrer par région"
+                      value={filters.region || ''}
+                      onChange={e => handleFilterChange('region', e.target.value)}
+                    />
+                  </div>
+                  <div className="col-span-2 md:col-span-4 flex justify-end">
+                    <Button variant="ghost" size="sm" onClick={clearFilters}>
+                      <X className="w-4 h-4 mr-1" />
+                      Réinitialiser les filtres
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Error */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            {/* Loading */}
+            {loading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            )}
+
+            {/* Missions Grid */}
+            {!loading && missions.length > 0 && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+                  {missions.map(mission => (
+                    <MissionCard
+                      key={mission.id}
+                      mission={mission}
+                      onClick={() => {
+                        // TODO: Ouvrir le détail de la mission
+                        console.log('Mission clicked:', mission.id);
+                      }}
+                    />
+                  ))}
+                </div>
+
+                {/* Pagination */}
+                <div className="flex items-center justify-between bg-white rounded-xl border p-4">
+                  <p className="text-sm text-gray-600">
+                    {total} mission{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={filters.page === 1}
+                      onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <span className="text-sm text-gray-600">
+                      Page {filters.page || 1} / {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={(filters.page || 1) >= totalPages}
+                      onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
+                    >
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Empty State */}
+            {!loading && missions.length === 0 && !error && (
+              <div className="text-center py-12">
+                <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune mission trouvée</h3>
+                <p className="text-gray-500 mb-4">
+                  {filters.search || filters.theme || filters.status
+                    ? 'Essayez de modifier vos filtres'
+                    : 'Créez votre première mission terrain'}
+                </p>
+                <Button onClick={() => setShowCreateModal(true)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Créer une mission
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
 
