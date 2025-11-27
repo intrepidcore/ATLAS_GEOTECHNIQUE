@@ -199,14 +199,14 @@ pub async fn get_my_missions(
             m.commune,
             m.region,
             COALESCE(m.expected_sondages, 0) AS expected_sondages,
-            COALESCE((SELECT COUNT(*) FROM atlas.colab_mission_sondages cms WHERE cms.mission_id = m.id), 0) AS completed_sondages,
-            CASE 
+            COALESCE((SELECT COUNT(*) FROM atlas.colab_mission_sondages cms WHERE cms.mission_id = m.id), 0)::int8 AS completed_sondages,
+            (CASE 
                 WHEN COALESCE(m.expected_sondages, 0) = 0 THEN 0.0
                 ELSE ROUND(
                     (COALESCE((SELECT COUNT(*) FROM atlas.colab_mission_sondages cms WHERE cms.mission_id = m.id), 0)::numeric 
                     / m.expected_sondages::numeric) * 100, 1
                 )
-            END AS percent_done
+            END)::float8 AS percent_done
         FROM atlas.colab_missions m
         WHERE m.id IN (
             SELECT mission_id FROM atlas.colab_mission_assignments WHERE student_id IN (
@@ -265,14 +265,14 @@ pub async fn get_mission_detail(
             m.commune,
             m.region,
             COALESCE(m.expected_sondages, 0) AS expected_sondages,
-            COALESCE((SELECT COUNT(*) FROM atlas.colab_mission_sondages cms WHERE cms.mission_id = m.id), 0) AS completed_sondages,
-            CASE 
+            COALESCE((SELECT COUNT(*) FROM atlas.colab_mission_sondages cms WHERE cms.mission_id = m.id), 0)::int8 AS completed_sondages,
+            (CASE 
                 WHEN COALESCE(m.expected_sondages, 0) = 0 THEN 0.0
                 ELSE ROUND(
                     (COALESCE((SELECT COUNT(*) FROM atlas.colab_mission_sondages cms WHERE cms.mission_id = m.id), 0)::numeric 
                     / m.expected_sondages::numeric) * 100, 1
                 )
-            END AS percent_done
+            END)::float8 AS percent_done
         FROM atlas.colab_missions m
         WHERE m.id = $1
         "#,
