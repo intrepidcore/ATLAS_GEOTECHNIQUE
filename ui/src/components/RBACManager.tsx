@@ -13,11 +13,13 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Users, Shield, Key, Plus, Trash2, Edit, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
+import { Users, Shield, Key, Plus, Trash2, Edit, AlertTriangle, Loader2, RefreshCw, LogIn, LogOut } from 'lucide-react'
 import {
   usersApi,
   rolesApi,
   permissionsApi,
+  authApi,
+  tokenStorage,
   type User as ApiUser,
   type Role as ApiRole,
   type Permission as ApiPermission,
@@ -70,6 +72,42 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [newUserPassword, setNewUserPassword] = useState('')
+  
+  // Auth state
+  const [isAuthenticated, setIsAuthenticated] = useState(() => !!tokenStorage.getAccessToken())
+  const [loginEmail, setLoginEmail] = useState('admin@atlas.local')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [loginError, setLoginError] = useState<string | null>(null)
+  const [currentUser, setCurrentUser] = useState(tokenStorage.getUser())
+
+  const handleLogin = async () => {
+    setLoginLoading(true)
+    setLoginError(null)
+    try {
+      const response = await authApi.login({ email: loginEmail, password: loginPassword })
+      setIsAuthenticated(true)
+      setCurrentUser(response.user)
+      setLoginPassword('')
+    } catch (err: any) {
+      setLoginError(err.message || 'Erreur de connexion')
+    } finally {
+      setLoginLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    try {
+      await authApi.logout()
+    } catch (e) {
+      // Ignorer les erreurs de logout
+    }
+    setIsAuthenticated(false)
+    setCurrentUser(null)
+    setUsers([])
+    setRoles([])
+    setPermissions([])
+  }
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -123,10 +161,10 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
   }, [])
 
   useEffect(() => {
-    if (open) {
+    if (open && isAuthenticated) {
       loadData()
     }
-  }, [open, loadData])
+  }, [open, isAuthenticated, loadData])
 
   const handleSaveUser = async () => {
     if (!editingUser) return
@@ -259,6 +297,73 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
     return user.username
   }
 
+  // Si non authentifié, afficher le formulaire de login
+  if (!isAuthenticated) {
+    return (
+      <Dialog open={open} onOpenChange={onClose}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LogIn className="h-5 w-5" />
+              Connexion requise
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-slate-600">
+              Connectez-vous pour accéder à la gestion des utilisateurs et des rôles.
+            </p>
+
+            {loginError && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertDescription>{loginError}</AlertDescription>
+              </Alert>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={loginEmail}
+                onChange={e => setLoginEmail(e.target.value)}
+                placeholder="admin@atlas.local"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password">Mot de passe</Label>
+              <Input
+                id="password"
+                type="password"
+                value={loginPassword}
+                onChange={e => setLoginPassword(e.target.value)}
+                placeholder="••••••••"
+                onKeyDown={e => e.key === 'Enter' && handleLogin()}
+              />
+            </div>
+
+            <div className="text-xs text-slate-500">
+              <strong>Compte par défaut:</strong> admin@atlas.local / Atlas2024!
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={onClose}>
+              Annuler
+            </Button>
+            <Button onClick={handleLogin} disabled={loginLoading}>
+              {loginLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              <LogIn className="h-4 w-4 mr-2" />
+              Se connecter
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl h-[85vh] flex flex-col">
@@ -269,6 +374,16 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
             <Button variant="ghost" size="sm" onClick={loadData} disabled={loading}>
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </Button>
+            <div className="flex-1" />
+            {currentUser && (
+              <div className="flex items-center gap-2 text-sm font-normal">
+                <span className="text-slate-500">Connecté:</span>
+                <Badge variant="outline">{currentUser.username}</Badge>
+                <Button variant="ghost" size="sm" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </DialogTitle>
         </DialogHeader>
 

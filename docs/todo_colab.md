@@ -164,6 +164,8 @@
   - [x] CRUD users fonctionnel
   - [x] CRUD roles fonctionnel
   - [x] Affichage permissions groupées
+  - [x] Formulaire de login intégré
+  - [x] Affichage utilisateur connecté + logout
 
 ### 1.8 - Tests & Validation
 - [x] Compilation Rust OK (`cargo check`)
