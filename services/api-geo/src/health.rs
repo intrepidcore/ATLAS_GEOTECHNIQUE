@@ -31,10 +31,13 @@ pub async fn health_check(State(state): State<AppState>) -> Json<HealthResponse>
 
         // Vérifier les tables critiques
         let critical_tables = vec![
-            ("atlas", "staging_info"),
+            ("atlas", "staging_metadata"),
             ("atlas", "staging_locks"),
             ("atlas", "audit_log"),
-            ("atlas", "backups"),
+            ("atlas", "backup_metadata"),
+            ("atlas", "users"),
+            ("atlas", "roles"),
+            ("atlas", "sondages"),
         ];
 
         for (schema, table) in critical_tables {

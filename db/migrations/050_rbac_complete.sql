@@ -337,9 +337,11 @@ ON CONFLICT DO NOTHING;
 
 -- ============================================================================
 -- Créer l'utilisateur admin par défaut
--- Password: Atlas2025! (à changer immédiatement en production)
+-- Password: Atlas2024! (à changer immédiatement en production)
 -- Hash Argon2id généré avec les paramètres recommandés
 -- ============================================================================
+-- Utilisateur admin par défaut (mot de passe: Atlas2024!)
+-- IMPORTANT: Changer ce mot de passe immédiatement en production!
 INSERT INTO atlas.users (
     id,
     email,
@@ -350,11 +352,10 @@ INSERT INTO atlas.users (
     is_active,
     is_verified
 ) VALUES (
-    '00000000-0000-0000-0000-000000000001'::UUID,
+    '00000000-0000-0000-0000-000000000001',
     'admin@atlas.local',
     'admin',
-    -- Placeholder hash - sera remplacé par le vrai hash Argon2id au premier démarrage
-    '$argon2id$v=19$m=65536,t=3,p=4$c29tZXNhbHQ$RdescudvJCsgt3ub+b+dWRWJTmaaJObG',
+    '$argon2id$v=19$m=65536,t=3,p=4$Yhd1HdqszX1GzJXqFjXtQA$saz+B+dQhWsVOLUvxtZINv9DIBjO39W2BekUOOnlitM',
     'System',
     'Administrator',
     TRUE,

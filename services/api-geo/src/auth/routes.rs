@@ -60,13 +60,14 @@ fn extract_user_agent(headers: &HeaderMap) -> Option<String> {
 async fn login(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, AuthError> {
     // Valider la requête
     request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
-    let ip = extract_ip(&headers, Some(addr));
+    let addr = connect_info.map(|ci| ci.0);
+    let ip = extract_ip(&headers, addr);
     let user_agent = extract_user_agent(&headers);
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
     let password_hasher = PasswordHasher::new(state.auth_config.clone());
@@ -215,10 +216,10 @@ async fn login(
 async fn logout(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     auth_user: AuthUser,
 ) -> Result<StatusCode, AuthError> {
-    let ip = extract_ip(&headers, Some(addr));
+    let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
 
@@ -239,10 +240,10 @@ async fn logout(
 async fn logout_all(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     auth_user: AuthUser,
 ) -> Result<Json<serde_json::Value>, AuthError> {
-    let ip = extract_ip(&headers, Some(addr));
+    let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
 
@@ -264,10 +265,10 @@ async fn logout_all(
 async fn refresh_token(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<RefreshTokenRequest>,
 ) -> Result<Json<RefreshResponse>, AuthError> {
-    let ip = extract_ip(&headers, Some(addr));
+    let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
 
@@ -329,11 +330,11 @@ async fn list_sessions(
 async fn revoke_session(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     auth_user: AuthUser,
     axum::extract::Path(session_id): axum::extract::Path<Uuid>,
 ) -> Result<StatusCode, AuthError> {
-    let ip = extract_ip(&headers, Some(addr));
+    let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
 
@@ -354,13 +355,13 @@ async fn revoke_session(
 async fn change_password(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     auth_user: AuthUser,
     Json(request): Json<ChangePasswordRequest>,
 ) -> Result<StatusCode, AuthError> {
     request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
-    let ip = extract_ip(&headers, Some(addr));
+    let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
     let password_hasher = PasswordHasher::new(state.auth_config.clone());
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
@@ -440,12 +441,12 @@ async fn change_password(
 async fn request_password_reset(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<ResetPasswordRequest>,
 ) -> Result<Json<serde_json::Value>, AuthError> {
     request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
-    let ip = extract_ip(&headers, Some(addr));
+    let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
 
@@ -516,12 +517,12 @@ async fn request_password_reset(
 async fn confirm_password_reset(
     State(state): State<AppState>,
     headers: HeaderMap,
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<ConfirmResetPasswordRequest>,
 ) -> Result<StatusCode, AuthError> {
     request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
-    let ip = extract_ip(&headers, Some(addr));
+    let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
     let password_hasher = PasswordHasher::new(state.auth_config.clone());
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
