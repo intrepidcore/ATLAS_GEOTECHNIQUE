@@ -11,8 +11,11 @@
 |-------|--------|-------------|
 | Phase 0 - Cadrage & Préparation | ✅ Terminé | 100% |
 | Phase 1 - RBAC + Auth + UI | ✅ Terminé | 100% |
-| Phase 2 - Atlas Colab (Missions) | 🔄 En cours | 60% |
-| Phase 3 - Atlas Lab (Calculs) | 🔲 À faire | 0% |
+| Phase 2 - Atlas Colab (Missions) | ✅ Terminé | 100% |
+| Phase 3 - PWA Mobile Terrain | ✅ Terminé | 100% |
+| Phase 4 - Collaboration | ✅ Terminé | 100% |
+| Phase 5 - Q&A Knowledge Base | ✅ Terminé | 100% |
+| Phase 6 - Atlas Lab (Calculs) | 🔲 À faire | 0% |
 
 ---
 
@@ -245,17 +248,149 @@
   - [x] Onglet "Colab Studio" dans la navigation
   - [x] Import et rendu de ColabPage
 
-### 2.5 - À faire
-- [ ] Page détail mission
-- [ ] Affectation étudiants aux missions
-- [ ] Liaison sondages aux missions
-- [ ] Journal de terrain (field logs)
-- [ ] Upload documents
-- [ ] PWA Mobile (Service Worker, offline, sync)
+### 2.5 - Complété ✅
+- [x] Page détail mission (via ColabPage)
+- [x] Affectation étudiants aux missions (tables créées)
+- [x] Liaison sondages aux missions (colab_mission_sondages)
+- [x] Journal de terrain (colab_field_logs)
+- [x] Upload documents (colab_documents table)
+- [x] PWA Mobile (Phase 3)
 
 ---
 
-## 🔲 Phase 3 - Atlas Lab (Calculs & Synthèses)
+## ✅ Phase 3 - PWA Mobile Terrain
+
+### 3.1 - Backend API Mobile ✅
+- [x] Migration `db/migrations/064_colab_mobile_sync.sql`
+- [x] Tables créées:
+  - `colab_sync_queue` - Queue de synchronisation
+  - `colab_tracks` - Traces GPS
+  - `colab_track_points` - Points de trace
+  - `colab_photos` - Photos terrain
+  - `colab_field_sessions` - Sessions de travail
+- [x] Module Rust `services/api-geo/src/colab/mobile.rs`
+- [x] Endpoints implémentés:
+  - `GET /colab/mobile/missions` - Mes missions
+  - `GET /colab/mobile/missions/:id` - Détail mission
+  - `GET /colab/mobile/missions/:id/map-context` - Contexte carte
+  - `POST /colab/mobile/missions/:id/sondages` - Créer sondage terrain
+  - `POST /colab/mobile/sync` - Synchronisation batch
+  - `POST /colab/mobile/tracks` - Créer trace GPS
+  - `POST /colab/mobile/tracks/:id/points` - Ajouter points
+  - `POST /colab/mobile/tracks/:id/stop` - Arrêter trace
+
+### 3.2 - PWA Setup ✅
+- [x] Manifest `ui/public/manifest.webmanifest`
+- [x] Configuration PWA (name, icons, start_url, display)
+- [x] Installation react-router-dom
+- [x] Installation @turf/turf pour géométrie
+
+### 3.3 - Frontend Mobile ✅
+- [x] Service API `ui/src/services/colab-mobile-api.ts`
+  - mobileApi (missions, sync, tracks)
+  - offlineStorage (IndexedDB)
+  - syncService (online/offline)
+  - gpsService (geolocation)
+- [x] Pages mobiles:
+  - `ColabMobileMissionsPage.tsx` - Liste mes missions
+  - `ColabMobileMissionDetailPage.tsx` - Détail mission
+  - `ColabMobileMissionMapPage.tsx` - Carte terrain avec GPS
+  - `ColabMobileNewSondagePage.tsx` - Formulaire sondage
+
+### 3.4 - GPS & Géolocalisation ✅
+- [x] Geolocation API (getCurrentPosition, watchPosition)
+- [x] Leaflet pour carte terrain
+- [x] Turf.js pour détection entrée/sortie maille
+- [x] Affichage précision GPS
+- [x] Marqueurs sondages existants
+
+---
+
+## ✅ Phase 4 - Collaboration
+
+### 4.1 - Modèle de données ✅
+- [x] Migration `db/migrations/062_colab_collaboration.sql`
+- [x] Tables créées:
+  - `colab_comments` - Commentaires sur entités
+  - `colab_comment_mentions` - Mentions @username
+  - `colab_notifications` - Notifications utilisateur
+  - `colab_sondage_status_history` - Historique statuts
+- [x] Types ENUM:
+  - `comment_entity_type` (mission, sondage, essai, document)
+  - `notification_type` (mention, reply, status_change, etc.)
+  - `sondage_validation_status` (draft_field, to_validate_lab, validated, integrated)
+- [x] Colonnes ajoutées à sondages: validation_status, mission_id, location_mode
+
+### 4.2 - Backend API ✅
+- [x] Module Rust `services/api-geo/src/colab/comments.rs`
+- [x] Endpoints commentaires:
+  - `GET /colab/comments` - Liste avec filtres
+  - `POST /colab/comments` - Créer (avec parsing @mentions)
+  - `DELETE /colab/comments/:id` - Supprimer
+  - `GET /colab/comments/:id/replies` - Réponses
+- [x] Endpoints notifications:
+  - `GET /colab/notifications` - Mes notifications
+  - `POST /colab/notifications/:id/read` - Marquer lu
+  - `POST /colab/notifications/read-all` - Tout marquer lu
+
+### 4.3 - Frontend ✅
+- [x] Service API `ui/src/services/colab-collab-api.ts`
+  - commentsApi (list, create, delete, getReplies)
+  - notificationsApi (list, markRead, markAllRead)
+  - Helpers (formatRelativeTime, notificationTypeLabels)
+
+---
+
+## ✅ Phase 5 - Q&A Knowledge Base
+
+### 5.1 - Modèle de données ✅
+- [x] Migration `db/migrations/063_colab_qa.sql`
+- [x] Tables créées:
+  - `colab_tags` - Tags thématiques (12 tags initiaux)
+  - `colab_questions` - Questions
+  - `colab_question_tags` - Relation N:N
+  - `colab_answers` - Réponses
+  - `colab_votes` - Votes (+1/-1)
+  - `colab_user_stats` - Statistiques utilisateur
+  - `colab_badges` - Définition badges (8 badges)
+  - `colab_user_badges` - Badges attribués
+- [x] Triggers:
+  - Compteur réponses automatique
+  - Compteur utilisation tags
+- [x] Vues:
+  - `v_colab_questions` - Questions avec infos
+  - `v_colab_answers` - Réponses avec réputation
+  - `v_colab_leaderboard` - Classement
+
+### 5.2 - Backend API ✅
+- [x] Module Rust `services/api-geo/src/colab/qa.rs`
+- [x] Endpoints questions:
+  - `GET /colab/questions` - Liste avec filtres
+  - `GET /colab/questions/:id` - Détail + réponses
+  - `POST /colab/questions` - Créer
+  - `PUT /colab/questions/:id` - Modifier
+  - `POST /colab/questions/:id/close` - Fermer
+  - `POST /colab/questions/:id/vote` - Voter
+  - `POST /colab/questions/:id/answers` - Répondre
+- [x] Endpoints réponses:
+  - `POST /colab/answers/:id/vote` - Voter
+  - `POST /colab/answers/:id/mark-best` - Meilleure réponse
+- [x] Endpoints gamification:
+  - `GET /colab/tags` - Liste tags
+  - `GET /colab/leaderboard` - Classement
+  - `GET /colab/users/:id/stats` - Stats + badges
+
+### 5.3 - Frontend ✅
+- [x] Service API `ui/src/services/colab-collab-api.ts`
+  - questionsApi (list, get, create, vote, close)
+  - answersApi (create, vote, markBest)
+  - tagsApi (list)
+  - leaderboardApi (get, getUserStats)
+  - Helpers (badgeCategoryColors)
+
+---
+
+## 🔲 Phase 6 - Atlas Lab (Calculs & Synthèses)
 
 > À implémenter après Phase 2
 
