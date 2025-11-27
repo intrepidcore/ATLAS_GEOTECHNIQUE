@@ -12,6 +12,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod audit;
 pub mod auth;
 mod cells_kpi;
+pub mod colab;
 mod cells_labs;
 mod config;
 mod db_manager;
@@ -405,6 +406,16 @@ async fn main() -> anyhow::Result<()> {
         // Roles management (requires authentication)
         .merge(
             roles::routes::roles_routes()
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    auth::middleware::auth_middleware,
+                )),
+        )
+        // ============================================================================
+        // Atlas Colab routes (requires authentication)
+        // ============================================================================
+        .merge(
+            colab::routes::colab_routes()
                 .layer(middleware::from_fn_with_state(
                     state.clone(),
                     auth::middleware::auth_middleware,

@@ -6,7 +6,7 @@ import { FieldCalculator } from '@/components/FieldCalculator'
 import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
-import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity } from 'lucide-react'
+import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin } from 'lucide-react'
 import { RBACManager } from '@/components/RBACManager'
 import { SchemaTableSelector } from '@/components/SchemaTableSelector'
 import { SchemaTree } from '@/components/SchemaTree'
@@ -17,6 +17,7 @@ import { UnsavedChangesAlert } from '@/components/UnsavedChangesAlert'
 import { DataGridToolbar } from '@/components/DataGridToolbar'
 import { AdvancedSelectionDialog } from '@/components/AdvancedSelectionDialog'
 import { MapPanel } from '@/components/MapPanel'
+import ColabPage from '@/pages/ColabPage'
 import { selectionApi } from '@/services/selection-api'
 import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/services/api'
 import { stagingApiV2 } from '@/services/staging-api'
@@ -408,6 +409,10 @@ function App() {
               <Calculator className="h-4 w-4 mr-2" />
               Outils
             </TabsTrigger>
+            <TabsTrigger value="colab">
+              <Users className="h-4 w-4 mr-2" />
+              Colab Studio
+            </TabsTrigger>
           </TabsList>
 
           {/* Tables Tab */}
@@ -621,6 +626,11 @@ function App() {
                 </Button>
               </div>
             </div>
+          </TabsContent>
+
+          {/* Colab Tab */}
+          <TabsContent value="colab" className="h-[calc(100vh-12rem)]">
+            <ColabPage />
           </TabsContent>
         </Tabs>
       </main>

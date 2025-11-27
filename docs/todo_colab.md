@@ -11,7 +11,7 @@
 |-------|--------|-------------|
 | Phase 0 - Cadrage & Préparation | ✅ Terminé | 100% |
 | Phase 1 - RBAC + Auth + UI | ✅ Terminé | 100% |
-| Phase 2 - Atlas Colab (Missions) | 🔲 À faire | 0% |
+| Phase 2 - Atlas Colab (Missions) | 🔄 En cours | 60% |
 | Phase 3 - Atlas Lab (Calculs) | 🔲 À faire | 0% |
 
 ---
@@ -175,53 +175,83 @@
 
 ---
 
-## 🔲 Phase 2 - Atlas Colab (Missions & Terrain)
+## 🔄 Phase 2 - Atlas Colab (Missions & Terrain)
 
-> À implémenter après validation Phase 1
+> En cours d'implémentation
 
-### 2.1 - Modèle de données Colab
-- [ ] Table `atlas.missions`
-  - id, titre, description, zone_geom, date_debut, date_fin
-  - statut (draft, active, completed, archived)
-  - created_by, assigned_to (users)
-- [ ] Table `atlas.mission_sondages`
-  - mission_id, sondage_id, ordre, statut
-- [ ] Table `atlas.mission_members`
-  - mission_id, user_id, role (leader, member, observer)
-- [ ] Table `atlas.sondages_raw` (données terrain brutes)
-  - Avant validation/géocodage
-- [ ] Table `atlas.mission_logs`
-  - Historique des actions sur missions
+### 2.1 - Modèle de données Colab ✅
+- [x] Migration `db/migrations/060_colab_schema.sql`
+- [x] Tables créées dans `atlas`:
+  - [x] `colab_students` - Métadonnées étudiants
+  - [x] `colab_supervisors` - Métadonnées encadreurs
+  - [x] `colab_missions` - Missions terrain
+  - [x] `colab_mission_assignments` - Affectations étudiants
+  - [x] `colab_mission_sondages` - Liaison missions/sondages
+  - [x] `colab_field_logs` - Journal de terrain
+  - [x] `colab_documents` - Documents liés aux missions
+- [x] Types ENUM:
+  - `mission_theme` (stabilisation, synthese, reconnaissance, etude_detaillee, controle)
+  - `mission_status` (draft, planned, in_progress, completed, cancelled, suspended)
+  - `field_log_type` (note, incident, meteo, avancee, observation, probleme, decision)
+  - `document_type` (rapport_intermediaire, rapport_final, fiche_terrain, etc.)
+- [x] Vues:
+  - `v_colab_missions_summary`
+  - `v_colab_students`
+  - `v_colab_supervisors`
+- [x] Triggers `updated_at` automatiques
 
-### 2.2 - Nouveaux rôles Colab
-- [ ] Rôle `student` (accès limité à ses missions)
-- [ ] Rôle `supervisor` (validation, encadrement)
-- [ ] Permissions Colab:
-  - `colab.missions.read`
-  - `colab.missions.create`
-  - `colab.missions.manage`
-  - `colab.sondages.read`
-  - `colab.sondages.edit`
-  - `colab.sondages.validate`
+### 2.2 - Nouveaux rôles Colab ✅
+- [x] Migration `db/migrations/061_colab_permissions.sql`
+- [x] Rôle `student` (accès limité à ses missions)
+- [x] Rôle `supervisor` (validation, encadrement)
+- [x] 21 permissions Colab:
+  - `colab.missions.read/create/update/delete/assign`
+  - `colab.students.read/create/update/delete`
+  - `colab.supervisors.read/create/update/delete`
+  - `colab.field_logs.read/write/delete`
+  - `colab.documents.read/upload/delete`
+  - `colab.sondages.link/unlink`
+- [x] Permissions assignées aux rôles existants (admin, data_manager, geo_analyst, editor, viewer)
 
-### 2.3 - API Colab Backend
-- [ ] Routes `/missions/*`
-- [ ] Routes `/missions/:id/sondages/*`
-- [ ] Routes `/missions/:id/members/*`
-- [ ] Workflow validation sondages
+### 2.3 - API Colab Backend ✅
+- [x] Module `services/api-geo/src/colab/`:
+  - [x] `mod.rs` - exports
+  - [x] `types.rs` - DTOs (MissionListItem, MissionDetail, CreateMissionRequest, etc.)
+  - [x] `routes.rs` - Handlers API
+- [x] Routes implémentées:
+  - [x] `GET /colab/missions` - Liste avec filtres et pagination
+  - [x] `POST /colab/missions` - Créer une mission
+  - [x] `GET /colab/missions/:id` - Détail mission
+  - [x] `PUT /colab/missions/:id` - Mettre à jour
+  - [x] `DELETE /colab/missions/:id` - Supprimer
+  - [x] `GET /colab/missions/stats` - Statistiques
+  - [x] `GET /colab/supervisors` - Liste superviseurs
+  - [x] `GET /colab/students` - Liste étudiants
+- [x] Middleware auth intégré
 
-### 2.4 - UI Colab
-- [ ] Page liste missions
+### 2.4 - UI Colab ✅
+- [x] Service API: `ui/src/services/colab-api.ts`
+  - [x] `missionsApi` (list, get, create, update, delete, getStats)
+  - [x] `supervisorsApi` (list)
+  - [x] `studentsApi` (list)
+  - [x] Helpers (getStatusLabel, getStatusColor, getThemeLabel, formatDate)
+- [x] Page Colab: `ui/src/pages/ColabPage.tsx`
+  - [x] Liste missions avec cards
+  - [x] Filtres (thème, statut, commune, région, recherche)
+  - [x] Pagination
+  - [x] Statistiques dashboard
+  - [x] Modal création mission
+- [x] Intégration dans App.tsx:
+  - [x] Onglet "Colab Studio" dans la navigation
+  - [x] Import et rendu de ColabPage
+
+### 2.5 - À faire
 - [ ] Page détail mission
-- [ ] Formulaire saisie sondage terrain
-- [ ] Interface validation encadrant
-- [ ] Dashboard progression
-
-### 2.5 - PWA Mobile
-- [ ] Service Worker
-- [ ] Mode offline
-- [ ] Sync background
-- [ ] Géolocalisation
+- [ ] Affectation étudiants aux missions
+- [ ] Liaison sondages aux missions
+- [ ] Journal de terrain (field logs)
+- [ ] Upload documents
+- [ ] PWA Mobile (Service Worker, offline, sync)
 
 ---
 
@@ -277,15 +307,20 @@
 - `services/api-geo/src/auth/` - Module authentification
 - `services/api-geo/src/users/` - Module utilisateurs
 - `services/api-geo/src/roles/` - Module rôles
+- `services/api-geo/src/colab/` - Module Atlas Colab
 - `services/api-geo/src/rbac.rs` - Middlewares RBAC
 - `services/api-geo/src/main.rs` - Configuration routes
 
 ### Frontend (React/TypeScript)
 - `ui/src/services/auth-api.ts` - Services API auth/RBAC
+- `ui/src/services/colab-api.ts` - Services API Colab
 - `ui/src/components/RBACManager.tsx` - Interface gestion RBAC
+- `ui/src/pages/ColabPage.tsx` - Page Atlas Colab Studio
 
 ### Base de données
 - `db/migrations/050_rbac_complete.sql` - Migration RBAC
+- `db/migrations/060_colab_schema.sql` - Tables Colab
+- `db/migrations/061_colab_permissions.sql` - Permissions Colab
 
 ### Configuration
 - `.env` - Variables environnement
@@ -293,4 +328,4 @@
 
 ---
 
-*Dernière mise à jour: 2025-11-27 12:44 UTC*
+*Dernière mise à jour: 2025-11-27 14:00 UTC*
