@@ -3,7 +3,9 @@
  */
 
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import LoginPage from '@/pages/LoginPage';
 
 // Lazy loading des pages mobiles pour optimiser le bundle
 const ColabMobileMissionsPage = lazy(() => import('@/pages/mobile/ColabMobileMissionsPage'));
@@ -21,27 +23,68 @@ const MobileLoadingSpinner: React.FC = () => (
   </div>
 );
 
+// Composant de route protégée utilisant AuthContext
+const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { isAuthenticated, isLoading } = useAuth();
+  const location = useLocation();
+  
+  if (isLoading) {
+    return <MobileLoadingSpinner />;
+  }
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/colab/mobile/login" state={{ from: location }} replace />;
+  }
+  
+  return <>{children}</>;
+};
+
+// Page de login mobile wrapper
+const MobileLoginPage: React.FC = () => {
+  const { isAuthenticated } = useAuth();
+  const location = useLocation();
+  
+  if (isAuthenticated) {
+    const from = (location.state as any)?.from?.pathname || '/colab/mobile/missions';
+    return <Navigate to={from} replace />;
+  }
+  
+  return <LoginPage variant="mobile" />;
+};
+
 /**
  * Routes mobiles pour Atlas Colab PWA
  * 
  * Routes:
- * - /colab/mobile/missions - Liste des missions
- * - /colab/mobile/missions/:id - Détail mission
- * - /colab/mobile/missions/:id/map - Carte terrain
- * - /colab/mobile/missions/:id/sondages/new - Nouveau sondage
+ * - /colab/mobile/login - Page de connexion
+ * - /colab/mobile/missions - Liste des missions (protégée)
+ * - /colab/mobile/missions/:id - Détail mission (protégée)
+ * - /colab/mobile/missions/:id/map - Carte terrain (protégée)
+ * - /colab/mobile/missions/:id/sondages/new - Nouveau sondage (protégée)
  */
 const MobileRoutes: React.FC = () => {
   return (
     <Suspense fallback={<MobileLoadingSpinner />}>
       <Routes>
+        {/* Page de connexion */}
+        <Route path="/colab/mobile/login" element={<MobileLoginPage />} />
+        
         {/* Redirection par défaut */}
         <Route path="/" element={<Navigate to="/colab/mobile/missions" replace />} />
         
-        {/* Routes Colab Mobile */}
-        <Route path="/colab/mobile/missions" element={<ColabMobileMissionsPage />} />
-        <Route path="/colab/mobile/missions/:id" element={<ColabMobileMissionDetailPage />} />
-        <Route path="/colab/mobile/missions/:id/map" element={<ColabMobileMissionMapPage />} />
-        <Route path="/colab/mobile/missions/:id/sondages/new" element={<ColabMobileNewSondagePage />} />
+        {/* Routes Colab Mobile (protégées) */}
+        <Route path="/colab/mobile/missions" element={
+          <ProtectedRoute><ColabMobileMissionsPage /></ProtectedRoute>
+        } />
+        <Route path="/colab/mobile/missions/:id" element={
+          <ProtectedRoute><ColabMobileMissionDetailPage /></ProtectedRoute>
+        } />
+        <Route path="/colab/mobile/missions/:id/map" element={
+          <ProtectedRoute><ColabMobileMissionMapPage /></ProtectedRoute>
+        } />
+        <Route path="/colab/mobile/missions/:id/sondages/new" element={
+          <ProtectedRoute><ColabMobileNewSondagePage /></ProtectedRoute>
+        } />
         
         {/* Fallback - 404 */}
         <Route path="*" element={<Navigate to="/colab/mobile/missions" replace />} />

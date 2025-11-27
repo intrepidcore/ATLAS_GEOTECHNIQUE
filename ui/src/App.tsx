@@ -6,7 +6,7 @@ import { FieldCalculator } from '@/components/FieldCalculator'
 import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
-import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin } from 'lucide-react'
+import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut } from 'lucide-react'
 import { RBACManager } from '@/components/RBACManager'
 import { SchemaTableSelector } from '@/components/SchemaTableSelector'
 import { SchemaTree } from '@/components/SchemaTree'
@@ -18,11 +18,14 @@ import { DataGridToolbar } from '@/components/DataGridToolbar'
 import { AdvancedSelectionDialog } from '@/components/AdvancedSelectionDialog'
 import { MapPanel } from '@/components/MapPanel'
 import ColabPage from '@/pages/ColabPage'
+import LoginPage from '@/pages/LoginPage'
+import { useAuth } from '@/contexts/AuthContext'
 import { selectionApi } from '@/services/selection-api'
 import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/services/api'
 import { stagingApiV2 } from '@/services/staging-api'
 
 function App() {
+  const { isAuthenticated, isLoading: authLoading, user, logout } = useAuth()
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<string>('sondages')
   const [selectedSchema, setSelectedSchema] = useState<string>('public')
@@ -368,6 +371,23 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [hasUnsavedChanges])
 
+  // Afficher le loader pendant le chargement de l'auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
+          <p className="text-slate-600">Chargement...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Afficher la page de login si non authentifié
+  if (!isAuthenticated) {
+    return <LoginPage />
+  }
+
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -385,9 +405,33 @@ function App() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-500">v2.0.0</span>
-              <div className="h-2 w-2 rounded-full bg-green-500" title="API Connectée" />
+            <div className="flex items-center gap-4">
+              {/* User info */}
+              <div className="flex items-center gap-2 text-sm">
+                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                  <span className="text-blue-600 font-medium">
+                    {user?.username?.charAt(0).toUpperCase() || 'U'}
+                  </span>
+                </div>
+                <div className="hidden sm:block">
+                  <div className="font-medium text-slate-900">{user?.username}</div>
+                  <div className="text-xs text-slate-500">{user?.roles?.join(', ')}</div>
+                </div>
+              </div>
+              {/* Logout button */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={logout}
+                className="text-slate-500 hover:text-red-600"
+                title="Déconnexion"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500">v2.0.0</span>
+                <div className="h-2 w-2 rounded-full bg-green-500" title="API Connectée" />
+              </div>
             </div>
           </div>
         </div>

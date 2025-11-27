@@ -4,6 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
+import { AuthProvider } from '@/contexts/AuthContext';
 import MobileRoutes from '@/routes/MobileRoutes';
 import { registerSW } from 'virtual:pwa-register';
 
@@ -70,14 +71,16 @@ const MobileApp: React.FC = () => {
   };
 
   return (
-    <BrowserRouter>
-      <MobileRoutes />
-      <PWAUpdatePrompt
-        needRefresh={needRefresh}
-        onRefresh={handleRefresh}
-        onClose={handleClose}
-      />
-    </BrowserRouter>
+    <AuthProvider>
+      <BrowserRouter>
+        <MobileRoutes />
+        <PWAUpdatePrompt
+          needRefresh={needRefresh}
+          onRefresh={handleRefresh}
+          onClose={handleClose}
+        />
+      </BrowserRouter>
+    </AuthProvider>
   );
 };
 
