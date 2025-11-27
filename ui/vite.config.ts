@@ -1,34 +1,11 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
-import mpa from 'vite-plugin-mpa-plus'
 import path from 'path'
 
 export default defineConfig({
   plugins: [
     react(),
-    mpa({
-      pages: {
-        main: {
-          entry: 'src/main.tsx',
-          filename: 'index.html',
-          template: 'index.html',
-        },
-        mobile: {
-          entry: 'src/mobile-main.tsx',
-          filename: 'mobile.html',
-          template: 'mobile.html',
-        },
-      },
-      historyApiFallback: {
-        rewrites: [
-          // PWA terrain routes → mobile.html
-          { from: /^\/colab\/mobile(\/.*)?$/, to: '/mobile.html' },
-          // Tout le reste → index.html
-          { from: /./, to: '/index.html' },
-        ],
-      },
-    }),
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
@@ -129,7 +106,12 @@ export default defineConfig({
     },
   },
   build: {
-    // Les entrées sont gérées par vite-plugin-mpa-plus
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        mobile: path.resolve(__dirname, 'mobile.html'),
+      },
+    },
   },
   server: {
     proxy: {
@@ -140,7 +122,4 @@ export default defineConfig({
       }
     }
   },
-  // Configuration pour le plugin vite-plugin-history-fallback n'existe pas nativement
-  // On utilise un middleware custom via appType: 'custom' ou on gère via le fichier public/_redirects
-  appType: 'mpa',
 })

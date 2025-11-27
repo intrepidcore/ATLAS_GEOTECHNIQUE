@@ -8,7 +8,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   ArrowLeft, MapPin, Calendar, Users, Map, Plus, 
-  ChevronRight, User, Mail, Clock, Target, FileText
+  ChevronRight, User, Mail, Clock, Target, FileText,
+  MessageCircleQuestion, Send, Loader2
 } from 'lucide-react';
 import { mobileApi, type MobileMissionDetail, type MobileSondage } from '@/services/colab-mobile-api';
 
@@ -133,6 +134,155 @@ const SondageItem: React.FC<{ sondage: MobileSondage }> = ({ sondage }) => (
     <ChevronRight className="h-4 w-4 text-gray-400" />
   </div>
 );
+
+// ============================================================================
+// Composant Q&A pour la mission
+// ============================================================================
+
+interface MissionQuestion {
+  id: string;
+  title: string;
+  content: string;
+  author_name: string;
+  answers_count: number;
+  created_at: string;
+}
+
+const MissionQASection: React.FC<{ missionId: string }> = ({ missionId }) => {
+  const [questions, setQuestions] = useState<MissionQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [newQuestion, setNewQuestion] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    loadQuestions();
+  }, [missionId]);
+
+  const loadQuestions = async () => {
+    try {
+      const token = localStorage.getItem('atlas_token');
+      const res = await fetch(`/api/colab/qa/questions?mission_id=${missionId}&limit=3`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {}
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setQuestions(data.questions || []);
+      }
+    } catch (err) {
+      console.error('Erreur chargement questions:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!newQuestion.trim()) return;
+    setSubmitting(true);
+    
+    try {
+      const token = localStorage.getItem('atlas_token');
+      const res = await fetch('/api/colab/qa/questions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {})
+        },
+        body: JSON.stringify({
+          title: newQuestion.trim().slice(0, 100),
+          content: newQuestion.trim(),
+          mission_id: missionId,
+          tags: []
+        })
+      });
+      
+      if (res.ok) {
+        setNewQuestion('');
+        setShowForm(false);
+        loadQuestions();
+      }
+    } catch (err) {
+      console.error('Erreur soumission question:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="bg-white rounded-xl shadow-sm p-4">
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-sm font-medium text-gray-500 flex items-center gap-2">
+          <MessageCircleQuestion className="h-4 w-4" />
+          Questions / Réponses
+        </h3>
+        <button
+          onClick={() => setShowForm(!showForm)}
+          className="text-xs text-blue-600 font-medium"
+        >
+          {showForm ? 'Annuler' : '+ Poser une question'}
+        </button>
+      </div>
+
+      {/* Formulaire rapide */}
+      {showForm && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg">
+          <textarea
+            value={newQuestion}
+            onChange={(e) => setNewQuestion(e.target.value)}
+            placeholder="Votre question sur cette mission..."
+            rows={3}
+            className="w-full px-3 py-2 border rounded-lg text-sm resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          <div className="flex justify-end mt-2">
+            <button
+              onClick={handleSubmit}
+              disabled={submitting || !newQuestion.trim()}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium disabled:opacity-50"
+            >
+              {submitting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Envoyer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Liste des questions */}
+      {loading ? (
+        <div className="flex justify-center py-4">
+          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+        </div>
+      ) : questions.length > 0 ? (
+        <div className="space-y-3">
+          {questions.map(q => (
+            <div key={q.id} className="p-3 bg-gray-50 rounded-lg">
+              <p className="text-sm font-medium text-gray-900 line-clamp-2">{q.title}</p>
+              <div className="flex items-center gap-2 mt-2 text-xs text-gray-500">
+                <span>{q.author_name}</span>
+                <span>•</span>
+                <span>{q.answers_count} réponse{q.answers_count !== 1 ? 's' : ''}</span>
+              </div>
+            </div>
+          ))}
+          {questions.length >= 3 && (
+            <button className="w-full text-center text-sm text-blue-600 py-2">
+              Voir toutes les questions →
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="text-center py-4 text-gray-400">
+          <MessageCircleQuestion className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <p className="text-sm">Aucune question pour cette mission</p>
+          <p className="text-xs mt-1">Soyez le premier à poser une question !</p>
+        </div>
+      )}
+    </section>
+  );
+};
 
 // ============================================================================
 // Page principale
@@ -319,6 +469,9 @@ const ColabMobileMissionDetailPage: React.FC = () => {
             </div>
           )}
         </section>
+
+        {/* Questions & Réponses */}
+        <MissionQASection missionId={id!} />
       </main>
 
       {/* Boutons d'action fixes */}

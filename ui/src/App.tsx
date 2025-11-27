@@ -6,7 +6,7 @@ import { FieldCalculator } from '@/components/FieldCalculator'
 import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
-import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut } from 'lucide-react'
+import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut, Bell } from 'lucide-react'
 import { RBACManager } from '@/components/RBACManager'
 import { SchemaTableSelector } from '@/components/SchemaTableSelector'
 import { SchemaTree } from '@/components/SchemaTree'
@@ -42,6 +42,50 @@ function App() {
   const [showAdvancedSelection, setShowAdvancedSelection] = useState(false)
   const [bboxToZoom, setBboxToZoom] = useState<{min_x:number;min_y:number;max_x:number;max_y:number}|null>(null)
   const [rowIdKey, setRowIdKey] = useState<string>('id')
+  const [notifications, setNotifications] = useState<any[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
+  const [showNotifications, setShowNotifications] = useState(false)
+
+  // Charger les notifications
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadNotifications()
+      // Rafraîchir toutes les 30 secondes
+      const interval = setInterval(loadNotifications, 30000)
+      return () => clearInterval(interval)
+    }
+  }, [isAuthenticated])
+
+  const loadNotifications = async () => {
+    try {
+      const token = localStorage.getItem('atlas_token')
+      if (!token) return
+      
+      const res = await fetch(`${API_BASE_URL}/colab/notifications?unread_only=true&limit=10`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setNotifications(data.notifications || [])
+        setUnreadCount(data.unread_count || 0)
+      }
+    } catch (err) {
+      console.error('Erreur chargement notifications:', err)
+    }
+  }
+
+  const markNotificationRead = async (id: string) => {
+    try {
+      const token = localStorage.getItem('atlas_token')
+      await fetch(`${API_BASE_URL}/colab/notifications/${id}/read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      loadNotifications()
+    } catch (err) {
+      console.error('Erreur marquage notification:', err)
+    }
+  }
 
   // Charger les tables au démarrage
   useEffect(() => {
@@ -406,6 +450,59 @@ function App() {
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Notifications */}
+              <div className="relative">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative text-slate-500 hover:text-slate-700"
+                  title="Notifications"
+                >
+                  <Bell className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                      {unreadCount > 9 ? '9+' : unreadCount}
+                    </span>
+                  )}
+                </Button>
+                
+                {/* Dropdown notifications */}
+                {showNotifications && (
+                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border z-50">
+                    <div className="p-3 border-b flex items-center justify-between">
+                      <h3 className="font-semibold text-slate-900">Notifications</h3>
+                      {unreadCount > 0 && (
+                        <span className="text-xs text-slate-500">{unreadCount} non lues</span>
+                      )}
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {notifications.length === 0 ? (
+                        <div className="p-4 text-center text-slate-500 text-sm">
+                          Aucune notification
+                        </div>
+                      ) : (
+                        notifications.map((notif: any) => (
+                          <div
+                            key={notif.id}
+                            onClick={() => markNotificationRead(notif.id)}
+                            className={`p-3 border-b hover:bg-slate-50 cursor-pointer ${
+                              !notif.read_at ? 'bg-blue-50' : ''
+                            }`}
+                          >
+                            <p className="text-sm text-slate-900">{notif.title}</p>
+                            <p className="text-xs text-slate-500 mt-1">{notif.message}</p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              {new Date(notif.created_at).toLocaleDateString('fr-FR')}
+                            </p>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* User info */}
               <div className="flex items-center gap-2 text-sm">
                 <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">

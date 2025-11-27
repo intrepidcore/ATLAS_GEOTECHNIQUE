@@ -12,6 +12,7 @@ const ColabMobileMissionsPage = lazy(() => import('@/pages/mobile/ColabMobileMis
 const ColabMobileMissionDetailPage = lazy(() => import('@/pages/mobile/ColabMobileMissionDetailPage'));
 const ColabMobileMissionMapPage = lazy(() => import('@/pages/mobile/ColabMobileMissionMapPage'));
 const ColabMobileNewSondagePage = lazy(() => import('@/pages/mobile/ColabMobileNewSondagePage'));
+const ColabMobileActivityPage = lazy(() => import('@/pages/mobile/ColabMobileActivityPage'));
 
 // Loading spinner pour le lazy loading
 const MobileLoadingSpinner: React.FC = () => (
@@ -84,6 +85,9 @@ const MobileRoutes: React.FC = () => {
         } />
         <Route path="/colab/mobile/missions/:id/sondages/new" element={
           <ProtectedRoute><ColabMobileNewSondagePage /></ProtectedRoute>
+        } />
+        <Route path="/colab/mobile/activity" element={
+          <ProtectedRoute><ColabMobileActivityPage /></ProtectedRoute>
         } />
         
         {/* Fallback - 404 */}
