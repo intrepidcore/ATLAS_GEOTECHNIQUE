@@ -1,5 +1,6 @@
 use axum::http::Method;
 use axum::{
+    middleware,
     routing::{delete, get, patch, post},
     Json, Router,
 };
@@ -9,6 +10,7 @@ use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod audit;
+pub mod auth;
 mod cells_kpi;
 mod cells_labs;
 mod config;
@@ -27,11 +29,13 @@ mod metrics_handler;
 mod neighbors;
 mod observability;
 mod rbac;
+pub mod roles;
 mod routes;
 mod sondages;
 mod sondages_geocode;
 mod sql_sanitizer;
 mod stats_global;
+pub mod users;
 mod websocket;
 
 use metrics_handler::metrics_handler;
@@ -103,10 +107,18 @@ async fn main() -> anyhow::Result<()> {
     let (ws_tx, _) = tokio::sync::broadcast::channel(100);
     tracing::info!("✅ WebSocket broadcast channel créé");
 
+    // Initialiser la configuration auth
+    let auth_config = auth::AuthConfig::new();
+    if let Err(e) = auth_config.validate() {
+        tracing::warn!("⚠️ Configuration auth invalide: {}. Utilisation des valeurs par défaut.", e);
+    }
+    tracing::info!("✅ Configuration auth initialisée");
+
     let state = AppState {
         pool,
         metrics: metrics.clone(),
         ws_tx,
+        auth_config,
     };
 
     let app = Router::new()
@@ -377,6 +389,26 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/db/backup/:id",
             delete(db_manager::routes::delete_backup_handler),
+        )
+        // ============================================================================
+        // Authentication & Authorization routes (RBAC)
+        // ============================================================================
+        .merge(auth::routes::auth_routes())
+        // Users management (requires authentication)
+        .merge(
+            users::routes::users_routes()
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    auth::middleware::auth_middleware,
+                )),
+        )
+        // Roles management (requires authentication)
+        .merge(
+            roles::routes::roles_routes()
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    auth::middleware::auth_middleware,
+                )),
         )
         .layer(TraceLayer::new_for_http())
         .layer(cors)

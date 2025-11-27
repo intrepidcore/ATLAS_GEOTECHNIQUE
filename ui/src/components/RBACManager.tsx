@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -13,30 +13,43 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Users, Shield, Key, Plus, Trash2, Edit, AlertTriangle } from 'lucide-react'
+import { Users, Shield, Key, Plus, Trash2, Edit, AlertTriangle, Loader2, RefreshCw } from 'lucide-react'
+import {
+  usersApi,
+  rolesApi,
+  permissionsApi,
+  type User as ApiUser,
+  type Role as ApiRole,
+  type Permission as ApiPermission,
+  type PermissionsByResource,
+} from '@/services/auth-api'
 
 interface Role {
   id: string
   name: string
   description: string
   permissions: string[]
+  is_system: boolean
   created_at: string
+  user_count?: number
 }
 
 interface User {
   id: string
   email: string
-  name: string
+  username: string
+  first_name?: string
+  last_name?: string
   roles: string[]
-  active: boolean
-  last_login?: string
+  is_active: boolean
+  last_login_at?: string
 }
 
 interface Permission {
   id: string
   resource: string
   action: string
-  description: string
+  description?: string
 }
 
 interface RBACManagerProps {
@@ -44,141 +57,180 @@ interface RBACManagerProps {
   onClose: () => void
 }
 
-const AVAILABLE_PERMISSIONS: Permission[] = [
-  { id: 'tables.read', resource: 'tables', action: 'read', description: 'Voir les tables' },
-  { id: 'tables.write', resource: 'tables', action: 'write', description: 'Modifier les tables' },
-  { id: 'tables.delete', resource: 'tables', action: 'delete', description: 'Supprimer des données' },
-  { id: 'staging.create', resource: 'staging', action: 'create', description: 'Créer staging' },
-  { id: 'staging.commit', resource: 'staging', action: 'commit', description: 'Commiter staging' },
-  { id: 'staging.cancel', resource: 'staging', action: 'cancel', description: 'Annuler staging' },
-  { id: 'schema.read', resource: 'schema', action: 'read', description: 'Voir schéma DB' },
-  { id: 'schema.modify', resource: 'schema', action: 'modify', description: 'Modifier schéma' },
-  { id: 'users.read', resource: 'users', action: 'read', description: 'Voir utilisateurs' },
-  { id: 'users.manage', resource: 'users', action: 'manage', description: 'Gérer utilisateurs' },
-  { id: 'roles.read', resource: 'roles', action: 'read', description: 'Voir rôles' },
-  { id: 'roles.manage', resource: 'roles', action: 'manage', description: 'Gérer rôles' },
-  { id: 'audit.read', resource: 'audit', action: 'read', description: 'Voir logs audit' },
-  { id: 'backup.create', resource: 'backup', action: 'create', description: 'Créer backups' },
-  { id: 'backup.restore', resource: 'backup', action: 'restore', description: 'Restaurer backups' },
-]
-
 export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
   const [activeTab, setActiveTab] = useState('users')
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
+  const [permissions, setPermissions] = useState<Permission[]>([])
+  const [permissionsByResource, setPermissionsByResource] = useState<PermissionsByResource[]>([])
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [editingRole, setEditingRole] = useState<Role | null>(null)
   const [showUserModal, setShowUserModal] = useState(false)
   const [showRoleModal, setShowRoleModal] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [newUserPassword, setNewUserPassword] = useState('')
 
-  // Mock data - à remplacer par API
+  const loadData = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      // Charger les utilisateurs
+      const usersResponse = await usersApi.list({ per_page: 100 })
+      setUsers(
+        usersResponse.users.map(u => ({
+          id: u.id,
+          email: u.email,
+          username: u.username,
+          first_name: u.first_name,
+          last_name: u.last_name,
+          roles: u.roles.map(r => r.id),
+          is_active: u.is_active,
+          last_login_at: u.last_login_at,
+        }))
+      )
+
+      // Charger les rôles avec permissions
+      const rolesData = await rolesApi.list({ include_permissions: true, include_user_count: true })
+      setRoles(
+        rolesData.map(r => ({
+          id: r.id,
+          name: r.name,
+          description: r.description || '',
+          permissions: r.permissions?.map(p => p.id) || [],
+          is_system: r.is_system,
+          created_at: r.created_at,
+          user_count: r.user_count,
+        }))
+      )
+
+      // Charger les permissions groupées
+      const permGrouped = await permissionsApi.listGrouped()
+      setPermissionsByResource(permGrouped)
+      
+      // Flatten permissions
+      const allPerms: Permission[] = []
+      permGrouped.forEach(g => {
+        g.permissions.forEach(p => allPerms.push(p))
+      })
+      setPermissions(allPerms)
+    } catch (err: any) {
+      console.error('Error loading RBAC data:', err)
+      setError(err.message || 'Erreur lors du chargement des données')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   useEffect(() => {
     if (open) {
       loadData()
     }
-  }, [open])
+  }, [open, loadData])
 
-  const loadData = () => {
-    // Mock users
-    setUsers([
-      {
-        id: '1',
-        email: 'admin@atlas.com',
-        name: 'Admin',
-        roles: ['admin'],
-        active: true,
-        last_login: '2025-11-10T20:00:00Z',
-      },
-      {
-        id: '2',
-        email: 'editor@atlas.com',
-        name: 'Editor',
-        roles: ['editor'],
-        active: true,
-        last_login: '2025-11-10T19:30:00Z',
-      },
-      {
-        id: '3',
-        email: 'viewer@atlas.com',
-        name: 'Viewer',
-        roles: ['viewer'],
-        active: true,
-      },
-    ])
-
-    // Mock roles
-    setRoles([
-      {
-        id: 'admin',
-        name: 'Administrator',
-        description: 'Accès complet au système',
-        permissions: AVAILABLE_PERMISSIONS.map(p => p.id),
-        created_at: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 'editor',
-        name: 'Editor',
-        description: 'Peut modifier les données',
-        permissions: [
-          'tables.read',
-          'tables.write',
-          'staging.create',
-          'staging.commit',
-          'staging.cancel',
-          'schema.read',
-        ],
-        created_at: '2025-01-01T00:00:00Z',
-      },
-      {
-        id: 'viewer',
-        name: 'Viewer',
-        description: 'Lecture seule',
-        permissions: ['tables.read', 'schema.read', 'audit.read'],
-        created_at: '2025-01-01T00:00:00Z',
-      },
-    ])
-  }
-
-  const handleSaveUser = () => {
-    if (editingUser) {
+  const handleSaveUser = async () => {
+    if (!editingUser) return
+    setLoading(true)
+    setError(null)
+    try {
       if (editingUser.id) {
-        // Update
-        setUsers(users.map(u => (u.id === editingUser.id ? editingUser : u)))
+        // Update existing user
+        await usersApi.update(editingUser.id, {
+          email: editingUser.email,
+          username: editingUser.username,
+          first_name: editingUser.first_name,
+          last_name: editingUser.last_name,
+          is_active: editingUser.is_active,
+        })
+        // Update roles
+        await usersApi.assignRoles(editingUser.id, editingUser.roles)
       } else {
-        // Create
-        setUsers([...users, { ...editingUser, id: Date.now().toString() }])
+        // Create new user
+        if (!newUserPassword) {
+          setError('Le mot de passe est requis pour un nouvel utilisateur')
+          setLoading(false)
+          return
+        }
+        await usersApi.create({
+          email: editingUser.email,
+          username: editingUser.username,
+          password: newUserPassword,
+          first_name: editingUser.first_name,
+          last_name: editingUser.last_name,
+          is_active: editingUser.is_active,
+          roles: editingUser.roles,
+        })
       }
       setShowUserModal(false)
       setEditingUser(null)
+      setNewUserPassword('')
+      await loadData()
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la sauvegarde')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleSaveRole = () => {
-    if (editingRole) {
-      if (editingRole.id) {
-        // Update
-        setRoles(roles.map(r => (r.id === editingRole.id ? editingRole : r)))
+  const handleSaveRole = async () => {
+    if (!editingRole) return
+    setLoading(true)
+    setError(null)
+    try {
+      if (editingRole.id && roles.find(r => r.id === editingRole.id)) {
+        // Update existing role
+        await rolesApi.update(editingRole.id, {
+          name: editingRole.name,
+          description: editingRole.description,
+        })
+        await rolesApi.setPermissions(editingRole.id, editingRole.permissions)
       } else {
-        // Create
-        setRoles([
-          ...roles,
-          { ...editingRole, id: Date.now().toString(), created_at: new Date().toISOString() },
-        ])
+        // Create new role
+        await rolesApi.create({
+          id: editingRole.id || editingRole.name.toLowerCase().replace(/\s+/g, '_'),
+          name: editingRole.name,
+          description: editingRole.description,
+          permissions: editingRole.permissions,
+        })
       }
       setShowRoleModal(false)
       setEditingRole(null)
+      await loadData()
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la sauvegarde')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleDeleteUser = (userId: string) => {
-    if (confirm('Supprimer cet utilisateur ?')) {
-      setUsers(users.filter(u => u.id !== userId))
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm('Supprimer cet utilisateur ?')) return
+    setLoading(true)
+    try {
+      await usersApi.delete(userId)
+      await loadData()
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la suppression')
+    } finally {
+      setLoading(false)
     }
   }
 
-  const handleDeleteRole = (roleId: string) => {
-    if (confirm('Supprimer ce rôle ?')) {
-      setRoles(roles.filter(r => r.id !== roleId))
+  const handleDeleteRole = async (roleId: string) => {
+    const role = roles.find(r => r.id === roleId)
+    if (role?.is_system) {
+      setError('Impossible de supprimer un rôle système')
+      return
+    }
+    if (!confirm('Supprimer ce rôle ?')) return
+    setLoading(true)
+    try {
+      await rolesApi.delete(roleId)
+      await loadData()
+    } catch (err: any) {
+      setError(err.message || 'Erreur lors de la suppression')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -200,6 +252,13 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
     }
   }
 
+  const getUserDisplayName = (user: User) => {
+    if (user.first_name || user.last_name) {
+      return `${user.first_name || ''} ${user.last_name || ''}`.trim()
+    }
+    return user.username
+  }
+
   return (
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="max-w-6xl h-[85vh] flex flex-col">
@@ -207,8 +266,24 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
           <DialogTitle className="flex items-center gap-2">
             <Shield className="h-5 w-5" />
             Gestion RBAC - Rôles & Permissions
+            <Button variant="ghost" size="sm" onClick={loadData} disabled={loading}>
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            </Button>
           </DialogTitle>
         </DialogHeader>
+
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {loading && (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          </div>
+        )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
           <TabsList>
@@ -222,7 +297,7 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
             </TabsTrigger>
             <TabsTrigger value="permissions">
               <Shield className="h-4 w-4 mr-2" />
-              Permissions ({AVAILABLE_PERMISSIONS.length})
+              Permissions ({permissions.length})
             </TabsTrigger>
           </TabsList>
 
@@ -234,10 +309,11 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                   setEditingUser({
                     id: '',
                     email: '',
-                    name: '',
+                    username: '',
                     roles: [],
-                    active: true,
+                    is_active: true,
                   })
+                  setNewUserPassword('')
                   setShowUserModal(true)
                 }}
               >
@@ -254,8 +330,9 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                 >
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{user.name}</h3>
-                      {!user.active && <Badge variant="secondary">Inactif</Badge>}
+                      <h3 className="font-semibold">{getUserDisplayName(user)}</h3>
+                      <span className="text-sm text-slate-500">@{user.username}</span>
+                      {!user.is_active && <Badge variant="secondary">Inactif</Badge>}
                     </div>
                     <p className="text-sm text-slate-600">{user.email}</p>
                     <div className="flex gap-1 mt-2">
@@ -268,9 +345,9 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                         )
                       })}
                     </div>
-                    {user.last_login && (
+                    {user.last_login_at && (
                       <p className="text-xs text-slate-400 mt-1">
-                        Dernière connexion: {new Date(user.last_login).toLocaleString()}
+                        Dernière connexion: {new Date(user.last_login_at).toLocaleString()}
                       </p>
                     )}
                   </div>
@@ -308,6 +385,7 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                     name: '',
                     description: '',
                     permissions: [],
+                    is_system: false,
                     created_at: '',
                   })
                   setShowRoleModal(true)
@@ -326,7 +404,15 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div>
-                      <h3 className="font-semibold">{role.name}</h3>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold">{role.name}</h3>
+                        {role.is_system && <Badge variant="secondary">Système</Badge>}
+                        {role.user_count !== undefined && (
+                          <span className="text-xs text-slate-500">
+                            ({role.user_count} utilisateur{role.user_count !== 1 ? 's' : ''})
+                          </span>
+                        )}
+                      </div>
                       <p className="text-sm text-slate-600">{role.description}</p>
                     </div>
                     <div className="flex gap-2">
@@ -337,6 +423,7 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                           setEditingRole(role)
                           setShowRoleModal(true)
                         }}
+                        disabled={role.is_system}
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -344,6 +431,7 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                         size="sm"
                         variant="outline"
                         onClick={() => handleDeleteRole(role.id)}
+                        disabled={role.is_system}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -351,7 +439,7 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {role.permissions.map(permId => {
-                      const perm = AVAILABLE_PERMISSIONS.find(p => p.id === permId)
+                      const perm = permissions.find(p => p.id === permId)
                       return (
                         <Badge key={permId} variant="secondary" className="text-xs">
                           {perm?.description || permId}
@@ -374,17 +462,11 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
             </Alert>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {Object.entries(
-                AVAILABLE_PERMISSIONS.reduce((acc, perm) => {
-                  if (!acc[perm.resource]) acc[perm.resource] = []
-                  acc[perm.resource].push(perm)
-                  return acc
-                }, {} as Record<string, Permission[]>)
-              ).map(([resource, perms]) => (
-                <div key={resource} className="border rounded-lg p-4">
-                  <h3 className="font-semibold mb-3 capitalize">{resource}</h3>
+              {permissionsByResource.map(group => (
+                <div key={group.resource} className="border rounded-lg p-4">
+                  <h3 className="font-semibold mb-3 capitalize">{group.resource}</h3>
                   <div className="space-y-2">
-                    {perms.map(perm => (
+                    {group.permissions.map(perm => (
                       <div key={perm.id} className="flex items-center justify-between">
                         <div>
                           <p className="text-sm font-medium">{perm.action}</p>
@@ -419,10 +501,11 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
 
             <div className="space-y-4">
               <div>
-                <Label>Nom</Label>
+                <Label>Username</Label>
                 <Input
-                  value={editingUser.name}
-                  onChange={e => setEditingUser({ ...editingUser, name: e.target.value })}
+                  value={editingUser.username}
+                  onChange={e => setEditingUser({ ...editingUser, username: e.target.value })}
+                  disabled={!!editingUser.id}
                 />
               </div>
 
@@ -433,6 +516,35 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                   value={editingUser.email}
                   onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
                 />
+              </div>
+
+              {!editingUser.id && (
+                <div>
+                  <Label>Mot de passe</Label>
+                  <Input
+                    type="password"
+                    value={newUserPassword}
+                    onChange={e => setNewUserPassword(e.target.value)}
+                    placeholder="Min. 8 caractères"
+                  />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label>Prénom</Label>
+                  <Input
+                    value={editingUser.first_name || ''}
+                    onChange={e => setEditingUser({ ...editingUser, first_name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Nom</Label>
+                  <Input
+                    value={editingUser.last_name || ''}
+                    onChange={e => setEditingUser({ ...editingUser, last_name: e.target.value })}
+                  />
+                </div>
               </div>
 
               <div>
@@ -452,9 +564,9 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
 
               <div className="flex items-center gap-2">
                 <Checkbox
-                  checked={editingUser.active}
+                  checked={editingUser.is_active}
                   onCheckedChange={checked =>
-                    setEditingUser({ ...editingUser, active: checked as boolean })
+                    setEditingUser({ ...editingUser, is_active: checked as boolean })
                   }
                 />
                 <Label>Actif</Label>
@@ -465,7 +577,10 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
               <Button variant="outline" onClick={() => setShowUserModal(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleSaveUser}>Enregistrer</Button>
+              <Button onClick={handleSaveUser} disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Enregistrer
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -477,11 +592,24 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
           <DialogContent className="max-w-2xl">
             <DialogHeader>
               <DialogTitle>
-                {editingRole.id ? 'Modifier rôle' : 'Nouveau rôle'}
+                {editingRole.id && roles.find(r => r.id === editingRole.id)
+                  ? 'Modifier rôle'
+                  : 'Nouveau rôle'}
               </DialogTitle>
             </DialogHeader>
 
             <div className="space-y-4">
+              {!roles.find(r => r.id === editingRole.id) && (
+                <div>
+                  <Label>ID (unique)</Label>
+                  <Input
+                    value={editingRole.id}
+                    onChange={e => setEditingRole({ ...editingRole, id: e.target.value })}
+                    placeholder="ex: data_analyst"
+                  />
+                </div>
+              )}
+
               <div>
                 <Label>Nom</Label>
                 <Input
@@ -500,15 +628,15 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
 
               <div>
                 <Label>Permissions</Label>
-                <div className="grid grid-cols-2 gap-2 mt-2 max-h-64 overflow-y-auto">
-                  {AVAILABLE_PERMISSIONS.map(perm => (
+                <div className="grid grid-cols-2 gap-2 mt-2 max-h-64 overflow-y-auto border rounded p-2">
+                  {permissions.map(perm => (
                     <div key={perm.id} className="flex items-start gap-2">
                       <Checkbox
                         checked={editingRole.permissions.includes(perm.id)}
                         onCheckedChange={() => togglePermission(perm.id)}
                       />
                       <div className="flex-1">
-                        <Label className="cursor-pointer text-sm">{perm.description}</Label>
+                        <Label className="cursor-pointer text-sm">{perm.description || perm.id}</Label>
                         <p className="text-xs text-slate-400">{perm.id}</p>
                       </div>
                     </div>
@@ -521,7 +649,10 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
               <Button variant="outline" onClick={() => setShowRoleModal(false)}>
                 Annuler
               </Button>
-              <Button onClick={handleSaveRole}>Enregistrer</Button>
+              <Button onClick={handleSaveRole} disabled={loading}>
+                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Enregistrer
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
