@@ -1,0 +1,14 @@
+/**
+ * Point d'entrée principal pour l'application mobile PWA
+ */
+
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import MobileApp from './MobileApp';
+import './index.css';
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <MobileApp />
+  </React.StrictMode>
+);
