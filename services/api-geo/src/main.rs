@@ -421,6 +421,19 @@ async fn main() -> anyhow::Result<()> {
                     auth::middleware::auth_middleware,
                 )),
         )
+        // ============================================================================
+        // Atlas Colab Mobile/PWA routes (requires authentication)
+        // ============================================================================
+        .nest(
+            "/colab",
+            colab::mobile::mobile_routes()
+                .merge(colab::comments::comments_routes())
+                .merge(colab::qa::qa_routes())
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    auth::middleware::auth_middleware,
+                )),
+        )
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);
