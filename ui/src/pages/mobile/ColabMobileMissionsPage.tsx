@@ -240,7 +240,7 @@ const ColabMobileMissionsPage: React.FC = () => {
   };
 
   const handleMissionClick = (missionId: string) => {
-    navigate(`/colab/mobile/missions/${missionId}`);
+    navigate(`/missions/${missionId}`);
   };
 
   // Grouper les missions par statut
@@ -337,7 +337,7 @@ const ColabMobileMissionsPage: React.FC = () => {
             <span className="text-xs">Missions</span>
           </button>
           <button 
-            onClick={() => navigate('/colab/mobile/activity')}
+            onClick={() => navigate('/activity')}
             className="flex flex-col items-center gap-1 text-gray-400"
           >
             <Users className="h-6 w-6" />

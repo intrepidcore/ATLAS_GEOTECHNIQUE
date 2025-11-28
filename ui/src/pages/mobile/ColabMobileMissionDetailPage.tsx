@@ -397,7 +397,7 @@ const ColabMobileMissionDetailPage: React.FC = () => {
           <section className="bg-white rounded-xl shadow-sm overflow-hidden">
             <div 
               className="h-40 bg-gradient-to-br from-blue-100 to-green-100 flex items-center justify-center cursor-pointer"
-              onClick={() => navigate(`/colab/mobile/missions/${id}/map`)}
+              onClick={() => navigate(`/missions/${id}/map`)}
             >
               <div className="text-center">
                 <Map className="h-12 w-12 text-blue-500 mx-auto mb-2" />
@@ -478,14 +478,14 @@ const ColabMobileMissionDetailPage: React.FC = () => {
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 safe-area-inset-bottom">
         <div className="flex gap-3">
           <button
-            onClick={() => navigate(`/colab/mobile/missions/${id}/map`)}
+            onClick={() => navigate(`/missions/${id}/map`)}
             className="flex-1 flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-3 px-4 rounded-xl font-medium"
           >
             <Map className="h-5 w-5" />
             Carte terrain
           </button>
           <button
-            onClick={() => navigate(`/colab/mobile/missions/${id}/sondages/new`)}
+            onClick={() => navigate(`/missions/${id}/sondages/new`)}
             className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-4 rounded-xl font-medium"
           >
             <Plus className="h-5 w-5" />

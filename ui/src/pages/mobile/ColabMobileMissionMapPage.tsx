@@ -273,7 +273,7 @@ const ColabMobileMissionMapPage: React.FC = () => {
   };
 
   const handleNewSondage = () => {
-    navigate(`/colab/mobile/missions/${id}/sondages/new`, {
+    navigate(`/missions/${id}/sondages/new`, {
       state: gpsPosition ? {
         longitude: gpsPosition.longitude,
         latitude: gpsPosition.latitude,

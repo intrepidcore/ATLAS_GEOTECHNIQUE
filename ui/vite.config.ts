@@ -46,13 +46,14 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'icons/*.png'],
       manifest: {
-        name: 'Atlas Colab - Terrain',
-        short_name: 'Atlas Colab',
+        name: 'Atlas Survey - Terrain',
+        short_name: 'Atlas Survey',
         description: 'Application terrain pour la gestion des missions géotechniques',
         theme_color: '#1e40af',
         background_color: '#1e40af',
         display: 'standalone',
         orientation: 'portrait',
+        scope: '/colab/mobile/',
         start_url: '/colab/mobile/missions',
         icons: [
           {

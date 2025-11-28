@@ -34,7 +34,8 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   }
   
   if (!isAuthenticated) {
-    return <Navigate to="/colab/mobile/login" state={{ from: location }} replace />;
+    // Avec basename="/colab/mobile", les routes sont relatives
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
   
   return <>{children}</>;
@@ -46,7 +47,8 @@ const MobileLoginPage: React.FC = () => {
   const location = useLocation();
   
   if (isAuthenticated) {
-    const from = (location.state as any)?.from?.pathname || '/colab/mobile/missions';
+    // Rediriger vers /missions (relatif au basename)
+    const from = (location.state as any)?.from?.pathname || '/missions';
     return <Navigate to={from} replace />;
   }
   
@@ -67,31 +69,31 @@ const MobileRoutes: React.FC = () => {
   return (
     <Suspense fallback={<MobileLoadingSpinner />}>
       <Routes>
-        {/* Page de connexion */}
-        <Route path="/colab/mobile/login" element={<MobileLoginPage />} />
+        {/* Page de connexion - chemin relatif au basename /colab/mobile */}
+        <Route path="/login" element={<MobileLoginPage />} />
         
         {/* Redirection par défaut */}
-        <Route path="/" element={<Navigate to="/colab/mobile/missions" replace />} />
+        <Route path="/" element={<Navigate to="/missions" replace />} />
         
-        {/* Routes Colab Mobile (protégées) */}
-        <Route path="/colab/mobile/missions" element={
+        {/* Routes Colab Mobile (protégées) - chemins relatifs */}
+        <Route path="/missions" element={
           <ProtectedRoute><ColabMobileMissionsPage /></ProtectedRoute>
         } />
-        <Route path="/colab/mobile/missions/:id" element={
+        <Route path="/missions/:id" element={
           <ProtectedRoute><ColabMobileMissionDetailPage /></ProtectedRoute>
         } />
-        <Route path="/colab/mobile/missions/:id/map" element={
+        <Route path="/missions/:id/map" element={
           <ProtectedRoute><ColabMobileMissionMapPage /></ProtectedRoute>
         } />
-        <Route path="/colab/mobile/missions/:id/sondages/new" element={
+        <Route path="/missions/:id/sondages/new" element={
           <ProtectedRoute><ColabMobileNewSondagePage /></ProtectedRoute>
         } />
-        <Route path="/colab/mobile/activity" element={
+        <Route path="/activity" element={
           <ProtectedRoute><ColabMobileActivityPage /></ProtectedRoute>
         } />
         
         {/* Fallback - 404 */}
-        <Route path="*" element={<Navigate to="/colab/mobile/missions" replace />} />
+        <Route path="*" element={<Navigate to="/missions" replace />} />
       </Routes>
     </Suspense>
   );

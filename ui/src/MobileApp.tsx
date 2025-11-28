@@ -72,7 +72,7 @@ const MobileApp: React.FC = () => {
 
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <BrowserRouter basename="/colab/mobile">
         <MobileRoutes />
         <PWAUpdatePrompt
           needRefresh={needRefresh}

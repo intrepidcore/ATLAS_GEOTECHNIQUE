@@ -196,7 +196,7 @@ const ColabMobileActivityPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50">
       <MobileHeader
         title="Activité"
-        onBack={() => navigate('/colab/mobile/missions')}
+        onBack={() => navigate('/missions')}
         onRefresh={handleRefresh}
         refreshing={refreshing}
       />
@@ -284,7 +284,7 @@ const ColabMobileActivityPage: React.FC = () => {
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-4 py-2 safe-area-inset-bottom">
         <div className="flex items-center justify-around">
           <button
-            onClick={() => navigate('/colab/mobile/missions')}
+            onClick={() => navigate('/missions')}
             className="flex flex-col items-center gap-1 text-gray-400"
           >
             <MapPin className="h-6 w-6" />
