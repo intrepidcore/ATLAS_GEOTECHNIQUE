@@ -161,24 +161,28 @@ const ColabStudentPage: React.FC = () => {
     setError(null);
 
     try {
-      // Charger les missions de l'étudiant
-      const missionsRes = await fetch(`${API_BASE_URL}/colab/mobile/my-missions`, {
+      // Charger les missions de l'étudiant (URL corrigée)
+      const missionsRes = await fetch(`${API_BASE_URL}/colab/mobile/missions`, {
         headers: getAuthHeaders(),
       });
 
       if (missionsRes.ok) {
         const data = await missionsRes.json();
-        setMissions(data.missions || []);
+        const loadedMissions = data.missions || [];
+        setMissions(loadedMissions);
+        
+        // Calculer les stats à partir des missions chargées
+        const totalSondages = loadedMissions.reduce((acc: number, m: StudentMission) => acc + m.completed_sondages, 0);
+        setStats({
+          missions_count: loadedMissions.length,
+          sondages_count: totalSondages,
+          questions_asked: 0,
+          answers_given: 0,
+          reputation: 0,
+        });
+      } else {
+        throw new Error('Erreur lors du chargement des missions');
       }
-
-      // Stats simulées pour l'instant
-      setStats({
-        missions_count: missions.length,
-        sondages_count: 0,
-        questions_asked: 0,
-        answers_given: 0,
-        reputation: 0,
-      });
     } catch (err: any) {
       setError(err.message);
     } finally {

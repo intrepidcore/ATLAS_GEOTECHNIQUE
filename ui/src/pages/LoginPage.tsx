@@ -6,7 +6,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { MapPin, Lock, Mail, Loader2, AlertCircle, Eye, EyeOff, Database } from 'lucide-react';
+import { MapPin, Lock, Mail, Loader2, AlertCircle, Eye, EyeOff, Database, UserPlus } from 'lucide-react';
+import RegisterStudentPage from './RegisterStudentPage';
 
 interface LoginPageProps {
   onLoginSuccess?: () => void;
@@ -20,6 +21,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, variant = 'deskto
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showRegister, setShowRegister] = useState(false);
 
   // Si déjà authentifié, appeler le callback
   useEffect(() => {
@@ -52,6 +54,19 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, variant = 'deskto
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600" />
       </div>
+    );
+  }
+
+  // Afficher la page d'inscription étudiant
+  if (showRegister) {
+    return (
+      <RegisterStudentPage
+        onBack={() => setShowRegister(false)}
+        onSuccess={() => {
+          setShowRegister(false);
+          // Afficher un message de succès ou auto-login
+        }}
+      />
     );
   }
 
@@ -96,9 +111,27 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, variant = 'deskto
               onSubmit={handleSubmit}
             />
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">
-                Compte par défaut : <code className="bg-gray-100 px-1 rounded">admin@atlas.local</code>
+            <div className="mt-6 space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-200" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">ou</span>
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => setShowRegister(true)}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-gray-300 rounded-xl text-gray-700 font-medium hover:bg-gray-50 transition-colors"
+              >
+                <UserPlus className="h-5 w-5" />
+                Créer un compte étudiant
+              </button>
+              
+              <p className="text-center text-sm text-gray-500">
+                Compte admin : <code className="bg-gray-100 px-1 rounded">admin@atlas.local</code>
               </p>
             </div>
           </div>
@@ -119,9 +152,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, variant = 'deskto
               isSubmitting={isSubmitting}
               onSubmit={handleSubmit}
             />
-            <p className="mt-6 text-center text-sm text-gray-500">
-              Contactez votre administrateur si vous n'avez pas de compte
-            </p>
+            <div className="mt-6 space-y-3">
+              <button
+                type="button"
+                onClick={() => setShowRegister(true)}
+                className="w-full flex items-center justify-center gap-2 py-3 px-4 border border-blue-200 rounded-xl text-blue-600 font-medium hover:bg-blue-50 transition-colors"
+              >
+                <UserPlus className="h-5 w-5" />
+                Créer un compte étudiant
+              </button>
+            </div>
           </>
         )}
       </div>

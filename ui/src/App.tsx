@@ -433,6 +433,48 @@ function App() {
     return <LoginPage />
   }
 
+  // Vérifier si l'utilisateur est un étudiant uniquement (pas admin/supervisor/etc.)
+  const isStudentOnly = user?.roles?.includes('student') && 
+    !user?.roles?.some(r => ['admin', 'supervisor', 'data_manager', 'geo_analyst', 'editor', 'viewer'].includes(r))
+
+  // Rediriger les étudiants vers leur interface dédiée
+  if (isStudentOnly) {
+    return (
+      <div className="min-h-screen bg-slate-50">
+        <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white sticky top-0 z-50">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between h-16">
+              <div className="flex items-center gap-3">
+                <MapPin className="h-8 w-8" />
+                <div>
+                  <h1 className="text-xl font-bold">Atlas Survey</h1>
+                  <p className="text-sm text-blue-100">Espace Terrain Étudiant</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4">
+                <span className="text-sm text-blue-100">
+                  {user?.first_name || user?.username}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={logout}
+                  className="text-white hover:bg-blue-500"
+                >
+                  <LogOut className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        </header>
+        <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
+          <ColabStudentPage />
+        </main>
+      </div>
+    )
+  }
+
+  // Interface Gestionnaire BDD pour admin/supervisor/data_manager/etc.
   return (
     <div className="min-h-screen bg-slate-50">
       {/* Header */}
@@ -551,17 +593,11 @@ function App() {
               <Calculator className="h-4 w-4 mr-2" />
               Outils
             </TabsTrigger>
-            <TabsTrigger value="colab">
-              <MapPin className="h-4 w-4 mr-2" />
-              Atlas Colab
+            {/* Colab Studio - Gestion des missions terrain */}
+            <TabsTrigger value="colab-studio">
+              <Users className="h-4 w-4 mr-2" />
+              Colab Studio
             </TabsTrigger>
-            {/* Colab Studio visible uniquement pour admin/supervisor */}
-            {user?.roles?.some(r => ['admin', 'supervisor', 'data_manager'].includes(r)) && (
-              <TabsTrigger value="colab-studio">
-                <Users className="h-4 w-4 mr-2" />
-                Colab Studio
-              </TabsTrigger>
-            )}
           </TabsList>
 
           {/* Tables Tab */}
@@ -777,12 +813,7 @@ function App() {
             </div>
           </TabsContent>
 
-          {/* Atlas Colab Tab (Étudiants) */}
-          <TabsContent value="colab" className="h-[calc(100vh-12rem)]">
-            <ColabStudentPage />
-          </TabsContent>
-
-          {/* Colab Studio Tab (Admin/Superviseurs) */}
+          {/* Colab Studio Tab - Gestion des missions terrain */}
           <TabsContent value="colab-studio" className="h-[calc(100vh-12rem)]">
             <ColabPage />
           </TabsContent>

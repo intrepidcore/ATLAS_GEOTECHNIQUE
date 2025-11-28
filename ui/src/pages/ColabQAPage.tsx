@@ -135,9 +135,9 @@ const ColabQAPage: React.FC = () => {
     
     try {
       const [questionsRes, tagsRes, leaderboardRes] = await Promise.all([
-        fetchWithAuth('/colab/qa/questions'),
-        fetchWithAuth('/colab/qa/tags'),
-        fetchWithAuth('/colab/qa/leaderboard?limit=5'),
+        fetchWithAuth('/colab/questions'),
+        fetchWithAuth('/colab/tags'),
+        fetchWithAuth('/colab/leaderboard?limit=5'),
       ]);
       
       setQuestions(questionsRes.questions || []);
@@ -371,7 +371,7 @@ const ColabQAPage: React.FC = () => {
           tags={tags}
           onClose={() => setShowNewQuestion(false)}
           onSubmit={async (data) => {
-            await fetchWithAuth('/colab/qa/questions', {
+            await fetchWithAuth('/colab/questions', {
               method: 'POST',
               body: JSON.stringify(data),
             });
@@ -615,7 +615,7 @@ const QuestionDetailModal: React.FC<{
 
   const loadAnswers = async () => {
     try {
-      const res = await fetchWithAuth(`/colab/qa/questions/${question.id}/answers`);
+      const res = await fetchWithAuth(`/colab/questions/${question.id}/answers`);
       setAnswers(res.answers || []);
     } catch (err) {
       console.error('Erreur chargement réponses:', err);
@@ -626,7 +626,7 @@ const QuestionDetailModal: React.FC<{
 
   const handleVote = async (answerId: string, value: number) => {
     try {
-      await fetchWithAuth(`/colab/qa/answers/${answerId}/vote`, {
+      await fetchWithAuth(`/colab/answers/${answerId}/vote`, {
         method: 'POST',
         body: JSON.stringify({ value }),
       });
@@ -638,7 +638,7 @@ const QuestionDetailModal: React.FC<{
 
   const handleAcceptAnswer = async (answerId: string) => {
     try {
-      await fetchWithAuth(`/colab/qa/answers/${answerId}/accept`, {
+      await fetchWithAuth(`/colab/answers/${answerId}/accept`, {
         method: 'POST',
       });
       loadAnswers();
@@ -654,7 +654,7 @@ const QuestionDetailModal: React.FC<{
     
     setSubmitting(true);
     try {
-      await fetchWithAuth(`/colab/qa/questions/${question.id}/answers`, {
+      await fetchWithAuth(`/colab/questions/${question.id}/answers`, {
         method: 'POST',
         body: JSON.stringify({ content: newAnswer.trim() }),
       });

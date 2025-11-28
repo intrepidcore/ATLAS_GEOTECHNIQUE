@@ -62,6 +62,32 @@ pub struct ConfirmResetPasswordRequest {
     pub new_password: String,
 }
 
+/// Inscription étudiant (self-service)
+#[derive(Debug, Deserialize, Validate)]
+pub struct RegisterStudentRequest {
+    #[validate(email(message = "Email invalide"))]
+    pub email: String,
+    #[validate(length(min = 8, message = "Mot de passe trop court (min 8 caractères)"))]
+    pub password: String,
+    #[validate(length(min = 1, message = "Prénom requis"))]
+    pub first_name: String,
+    #[validate(length(min = 1, message = "Nom requis"))]
+    pub last_name: String,
+    pub phone: Option<String>,
+    pub student_info: StudentInfo,
+}
+
+#[derive(Debug, Deserialize, Validate)]
+pub struct StudentInfo {
+    #[validate(length(min = 1, message = "Matricule requis"))]
+    pub matricule: String,
+    #[validate(length(min = 1, message = "Établissement requis"))]
+    pub school: String,
+    #[validate(length(min = 1, message = "Filière requise"))]
+    pub program: String,
+    pub level: String, // L3, M1, M2
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DeviceInfo {
     pub user_agent: Option<String>,

@@ -30,6 +30,7 @@ pub fn auth_routes() -> Router<AppState> {
         .route("/auth/change-password", post(change_password))
         .route("/auth/reset-password", post(request_password_reset))
         .route("/auth/reset-password/confirm", post(confirm_password_reset))
+        .route("/auth/register/student", post(register_student))
 }
 
 /// Extrait l'adresse IP du client
@@ -590,4 +591,108 @@ async fn confirm_password_reset(
         .await?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// POST /auth/register/student - Inscription étudiant (self-service)
+async fn register_student(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
+    Json(request): Json<RegisterStudentRequest>,
+) -> Result<Json<serde_json::Value>, AuthError> {
+    // Valider la requête
+    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request.student_info.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+
+    let password_hasher = PasswordHasher::new(state.auth_config.clone());
+
+    // Vérifier si l'email existe déjà
+    let existing: Option<DbUser> = sqlx::query_as(
+        r#"SELECT * FROM atlas.users WHERE email = $1"#,
+    )
+    .bind(&request.email)
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if existing.is_some() {
+        return Err(AuthError::ValidationError("Un compte existe déjà avec cet email".to_string()));
+    }
+
+    // Générer le username à partir de l'email
+    let username = request.email.split('@').next().unwrap_or(&request.email).to_string();
+
+    // Hasher le mot de passe
+    let password_hash = password_hasher.hash_password(&request.password)?;
+
+    // Créer l'utilisateur dans une transaction
+    let mut tx = state.pool.begin().await?;
+
+    // Insérer l'utilisateur
+    let user_id: Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO atlas.users (email, username, password_hash, first_name, last_name, is_active, is_verified)
+        VALUES ($1, $2, $3, $4, $5, true, false)
+        RETURNING id
+        "#,
+    )
+    .bind(&request.email)
+    .bind(&username)
+    .bind(&password_hash)
+    .bind(&request.first_name)
+    .bind(&request.last_name)
+    .fetch_one(&mut *tx)
+    .await?;
+
+    // Assigner le rôle "student"
+    sqlx::query(
+        r#"
+        INSERT INTO atlas.user_roles (user_id, role_id)
+        VALUES ($1, 'student')
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await?;
+
+    // Créer la fiche étudiant dans colab_students
+    sqlx::query(
+        r#"
+        INSERT INTO atlas.colab_students (user_id, matricule, etablissement, filiere, niveau, telephone)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        "#,
+    )
+    .bind(user_id)
+    .bind(&request.student_info.matricule)
+    .bind(&request.student_info.school)
+    .bind(&request.student_info.program)
+    .bind(&request.student_info.level)
+    .bind(&request.phone)
+    .execute(&mut *tx)
+    .await?;
+
+    tx.commit().await?;
+
+    // Logger l'événement
+    let addr = connect_info.map(|ci| ci.0);
+    let ip = extract_ip(&headers, addr);
+    let user_agent = extract_user_agent(&headers);
+    let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
+
+    session_manager
+        .log_auth_event(
+            Some(user_id),
+            AuthEventType::Login,
+            true,
+            ip.as_deref(),
+            user_agent.as_deref(),
+            Some(serde_json::json!({ "type": "student_registration" })),
+        )
+        .await?;
+
+    Ok(Json(serde_json::json!({
+        "success": true,
+        "message": "Compte créé avec succès. Vous pouvez maintenant vous connecter.",
+        "user_id": user_id
+    })))
 }
