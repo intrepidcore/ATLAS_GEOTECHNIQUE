@@ -79,8 +79,8 @@ pub struct RegisterStudentRequest {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct StudentInfo {
-    #[validate(length(min = 1, message = "Matricule requis"))]
-    pub matricule: String,
+    /// Matricule (facultatif)
+    pub matricule: Option<String>,
     #[validate(length(min = 1, message = "Établissement requis"))]
     pub school: String,
     #[validate(length(min = 1, message = "Filière requise"))]

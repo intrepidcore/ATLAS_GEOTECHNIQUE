@@ -50,7 +50,7 @@ interface FormErrors {
 // API
 // ============================================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_GEO || '/api';
+const API_BASE_URL = import.meta.env.VITE_API_GEO || '';
 
 async function registerStudent(data: RegisterFormData): Promise<{ success: boolean; error?: string }> {
   try {
@@ -64,13 +64,15 @@ async function registerStudent(data: RegisterFormData): Promise<{ success: boole
         last_name: data.last_name,
         phone: data.phone || null,
         student_info: {
-          matricule: data.matricule,
+          matricule: data.matricule?.trim() || null,
           school: data.school,
           program: data.program,
           level: data.level,
         },
       }),
     });
+    
+    console.log('Register response status:', response.status);
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Erreur serveur' }));
@@ -136,7 +138,7 @@ const RegisterStudentPage: React.FC<{ onBack: () => void; onSuccess: () => void 
   const validateStep2 = (): boolean => {
     const newErrors: FormErrors = {};
 
-    if (!formData.matricule) newErrors.matricule = 'Matricule requis';
+    // Matricule est maintenant facultatif
     if (!formData.school) newErrors.school = 'Établissement requis';
     if (!formData.program) newErrors.program = 'Filière requise';
 
@@ -337,9 +339,11 @@ const RegisterStudentPage: React.FC<{ onBack: () => void; onSuccess: () => void 
                   <h2 className="text-lg font-semibold text-gray-900">Informations académiques</h2>
                 </div>
 
-                {/* Matricule */}
+                {/* Matricule (facultatif) */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Matricule</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Matricule <span className="text-gray-400">(facultatif)</span>
+                  </label>
                   <div className="relative">
                     <Hash className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
                     <input

@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Users, Shield, Key, Plus, Trash2, Edit, AlertTriangle, Loader2, RefreshCw, LogIn, LogOut } from 'lucide-react'
+import { Users, Shield, Key, Plus, Trash2, Edit, AlertTriangle, Loader2, RefreshCw, LogIn, LogOut, GraduationCap, Building2, Phone, Hash, BookOpen } from 'lucide-react'
 import {
   usersApi,
   rolesApi,
@@ -47,6 +47,21 @@ interface User {
   last_login_at?: string
 }
 
+// Champs spécifiques par rôle
+interface StudentFields {
+  matricule?: string
+  school?: string
+  program?: string
+  level?: string
+  phone?: string
+}
+
+interface SupervisorFields {
+  organization?: string
+  title?: string
+  specialty?: string
+}
+
 interface Permission {
   id: string
   resource: string
@@ -72,6 +87,10 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [newUserPassword, setNewUserPassword] = useState('')
+  
+  // Champs adaptatifs selon le rôle
+  const [studentFields, setStudentFields] = useState<StudentFields>({})
+  const [supervisorFields, setSupervisorFields] = useState<SupervisorFields>({})
   
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!tokenStorage.getAccessToken())
@@ -202,6 +221,8 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
       setShowUserModal(false)
       setEditingUser(null)
       setNewUserPassword('')
+      setStudentFields({})
+      setSupervisorFields({})
       await loadData()
     } catch (err: any) {
       setError(err.message || 'Erreur lors de la sauvegarde')
@@ -676,6 +697,98 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
                   ))}
                 </div>
               </div>
+
+              {/* Champs spécifiques Étudiant */}
+              {editingUser.roles.includes('student') && (
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-medium text-sm text-slate-700 mb-3 flex items-center gap-2">
+                    <GraduationCap className="h-4 w-4" />
+                    Informations étudiant
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Matricule (facultatif)</Label>
+                      <Input
+                        value={studentFields.matricule || ''}
+                        onChange={e => setStudentFields({ ...studentFields, matricule: e.target.value })}
+                        placeholder="2024-GC-001"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Téléphone</Label>
+                      <Input
+                        value={studentFields.phone || ''}
+                        onChange={e => setStudentFields({ ...studentFields, phone: e.target.value })}
+                        placeholder="+228 90 00 00 00"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Établissement *</Label>
+                      <Input
+                        value={studentFields.school || ''}
+                        onChange={e => setStudentFields({ ...studentFields, school: e.target.value })}
+                        placeholder="ENSI Lomé"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Filière *</Label>
+                      <Input
+                        value={studentFields.program || ''}
+                        onChange={e => setStudentFields({ ...studentFields, program: e.target.value })}
+                        placeholder="Génie Civil"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Niveau</Label>
+                      <select
+                        value={studentFields.level || 'L3'}
+                        onChange={e => setStudentFields({ ...studentFields, level: e.target.value })}
+                        className="w-full h-10 px-3 border rounded-md text-sm"
+                      >
+                        <option value="L3">Licence 3</option>
+                        <option value="M1">Master 1</option>
+                        <option value="M2">Master 2</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Champs spécifiques Encadreur */}
+              {editingUser.roles.includes('supervisor') && (
+                <div className="border-t pt-4 mt-4">
+                  <h4 className="font-medium text-sm text-slate-700 mb-3 flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Informations encadreur
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs">Organisation *</Label>
+                      <Input
+                        value={supervisorFields.organization || ''}
+                        onChange={e => setSupervisorFields({ ...supervisorFields, organization: e.target.value })}
+                        placeholder="Université de Lomé"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Fonction / Poste</Label>
+                      <Input
+                        value={supervisorFields.title || ''}
+                        onChange={e => setSupervisorFields({ ...supervisorFields, title: e.target.value })}
+                        placeholder="Maître de conférences"
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label className="text-xs">Spécialité</Label>
+                      <Input
+                        value={supervisorFields.specialty || ''}
+                        onChange={e => setSupervisorFields({ ...supervisorFields, specialty: e.target.value })}
+                        placeholder="Géotechnique, Hydrogéologie..."
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center gap-2">
                 <Checkbox
