@@ -1,10 +1,46 @@
-import { defineConfig } from 'vite'
+import { defineConfig, Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
+import fs from 'fs'
+
+// Plugin personnalisé pour le routing MPA (Multi-Page App)
+// Redirige /colab/mobile/* vers mobile.html, le reste vers index.html
+function mpaFallbackPlugin(): Plugin {
+  return {
+    name: 'mpa-fallback',
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url || ''
+        
+        // Ignorer les fichiers statiques et les requêtes API
+        if (
+          url.startsWith('/api') ||
+          url.startsWith('/src') ||
+          url.startsWith('/node_modules') ||
+          url.startsWith('/@') ||
+          url.includes('.') // fichiers avec extension
+        ) {
+          return next()
+        }
+        
+        // Routes PWA mobile → mobile.html
+        if (url.startsWith('/colab/mobile')) {
+          req.url = '/mobile.html'
+        } else {
+          // Toutes les autres routes → index.html
+          req.url = '/index.html'
+        }
+        
+        next()
+      })
+    }
+  }
+}
 
 export default defineConfig({
   plugins: [
+    mpaFallbackPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',

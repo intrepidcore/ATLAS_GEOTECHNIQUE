@@ -87,18 +87,35 @@ function saveAuthToStorage(data: StoredAuth): void {
 
 function loadAuthFromStorage(): StoredAuth | null {
   try {
+    // Essayer d'abord la clé principale
     const stored = localStorage.getItem(STORAGE_KEY);
-    if (!stored) return null;
-    
-    const data: StoredAuth = JSON.parse(stored);
-    
-    // Vérifier si le token n'est pas expiré (avec 5 min de marge)
-    if (data.expiresAt < Date.now() + 5 * 60 * 1000) {
-      // Token expiré ou sur le point d'expirer
-      return null;
+    if (stored) {
+      const data: StoredAuth = JSON.parse(stored);
+      
+      // Vérifier si le token n'est pas expiré (avec 5 min de marge)
+      if (data.expiresAt > Date.now() + 5 * 60 * 1000) {
+        return data;
+      }
     }
     
-    return data;
+    // Fallback sur les clés individuelles (compatibilité avec tokenStorage)
+    const token = localStorage.getItem('atlas_token') || localStorage.getItem('atlas_access_token');
+    const refreshToken = localStorage.getItem('atlas_refresh_token');
+    const userStr = localStorage.getItem('atlas_user');
+    
+    if (token && userStr) {
+      try {
+        const user = JSON.parse(userStr);
+        return {
+          accessToken: token,
+          refreshToken: refreshToken || '',
+          user,
+          expiresAt: Date.now() + 24 * 60 * 60 * 1000, // Assume 24h si pas d'info
+        };
+      } catch {}
+    }
+    
+    return null;
   } catch (e) {
     console.error('Failed to load auth from storage:', e);
     return null;
@@ -108,8 +125,10 @@ function loadAuthFromStorage(): StoredAuth | null {
 function clearAuthFromStorage(): void {
   try {
     localStorage.removeItem(STORAGE_KEY);
-    // Nettoyer aussi les anciens formats
+    // Nettoyer toutes les clés d'authentification
     localStorage.removeItem('atlas_token');
+    localStorage.removeItem('atlas_access_token');
+    localStorage.removeItem('atlas_refresh_token');
     localStorage.removeItem('atlas_user');
   } catch (e) {
     console.error('Failed to clear auth from storage:', e);

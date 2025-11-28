@@ -7,8 +7,25 @@ import type { DatabaseSchema, TableDataResponse, TableDataQuery, PostgresType } 
 
 const BASE_URL = '/db'
 
+// Helper pour obtenir les headers d'authentification
+function getAuthHeaders(): HeadersInit {
+  // Essayer toutes les clés possibles
+  const token = localStorage.getItem('atlas_token') 
+    || localStorage.getItem('atlas_access_token')
+    || (() => {
+      try {
+        const auth = localStorage.getItem('atlas_auth')
+        return auth ? JSON.parse(auth).accessToken : null
+      } catch { return null }
+    })()
+  
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
 export async function getPostgresTypes(): Promise<PostgresType[]> {
-  const response = await fetch(`${API_GEO}${BASE_URL}/types`)
+  const response = await fetch(`${API_GEO}${BASE_URL}/types`, {
+    headers: getAuthHeaders()
+  })
   
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -28,7 +45,9 @@ export async function getPostgresTypes(): Promise<PostgresType[]> {
 }
 
 export async function getSchema(): Promise<DatabaseSchema> {
-  const response = await fetch(`${API_GEO}${BASE_URL}/schema`)
+  const response = await fetch(`${API_GEO}${BASE_URL}/schema`, {
+    headers: getAuthHeaders()
+  })
   
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`)
@@ -60,7 +79,9 @@ export async function getTableData(
   if (query?.order_dir) params.append('order_dir', query.order_dir)
   
   const url = `${API_GEO}${BASE_URL}/table/${schema}/${table}/data${params.toString() ? '?' + params.toString() : ''}`
-  const response = await fetch(url)
+  const response = await fetch(url, {
+    headers: getAuthHeaders()
+  })
   
   if (!response.ok) {
     throw new Error(`HTTP ${response.status}: ${response.statusText}`)

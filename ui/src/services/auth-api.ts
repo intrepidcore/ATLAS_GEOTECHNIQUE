@@ -154,36 +154,142 @@ export interface RoleStats {
 }
 
 // ============================================================================
-// Token Storage
+// Token Storage - Clés unifiées pour toute l'application
 // ============================================================================
 
-const TOKEN_KEY = 'atlas_access_token'
+// Clés principales (utilisées par AuthContext et toute l'app)
+const TOKEN_KEY = 'atlas_token'  // Clé unifiée pour le token d'accès
 const REFRESH_TOKEN_KEY = 'atlas_refresh_token'
 const USER_KEY = 'atlas_user'
+const AUTH_KEY = 'atlas_auth'  // Clé utilisée par AuthContext
+
+// Anciennes clés à migrer
+const LEGACY_TOKEN_KEY = 'atlas_access_token'
 
 export const tokenStorage = {
-  getAccessToken: (): string | null => localStorage.getItem(TOKEN_KEY),
-  setAccessToken: (token: string) => localStorage.setItem(TOKEN_KEY, token),
-  removeAccessToken: () => localStorage.removeItem(TOKEN_KEY),
+  getAccessToken: (): string | null => {
+    // Essayer d'abord la clé principale
+    let token = localStorage.getItem(TOKEN_KEY)
+    
+    // Fallback sur l'ancienne clé si nécessaire
+    if (!token) {
+      token = localStorage.getItem(LEGACY_TOKEN_KEY)
+      if (token) {
+        // Migrer vers la nouvelle clé
+        localStorage.setItem(TOKEN_KEY, token)
+        localStorage.removeItem(LEGACY_TOKEN_KEY)
+      }
+    }
+    
+    // Fallback sur atlas_auth (AuthContext)
+    if (!token) {
+      try {
+        const authData = localStorage.getItem(AUTH_KEY)
+        if (authData) {
+          const parsed = JSON.parse(authData)
+          token = parsed.accessToken || null
+        }
+      } catch {}
+    }
+    
+    return token
+  },
+  
+  setAccessToken: (token: string) => {
+    localStorage.setItem(TOKEN_KEY, token)
+    // Synchroniser avec AuthContext si présent
+    try {
+      const authData = localStorage.getItem(AUTH_KEY)
+      if (authData) {
+        const parsed = JSON.parse(authData)
+        parsed.accessToken = token
+        localStorage.setItem(AUTH_KEY, JSON.stringify(parsed))
+      }
+    } catch {}
+  },
+  
+  removeAccessToken: () => {
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(LEGACY_TOKEN_KEY)
+  },
 
-  getRefreshToken: (): string | null => localStorage.getItem(REFRESH_TOKEN_KEY),
-  setRefreshToken: (token: string) => localStorage.setItem(REFRESH_TOKEN_KEY, token),
+  getRefreshToken: (): string | null => {
+    let token = localStorage.getItem(REFRESH_TOKEN_KEY)
+    
+    // Fallback sur atlas_auth
+    if (!token) {
+      try {
+        const authData = localStorage.getItem(AUTH_KEY)
+        if (authData) {
+          const parsed = JSON.parse(authData)
+          token = parsed.refreshToken || null
+        }
+      } catch {}
+    }
+    
+    return token
+  },
+  
+  setRefreshToken: (token: string) => {
+    localStorage.setItem(REFRESH_TOKEN_KEY, token)
+    // Synchroniser avec AuthContext
+    try {
+      const authData = localStorage.getItem(AUTH_KEY)
+      if (authData) {
+        const parsed = JSON.parse(authData)
+        parsed.refreshToken = token
+        localStorage.setItem(AUTH_KEY, JSON.stringify(parsed))
+      }
+    } catch {}
+  },
+  
   removeRefreshToken: () => localStorage.removeItem(REFRESH_TOKEN_KEY),
 
   getUser: (): UserInfo | null => {
-    const data = localStorage.getItem(USER_KEY)
-    return data ? JSON.parse(data) : null
+    // Essayer d'abord la clé directe
+    let data = localStorage.getItem(USER_KEY)
+    if (data) {
+      try {
+        return JSON.parse(data)
+      } catch {}
+    }
+    
+    // Fallback sur atlas_auth
+    try {
+      const authData = localStorage.getItem(AUTH_KEY)
+      if (authData) {
+        const parsed = JSON.parse(authData)
+        return parsed.user || null
+      }
+    } catch {}
+    
+    return null
   },
-  setUser: (user: UserInfo) => localStorage.setItem(USER_KEY, JSON.stringify(user)),
+  
+  setUser: (user: UserInfo) => {
+    localStorage.setItem(USER_KEY, JSON.stringify(user))
+    // Synchroniser avec AuthContext
+    try {
+      const authData = localStorage.getItem(AUTH_KEY)
+      if (authData) {
+        const parsed = JSON.parse(authData)
+        parsed.user = user
+        localStorage.setItem(AUTH_KEY, JSON.stringify(parsed))
+      }
+    } catch {}
+  },
+  
   removeUser: () => localStorage.removeItem(USER_KEY),
 
   clear: () => {
     localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(LEGACY_TOKEN_KEY)
     localStorage.removeItem(REFRESH_TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+    localStorage.removeItem(AUTH_KEY)
   },
 
-  isAuthenticated: (): boolean => !!localStorage.getItem(TOKEN_KEY),
+  isAuthenticated: (): boolean => !!tokenStorage.getAccessToken(),
 }
 
 // ============================================================================
