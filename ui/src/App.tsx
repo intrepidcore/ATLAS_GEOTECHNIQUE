@@ -18,6 +18,7 @@ import { DataGridToolbar } from '@/components/DataGridToolbar'
 import { AdvancedSelectionDialog } from '@/components/AdvancedSelectionDialog'
 import { MapPanel } from '@/components/MapPanel'
 import ColabPage from '@/pages/ColabPage'
+import ColabStudentPage from '@/pages/ColabStudentPage'
 import LoginPage from '@/pages/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
 import { selectionApi } from '@/services/selection-api'
@@ -551,9 +552,16 @@ function App() {
               Outils
             </TabsTrigger>
             <TabsTrigger value="colab">
-              <Users className="h-4 w-4 mr-2" />
-              Colab Studio
+              <MapPin className="h-4 w-4 mr-2" />
+              Atlas Colab
             </TabsTrigger>
+            {/* Colab Studio visible uniquement pour admin/supervisor */}
+            {user?.roles?.some(r => ['admin', 'supervisor', 'data_manager'].includes(r)) && (
+              <TabsTrigger value="colab-studio">
+                <Users className="h-4 w-4 mr-2" />
+                Colab Studio
+              </TabsTrigger>
+            )}
           </TabsList>
 
           {/* Tables Tab */}
@@ -769,8 +777,13 @@ function App() {
             </div>
           </TabsContent>
 
-          {/* Colab Tab */}
+          {/* Atlas Colab Tab (Étudiants) */}
           <TabsContent value="colab" className="h-[calc(100vh-12rem)]">
+            <ColabStudentPage />
+          </TabsContent>
+
+          {/* Colab Studio Tab (Admin/Superviseurs) */}
+          <TabsContent value="colab-studio" className="h-[calc(100vh-12rem)]">
             <ColabPage />
           </TabsContent>
         </Tabs>
