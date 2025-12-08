@@ -1,16 +1,18 @@
 /**
- * tile-manager.ts - Gestion des tuiles online/offline
+ * tile-manager.ts - Gestion des tuiles online/offline + fonds de carte
  * 
- * Ce module gère la bascule automatique entre tuiles OSM (online)
- * et tuiles MBTiles locales (offline via tileserver-gl).
+ * Ce module gère :
+ * - La bascule automatique entre tuiles OSM (online) et MBTiles locales (offline)
+ * - Les différents fonds de carte (OSM, ESRI, Mapbox, Azure)
  * 
- * v2.0 - Auto-configuration via TileJSON du tileserver
+ * v3.0 - Support multi-basemaps + auto-configuration via TileJSON
  */
 
 import L from 'leaflet';
+import { createAllBasemaps, createEsriImageryBasemap, createOsmBasemap } from './map/basemaps';
 
 // Configuration du tileserver
-const TILESERVER_URL = 'http://localhost:8081';
+const TILESERVER_URL = import.meta.env.VITE_TILES_URL || 'http://localhost:8081';
 const TILESET_NAME = 'togo_map';
 
 // Configuration des sources de tuiles
@@ -357,6 +359,55 @@ export function createTileControl(map: L.Map): L.Control {
   return new TileControl();
 }
 
+/**
+ * Crée un contrôle de couches avec tous les fonds de carte disponibles
+ * Inclut OSM, ESRI, et optionnellement Mapbox/Azure si les clés sont configurées
+ */
+export function createBasemapLayerControl(
+  map: L.Map,
+  overlays?: Record<string, L.Layer>
+): L.Control.Layers {
+  const basemaps = createAllBasemaps();
+  
+  // Ajouter le fond offline local s'il est disponible
+  if (offlineAvailable && offlineConfig) {
+    const offlineLayer = L.tileLayer(offlineConfig.url, {
+      minZoom: offlineConfig.minZoom,
+      maxZoom: offlineConfig.maxZoom,
+      attribution: '&copy; OpenStreetMap (offline local)',
+      bounds: offlineConfig.bounds,
+    });
+    basemaps['🗺️ Offline Local'] = offlineLayer;
+  }
+  
+  console.log('[TileManager] Basemaps disponibles:', Object.keys(basemaps));
+  
+  return L.control.layers(basemaps, overlays || {}, {
+    position: 'topright',
+    collapsed: true,
+  });
+}
+
+/**
+ * Initialise la carte avec le meilleur fond de carte disponible
+ * Priorité : ESRI Satellite > OSM
+ */
+export function initWithBestBasemap(map: L.Map): L.TileLayer {
+  // Essayer ESRI Satellite d'abord (meilleure qualité)
+  const esri = createEsriImageryBasemap();
+  if (esri) {
+    esri.addTo(map);
+    console.log('[TileManager] Fond par défaut: ESRI Satellite');
+    return esri;
+  }
+  
+  // Fallback sur OSM
+  const osm = createOsmBasemap();
+  osm.addTo(map);
+  console.log('[TileManager] Fond par défaut: OSM Standard');
+  return osm;
+}
+
 export default {
   initTileLayer,
   initOfflineTiles,
@@ -367,4 +418,6 @@ export default {
   getCurrentTileMode,
   isOfflineAvailable,
   createTileControl,
+  createBasemapLayerControl,
+  initWithBestBasemap,
 };

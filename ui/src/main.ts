@@ -39,7 +39,7 @@ import {
   resetFilters as resetFiltersState
 } from './filters-state'
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
-import { initTileLayer, initOfflineTiles, createTileControl } from './tile-manager'
+import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -96,7 +96,11 @@ const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7)
 initOfflineTiles().then(() => {
   initTileLayer(map)
   createTileControl(map).addTo(map)
-  console.log('[INIT] Tile layers initialized')
+  
+  // Ajouter le contrôle de sélection des fonds de carte (OSM, ESRI, Mapbox, Azure)
+  createBasemapLayerControl(map).addTo(map)
+  
+  console.log('[INIT] Tile layers + basemap control initialized')
 })
 
 const codeInput = document.getElementById('codeInput') as HTMLInputElement
