@@ -10,9 +10,15 @@ ui/dist/
 # Database data - ON GARDE pour pouvoir restore
 # data/db/
 
-# Environment
+# ===========================================
+# FICHIERS D'ENVIRONNEMENT (ne pas versionner)
+# ===========================================
+.env
 .env.local
 .env.*.local
+
+# Garder uniquement les modèles (.env.example)
+!.env.example
 
 # IDE
 .vscode/
