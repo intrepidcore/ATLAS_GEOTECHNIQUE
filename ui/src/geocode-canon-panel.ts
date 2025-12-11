@@ -447,7 +447,7 @@ export class GeocodeCanonPanel {
 
   private attachGeocodeListeners(onSuccess: (msg: string) => void, onError: (error: string) => void) {
     // Mode toggle
-    const modeSelect = document.getElementById('geocode-mode') as HTMLSelectElement;
+    const modeSelect = document.getElementById('location-mode') as HTMLSelectElement;
     const adm3Section = document.getElementById('adm3-section');
     const coordsSection = document.getElementById('coords-section');
     const placementSection = document.getElementById('placement-section');
@@ -456,10 +456,35 @@ export class GeocodeCanonPanel {
       modeSelect.addEventListener('change', () => {
         const mode = modeSelect.value;
         if (adm3Section) adm3Section.style.display = mode === 'adm' ? 'block' : 'none';
-        if (coordsSection) coordsSection.style.display = mode === 'coords' ? 'block' : 'none';
+        if (coordsSection) coordsSection.style.display = mode === 'exact' ? 'block' : 'none';
         if (placementSection) placementSection.style.display = mode === 'adm' ? 'block' : 'none';
       });
     }
+
+    // Candidate suggestions click handler
+    document.querySelectorAll('.candidate-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const adm3Id = item.getAttribute('data-adm3-id');
+        if (adm3Id) {
+          // Update the select dropdown
+          const adm3Select = document.getElementById('adm3-select') as HTMLSelectElement;
+          if (adm3Select) {
+            adm3Select.value = adm3Id;
+          }
+          
+          // Visual feedback - highlight selected candidate
+          document.querySelectorAll('.candidate-item').forEach(el => {
+            (el as HTMLElement).style.border = '1px solid #22304d';
+            (el as HTMLElement).style.background = '#1a2332';
+          });
+          (item as HTMLElement).style.border = '2px solid #51cf66';
+          (item as HTMLElement).style.background = '#1e3a5f';
+          
+          console.log('[GEOCODE PANEL] Selected candidate ADM3:', adm3Id);
+          toast.success('Suggestion sélectionnée');
+        }
+      });
+    });
 
     // ADM3 search
     const adm3Search = document.getElementById('adm3-search') as HTMLInputElement;
@@ -504,11 +529,12 @@ export class GeocodeCanonPanel {
       saveBtn.addEventListener('click', async () => {
         if (!this.selectedSurvey) return;
         
-        const mode = (document.getElementById('geocode-mode') as HTMLSelectElement)?.value;
+        const mode = (document.getElementById('location-mode') as HTMLSelectElement)?.value || 'adm';
         
         try {
           if (mode === 'adm') {
-            const gid = (document.getElementById('adm3-search') as HTMLInputElement)?.dataset.selectedGid;
+            const adm3Select = document.getElementById('adm3-select') as HTMLSelectElement;
+            const gid = adm3Select?.value;
             const placement = (document.getElementById('placement-mode') as HTMLSelectElement)?.value || 'adm_random_cell';
             if (!gid) {
               onError('Veuillez sélectionner une commune ADM3');
@@ -516,13 +542,13 @@ export class GeocodeCanonPanel {
             }
             await geocodeSondageAdm3(this.selectedSurvey.id, parseInt(gid), placement);
           } else {
-            const lat = parseFloat((document.getElementById('coord-lat') as HTMLInputElement)?.value);
-            const lon = parseFloat((document.getElementById('coord-lon') as HTMLInputElement)?.value);
+            const lat = parseFloat((document.getElementById('lat-input') as HTMLInputElement)?.value);
+            const lon = parseFloat((document.getElementById('lon-input') as HTMLInputElement)?.value);
             if (isNaN(lat) || isNaN(lon)) {
               onError('Coordonnées invalides');
               return;
             }
-            await geocodeSondageCoords(this.selectedSurvey.id, lat, lon);
+            await geocodeSondageCoords(this.selectedSurvey.id, lon, lat);
           }
           
           onSuccess('Géocodage enregistré avec succès');

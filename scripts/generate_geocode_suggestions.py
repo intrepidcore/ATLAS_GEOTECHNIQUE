@@ -66,10 +66,17 @@ def calculate_similarity_score(text1: str, text2: str) -> float:
     return max(0.0, score)
 
 def get_sondages_without_geom(conn) -> List[Tuple]:
-    """Récupérer sondages sans géométrie"""
+    """Récupérer sondages sans géométrie
+    
+    Utilise COALESCE pour se rabattre sur meta->>'localite' ou code
+    si localite_base/localite_key sont vides (robustesse).
+    """
     with conn.cursor() as cur:
         cur.execute("""
-            SELECT id, code, localite_base, localite_key, meta
+            SELECT id, code, 
+                   COALESCE(localite_base, meta->>'localite', code) AS localite_base,
+                   COALESCE(localite_key, meta->>'localite', code) AS localite_key,
+                   meta
             FROM public.sondages
             WHERE location_mode = 'unknown'
               AND geom IS NULL
