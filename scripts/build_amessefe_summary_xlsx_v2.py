@@ -22,10 +22,11 @@ from pathlib import Path
 import os
 import sys
 import subprocess
-import json
 import pandas as pd
-import unicodedata
-import re
+
+# Import du module de normalisation centralisé
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from utils.normalize import normalize_localite, find_best_display_name
 
 try:
     import psycopg2
@@ -83,30 +84,6 @@ OUTPUT_FILE = DATA_DIR / "audit_amessefe_essais_comparatif.xlsx"
 # ---------------------------------------------------------------------------
 # UTILITAIRES
 # ---------------------------------------------------------------------------
-
-def normalize_localite(name: str) -> str:
-    """Normalise les noms de localité pour comparer Excel / DB.
-
-    - strip, supprime espaces insécables
-    - minuscules
-    - supprime tous les accents (via unicodedata)
-    - normalise les espaces multiples
-    """
-    if pd.isna(name) or name is None:
-        return ""
-    s = str(name).strip()
-    s = s.replace("\u00a0", " ").replace("\u2019", "'")
-    s = s.lower()
-
-    # Suppression des accents via unicodedata
-    s = unicodedata.normalize("NFD", s)
-    s = "".join(c for c in s if unicodedata.category(c) != "Mn")
-
-    # Normalise les espaces multiples
-    s = re.sub(r"\s+", " ", s).strip()
-
-    return s
-
 
 def get_db_connection():
     """Ouvre une connexion Postgres.
@@ -383,6 +360,58 @@ def build_db_summary() -> dict:
 # 3. FUSION EXCEL + DB ET EXPORT
 # ---------------------------------------------------------------------------
 
+def determine_action(row: dict, test_keys: list) -> str:
+    """
+    Détermine l'action suggérée pour une localité basée sur la comparaison Excel/DB.
+    
+    Actions possibles:
+    - OK : Pas de mismatch, tout est synchronisé
+    - CREER_SONDAGE : Localité existe dans Excel mais pas en DB
+    - IMPORTER_ESSAIS : Sondage existe en DB mais il manque des essais
+    - VERIFIER_ORPHELIN : Localité existe en DB mais pas dans Excel (anomalie?)
+    - VERIFIER_SURPLUS : DB a plus d'essais que Excel (import en double?)
+    """
+    in_excel = row.get("present_in_excel", False)
+    in_db = row.get("present_in_db", False)
+    any_mismatch = row.get("any_mismatch", False)
+    
+    # Cas 1: Seulement dans Excel → créer le sondage
+    if in_excel and not in_db:
+        return "CREER_SONDAGE"
+    
+    # Cas 2: Seulement dans DB → vérifier si c'est normal
+    if not in_excel and in_db:
+        return "VERIFIER_ORPHELIN"
+    
+    # Cas 3: Dans les deux, pas de mismatch → OK
+    if in_excel and in_db and not any_mismatch:
+        return "OK"
+    
+    # Cas 4: Dans les deux avec mismatch → analyser le sens du mismatch
+    if in_excel and in_db and any_mismatch:
+        # Compter les essais manquants vs surplus
+        missing_count = 0
+        surplus_count = 0
+        
+        for t in test_keys:
+            excel_n = row.get(f"excel_n_{t}", 0)
+            db_n = row.get(f"db_n_{t}", 0)
+            
+            if excel_n > db_n:
+                missing_count += (excel_n - db_n)
+            elif db_n > excel_n:
+                surplus_count += (db_n - excel_n)
+        
+        if missing_count > 0 and surplus_count == 0:
+            return "IMPORTER_ESSAIS"
+        elif surplus_count > 0 and missing_count == 0:
+            return "VERIFIER_SURPLUS"
+        elif missing_count > 0 and surplus_count > 0:
+            return "VERIFIER_MIXTE"
+    
+    return "A_ANALYSER"
+
+
 def build_comparative_excel():
     print("\n" + "=" * 60)
     print("🔄 AUDIT COMPARATIF EXCEL ↔ BASE DE DONNÉES")
@@ -435,12 +464,16 @@ def build_comparative_excel():
                 any_mismatch = True
 
         row["any_mismatch"] = any_mismatch
+        
+        # Déterminer l'action suggérée
+        row["action_suggeree"] = determine_action(row, TEST_KEYS)
+        
         rows.append(row)
 
     df = pd.DataFrame(rows)
 
     # Colonnes dans un ordre lisible
-    cols = ["Localité", "localite_norm", "present_in_excel", "present_in_db", "any_mismatch"]
+    cols = ["Localité", "localite_norm", "present_in_excel", "present_in_db", "action_suggeree", "any_mismatch"]
     for t in TEST_KEYS:
         cols += [
             f"excel_has_{t}", f"excel_n_{t}",
@@ -487,19 +520,45 @@ def build_comparative_excel():
     print(f"   Seulement DB            : {only_db}")
     print(f"   Avec au moins 1 mismatch: {with_mismatch}")
 
-    # Export Excel (2 feuilles)
+    # Stats par action suggérée
+    print("\n" + "-" * 60)
+    print("🎯 ACTIONS SUGGÉRÉES")
+    print("-" * 60)
+    action_counts = df["action_suggeree"].value_counts()
+    for action, count in action_counts.items():
+        icon = {
+            "OK": "✅",
+            "CREER_SONDAGE": "🆕",
+            "IMPORTER_ESSAIS": "📥",
+            "VERIFIER_ORPHELIN": "❓",
+            "VERIFIER_SURPLUS": "⚠️",
+            "VERIFIER_MIXTE": "🔀",
+            "A_ANALYSER": "🔍",
+        }.get(action, "•")
+        print(f"   {icon} {action:20} : {count:3} localités")
+
+    # Créer feuille actions
+    df_actions = df[["Localité", "localite_norm", "action_suggeree", "present_in_excel", "present_in_db"]].copy()
+    for t in TEST_KEYS:
+        df_actions[f"excel_n_{t}"] = df[f"excel_n_{t}"]
+        df_actions[f"db_n_{t}"] = df[f"db_n_{t}"]
+    df_actions = df_actions[df_actions["action_suggeree"] != "OK"].sort_values("action_suggeree")
+
+    # Export Excel (3 feuilles)
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(OUTPUT_FILE, engine="openpyxl") as writer:
         df.to_excel(writer, sheet_name="par_localite", index=False)
         df_resume.to_excel(writer, sheet_name="resume", index=False)
+        df_actions.to_excel(writer, sheet_name="actions", index=False)
 
     print("\n" + "=" * 60)
     print("✅ FICHIER GÉNÉRÉ")
     print("=" * 60)
     print(f"   {OUTPUT_FILE}")
     print("\n   Feuilles :")
-    print("   - 'par_localite' : 1 ligne = 1 localité (détail)")
+    print("   - 'par_localite' : 1 ligne = 1 localité (détail complet)")
     print("   - 'resume'       : stats globales par type d'essai")
+    print("   - 'actions'      : localités nécessitant une action (filtrées)")
 
 
 # ---------------------------------------------------------------------------

@@ -96,7 +96,57 @@ atlas.sondages (source='AMESSEFE Komi Yoan Freddy')
         └── atlas.essais_potentiel_gonflement
 ```
 
+## Pipeline de contrôle qualité
+
+### Workflow recommandé
+
+```bash
+# 1. Import des données
+python scripts/04_import_amessefe_v2.py
+
+# 2. Audit comparatif Excel ↔ DB
+python scripts/build_amessefe_summary_xlsx_v2.py
+
+# 3. Vérifier le fichier Excel généré
+#    → data/xlsx/audit_amessefe_essais_comparatif.xlsx
+#    → Feuille "actions" : localités nécessitant une action
+
+# 4. (Optionnel) Réparer les essais manquants
+python scripts/fix_amessefe_missing_essais.py --dry-run  # Test
+python scripts/fix_amessefe_missing_essais.py            # Appliquer
+
+# 5. Relancer l'audit pour confirmer
+python scripts/build_amessefe_summary_xlsx_v2.py
+```
+
+### Scripts de contrôle qualité
+
+| Script | Description |
+|--------|-------------|
+| `scripts/build_amessefe_summary_xlsx.py` | Audit Excel seul (résumé par localité) |
+| `scripts/build_amessefe_summary_xlsx_v2.py` | Audit comparatif Excel ↔ DB |
+| `scripts/fix_amessefe_missing_essais.py` | Réparation ciblée des essais manquants |
+| `scripts/utils/normalize.py` | Module de normalisation des localités |
+
+### Actions suggérées (feuille "actions")
+
+| Action | Signification | À faire |
+|--------|---------------|---------|
+| `OK` | Données synchronisées | Rien |
+| `CREER_SONDAGE` | Localité Excel sans sondage DB | Relancer l'import |
+| `IMPORTER_ESSAIS` | Sondage existe, essais manquants | Utiliser fix_amessefe_missing_essais.py |
+| `VERIFIER_ORPHELIN` | Sondage DB sans données Excel | Vérifier la source |
+| `VERIFIER_SURPLUS` | DB a plus d'essais que Excel | Possible doublon |
+| `VERIFIER_MIXTE` | Certains essais manquants, d'autres en surplus | Analyse manuelle |
+
 ## Historique des corrections
+
+### v2.1 (2025-12-11)
+- ✅ Module de normalisation centralisé (`scripts/utils/normalize.py`)
+- ✅ Audit comparatif v2.1 avec colonne `action_suggeree`
+- ✅ Feuille "actions" dans l'Excel d'audit
+- ✅ Script de réparation ciblé `fix_amessefe_missing_essais.py`
+- ✅ Résolution des alias de localités (espaces, parenthèses)
 
 ### v2 (2025-12-09)
 - ✅ Ajout import `limite.xlsx` (manquant en v1)
