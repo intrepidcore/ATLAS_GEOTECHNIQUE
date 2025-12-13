@@ -1218,12 +1218,21 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
+#### 3.0.1.6 Capture couche thématique (Canvas Leaflet)
+- [X] Fonction `prepareSvgForCapture()` pour forcer styles inline SVG
+- [X] Gestion des Canvas Leaflet (preferCanvas: true)
+- [ ] **À TESTER** : Vérifier si les polygones colorés sont maintenant capturés
+
+---
+
 ### 📁 Fichiers modifiés
 
-- `ui/src/export/export-frame.ts` - Légende reconstruite, cartouche amélioré
+- `ui/src/export/export-frame.ts` - Légende reconstruite, cartouche amélioré, hauteur augmentée
 - `ui/src/export/grid-generator.ts` - Fonction niceStep()
 - `ui/src/export/export-quick-dialog.ts` - Option masquer grille, gestion gridLayer
+- `ui/src/export/capture-utils.ts` - prepareSvgForCapture() pour Canvas/SVG Leaflet
 - `ui/src/thematic/thematic-panel.ts` - Passage ThematicExportState au dialogue
+- `services/api-geo/src/thematic/export.rs` - Fix geom_4326 → geom
 
 ---
 

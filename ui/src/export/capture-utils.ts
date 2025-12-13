@@ -141,6 +141,9 @@ export async function captureLeafletMap(
     '.toast-container'
   ];
   
+  // Préparer les SVG pour la capture (html2canvas a des problèmes avec les SVG)
+  await prepareSvgForCapture(mapContainer);
+  
   const canvas = await captureElement(mapContainer, {
     scale,
     backgroundColor: '#ffffff',
@@ -156,6 +159,64 @@ export async function captureLeafletMap(
     width: canvas.width / scale,
     height: canvas.height / scale
   };
+}
+
+/**
+ * Prépare les éléments pour la capture par html2canvas
+ * - Force les styles inline sur les SVG
+ * - S'assure que les Canvas Leaflet sont visibles
+ */
+async function prepareSvgForCapture(container: HTMLElement): Promise<void> {
+  // 1. Préparer les SVG (si Leaflet utilise le renderer SVG)
+  const svgElements = container.querySelectorAll('svg');
+  
+  for (const svg of svgElements) {
+    // S'assurer que le SVG a des dimensions explicites
+    if (!svg.getAttribute('width') || !svg.getAttribute('height')) {
+      const bbox = svg.getBoundingClientRect();
+      svg.setAttribute('width', String(bbox.width));
+      svg.setAttribute('height', String(bbox.height));
+    }
+    
+    // S'assurer que les paths ont des styles inline
+    const paths = svg.querySelectorAll('path');
+    for (const path of paths) {
+      const computedStyle = window.getComputedStyle(path);
+      
+      // Copier les styles calculés en inline
+      if (!path.getAttribute('fill') && computedStyle.fill) {
+        path.setAttribute('fill', computedStyle.fill);
+      }
+      if (!path.getAttribute('stroke') && computedStyle.stroke) {
+        path.setAttribute('stroke', computedStyle.stroke);
+      }
+      if (!path.getAttribute('stroke-width') && computedStyle.strokeWidth) {
+        path.setAttribute('stroke-width', computedStyle.strokeWidth);
+      }
+      if (!path.getAttribute('fill-opacity') && computedStyle.fillOpacity) {
+        path.setAttribute('fill-opacity', computedStyle.fillOpacity);
+      }
+      if (!path.getAttribute('stroke-opacity') && computedStyle.strokeOpacity) {
+        path.setAttribute('stroke-opacity', computedStyle.strokeOpacity);
+      }
+    }
+  }
+  
+  // 2. Préparer les Canvas Leaflet (si preferCanvas: true)
+  // S'assurer que les canvas ont le bon z-index et sont visibles
+  const canvasElements = container.querySelectorAll('canvas.leaflet-zoom-animated');
+  for (const canvas of canvasElements) {
+    const htmlCanvas = canvas as HTMLCanvasElement;
+    // Forcer le canvas à être visible pour html2canvas
+    htmlCanvas.style.visibility = 'visible';
+    htmlCanvas.style.opacity = '1';
+  }
+  
+  // 3. Forcer un repaint du conteneur
+  container.style.transform = 'translateZ(0)';
+  
+  // Attendre plusieurs frames pour que les changements soient appliqués
+  await new Promise(resolve => setTimeout(resolve, 100));
 }
 
 // ============================================================================
