@@ -73,7 +73,7 @@ pub async fn export_qgis_package(
         r#"
         SELECT 
             code,
-            ST_AsGeoJSON(geom_4326)::text as geom_json,
+            ST_AsGeoJSON(geom)::text as geom_json,
             CAST({} AS DOUBLE PRECISION) as value,
             n_sondages,
             adm1_name,

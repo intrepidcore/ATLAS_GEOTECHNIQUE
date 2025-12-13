@@ -1213,8 +1213,8 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [X] Exemples : 0.037° → 0.05°, 2300m → 2000m
 
 #### 3.0.1.5 Correction export QGIS (backend)
-- [ ] Modifier requête SQL : `ST_Transform(geom, 4326) AS geom_4326`
-- [ ] Ou créer vue `atlas.v_maille_export` avec colonne normée
+- [X] Corriger requête SQL : `geom_4326` → `geom` (la vue utilise `geom` pas `geom_4326`)
+- [X] Rebuild API Rust en release
 
 ---
 

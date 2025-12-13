@@ -29,8 +29,8 @@ const LAYOUT = {
   titleHeight: 50,
   subtitleHeight: 20,
   legendWidth: 180,
-  legendMinHeight: 100,
-  cartoucheHeight: 80,
+  legendMinHeight: 120,
+  cartoucheHeight: 120,
   coordLabelMargin: 8,
   padding: 10
 };
