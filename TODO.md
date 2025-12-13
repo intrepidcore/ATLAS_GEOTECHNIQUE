@@ -1253,177 +1253,143 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
-### 🔹 MODULE 1 : Export Rapide (Bouton actuel amélioré)
+### 🔹 MODULE 1 : Export Rapide ✅ IMPLÉMENTÉ (v3.0.1-v3.0.3)
 
-**Route** : Bouton dans panneau "Exports" (bas droit de la carte)
+**Route** : Bouton "Export Pro (PNG/PDF)" dans panneau Cartes Thématiques
 
----
-
-#### 1.1 UI - Mini-dialogue d'export
-
-##### 1.1.1 Composant dialogue
-- [ ] Créer composant `ExportQuickDialog` dans `ui/src/export/`
-- [ ] Bouton déclencheur "Exporter la carte" dans panneau exports
-- [ ] Modal léger (pas plein écran) avec formulaire compact
-- [ ] Fermeture : bouton X, clic extérieur, ESC
-
-##### 1.1.2 Options du dialogue
-- [ ] **Format** : Radio `PNG` / `PDF (simple)`
-- [ ] **Qualité** : Select `Standard (web 72dpi)` / `Impression (300dpi simulés)`
-- [ ] **Zone** :
-  - [ ] Radio `Vue actuelle` (défaut)
-  - [ ] Radio `Zone filtrée (ADM en cours)` → utilise filtres ADM1/2/3 actifs
-- [ ] **Options checkboxes** :
-  - [ ] `[x] Inclure la légende` (défaut: coché)
-  - [ ] `[x] Afficher titre` (défaut: coché)
-  - [ ] `[ ] Afficher statistiques globales`
-
-##### 1.1.3 Options grille & coordonnées
-- [ ] **SCR / Coordonnées** :
-  - [ ] Radio `WGS84 – EPSG:4326`
-  - [ ] Radio `Grille nationale – EPSG:25231` (défaut pour rapports Togo)
-- [ ] **Grille** : Select
-  - [ ] `Croix` (défaut)
-  - [ ] `Continue` (lignes complètes)
-  - [ ] `Coordonnées uniquement` (pas de lignes, juste labels)
-  - [ ] `Aucune`
-- [ ] **Cadre** : Select
-  - [ ] `Simple`
-  - [ ] `Double`
-  - [ ] `Zébré` (style QGIS)
-- [ ] **Checkboxes supplémentaires** :
-  - [ ] `[x] Afficher coordonnées autour du cadre` (défaut: coché)
-  - [ ] `[x] Afficher barre d'échelle` (défaut: coché)
-  - [ ] `[x] Afficher SCR et sources` (défaut: coché)
+**Status** : ✅ MVP Fonctionnel - En cours de stabilisation
 
 ---
 
-#### 1.2 Génération du canevas d'export
+#### 1.1 UI - Mini-dialogue d'export ✅
 
-##### 1.2.1 Structure HTML du canevas
-- [ ] Créer `<div id="export-frame">` dédié (hors viewport visible)
-- [ ] Structure interne :
-  ```
-  ┌─────────────────────────────────────────┐
-  │ TITRE + SOUS-TITRE                      │
-  ├─────────────────────────────────────────┤
-  │                                         │
-  │           CARTE (Leaflet)               │
-  │                                         │
-  │    [grille + coordonnées sur cadre]     │
-  │                                         │
-  ├─────────────────────────────────────────┤
-  │ LÉGENDE        │  CARTOUCHE             │
-  │ (thème actif)  │  - Logo Atlas          │
-  │                │  - Source, SCR, date   │
-  │                │  - Échelle graphique   │
-  └─────────────────────────────────────────┘
-  ```
-- [ ] Fond blanc, marges fines (10-15px)
-- [ ] Cadre autour de la zone carte (style configurable)
+##### 1.1.1 Composant dialogue ✅
+- [X] Créer composant `ExportQuickDialog` dans `ui/src/export/`
+- [X] Bouton déclencheur "Export Pro (PNG/PDF)" dans panneau thématique
+- [X] Modal léger avec formulaire compact
+- [X] Fermeture : bouton X, clic extérieur, ESC
 
-##### 1.2.2 Titre automatique
-- [ ] Générer titre depuis thématique active :
-  - Ex: `Atlas Géotechnique – Nombre de sondages par maille`
-- [ ] Générer sous-titre depuis filtres ADM :
-  - Ex: `Zone : Région Maritime / Préfecture de Zio – Export du 12/12/2025`
-- [ ] Police : titre 16-18px bold, sous-titre 12-14px regular
+##### 1.1.2 Options du dialogue ✅
+- [X] **Format** : Select `PNG` / `PDF`
+- [X] **Qualité** : Select `Standard (web 72dpi)` / `Impression (300dpi)`
+- [X] **Zone** :
+  - [X] Radio `Vue actuelle` (défaut)
+  - [X] Radio `Zone filtrée (ADM en cours)`
+- [X] **Options checkboxes** :
+  - [X] `[x] Inclure la légende` (défaut: coché)
+  - [X] `[x] Afficher titre` (défaut: coché)
+  - [X] `[ ] Afficher statistiques globales`
 
-##### 1.2.3 Cartouche standardisé
-- [ ] Position : bas droit, sous la carte
-- [ ] Contenu :
-  - [ ] Logo Atlas (petit, 40x40px)
-  - [ ] `Source : Atlas Géotechnique v2.6.0`
-  - [ ] `Fond : © OpenStreetMap contributors`
-  - [ ] `SCR : EPSG:25231 – UTM Zone 31N` (ou 4326)
-  - [ ] `Date d'export : JJ/MM/AAAA`
-  - [ ] Barre d'échelle graphique
-
-##### 1.2.4 Légende encapsulée
-- [ ] Récupérer légende actuelle du panneau thématique
-- [ ] Encapsuler dans cadre propre avec titre
-- [ ] Position : bas gauche ou bas droit (selon espace)
-- [ ] Style cohérent avec cartouche
+##### 1.1.3 Options grille & coordonnées ✅
+- [X] **SCR / Coordonnées** :
+  - [X] Select `WGS84 – EPSG:4326` / `UTM 31N – EPSG:25231`
+- [X] **Grille** : Select
+  - [X] `Croix` (défaut)
+  - [X] `Continue`
+  - [X] `Labels uniquement`
+  - [X] `Aucune`
+- [X] **Cadre** : Select
+  - [X] `Simple` / `Double` / `Zébré` (style QGIS)
+- [X] **Checkboxes** :
+  - [X] `[x] Afficher coordonnées autour du cadre`
+  - [X] `[x] Afficher barre d'échelle`
+  - [X] `[x] Afficher SCR et sources`
+  - [X] `[x] Masquer grille de fond (mailles)` ← v3.0.1
 
 ---
 
-#### 1.3 Algorithme de grille automatique
+#### 1.2 Génération du canevas d'export ✅
 
-##### 1.3.1 Récupération de l'emprise
-- [ ] Récupérer `bounds` depuis Leaflet (en 4326)
-- [ ] Si SCR export = 25231 → reprojeter bbox via proj4js
-- [ ] Calculer largeur/hauteur de l'emprise
+##### 1.2.1 Structure HTML du canevas ✅
+- [X] Classe `ExportFrame` dans `ui/src/export/export-frame.ts`
+- [X] Structure Canvas avec layout calculé dynamiquement
+- [X] Fond blanc, marges 15px
+- [X] Cadre autour de la zone carte (simple/double/zébré)
 
-##### 1.3.2 Calcul du pas de grille
-- [ ] Définir `targetDiv = 5` (nombre cible de divisions)
-- [ ] Calculer `raw_step = dimension / targetDiv`
-- [ ] Liste des pas "propres" :
-  - SCR mètres (25231) : `[100, 200, 250, 500, 1000, 2000, 5000, 10000]`
-  - SCR degrés (4326) : `[0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1]`
-- [ ] Choisir le plus petit pas ≥ raw_step
-- [ ] Vérifier : si > 10 lignes → prendre pas supérieur
+##### 1.2.2 Titre automatique ✅
+- [X] Générer titre depuis `ThematicExportState.parameterLabel`
+- [X] Générer sous-titre depuis filtres ADM actifs
+- [X] Police : titre 18px bold, sous-titre 12px regular
 
-##### 1.3.3 Génération des éléments de grille
-- [ ] **Type Croix** :
-  - [ ] Pour chaque intersection (multiple de step) :
-    - [ ] Convertir coordonnées → pixels canvas
-    - [ ] Dessiner croix (4px de demi-longueur, trait 1px gris)
-- [ ] **Type Continue** :
-  - [ ] Tracer lignes verticales complètes (X constants)
-  - [ ] Tracer lignes horizontales complètes (Y constants)
-  - [ ] Style : trait fin 0.5px, gris clair (#ccc)
-- [ ] **Type Coordonnées uniquement** :
-  - [ ] Pas de lignes, seulement les labels
+##### 1.2.3 Cartouche standardisé ✅
+- [X] Position : bas droit, sous la carte
+- [X] Contenu :
+  - [X] `Source : Atlas Géotechnique v2.6.0`
+  - [X] `Fond : © OpenStreetMap contributors`
+  - [X] `SCR : WGS84 (EPSG:4326)` ou `UTM 31N (EPSG:25231)`
+  - [X] `Données : UTM 31N (EPSG:25231)` ← v3.0.1
+  - [X] `Date : JJ/MM/AAAA`
+  - [X] Barre d'échelle graphique
+  - [X] Flèche du Nord
 
-##### 1.3.4 Étiquettes de coordonnées
-- [ ] Position : autour du cadre (extérieur)
-- [ ] Lignes horizontales (Y constant) : labels gauche + droite
-- [ ] Lignes verticales (X constant) : labels haut + bas
-- [ ] Format selon SCR :
-  - 25231 : arrondi à 10 ou 100m, ex: `123 400 m`
-  - 4326 : 3 décimales, ex: `6.234°E`, `1.207°N`
-- [ ] Orientation : horizontale (lisible)
-
-##### 1.3.5 Cadre de la carte
-- [ ] **Simple** : rectangle 1px noir
-- [ ] **Double** : 2 rectangles (1px noir, 2px décalé)
-- [ ] **Zébré** : alternance noir/blanc (style QGIS)
-  - [ ] Segments de 5-10mm alternés
-  - [ ] Épaisseur 3-4px
+##### 1.2.4 Légende reconstruite ✅ (v3.0.1)
+- [X] Récupérer classes depuis `ThematicExportState.classes`
+- [X] Dessiner légende programmatiquement (pas de capture HTML)
+- [X] Titre = parameterLabel + unit
+- [X] Boîtes de couleur + labels pour chaque classe
 
 ---
 
-#### 1.4 Capture et téléchargement
+#### 1.3 Algorithme de grille automatique ✅
 
-##### 1.4.1 Mode capture frontend
-- [ ] Créer fonction `prepareExportFrame(options)`
-- [ ] Cloner la carte Leaflet dans `#export-frame`
-- [ ] Masquer panneaux latéraux, contrôles Leaflet
-- [ ] Appliquer styles d'export (fond blanc, marges)
-- [ ] Attendre chargement complet des tuiles
+##### 1.3.1 Récupération de l'emprise ✅
+- [X] Récupérer `bounds` depuis Leaflet (en 4326)
+- [X] Calculer largeur/hauteur de l'emprise
 
-##### 1.4.2 Génération PNG
-- [ ] Installer/utiliser `html2canvas` ou `dom-to-image-more`
-- [ ] Options de capture :
-  - [ ] `scale: 2` ou `3` pour 300dpi simulés
-  - [ ] `useCORS: true` pour tuiles externes
-  - [ ] `backgroundColor: '#ffffff'`
-- [ ] Télécharger via `<a download="atlas-export.png">`
-- [ ] Nom fichier : `atlas_<theme>_<date>_<zone>.png`
+##### 1.3.2 Calcul du pas de grille ✅ (v3.0.1)
+- [X] Fonction `niceStep(rawStep)` : normalise en 10^n × {1, 2, 5}
+- [X] `computeOptimalStep()` avec targetDivisions = 5
+- [X] Liste des pas "propres" par SCR :
+  - SCR mètres (25231) : `[100, 200, 250, 500, 1000, 2000, 5000, 10000, 20000, 50000]`
+  - SCR degrés (4326) : `[0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1]`
+- [X] `adjustStepForMaxLines()` : max 10 lignes
 
-##### 1.4.3 Génération PDF simple
-- [ ] Installer/utiliser `jsPDF`
-- [ ] Générer PNG haute résolution d'abord
-- [ ] Créer PDF A4 (ou A3 si option)
-- [ ] Centrer image dans la page
-- [ ] Ajouter métadonnées PDF (titre, auteur, date)
-- [ ] Télécharger `atlas_<theme>_<date>_<zone>.pdf`
+##### 1.3.3 Génération des éléments de grille ✅
+- [X] **Type Croix** : croix aux intersections
+- [X] **Type Continue** : lignes complètes
+- [X] **Type Labels uniquement** : pas de lignes
+- [X] Fonctions `renderGrid()` dans `grid-generator.ts`
 
-##### 1.4.4 Gestion CORS tuiles
-- [ ] Documenter limitation : certains fonds ne supportent pas l'export haute résolution
-- [ ] Option 1 : utiliser tileserver local (NextGIS)
-- [ ] Option 2 : fallback sur fond simplifié pour export
-- [ ] Afficher warning si CORS détecté
+##### 1.3.4 Étiquettes de coordonnées ✅
+- [X] Position : autour du cadre (4 côtés configurables)
+- [X] Format selon SCR :
+  - 25231 : `123 400 m`
+  - 4326 : `6.234°E`, `1.207°N`
+
+##### 1.3.5 Cadre de la carte ✅
+- [X] **Simple** : rectangle 1px noir
+- [X] **Double** : 2 rectangles
+- [X] **Zébré** : alternance noir/blanc (style QGIS)
+
+---
+
+#### 1.4 Capture et téléchargement ✅
+
+##### 1.4.1 Mode capture frontend ✅
+- [X] `captureLeafletMap()` dans `capture-utils.ts`
+- [X] Masquer contrôles Leaflet, panneaux, modals
+- [X] `waitForTilesLoaded()` : attendre chargement tuiles
+- [X] `prepareSvgForCapture()` : forcer styles inline SVG/Canvas ← v3.0.3
+
+##### 1.4.2 Génération PNG ✅
+- [X] html2canvas via CDN
+- [X] Options : `scale: 1|3`, `useCORS: true`, `backgroundColor: '#ffffff'`
+- [X] `downloadDataURL()` pour téléchargement
+- [X] Nom fichier : `atlas_<theme>_<zone>_<date>.png`
+
+##### 1.4.3 Génération PDF simple ✅
+- [X] jsPDF via CDN
+- [X] `generatePdf()` : PNG → PDF A4/A3
+- [X] Centrage automatique dans la page
+- [X] Métadonnées PDF (titre, auteur)
+
+##### 1.4.4 Gestion CORS tuiles ✅
+- [X] `useCORS: true` dans html2canvas
+- [X] Tileserver local NextGIS disponible
+
+##### 1.4.5 Problèmes connus 🔧
+- [ ] **Couche thématique non capturée** : html2canvas ne capture pas toujours les Canvas Leaflet (preferCanvas: true)
+  - Solution potentielle : leaflet-image ou capture directe du Canvas
 
 ---
 
