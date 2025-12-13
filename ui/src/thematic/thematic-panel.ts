@@ -1,5 +1,6 @@
 import { ThematicMapManager } from './thematic-maps'
 import type { ThematicMapConfig, ObjectifMetier, MapType, ClassificationMethod } from './thematic-types'
+import { createExportQuickDialog, type ExportQuickDialogConfig } from '../export'
 import { 
   OBJECTIFS_METIER, 
   THEMATIC_PARAMETERS, 
@@ -22,6 +23,7 @@ export class ThematicPanel {
   private panelElement: HTMLElement
   private isOpen: boolean = false
   private currentConfig: ThematicMapConfig
+  private exportDialog: ReturnType<typeof createExportQuickDialog> | null = null
   
   // Cache des éléments DOM
   private elements: {
@@ -255,12 +257,15 @@ export class ThematicPanel {
           <span>Exports</span>
         </div>
         
+        <div class="thematic-actions">
+          <button id="exportThematicPro" class="btn-primary full-width" title="Export cartographique professionnel avec grille, titre, légende">
+            <span class="btn-icon">📤</span> Export Pro (PNG/PDF)
+          </button>
+        </div>
+        
         <div class="thematic-actions export-grid">
           <button id="exportThematicPNG" class="btn-small" title="Capture rapide de la carte">
-            <span class="btn-icon">🖼️</span> PNG
-          </button>
-          <button id="exportThematicPDF" class="btn-small" title="PDF A4 paysage avec légende">
-            <span class="btn-icon">📄</span> PDF
+            <span class="btn-icon">🖼️</span> PNG rapide
           </button>
           <button id="exportThematicQGIS" class="btn-small" title="GeoJSON + style QML pour QGIS">
             <span class="btn-icon">🗺️</span> QGIS
@@ -658,8 +663,8 @@ export class ThematicPanel {
     // Export buttons
     document.getElementById('exportThematicGeoJSON')?.addEventListener('click', () => this.exportGeoJSON())
     document.getElementById('exportThematicPNG')?.addEventListener('click', () => this.exportPNG())
-    document.getElementById('exportThematicPDF')?.addEventListener('click', () => this.exportPDF())
     document.getElementById('exportThematicQGIS')?.addEventListener('click', () => this.exportQGIS())
+    document.getElementById('exportThematicPro')?.addEventListener('click', () => this.openExportProDialog())
     
     // Toggle grid layer
     this.elements.toggleGridCheckbox?.addEventListener('change', (e) => {
@@ -986,6 +991,77 @@ export class ThematicPanel {
   private async exportQGIS(): Promise<void> {
     this.toast('Export QGIS en cours...', 'info')
     await this.manager.exportQgisPackage()
+  }
+  
+  /**
+   * Ouvrir le dialogue d'export professionnel v3.0
+   */
+  private openExportProDialog(): void {
+    // Créer le dialogue si pas encore fait
+    if (!this.exportDialog) {
+      const mapContainer = document.getElementById('map')
+      if (!mapContainer) {
+        this.toast('Conteneur carte introuvable', 'error')
+        return
+      }
+      
+      const map = this.manager['map']
+      
+      const config: ExportQuickDialogConfig = {
+        mapContainer,
+        
+        getMapBounds: () => {
+          const bounds = map.getBounds()
+          return {
+            north: bounds.getNorth(),
+            south: bounds.getSouth(),
+            east: bounds.getEast(),
+            west: bounds.getWest()
+          }
+        },
+        
+        getActiveThematic: () => {
+          const state = this.manager.getCurrentExportState?.()
+          if (state) {
+            return {
+              name: state.parameterLabel || 'Carte géotechnique',
+              parameter: state.parameterId || 'n_sondages',
+              unit: state.unit
+            }
+          }
+          return {
+            name: 'Carte géotechnique',
+            parameter: 'n_sondages'
+          }
+        },
+        
+        getActiveAdmFilters: () => {
+          return {
+            adm1: this.elements.adm1Select?.value ? { 
+              code: this.elements.adm1Select.value, 
+              name: this.elements.adm1Select.options[this.elements.adm1Select.selectedIndex]?.text || this.elements.adm1Select.value 
+            } : undefined,
+            adm2: this.elements.adm2Select?.value ? { 
+              code: this.elements.adm2Select.value, 
+              name: this.elements.adm2Select.options[this.elements.adm2Select.selectedIndex]?.text || this.elements.adm2Select.value 
+            } : undefined,
+            adm3: this.elements.adm3Select?.value ? { 
+              code: this.elements.adm3Select.value, 
+              name: this.elements.adm3Select.options[this.elements.adm3Select.selectedIndex]?.text || this.elements.adm3Select.value 
+            } : undefined
+          }
+        },
+        
+        getLegendHtml: () => {
+          const legendEl = document.querySelector('.thematic-legend')
+          return legendEl?.innerHTML || null
+        }
+      }
+      
+      this.exportDialog = createExportQuickDialog(config)
+    }
+    
+    this.exportDialog.open()
   }
   
   /**
