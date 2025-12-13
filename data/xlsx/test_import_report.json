@@ -1,0 +1,44 @@
+{
+  "script_version": "v4.0",
+  "source": "AMESSEFE Komi Yoan Freddy",
+  "datetime_execution": "2025-12-12T14:42:08.462742",
+  "duration_s": null,
+  "dry_run": true,
+  "schema_valid": false,
+  "total_localites": 0,
+  "total_inserts": 312,
+  "total_errors": 4,
+  "is_success": false,
+  "phases": {
+    "sondages": {
+      "name": "sondages",
+      "description": "Création des sondages",
+      "status": "success",
+      "duration_s": 0.1,
+      "excel_records": 0,
+      "excel_localites": 92,
+      "db_inserts": 92,
+      "db_updates": 0,
+      "db_skipped": 0,
+      "errors": 0,
+      "localites_ok_count": 0,
+      "localites_error_count": 0,
+      "error_details": []
+    },
+    "vbs": {
+      "name": "vbs",
+      "description": "Import VBS",
+      "status": "partial",
+      "duration_s": 0.1,
+      "excel_records": 224,
+      "excel_localites": 75,
+      "db_inserts": 220,
+      "db_updates": 0,
+      "db_skipped": 0,
+      "errors": 4,
+      "localites_ok_count": 0,
+      "localites_error_count": 2,
+      "error_details": []
+    }
+  }
+}

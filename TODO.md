@@ -1169,5 +1169,653 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
-**Dernière mise à jour** : 2025-11-26 13:50
-**Statut global** : 🚀 v3.9.2 - Onglet Nouveau Sondage + Corrections COMPLET ✅
+---
+
+## 🗺️ ROADMAP v3.0 - Système d'Export Géoréférencé Pro
+
+**Objectif** : Transformer Atlas Géotechnique en outil de production cartographique professionnel avec exports géoréférencés dignes de rapports d'ingénierie.
+
+---
+
+### 📋 Vue d'ensemble des 2 modules d'export
+
+| Module | Objectif | Complexité | Priorité |
+|--------|----------|------------|----------|
+| **Export Rapide** | 1-2 clics pour image propre (mail, WhatsApp, rapport rapide) | Moyenne | P1 |
+| **Mise en Page Avancée** | Page dédiée QGIS-like pour rapports pro | Haute | P2 |
+
+---
+
+### 🔹 MODULE 1 : Export Rapide (Bouton actuel amélioré)
+
+**Route** : Bouton dans panneau "Exports" (bas droit de la carte)
+
+---
+
+#### 1.1 UI - Mini-dialogue d'export
+
+##### 1.1.1 Composant dialogue
+- [ ] Créer composant `ExportQuickDialog` dans `ui/src/export/`
+- [ ] Bouton déclencheur "Exporter la carte" dans panneau exports
+- [ ] Modal léger (pas plein écran) avec formulaire compact
+- [ ] Fermeture : bouton X, clic extérieur, ESC
+
+##### 1.1.2 Options du dialogue
+- [ ] **Format** : Radio `PNG` / `PDF (simple)`
+- [ ] **Qualité** : Select `Standard (web 72dpi)` / `Impression (300dpi simulés)`
+- [ ] **Zone** :
+  - [ ] Radio `Vue actuelle` (défaut)
+  - [ ] Radio `Zone filtrée (ADM en cours)` → utilise filtres ADM1/2/3 actifs
+- [ ] **Options checkboxes** :
+  - [ ] `[x] Inclure la légende` (défaut: coché)
+  - [ ] `[x] Afficher titre` (défaut: coché)
+  - [ ] `[ ] Afficher statistiques globales`
+
+##### 1.1.3 Options grille & coordonnées
+- [ ] **SCR / Coordonnées** :
+  - [ ] Radio `WGS84 – EPSG:4326`
+  - [ ] Radio `Grille nationale – EPSG:25231` (défaut pour rapports Togo)
+- [ ] **Grille** : Select
+  - [ ] `Croix` (défaut)
+  - [ ] `Continue` (lignes complètes)
+  - [ ] `Coordonnées uniquement` (pas de lignes, juste labels)
+  - [ ] `Aucune`
+- [ ] **Cadre** : Select
+  - [ ] `Simple`
+  - [ ] `Double`
+  - [ ] `Zébré` (style QGIS)
+- [ ] **Checkboxes supplémentaires** :
+  - [ ] `[x] Afficher coordonnées autour du cadre` (défaut: coché)
+  - [ ] `[x] Afficher barre d'échelle` (défaut: coché)
+  - [ ] `[x] Afficher SCR et sources` (défaut: coché)
+
+---
+
+#### 1.2 Génération du canevas d'export
+
+##### 1.2.1 Structure HTML du canevas
+- [ ] Créer `<div id="export-frame">` dédié (hors viewport visible)
+- [ ] Structure interne :
+  ```
+  ┌─────────────────────────────────────────┐
+  │ TITRE + SOUS-TITRE                      │
+  ├─────────────────────────────────────────┤
+  │                                         │
+  │           CARTE (Leaflet)               │
+  │                                         │
+  │    [grille + coordonnées sur cadre]     │
+  │                                         │
+  ├─────────────────────────────────────────┤
+  │ LÉGENDE        │  CARTOUCHE             │
+  │ (thème actif)  │  - Logo Atlas          │
+  │                │  - Source, SCR, date   │
+  │                │  - Échelle graphique   │
+  └─────────────────────────────────────────┘
+  ```
+- [ ] Fond blanc, marges fines (10-15px)
+- [ ] Cadre autour de la zone carte (style configurable)
+
+##### 1.2.2 Titre automatique
+- [ ] Générer titre depuis thématique active :
+  - Ex: `Atlas Géotechnique – Nombre de sondages par maille`
+- [ ] Générer sous-titre depuis filtres ADM :
+  - Ex: `Zone : Région Maritime / Préfecture de Zio – Export du 12/12/2025`
+- [ ] Police : titre 16-18px bold, sous-titre 12-14px regular
+
+##### 1.2.3 Cartouche standardisé
+- [ ] Position : bas droit, sous la carte
+- [ ] Contenu :
+  - [ ] Logo Atlas (petit, 40x40px)
+  - [ ] `Source : Atlas Géotechnique v2.6.0`
+  - [ ] `Fond : © OpenStreetMap contributors`
+  - [ ] `SCR : EPSG:25231 – UTM Zone 31N` (ou 4326)
+  - [ ] `Date d'export : JJ/MM/AAAA`
+  - [ ] Barre d'échelle graphique
+
+##### 1.2.4 Légende encapsulée
+- [ ] Récupérer légende actuelle du panneau thématique
+- [ ] Encapsuler dans cadre propre avec titre
+- [ ] Position : bas gauche ou bas droit (selon espace)
+- [ ] Style cohérent avec cartouche
+
+---
+
+#### 1.3 Algorithme de grille automatique
+
+##### 1.3.1 Récupération de l'emprise
+- [ ] Récupérer `bounds` depuis Leaflet (en 4326)
+- [ ] Si SCR export = 25231 → reprojeter bbox via proj4js
+- [ ] Calculer largeur/hauteur de l'emprise
+
+##### 1.3.2 Calcul du pas de grille
+- [ ] Définir `targetDiv = 5` (nombre cible de divisions)
+- [ ] Calculer `raw_step = dimension / targetDiv`
+- [ ] Liste des pas "propres" :
+  - SCR mètres (25231) : `[100, 200, 250, 500, 1000, 2000, 5000, 10000]`
+  - SCR degrés (4326) : `[0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1]`
+- [ ] Choisir le plus petit pas ≥ raw_step
+- [ ] Vérifier : si > 10 lignes → prendre pas supérieur
+
+##### 1.3.3 Génération des éléments de grille
+- [ ] **Type Croix** :
+  - [ ] Pour chaque intersection (multiple de step) :
+    - [ ] Convertir coordonnées → pixels canvas
+    - [ ] Dessiner croix (4px de demi-longueur, trait 1px gris)
+- [ ] **Type Continue** :
+  - [ ] Tracer lignes verticales complètes (X constants)
+  - [ ] Tracer lignes horizontales complètes (Y constants)
+  - [ ] Style : trait fin 0.5px, gris clair (#ccc)
+- [ ] **Type Coordonnées uniquement** :
+  - [ ] Pas de lignes, seulement les labels
+
+##### 1.3.4 Étiquettes de coordonnées
+- [ ] Position : autour du cadre (extérieur)
+- [ ] Lignes horizontales (Y constant) : labels gauche + droite
+- [ ] Lignes verticales (X constant) : labels haut + bas
+- [ ] Format selon SCR :
+  - 25231 : arrondi à 10 ou 100m, ex: `123 400 m`
+  - 4326 : 3 décimales, ex: `6.234°E`, `1.207°N`
+- [ ] Orientation : horizontale (lisible)
+
+##### 1.3.5 Cadre de la carte
+- [ ] **Simple** : rectangle 1px noir
+- [ ] **Double** : 2 rectangles (1px noir, 2px décalé)
+- [ ] **Zébré** : alternance noir/blanc (style QGIS)
+  - [ ] Segments de 5-10mm alternés
+  - [ ] Épaisseur 3-4px
+
+---
+
+#### 1.4 Capture et téléchargement
+
+##### 1.4.1 Mode capture frontend
+- [ ] Créer fonction `prepareExportFrame(options)`
+- [ ] Cloner la carte Leaflet dans `#export-frame`
+- [ ] Masquer panneaux latéraux, contrôles Leaflet
+- [ ] Appliquer styles d'export (fond blanc, marges)
+- [ ] Attendre chargement complet des tuiles
+
+##### 1.4.2 Génération PNG
+- [ ] Installer/utiliser `html2canvas` ou `dom-to-image-more`
+- [ ] Options de capture :
+  - [ ] `scale: 2` ou `3` pour 300dpi simulés
+  - [ ] `useCORS: true` pour tuiles externes
+  - [ ] `backgroundColor: '#ffffff'`
+- [ ] Télécharger via `<a download="atlas-export.png">`
+- [ ] Nom fichier : `atlas_<theme>_<date>_<zone>.png`
+
+##### 1.4.3 Génération PDF simple
+- [ ] Installer/utiliser `jsPDF`
+- [ ] Générer PNG haute résolution d'abord
+- [ ] Créer PDF A4 (ou A3 si option)
+- [ ] Centrer image dans la page
+- [ ] Ajouter métadonnées PDF (titre, auteur, date)
+- [ ] Télécharger `atlas_<theme>_<date>_<zone>.pdf`
+
+##### 1.4.4 Gestion CORS tuiles
+- [ ] Documenter limitation : certains fonds ne supportent pas l'export haute résolution
+- [ ] Option 1 : utiliser tileserver local (NextGIS)
+- [ ] Option 2 : fallback sur fond simplifié pour export
+- [ ] Afficher warning si CORS détecté
+
+---
+
+### 🔹 MODULE 2 : Mise en Page Avancée (QGIS-like)
+
+**Route** : `/print-layout` (page dédiée)
+
+---
+
+#### 2.1 Navigation et structure de page
+
+##### 2.1.1 Accès à la page
+- [ ] Bouton "Mise en page avancée (QGIS)" dans panneau Exports
+- [ ] Route `#/print-layout` dans le router
+- [ ] Créer composant `PrintLayoutPage` dans `ui/src/print-layout/`
+
+##### 2.1.2 Layout 3 colonnes
+- [ ] **Colonne gauche (300px)** : Paramètres
+- [ ] **Zone centrale (flex)** : Canevas WYSIWYG
+- [ ] **Colonne droite (200px)** : Actions
+- [ ] Header avec bouton retour vers carte principale
+
+---
+
+#### 2.2 Colonne gauche - Paramètres
+
+##### 2.2.1 Bloc "Mise en page"
+- [ ] **Format** : Select `A4` / `A3`
+- [ ] **Orientation** : Radio `Portrait` / `Paysage`
+- [ ] **Marges** : Input numérique (mm), défaut 10mm
+- [ ] Preview dimensions en pixels
+
+##### 2.2.2 Bloc "Zone d'export" (CRITIQUE)
+- [ ] **Mode** : Select
+  - [ ] `Vue actuelle` (viewport Leaflet)
+  - [ ] `ADM1 (Région)` → dropdown régions
+  - [ ] `ADM2 (Préfecture)` → dropdown préfectures (filtré par ADM1)
+  - [ ] `ADM3 (Commune)` → dropdown communes (filtré par ADM2)
+  - [ ] `Rectangle manuel` → outil de dessin sur carte
+- [ ] **Cascade ADM** :
+  - [ ] ADM1 sélectionné → charger ADM2 via API
+  - [ ] ADM2 sélectionné → charger ADM3 via API
+- [ ] **Buffer automatique** : Input (km), défaut 2km
+  - [ ] Ajoute marge autour de l'ADM pour contexte
+- [ ] **Afficher contour ADM** : Checkbox
+  - [ ] Trace le polygone ADM en trait fort sur la carte
+
+##### 2.2.3 Bloc "Contenu cartographique"
+- [ ] **Thématique** : Select (liste des couches existantes)
+  - [ ] Nombre de sondages
+  - [ ] VBS moyenne
+  - [ ] IP moyen
+  - [ ] Profondeur max
+  - [ ] etc.
+- [ ] **Fond de carte** : Select
+  - [ ] OSM Standard
+  - [ ] OSM Gris (désaturé)
+  - [ ] Fond topographique (NextGIS)
+  - [ ] Aucun (blanc)
+
+##### 2.2.4 Bloc "Grille & Coordonnées"
+- [ ] **Type de grille** : Select
+  - [ ] `Aucune`
+  - [ ] `Croix` (défaut)
+  - [ ] `Continue`
+  - [ ] `Symboles`
+  - [ ] `Cadre et coordonnées uniquement`
+- [ ] **Mode densité** : Select
+  - [ ] `Dense` (targetDiv = 7)
+  - [ ] `Normal` (targetDiv = 5, défaut)
+  - [ ] `Rare` (targetDiv = 3)
+- [ ] **Pas personnalisé** : Inputs X/Y (optionnel, override auto)
+- [ ] **SCR affiché** : Select
+  - [ ] `WGS84 – EPSG:4326`
+  - [ ] `Grille nationale – EPSG:25231`
+- [ ] **Format coordonnées** : Select
+  - [ ] `Décimal` (ex: 6.234)
+  - [ ] `Décimal avec suffixe` (ex: 6.234°E)
+  - [ ] `Degrés Minutes Secondes`
+- [ ] **Côtés visibles** : Multi-select
+  - [ ] Gauche, Droite, Haut, Bas
+  - [ ] `Tout afficher` / `Extrémités seulement`
+
+##### 2.2.5 Bloc "Cadre"
+- [ ] **Style** : Select `Sans` / `Simple` / `Double` / `Zébré`
+- [ ] **Épaisseur** : Input (mm)
+- [ ] **Couleur** : Color picker
+
+##### 2.2.6 Bloc "Éléments cartographiques"
+- [ ] Checkboxes avec positionnement :
+  - [ ] `[x] Légende du thème actif` → Position: Select (HG, HD, BG, BD)
+  - [ ] `[x] Barre d'échelle` → Position: Select
+  - [ ] `[x] Flèche du Nord` → Position: Select
+  - [ ] `[x] SCR / système de coordonnées`
+  - [ ] `[ ] Logo organisation` → Upload ou défaut Atlas
+  - [ ] `[ ] Graticule` (pour grandes zones)
+  - [ ] `[ ] Cadre texte libre` → Textarea
+
+##### 2.2.7 Bloc "Cartouche & Titre"
+- [ ] **Titre principal** : Input texte
+  - [ ] Pré-rempli : `Carte – <nom thématique>`
+- [ ] **Sous-titre** : Input texte
+  - [ ] Pré-rempli : `<Zone ADM> · Campagnes 2010–2024`
+- [ ] **Auteur / Organisme** : Input (optionnel)
+- [ ] **Sources** : Textarea
+  - [ ] Pré-rempli : `Atlas Géotechnique v2.6.0 / Campagne AMESSEFE`
+- [ ] **Date** : Auto (éditable)
+
+##### 2.2.8 Bloc "Statistiques géotechniques"
+- [ ] Checkboxes pour inclure dans l'export :
+  - [ ] `[ ] Nombre de sondages`
+  - [ ] `[ ] Profondeur min / moy / max`
+  - [ ] `[ ] VBS moyenne ± écart-type`
+  - [ ] `[ ] IP moyenne ± écart-type`
+  - [ ] `[ ] % sols argileux (IP > 15, VBS > 3)`
+  - [ ] `[ ] # essais par type (Atterberg, VBS, Proctor, etc.)`
+- [ ] Ces stats sont calculées via API backend pour la zone sélectionnée
+
+---
+
+#### 2.3 Zone centrale - Canevas WYSIWYG
+
+##### 2.3.1 Rendu du canevas
+- [ ] Rectangle représentant la page (A4/A3, portrait/paysage)
+- [ ] Échelle de visualisation ajustable (zoom canevas)
+- [ ] Fond blanc avec ombre portée
+- [ ] Marges visualisées (lignes pointillées)
+
+##### 2.3.2 Zones du canevas
+- [ ] **Zone carte** : ~70% de la hauteur
+  - [ ] Carte Leaflet embarquée
+  - [ ] Grille et coordonnées superposées
+  - [ ] Cadre selon style choisi
+- [ ] **Zone cartouche** : bas droit
+  - [ ] Titre, sous-titre, sources, date
+  - [ ] Logo, échelle, nord
+- [ ] **Zone stats** : bas gauche (si activé)
+  - [ ] Tableau des KPI géotechniques
+- [ ] **Zone légende** : position configurable
+
+##### 2.3.3 Interactions canevas
+- [ ] Drag & drop pour repositionner éléments (optionnel v2)
+- [ ] Resize des zones (optionnel v2)
+- [ ] Preview temps réel des modifications
+
+---
+
+#### 2.4 Colonne droite - Actions
+
+##### 2.4.1 Boutons d'export
+- [ ] **Exporter en PNG** : Bouton principal
+- [ ] **Exporter en PDF** : Bouton principal
+- [ ] **DPI simulé** : Select `150` / `300` / `600`
+
+##### 2.4.2 Gestion des modèles
+- [ ] **Enregistrer ce modèle** : Bouton
+  - [ ] Nom du modèle : Input
+  - [ ] Sauvegarde JSON des paramètres en BDD
+- [ ] **Charger un modèle** : Select
+  - [ ] Liste des modèles sauvegardés
+  - [ ] Applique tous les paramètres
+
+##### 2.4.3 Actions secondaires
+- [ ] **Réinitialiser** : Remet valeurs par défaut
+- [ ] **Aperçu plein écran** : Ouvre preview dans nouvel onglet
+
+---
+
+#### 2.5 Backend - API Export
+
+##### 2.5.1 Endpoint `/export/context`
+- [ ] Créer route `GET /export/context?adm_level=3&adm_id=199`
+- [ ] Retourne :
+  ```json
+  {
+    "bbox": [minX, minY, maxX, maxY],
+    "geometry": { "type": "Polygon", "coordinates": [...] },
+    "name": "Kovié",
+    "code": "TG-MAR-ZIO-KOV",
+    "surface_km2": 45.2,
+    "path": "Maritime > Zio > Kovié"
+  }
+  ```
+- [ ] Récupérer polygone depuis PostGIS
+- [ ] Simplifier géométrie pour affichage (ST_Simplify)
+
+##### 2.5.2 Endpoint `/export/stats`
+- [ ] Créer route `GET /export/stats?adm_level=3&adm_id=199` ou `?bbox=...`
+- [ ] Retourne stats géotechniques pour la zone :
+  ```json
+  {
+    "n_sondages": 12,
+    "n_echantillons": 45,
+    "n_essais": 156,
+    "depth_min": 0.5,
+    "depth_max": 8.0,
+    "depth_mean": 2.3,
+    "vbs_mean": 4.2,
+    "vbs_stddev": 1.8,
+    "ip_mean": 22.5,
+    "ip_stddev": 8.3,
+    "pct_argileux": 65.0,
+    "essais_par_type": {
+      "atterberg": 34,
+      "vbs": 45,
+      "proctor": 12,
+      ...
+    }
+  }
+  ```
+- [ ] Requêtes SQL avec `ST_Within` ou `ST_Intersects` sur la zone
+
+##### 2.5.3 Endpoint `/export/templates`
+- [ ] `GET /export/templates` : Liste des modèles sauvegardés
+- [ ] `POST /export/templates` : Créer un modèle (JSON params)
+- [ ] `DELETE /export/templates/:id` : Supprimer un modèle
+- [ ] Table `atlas.export_templates` :
+  ```sql
+  CREATE TABLE atlas.export_templates (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    params JSONB NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+  );
+  ```
+
+---
+
+### 🔹 MODULE 3 : Délimitation par ADM (Clé géotechnique)
+
+---
+
+#### 3.1 Synchronisation filtres UI
+
+##### 3.1.1 Filtres d'affichage vs Zone d'export
+- [ ] Clarifier dans l'UI :
+  - **Filtres d'affichage** : ce qui apparaît sur la carte (panneau droit actuel)
+  - **Zone d'export** : ce qui définit la fenêtre + les stats (module export)
+- [ ] Par défaut : Zone d'export = filtres ADM actifs
+- [ ] Option de découplage dans mise en page avancée
+
+##### 3.1.2 Réutilisation des sélecteurs ADM
+- [ ] Extraire composant `AdmSelector` réutilisable
+- [ ] Props : `level`, `parentCode`, `onChange`
+- [ ] Cascade automatique ADM1 → ADM2 → ADM3
+- [ ] Utiliser dans : panneau filtres, export rapide, mise en page avancée
+
+---
+
+#### 3.2 Affichage du contour ADM
+
+##### 3.2.1 Contour sur la carte exportée
+- [ ] Récupérer géométrie ADM via `/export/context`
+- [ ] Tracer polygone avec style fort :
+  - [ ] Couleur : violet foncé (#6b21a8) ou configurable
+  - [ ] Épaisseur : 3px
+  - [ ] Style : trait plein
+- [ ] Option : remplissage semi-transparent (10% opacité)
+
+##### 3.2.2 Option "Mailles voisines"
+- [ ] Checkbox "Afficher mailles voisines hors ADM"
+- [ ] Si activé :
+  - [ ] Mailles dans l'ADM : couleur normale
+  - [ ] Mailles hors ADM (dans bbox) : gris clair (#e5e7eb)
+  - [ ] Permet de garder le contexte spatial
+
+---
+
+### 🔹 MODULE 4 : Génération PNG/PDF (Technique)
+
+---
+
+#### 4.1 Stratégie PNG
+
+##### 4.1.1 Librairie de capture
+- [ ] Évaluer `html2canvas` vs `dom-to-image-more`
+- [ ] Installer la librairie choisie
+- [ ] Créer wrapper `captureElement(element, options)`
+
+##### 4.1.2 Gestion haute résolution
+- [ ] Option `scale` pour simuler DPI :
+  - 72 dpi (web) : scale = 1
+  - 150 dpi : scale = 2
+  - 300 dpi : scale = 4
+- [ ] Attention à la mémoire pour grandes images
+
+##### 4.1.3 Gestion CORS tuiles
+- [ ] Détecter erreurs CORS lors de la capture
+- [ ] Solutions :
+  - [ ] Proxy backend pour tuiles externes
+  - [ ] Utiliser tileserver local (NextGIS)
+  - [ ] Fallback : fond blanc + message warning
+- [ ] Documenter les limitations
+
+---
+
+#### 4.2 Stratégie PDF
+
+##### 4.2.1 PDF côté client (simple)
+- [ ] Utiliser `jsPDF`
+- [ ] Workflow :
+  1. Générer PNG haute résolution
+  2. Créer document PDF (A4/A3)
+  3. Insérer image centrée
+  4. Ajouter métadonnées
+- [ ] Limites : pas de vectoriel, taille fichier importante
+
+##### 4.2.2 PDF côté serveur (pro - optionnel v2)
+- [ ] Service Node.js avec Puppeteer/Playwright
+- [ ] Workflow :
+  1. Frontend envoie JSON layout au backend
+  2. Backend charge page spéciale `print.html`
+  3. Injecte les paramètres
+  4. `page.pdf()` génère PDF vectoriel
+- [ ] Avantages : PDF propre, texte sélectionnable, petite taille
+
+##### 4.2.3 Endpoint backend PDF (optionnel v2)
+- [ ] `POST /export/pdf`
+- [ ] Body : JSON avec tous les paramètres de mise en page
+- [ ] Retourne : fichier PDF binaire
+- [ ] Service séparé (container Node.js avec Puppeteer)
+
+---
+
+### 🔹 MODULE 5 : Géoréférencement Avancé (Phase 2)
+
+---
+
+#### 5.1 World File (PNG géoréférencé)
+
+##### 5.1.1 Génération du world file
+- [ ] À côté de `map.png`, générer `map.pgw` :
+  ```
+  <taille pixel X>
+  0
+  0
+  <taille pixel Y négatif>
+  <coord X centre pixel haut-gauche>
+  <coord Y centre pixel haut-gauche>
+  ```
+- [ ] Calculer depuis bbox et dimensions image
+
+##### 5.1.2 Fichier PRJ
+- [ ] Générer `map.prj` avec définition WKT du SCR
+- [ ] Templates pour EPSG:4326 et EPSG:25231
+
+##### 5.1.3 Export ZIP
+- [ ] Bouton "Télécharger PNG géoréférencé"
+- [ ] Crée ZIP contenant : `map.png`, `map.pgw`, `map.prj`
+- [ ] Utilisable directement dans QGIS/ArcGIS
+
+---
+
+#### 5.2 GeoPDF (optionnel - complexe)
+
+##### 5.2.1 Recherche
+- [ ] Étudier format GeoPDF (structure ISO 32000)
+- [ ] Évaluer librairies : GDAL, reportlab, etc.
+- [ ] Décider si faisable côté backend Python/Node
+
+##### 5.2.2 Implémentation (si faisable)
+- [ ] Service backend dédié
+- [ ] Génération PDF avec métadonnées géospatiales
+- [ ] Test ouverture dans Acrobat / QGIS
+
+---
+
+### 🔹 MODULE 6 : Éléments Cartographiques Pro
+
+---
+
+#### 6.1 Barre d'échelle graphique
+
+##### 6.1.1 Calcul de l'échelle
+- [ ] Récupérer échelle depuis Leaflet (`map.getZoom()`, `map.getBounds()`)
+- [ ] Calculer distance réelle pour largeur donnée (ex: 100px)
+- [ ] Arrondir à valeur "propre" (1km, 2km, 5km, 10km, etc.)
+
+##### 6.1.2 Rendu de la barre
+- [ ] Barre horizontale avec graduations
+- [ ] Label : `0 ──── 5 km`
+- [ ] Style : trait noir 2px, fond blanc semi-transparent
+- [ ] Position configurable
+
+---
+
+#### 6.2 Flèche du Nord
+
+##### 6.2.1 Design
+- [ ] SVG flèche simple (style classique)
+- [ ] Lettre "N" au-dessus
+- [ ] Taille : 30-50px
+
+##### 6.2.2 Intégration
+- [ ] Position configurable (défaut: haut droit)
+- [ ] Rotation si carte non orientée nord (rare)
+
+---
+
+#### 6.3 Graticule (grandes zones)
+
+##### 6.3.1 Quand l'afficher
+- [ ] Option activable pour zones > 100km
+- [ ] Utile pour cartes régionales/nationales
+
+##### 6.3.2 Rendu
+- [ ] Lignes de latitude/longitude
+- [ ] Labels aux intersections avec le cadre
+- [ ] Style : trait fin pointillé
+
+---
+
+### 📊 Résumé des fichiers à créer
+
+| Fichier | Description |
+|---------|-------------|
+| `ui/src/export/export-quick-dialog.ts` | Dialogue export rapide |
+| `ui/src/export/export-frame.ts` | Canevas d'export avec grille |
+| `ui/src/export/grid-generator.ts` | Algorithme de grille automatique |
+| `ui/src/export/capture-utils.ts` | Utilitaires html2canvas/jsPDF |
+| `ui/src/print-layout/print-layout-page.ts` | Page mise en page avancée |
+| `ui/src/print-layout/layout-canvas.ts` | Canevas WYSIWYG |
+| `ui/src/print-layout/layout-params.ts` | Panneau paramètres |
+| `ui/src/components/adm-selector.ts` | Sélecteur ADM réutilisable |
+| `api/src/routes/export.rs` | Routes API export |
+| `migrations/050_export_templates.sql` | Table modèles d'export |
+
+---
+
+### 📅 Planning suggéré
+
+| Phase | Contenu | Durée estimée |
+|-------|---------|---------------|
+| **Phase 1** | Export rapide PNG (sans grille) | 2-3 jours |
+| **Phase 2** | Grille automatique + coordonnées | 2-3 jours |
+| **Phase 3** | Export rapide PDF + cartouche | 1-2 jours |
+| **Phase 4** | Page mise en page avancée (structure) | 3-4 jours |
+| **Phase 5** | Paramètres complets + WYSIWYG | 3-4 jours |
+| **Phase 6** | API backend stats/context | 2-3 jours |
+| **Phase 7** | World file + ZIP géoréférencé | 1-2 jours |
+| **Phase 8** | Tests, polish, documentation | 2-3 jours |
+
+**Total estimé** : 16-24 jours de développement
+
+---
+
+### ✅ Critères de validation
+
+- [ ] Export rapide PNG fonctionne en 2 clics
+- [ ] Grille et coordonnées lisibles et correctes
+- [ ] PDF A4 propre avec cartouche complet
+- [ ] Mise en page avancée permet de choisir une ADM3 spécifique
+- [ ] Stats géotechniques calculées pour la zone exportée
+- [ ] World file permet d'ouvrir le PNG dans QGIS avec géoréférencement correct
+- [ ] Modèles d'export sauvegardables et réutilisables
+- [ ] Documentation utilisateur complète
+
+---
+
+**Dernière mise à jour** : 2025-12-13 21:59
+**Statut global** : 🚀 v3.9.2 - Onglet Nouveau Sondage + Corrections COMPLET ✅ | v3.0 Export Géoréférencé - EN ATTENTE

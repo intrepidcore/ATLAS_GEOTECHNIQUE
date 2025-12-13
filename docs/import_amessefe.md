@@ -6,6 +6,125 @@ Source de données : **AMESSEFE Komi Yoan Freddy**
 Opérateur : **Serge TABE DJATO**  
 Profondeurs standard : **1.0m, 1.5m, 2.0m**
 
+---
+
+## Spécification fonctionnelle de l'import
+
+> Cette section définit ce que signifie "import conforme aux Excel d'origine".
+> C'est la **référence** pour valider que l'import est correct.
+
+### Fichiers sources
+
+Les fichiers Excel bruts sont stockés dans `data/xlsx/amessefe_raw/` (NE JAMAIS MODIFIER).
+
+| Fichier | Feuilles | Format |
+|---------|----------|--------|
+| `bleu.xlsx` | 6 feuilles (3-7 à 3-12) | Pivot : colonnes = profondeurs (1, 1.5, 2) |
+| `limite.xlsx` | 6 feuilles (3-13 à 3-18) | Tabulaire : 1 ligne = 1 essai |
+| `Granulométrie.xlsx` | 6 feuilles (3.1 à 3.6) | Pivot : colonnes = profondeurs |
+| `classification.xlsx` | 6 feuilles (3-25 à 3-30) | Tabulaire : 1 ligne = 1 essai |
+| `potentielle_de_gonflement.xlsx` | 6 feuilles (3-19 à 3-24) | Pivot : colonnes = profondeurs |
+
+### Règles d'import par type d'essai
+
+#### VBS (`bleu.xlsx` → `atlas.essais_vbs`)
+
+**Structure Excel :** Format pivot
+- Colonne `Localités` : nom de la localité
+- Colonnes `1`, `1.5`, `2` : valeurs VBS aux profondeurs 1.0m, 1.5m, 2.0m
+
+**Règle d'import :**
+Pour chaque localité L et chaque profondeur d ∈ {1.0, 1.5, 2.0} :
+- Si la cellule Excel[L, d] n'est pas vide →
+  - Il doit exister **exactement 1 ligne** dans `atlas.essais_vbs` avec :
+    - `echantillon_id` lié à un échantillon où :
+      - `sondage.source` = 'AMESSEFE Komi Yoan Freddy'
+      - `sondage.meta->>'localite'` = L (ou `localite_base` normalisé)
+      - `echantillon.depth_m` = d
+    - `vbs` = valeur Excel
+
+**Comptage attendu :** ~75 localités × 3 profondeurs = ~225 VBS max (selon cellules non vides)
+
+---
+
+#### Limites d'Atterberg (`limite.xlsx` → `atlas.essais_geotechniques`)
+
+**Structure Excel :** Format tabulaire
+- Colonne `Localité` : nom
+- Colonne `Profondeur` : profondeur en mètres
+- Colonnes `Limite de liquidité (WL)`, `Limite de plasticité (WP)`, `Indice de plasticité (IP)`
+
+**Règle d'import :**
+Pour chaque ligne Excel avec (Localité=L, Profondeur=d, WL, WP, IP) :
+- Il doit exister **exactement 1 ligne** dans `atlas.essais_geotechniques` avec :
+  - `echantillon_id` lié au bon (sondage, profondeur)
+  - `wl` = WL, `wp` = WP, `ip` = IP
+
+**Comptage attendu :** 6 feuilles × 36 lignes = ~216 essais (selon données)
+
+---
+
+#### Granulométrie (`Granulométrie.xlsx` → `atlas.granulo_points`)
+
+**Structure Excel :** Format pivot
+- Colonne `Localités` : nom
+- Colonnes `1`, `1.5`, `2` : % passant à 0.08mm aux profondeurs
+
+**Règle d'import :**
+Pour chaque localité L et profondeur d :
+- Si la cellule Excel[L, d] n'est pas vide →
+  - Il doit exister **1 ligne** dans `atlas.granulo_points` avec :
+    - `echantillon_id` lié au bon (sondage, profondeur)
+    - `sieve_mm` = 0.08
+    - `passing_pct` = valeur Excel
+
+**Note :** Ce fichier ne contient que le % passant à 0.08mm, pas la courbe complète.
+
+---
+
+#### Classification (`classification.xlsx` → `atlas.essais_classif`)
+
+**Structure Excel :** Format tabulaire
+- Colonne `Localité` : nom
+- Colonne `Profondeur` : profondeur
+- Colonnes de classification :
+  - `Classification CHASSAGNEUX D. et al. 1996` → `class_chassagneux`
+  - `Classification Dakshanamurthy et Raman 1973` → `class_daksha`
+  - `Classification SEED H. et al 1962` → `class_seed`
+  - `Classification VIJAYVERGIYA et GHAZZALY 1973` → `class_vijay`
+  - `Type de sol` → `type_sol`
+
+**Règle d'import :**
+Pour chaque ligne Excel :
+- Il doit exister **exactement 1 ligne** dans `atlas.essais_classif` avec les valeurs correspondantes.
+
+---
+
+#### Potentiel de gonflement (`potentielle_de_gonflement.xlsx` → `atlas.essais_potentiel_gonflement`)
+
+**Structure Excel :** Format pivot
+- Colonne `Localité` : nom
+- Colonnes `Potentiel gonflement (cg) 1m`, `... 1,5m`, `... 2m` : valeurs Cg
+- Colonnes `Analyse 1m`, `... 1,5m`, `... 2m` : qualificatifs (Faible, Moyen, etc.)
+
+**Règle d'import :**
+Pour chaque localité L et profondeur d :
+- Si la cellule Cg n'est pas vide →
+  - Il doit exister **1 ligne** dans `atlas.essais_potentiel_gonflement` avec :
+    - `cg` = valeur numérique
+    - `cg_qual` = qualificatif de la colonne Analyse
+
+---
+
+### Contraintes d'intégrité
+
+1. **Unicité** : Pour un couple (localité, profondeur), il ne doit y avoir qu'UN seul essai de chaque type.
+2. **Traçabilité** : Tous les essais doivent avoir `source = 'AMESSEFE Komi Yoan Freddy'`.
+3. **Hiérarchie** : sondage → échantillon → essai (pas d'essai orphelin).
+4. **Normalisation** : Les noms de localités sont normalisés via `scripts/utils/normalize.py`.
+
+---
+
 ## Fichiers Excel sources
 
 | Fichier | Contenu | Table cible |

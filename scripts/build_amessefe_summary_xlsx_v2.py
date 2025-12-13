@@ -24,9 +24,13 @@ import sys
 import subprocess
 import pandas as pd
 
-# Import du module de normalisation centralisé
+# Import des modules centralisés
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils.normalize import normalize_localite, find_best_display_name
+from utils.amessefe_excel import (
+    load_vbs, load_limites, load_granulo, load_classif, load_gonflement,
+    get_summary as get_excel_summary
+)
 
 try:
     import psycopg2
@@ -138,90 +142,63 @@ def query_db_via_docker(sql: str) -> list:
 
 
 # ---------------------------------------------------------------------------
-# 1. RÉSUMÉ EXCEL PAR LOCALITÉ
+# 1. RÉSUMÉ EXCEL PAR LOCALITÉ (via module centralisé)
 # ---------------------------------------------------------------------------
 
 def build_excel_summary() -> dict:
+    """
+    Construit un résumé des données Excel par localité normalisée.
+    
+    Utilise le module centralisé utils/amessefe_excel.py pour la lecture.
+    
+    Returns:
+        Dict[localite_norm] -> {localite_excel, excel_has_*, excel_n_*}
+    """
     print("\n" + "=" * 60)
     print("📊 LECTURE DES FICHIERS EXCEL AMESSEFE")
     print("=" * 60)
-    print(f"📂 Dossier : {DATA_DIR}")
+    print(f"📂 Source : data/xlsx/amessefe_raw/")
 
     records = {}
-
-    for test_key, cfg in EXCEL_CONFIG.items():
-        path = DATA_DIR / cfg["file"]
-        loc_col = cfg["loc_col"]
-        sheet = cfg["sheet"]
-
-        if not path.exists():
-            print(f"\n⚠️  {test_key}: Fichier introuvable ({path.name})")
-            continue
-
-        print(f"\n📖 {test_key}: {path.name}")
-
+    
+    # Mapping loader -> test_key
+    loaders = {
+        "vbs": load_vbs,
+        "limites": load_limites,
+        "granulo": load_granulo,
+        "classif": load_classif,
+        "gonflement": load_gonflement,
+    }
+    
+    for test_key, loader in loaders.items():
+        print(f"\n📖 {test_key}")
         try:
-            # Lire toutes les feuilles si sheet=None
-            if sheet is None:
-                xl = pd.ExcelFile(path)
-                dfs = []
-                for sn in xl.sheet_names:
-                    try:
-                        sheet_df = pd.read_excel(xl, sheet_name=sn)
-                        if isinstance(sheet_df, pd.DataFrame) and len(sheet_df) > 0:
-                            dfs.append(sheet_df)
-                    except Exception:
-                        pass
-                if not dfs:
-                    print(f"   ⚠️  Aucune feuille lisible")
+            data = loader()
+            
+            # Grouper par localité normalisée
+            by_loc = {}
+            for rec in data:
+                norm = rec.localite_norm
+                if not norm:
                     continue
-                df = pd.concat(dfs, ignore_index=True)
-                print(f"   → {len(xl.sheet_names)} feuilles combinées")
-            else:
-                df = pd.read_excel(path, sheet_name=sheet)
+                if norm not in by_loc:
+                    by_loc[norm] = {"raw": rec.localite, "count": 0}
+                by_loc[norm]["count"] += 1
+                # Garder le nom le plus long
+                if len(rec.localite) > len(by_loc[norm]["raw"]):
+                    by_loc[norm]["raw"] = rec.localite
+            
+            print(f"   ✓ {len(by_loc)} localités, {len(data)} records")
+            
+            for norm, info in by_loc.items():
+                rec = records.setdefault(norm, {"localite_excel": info["raw"]})
+                if len(info["raw"]) > len(rec["localite_excel"]):
+                    rec["localite_excel"] = info["raw"]
+                rec[f"excel_has_{test_key}"] = True
+                rec[f"excel_n_{test_key}"] = info["count"]
+                
         except Exception as e:
-            print(f"   ❌ Erreur lecture : {e}")
-            continue
-
-        # Cherche la colonne localité (insensible à la casse)
-        actual_col = None
-        for col in df.columns:
-            col_str = str(col).strip().lower()
-            if col_str == loc_col.lower() or "localit" in col_str:
-                actual_col = col
-                break
-
-        if actual_col is None:
-            print(f"   ⚠️  Colonne '{loc_col}' introuvable")
-            print(f"      Colonnes disponibles : {list(df.columns)[:5]}...")
-            continue
-
-        df = df[[actual_col]].copy()
-        df = df.dropna(subset=[actual_col])
-        df["localite_raw"] = df[actual_col].astype(str).str.strip()
-        df["localite_norm"] = df["localite_raw"].map(normalize_localite)
-
-        grouped = (
-            df.groupby("localite_norm", dropna=True)["localite_raw"]
-            .agg(["first", "size"])
-            .reset_index()
-        )
-
-        print(f"   ✓ {len(grouped)} localités, {len(df)} lignes")
-
-        for _, row in grouped.iterrows():
-            norm = row["localite_norm"]
-            if not norm:
-                continue
-            raw = row["first"]
-            count = int(row["size"])
-
-            rec = records.setdefault(norm, {"localite_excel": raw})
-            if len(raw) > len(rec["localite_excel"]):
-                rec["localite_excel"] = raw
-
-            rec[f"excel_has_{test_key}"] = True
-            rec[f"excel_n_{test_key}"] = count
+            print(f"   ❌ Erreur : {e}")
 
     # Compléter les champs manquants
     for rec in records.values():
