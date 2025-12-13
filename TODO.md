@@ -1171,6 +1171,64 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
+## 🔧 ROADMAP v3.0.1 - Corrections Export Rapide (2025-12-13)
+
+**Objectif** : Corriger les problèmes identifiés lors des premiers tests de l'export rapide MVP.
+
+---
+
+### 🐛 Problèmes identifiés
+
+| Priorité | Problème | Cause |
+|----------|----------|-------|
+| 🔴 Haute | Légende vide dans l'export | `getLegendHtml()` capture un div vide, pas les classes thématiques |
+| 🔴 Haute | Couche thématique non visible | html2canvas ne capture pas correctement les layers Leaflet SVG/Canvas |
+| 🟡 Moyenne | Grille de fond (mailles) visible | Surcharge visuelle, devrait être masquée pendant l'export |
+| 🟡 Moyenne | Export QGIS échoue (500) | Colonne `geom_4326` inexistante côté backend |
+| 🟢 Basse | Cartouche incomplet | Manque SCR des données (25231) et filtres ADM actifs |
+
+---
+
+### ✅ Corrections à implémenter
+
+#### 3.0.1.1 Légende reconstruite depuis config thématique
+- [X] Ne plus capturer le HTML de la légende existante
+- [X] Récupérer `ThematicExportState` avec classes, couleurs, labels
+- [X] Dessiner la légende programmatiquement dans le canvas d'export
+- [X] Inclure : titre paramètre, unité, classes avec couleurs
+
+#### 3.0.1.2 Masquer grille de fond pendant l'export
+- [X] Avant capture : désactiver temporairement `gridLayer` (mailles sans données)
+- [X] Après capture : restaurer l'état précédent
+- [X] Option dans le dialogue : "Masquer grille de fond" (coché par défaut)
+
+#### 3.0.1.3 Améliorer le cartouche
+- [X] Ajouter "SCR des données : UTM 31N (EPSG:25231)"
+- [X] Afficher les filtres ADM actifs si présents
+- [X] Format : "Zone : Région Maritime / Préfecture de Zio"
+
+#### 3.0.1.4 Calcul grille intelligent (nice step)
+- [X] Fonction `niceStep(rawStep)` : normalise en 10^n × {1, 2, 5}
+- [X] Cible 8-12 lignes de grille sur le côté le plus court
+- [X] Exemples : 0.037° → 0.05°, 2300m → 2000m
+
+#### 3.0.1.5 Correction export QGIS (backend)
+- [ ] Modifier requête SQL : `ST_Transform(geom, 4326) AS geom_4326`
+- [ ] Ou créer vue `atlas.v_maille_export` avec colonne normée
+
+---
+
+### 📁 Fichiers modifiés
+
+- `ui/src/export/export-frame.ts` - Légende reconstruite, cartouche amélioré
+- `ui/src/export/grid-generator.ts` - Fonction niceStep()
+- `ui/src/export/export-quick-dialog.ts` - Option masquer grille, gestion gridLayer
+- `ui/src/thematic/thematic-panel.ts` - Passage ThematicExportState au dialogue
+
+---
+
+---
+
 ## 🗺️ ROADMAP v3.0 - Système d'Export Géoréférencé Pro
 
 **Objectif** : Transformer Atlas Géotechnique en outil de production cartographique professionnel avec exports géoréférencés dignes de rapports d'ingénierie.

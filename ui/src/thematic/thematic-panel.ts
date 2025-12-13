@@ -1052,10 +1052,31 @@ export class ThematicPanel {
           }
         },
         
-        getLegendHtml: () => {
-          const legendEl = document.querySelector('.thematic-legend')
-          return legendEl?.innerHTML || null
-        }
+        // Récupérer les données de légende thématique (classes, couleurs, labels)
+        getThematicLegendData: () => {
+          const state = this.manager.getCurrentExportState?.()
+          if (state && state.classes && state.classes.length > 0) {
+            return {
+              parameterLabel: state.parameterLabel,
+              unit: state.unit,
+              mapType: state.mapType,
+              classes: state.classes.map(c => ({
+                index: c.index,
+                min: c.min,
+                max: c.max,
+                color: c.color,
+                label: c.label
+              }))
+            }
+          }
+          return null
+        },
+        
+        // Référence au gridLayer pour le masquer pendant l'export
+        getGridLayer: () => (window as any).gridLayer,
+        
+        // Référence à la map Leaflet
+        getMap: () => map
       }
       
       this.exportDialog = createExportQuickDialog(config)

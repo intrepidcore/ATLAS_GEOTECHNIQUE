@@ -10,7 +10,8 @@ import {
   ActiveThematic,
   ActiveAdmFilters,
   formatAdmPath,
-  QUALITY_SETTINGS
+  QUALITY_SETTINGS,
+  ThematicLegendData
 } from './export-types';
 import {
   generateGridLines,
@@ -227,9 +228,9 @@ export class ExportFrame {
   }
   
   /**
-   * Dessine la légende
+   * Dessine la légende reconstruite depuis les classes thématiques
    */
-  drawLegend(legendHtml?: string): void {
+  drawLegend(legendData?: ThematicLegendData): void {
     if (!this.options.includeLegend) return;
     
     const { legendArea } = this.layout;
@@ -242,26 +243,54 @@ export class ExportFrame {
     ctx.fillRect(legendArea.x, legendArea.y, legendArea.width, legendArea.height);
     ctx.strokeRect(legendArea.x, legendArea.y, legendArea.width, legendArea.height);
     
-    // Titre "Légende"
+    // Titre de la légende (paramètre + unité)
     ctx.fillStyle = '#333333';
     ctx.font = 'bold 11px Arial, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText('Légende', legendArea.x + 8, legendArea.y + 6);
     
-    // Si pas de HTML de légende, afficher un placeholder
-    if (!legendHtml) {
+    const legendTitle = legendData 
+      ? `${legendData.parameterLabel}${legendData.unit ? ` (${legendData.unit})` : ''}`
+      : 'Légende';
+    ctx.fillText(legendTitle, legendArea.x + 8, legendArea.y + 6);
+    
+    // Si pas de données de légende, afficher un placeholder
+    if (!legendData || !legendData.classes || legendData.classes.length === 0) {
       ctx.font = '10px Arial, sans-serif';
       ctx.fillStyle = '#888888';
-      ctx.fillText('(légende thématique)', legendArea.x + 8, legendArea.y + 25);
+      ctx.fillText('(aucune thématique active)', legendArea.x + 8, legendArea.y + 25);
+      return;
     }
-    // Note: Le rendu HTML de la légende sera fait via html2canvas séparément
+    
+    // Dessiner les classes
+    const startY = legendArea.y + 24;
+    const boxSize = 12;
+    const lineHeight = 16;
+    const textX = legendArea.x + 8 + boxSize + 6;
+    
+    ctx.font = '10px Arial, sans-serif';
+    
+    legendData.classes.forEach((cls, i) => {
+      const y = startY + i * lineHeight;
+      
+      // Boîte de couleur
+      ctx.fillStyle = cls.color;
+      ctx.fillRect(legendArea.x + 8, y, boxSize, boxSize);
+      ctx.strokeStyle = '#666666';
+      ctx.lineWidth = 0.5;
+      ctx.strokeRect(legendArea.x + 8, y, boxSize, boxSize);
+      
+      // Label
+      ctx.fillStyle = '#333333';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(cls.label, textX, y + boxSize / 2);
+    });
   }
   
   /**
    * Dessine le cartouche (infos, échelle, nord)
    */
-  drawCartouche(scaleText: string): void {
+  drawCartouche(scaleText: string, admFilters?: ActiveAdmFilters): void {
     const { cartoucheArea } = this.layout;
     const ctx = this.ctx;
     
@@ -273,11 +302,11 @@ export class ExportFrame {
     ctx.strokeRect(cartoucheArea.x, cartoucheArea.y, cartoucheArea.width, cartoucheArea.height);
     
     const textX = cartoucheArea.x + 10;
-    let textY = cartoucheArea.y + 12;
-    const lineHeight = 14;
+    let textY = cartoucheArea.y + 10;
+    const lineHeight = 12;
     
     ctx.fillStyle = '#333333';
-    ctx.font = '10px Arial, sans-serif';
+    ctx.font = '9px Arial, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     
@@ -289,12 +318,18 @@ export class ExportFrame {
     ctx.fillText('Fond : © OpenStreetMap contributors', textX, textY);
     textY += lineHeight;
     
-    // SCR
+    // SCR d'affichage et SCR des données
     if (this.options.includeScrInfo) {
-      const scrName = this.options.grid.scr === 'EPSG:4326' 
+      const scrDisplay = this.options.grid.scr === 'EPSG:4326' 
         ? 'WGS84 (EPSG:4326)' 
-        : 'UTM Zone 31N (EPSG:25231)';
-      ctx.fillText(`SCR : ${scrName}`, textX, textY);
+        : 'UTM 31N (EPSG:25231)';
+      ctx.fillText(`SCR : ${scrDisplay}`, textX, textY);
+      textY += lineHeight;
+      
+      // Toujours afficher le SCR des données (stockage en base)
+      ctx.fillStyle = '#666666';
+      ctx.fillText('Données : UTM 31N (EPSG:25231)', textX, textY);
+      ctx.fillStyle = '#333333';
       textY += lineHeight;
     }
     

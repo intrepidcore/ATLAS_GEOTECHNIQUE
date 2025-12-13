@@ -15,7 +15,8 @@ import {
   ActiveThematic,
   ActiveAdmFilters,
   formatAdmPath,
-  BBox
+  BBox,
+  ThematicLegendData
 } from './export-types';
 import { ExportFrame, computeScaleText } from './export-frame';
 import {
@@ -317,7 +318,12 @@ export interface ExportQuickDialogConfig {
   getMapBounds: () => { north: number; south: number; east: number; west: number };
   getActiveThematic: () => ActiveThematic | null;
   getActiveAdmFilters: () => ActiveAdmFilters;
-  getLegendHtml?: () => string | null;
+  /** Récupère les données de légende thématique (classes, couleurs, labels) */
+  getThematicLegendData?: () => ThematicLegendData | null;
+  /** Récupère la référence au gridLayer pour le masquer pendant l'export */
+  getGridLayer?: () => any;
+  /** Récupère la référence à la map Leaflet */
+  getMap?: () => any;
 }
 
 export class ExportQuickDialog {
@@ -534,6 +540,12 @@ export class ExportQuickDialog {
                 <input type="checkbox" id="export-show-labels" ${this.options.grid.showLabels ? 'checked' : ''}>
                 <span>Afficher coordonnées autour du cadre</span>
               </label>
+              
+              <!-- Masquer grille de fond -->
+              <label class="export-checkbox" style="margin-top: 8px;">
+                <input type="checkbox" id="export-hide-grid-layer" checked>
+                <span>Masquer grille de fond (mailles)</span>
+              </label>
             </div>
           </div>
         </div>
@@ -676,11 +688,34 @@ export class ExportQuickDialog {
       updateProgress('Attente du chargement des tuiles...');
       await waitForTilesLoaded(this.config.mapContainer, 3000);
       
+      // Masquer la grille de fond si demandé
+      const hideGridLayer = (this.overlay?.querySelector('#export-hide-grid-layer') as HTMLInputElement)?.checked ?? true;
+      const gridLayer = this.config.getGridLayer?.();
+      const map = this.config.getMap?.();
+      let gridWasVisible = false;
+      
+      if (hideGridLayer && gridLayer && map) {
+        gridWasVisible = map.hasLayer(gridLayer);
+        if (gridWasVisible) {
+          map.removeLayer(gridLayer);
+          // Attendre un peu pour que le rendu se mette à jour
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
       updateProgress('Capture de la carte...');
-      const mapCapture = await captureLeafletMap(
-        this.config.mapContainer,
-        this.options.quality
-      );
+      let mapCapture;
+      try {
+        mapCapture = await captureLeafletMap(
+          this.config.mapContainer,
+          this.options.quality
+        );
+      } finally {
+        // Restaurer la grille de fond
+        if (gridWasVisible && gridLayer && map) {
+          gridLayer.addTo(map);
+        }
+      }
       
       updateProgress('Génération du canevas...');
       
@@ -710,7 +745,9 @@ export class ExportQuickDialog {
       exportFrame.drawTitle(thematic, admFilters);
       await exportFrame.drawMapImage(mapCapture.canvas);
       exportFrame.drawGridAndFrame(bbox);
-      exportFrame.drawLegend(this.config.getLegendHtml?.() || undefined);
+      // Récupérer les données de légende thématique
+      const legendData = this.config.getThematicLegendData?.() || undefined;
+      exportFrame.drawLegend(legendData);
       
       // Calculer l'échelle
       const centerLat = (bounds.north + bounds.south) / 2;

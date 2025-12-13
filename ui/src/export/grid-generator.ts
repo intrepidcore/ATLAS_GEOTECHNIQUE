@@ -14,11 +14,40 @@ import {
 } from './export-types';
 
 // ============================================================================
-// Calcul du pas de grille optimal
+// Calcul du pas de grille optimal (algorithme "nice step")
 // ============================================================================
 
 /**
+ * Calcule un pas "propre" en normalisant en 10^n × {1, 2, 5}
+ * Exemples: 0.037 → 0.05, 0.12 → 0.2, 2300 → 2000, 6100 → 10000
+ */
+export function niceStep(rawStep: number): number {
+  if (rawStep <= 0) return 1;
+  
+  // Trouver l'ordre de grandeur (puissance de 10)
+  const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  
+  // Normaliser le pas par rapport à l'ordre de grandeur
+  const normalized = rawStep / magnitude;
+  
+  // Choisir le multiplicateur "propre" le plus proche (1, 2, 5, 10)
+  let niceMultiplier: number;
+  if (normalized <= 1) {
+    niceMultiplier = 1;
+  } else if (normalized <= 2) {
+    niceMultiplier = 2;
+  } else if (normalized <= 5) {
+    niceMultiplier = 5;
+  } else {
+    niceMultiplier = 10;
+  }
+  
+  return magnitude * niceMultiplier;
+}
+
+/**
  * Calcule le pas de grille optimal pour une dimension donnée
+ * Utilise l'algorithme "nice step" puis vérifie contre les pas prédéfinis
  */
 export function computeOptimalStep(
   dimension: number,
@@ -27,15 +56,19 @@ export function computeOptimalStep(
 ): number {
   const rawStep = dimension / targetDivisions;
   
-  // Trouver le plus petit pas "propre" >= rawStep
+  // Calculer un pas "propre" via l'algorithme nice step
+  const calculatedNiceStep = niceStep(rawStep);
+  
+  // Vérifier si ce pas est dans la liste des pas prédéfinis
+  // Sinon, trouver le plus proche dans la liste
   for (const step of niceSteps) {
-    if (step >= rawStep) {
+    if (step >= calculatedNiceStep * 0.8) {
       return step;
     }
   }
   
-  // Si aucun pas ne convient, prendre le plus grand
-  return niceSteps[niceSteps.length - 1];
+  // Si aucun pas ne convient, utiliser le pas calculé
+  return calculatedNiceStep;
 }
 
 /**

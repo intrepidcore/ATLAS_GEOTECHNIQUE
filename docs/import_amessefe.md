@@ -258,7 +258,77 @@ python scripts/build_amessefe_summary_xlsx_v2.py
 | `VERIFIER_SURPLUS` | DB a plus d'essais que Excel | Possible doublon |
 | `VERIFIER_MIXTE` | Certains essais manquants, d'autres en surplus | Analyse manuelle |
 
+## Architecture v4 (2025-12-13)
+
+### Principes
+
+L'import v4 est structuré autour de 3 axes :
+
+1. **Contrat de schéma** : Vérification au démarrage que les tables DB correspondent aux attentes
+2. **Métriques par phase** : Logs structurés avec timestamps et compteurs
+3. **Rollback à 3 niveaux** : Granularité de récupération d'erreur
+
+### Modules utils
+
+| Module | Description |
+|--------|-------------|
+| `scripts/utils/schema_contract.py` | Contrat de schéma + vérification |
+| `scripts/utils/import_metrics.py` | Métriques et logs structurés |
+| `scripts/utils/amessefe_excel.py` | Lecture centralisée des Excel |
+| `scripts/utils/normalize.py` | Normalisation des localités |
+
+### Phases d'import
+
+| Phase | Table cible | Description |
+|-------|-------------|-------------|
+| A | `sondages` | Création des sondages (92 localités) |
+| B | `echantillons` | 3 échantillons par sondage (276 total) |
+| C | `essais_vbs` | Valeurs de bleu (~224) |
+| D | `essais_geotechniques` | Limites Atterberg (~225) |
+| E | `granulo_points` | % passant 0.08mm (~149) |
+| F | `essais_classif` | Classifications (~226) |
+| G | `essais_potentiel_gonflement` | Potentiel gonflement (~228) |
+
+### Rollback à 3 niveaux
+
+| Niveau | Scope | Quand l'utiliser |
+|--------|-------|------------------|
+| **1** | Par localité (SAVEPOINT) | Erreur sur une localité → les autres passent |
+| **2** | Par phase (transaction) | Erreur sur une phase → relancer uniquement cette phase |
+| **3** | Global (`reset_amessefe.sql`) | Refonte complète → tout supprimer et réimporter |
+
+### Usage v4
+
+```bash
+# Dry-run (test sans commit)
+python scripts/04_import_amessefe_v4.py --dry-run
+
+# Import réel
+python scripts/04_import_amessefe_v4.py
+
+# Rapport JSON généré dans data/xlsx/amessefe_import_report.json
+```
+
+### Mapping Excel → DB
+
+| Excel | Colonnes | Table DB | Colonnes DB |
+|-------|----------|----------|-------------|
+| `bleu.xlsx` | Localités, 1, 1.5, 2 | `essais_vbs` | echantillon_id, vbs |
+| `limite.xlsx` | Localité, Profondeur, WL, WP, IP | `essais_geotechniques` | echantillon_id, wl, wp, ip |
+| `Granulométrie.xlsx` | Localités, 1, 1.5, 2 | `granulo_points` | echantillon_id, method, sieve_mm, passing_pct |
+| `classification.xlsx` | Localité, Profondeur, Class* | `essais_classif` | echantillon_id, class_*, type_sol |
+| `potentielle_de_gonflement.xlsx` | Localité, Cg*, Analyse* | `essais_potentiel_gonflement` | echantillon_id, cg, cg_qual |
+
+---
+
 ## Historique des corrections
+
+### v4.0 (2025-12-13)
+- ✅ Contrat de schéma avec vérification au démarrage
+- ✅ Métriques et logs structurés par phase
+- ✅ Rollback à 3 niveaux (localité/phase/global)
+- ✅ Rapport JSON automatique
+- ✅ Mode dry-run
 
 ### v2.1 (2025-12-11)
 - ✅ Module de normalisation centralisé (`scripts/utils/normalize.py`)

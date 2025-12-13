@@ -218,6 +218,23 @@ export interface ActiveThematic {
   legendHtml?: string;
 }
 
+/** Classe thématique pour la légende reconstruite */
+export interface LegendClass {
+  index: number;
+  min: number | null;
+  max: number | null;
+  color: string;
+  label: string;
+}
+
+/** État thématique complet pour l'export */
+export interface ThematicLegendData {
+  parameterLabel: string;
+  unit: string;
+  mapType: 'choropleth' | 'proportional' | 'binary';
+  classes: LegendClass[];
+}
+
 // ============================================================================
 // Filtres ADM actifs
 // ============================================================================
