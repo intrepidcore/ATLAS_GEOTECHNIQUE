@@ -40,6 +40,7 @@ import {
 } from './filters-state'
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
+import { createExportQuickDialog, type ExportQuickDialogConfig } from './export'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -3462,6 +3463,106 @@ console.log('[INIT] Initialisation cartes thématiques...')
 const thematicManager = new ThematicMapManager(map, API_GEO)
 const thematicPanel = new ThematicPanel(thematicManager)
 console.log('[INIT] ✅ Cartes thématiques initialisées')
+
+// ============================================================================
+// Export Cartographique v3.0
+// ============================================================================
+console.log('[INIT] Initialisation export cartographique...')
+
+// Configuration du dialogue d'export
+const exportDialogConfig: ExportQuickDialogConfig = {
+  mapContainer: document.getElementById('map') as HTMLElement,
+  
+  getMapBounds: () => {
+    const bounds = map.getBounds()
+    return {
+      north: bounds.getNorth(),
+      south: bounds.getSouth(),
+      east: bounds.getEast(),
+      west: bounds.getWest()
+    }
+  },
+  
+  getActiveThematic: () => {
+    // Récupérer la thématique active depuis le manager
+    const state = thematicManager.getCurrentExportState?.()
+    if (state) {
+      return {
+        name: state.parameterLabel || 'Carte géotechnique',
+        parameter: state.parameterId || 'n_sondages',
+        unit: state.unit
+      }
+    }
+    return {
+      name: 'Carte géotechnique',
+      parameter: 'n_sondages'
+    }
+  },
+  
+  getActiveAdmFilters: () => {
+    // Récupérer les filtres ADM actifs
+    const adm1Select = document.getElementById('filterAdm1') as HTMLSelectElement
+    const adm2Select = document.getElementById('filterAdm2') as HTMLSelectElement
+    const adm3Select = document.getElementById('filterAdm3') as HTMLSelectElement
+    
+    return {
+      adm1: adm1Select?.value ? { code: adm1Select.value, name: adm1Select.options[adm1Select.selectedIndex]?.text || adm1Select.value } : undefined,
+      adm2: adm2Select?.value ? { code: adm2Select.value, name: adm2Select.options[adm2Select.selectedIndex]?.text || adm2Select.value } : undefined,
+      adm3: adm3Select?.value ? { code: adm3Select.value, name: adm3Select.options[adm3Select.selectedIndex]?.text || adm3Select.value } : undefined
+    }
+  },
+  
+  getLegendHtml: () => {
+    const legendEl = document.querySelector('.thematic-legend')
+    return legendEl?.innerHTML || null
+  }
+}
+
+const exportDialog = createExportQuickDialog(exportDialogConfig)
+
+// Créer le bouton d'export flottant
+const exportButton = document.createElement('button')
+exportButton.id = 'openExportDialog'
+exportButton.title = 'Exporter la carte'
+exportButton.innerHTML = '📤'
+exportButton.style.cssText = `
+  position: fixed;
+  bottom: 80px;
+  right: 20px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: #3b82f6;
+  color: white;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  z-index: 1000;
+  transition: all 0.2s;
+`
+exportButton.addEventListener('mouseenter', () => {
+  exportButton.style.transform = 'scale(1.1)'
+  exportButton.style.boxShadow = '0 6px 16px rgba(59, 130, 246, 0.5)'
+})
+exportButton.addEventListener('mouseleave', () => {
+  exportButton.style.transform = 'scale(1)'
+  exportButton.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.4)'
+})
+exportButton.addEventListener('click', () => {
+  exportDialog.open()
+})
+document.body.appendChild(exportButton)
+
+// Raccourci clavier Ctrl+E pour export
+document.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'e') {
+    e.preventDefault()
+    exportDialog.open()
+  }
+})
+
+console.log('[INIT] ✅ Export cartographique initialisé')
 
 // Le wizard sera initialisé dans bootstrap() pour éviter les problèmes de portée
 // V2 - désactivé pour tests
