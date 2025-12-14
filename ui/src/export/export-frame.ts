@@ -249,6 +249,87 @@ export class ExportFrame {
   }
   
   /**
+   * Dessine les labels des ADM limitrophes sur les bords de la carte
+   * @param neighbors - Liste des voisins avec direction et coordonnées
+   * @param bbox - Bounding box de la carte
+   */
+  drawNeighborLabels(
+    neighbors: Array<{
+      label: string;
+      direction: string;
+      lon: number;
+      lat: number;
+    }>,
+    bbox: BBox
+  ): void {
+    if (!neighbors || neighbors.length === 0) return;
+    
+    const { mapArea } = this.layout;
+    const ctx = this.ctx;
+    
+    ctx.save();
+    ctx.font = '9px Arial, sans-serif';
+    ctx.fillStyle = '#555555';
+    
+    // Grouper par direction pour éviter les collisions
+    const byDirection: Record<string, typeof neighbors> = { N: [], S: [], E: [], W: [] };
+    for (const n of neighbors) {
+      const dir = n.direction.toUpperCase();
+      if (byDirection[dir]) {
+        byDirection[dir].push(n);
+      }
+    }
+    
+    // Convertir lat/lon en pixels
+    const toPixelX = (lon: number) => mapArea.x + ((lon - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+    const toPixelY = (lat: number) => mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+    
+    // Dessiner les labels par direction
+    const margin = 5;
+    const maxPerSide = 3;
+    
+    // Nord
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    const northLabels = byDirection.N.slice(0, maxPerSide);
+    const northSpacing = mapArea.width / (northLabels.length + 1);
+    northLabels.forEach((n, i) => {
+      const x = mapArea.x + northSpacing * (i + 1);
+      ctx.fillText(n.label, x, mapArea.y - margin);
+    });
+    
+    // Sud
+    ctx.textBaseline = 'top';
+    const southLabels = byDirection.S.slice(0, maxPerSide);
+    const southSpacing = mapArea.width / (southLabels.length + 1);
+    southLabels.forEach((n, i) => {
+      const x = mapArea.x + southSpacing * (i + 1);
+      ctx.fillText(n.label, x, mapArea.y + mapArea.height + margin);
+    });
+    
+    // Est
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    const eastLabels = byDirection.E.slice(0, maxPerSide);
+    const eastSpacing = mapArea.height / (eastLabels.length + 1);
+    eastLabels.forEach((n, i) => {
+      const y = mapArea.y + eastSpacing * (i + 1);
+      ctx.fillText(n.label, mapArea.x + mapArea.width + margin, y);
+    });
+    
+    // Ouest
+    ctx.textAlign = 'right';
+    const westLabels = byDirection.W.slice(0, maxPerSide);
+    const westSpacing = mapArea.height / (westLabels.length + 1);
+    westLabels.forEach((n, i) => {
+      const y = mapArea.y + westSpacing * (i + 1);
+      ctx.fillText(n.label, mapArea.x - margin, y);
+    });
+    
+    ctx.restore();
+  }
+  
+  /**
    * Dessine la grille et le cadre
    */
   drawGridAndFrame(bbox: BBox): void {

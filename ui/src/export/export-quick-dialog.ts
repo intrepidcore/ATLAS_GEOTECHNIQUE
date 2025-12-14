@@ -815,6 +815,19 @@ export class ExportQuickDialog {
       }
       
       exportFrame.drawGridAndFrame(bbox);
+      
+      // Dessiner les labels des ADM limitrophes si zone filtrée
+      if (this.options.zone === 'adm-filtered' && admFilters) {
+        try {
+          const neighbors = await this.fetchAdmNeighbors(admFilters);
+          if (neighbors && neighbors.length > 0) {
+            exportFrame.drawNeighborLabels(neighbors, bbox);
+          }
+        } catch (e) {
+          console.warn('[Export] Impossible de charger les ADM limitrophes:', e);
+        }
+      }
+      
       // Récupérer les données de légende thématique
       const legendData = this.config.getThematicLegendData?.() || undefined;
       exportFrame.drawLegend(legendData);
@@ -917,6 +930,47 @@ export class ExportQuickDialog {
     document.body.appendChild(toast);
     
     setTimeout(() => toast.remove(), 3000);
+  }
+  
+  /**
+   * Récupère les ADM limitrophes depuis l'API
+   */
+  private async fetchAdmNeighbors(
+    admFilters: ActiveAdmFilters
+  ): Promise<Array<{ label: string; direction: string; lon: number; lat: number }>> {
+    // Déterminer le niveau et le nom de l'ADM
+    let level: string;
+    let name: string;
+    
+    if (admFilters.adm3) {
+      level = 'adm3';
+      name = admFilters.adm3.name;
+    } else if (admFilters.adm2) {
+      level = 'adm2';
+      name = admFilters.adm2.name;
+    } else if (admFilters.adm1) {
+      level = 'adm1';
+      name = admFilters.adm1.name;
+    } else {
+      return [];
+    }
+    
+    try {
+      const response = await fetch(
+        `http://localhost:8000/adm-neighbors?level=${level}&name=${encodeURIComponent(name)}`
+      );
+      
+      if (!response.ok) {
+        console.warn('[Export] Erreur API adm-neighbors:', response.status);
+        return [];
+      }
+      
+      const data = await response.json();
+      return data.neighbors || [];
+    } catch (e) {
+      console.warn('[Export] Erreur fetch adm-neighbors:', e);
+      return [];
+    }
   }
   
   /**

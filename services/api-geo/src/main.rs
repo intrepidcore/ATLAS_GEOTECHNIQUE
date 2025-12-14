@@ -9,6 +9,7 @@ use std::net::SocketAddr;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+mod adm_neighbors;
 mod audit;
 pub mod auth;
 mod cells_kpi;
@@ -198,6 +199,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/adm3/geojson", get(surveys_adm::get_adm3_geojson))
         .route("/adm3", get(surveys::list_adm3))
         .route("/adm/:level", get(routes::list_adm_zones))
+        // ADM neighbors endpoint (for export labels)
+        .route("/adm-neighbors", get(adm_neighbors::get_adm_neighbors))
         // Audit log endpoints
         .route("/audit", get(audit::list_audit_logs))
         .route("/audit/export/csv", get(audit::export_audit_csv))
