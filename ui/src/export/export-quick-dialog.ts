@@ -703,20 +703,12 @@ export class ExportQuickDialog {
       let bounds: { north: number; south: number; east: number; west: number };
       
       if (this.options.zone === 'adm-filtered' && this.config.getAdmBounds) {
-        // Zone filtrée : utiliser le bbox du polygone ADM avec marge
+        // Zone filtrée : utiliser le bbox du polygone ADM optimisé pour la feuille
         const admBounds = this.config.getAdmBounds();
         if (admBounds) {
-          // Marge réduite à 3% pour maximiser l'ADM sur la feuille
-          const marginFactor = 0.03;
-          const dx = admBounds.east - admBounds.west;
-          const dy = admBounds.north - admBounds.south;
-          bounds = {
-            west: admBounds.west - marginFactor * dx,
-            east: admBounds.east + marginFactor * dx,
-            south: admBounds.south - marginFactor * dy,
-            north: admBounds.north + marginFactor * dy
-          };
-          console.log('[Export] Zone filtrée ADM avec marge 3%:', bounds);
+          // Calculer l'emprise "pro serrée" adaptée au ratio de la zone carte
+          bounds = this.computeOptimalBoundsForSheet(admBounds);
+          console.log('[Export] Zone filtrée ADM optimisée pour feuille:', bounds);
           
           // IMPORTANT: Zoomer la carte sur le bbox ADM AVANT la capture
           if (map) {
@@ -889,6 +881,75 @@ export class ExportQuickDialog {
     document.body.appendChild(toast);
     
     setTimeout(() => toast.remove(), 3000);
+  }
+  
+  /**
+   * Calcule l'emprise optimale pour que l'ADM occupe toute la zone carte
+   * en respectant le ratio de la feuille A4
+   * 
+   * Algorithme:
+   * 1. Partir du bbox ADM brut
+   * 2. Ajouter une marge minimale (2-3%)
+   * 3. Adapter au ratio de la zone carte (A4 portrait ≈ 1.29)
+   * 4. Centrer l'ADM dans ce nouveau bbox
+   */
+  private computeOptimalBoundsForSheet(
+    admBounds: { north: number; south: number; east: number; west: number }
+  ): { north: number; south: number; east: number; west: number } {
+    
+    // Dimensions du bbox ADM en degrés
+    const admWidth = admBounds.east - admBounds.west;
+    const admHeight = admBounds.north - admBounds.south;
+    
+    // Centre de l'ADM
+    const centerLat = (admBounds.north + admBounds.south) / 2;
+    const centerLng = (admBounds.east + admBounds.west) / 2;
+    
+    // Marge minimale (2% de chaque côté = 4% total)
+    const marginFactor = 0.02;
+    let W1 = admWidth * (1 + 2 * marginFactor);
+    let H1 = admHeight * (1 + 2 * marginFactor);
+    
+    // Ratio de la zone carte sur A4 portrait
+    // Zone carte: ~180mm largeur x ~200mm hauteur (après titre, légende, cartouche)
+    // Ratio R = hauteur / largeur ≈ 1.11 (légèrement plus haut que large)
+    const sheetRatio = 1.11;
+    
+    // Ratio actuel de l'emprise ADM
+    // Note: on corrige pour la latitude (1° lat ≈ 111km, 1° lng ≈ 111km * cos(lat))
+    const latCorrection = Math.cos(centerLat * Math.PI / 180);
+    const admRatio = H1 / (W1 * latCorrection);
+    
+    let W2 = W1;
+    let H2 = H1;
+    
+    if (admRatio > sheetRatio) {
+      // ADM plus "vertical" que la feuille → élargir la largeur
+      W2 = (H1 / sheetRatio) / latCorrection;
+    } else if (admRatio < sheetRatio) {
+      // ADM plus "horizontal" que la feuille → augmenter la hauteur
+      H2 = W1 * latCorrection * sheetRatio;
+    }
+    
+    // Calculer le nouveau bbox centré sur l'ADM
+    const newBounds = {
+      west: centerLng - W2 / 2,
+      east: centerLng + W2 / 2,
+      south: centerLat - H2 / 2,
+      north: centerLat + H2 / 2
+    };
+    
+    console.log('[Export] Emprise optimisée:', {
+      admOriginal: { width: admWidth.toFixed(4), height: admHeight.toFixed(4) },
+      admRatio: admRatio.toFixed(3),
+      sheetRatio: sheetRatio.toFixed(3),
+      newBounds: {
+        width: W2.toFixed(4),
+        height: H2.toFixed(4)
+      }
+    });
+    
+    return newBounds;
   }
 }
 
