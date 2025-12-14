@@ -706,8 +706,8 @@ export class ExportQuickDialog {
         // Zone filtrée : utiliser le bbox du polygone ADM avec marge
         const admBounds = this.config.getAdmBounds();
         if (admBounds) {
-          // Ajouter une marge de 8% pour le confort visuel
-          const marginFactor = 0.08;
+          // Marge réduite à 3% pour maximiser l'ADM sur la feuille
+          const marginFactor = 0.03;
           const dx = admBounds.east - admBounds.west;
           const dy = admBounds.north - admBounds.south;
           bounds = {
@@ -716,7 +716,7 @@ export class ExportQuickDialog {
             south: admBounds.south - marginFactor * dy,
             north: admBounds.north + marginFactor * dy
           };
-          console.log('[Export] Zone filtrée ADM avec marge 8%:', bounds);
+          console.log('[Export] Zone filtrée ADM avec marge 3%:', bounds);
           
           // IMPORTANT: Zoomer la carte sur le bbox ADM AVANT la capture
           if (map) {
