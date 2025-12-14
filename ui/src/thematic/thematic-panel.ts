@@ -1,6 +1,7 @@
 import { ThematicMapManager } from './thematic-maps'
 import type { ThematicMapConfig, ObjectifMetier, MapType, ClassificationMethod } from './thematic-types'
 import { createExportQuickDialog, type ExportQuickDialogConfig } from '../export'
+import { createExportAtlasDialog } from '../export/export-atlas-dialog'
 import { 
   OBJECTIFS_METIER, 
   THEMATIC_PARAMETERS, 
@@ -260,6 +261,12 @@ export class ThematicPanel {
         <div class="thematic-actions">
           <button id="exportThematicPro" class="btn-primary full-width" title="Export cartographique professionnel avec grille, titre, légende">
             <span class="btn-icon">📤</span> Export Pro (PNG/PDF)
+          </button>
+        </div>
+        
+        <div class="thematic-actions">
+          <button id="exportThematicAtlas" class="btn-secondary full-width" title="Exporter toutes les cartes thématiques pour tous les ADM">
+            <span class="btn-icon">📚</span> Export Atlas complet
           </button>
         </div>
         
@@ -665,6 +672,7 @@ export class ThematicPanel {
     document.getElementById('exportThematicPNG')?.addEventListener('click', () => this.exportPNG())
     document.getElementById('exportThematicQGIS')?.addEventListener('click', () => this.exportQGIS())
     document.getElementById('exportThematicPro')?.addEventListener('click', () => this.openExportProDialog())
+    document.getElementById('exportThematicAtlas')?.addEventListener('click', () => this.openExportAtlasDialog())
     
     // Toggle grid layer
     this.elements.toggleGridCheckbox?.addEventListener('change', (e) => {
@@ -1089,6 +1097,16 @@ export class ThematicPanel {
     }
     
     this.exportDialog.open()
+  }
+  
+  /**
+   * Ouvrir le dialogue d'export Atlas complet (batch)
+   */
+  private openExportAtlasDialog(): void {
+    const dialog = createExportAtlasDialog((config) => {
+      console.log('[ThematicPanel] Export Atlas config:', config)
+    })
+    dialog.open()
   }
   
   /**

@@ -1909,64 +1909,64 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
-### 3.0.5.1 Statistiques dans l'export
+### 3.0.5.1 Statistiques dans l'export ✅ IMPLÉMENTÉ
 **Problème** : Case "Statistiques" cochée mais rien ne s'affiche
 **Solution** : Implémenter `buildExportStats()` pour chaque thématique
 
-- [ ] Créer fonction `buildExportStats(parameterId, features, classes, zoneMeta)`
-- [ ] Stats pour `n_sondages` :
+- [X] Créer fonction `buildExportStats(parameterId, features, classes, zoneMeta)` → `export-stats.ts`
+- [X] Stats pour `n_sondages` :
   - N_sondages total
   - N_mailles avec données / N_mailles total
-  - Profondeur moyenne d'investigation
-- [ ] Stats pour `vbs_moy` :
+  - Couverture %
+- [X] Stats pour `vbs_moy` :
   - VBS moyen, min, max
   - % mailles "très argileux"
-- [ ] Afficher bloc stats en bas à gauche du cartouche
-- [ ] Hauteur dynamique selon nombre de lignes
+- [X] Afficher bloc stats à droite de la légende → `drawStats()`
+- [X] Hauteur dynamique selon nombre de lignes
 
 ---
 
-### 3.0.5.2 ADM Limitrophes (labels sur les bords)
+### 3.0.5.2 ADM Limitrophes (labels sur les bords) ✅ IMPLÉMENTÉ
 **Objectif** : Afficher les noms des ADM/pays qui bordent l'ADM exportée
 
 #### Backend - Endpoint `/adm-neighbors`
-- [ ] Créer endpoint `GET /adm-neighbors?level=adm1&code=TG-M`
-- [ ] Requête PostGIS `ST_Touches(geom, geom_cible)` pour voisins
-- [ ] Calculer point de label sur frontière commune : `ST_LineInterpolatePoint(ST_Intersection(...), 0.5)`
-- [ ] Calculer direction (N/S/E/O) depuis centroïde
-- [ ] Formater labels :
-  - ADM1 : "Région de ..."
+- [X] Créer endpoint `GET /adm-neighbors?level=adm1&name=Maritime` → `adm_neighbors.rs`
+- [X] Requête PostGIS `ST_Touches(geom, geom_cible)` pour voisins
+- [X] Calculer point de label sur frontière commune
+- [X] Calculer direction (N/S/E/O) depuis centroïde
+- [X] Formater labels :
+  - ADM1 : "Région ..."
   - ADM2 : "Préfecture de ..."
   - ADM3 : "Commune de ..."
-  - Pays : juste le nom
+  - Pays : juste le nom (Ghana, Bénin, Burkina Faso)
 
 #### Frontend - Dessin des labels
-- [ ] Convertir lat/lon → coordonnées image
-- [ ] Placer texte sur bord selon direction
-- [ ] Gestion anti-collision (max 2-3 labels par côté)
-- [ ] Style : police 9-10pt, gris foncé
+- [X] `fetchAdmNeighbors()` dans export-quick-dialog.ts
+- [X] `drawNeighborLabels()` dans export-frame.ts
+- [X] Gestion anti-collision (max 3 labels par côté)
+- [X] Style : police 9pt, gris #555555
 
 ---
 
-### 3.0.5.3 Masque hors ADM (focus/contexte)
+### 3.0.5.3 Masque hors ADM (focus/contexte) ✅ IMPLÉMENTÉ
 **Objectif** : Griser/blanchir ce qui est en dehors de l'ADM
 
-- [ ] Option "Masquer hors ADM" dans Export Pro
-- [ ] Deux modes :
-  - **Focus** : opacité 85-90% (ADM très visible, contexte presque invisible)
-  - **Contexte léger** : opacité 40-50% (ADM visible, contexte perceptible)
-- [ ] Créer polygone masque = bbox - ADM (hole)
-- [ ] Dessiner masque blanc semi-opaque sur le canvas
+- [X] Option "Masque hors ADM" dans Export Pro (select: none/context/focus)
+- [X] Deux modes :
+  - **Focus** : opacité 85% (ADM très visible, contexte presque invisible)
+  - **Contexte léger** : opacité 45% (ADM visible, contexte perceptible)
+- [X] `getAdmPolygonCoords()` dans ThematicMapManager
+- [X] `drawAdmMask()` dans export-frame.ts avec fill 'evenodd'
 
 ---
 
-### 3.0.5.4 Grille continue plus visible
+### 3.0.5.4 Grille continue plus visible ✅ IMPLÉMENTÉ
 **Problème** : Opacité grille trop faible
 **Solution** : Augmenter opacité à 0.6-0.7
 
-- [ ] Grille continue : opacité 0.6 (au lieu de 0.4)
-- [ ] Épaisseur : 1px à 300dpi
-- [ ] Couleur : noir pur avec opacité
+- [X] Grille continue : opacité 0.6 (au lieu de 0.4)
+- [X] Épaisseur : 1.0px (au lieu de 0.7px)
+- [X] Couleur : noir pur avec opacité
 
 ---
 
