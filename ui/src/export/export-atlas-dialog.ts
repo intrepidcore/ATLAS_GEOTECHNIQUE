@@ -131,11 +131,17 @@ const ATLAS_DIALOG_STYLES = `
   gap: 8px;
   cursor: pointer;
   font-size: 13px;
+  color: #1f2937;
+}
+
+.atlas-checkbox span {
+  color: #1f2937;
 }
 
 .atlas-checkbox input {
   width: 16px;
   height: 16px;
+  accent-color: #3b82f6;
 }
 
 .atlas-row {

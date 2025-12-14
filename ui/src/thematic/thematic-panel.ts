@@ -1060,11 +1060,12 @@ export class ThematicPanel {
           }
         },
         
-        // Récupérer les données de légende thématique (classes, couleurs, labels)
+        // Récupérer les données de légende thématique (classes, couleurs, labels, features)
         getThematicLegendData: () => {
           const state = this.manager.getCurrentExportState?.()
           if (state && state.classes && state.classes.length > 0) {
             return {
+              parameterId: state.parameterId,
               parameterLabel: state.parameterLabel,
               unit: state.unit,
               mapType: state.mapType,
@@ -1074,7 +1075,8 @@ export class ThematicPanel {
                 max: c.max,
                 color: c.color,
                 label: c.label
-              }))
+              })),
+              features: state.features || []
             }
           }
           return null

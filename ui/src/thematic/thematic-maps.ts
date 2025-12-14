@@ -922,7 +922,8 @@ export class ThematicMapManager {
         max: stats.max,
         mean: stats.mean,
         median: stats.median
-      }
+      },
+      features: this.currentData.features || []
     }
     
     console.log('[ThematicMap] Export state updated:', this.currentExportState)

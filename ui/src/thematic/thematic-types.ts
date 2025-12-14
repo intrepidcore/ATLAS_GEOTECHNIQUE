@@ -467,6 +467,7 @@ export interface ThematicExportState {
     mean: number
     median: number
   } | null
+  features?: any[]          // Features GeoJSON pour les statistiques d'export
 }
 
 export interface SavedConfig {
