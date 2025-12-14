@@ -327,6 +327,8 @@ export interface ExportQuickDialogConfig {
   getMap?: () => any;
   /** Récupère le bbox du polygone ADM actif (pour centrer l'export sur l'ADM) */
   getAdmBounds?: () => { north: number; south: number; east: number; west: number } | null;
+  /** Récupère les coordonnées du polygone ADM pour le masque */
+  getAdmPolygon?: () => number[][] | null;
 }
 
 export class ExportQuickDialog {
@@ -549,6 +551,16 @@ export class ExportQuickDialog {
                 <input type="checkbox" id="export-hide-grid-layer" checked>
                 <span>Masquer grille de fond (mailles)</span>
               </label>
+              
+              <!-- Masque hors ADM -->
+              <div class="export-field" style="margin-top: 12px;">
+                <label>Masque hors ADM</label>
+                <select id="export-mask-mode">
+                  <option value="none">Aucun</option>
+                  <option value="context" selected>Contexte léger (45%)</option>
+                  <option value="focus">Focus (85%)</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -792,6 +804,16 @@ export class ExportQuickDialog {
       // Dessiner les éléments
       exportFrame.drawTitle(thematic, admFilters);
       await exportFrame.drawMapImage(mapCapture.canvas);
+      
+      // Dessiner le masque hors ADM si demandé
+      const maskMode = (this.overlay?.querySelector('#export-mask-mode') as HTMLSelectElement)?.value as 'none' | 'context' | 'focus' || 'none';
+      if (maskMode !== 'none' && this.options.zone === 'adm-filtered') {
+        const admPolygon = this.config.getAdmPolygon?.();
+        if (admPolygon) {
+          exportFrame.drawAdmMask(admPolygon, bbox, maskMode);
+        }
+      }
+      
       exportFrame.drawGridAndFrame(bbox);
       // Récupérer les données de légende thématique
       const legendData = this.config.getThematicLegendData?.() || undefined;

@@ -1079,7 +1079,10 @@ export class ThematicPanel {
         getMap: () => map,
         
         // Récupère le bbox du polygone ADM actif (pour centrer l'export sur l'ADM)
-        getAdmBounds: () => this.manager.getAdmOverlayBounds?.() || null
+        getAdmBounds: () => this.manager.getAdmOverlayBounds?.() || null,
+        
+        // Récupère les coordonnées du polygone ADM pour le masque
+        getAdmPolygon: () => this.manager.getAdmPolygonCoords?.() || null
       }
       
       this.exportDialog = createExportQuickDialog(config)

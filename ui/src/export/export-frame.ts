@@ -193,6 +193,62 @@ export class ExportFrame {
   }
   
   /**
+   * Dessine un masque semi-transparent hors de l'ADM
+   * @param admPolygon - Coordonnées du polygone ADM en lat/lon [[lng, lat], ...]
+   * @param bbox - Bounding box de la carte
+   * @param mode - 'none' | 'context' (45%) | 'focus' (85%)
+   */
+  drawAdmMask(
+    admPolygon: number[][] | null,
+    bbox: BBox,
+    mode: 'none' | 'context' | 'focus' = 'context'
+  ): void {
+    if (mode === 'none' || !admPolygon || admPolygon.length < 3) return;
+    
+    const { mapArea } = this.layout;
+    const ctx = this.ctx;
+    
+    // Opacité selon le mode
+    const opacity = mode === 'focus' ? 0.85 : 0.45;
+    
+    // Convertir les coordonnées lat/lon en pixels
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+      return [x, y];
+    };
+    
+    ctx.save();
+    
+    // Créer un path pour le masque (rectangle - trou ADM)
+    ctx.beginPath();
+    
+    // Rectangle extérieur (sens horaire)
+    ctx.moveTo(mapArea.x, mapArea.y);
+    ctx.lineTo(mapArea.x + mapArea.width, mapArea.y);
+    ctx.lineTo(mapArea.x + mapArea.width, mapArea.y + mapArea.height);
+    ctx.lineTo(mapArea.x, mapArea.y + mapArea.height);
+    ctx.closePath();
+    
+    // Trou ADM (sens anti-horaire pour créer le trou)
+    const firstPoint = toPixel(admPolygon[0][0], admPolygon[0][1]);
+    ctx.moveTo(firstPoint[0], firstPoint[1]);
+    
+    // Parcourir en sens inverse pour créer le trou
+    for (let i = admPolygon.length - 1; i >= 0; i--) {
+      const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    
+    // Remplir avec blanc semi-opaque
+    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+    ctx.fill('evenodd');
+    
+    ctx.restore();
+  }
+  
+  /**
    * Dessine la grille et le cadre
    */
   drawGridAndFrame(bbox: BBox): void {

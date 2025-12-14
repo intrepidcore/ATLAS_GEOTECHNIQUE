@@ -1175,4 +1175,37 @@ export class ThematicMapManager {
       return null
     }
   }
+  
+  /**
+   * Récupère les coordonnées du polygone ADM pour le masque d'export
+   * Retourne un tableau de [lng, lat] représentant le contour externe
+   */
+  getAdmPolygonCoords(): number[][] | null {
+    if (!this.admOverlayLayer || this.admOverlayLayer.getLayers().length === 0) {
+      return null
+    }
+    
+    try {
+      let coords: number[][] | null = null
+      
+      this.admOverlayLayer.eachLayer((layer: any) => {
+        if (coords) return // Prendre seulement le premier polygone
+        
+        if (layer.getLatLngs) {
+          const latLngs = layer.getLatLngs()
+          // GeoJSON peut avoir plusieurs niveaux d'imbrication
+          const ring = Array.isArray(latLngs[0]) 
+            ? (Array.isArray(latLngs[0][0]) ? latLngs[0][0] : latLngs[0])
+            : latLngs
+          
+          coords = ring.map((ll: any) => [ll.lng, ll.lat])
+        }
+      })
+      
+      return coords
+    } catch (e) {
+      console.warn('[ThematicMap] Impossible de récupérer les coords ADM:', e)
+      return null
+    }
+  }
 }
