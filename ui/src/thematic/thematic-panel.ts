@@ -1103,9 +1103,79 @@ export class ThematicPanel {
    * Ouvrir le dialogue d'export Atlas complet (batch)
    */
   private openExportAtlasDialog(): void {
+    const map = this.manager['map']
+    const mapContainer = document.getElementById('map')
+    
+    const callbacks = {
+      // Changer la thématique et le filtre ADM
+      setThematicAndAdm: async (thematicId: string, admLevel: string, admName: string): Promise<void> => {
+        console.log(`[Atlas] Changement: ${thematicId} / ${admLevel} / ${admName}`)
+        
+        // Mettre à jour les sélecteurs ADM
+        if (admLevel === 'adm1' && this.elements.adm1Select) {
+          // Trouver l'option correspondante
+          const options = Array.from(this.elements.adm1Select.options)
+          const option = options.find(o => o.text === admName || o.value === admName)
+          if (option) {
+            this.elements.adm1Select.value = option.value
+            this.elements.adm1Select.dispatchEvent(new Event('change'))
+          }
+        }
+        
+        // Mettre à jour le paramètre thématique
+        if (this.elements.parameterSelect) {
+          this.elements.parameterSelect.value = thematicId
+          this.elements.parameterSelect.dispatchEvent(new Event('change'))
+        }
+        
+        // Appliquer la carte thématique
+        await this.applyThematic()
+        
+        // Attendre le rendu
+        await new Promise(r => setTimeout(r, 1000))
+      },
+      
+      // Capturer la carte actuelle
+      captureCurrentMap: async (): Promise<Blob | null> => {
+        if (!mapContainer) return null
+        
+        try {
+          const html2canvas = (window as any).html2canvas
+          if (!html2canvas) {
+            console.warn('[Atlas] html2canvas non disponible')
+            return null
+          }
+          
+          const canvas = await html2canvas(mapContainer, {
+            useCORS: true,
+            allowTaint: true,
+            scale: 2,
+            logging: false
+          })
+          
+          return new Promise<Blob | null>((resolve) => {
+            canvas.toBlob((blob: Blob | null) => resolve(blob), 'image/png', 0.95)
+          })
+        } catch (e) {
+          console.error('[Atlas] Erreur capture:', e)
+          return null
+        }
+      },
+      
+      // Récupérer la liste des ADM (non utilisé, l'API est appelée directement)
+      getAdmList: async (level: 'adm1' | 'adm2' | 'adm3') => {
+        const response = await fetch(`http://localhost:8000/${level}`)
+        if (response.ok) return response.json()
+        return []
+      },
+      
+      // Export single map (fallback)
+      exportSingleMap: async () => null
+    }
+    
     const dialog = createExportAtlasDialog((config) => {
       console.log('[ThematicPanel] Export Atlas config:', config)
-    })
+    }, callbacks)
     dialog.open()
   }
   

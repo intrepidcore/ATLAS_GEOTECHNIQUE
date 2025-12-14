@@ -1988,7 +1988,8 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Endpoint `POST /thematic/export/atlas` (optionnel - frontend fait le batch)
 - [X] Lister ADM3/ADM2/ADM1 via endpoints existants
 - [X] Boucle séquentielle frontend avec progression
-- [ ] Arborescence de sortie ZIP (à implémenter)
+- [X] Arborescence de sortie ZIP avec JSZip
+- [X] Fichier index.json avec métadonnées
 
 #### Config par défaut "Atlas"
 - [X] Format : PNG 300dpi

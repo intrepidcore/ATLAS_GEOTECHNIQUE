@@ -29,6 +29,10 @@ export interface AtlasExportConfig {
 export interface AtlasExportCallbacks {
   getAdmList: (level: 'adm1' | 'adm2' | 'adm3') => Promise<Array<{ code: string; name: string }>>;
   exportSingleMap: (admLevel: string, admName: string, thematicId: string, config: AtlasExportConfig) => Promise<Blob | null>;
+  // Callback pour changer la thématique et le filtre ADM sur la carte
+  setThematicAndAdm: (thematicId: string, admLevel: string, admName: string) => Promise<void>;
+  // Callback pour capturer la carte actuelle
+  captureCurrentMap: () => Promise<Blob | null>;
 }
 
 export interface AtlasExportProgress {
@@ -576,9 +580,16 @@ export class ExportAtlasDialog {
       return;
     }
     
+    // Préparer le ZIP
+    const JSZip = (window as any).JSZip;
+    let zip: any = null;
+    if (JSZip) {
+      zip = new JSZip();
+    }
+    
     // Générer les exports
     let current = 0;
-    const results: Array<{ level: string; name: string; thematic: string; success: boolean }> = [];
+    const results: Array<{ level: string; name: string; thematic: string; success: boolean; blob?: Blob }> = [];
     
     for (const level of levels) {
       const admList = admLists[level] || [];
@@ -587,7 +598,7 @@ export class ExportAtlasDialog {
         for (const thematicId of config.thematics) {
           if (this.abortRequested) {
             this.updateProgress(`Export annulé (${current}/${totalExports} complétés)`, (current / totalExports) * 100);
-            this.showResults(results, current, totalExports);
+            await this.finalizeExport(zip, results, current, totalExports);
             return;
           }
           
@@ -599,29 +610,125 @@ export class ExportAtlasDialog {
             percent
           );
           
-          // Générer l'export via callback ou simulation
+          // Générer l'export via callback
           let success = false;
-          if (this.callbacks?.exportSingleMap) {
+          let blob: Blob | null = null;
+          
+          if (this.callbacks?.setThematicAndAdm && this.callbacks?.captureCurrentMap) {
             try {
-              const blob = await this.callbacks.exportSingleMap(level, adm.name, thematicId, config);
+              // Changer la thématique et l'ADM
+              await this.callbacks.setThematicAndAdm(thematicId, level, adm.name);
+              // Attendre le rendu
+              await new Promise(r => setTimeout(r, 1500));
+              // Capturer la carte
+              blob = await this.callbacks.captureCurrentMap();
               success = blob !== null;
+              
+              // Ajouter au ZIP
+              if (zip && blob) {
+                const filename = this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`);
+                zip.file(filename, blob);
+              }
+            } catch (e) {
+              console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
+            }
+          } else if (this.callbacks?.exportSingleMap) {
+            try {
+              blob = await this.callbacks.exportSingleMap(level, adm.name, thematicId, config);
+              success = blob !== null;
+              
+              if (zip && blob) {
+                const filename = this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`);
+                zip.file(filename, blob);
+              }
             } catch (e) {
               console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
             }
           } else {
             // Simulation - pause pour montrer la progression
-            await new Promise(r => setTimeout(r, 100));
+            await new Promise(r => setTimeout(r, 50));
             success = true;
           }
           
-          results.push({ level, name: adm.name, thematic: thematicId, success });
+          results.push({ level, name: adm.name, thematic: thematicId, success, blob: blob || undefined });
         }
       }
     }
     
-    // Afficher les résultats
+    // Finaliser et télécharger le ZIP
+    this.updateProgress('Création du fichier ZIP...', 99);
+    await this.finalizeExport(zip, results, current, totalExports);
+  }
+  
+  /**
+   * Sanitize filename for ZIP
+   */
+  private sanitizeFilename(name: string): string {
+    return name
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9_\-\/\.]/g, '_')
+      .replace(/_+/g, '_');
+  }
+  
+  /**
+   * Finalise l'export et télécharge le ZIP
+   */
+  private async finalizeExport(
+    zip: any,
+    results: Array<{ level: string; name: string; thematic: string; success: boolean }>,
+    completed: number,
+    total: number
+  ): Promise<void> {
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+    
+    // Générer le ZIP si disponible et des exports ont réussi
+    if (zip && successful > 0) {
+      try {
+        // Ajouter un fichier index.json avec les métadonnées
+        const indexData = {
+          generated: new Date().toISOString(),
+          version: '3.0.5',
+          total: total,
+          completed: completed,
+          successful: successful,
+          failed: failed,
+          exports: results.map(r => ({
+            level: r.level,
+            name: r.name,
+            thematic: r.thematic,
+            success: r.success,
+            filename: r.success ? this.sanitizeFilename(`${r.level}/${r.thematic}/${r.name}_${r.thematic}.png`) : null
+          }))
+        };
+        zip.file('index.json', JSON.stringify(indexData, null, 2));
+        
+        // Générer et télécharger le ZIP
+        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        const timestamp = new Date().toISOString().slice(0, 10);
+        const filename = `atlas_geotechnique_${timestamp}.zip`;
+        
+        const url = URL.createObjectURL(zipBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        this.updateProgress('Export terminé!', 100);
+        this.showResults(results, completed, total, true);
+        return;
+      } catch (e) {
+        console.error('[Atlas] Erreur génération ZIP:', e);
+      }
+    }
+    
+    // Fallback: afficher les résultats sans ZIP
     this.updateProgress('Export terminé!', 100);
-    this.showResults(results, current, totalExports);
+    this.showResults(results, completed, total, false);
   }
   
   /**
@@ -630,7 +737,8 @@ export class ExportAtlasDialog {
   private showResults(
     results: Array<{ level: string; name: string; thematic: string; success: boolean }>,
     completed: number,
-    total: number
+    total: number,
+    zipDownloaded: boolean = false
   ): void {
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
@@ -644,8 +752,15 @@ export class ExportAtlasDialog {
       message += `⏸️ ${total - completed} exports annulés\n`;
     }
     
-    message += `\nNote: Les fichiers ont été simulés.\n`;
-    message += `Pour un export réel, utilisez "Export Pro" pour chaque carte.`;
+    if (zipDownloaded) {
+      message += `\n📦 Fichier ZIP téléchargé avec succès!`;
+    } else if (successful > 0) {
+      message += `\n⚠️ JSZip non disponible - exports simulés.\n`;
+      message += `Ajoutez JSZip pour le téléchargement ZIP.`;
+    } else {
+      message += `\nNote: Aucun callback d'export configuré.\n`;
+      message += `Utilisez "Export Pro" pour exporter une carte à la fois.`;
+    }
     
     alert(message);
     this.close();
