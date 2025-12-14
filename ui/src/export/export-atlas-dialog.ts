@@ -26,6 +26,11 @@ export interface AtlasExportConfig {
   includeNeighbors: boolean;
 }
 
+export interface AtlasExportCallbacks {
+  getAdmList: (level: 'adm1' | 'adm2' | 'adm3') => Promise<Array<{ code: string; name: string }>>;
+  exportSingleMap: (admLevel: string, admName: string, thematicId: string, config: AtlasExportConfig) => Promise<Blob | null>;
+}
+
 export interface AtlasExportProgress {
   total: number;
   current: number;
@@ -251,10 +256,13 @@ export class ExportAtlasDialog {
   private config: AtlasExportConfig;
   private progress: AtlasExportProgress;
   private isExporting: boolean = false;
+  private callbacks?: AtlasExportCallbacks;
   private onExportStart?: (config: AtlasExportConfig) => void;
+  private abortRequested: boolean = false;
   
-  constructor(onExportStart?: (config: AtlasExportConfig) => void) {
+  constructor(onExportStart?: (config: AtlasExportConfig) => void, callbacks?: AtlasExportCallbacks) {
     this.onExportStart = onExportStart;
+    this.callbacks = callbacks;
     this.config = {
       levels: { adm1: true, adm2: true, adm3: true },
       thematics: AVAILABLE_THEMATICS.map(t => t.id),
@@ -472,44 +480,175 @@ export class ExportAtlasDialog {
     }
     
     this.isExporting = true;
+    this.abortRequested = false;
     this.config = config;
     
     // Afficher la progression
     const progressDiv = this.overlay?.querySelector('#atlas-progress') as HTMLElement;
     const exportBtn = this.overlay?.querySelector('#atlas-export-btn') as HTMLButtonElement;
+    const closeBtn = this.overlay?.querySelector('[data-action="close"]') as HTMLButtonElement;
     if (progressDiv) progressDiv.style.display = 'block';
-    if (exportBtn) exportBtn.disabled = true;
-    
-    this.updateProgress('Calcul du nombre d\'exports...', 0);
+    if (exportBtn) {
+      exportBtn.disabled = true;
+      exportBtn.textContent = '⏳ Export en cours...';
+    }
+    if (closeBtn) {
+      closeBtn.textContent = 'Annuler';
+      closeBtn.onclick = () => { this.abortRequested = true; };
+    }
     
     // Appeler le callback
     if (this.onExportStart) {
       this.onExportStart(config);
     }
     
-    // Pour l'instant, afficher un message informatif
-    // L'export batch complet nécessite une implémentation backend
-    setTimeout(() => {
-      this.updateProgress('Export Atlas en cours de développement...', 50);
+    try {
+      await this.runBatchExport(config);
+    } catch (e) {
+      console.error('[Atlas Export] Erreur:', e);
+      alert(`Erreur lors de l'export: ${e}`);
+    } finally {
+      this.isExporting = false;
+      if (exportBtn) {
+        exportBtn.disabled = false;
+        exportBtn.textContent = '🚀 Lancer l\'export';
+      }
+      if (closeBtn) {
+        closeBtn.textContent = '×';
+        closeBtn.onclick = () => this.close();
+      }
+    }
+  }
+  
+  /**
+   * Exécute l'export batch séquentiel
+   */
+  private async runBatchExport(config: AtlasExportConfig): Promise<void> {
+    // Calculer le nombre total d'exports
+    const levels: Array<'adm1' | 'adm2' | 'adm3'> = [];
+    if (config.levels.adm1) levels.push('adm1');
+    if (config.levels.adm2) levels.push('adm2');
+    if (config.levels.adm3) levels.push('adm3');
+    
+    // Récupérer les listes ADM
+    this.updateProgress('Récupération des zones administratives...', 5);
+    
+    const admLists: Record<string, Array<{ code: string; name: string }>> = {};
+    
+    for (const level of levels) {
+      if (this.abortRequested) {
+        this.updateProgress('Export annulé', 0);
+        return;
+      }
       
-      setTimeout(() => {
-        this.isExporting = false;
-        if (exportBtn) exportBtn.disabled = false;
-        
-        alert(
-          '📚 Export Atlas Complet\n\n' +
-          'Cette fonctionnalité est en cours de développement.\n\n' +
-          'Configuration sélectionnée :\n' +
-          `- Niveaux : ${Object.entries(config.levels).filter(([,v]) => v).map(([k]) => k.toUpperCase()).join(', ')}\n` +
-          `- Thématiques : ${config.thematics.length}\n` +
-          `- Format : ${config.format.toUpperCase()}\n` +
-          `- Masque : ${config.maskMode}\n\n` +
-          'Pour l\'instant, utilisez "Export Pro" pour exporter une carte à la fois.'
-        );
-        
-        this.close();
-      }, 1500);
-    }, 1000);
+      try {
+        const response = await fetch(`http://localhost:8000/${level}`);
+        if (response.ok) {
+          admLists[level] = await response.json();
+        } else {
+          admLists[level] = [];
+        }
+      } catch (e) {
+        console.warn(`[Atlas] Impossible de charger ${level}:`, e);
+        admLists[level] = [];
+      }
+    }
+    
+    // Calculer le total
+    let totalExports = 0;
+    for (const level of levels) {
+      totalExports += (admLists[level]?.length || 0) * config.thematics.length;
+    }
+    
+    if (totalExports === 0) {
+      alert('Aucune zone administrative trouvée pour les niveaux sélectionnés.');
+      return;
+    }
+    
+    // Confirmation
+    const confirmMsg = `Vous allez générer ${totalExports} cartes:\n\n` +
+      levels.map(l => `- ${l.toUpperCase()}: ${admLists[l]?.length || 0} zones`).join('\n') +
+      `\n- Thématiques: ${config.thematics.length}\n\n` +
+      `Cela peut prendre plusieurs minutes. Continuer?`;
+    
+    if (!confirm(confirmMsg)) {
+      this.updateProgress('Export annulé', 0);
+      return;
+    }
+    
+    // Générer les exports
+    let current = 0;
+    const results: Array<{ level: string; name: string; thematic: string; success: boolean }> = [];
+    
+    for (const level of levels) {
+      const admList = admLists[level] || [];
+      
+      for (const adm of admList) {
+        for (const thematicId of config.thematics) {
+          if (this.abortRequested) {
+            this.updateProgress(`Export annulé (${current}/${totalExports} complétés)`, (current / totalExports) * 100);
+            this.showResults(results, current, totalExports);
+            return;
+          }
+          
+          current++;
+          const percent = (current / totalExports) * 100;
+          const thematicLabel = AVAILABLE_THEMATICS.find(t => t.id === thematicId)?.label || thematicId;
+          this.updateProgress(
+            `${current}/${totalExports} - ${level.toUpperCase()} ${adm.name} - ${thematicLabel}`,
+            percent
+          );
+          
+          // Générer l'export via callback ou simulation
+          let success = false;
+          if (this.callbacks?.exportSingleMap) {
+            try {
+              const blob = await this.callbacks.exportSingleMap(level, adm.name, thematicId, config);
+              success = blob !== null;
+            } catch (e) {
+              console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
+            }
+          } else {
+            // Simulation - pause pour montrer la progression
+            await new Promise(r => setTimeout(r, 100));
+            success = true;
+          }
+          
+          results.push({ level, name: adm.name, thematic: thematicId, success });
+        }
+      }
+    }
+    
+    // Afficher les résultats
+    this.updateProgress('Export terminé!', 100);
+    this.showResults(results, current, totalExports);
+  }
+  
+  /**
+   * Affiche les résultats de l'export
+   */
+  private showResults(
+    results: Array<{ level: string; name: string; thematic: string; success: boolean }>,
+    completed: number,
+    total: number
+  ): void {
+    const successful = results.filter(r => r.success).length;
+    const failed = results.filter(r => !r.success).length;
+    
+    let message = `📚 Export Atlas Terminé\n\n`;
+    message += `✅ ${successful} exports réussis\n`;
+    if (failed > 0) {
+      message += `❌ ${failed} exports échoués\n`;
+    }
+    if (completed < total) {
+      message += `⏸️ ${total - completed} exports annulés\n`;
+    }
+    
+    message += `\nNote: Les fichiers ont été simulés.\n`;
+    message += `Pour un export réel, utilisez "Export Pro" pour chaque carte.`;
+    
+    alert(message);
+    this.close();
   }
   
   private updateProgress(text: string, percent: number): void {
@@ -526,7 +665,8 @@ export class ExportAtlasDialog {
 // ============================================================================
 
 export function createExportAtlasDialog(
-  onExportStart?: (config: AtlasExportConfig) => void
+  onExportStart?: (config: AtlasExportConfig) => void,
+  callbacks?: AtlasExportCallbacks
 ): ExportAtlasDialog {
-  return new ExportAtlasDialog(onExportStart);
+  return new ExportAtlasDialog(onExportStart, callbacks);
 }

@@ -6,8 +6,36 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::Row;
+
+// ============================================================================
+// ADM Neighbors Types
+// ============================================================================
+
+#[derive(Deserialize)]
+pub struct AdmNeighborsQuery {
+    pub level: String,
+    pub name: String,
+}
+
+#[derive(Serialize)]
+pub struct AdmNeighbor {
+    pub code: Option<String>,
+    pub name: String,
+    pub label: String,
+    pub neighbor_type: String,
+    pub direction: String,
+    pub lon: f64,
+    pub lat: f64,
+}
+
+#[derive(Serialize)]
+pub struct AdmNeighborsResponse {
+    pub adm_level: String,
+    pub adm_name: String,
+    pub neighbors: Vec<AdmNeighbor>,
+}
 
 #[derive(Serialize)]
 pub struct GridResponse {
@@ -24,6 +52,206 @@ pub fn grid_router() -> Router<AppState> {
         .route("/:code/details", get(get_grid_details))
         .route("/:code/neighbors", get(crate::neighbors::get_neighbors))
         .route("/recompute/:code", post(recompute_grid))
+}
+
+/// Router pour les endpoints ADM publics
+pub fn adm_router() -> Router<AppState> {
+    Router::new()
+        .route("/neighbors", get(get_adm_neighbors))
+}
+
+/// GET /adm-neighbors?level=adm1&name=Maritime
+/// Récupère les ADM limitrophes et pays voisins
+pub async fn get_adm_neighbors(
+    Query(params): Query<AdmNeighborsQuery>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    let level = params.level.to_lowercase();
+    let name = params.name.clone();
+    
+    // Déterminer la table et le champ selon le niveau
+    let (table, name_field) = match level.as_str() {
+        "adm1" => ("adm1_togo", "adm1_fr"),
+        "adm2" => ("adm2_togo", "adm2_fr"),
+        "adm3" => ("adm3_togo", "adm3_fr"),
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid level. Use adm1, adm2, or adm3"})),
+            ).into_response();
+        }
+    };
+    
+    // Récupérer le centroïde de l'ADM cible
+    let target_query = format!(
+        r#"
+        SELECT 
+            ST_X(ST_Centroid(geom)) as center_lon,
+            ST_Y(ST_Centroid(geom)) as center_lat
+        FROM {}
+        WHERE {} ILIKE $1
+        LIMIT 1
+        "#,
+        table, name_field
+    );
+    
+    let target_row = sqlx::query(&target_query)
+        .bind(&name)
+        .fetch_optional(pool)
+        .await;
+    
+    let (center_lon, center_lat) = match target_row {
+        Ok(Some(row)) => {
+            let lon: f64 = row.try_get("center_lon").unwrap_or(1.2);
+            let lat: f64 = row.try_get("center_lat").unwrap_or(7.0);
+            (lon, lat)
+        }
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": format!("ADM '{}' not found", name)})),
+            ).into_response();
+        }
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": format!("Database error: {}", e)})),
+            ).into_response();
+        }
+    };
+    
+    let mut neighbors: Vec<AdmNeighbor> = Vec::new();
+    
+    // Récupérer les ADM voisins du même niveau
+    let neighbors_query = format!(
+        r#"
+        WITH target AS (
+            SELECT geom, ST_Centroid(geom) as centroid
+            FROM {}
+            WHERE {} ILIKE $1
+            LIMIT 1
+        )
+        SELECT 
+            n.{} as name,
+            ST_X(ST_Centroid(n.geom)) as neighbor_center_lon,
+            ST_Y(ST_Centroid(n.geom)) as neighbor_center_lat
+        FROM {} n, target t
+        WHERE n.{} NOT ILIKE $1
+          AND ST_Touches(n.geom, t.geom)
+        "#,
+        table, name_field, name_field, table, name_field
+    );
+    
+    if let Ok(rows) = sqlx::query(&neighbors_query)
+        .bind(&name)
+        .fetch_all(pool)
+        .await
+    {
+        for row in rows {
+            let neighbor_name: String = row.try_get("name").unwrap_or_default();
+            let n_center_lon: f64 = row.try_get("neighbor_center_lon").unwrap_or(0.0);
+            let n_center_lat: f64 = row.try_get("neighbor_center_lat").unwrap_or(0.0);
+            
+            // Calculer la direction
+            let dx = n_center_lon - center_lon;
+            let dy = n_center_lat - center_lat;
+            let direction = if dx.abs() > dy.abs() {
+                if dx > 0.0 { "E" } else { "W" }
+            } else {
+                if dy > 0.0 { "N" } else { "S" }
+            };
+            
+            // Formater le label selon le niveau
+            let label = match level.as_str() {
+                "adm1" => format!("Région {}", neighbor_name),
+                "adm2" => format!("Préf. {}", neighbor_name),
+                "adm3" => neighbor_name.clone(),
+                _ => neighbor_name.clone(),
+            };
+            
+            neighbors.push(AdmNeighbor {
+                code: None,
+                name: neighbor_name,
+                label,
+                neighbor_type: level.clone(),
+                direction: direction.to_string(),
+                lon: n_center_lon,
+                lat: n_center_lat,
+            });
+        }
+    }
+    
+    // Pour ADM1, ajouter les pays voisins
+    if level == "adm1" {
+        let country_check_query = r#"
+            WITH target AS (
+                SELECT geom FROM adm1_togo WHERE adm1_fr ILIKE $1 LIMIT 1
+            )
+            SELECT 
+                ST_XMin(t.geom) as xmin,
+                ST_XMax(t.geom) as xmax,
+                ST_YMax(t.geom) as ymax
+            FROM target t
+        "#;
+        
+        if let Ok(Some(row)) = sqlx::query(country_check_query)
+            .bind(&name)
+            .fetch_optional(pool)
+            .await
+        {
+            let xmin: f64 = row.try_get("xmin").unwrap_or(1.0);
+            let xmax: f64 = row.try_get("xmax").unwrap_or(1.0);
+            let ymax: f64 = row.try_get("ymax").unwrap_or(7.0);
+            
+            // Ghana à l'ouest (si xmin < 0.3)
+            if xmin < 0.3 {
+                neighbors.push(AdmNeighbor {
+                    code: Some("GH".to_string()),
+                    name: "Ghana".to_string(),
+                    label: "Ghana".to_string(),
+                    neighbor_type: "country".to_string(),
+                    direction: "W".to_string(),
+                    lon: 0.0,
+                    lat: center_lat,
+                });
+            }
+            // Bénin à l'est (si xmax > 1.6)
+            if xmax > 1.6 {
+                neighbors.push(AdmNeighbor {
+                    code: Some("BJ".to_string()),
+                    name: "Bénin".to_string(),
+                    label: "Bénin".to_string(),
+                    neighbor_type: "country".to_string(),
+                    direction: "E".to_string(),
+                    lon: 1.8,
+                    lat: center_lat,
+                });
+            }
+            // Burkina Faso au nord (si ymax > 10.5)
+            if ymax > 10.5 {
+                neighbors.push(AdmNeighbor {
+                    code: Some("BF".to_string()),
+                    name: "Burkina Faso".to_string(),
+                    label: "Burkina Faso".to_string(),
+                    neighbor_type: "country".to_string(),
+                    direction: "N".to_string(),
+                    lon: center_lon,
+                    lat: 11.0,
+                });
+            }
+        }
+    }
+    
+    (
+        StatusCode::OK,
+        Json(AdmNeighborsResponse {
+            adm_level: level,
+            adm_name: name,
+            neighbors,
+        }),
+    ).into_response()
 }
 
 async fn get_grid(State(state): State<AppState>, Path(code): Path<String>) -> impl IntoResponse {

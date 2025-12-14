@@ -199,8 +199,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/adm3/geojson", get(surveys_adm::get_adm3_geojson))
         .route("/adm3", get(surveys::list_adm3))
         .route("/adm/:level", get(routes::list_adm_zones))
-        // ADM neighbors endpoint (for export labels)
-        .route("/adm-neighbors", get(adm_neighbors::get_adm_neighbors))
+        // ADM neighbors endpoint (URL différente pour éviter conflit avec /adm/:level)
+        .nest("/adm-data", routes::adm_router())
         // Audit log endpoints
         .route("/audit", get(audit::list_audit_logs))
         .route("/audit/export/csv", get(audit::export_audit_csv))
