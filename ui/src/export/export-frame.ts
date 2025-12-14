@@ -13,6 +13,7 @@ import {
   QUALITY_SETTINGS,
   ThematicLegendData
 } from './export-types';
+import { ExportStats } from './export-stats';
 import {
   generateGridLines,
   renderGrid,
@@ -418,6 +419,65 @@ export class ExportFrame {
     ctx.fillText('N', 0, -size / 2 - 2);
     
     ctx.restore();
+  }
+  
+  /**
+   * Dessine le bloc de statistiques
+   */
+  drawStats(stats?: ExportStats): void {
+    if (!this.options.includeStats || !stats) return;
+    
+    const { legendArea } = this.layout;
+    const ctx = this.ctx;
+    
+    // Position du bloc stats : à droite de la légende
+    const statsX = legendArea.x + legendArea.width + 15;
+    const statsY = legendArea.y;
+    const statsWidth = 160;
+    
+    // Calculer hauteur dynamique
+    const headerHeight = 22;
+    const lineHeight = 14;
+    const padding = 8;
+    const statsHeight = headerHeight + stats.rows.length * lineHeight + padding * 2;
+    
+    // Cadre
+    ctx.strokeStyle = '#cccccc';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#fafafa';
+    ctx.fillRect(statsX, statsY, statsWidth, statsHeight);
+    ctx.strokeRect(statsX, statsY, statsWidth, statsHeight);
+    
+    // Titre
+    ctx.fillStyle = '#333333';
+    ctx.font = 'bold 10px Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+    ctx.fillText(stats.title, statsX + padding, statsY + padding);
+    
+    // Sous-titre (zone)
+    if (stats.subtitle) {
+      ctx.font = '9px Arial, sans-serif';
+      ctx.fillStyle = '#666666';
+      ctx.fillText(stats.subtitle, statsX + padding, statsY + padding + 11);
+    }
+    
+    // Lignes de stats
+    ctx.font = '9px Arial, sans-serif';
+    let y = statsY + headerHeight + padding;
+    
+    for (const row of stats.rows) {
+      ctx.fillStyle = '#555555';
+      ctx.fillText(row.label + ' :', statsX + padding, y);
+      
+      ctx.fillStyle = '#333333';
+      const valueText = row.unit ? `${row.value} ${row.unit}` : row.value;
+      ctx.textAlign = 'right';
+      ctx.fillText(valueText, statsX + statsWidth - padding, y);
+      ctx.textAlign = 'left';
+      
+      y += lineHeight;
+    }
   }
   
   /**

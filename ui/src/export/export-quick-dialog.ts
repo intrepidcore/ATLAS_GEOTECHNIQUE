@@ -28,6 +28,7 @@ import {
   waitForTilesLoaded,
   checkDependencies
 } from './capture-utils';
+import { buildExportStats, ExportStats } from './export-stats';
 
 // ============================================================================
 // Styles CSS du dialogue
@@ -795,6 +796,19 @@ export class ExportQuickDialog {
       // Récupérer les données de légende thématique
       const legendData = this.config.getThematicLegendData?.() || undefined;
       exportFrame.drawLegend(legendData);
+      
+      // Calculer et dessiner les statistiques si demandé
+      if (this.options.includeStats && legendData) {
+        const statsData = buildExportStats({
+          parameterId: legendData.parameterId || thematic.parameter,
+          parameterLabel: legendData.parameterLabel || thematic.name,
+          unit: legendData.unit || '',
+          features: legendData.features || [],
+          classes: legendData.classes || [],
+          admFilters: admFilters || {}
+        });
+        exportFrame.drawStats(statsData);
+      }
       
       // Calculer l'échelle
       const centerLat = (bounds.north + bounds.south) / 2;

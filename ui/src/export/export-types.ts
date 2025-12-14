@@ -229,10 +229,12 @@ export interface LegendClass {
 
 /** État thématique complet pour l'export */
 export interface ThematicLegendData {
+  parameterId?: string;
   parameterLabel: string;
   unit: string;
   mapType: 'choropleth' | 'proportional' | 'binary';
   classes: LegendClass[];
+  features?: any[];
 }
 
 // ============================================================================

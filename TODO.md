@@ -1898,5 +1898,139 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
-**Dernière mise à jour** : 2025-12-13 21:59
-**Statut global** : 🚀 v3.9.2 - Onglet Nouveau Sondage + Corrections COMPLET ✅ | v3.0 Export Géoréférencé - EN ATTENTE
+**Dernière mise à jour** : 2025-12-14 09:30
+**Statut global** : 🚀 v3.9.2 - Onglet Nouveau Sondage + Corrections COMPLET ✅ | v3.0.5 Export Géoréférencé Pro - EN COURS
+
+---
+
+## 🗺️ ROADMAP v3.0.5 - Export Atlas Complet + ADM Limitrophes
+
+### 📋 Nouvelles fonctionnalités à implémenter
+
+---
+
+### 3.0.5.1 Statistiques dans l'export
+**Problème** : Case "Statistiques" cochée mais rien ne s'affiche
+**Solution** : Implémenter `buildExportStats()` pour chaque thématique
+
+- [ ] Créer fonction `buildExportStats(parameterId, features, classes, zoneMeta)`
+- [ ] Stats pour `n_sondages` :
+  - N_sondages total
+  - N_mailles avec données / N_mailles total
+  - Profondeur moyenne d'investigation
+- [ ] Stats pour `vbs_moy` :
+  - VBS moyen, min, max
+  - % mailles "très argileux"
+- [ ] Afficher bloc stats en bas à gauche du cartouche
+- [ ] Hauteur dynamique selon nombre de lignes
+
+---
+
+### 3.0.5.2 ADM Limitrophes (labels sur les bords)
+**Objectif** : Afficher les noms des ADM/pays qui bordent l'ADM exportée
+
+#### Backend - Endpoint `/adm-neighbors`
+- [ ] Créer endpoint `GET /adm-neighbors?level=adm1&code=TG-M`
+- [ ] Requête PostGIS `ST_Touches(geom, geom_cible)` pour voisins
+- [ ] Calculer point de label sur frontière commune : `ST_LineInterpolatePoint(ST_Intersection(...), 0.5)`
+- [ ] Calculer direction (N/S/E/O) depuis centroïde
+- [ ] Formater labels :
+  - ADM1 : "Région de ..."
+  - ADM2 : "Préfecture de ..."
+  - ADM3 : "Commune de ..."
+  - Pays : juste le nom
+
+#### Frontend - Dessin des labels
+- [ ] Convertir lat/lon → coordonnées image
+- [ ] Placer texte sur bord selon direction
+- [ ] Gestion anti-collision (max 2-3 labels par côté)
+- [ ] Style : police 9-10pt, gris foncé
+
+---
+
+### 3.0.5.3 Masque hors ADM (focus/contexte)
+**Objectif** : Griser/blanchir ce qui est en dehors de l'ADM
+
+- [ ] Option "Masquer hors ADM" dans Export Pro
+- [ ] Deux modes :
+  - **Focus** : opacité 85-90% (ADM très visible, contexte presque invisible)
+  - **Contexte léger** : opacité 40-50% (ADM visible, contexte perceptible)
+- [ ] Créer polygone masque = bbox - ADM (hole)
+- [ ] Dessiner masque blanc semi-opaque sur le canvas
+
+---
+
+### 3.0.5.4 Grille continue plus visible
+**Problème** : Opacité grille trop faible
+**Solution** : Augmenter opacité à 0.6-0.7
+
+- [ ] Grille continue : opacité 0.6 (au lieu de 0.4)
+- [ ] Épaisseur : 1px à 300dpi
+- [ ] Couleur : noir pur avec opacité
+
+---
+
+### 3.0.5.5 Export Atlas Complet (batch automatique)
+**Objectif** : Un clic pour exporter TOUTES les cartes thématiques du Togo
+
+#### UI - Bouton et dialogue
+- [ ] Ajouter bouton "📚 Export Atlas complet" dans panneau thématique
+- [ ] Dialogue de configuration :
+  - Niveaux : [x] ADM3, [x] ADM2, [x] ADM1
+  - Thématiques : [x] Toutes ou liste à cocher
+  - Mode : ( ) Focus / (•) Contexte léger
+  - Format : (•) PNG / ( ) PDF
+- [ ] Bouton "Lancer l'export Atlas"
+
+#### Backend - Job batch
+- [ ] Endpoint `POST /thematic/export/atlas`
+- [ ] Lister ADM3/ADM2/ADM1 avec données (`n_sondages > 0`)
+- [ ] Lister thématiques disponibles
+- [ ] Boucle : pour chaque (niveau, thématique, ADM) → export
+- [ ] Arborescence de sortie :
+  ```
+  exports/atlas_geotech/v2.6.0_2025-12-14/
+    adm3/n_sondages/TG-ADM3-001_Commune-de-Lomé_n_sondages.png
+    adm2/n_sondages/TG-M01_Prefecture-du-Golfe_n_sondages.png
+    adm1/n_sondages/TG-M_Region-Maritime_n_sondages.png
+  ```
+- [ ] Générer index.json avec métadonnées
+
+#### Config par défaut "Atlas"
+- [ ] Format : PNG 300dpi
+- [ ] Zone : ADM + marge 2%
+- [ ] Grille : Continue, opacité 0.6
+- [ ] Cadre : Zébré
+- [ ] Légende : auto
+- [ ] Stats : incluses
+- [ ] ADM limitrophes : inclus
+- [ ] Masque : mode contexte léger (opacité 0.45)
+
+---
+
+### 📁 Fichiers à créer/modifier
+
+| Fichier | Action |
+|---------|--------|
+| `ui/src/export/export-stats.ts` | CRÉER - buildExportStats() |
+| `ui/src/export/export-frame.ts` | MODIFIER - drawStats(), drawNeighborLabels() |
+| `ui/src/export/export-quick-dialog.ts` | MODIFIER - options masque, stats |
+| `ui/src/export/export-atlas-dialog.ts` | CRÉER - dialogue batch |
+| `ui/src/export/grid-generator.ts` | MODIFIER - opacité grille |
+| `services/api-geo/src/adm_neighbors.rs` | CRÉER - endpoint voisins |
+| `services/api-geo/src/thematic/atlas_export.rs` | CRÉER - batch export |
+
+---
+
+### ⏱️ Estimation
+
+| Phase | Tâche | Durée |
+|-------|-------|-------|
+| 1 | Statistiques export | 2h |
+| 2 | ADM limitrophes backend | 3h |
+| 3 | ADM limitrophes frontend | 2h |
+| 4 | Masque hors ADM | 2h |
+| 5 | Grille opacité | 30min |
+| 6 | Export Atlas dialogue | 2h |
+| 7 | Export Atlas backend batch | 4h |
+| **Total** | | **~15h** |

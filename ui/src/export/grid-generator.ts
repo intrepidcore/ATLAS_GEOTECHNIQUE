@@ -269,8 +269,8 @@ function renderContinuousGrid(
   linesX: GridLine[],
   linesY: GridLine[]
 ): void {
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // Noir 40% opacité
-  ctx.lineWidth = 0.7; // Épaisseur légèrement augmentée
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'; // Noir 60% opacité (plus visible)
+  ctx.lineWidth = 1.0; // Épaisseur augmentée pour meilleure lisibilité
   
   // Lignes verticales
   for (const line of linesX) {
