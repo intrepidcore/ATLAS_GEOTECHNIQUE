@@ -1133,4 +1133,46 @@ export class ThematicMapManager {
       alert('Échec de l\'export QGIS. Voir la console pour les détails.')
     }
   }
+  
+  /**
+   * Récupère le bbox du contour ADM actuellement affiché
+   * Retourne null si aucun contour ADM n'est affiché
+   */
+  getAdmOverlayBounds(): { north: number; south: number; east: number; west: number } | null {
+    if (!this.admOverlayLayer || this.admOverlayLayer.getLayers().length === 0) {
+      return null
+    }
+    
+    try {
+      // Calculer les bounds en itérant sur les layers
+      let minLat = Infinity, maxLat = -Infinity
+      let minLng = Infinity, maxLng = -Infinity
+      
+      this.admOverlayLayer.eachLayer((layer: any) => {
+        if (layer.getBounds) {
+          const layerBounds = layer.getBounds()
+          if (layerBounds.isValid()) {
+            minLat = Math.min(minLat, layerBounds.getSouth())
+            maxLat = Math.max(maxLat, layerBounds.getNorth())
+            minLng = Math.min(minLng, layerBounds.getWest())
+            maxLng = Math.max(maxLng, layerBounds.getEast())
+          }
+        }
+      })
+      
+      if (minLat === Infinity || maxLat === -Infinity) {
+        return null
+      }
+      
+      return {
+        north: maxLat,
+        south: minLat,
+        east: maxLng,
+        west: minLng
+      }
+    } catch (e) {
+      console.warn('[ThematicMap] Impossible de récupérer les bounds ADM:', e)
+      return null
+    }
+  }
 }

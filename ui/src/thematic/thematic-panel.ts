@@ -1076,7 +1076,10 @@ export class ThematicPanel {
         getGridLayer: () => (window as any).gridLayer,
         
         // Référence à la map Leaflet
-        getMap: () => map
+        getMap: () => map,
+        
+        // Récupère le bbox du polygone ADM actif (pour centrer l'export sur l'ADM)
+        getAdmBounds: () => this.manager.getAdmOverlayBounds?.() || null
       }
       
       this.exportDialog = createExportQuickDialog(config)

@@ -324,6 +324,8 @@ export interface ExportQuickDialogConfig {
   getGridLayer?: () => any;
   /** Récupère la référence à la map Leaflet */
   getMap?: () => any;
+  /** Récupère le bbox du polygone ADM actif (pour centrer l'export sur l'ADM) */
+  getAdmBounds?: () => { north: number; south: number; east: number; west: number } | null;
 }
 
 export class ExportQuickDialog {
@@ -725,7 +727,33 @@ export class ExportQuickDialog {
         parameter: 'n_sondages'
       };
       const admFilters = this.config.getActiveAdmFilters();
-      const bounds = this.config.getMapBounds();
+      
+      // Déterminer le bbox selon la zone sélectionnée
+      let bounds: { north: number; south: number; east: number; west: number };
+      
+      if (this.options.zone === 'adm-filtered' && this.config.getAdmBounds) {
+        // Zone filtrée : utiliser le bbox du polygone ADM avec marge
+        const admBounds = this.config.getAdmBounds();
+        if (admBounds) {
+          // Ajouter une marge de 8% pour le confort visuel
+          const marginFactor = 0.08;
+          const dx = admBounds.east - admBounds.west;
+          const dy = admBounds.north - admBounds.south;
+          bounds = {
+            west: admBounds.west - marginFactor * dx,
+            east: admBounds.east + marginFactor * dx,
+            south: admBounds.south - marginFactor * dy,
+            north: admBounds.north + marginFactor * dy
+          };
+          console.log('[Export] Zone filtrée ADM avec marge 8%:', bounds);
+        } else {
+          // Fallback sur la vue actuelle si pas de bbox ADM
+          bounds = this.config.getMapBounds();
+        }
+      } else {
+        // Vue actuelle
+        bounds = this.config.getMapBounds();
+      }
       
       const bbox: BBox = {
         minX: bounds.west,

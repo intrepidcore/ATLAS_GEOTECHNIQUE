@@ -230,10 +230,10 @@ function renderCrossGrid(
   linesX: GridLine[],
   linesY: GridLine[]
 ): void {
-  const crossSize = 4; // demi-longueur de la croix en pixels
+  const crossSize = 6; // demi-longueur de la croix en pixels (augmenté de 4 à 6)
   
-  ctx.strokeStyle = '#666666';
-  ctx.lineWidth = 1;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'; // Noir 60% opacité (plus visible)
+  ctx.lineWidth = 1.5; // Épaisseur augmentée
   
   // Pour chaque intersection
   for (const lineX of linesX) {
@@ -269,8 +269,8 @@ function renderContinuousGrid(
   linesX: GridLine[],
   linesY: GridLine[]
 ): void {
-  ctx.strokeStyle = '#cccccc';
-  ctx.lineWidth = 0.5;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)'; // Noir 40% opacité
+  ctx.lineWidth = 0.7; // Épaisseur légèrement augmentée
   
   // Lignes verticales
   for (const line of linesX) {

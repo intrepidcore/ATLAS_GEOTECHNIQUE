@@ -1225,6 +1225,54 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
+### 🔧 CORRECTIONS v3.0.4 - ADM Centré + Grille Visible
+
+#### 3.0.4.1 ADM centré en grand (Zone filtrée)
+**Problème** : "Zone filtrée (Maritime)" utilise l'extent actuel de la carte, pas le bbox du polygone ADM.
+**Solution** : Calculer le bbox du polygone ADM + marge 5-10%
+
+- [X] Récupérer géométrie ADM via `getAdmOverlayBounds()` dans ThematicMapManager
+- [X] Calculer bbox : `minX, minY, maxX, maxY`
+- [X] Ajouter marge de confort :
+  ```
+  marginFactor = 0.08 (8%)
+  minX' = minX - marginFactor * (maxX - minX)
+  maxX' = maxX + marginFactor * (maxX - minX)
+  (idem pour Y)
+  ```
+- [ ] Choisir orientation automatique :
+  - ratio > 1.2 → paysage
+  - ratio < 0.8 → portrait
+- [X] Fixer cette extent pour l'export (ignorer zoom actuel)
+- [ ] Ajouter dans cartouche : "Zone : Région Maritime (ADM1)"
+
+#### 3.0.4.2 Améliorer visibilité grille de coordonnées
+**Problème** : Les croix de grille sont très peu visibles sur le fond OSM.
+**Solution** : Augmenter opacité et épaisseur
+
+- [X] Couleur grille : `rgba(0,0,0,0.6)` au lieu de gris clair
+- [X] Type Croix :
+  - Longueur bras : 6px (au lieu de 4px)
+  - Épaisseur : 1.5px
+- [X] Type Continue :
+  - Épaisseur : 0.7px à 300dpi
+- [ ] Si "Masquer grille de fond" coché → augmenter opacité à 0.7
+
+#### 3.0.4.3 Algorithme niceStep amélioré
+**Problème** : Pas de grille pas toujours "propre" (0.10°, 0.20°, 0.50°)
+**Solution** : Forcer les pas standards
+
+- [ ] Pas autorisés pour 4326 : `[0.01, 0.02, 0.05, 0.10, 0.20, 0.50, 1.0]`
+- [ ] Pas autorisés pour 25231 : `[100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000]`
+- [ ] Viser 6-8 lignes par axe
+- [ ] Aligner sur valeurs rondes : `x0 = floor(minX / step) * step`
+
+#### 3.0.4.4 Cohérence pas X et Y
+- [ ] Utiliser le même pas pour X et Y si possible
+- [ ] Sinon, utiliser des pas du même ordre de grandeur
+
+---
+
 ### 📁 Fichiers modifiés
 
 - `ui/src/export/export-frame.ts` - Légende reconstruite, cartouche amélioré, hauteur augmentée
