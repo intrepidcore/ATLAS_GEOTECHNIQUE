@@ -687,13 +687,69 @@ export class ExportQuickDialog {
         if (text) text.textContent = msg;
       };
       
+      // Récupérer les infos
+      const thematic = this.config.getActiveThematic() || {
+        name: 'Carte géotechnique',
+        parameter: 'n_sondages'
+      };
+      const admFilters = this.config.getActiveAdmFilters();
+      const map = this.config.getMap?.();
+      
+      // Sauvegarder la vue actuelle pour la restaurer après
+      let originalBounds: any = null;
+      let originalZoom: number | null = null;
+      
+      // Déterminer le bbox selon la zone sélectionnée
+      let bounds: { north: number; south: number; east: number; west: number };
+      
+      if (this.options.zone === 'adm-filtered' && this.config.getAdmBounds) {
+        // Zone filtrée : utiliser le bbox du polygone ADM avec marge
+        const admBounds = this.config.getAdmBounds();
+        if (admBounds) {
+          // Ajouter une marge de 8% pour le confort visuel
+          const marginFactor = 0.08;
+          const dx = admBounds.east - admBounds.west;
+          const dy = admBounds.north - admBounds.south;
+          bounds = {
+            west: admBounds.west - marginFactor * dx,
+            east: admBounds.east + marginFactor * dx,
+            south: admBounds.south - marginFactor * dy,
+            north: admBounds.north + marginFactor * dy
+          };
+          console.log('[Export] Zone filtrée ADM avec marge 8%:', bounds);
+          
+          // IMPORTANT: Zoomer la carte sur le bbox ADM AVANT la capture
+          if (map) {
+            originalBounds = map.getBounds();
+            originalZoom = map.getZoom();
+            
+            updateProgress('Centrage sur la zone ADM...');
+            // Créer un LatLngBounds Leaflet et zoomer dessus
+            const L = (window as any).L;
+            const targetBounds = L.latLngBounds(
+              [bounds.south, bounds.west],
+              [bounds.north, bounds.east]
+            );
+            map.fitBounds(targetBounds, { animate: false, padding: [0, 0] });
+            
+            // Attendre que la carte se mette à jour
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        } else {
+          // Fallback sur la vue actuelle si pas de bbox ADM
+          bounds = this.config.getMapBounds();
+        }
+      } else {
+        // Vue actuelle
+        bounds = this.config.getMapBounds();
+      }
+      
       updateProgress('Attente du chargement des tuiles...');
       await waitForTilesLoaded(this.config.mapContainer, 3000);
       
       // Masquer la grille de fond si demandé
       const hideGridLayer = (this.overlay?.querySelector('#export-hide-grid-layer') as HTMLInputElement)?.checked ?? true;
       const gridLayer = this.config.getGridLayer?.();
-      const map = this.config.getMap?.();
       let gridWasVisible = false;
       
       if (hideGridLayer && gridLayer && map) {
@@ -717,43 +773,14 @@ export class ExportQuickDialog {
         if (gridWasVisible && gridLayer && map) {
           gridLayer.addTo(map);
         }
+        
+        // Restaurer la vue originale si on l'avait changée
+        if (originalBounds && map) {
+          map.fitBounds(originalBounds, { animate: false });
+        }
       }
       
       updateProgress('Génération du canevas...');
-      
-      // Récupérer les infos
-      const thematic = this.config.getActiveThematic() || {
-        name: 'Carte géotechnique',
-        parameter: 'n_sondages'
-      };
-      const admFilters = this.config.getActiveAdmFilters();
-      
-      // Déterminer le bbox selon la zone sélectionnée
-      let bounds: { north: number; south: number; east: number; west: number };
-      
-      if (this.options.zone === 'adm-filtered' && this.config.getAdmBounds) {
-        // Zone filtrée : utiliser le bbox du polygone ADM avec marge
-        const admBounds = this.config.getAdmBounds();
-        if (admBounds) {
-          // Ajouter une marge de 8% pour le confort visuel
-          const marginFactor = 0.08;
-          const dx = admBounds.east - admBounds.west;
-          const dy = admBounds.north - admBounds.south;
-          bounds = {
-            west: admBounds.west - marginFactor * dx,
-            east: admBounds.east + marginFactor * dx,
-            south: admBounds.south - marginFactor * dy,
-            north: admBounds.north + marginFactor * dy
-          };
-          console.log('[Export] Zone filtrée ADM avec marge 8%:', bounds);
-        } else {
-          // Fallback sur la vue actuelle si pas de bbox ADM
-          bounds = this.config.getMapBounds();
-        }
-      } else {
-        // Vue actuelle
-        bounds = this.config.getMapBounds();
-      }
       
       const bbox: BBox = {
         minX: bounds.west,
