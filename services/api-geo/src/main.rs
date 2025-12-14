@@ -9,7 +9,6 @@ use std::net::SocketAddr;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod adm_neighbors;
 mod audit;
 pub mod auth;
 mod cells_kpi;
@@ -199,8 +198,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/adm3/geojson", get(surveys_adm::get_adm3_geojson))
         .route("/adm3", get(surveys::list_adm3))
         .route("/adm/:level", get(routes::list_adm_zones))
-        // ADM neighbors endpoint (URL différente pour éviter conflit avec /adm/:level)
-        .nest("/adm-data", routes::adm_router())
+        // ADM neighbors endpoint - route publique pour export cartographique
+        // URL distincte pour éviter conflit avec /adm/:level
+        .route("/adm-neighbors", get(routes::get_adm_neighbors))
         // Audit log endpoints
         .route("/audit", get(audit::list_audit_logs))
         .route("/audit/export/csv", get(audit::export_audit_csv))
@@ -437,6 +437,16 @@ async fn main() -> anyhow::Result<()> {
                     auth::middleware::auth_middleware,
                 )),
         )
+        // Fallback explicite pour les routes non reconnues (retourne 404)
+        .fallback(|| async {
+            (
+                axum::http::StatusCode::NOT_FOUND,
+                axum::Json(serde_json::json!({
+                    "error": "Route non trouvée",
+                    "error_code": "NOT_FOUND"
+                }))
+            )
+        })
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

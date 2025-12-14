@@ -54,13 +54,7 @@ pub fn grid_router() -> Router<AppState> {
         .route("/recompute/:code", post(recompute_grid))
 }
 
-/// Router pour les endpoints ADM publics
-pub fn adm_router() -> Router<AppState> {
-    Router::new()
-        .route("/neighbors", get(get_adm_neighbors))
-}
-
-/// GET /adm-neighbors?level=adm1&name=Maritime
+/// GET /adm/neighbors?level=adm1&name=Maritime
 /// Récupère les ADM limitrophes et pays voisins
 pub async fn get_adm_neighbors(
     Query(params): Query<AdmNeighborsQuery>,
@@ -72,10 +66,11 @@ pub async fn get_adm_neighbors(
     let name = params.name.clone();
     
     // Déterminer la table et le champ selon le niveau
-    let (table, name_field) = match level.as_str() {
-        "adm1" => ("adm1_togo", "adm1_fr"),
-        "adm2" => ("adm2_togo", "adm2_fr"),
-        "adm3" => ("adm3_togo", "adm3_fr"),
+    // Tables: adm1_tg, adm2_tg, adm3_tg avec champ "name"
+    let table = match level.as_str() {
+        "adm1" => "adm1_tg",
+        "adm2" => "adm2_tg",
+        "adm3" => "adm3_tg",
         _ => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -83,6 +78,7 @@ pub async fn get_adm_neighbors(
             ).into_response();
         }
     };
+    let name_field = "name"; // Champ commun à toutes les tables
     
     // Récupérer le centroïde de l'ADM cible
     let target_query = format!(
