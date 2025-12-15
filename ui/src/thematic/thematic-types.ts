@@ -468,6 +468,7 @@ export interface ThematicExportState {
     median: number
   } | null
   features?: any[]          // Features GeoJSON pour les statistiques d'export
+  totalCellCount?: number   // Nombre total de mailles dans la zone (pour calcul couverture)
 }
 
 export interface SavedConfig {

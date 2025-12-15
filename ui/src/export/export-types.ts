@@ -235,6 +235,7 @@ export interface ThematicLegendData {
   mapType: 'choropleth' | 'proportional' | 'binary';
   classes: LegendClass[];
   features?: any[];
+  totalCellCount?: number;
 }
 
 // ============================================================================

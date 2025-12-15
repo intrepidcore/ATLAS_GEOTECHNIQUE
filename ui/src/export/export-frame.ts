@@ -268,8 +268,7 @@ export class ExportFrame {
     const ctx = this.ctx;
     
     ctx.save();
-    ctx.font = '9px Arial, sans-serif';
-    ctx.fillStyle = '#555555';
+    ctx.font = 'italic 10px Arial, sans-serif';
     
     // Grouper par direction pour éviter les collisions
     const byDirection: Record<string, typeof neighbors> = { N: [], S: [], E: [], W: [] };
@@ -280,12 +279,20 @@ export class ExportFrame {
       }
     }
     
-    // Convertir lat/lon en pixels
-    const toPixelX = (lon: number) => mapArea.x + ((lon - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
-    const toPixelY = (lat: number) => mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+    // Fonction pour dessiner un label avec halo
+    const drawLabelWithHalo = (text: string, x: number, y: number) => {
+      // Halo blanc
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 3;
+      ctx.lineJoin = 'round';
+      ctx.strokeText(text, x, y);
+      // Texte principal
+      ctx.fillStyle = '#444444';
+      ctx.fillText(text, x, y);
+    };
     
     // Dessiner les labels par direction
-    const margin = 5;
+    const margin = 8;
     const maxPerSide = 3;
     
     // Nord
@@ -295,7 +302,7 @@ export class ExportFrame {
     const northSpacing = mapArea.width / (northLabels.length + 1);
     northLabels.forEach((n, i) => {
       const x = mapArea.x + northSpacing * (i + 1);
-      ctx.fillText(n.label, x, mapArea.y - margin);
+      drawLabelWithHalo(n.label, x, mapArea.y - margin);
     });
     
     // Sud
@@ -304,7 +311,7 @@ export class ExportFrame {
     const southSpacing = mapArea.width / (southLabels.length + 1);
     southLabels.forEach((n, i) => {
       const x = mapArea.x + southSpacing * (i + 1);
-      ctx.fillText(n.label, x, mapArea.y + mapArea.height + margin);
+      drawLabelWithHalo(n.label, x, mapArea.y + mapArea.height + margin);
     });
     
     // Est
@@ -314,7 +321,7 @@ export class ExportFrame {
     const eastSpacing = mapArea.height / (eastLabels.length + 1);
     eastLabels.forEach((n, i) => {
       const y = mapArea.y + eastSpacing * (i + 1);
-      ctx.fillText(n.label, mapArea.x + mapArea.width + margin, y);
+      drawLabelWithHalo(n.label, mapArea.x + mapArea.width + margin, y);
     });
     
     // Ouest
@@ -323,7 +330,7 @@ export class ExportFrame {
     const westSpacing = mapArea.height / (westLabels.length + 1);
     westLabels.forEach((n, i) => {
       const y = mapArea.y + westSpacing * (i + 1);
-      ctx.fillText(n.label, mapArea.x - margin, y);
+      drawLabelWithHalo(n.label, mapArea.x - margin, y);
     });
     
     ctx.restore();

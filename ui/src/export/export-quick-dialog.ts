@@ -737,8 +737,19 @@ export class ExportQuickDialog {
             );
             map.fitBounds(targetBounds, { animate: false, padding: [0, 0] });
             
-            // Attendre que la carte se mette à jour
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Attendre que la carte se mette à jour (moveend)
+            await new Promise<void>(resolve => {
+              const onMoveEnd = () => {
+                map.off('moveend', onMoveEnd);
+                resolve();
+              };
+              map.on('moveend', onMoveEnd);
+              // Timeout de sécurité
+              setTimeout(() => {
+                map.off('moveend', onMoveEnd);
+                resolve();
+              }, 1000);
+            });
           }
         } else {
           // Fallback sur la vue actuelle si pas de bbox ADM
@@ -751,6 +762,10 @@ export class ExportQuickDialog {
       
       updateProgress('Attente du chargement des tuiles...');
       await waitForTilesLoaded(this.config.mapContainer, 3000);
+      
+      // Attendre le rendu complet des layers thématiques (Canvas/SVG)
+      updateProgress('Attente du rendu thématique...');
+      await new Promise(resolve => setTimeout(resolve, 800));
       
       // Masquer la grille de fond si demandé
       const hideGridLayer = (this.overlay?.querySelector('#export-hide-grid-layer') as HTMLInputElement)?.checked ?? true;
@@ -839,6 +854,7 @@ export class ExportQuickDialog {
           parameterLabel: legendData.parameterLabel || thematic.name,
           unit: legendData.unit || '',
           features: legendData.features || [],
+          totalCellCount: legendData.totalCellCount || 0,
           classes: legendData.classes || [],
           admFilters: admFilters || {}
         });
@@ -995,30 +1011,62 @@ export class ExportQuickDialog {
     const centerLat = (admBounds.north + admBounds.south) / 2;
     const centerLng = (admBounds.east + admBounds.west) / 2;
     
-    // Marge minimale (2% de chaque côté = 4% total)
-    const marginFactor = 0.02;
-    let W1 = admWidth * (1 + 2 * marginFactor);
-    let H1 = admHeight * (1 + 2 * marginFactor);
+    // Correction latitude (1° lat ≈ 111km, 1° lng ≈ 111km * cos(lat))
+    const latCorrection = Math.cos(centerLat * Math.PI / 180);
+    
+    // Calculer la compacité de l'ADM (ratio largeur/hauteur en km)
+    const admWidthKm = admWidth * 111 * latCorrection;
+    const admHeightKm = admHeight * 111;
+    const compactness = admWidthKm / admHeightKm; // >1 = horizontal, <1 = vertical
+    
+    // Marges ASYMÉTRIQUES selon la forme de l'ADM
+    // Pour un ADM horizontal (comme Maritime): peu de marge verticale
+    // Pour un ADM vertical: peu de marge horizontale
+    let marginH: number; // marge horizontale (Est/Ouest)
+    let marginV: number; // marge verticale (Nord/Sud)
+    
+    if (compactness > 1.5) {
+      // ADM très horizontal → marge verticale minimale
+      marginH = 0.05; // 5%
+      marginV = 0.02; // 2%
+    } else if (compactness < 0.67) {
+      // ADM très vertical → marge horizontale minimale
+      marginH = 0.02; // 2%
+      marginV = 0.05; // 5%
+    } else {
+      // ADM compact → marges égales
+      marginH = 0.03; // 3%
+      marginV = 0.03; // 3%
+    }
+    
+    // Appliquer les marges asymétriques
+    let W1 = admWidth * (1 + 2 * marginH);
+    let H1 = admHeight * (1 + 2 * marginV);
     
     // Ratio de la zone carte sur A4 portrait
     // Zone carte: ~180mm largeur x ~200mm hauteur (après titre, légende, cartouche)
-    // Ratio R = hauteur / largeur ≈ 1.11 (légèrement plus haut que large)
     const sheetRatio = 1.11;
     
-    // Ratio actuel de l'emprise ADM
-    // Note: on corrige pour la latitude (1° lat ≈ 111km, 1° lng ≈ 111km * cos(lat))
-    const latCorrection = Math.cos(centerLat * Math.PI / 180);
-    const admRatio = H1 / (W1 * latCorrection);
+    // Ratio actuel de l'emprise avec marges
+    const currentRatio = H1 / (W1 * latCorrection);
     
     let W2 = W1;
     let H2 = H1;
     
-    if (admRatio > sheetRatio) {
-      // ADM plus "vertical" que la feuille → élargir la largeur
+    if (currentRatio > sheetRatio) {
+      // Emprise plus "verticale" que la feuille → élargir la largeur
       W2 = (H1 / sheetRatio) / latCorrection;
-    } else if (admRatio < sheetRatio) {
-      // ADM plus "horizontal" que la feuille → augmenter la hauteur
-      H2 = W1 * latCorrection * sheetRatio;
+    } else if (currentRatio < sheetRatio) {
+      // Emprise plus "horizontale" que la feuille → augmenter la hauteur
+      // MAIS limiter l'ajout de hauteur pour éviter trop de mer/vide
+      const idealH2 = W1 * latCorrection * sheetRatio;
+      const maxExtraHeight = admHeight * 0.15; // Max 15% de hauteur ADM en plus
+      H2 = Math.min(idealH2, H1 + maxExtraHeight);
+      
+      // Si on a limité la hauteur, réajuster la largeur
+      if (H2 < idealH2) {
+        W2 = (H2 / sheetRatio) / latCorrection;
+      }
     }
     
     // Calculer le nouveau bbox centré sur l'ADM
@@ -1031,12 +1079,11 @@ export class ExportQuickDialog {
     
     console.log('[Export] Emprise optimisée:', {
       admOriginal: { width: admWidth.toFixed(4), height: admHeight.toFixed(4) },
-      admRatio: admRatio.toFixed(3),
+      compactness: compactness.toFixed(2),
+      margins: { h: (marginH * 100).toFixed(0) + '%', v: (marginV * 100).toFixed(0) + '%' },
+      currentRatio: currentRatio.toFixed(3),
       sheetRatio: sheetRatio.toFixed(3),
-      newBounds: {
-        width: W2.toFixed(4),
-        height: H2.toFixed(4)
-      }
+      newBounds: { width: W2.toFixed(4), height: H2.toFixed(4) }
     });
     
     return newBounds;

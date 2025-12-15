@@ -65,6 +65,8 @@ pub async fn export_qgis_package(
     Json(req): Json<ThematicExportRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let pool = &state.pool;
+    
+    tracing::info!("Export QGIS request: parameter={}, filters={:?}", req.parameter_id, req.filters);
 
     // 1. Récupérer les données des mailles avec géométrie
     let column = parameter_to_column(&req.parameter_id);
@@ -119,7 +121,10 @@ pub async fn export_qgis_package(
     let rows = sql_query
         .fetch_all(pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {}", e)))?;
+        .map_err(|e| {
+            tracing::error!("DB error in QGIS export: {}", e);
+            (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {}", e))
+        })?;
 
     // 2. Construire le GeoJSON
     let mut features = Vec::new();

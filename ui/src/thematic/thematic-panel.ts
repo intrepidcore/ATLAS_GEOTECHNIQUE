@@ -1076,7 +1076,8 @@ export class ThematicPanel {
                 color: c.color,
                 label: c.label
               })),
-              features: state.features || []
+              features: state.features || [],
+              totalCellCount: state.totalCellCount || 0
             }
           }
           return null

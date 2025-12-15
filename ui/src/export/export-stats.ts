@@ -20,6 +20,7 @@ export interface StatsInput {
   parameterLabel: string;
   unit: string;
   features: any[];
+  totalCellCount?: number; // Nombre total de mailles dans la zone (pour calcul couverture)
   classes: Array<{ min: number | null; max: number | null; color: string; label: string; count?: number }>;
   admFilters: {
     adm1?: string | { code: string; name: string };
@@ -32,7 +33,7 @@ export interface StatsInput {
  * Construit les statistiques d'export selon la thématique
  */
 export function buildExportStats(input: StatsInput): ExportStats {
-  const { parameterId, parameterLabel, unit, features, classes, admFilters } = input;
+  const { parameterId, parameterLabel, unit, features, totalCellCount, classes, admFilters } = input;
   
   // Déterminer le nom de la zone
   const getAdmName = (adm: string | { code: string; name: string } | undefined): string | undefined => {
@@ -43,16 +44,17 @@ export function buildExportStats(input: StatsInput): ExportStats {
   const zoneName = getAdmName(admFilters.adm3) || getAdmName(admFilters.adm2) || getAdmName(admFilters.adm1) || 'Togo';
   
   // Calculer les stats de base
-  const nMailles = features.length;
+  // nMaillesTotales = totalCellCount si fourni, sinon features.length
+  const nMaillesTotales = totalCellCount || features.length;
   const nMaillesAvecDonnees = features.filter(f => {
     const val = f.properties?.[parameterId] ?? f[parameterId];
     return val !== null && val !== undefined && val > 0;
   }).length;
   
-  // Extraire les valeurs numériques
+  // Extraire les valeurs numériques (uniquement > 0 pour les stats)
   const values = features
     .map(f => f.properties?.[parameterId] ?? f[parameterId])
-    .filter(v => v !== null && v !== undefined && typeof v === 'number') as number[];
+    .filter(v => v !== null && v !== undefined && typeof v === 'number' && v > 0) as number[];
   
   const stats: ExportStats = {
     title: 'Statistiques',
@@ -68,22 +70,22 @@ export function buildExportStats(input: StatsInput): ExportStats {
   // Stats selon la thématique
   switch (parameterId) {
     case 'n_sondages':
-      stats.rows = buildSondagesStats(values, nMailles, nMaillesAvecDonnees, classes);
+      stats.rows = buildSondagesStats(values, nMaillesTotales, nMaillesAvecDonnees, classes);
       break;
     case 'vbs_moy':
     case 'vbs_mean':
-      stats.rows = buildVbsStats(values, nMailles, classes, unit);
+      stats.rows = buildVbsStats(values, nMaillesTotales, nMaillesAvecDonnees, classes, unit);
       break;
     case 'ip_moy':
     case 'ip_mean':
-      stats.rows = buildIpStats(values, nMailles, classes, unit);
+      stats.rows = buildIpStats(values, nMaillesTotales, nMaillesAvecDonnees, classes, unit);
       break;
     case 'profondeur_max':
     case 'depth_max':
-      stats.rows = buildDepthStats(values, nMailles, unit);
+      stats.rows = buildDepthStats(values, nMaillesTotales, nMaillesAvecDonnees, unit);
       break;
     default:
-      stats.rows = buildGenericStats(values, nMailles, nMaillesAvecDonnees, parameterLabel, unit);
+      stats.rows = buildGenericStats(values, nMaillesTotales, nMaillesAvecDonnees, parameterLabel, unit);
   }
   
   return stats;
@@ -129,20 +131,24 @@ function buildSondagesStats(
  */
 function buildVbsStats(
   values: number[],
-  nMailles: number,
+  nMaillesTotales: number,
+  nMaillesAvecDonnees: number,
   classes: any[],
   unit: string
 ): ExportStatsRow[] {
   const moyenne = values.reduce((a, b) => a + b, 0) / values.length;
   const min = Math.min(...values);
   const max = Math.max(...values);
+  const couverture = (nMaillesAvecDonnees / nMaillesTotales * 100).toFixed(1);
   
   // % très argileux (VBS > 5 g/100g typiquement)
   const seuilArgileux = 5;
   const nArgileux = values.filter(v => v > seuilArgileux).length;
-  const pctArgileux = (nArgileux / values.length * 100).toFixed(1);
+  const pctArgileux = (nArgileux / nMaillesAvecDonnees * 100).toFixed(1);
   
   return [
+    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMaillesTotales}` },
+    { label: 'Couverture', value: couverture, unit: '%' },
     { label: 'VBS moyen', value: moyenne.toFixed(2), unit: unit || 'g/100g' },
     { label: 'VBS min', value: min.toFixed(2), unit: unit || 'g/100g' },
     { label: 'VBS max', value: max.toFixed(2), unit: unit || 'g/100g' },
@@ -155,20 +161,24 @@ function buildVbsStats(
  */
 function buildIpStats(
   values: number[],
-  nMailles: number,
+  nMaillesTotales: number,
+  nMaillesAvecDonnees: number,
   classes: any[],
   unit: string
 ): ExportStatsRow[] {
   const moyenne = values.reduce((a, b) => a + b, 0) / values.length;
   const min = Math.min(...values);
   const max = Math.max(...values);
+  const couverture = (nMaillesAvecDonnees / nMaillesTotales * 100).toFixed(1);
   
   // % plasticité élevée (IP > 20 typiquement)
   const seuilPlastique = 20;
   const nPlastique = values.filter(v => v > seuilPlastique).length;
-  const pctPlastique = (nPlastique / values.length * 100).toFixed(1);
+  const pctPlastique = (nPlastique / nMaillesAvecDonnees * 100).toFixed(1);
   
   return [
+    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMaillesTotales}` },
+    { label: 'Couverture', value: couverture, unit: '%' },
     { label: 'IP moyen', value: moyenne.toFixed(1), unit: unit || '%' },
     { label: 'IP min', value: min.toFixed(1), unit: unit || '%' },
     { label: 'IP max', value: max.toFixed(1), unit: unit || '%' },
@@ -181,18 +191,22 @@ function buildIpStats(
  */
 function buildDepthStats(
   values: number[],
-  nMailles: number,
+  nMaillesTotales: number,
+  nMaillesAvecDonnees: number,
   unit: string
 ): ExportStatsRow[] {
   const moyenne = values.reduce((a, b) => a + b, 0) / values.length;
   const min = Math.min(...values);
   const max = Math.max(...values);
+  const couverture = (nMaillesAvecDonnees / nMaillesTotales * 100).toFixed(1);
   
   // Sondages profonds (> 2m)
   const seuilProfond = 2;
   const nProfonds = values.filter(v => v > seuilProfond).length;
   
   return [
+    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMaillesTotales}` },
+    { label: 'Couverture', value: couverture, unit: '%' },
     { label: 'Profondeur moyenne', value: moyenne.toFixed(2), unit: unit || 'm' },
     { label: 'Profondeur min', value: min.toFixed(2), unit: unit || 'm' },
     { label: 'Profondeur max', value: max.toFixed(2), unit: unit || 'm' },
