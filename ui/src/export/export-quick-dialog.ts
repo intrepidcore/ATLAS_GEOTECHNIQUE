@@ -821,11 +821,17 @@ export class ExportQuickDialog {
       await exportFrame.drawMapImage(mapCapture.canvas);
       
       // Dessiner le masque hors ADM si demandé
-      const maskMode = (this.overlay?.querySelector('#export-mask-mode') as HTMLSelectElement)?.value as 'none' | 'context' | 'focus' || 'none';
+      const maskModeSelect = this.overlay?.querySelector('#export-mask-mode') as HTMLSelectElement;
+      const maskMode = (maskModeSelect?.value || 'none') as 'none' | 'context' | 'focus';
+      console.log('[Export] Masque ADM - mode:', maskMode, 'zone:', this.options.zone);
+      
       if (maskMode !== 'none' && this.options.zone === 'adm-filtered') {
         const admPolygon = this.config.getAdmPolygon?.();
-        if (admPolygon) {
+        console.log('[Export] ADM polygon:', admPolygon ? `${admPolygon.length} points` : 'null');
+        if (admPolygon && admPolygon.length >= 3) {
           exportFrame.drawAdmMask(admPolygon, bbox, maskMode);
+        } else {
+          console.warn('[Export] Pas de polygone ADM valide pour le masque');
         }
       }
       
@@ -949,14 +955,54 @@ export class ExportQuickDialog {
   }
   
   /**
-   * Récupère les ADM limitrophes depuis l'API
+   * Récupère les ADM limitrophes (solution statique + API fallback)
+   * Ajoute automatiquement les pays voisins selon la position géographique
    */
   private async fetchAdmNeighbors(
     admFilters: ActiveAdmFilters
   ): Promise<Array<{ label: string; direction: string; lon: number; lat: number }>> {
-    // Déterminer le niveau et le nom de l'ADM
-    let level: string;
-    let name: string;
+    const neighbors: Array<{ label: string; direction: string; lon: number; lat: number }> = [];
+    
+    // Récupérer le bbox de l'ADM pour déterminer les voisins externes
+    const admBounds = this.config.getAdmBounds?.();
+    if (!admBounds) return neighbors;
+    
+    const { north, south, east, west } = admBounds;
+    const centerLon = (east + west) / 2;
+    const centerLat = (north + south) / 2;
+    
+    // Frontières du Togo (approximatives)
+    const TOGO_BOUNDS = {
+      north: 11.14,  // Frontière Burkina Faso
+      south: 6.10,   // Golfe de Guinée
+      east: 1.81,    // Frontière Bénin
+      west: -0.15    // Frontière Ghana
+    };
+    
+    // Ajouter les voisins externes selon la position de l'ADM
+    // Golfe de Guinée (sud) - si l'ADM touche la côte
+    if (south < 6.25) {
+      neighbors.push({ label: 'Golfe de Guinée', direction: 'S', lon: centerLon, lat: south - 0.1 });
+    }
+    
+    // Ghana (ouest) - si l'ADM est proche de la frontière ouest
+    if (west < 0.5) {
+      neighbors.push({ label: 'Ghana', direction: 'W', lon: west - 0.1, lat: centerLat });
+    }
+    
+    // Bénin (est) - si l'ADM est proche de la frontière est
+    if (east > 1.3) {
+      neighbors.push({ label: 'Bénin', direction: 'E', lon: east + 0.1, lat: centerLat });
+    }
+    
+    // Burkina Faso (nord) - si l'ADM est proche de la frontière nord
+    if (north > 10.5) {
+      neighbors.push({ label: 'Burkina Faso', direction: 'N', lon: centerLon, lat: north + 0.1 });
+    }
+    
+    // Essayer de récupérer les voisins internes depuis l'API
+    let level: string | null = null;
+    let name: string | null = null;
     
     if (admFilters.adm3) {
       level = 'adm3';
@@ -967,26 +1013,33 @@ export class ExportQuickDialog {
     } else if (admFilters.adm1) {
       level = 'adm1';
       name = admFilters.adm1.name;
-    } else {
-      return [];
     }
     
-    try {
-      const response = await fetch(
-        `http://localhost:8000/adm-neighbors?level=${level}&name=${encodeURIComponent(name)}`
-      );
-      
-      if (!response.ok) {
-        console.warn('[Export] Erreur API adm-neighbors:', response.status);
-        return [];
+    if (level && name) {
+      try {
+        const response = await fetch(
+          `http://localhost:8000/adm-neighbors?level=${level}&name=${encodeURIComponent(name)}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.neighbors && Array.isArray(data.neighbors)) {
+            // Ajouter les voisins internes (autres ADM du Togo)
+            for (const n of data.neighbors) {
+              // Éviter les doublons avec les voisins externes
+              if (!neighbors.some(existing => existing.label === n.label)) {
+                neighbors.push(n);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[Export] API adm-neighbors indisponible, utilisation des voisins statiques');
       }
-      
-      const data = await response.json();
-      return data.neighbors || [];
-    } catch (e) {
-      console.warn('[Export] Erreur fetch adm-neighbors:', e);
-      return [];
     }
+    
+    console.log('[Export] Voisins trouvés:', neighbors);
+    return neighbors;
   }
   
   /**

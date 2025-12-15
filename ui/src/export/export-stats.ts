@@ -114,13 +114,14 @@ function buildSondagesStats(
   // Ajouter répartition par classes si disponible
   if (classes && classes.length > 0) {
     const classeHaute = classes[classes.length - 1];
-    const nClasseHaute = values.filter(v => v > (classeHaute.min || 0)).length;
-    if (nClasseHaute > 0) {
-      rows.push({
-        label: `Mailles ${classeHaute.label}`,
-        value: nClasseHaute.toString()
-      });
-    }
+    // Le seuil est le min de la dernière classe (ex: "> 5.0" a min=5.0)
+    const seuilHaut = classeHaute.min ?? Infinity;
+    const nClasseHaute = values.filter(v => v > seuilHaut).length;
+    // Toujours afficher, même si 0
+    rows.push({
+      label: `Mailles ${classeHaute.label}`,
+      value: nClasseHaute.toString()
+    });
   }
   
   return rows;
