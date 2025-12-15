@@ -2075,16 +2075,21 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
-### 3.1.6 À FAIRE - Prochaines étapes
+### 3.1.6 Option mailles sans données ✅ UI AJOUTÉE
+**Objectif** : Voir toutes les mailles de l'ADM
 
-#### Grille mailles avec/sans données
-- [ ] Option "Afficher mailles sans données" dans dialogue
-- [ ] Requête API pour récupérer toutes les mailles de l'ADM
-- [ ] Style différencié : mailles vides en gris clair
+- [X] Checkbox "Afficher mailles sans données" dans dialogue export
+- [ ] Requête API pour récupérer toutes les mailles de l'ADM (à implémenter)
+- [ ] Style différencié : mailles vides en gris clair (à implémenter)
 
-#### Amélioration cadrage
-- [ ] Utiliser `computeOptimalMapDimensions` dans le flux d'export
-- [ ] Orientation auto (portrait/paysage) selon ratio ADM
+---
+
+### 3.1.7 À FAIRE - Prochaines étapes
+
+#### Backend mailles vides
+- [ ] Endpoint `/thematic/cells/adm` pour toutes mailles d'un ADM
+- [ ] Inclure mailles à valeur NULL dans la réponse
+- [ ] Frontend: dessiner mailles vides en gris clair
 
 #### Export Atlas complet
 - [ ] Rebrancher avec nouvelles stats enrichies
