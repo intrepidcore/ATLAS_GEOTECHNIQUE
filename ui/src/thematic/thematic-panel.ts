@@ -1140,29 +1140,114 @@ export class ThematicPanel {
         await new Promise(r => setTimeout(r, 1000))
       },
       
-      // Capturer la carte actuelle
+      // Capturer la carte actuelle avec ExportFrame (masque, stats, cadrage)
       captureCurrentMap: async (): Promise<Blob | null> => {
-        if (!mapContainer) return null
+        if (!mapContainer || !map) return null
         
         try {
-          const html2canvas = (window as any).html2canvas
-          if (!html2canvas) {
-            console.warn('[Atlas] html2canvas non disponible')
-            return null
+          // Utiliser le même mécanisme que ExportQuickDialog
+          const { captureLeafletMap } = await import('../export/capture-utils')
+          const { ExportFrame, computeScaleText } = await import('../export/export-frame')
+          const { buildExportStats } = await import('../export/export-stats')
+          
+          // Récupérer les bounds de la carte
+          const bounds = map.getBounds()
+          const bbox = {
+            minX: bounds.getWest(),
+            minY: bounds.getSouth(),
+            maxX: bounds.getEast(),
+            maxY: bounds.getNorth()
           }
           
-          const canvas = await html2canvas(mapContainer, {
-            useCORS: true,
-            allowTaint: true,
-            scale: 2,
-            logging: false
+          // Capturer la carte
+          const mapCapture = await captureLeafletMap(mapContainer, 'print')
+          
+          // Créer l'ExportFrame avec options
+          const exportFrame = new ExportFrame(mapCapture.width, mapCapture.height, {
+            format: 'png',
+            quality: 'print',
+            zone: 'adm-filtered',
+            includeTitle: true,
+            includeLegend: true,
+            includeStats: true,
+            includeScaleBar: true,
+            includeNorthArrow: true,
+            includeScrInfo: true,
+            grid: { type: 'cross', scr: 'EPSG:4326', targetDivisions: 5, showLabels: true, labelSides: { top: true, bottom: true, left: true, right: true } },
+            frameStyle: 'zebra'
           })
           
-          return new Promise<Blob | null>((resolve) => {
-            canvas.toBlob((blob: Blob | null) => resolve(blob), 'image/png', 0.95)
-          })
+          // Récupérer les données thématiques
+          const state = this.manager.getCurrentExportState?.()
+          const thematic = { 
+            name: state?.parameterLabel || 'Carte', 
+            parameter: state?.parameterId || ''
+          }
+          // Récupérer les filtres ADM actifs
+          const admFilters = {
+            adm1: this.elements.adm1Select?.value ? { 
+              code: this.elements.adm1Select.value, 
+              name: this.elements.adm1Select.options[this.elements.adm1Select.selectedIndex]?.text || '' 
+            } : undefined,
+            adm2: this.elements.adm2Select?.value ? { 
+              code: this.elements.adm2Select.value, 
+              name: this.elements.adm2Select.options[this.elements.adm2Select.selectedIndex]?.text || '' 
+            } : undefined,
+            adm3: this.elements.adm3Select?.value ? { 
+              code: this.elements.adm3Select.value, 
+              name: this.elements.adm3Select.options[this.elements.adm3Select.selectedIndex]?.text || '' 
+            } : undefined
+          }
+          
+          // Dessiner les éléments
+          exportFrame.drawTitle(thematic, admFilters)
+          await exportFrame.drawMapImage(mapCapture.canvas)
+          
+          // Masque ADM
+          const admPolygon = this.manager.getAdmPolygonCoords?.()
+          if (admPolygon && admPolygon.length >= 3) {
+            exportFrame.drawAdmMask(admPolygon, bbox, 'context')
+          }
+          
+          exportFrame.drawGridAndFrame(bbox)
+          
+          // Légende et stats
+          const legendData = state ? {
+            parameterId: state.parameterId,
+            parameterLabel: state.parameterLabel,
+            unit: state.unit,
+            mapType: state.mapType,
+            classes: state.classes,
+            features: state.features || [],
+            totalCellCount: state.totalCellCount || 0,
+            apiStats: state.apiStats
+          } : undefined
+          
+          exportFrame.drawLegend(legendData)
+          
+          if (legendData) {
+            const statsData = buildExportStats({
+              parameterId: legendData.parameterId,
+              parameterLabel: legendData.parameterLabel,
+              unit: legendData.unit,
+              features: legendData.features,
+              totalCellCount: legendData.totalCellCount,
+              classes: legendData.classes,
+              admFilters,
+              apiStats: legendData.apiStats
+            })
+            exportFrame.drawStats(statsData)
+          }
+          
+          // Cartouche
+          const centerLat = (bounds.getNorth() + bounds.getSouth()) / 2
+          const scaleText = computeScaleText(mapCapture.width, bounds.getEast() - bounds.getWest(), centerLat)
+          exportFrame.drawCartouche(scaleText)
+          
+          // Convertir en Blob
+          return exportFrame.toBlob('image/png')
         } catch (e) {
-          console.error('[Atlas] Erreur capture:', e)
+          console.error('[Atlas] Erreur capture ExportFrame:', e)
           return null
         }
       },
