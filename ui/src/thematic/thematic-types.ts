@@ -410,6 +410,15 @@ export interface Statistics {
   }
   count: number
   null_count: number
+  // Champs enrichis (optionnels, depuis API v3.1)
+  count_total?: number
+  sum?: number
+  parent_context?: {
+    level: string
+    parent_name: string
+    parent_sum: number
+    parent_cells: number
+  }
 }
 
 export interface ResponseMetadata {
@@ -469,6 +478,24 @@ export interface ThematicExportState {
   } | null
   features?: any[]          // Features GeoJSON pour les statistiques d'export
   totalCellCount?: number   // Nombre total de mailles dans la zone (pour calcul couverture)
+  /** Statistiques enrichies depuis l'API (pour export) */
+  apiStats?: {
+    count: number
+    count_total?: number
+    null_count?: number
+    sum?: number
+    min?: number
+    max?: number
+    mean?: number
+    median?: number
+    stddev?: number
+    parent_context?: {
+      level: string
+      parent_name: string
+      parent_sum: number
+      parent_cells: number
+    }
+  }
 }
 
 export interface SavedConfig {

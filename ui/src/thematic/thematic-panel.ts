@@ -1060,7 +1060,7 @@ export class ThematicPanel {
           }
         },
         
-        // Récupérer les données de légende thématique (classes, couleurs, labels, features)
+        // Récupérer les données de légende thématique (classes, couleurs, labels, features, stats)
         getThematicLegendData: () => {
           const state = this.manager.getCurrentExportState?.()
           if (state && state.classes && state.classes.length > 0) {
@@ -1077,7 +1077,9 @@ export class ThematicPanel {
                 label: c.label
               })),
               features: state.features || [],
-              totalCellCount: state.totalCellCount || 0
+              totalCellCount: state.totalCellCount || 0,
+              // Passer les stats enrichies de l'API pour l'export
+              apiStats: state.apiStats
             }
           }
           return null

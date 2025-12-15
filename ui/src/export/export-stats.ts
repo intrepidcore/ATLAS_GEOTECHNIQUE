@@ -28,13 +28,13 @@ export interface ParentContext {
 
 /** Statistiques enrichies depuis l'API */
 export interface ApiStatistics {
-  min: number;
-  max: number;
-  mean: number;
-  median: number;
-  stddev: number;
+  min?: number;
+  max?: number;
+  mean?: number;
+  median?: number;
+  stddev?: number;
   count: number;           // Mailles avec données (après filtres)
-  null_count: number;      // Mailles sans données
+  null_count?: number;     // Mailles sans données
   count_total?: number;    // Total mailles dans la zone
   sum?: number;            // Somme des valeurs
   parent_context?: ParentContext;
@@ -80,7 +80,7 @@ export function buildExportStats(input: StatsInput): ExportStats {
   
   if (apiStats) {
     // Stats enrichies depuis l'API
-    nMaillesTotales = apiStats.count_total ?? (apiStats.count + apiStats.null_count);
+    nMaillesTotales = apiStats.count_total ?? (apiStats.count + (apiStats.null_count ?? 0));
     nMaillesAvecDonnees = apiStats.count;
     sum = apiStats.sum ?? 0;
     // Pas de values individuelles, on utilise les stats agrégées

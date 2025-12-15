@@ -291,7 +291,13 @@ export class ExportFrame {
     bbox: BBox,
     mode: 'none' | 'context' | 'focus' | 'clip' = 'context'
   ): void {
-    console.log('[ExportFrame] drawAdmMask called:', { mode, polygonPoints: admPolygon?.length, bbox });
+    console.log('[ExportFrame] drawAdmMask called:', { 
+      mode, 
+      polygonPoints: admPolygon?.length,
+      bbox,
+      firstPt: admPolygon?.[0],
+      lastPt: admPolygon?.[admPolygon.length - 1]
+    });
     
     if (mode === 'none' || !admPolygon || admPolygon.length < 3) {
       console.log('[ExportFrame] drawAdmMask skipped - mode:', mode, 'polygon valid:', !!admPolygon);
@@ -303,7 +309,7 @@ export class ExportFrame {
     
     // Opacité selon le mode: context=45%, focus=85%, clip=100%
     const opacity = mode === 'clip' ? 1.0 : (mode === 'focus' ? 0.85 : 0.45);
-    console.log('[ExportFrame] Drawing mask with opacity:', opacity);
+    console.log('[ExportFrame] Drawing mask with opacity:', opacity, 'mapArea:', mapArea);
     
     // Convertir les coordonnées lng/lat en pixels sur le canvas
     const toPixel = (lng: number, lat: number): [number, number] => {
@@ -312,41 +318,49 @@ export class ExportFrame {
       return [x, y];
     };
     
+    // Vérifier que les premiers points sont dans la zone
+    const testPt = toPixel(admPolygon[0][0], admPolygon[0][1]);
+    console.log('[ExportFrame] First polygon point in pixels:', testPt);
+    
     ctx.save();
     
-    // Créer un path pour le masque (rectangle - trou ADM)
+    // MÉTHODE: Utiliser clip pour découper, puis remplir le rectangle entier
+    // Cela fonctionne mieux que evenodd pour les polygones complexes
+    
+    // D'abord dessiner le masque complet
+    ctx.beginPath();
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height);
+    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+    ctx.fill();
+    
+    // Ensuite, "effacer" la zone ADM en dessinant par-dessus avec destination-out
+    ctx.globalCompositeOperation = 'destination-out';
     ctx.beginPath();
     
-    // Rectangle extérieur (sens horaire) - couvre toute la zone carte
-    ctx.moveTo(mapArea.x, mapArea.y);
-    ctx.lineTo(mapArea.x + mapArea.width, mapArea.y);
-    ctx.lineTo(mapArea.x + mapArea.width, mapArea.y + mapArea.height);
-    ctx.lineTo(mapArea.x, mapArea.y + mapArea.height);
-    ctx.closePath();
-    
-    // Trou ADM (sens anti-horaire pour créer le trou avec evenodd)
+    // Dessiner le polygone ADM
     const firstPoint = toPixel(admPolygon[0][0], admPolygon[0][1]);
     ctx.moveTo(firstPoint[0], firstPoint[1]);
     
-    // Parcourir en sens inverse pour créer le trou
-    for (let i = admPolygon.length - 1; i >= 0; i--) {
+    for (let i = 1; i < admPolygon.length; i++) {
       const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
       ctx.lineTo(x, y);
     }
     ctx.closePath();
+    ctx.fill();
     
-    // Remplir avec blanc semi-opaque (masque l'extérieur de l'ADM)
-    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-    ctx.fill('evenodd');
+    // Restaurer le mode de composition
+    ctx.globalCompositeOperation = 'source-over';
     
-    console.log('[ExportFrame] Mask drawn successfully');
+    console.log('[ExportFrame] Mask drawn successfully with destination-out method');
     ctx.restore();
   }
   
   /**
-   * Dessine les labels des ADM limitrophes sur les bords de la carte
+   * Dessine les labels des ADM limitrophes sur les bords du polygone ADM
+   * Les labels sont positionnés aux coordonnées réelles des voisins, sur le bord de l'ADM
    * @param neighbors - Liste des voisins avec direction et coordonnées
    * @param bbox - Bounding box de la carte
+   * @param admPolygon - Optionnel: polygone ADM pour calculer les intersections
    */
   drawNeighborLabels(
     neighbors: Array<{
@@ -355,78 +369,111 @@ export class ExportFrame {
       lon: number;
       lat: number;
     }>,
-    bbox: BBox
+    bbox: BBox,
+    admPolygon?: number[][] | null
   ): void {
     if (!neighbors || neighbors.length === 0) return;
     
     const { mapArea } = this.layout;
     const ctx = this.ctx;
     
-    ctx.save();
-    ctx.font = 'italic 10px Arial, sans-serif';
+    // Convertir coordonnées géo en pixels
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+      return [x, y];
+    };
     
-    // Grouper par direction pour éviter les collisions
-    const byDirection: Record<string, typeof neighbors> = { N: [], S: [], E: [], W: [] };
-    for (const n of neighbors) {
-      const dir = n.direction.toUpperCase();
-      if (byDirection[dir]) {
-        byDirection[dir].push(n);
-      }
-    }
+    ctx.save();
+    // Police plus grande et visible
+    ctx.font = 'italic bold 12px Arial, sans-serif';
     
     // Fonction pour dessiner un label avec halo
-    const drawLabelWithHalo = (text: string, x: number, y: number) => {
-      // Halo blanc
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-      ctx.lineWidth = 3;
+    const drawLabelWithHalo = (text: string, x: number, y: number, align: CanvasTextAlign, baseline: CanvasTextBaseline) => {
+      ctx.textAlign = align;
+      ctx.textBaseline = baseline;
+      // Halo blanc épais
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.lineWidth = 4;
       ctx.lineJoin = 'round';
       ctx.strokeText(text, x, y);
-      // Texte principal
-      ctx.fillStyle = '#444444';
+      // Texte principal en gris foncé
+      ctx.fillStyle = '#333333';
       ctx.fillText(text, x, y);
     };
     
-    // Dessiner les labels par direction
-    const margin = 8;
-    const maxPerSide = 3;
+    // Calculer le centroïde de l'ADM si disponible
+    let admCenterX = mapArea.x + mapArea.width / 2;
+    let admCenterY = mapArea.y + mapArea.height / 2;
     
-    // Nord
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    const northLabels = byDirection.N.slice(0, maxPerSide);
-    const northSpacing = mapArea.width / (northLabels.length + 1);
-    northLabels.forEach((n, i) => {
-      const x = mapArea.x + northSpacing * (i + 1);
-      drawLabelWithHalo(n.label, x, mapArea.y - margin);
-    });
+    if (admPolygon && admPolygon.length > 2) {
+      let sumX = 0, sumY = 0;
+      for (const pt of admPolygon) {
+        const [px, py] = toPixel(pt[0], pt[1]);
+        sumX += px;
+        sumY += py;
+      }
+      admCenterX = sumX / admPolygon.length;
+      admCenterY = sumY / admPolygon.length;
+    }
     
-    // Sud
-    ctx.textBaseline = 'top';
-    const southLabels = byDirection.S.slice(0, maxPerSide);
-    const southSpacing = mapArea.width / (southLabels.length + 1);
-    southLabels.forEach((n, i) => {
-      const x = mapArea.x + southSpacing * (i + 1);
-      drawLabelWithHalo(n.label, x, mapArea.y + mapArea.height + margin);
-    });
+    const labelOffset = 15; // Distance du bord de la carte
     
-    // Est
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    const eastLabels = byDirection.E.slice(0, maxPerSide);
-    const eastSpacing = mapArea.height / (eastLabels.length + 1);
-    eastLabels.forEach((n, i) => {
-      const y = mapArea.y + eastSpacing * (i + 1);
-      drawLabelWithHalo(n.label, mapArea.x + mapArea.width + margin, y);
-    });
-    
-    // Ouest
-    ctx.textAlign = 'right';
-    const westLabels = byDirection.W.slice(0, maxPerSide);
-    const westSpacing = mapArea.height / (westLabels.length + 1);
-    westLabels.forEach((n, i) => {
-      const y = mapArea.y + westSpacing * (i + 1);
-      drawLabelWithHalo(n.label, mapArea.x - margin, y);
-    });
+    // Dessiner chaque label à sa position géographique réelle
+    for (const neighbor of neighbors) {
+      const [px, py] = toPixel(neighbor.lon, neighbor.lat);
+      const dir = neighbor.direction.toUpperCase();
+      
+      // Clamp la position aux bords de la zone carte avec offset
+      let x = px;
+      let y = py;
+      let align: CanvasTextAlign = 'center';
+      let baseline: CanvasTextBaseline = 'middle';
+      
+      // Déterminer la position et l'alignement selon la direction
+      switch (dir) {
+        case 'N':
+          // Positionner en haut de la zone carte
+          y = mapArea.y + labelOffset;
+          x = Math.max(mapArea.x + 30, Math.min(mapArea.x + mapArea.width - 30, px));
+          align = 'center';
+          baseline = 'top';
+          break;
+        case 'S':
+          // Positionner en bas de la zone carte
+          y = mapArea.y + mapArea.height - labelOffset;
+          x = Math.max(mapArea.x + 30, Math.min(mapArea.x + mapArea.width - 30, px));
+          align = 'center';
+          baseline = 'bottom';
+          break;
+        case 'E':
+          // Positionner à droite de la zone carte
+          x = mapArea.x + mapArea.width - labelOffset;
+          y = Math.max(mapArea.y + 20, Math.min(mapArea.y + mapArea.height - 20, py));
+          align = 'right';
+          baseline = 'middle';
+          break;
+        case 'W':
+          // Positionner à gauche de la zone carte
+          x = mapArea.x + labelOffset;
+          y = Math.max(mapArea.y + 20, Math.min(mapArea.y + mapArea.height - 20, py));
+          align = 'left';
+          baseline = 'middle';
+          break;
+        default:
+          // Position par défaut basée sur la direction vers le centre
+          if (px < admCenterX) {
+            x = mapArea.x + labelOffset;
+            align = 'left';
+          } else {
+            x = mapArea.x + mapArea.width - labelOffset;
+            align = 'right';
+          }
+          y = Math.max(mapArea.y + 20, Math.min(mapArea.y + mapArea.height - 20, py));
+      }
+      
+      drawLabelWithHalo(neighbor.label, x, y, align, baseline);
+    }
     
     ctx.restore();
   }

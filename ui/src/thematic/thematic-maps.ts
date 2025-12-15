@@ -924,7 +924,20 @@ export class ThematicMapManager {
         median: stats.median
       },
       features: this.currentData.features || [],
-      totalCellCount: stats.count || this.currentData.features?.length || 0
+      totalCellCount: stats.count_total || stats.count || this.currentData.features?.length || 0,
+      // Statistiques enrichies de l'API pour l'export
+      apiStats: {
+        count: stats.count,
+        count_total: stats.count_total,
+        null_count: stats.null_count,
+        sum: stats.sum,
+        min: stats.min,
+        max: stats.max,
+        mean: stats.mean,
+        median: stats.median,
+        stddev: stats.stddev,
+        parent_context: stats.parent_context
+      }
     }
     
     console.log('[ThematicMap] Export state updated:', this.currentExportState)

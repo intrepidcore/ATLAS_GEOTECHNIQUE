@@ -849,8 +849,9 @@ export class ExportQuickDialog {
       if (showNeighbors && this.options.zone === 'adm-filtered' && admFilters) {
         try {
           const neighbors = await this.fetchAdmNeighbors(admFilters);
+          const admPolygonForLabels = this.config.getAdmPolygon?.();
           if (neighbors && neighbors.length > 0) {
-            exportFrame.drawNeighborLabels(neighbors, bbox);
+            exportFrame.drawNeighborLabels(neighbors, bbox, admPolygonForLabels);
           }
         } catch (e) {
           console.warn('[Export] Impossible de charger les ADM limitrophes:', e);
@@ -870,7 +871,8 @@ export class ExportQuickDialog {
           features: legendData.features || [],
           totalCellCount: legendData.totalCellCount || 0,
           classes: legendData.classes || [],
-          admFilters: admFilters || {}
+          admFilters: admFilters || {},
+          apiStats: legendData.apiStats // Passer les stats enrichies de l'API
         });
         exportFrame.drawStats(statsData);
       }

@@ -239,6 +239,24 @@ export interface ThematicLegendData {
   classes: LegendClass[];
   features?: any[];
   totalCellCount?: number;
+  /** Statistiques enrichies de l'API pour l'export */
+  apiStats?: {
+    count: number;
+    count_total?: number;
+    null_count?: number;
+    sum?: number;
+    min?: number;
+    max?: number;
+    mean?: number;
+    median?: number;
+    stddev?: number;
+    parent_context?: {
+      level: string;
+      parent_name: string;
+      parent_sum: number;
+      parent_cells: number;
+    };
+  };
 }
 
 // ============================================================================
