@@ -552,6 +552,12 @@ export class ExportQuickDialog {
                 <span>Masquer grille de fond (mailles)</span>
               </label>
               
+              <!-- Afficher mailles sans données -->
+              <label class="export-checkbox" style="margin-top: 8px;">
+                <input type="checkbox" id="export-show-empty-cells">
+                <span>Afficher mailles sans données</span>
+              </label>
+              
               <!-- Afficher ADM/pays limitrophes -->
               <label class="export-checkbox" style="margin-top: 8px;">
                 <input type="checkbox" id="export-show-neighbors" checked>
