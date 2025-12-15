@@ -29,9 +29,10 @@ const LAYOUT = {
   margin: 20,           // Marge extérieure
   titleHeight: 50,      // Hauteur titre principal
   subtitleHeight: 20,   // Hauteur sous-titre (zone)
-  legendWidth: 180,     // Largeur zone légende
-  legendMinHeight: 120,
-  cartoucheHeight: 110, // Hauteur footer (légende + cartouche)
+  legendWidth: 140,     // Largeur zone légende (classes)
+  statsWidth: 180,      // Largeur zone stats
+  cartoucheWidth: 180,  // Largeur zone cartouche
+  footerHeight: 130,    // Hauteur footer
   coordLabelMargin: 8,
   padding: 10
 };
@@ -62,7 +63,7 @@ export function computeOptimalMapDimensions(
   hasTitle: boolean = true,
   hasLabels: boolean = true
 ): { mapWidth: number; mapHeight: number; pageWidth: number; pageHeight: number } {
-  const { margin, titleHeight, subtitleHeight, cartoucheHeight, padding } = LAYOUT;
+  const { margin, titleHeight, subtitleHeight, footerHeight, padding } = LAYOUT;
   
   // Dimensions de la page
   const pageDims = A4_DIMENSIONS[orientation][dpi as 72 | 150 | 300] || A4_DIMENSIONS[orientation][300];
@@ -74,7 +75,7 @@ export function computeOptimalMapDimensions(
   
   // Espace réservé pour header et footer
   const headerHeight = hasTitle ? (titleHeight + subtitleHeight) : 0;
-  const footerHeight = cartoucheHeight + padding;
+  const totalFooterHeight = footerHeight + padding;
   
   // Zone disponible pour la carte (en pixels)
   const availableWidth = pageWidth - (margin * 2) - (labelSpace * 2);
@@ -119,7 +120,7 @@ export function computeExportLayout(
   mapHeight: number,
   options: ExportOptions
 ): ExportFrameLayout {
-  const { margin, titleHeight, subtitleHeight, legendWidth, cartoucheHeight, coordLabelMargin, padding } = LAYOUT;
+  const { margin, titleHeight, subtitleHeight, legendWidth, footerHeight, coordLabelMargin, padding } = LAYOUT;
   
   // Espace pour les labels de coordonnées
   const labelSpace = options.grid.showLabels ? 40 : 0;
@@ -132,8 +133,8 @@ export function computeExportLayout(
     headerHeight = titleHeight + (options.zone === 'adm-filtered' ? subtitleHeight : 0);
   }
   
-  const footerHeight = cartoucheHeight + padding;
-  const totalHeight = margin * 2 + headerHeight + labelSpace * 2 + mapHeight + footerHeight;
+  const totalFooterHeight = footerHeight + padding;
+  const totalHeight = margin * 2 + headerHeight + labelSpace * 2 + mapHeight + totalFooterHeight;
   
   // Zone titre
   const titleArea = {
@@ -151,20 +152,32 @@ export function computeExportLayout(
     height: mapHeight
   };
   
-  // Zone légende (bas gauche, dans le footer)
+  // Footer: Légende | Stats | Cartouche
+  const footerY = mapArea.y + mapArea.height + labelSpace + padding;
+  const footerContentHeight = LAYOUT.footerHeight - padding * 2;
+  
+  // Zone légende (bas gauche)
   const legendArea = {
     x: margin,
-    y: mapArea.y + mapArea.height + labelSpace + padding,
-    width: legendWidth,
-    height: cartoucheHeight - padding
+    y: footerY,
+    width: LAYOUT.legendWidth,
+    height: footerContentHeight
+  };
+  
+  // Zone stats (milieu)
+  const statsArea = {
+    x: margin + LAYOUT.legendWidth + padding,
+    y: footerY,
+    width: LAYOUT.statsWidth,
+    height: footerContentHeight
   };
   
   // Zone cartouche (bas droit)
   const cartoucheArea = {
-    x: totalWidth - margin - legendWidth - 100,
-    y: mapArea.y + mapArea.height + labelSpace + padding,
-    width: legendWidth + 100,
-    height: cartoucheHeight - padding
+    x: totalWidth - margin - LAYOUT.cartoucheWidth,
+    y: footerY,
+    width: LAYOUT.cartoucheWidth,
+    height: footerContentHeight
   };
   
   return {
@@ -173,6 +186,7 @@ export function computeExportLayout(
     titleArea,
     mapArea,
     legendArea,
+    statsArea,
     cartoucheArea,
     coordLabelMargin
   };
@@ -652,56 +666,83 @@ export class ExportFrame {
   drawStats(stats?: ExportStats): void {
     if (!this.options.includeStats || !stats) return;
     
-    const { legendArea } = this.layout;
+    const { statsArea } = this.layout;
     const ctx = this.ctx;
     
-    // Position du bloc stats : à droite de la légende
-    const statsX = legendArea.x + legendArea.width + 15;
-    const statsY = legendArea.y;
-    const statsWidth = 160;
+    const padding = 6;
+    const headerHeight = 18;
+    const lineHeight = 12;
     
-    // Calculer hauteur dynamique
-    const headerHeight = 22;
-    const lineHeight = 14;
-    const padding = 8;
-    const statsHeight = headerHeight + stats.rows.length * lineHeight + padding * 2;
-    
-    // Cadre
+    // Cadre principal
     ctx.strokeStyle = '#cccccc';
     ctx.lineWidth = 1;
     ctx.fillStyle = '#fafafa';
-    ctx.fillRect(statsX, statsY, statsWidth, statsHeight);
-    ctx.strokeRect(statsX, statsY, statsWidth, statsHeight);
+    ctx.fillRect(statsArea.x, statsArea.y, statsArea.width, statsArea.height);
+    ctx.strokeRect(statsArea.x, statsArea.y, statsArea.width, statsArea.height);
     
     // Titre
     ctx.fillStyle = '#333333';
-    ctx.font = 'bold 10px Arial, sans-serif';
+    ctx.font = 'bold 9px Arial, sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(stats.title, statsX + padding, statsY + padding);
+    ctx.fillText(stats.title, statsArea.x + padding, statsArea.y + padding);
     
     // Sous-titre (zone)
     if (stats.subtitle) {
-      ctx.font = '9px Arial, sans-serif';
+      ctx.font = '8px Arial, sans-serif';
       ctx.fillStyle = '#666666';
-      ctx.fillText(stats.subtitle, statsX + padding, statsY + padding + 11);
+      ctx.fillText(stats.subtitle, statsArea.x + padding, statsArea.y + padding + 10);
     }
     
-    // Lignes de stats
-    ctx.font = '9px Arial, sans-serif';
-    let y = statsY + headerHeight + padding;
+    // Lignes de stats principales
+    ctx.font = '8px Arial, sans-serif';
+    let y = statsArea.y + headerHeight + padding;
     
     for (const row of stats.rows) {
       ctx.fillStyle = '#555555';
-      ctx.fillText(row.label + ' :', statsX + padding, y);
+      ctx.fillText(row.label + ' :', statsArea.x + padding, y);
       
       ctx.fillStyle = '#333333';
       const valueText = row.unit ? `${row.value} ${row.unit}` : row.value;
       ctx.textAlign = 'right';
-      ctx.fillText(valueText, statsX + statsWidth - padding, y);
+      ctx.fillText(valueText, statsArea.x + statsArea.width - padding, y);
       ctx.textAlign = 'left';
       
       y += lineHeight;
+    }
+    
+    // Contexte multi-niveaux (parent_context)
+    if (stats.contextRows && stats.contextRows.length > 0) {
+      y += 4; // Petit espace
+      
+      // Ligne de séparation
+      ctx.strokeStyle = '#dddddd';
+      ctx.beginPath();
+      ctx.moveTo(statsArea.x + padding, y);
+      ctx.lineTo(statsArea.x + statsArea.width - padding, y);
+      ctx.stroke();
+      y += 6;
+      
+      // Titre contexte
+      ctx.fillStyle = '#666666';
+      ctx.font = 'bold 8px Arial, sans-serif';
+      ctx.fillText('Contexte', statsArea.x + padding, y);
+      y += lineHeight;
+      
+      // Lignes de contexte
+      ctx.font = '8px Arial, sans-serif';
+      for (const row of stats.contextRows) {
+        ctx.fillStyle = '#666666';
+        ctx.fillText(row.label + ' :', statsArea.x + padding, y);
+        
+        ctx.fillStyle = '#444444';
+        const valueText = row.unit ? `${row.value} ${row.unit}` : row.value;
+        ctx.textAlign = 'right';
+        ctx.fillText(valueText, statsArea.x + statsArea.width - padding, y);
+        ctx.textAlign = 'left';
+        
+        y += lineHeight;
+      }
     }
   }
   

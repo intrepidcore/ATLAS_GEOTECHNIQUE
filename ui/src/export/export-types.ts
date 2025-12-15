@@ -187,6 +187,9 @@ export interface ExportFrameLayout {
   /** Zone de la légende */
   legendArea: { x: number; y: number; width: number; height: number };
   
+  /** Zone des statistiques */
+  statsArea: { x: number; y: number; width: number; height: number };
+  
   /** Zone du cartouche */
   cartoucheArea: { x: number; y: number; width: number; height: number };
   
