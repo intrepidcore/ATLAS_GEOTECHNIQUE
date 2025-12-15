@@ -26,15 +26,89 @@ import {
 // ============================================================================
 
 const LAYOUT = {
-  margin: 15,
-  titleHeight: 50,
-  subtitleHeight: 20,
-  legendWidth: 180,
+  margin: 20,           // Marge extérieure
+  titleHeight: 50,      // Hauteur titre principal
+  subtitleHeight: 20,   // Hauteur sous-titre (zone)
+  legendWidth: 180,     // Largeur zone légende
   legendMinHeight: 120,
-  cartoucheHeight: 120,
+  cartoucheHeight: 110, // Hauteur footer (légende + cartouche)
   coordLabelMargin: 8,
   padding: 10
 };
+
+// Dimensions A4 en pixels selon DPI
+const A4_DIMENSIONS = {
+  // A4 = 210mm x 297mm
+  portrait: {
+    72: { width: 595, height: 842 },
+    150: { width: 1240, height: 1754 },
+    300: { width: 2480, height: 3508 }
+  },
+  landscape: {
+    72: { width: 842, height: 595 },
+    150: { width: 1754, height: 1240 },
+    300: { width: 3508, height: 2480 }
+  }
+};
+
+/**
+ * Calcule les dimensions optimales de la zone carte pour un ADM donné
+ * La carte s'adapte au ratio de l'ADM tout en maximisant l'espace sur la page
+ */
+export function computeOptimalMapDimensions(
+  admRatio: number,  // largeur/hauteur de l'ADM en degrés corrigés
+  dpi: number = 300,
+  orientation: 'portrait' | 'landscape' = 'portrait',
+  hasTitle: boolean = true,
+  hasLabels: boolean = true
+): { mapWidth: number; mapHeight: number; pageWidth: number; pageHeight: number } {
+  const { margin, titleHeight, subtitleHeight, cartoucheHeight, padding } = LAYOUT;
+  
+  // Dimensions de la page
+  const pageDims = A4_DIMENSIONS[orientation][dpi as 72 | 150 | 300] || A4_DIMENSIONS[orientation][300];
+  const pageWidth = pageDims.width;
+  const pageHeight = pageDims.height;
+  
+  // Espace pour labels de coordonnées
+  const labelSpace = hasLabels ? 40 : 0;
+  
+  // Espace réservé pour header et footer
+  const headerHeight = hasTitle ? (titleHeight + subtitleHeight) : 0;
+  const footerHeight = cartoucheHeight + padding;
+  
+  // Zone disponible pour la carte (en pixels)
+  const availableWidth = pageWidth - (margin * 2) - (labelSpace * 2);
+  const availableHeight = pageHeight - (margin * 2) - headerHeight - footerHeight - (labelSpace * 2);
+  
+  // Ratio de la zone disponible
+  const availableRatio = availableWidth / availableHeight;
+  
+  let mapWidth: number;
+  let mapHeight: number;
+  
+  if (admRatio > availableRatio) {
+    // ADM plus large que la zone disponible → utiliser toute la largeur
+    mapWidth = availableWidth;
+    mapHeight = availableWidth / admRatio;
+  } else {
+    // ADM plus haut que la zone disponible → utiliser toute la hauteur
+    mapHeight = availableHeight;
+    mapWidth = availableHeight * admRatio;
+  }
+  
+  // Arrondir aux pixels entiers
+  mapWidth = Math.floor(mapWidth);
+  mapHeight = Math.floor(mapHeight);
+  
+  console.log('[ExportFrame] Dimensions carte optimales:', {
+    admRatio: admRatio.toFixed(3),
+    availableRatio: availableRatio.toFixed(3),
+    mapWidth, mapHeight,
+    pageWidth, pageHeight
+  });
+  
+  return { mapWidth, mapHeight, pageWidth, pageHeight };
+}
 
 // ============================================================================
 // Création du layout
@@ -193,15 +267,15 @@ export class ExportFrame {
   }
   
   /**
-   * Dessine un masque semi-transparent hors de l'ADM
+   * Dessine un masque semi-transparent ou opaque hors de l'ADM
    * @param admPolygon - Coordonnées du polygone ADM en lat/lon [[lng, lat], ...]
    * @param bbox - Bounding box de la carte
-   * @param mode - 'none' | 'context' (45%) | 'focus' (85%)
+   * @param mode - 'none' | 'context' (45%) | 'focus' (85%) | 'clip' (100%)
    */
   drawAdmMask(
     admPolygon: number[][] | null,
     bbox: BBox,
-    mode: 'none' | 'context' | 'focus' = 'context'
+    mode: 'none' | 'context' | 'focus' | 'clip' = 'context'
   ): void {
     console.log('[ExportFrame] drawAdmMask called:', { mode, polygonPoints: admPolygon?.length, bbox });
     
@@ -213,8 +287,8 @@ export class ExportFrame {
     const { mapArea } = this.layout;
     const ctx = this.ctx;
     
-    // Opacité selon le mode
-    const opacity = mode === 'focus' ? 0.85 : 0.45;
+    // Opacité selon le mode: context=45%, focus=85%, clip=100%
+    const opacity = mode === 'clip' ? 1.0 : (mode === 'focus' ? 0.85 : 0.45);
     console.log('[ExportFrame] Drawing mask with opacity:', opacity);
     
     // Convertir les coordonnées lng/lat en pixels sur le canvas

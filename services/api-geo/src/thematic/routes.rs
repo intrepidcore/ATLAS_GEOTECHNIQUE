@@ -4,13 +4,110 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use sqlx::Row;
+use sqlx::{PgPool, Row};
 use uuid::Uuid;
 
 use super::classifier::*;
 use super::colors::*;
 use super::statistics::*;
 use super::types::*;
+
+/// Calculer le nombre total de mailles dans l'ADM (sans filtre min_sondages)
+async fn calculate_count_total(pool: &PgPool, req: &ThematicDataRequest) -> Option<usize> {
+    // Construire la requête de comptage sans le filtre min_sondages
+    let mut query = String::from("SELECT COUNT(*) as cnt FROM mailles_geotechnique_stats_wgs84 WHERE 1=1");
+    let mut param_index = 1;
+    
+    // Filtres ADM uniquement (pas min_sondages)
+    if req.adm1.is_some() {
+        query.push_str(&format!(" AND adm1_name = ${}", param_index));
+        param_index += 1;
+    }
+    if req.adm2.is_some() {
+        query.push_str(&format!(" AND adm2_name = ${}", param_index));
+        param_index += 1;
+    }
+    if req.adm3.is_some() {
+        query.push_str(&format!(" AND adm3_name = ${}", param_index));
+        // param_index += 1; // Unused after this
+    }
+    
+    let mut query_builder = sqlx::query(&query);
+    if let Some(adm1) = &req.adm1 {
+        query_builder = query_builder.bind(adm1);
+    }
+    if let Some(adm2) = &req.adm2 {
+        query_builder = query_builder.bind(adm2);
+    }
+    if let Some(adm3) = &req.adm3 {
+        query_builder = query_builder.bind(adm3);
+    }
+    
+    match query_builder.fetch_one(pool).await {
+        Ok(row) => {
+            let cnt: i64 = row.get("cnt");
+            Some(cnt as usize)
+        }
+        Err(e) => {
+            eprintln!("⚠️ Erreur count_total: {}", e);
+            None
+        }
+    }
+}
+
+/// Calculer le contexte parent pour comparaisons multi-niveaux
+async fn calculate_parent_context(pool: &PgPool, req: &ThematicDataRequest) -> Option<ParentContext> {
+    let column = req.parameter.sql_column();
+    
+    // Déterminer le niveau parent
+    let (parent_level, parent_name, parent_filter) = if req.adm3.is_some() {
+        // ADM3 → parent = ADM2
+        if let Some(adm2) = &req.adm2 {
+            ("adm2", adm2.clone(), format!("adm2_name = '{}'", adm2.replace("'", "''")))
+        } else {
+            return None;
+        }
+    } else if req.adm2.is_some() {
+        // ADM2 → parent = ADM1
+        if let Some(adm1) = &req.adm1 {
+            ("adm1", adm1.clone(), format!("adm1_name = '{}'", adm1.replace("'", "''")))
+        } else {
+            return None;
+        }
+    } else if req.adm1.is_some() {
+        // ADM1 → parent = Togo (tout le pays)
+        ("adm0", "Togo".to_string(), "1=1".to_string())
+    } else {
+        // Pas de filtre ADM → pas de contexte parent
+        return None;
+    };
+    
+    // Requête pour le parent
+    let query = format!(
+        "SELECT COALESCE(SUM({}), 0) as parent_sum, COUNT(*) as parent_cells 
+         FROM mailles_geotechnique_stats_wgs84 
+         WHERE {} IS NOT NULL AND {}",
+        column, column, parent_filter
+    );
+    
+    match sqlx::query(&query).fetch_one(pool).await {
+        Ok(row) => {
+            let parent_sum: f64 = row.try_get("parent_sum").unwrap_or(0.0);
+            let parent_cells: i64 = row.try_get("parent_cells").unwrap_or(0);
+            
+            Some(ParentContext {
+                level: parent_level.to_string(),
+                parent_name,
+                parent_sum,
+                parent_cells: parent_cells as usize,
+            })
+        }
+        Err(e) => {
+            eprintln!("⚠️ Erreur parent_context: {}", e);
+            None
+        }
+    }
+}
 
 /// Calculer la tolérance de simplification selon le zoom
 fn simplify_tolerance(zoom: Option<u8>) -> f64 {
@@ -176,8 +273,14 @@ pub async fn get_thematic_data(
         }
     }
 
-    // Calculer statistiques
-    let stats = calculate_statistics(&values);
+    // Calculer count_total (toutes les mailles de l'ADM, sans filtre min_sondages)
+    let count_total = calculate_count_total(pool, &req).await;
+    
+    // Calculer parent_context pour comparaisons multi-niveaux
+    let parent_context = calculate_parent_context(pool, &req).await;
+    
+    // Calculer statistiques enrichies
+    let stats = calculate_statistics_extended(&values, count_total, parent_context);
 
     // Métadonnées
     let metadata = ResponseMetadata {

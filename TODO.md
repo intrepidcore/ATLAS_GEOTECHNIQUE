@@ -2002,29 +2002,84 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ---
 
-### 📁 Fichiers à créer/modifier
+## 🚀 v3.1 - Moteur d'Export Atlas Géotechnique Pro
 
-| Fichier | Action |
-|---------|--------|
-| `ui/src/export/export-stats.ts` | CRÉER - buildExportStats() |
-| `ui/src/export/export-frame.ts` | MODIFIER - drawStats(), drawNeighborLabels() |
-| `ui/src/export/export-quick-dialog.ts` | MODIFIER - options masque, stats |
-| `ui/src/export/export-atlas-dialog.ts` | CRÉER - dialogue batch |
-| `ui/src/export/grid-generator.ts` | MODIFIER - opacité grille |
-| `services/api-geo/src/adm_neighbors.rs` | CRÉER - endpoint voisins |
-| `services/api-geo/src/thematic/atlas_export.rs` | CRÉER - batch export |
+### 3.1.0 Statistiques enrichies ✅ IMPLÉMENTÉ
+**Objectif** : Stats vraiment utiles pour l'ingénieur
+
+#### Backend (api-geo)
+- [X] Ajouter `count_total` : nb mailles totales dans la zone
+- [X] Ajouter `sum` : somme des valeurs pour densité
+- [X] Ajouter `parent_context` : contexte parent pour comparaisons multi-niveaux
+  - `level` : adm0/adm1/adm2
+  - `parent_name` : nom du parent
+  - `parent_sum` : total sondages parent
+  - `parent_cells` : total mailles parent
+
+#### Frontend (export-stats.ts)
+- [X] Interface `ApiStatistics` avec nouveaux champs
+- [X] Interface `ParentContext` pour comparaisons
+- [X] Fonctions stats enrichies par thématique
+- [X] Calcul couverture correct : `count / count_total`
+- [X] Contexte multi-niveaux : part régionale/nationale
 
 ---
 
-### ⏱️ Estimation
+### 3.1.1 Cadrage dynamique ✅ IMPLÉMENTÉ
+**Objectif** : Zone carte adaptée au ratio de l'ADM
 
-| Phase | Tâche | Durée |
-|-------|-------|-------|
-| 1 | Statistiques export | 2h |
-| 2 | ADM limitrophes backend | 3h |
-| 3 | ADM limitrophes frontend | 2h |
-| 4 | Masque hors ADM | 2h |
-| 5 | Grille opacité | 30min |
-| 6 | Export Atlas dialogue | 2h |
-| 7 | Export Atlas backend batch | 4h |
-| **Total** | | **~15h** |
+- [X] Fonction `computeOptimalMapDimensions(admRatio, dpi, orientation)`
+- [X] Dimensions A4 selon DPI (72, 150, 300)
+- [X] Carte maximise l'espace disponible sur la page
+- [X] Centrage automatique de la carte
+
+---
+
+### 3.1.2 Masque hors ADM - 4 modes ✅ IMPLÉMENTÉ
+**Objectif** : Contrôle fin de l'atténuation hors zone
+
+- [X] Mode "Aucun" : pas de masque
+- [X] Mode "Contexte léger" : 45% opacité
+- [X] Mode "Focus fort" : 85% opacité
+- [X] Mode "Découpage strict" : 100% opacité (clip)
+
+---
+
+### 3.1.3 ADM/Pays limitrophes ✅ IMPLÉMENTÉ
+**Objectif** : Labels des zones voisines sur les bords
+
+- [X] Checkbox "Afficher ADM/pays limitrophes" dans dialogue
+- [X] Voisins externes statiques (Ghana, Bénin, Golfe, Burkina)
+- [X] Fallback API pour voisins internes
+- [X] Labels avec halo blanc et police italique
+
+---
+
+### 3.1.4 À FAIRE - Prochaines étapes
+
+#### Grille mailles avec/sans données
+- [ ] Option "Afficher mailles sans données" dans dialogue
+- [ ] Requête API pour récupérer toutes les mailles de l'ADM
+- [ ] Style différencié : mailles vides en gris clair
+
+#### Amélioration cadrage
+- [ ] Utiliser `computeOptimalMapDimensions` dans le flux d'export
+- [ ] Orientation auto (portrait/paysage) selon ratio ADM
+
+#### Export Atlas complet
+- [ ] Rebrancher avec nouvelles stats enrichies
+- [ ] Utiliser masque et cadrage dynamique
+- [ ] Arborescence : `atlas/{parameter}/{level}/ADM_CODE.png`
+
+---
+
+### 📁 Fichiers modifiés v3.1
+
+| Fichier | Modifications |
+|---------|---------------|
+| `services/api-geo/src/thematic/types.rs` | + Statistics enrichies, ParentContext |
+| `services/api-geo/src/thematic/statistics.rs` | + calculate_statistics_extended() |
+| `services/api-geo/src/thematic/routes.rs` | + calculate_count_total(), calculate_parent_context() |
+| `ui/src/export/export-stats.ts` | Refacto complète avec ApiStatistics |
+| `ui/src/export/export-frame.ts` | + computeOptimalMapDimensions(), masque 4 modes |
+| `ui/src/export/export-quick-dialog.ts` | + checkbox voisins, select masque 4 modes |

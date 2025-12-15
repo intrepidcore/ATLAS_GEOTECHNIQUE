@@ -204,7 +204,7 @@ pub struct ThematicDataResponse {
     pub metadata: ResponseMetadata,
 }
 
-/// Statistiques descriptives
+/// Statistiques descriptives enrichies pour export
 #[derive(Debug, Serialize, Clone)]
 pub struct Statistics {
     pub min: f64,
@@ -214,8 +214,32 @@ pub struct Statistics {
     pub stddev: f64,
     pub variance: f64,
     pub quantiles: Quantiles,
+    /// Nombre de mailles avec données (après filtres)
     pub count: usize,
+    /// Nombre de mailles sans données dans la zone
     pub null_count: usize,
+    /// Nombre total de mailles dans la zone (avant filtres)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub count_total: Option<usize>,
+    /// Somme des valeurs (pour calcul densité)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sum: Option<f64>,
+    /// Contexte parent pour comparaison multi-niveaux
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_context: Option<ParentContext>,
+}
+
+/// Contexte du niveau parent pour comparaisons
+#[derive(Debug, Serialize, Clone)]
+pub struct ParentContext {
+    /// Niveau parent (adm0, adm1, adm2)
+    pub level: String,
+    /// Code/nom du parent
+    pub parent_name: String,
+    /// Total sondages dans le parent
+    pub parent_sum: f64,
+    /// Total mailles dans le parent
+    pub parent_cells: usize,
 }
 
 #[derive(Debug, Serialize, Clone)]

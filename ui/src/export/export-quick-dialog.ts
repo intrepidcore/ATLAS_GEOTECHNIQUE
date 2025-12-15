@@ -552,13 +552,20 @@ export class ExportQuickDialog {
                 <span>Masquer grille de fond (mailles)</span>
               </label>
               
+              <!-- Afficher ADM/pays limitrophes -->
+              <label class="export-checkbox" style="margin-top: 8px;">
+                <input type="checkbox" id="export-show-neighbors" checked>
+                <span>Afficher ADM/pays limitrophes</span>
+              </label>
+              
               <!-- Masque hors ADM -->
               <div class="export-field" style="margin-top: 12px;">
                 <label>Masque hors ADM</label>
                 <select id="export-mask-mode">
                   <option value="none">Aucun</option>
                   <option value="context" selected>Contexte léger (45%)</option>
-                  <option value="focus">Focus (85%)</option>
+                  <option value="focus">Focus fort (85%)</option>
+                  <option value="clip">Découpage strict (100%)</option>
                 </select>
               </div>
             </div>
@@ -822,7 +829,7 @@ export class ExportQuickDialog {
       
       // Dessiner le masque hors ADM si demandé
       const maskModeSelect = this.overlay?.querySelector('#export-mask-mode') as HTMLSelectElement;
-      const maskMode = (maskModeSelect?.value || 'none') as 'none' | 'context' | 'focus';
+      const maskMode = (maskModeSelect?.value || 'none') as 'none' | 'context' | 'focus' | 'clip';
       console.log('[Export] Masque ADM - mode:', maskMode, 'zone:', this.options.zone);
       
       if (maskMode !== 'none' && this.options.zone === 'adm-filtered') {
@@ -837,8 +844,9 @@ export class ExportQuickDialog {
       
       exportFrame.drawGridAndFrame(bbox);
       
-      // Dessiner les labels des ADM limitrophes si zone filtrée
-      if (this.options.zone === 'adm-filtered' && admFilters) {
+      // Dessiner les labels des ADM limitrophes si zone filtrée et option activée
+      const showNeighbors = (this.overlay?.querySelector('#export-show-neighbors') as HTMLInputElement)?.checked ?? true;
+      if (showNeighbors && this.options.zone === 'adm-filtered' && admFilters) {
         try {
           const neighbors = await this.fetchAdmNeighbors(admFilters);
           if (neighbors && neighbors.length > 0) {

@@ -1,8 +1,17 @@
-use crate::thematic::types::{Quantiles, Statistics};
+use crate::thematic::types::{ParentContext, Quantiles, Statistics};
 use statrs::statistics::{Data, Distribution, Max, Min, OrderStatistics};
 
 /// Calculer les statistiques descriptives d'un ensemble de valeurs
 pub fn calculate_statistics(values: &[f64]) -> Statistics {
+    calculate_statistics_extended(values, None, None)
+}
+
+/// Calculer les statistiques avec contexte étendu (count_total, parent_context)
+pub fn calculate_statistics_extended(
+    values: &[f64],
+    count_total: Option<usize>,
+    parent_context: Option<ParentContext>,
+) -> Statistics {
     if values.is_empty() {
         return Statistics {
             min: 0.0,
@@ -19,11 +28,17 @@ pub fn calculate_statistics(values: &[f64]) -> Statistics {
                 q95: 0.0,
             },
             count: 0,
-            null_count: 0,
+            null_count: count_total.unwrap_or(0),
+            count_total,
+            sum: Some(0.0),
+            parent_context,
         };
     }
 
     let mut data = Data::new(values.to_vec());
+    let sum: f64 = values.iter().sum();
+    let count = values.len();
+    let null_count = count_total.map(|t| t.saturating_sub(count)).unwrap_or(0);
 
     Statistics {
         min: data.min(),
@@ -39,8 +54,11 @@ pub fn calculate_statistics(values: &[f64]) -> Statistics {
             q90: data.quantile(0.90),
             q95: data.quantile(0.95),
         },
-        count: values.len(),
-        null_count: 0,
+        count,
+        null_count,
+        count_total,
+        sum: Some(sum),
+        parent_context,
     }
 }
 
