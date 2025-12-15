@@ -2046,16 +2046,36 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.1.3 ADM/Pays limitrophes ✅ IMPLÉMENTÉ
-**Objectif** : Labels des zones voisines sur les bords
+**Objectif** : Labels des zones voisines sur les bords de l'ADM
 
 - [X] Checkbox "Afficher ADM/pays limitrophes" dans dialogue
 - [X] Voisins externes statiques (Ghana, Bénin, Golfe, Burkina)
 - [X] Fallback API pour voisins internes
-- [X] Labels avec halo blanc et police italique
+- [X] Labels avec halo blanc et police italique bold 12px
+- [X] Position sur bords de l'ADM (pas de la page)
 
 ---
 
-### 3.1.4 À FAIRE - Prochaines étapes
+### 3.1.4 Masque ADM corrigé ✅ IMPLÉMENTÉ
+**Objectif** : Masque fonctionnel avec polygones complexes
+
+- [X] Méthode destination-out pour masques semi-transparents
+- [X] Logs détaillés pour debug
+- [X] Support polygones multi-ring
+
+---
+
+### 3.1.5 Stats enrichies dans export ✅ IMPLÉMENTÉ
+**Objectif** : Afficher parent_context dans les stats
+
+- [X] apiStats passées à buildExportStats
+- [X] Interface Statistics enrichie (count_total, sum, parent_context)
+- [X] ThematicExportState inclut apiStats
+- [X] contextRows affichées avec séparateur
+
+---
+
+### 3.1.6 À FAIRE - Prochaines étapes
 
 #### Grille mailles avec/sans données
 - [ ] Option "Afficher mailles sans données" dans dialogue
@@ -2080,6 +2100,8 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 | `services/api-geo/src/thematic/types.rs` | + Statistics enrichies, ParentContext |
 | `services/api-geo/src/thematic/statistics.rs` | + calculate_statistics_extended() |
 | `services/api-geo/src/thematic/routes.rs` | + calculate_count_total(), calculate_parent_context() |
-| `ui/src/export/export-stats.ts` | Refacto complète avec ApiStatistics |
-| `ui/src/export/export-frame.ts` | + computeOptimalMapDimensions(), masque 4 modes |
-| `ui/src/export/export-quick-dialog.ts` | + checkbox voisins, select masque 4 modes |
+| `ui/src/export/export-stats.ts` | Refacto complète avec ApiStatistics, contextRows |
+| `ui/src/export/export-frame.ts` | + computeOptimalMapDimensions(), masque destination-out, labels bords ADM |
+| `ui/src/export/export-quick-dialog.ts` | + checkbox voisins, select masque 4 modes, apiStats |
+| `ui/src/thematic/thematic-types.ts` | + Statistics enrichie, ThematicExportState.apiStats |
+| `ui/src/thematic/thematic-maps.ts` | + apiStats dans updateExportState |
