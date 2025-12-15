@@ -133,7 +133,7 @@ pub async fn export_qgis_package(
         let code: String = row.get("code");
         let geom_json: String = row.get("geom_json");
         let value: Option<f64> = row.get("value");
-        let n_sondages: Option<i32> = row.get("n_sondages");
+        let n_sondages: Option<i64> = row.get("n_sondages");
         let adm1: Option<String> = row.get("adm1_name");
         let adm2: Option<String> = row.get("adm2_name");
         let adm3: Option<String> = row.get("adm3_name");
