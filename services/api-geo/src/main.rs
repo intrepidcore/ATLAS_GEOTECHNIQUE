@@ -224,6 +224,7 @@ async fn main() -> anyhow::Result<()> {
             get(thematic::get_config).delete(thematic::delete_config),
         )
         .route("/thematic/palettes", get(thematic::list_palettes))
+        .route("/thematic/cells/adm", get(thematic::get_adm_cells))
         // Geocoding endpoints
         .route("/geocode/suggestions", get(geocoding::list_suggestions))
         .route(

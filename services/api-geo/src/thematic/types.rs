@@ -403,3 +403,33 @@ mod tests {
         assert_eq!(ThematicParameter::EgAvg.category(), "gonflement");
     }
 }
+
+// ============================================================================
+// Types pour l'endpoint /thematic/cells/adm
+// ============================================================================
+
+/// Requête pour récupérer les mailles d'un ADM
+#[derive(Debug, Deserialize)]
+pub struct AdmCellsRequest {
+    pub adm1: Option<String>,
+    pub adm2: Option<String>,
+    pub adm3: Option<String>,
+}
+
+/// Une maille dans un ADM
+#[derive(Debug, Serialize)]
+pub struct AdmCell {
+    pub cell_id: String,
+    pub geometry: serde_json::Value,
+    pub has_data: bool,
+    pub n_sondages: Option<i32>,
+}
+
+/// Réponse avec toutes les mailles d'un ADM
+#[derive(Debug, Serialize)]
+pub struct AdmCellsResponse {
+    pub cells: Vec<AdmCell>,
+    pub total_count: usize,
+    pub with_data_count: usize,
+    pub without_data_count: usize,
+}

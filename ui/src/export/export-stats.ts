@@ -159,9 +159,19 @@ function buildSondagesStatsEnriched(
   nMaillesAvecDonnees: number,
   classes: any[]
 ): ExportStatsRow[] {
-  const total = apiStats?.sum ?? sum;
+  // Utiliser sum des apiStats, sinon calculer depuis values, sinon estimer depuis mean*count
+  let total = apiStats?.sum ?? sum;
+  if (total === 0 && apiStats?.mean && apiStats.count > 0) {
+    total = apiStats.mean * apiStats.count;
+  }
+  if (total === 0 && values.length > 0) {
+    total = values.reduce((a, b) => a + b, 0);
+  }
+  
   const moyenne = nMaillesAvecDonnees > 0 ? total / nMaillesAvecDonnees : 0;
   const couverture = nMaillesTotales > 0 ? (nMaillesAvecDonnees / nMaillesTotales * 100) : 0;
+  
+  console.log('[ExportStats] Sondages:', { total, moyenne, couverture, apiStats, sum, values: values.length });
   
   const rows: ExportStatsRow[] = [
     { label: 'Sondages total', value: Math.round(total).toString(), highlight: true },

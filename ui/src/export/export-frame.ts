@@ -29,12 +29,12 @@ const LAYOUT = {
   margin: 20,           // Marge extérieure
   titleHeight: 50,      // Hauteur titre principal
   subtitleHeight: 20,   // Hauteur sous-titre (zone)
-  legendWidth: 140,     // Largeur zone légende (classes)
-  statsWidth: 180,      // Largeur zone stats
-  cartoucheWidth: 180,  // Largeur zone cartouche
-  footerHeight: 130,    // Hauteur footer
+  legendWidth: 160,     // Largeur zone légende (classes)
+  statsWidth: 160,      // Largeur zone stats
+  cartoucheWidth: 200,  // Largeur zone cartouche
+  footerHeight: 150,    // Hauteur footer (augmentée)
   coordLabelMargin: 8,
-  padding: 10
+  padding: 12
 };
 
 // Dimensions A4 en pixels selon DPI
@@ -296,7 +296,7 @@ export class ExportFrame {
       polygonPoints: admPolygon?.length,
       bbox,
       firstPt: admPolygon?.[0],
-      lastPt: admPolygon?.[admPolygon.length - 1]
+      lastPt: admPolygon?.[admPolygon?.length - 1]
     });
     
     if (mode === 'none' || !admPolygon || admPolygon.length < 3) {
@@ -324,34 +324,38 @@ export class ExportFrame {
     
     ctx.save();
     
-    // MÉTHODE: Utiliser clip pour découper, puis remplir le rectangle entier
-    // Cela fonctionne mieux que evenodd pour les polygones complexes
+    // MÉTHODE: Utiliser un canvas temporaire pour créer le masque
+    // puis le superposer sur le canvas principal
+    const maskCanvas = document.createElement('canvas');
+    maskCanvas.width = this.canvas.width;
+    maskCanvas.height = this.canvas.height;
+    const maskCtx = maskCanvas.getContext('2d')!;
+    maskCtx.scale(this.scale, this.scale);
     
-    // D'abord dessiner le masque complet
-    ctx.beginPath();
-    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height);
-    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-    ctx.fill();
+    // Remplir tout le rectangle de la carte avec le masque blanc semi-transparent
+    maskCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+    maskCtx.fillRect(mapArea.x, mapArea.y, mapArea.width, mapArea.height);
     
-    // Ensuite, "effacer" la zone ADM en dessinant par-dessus avec destination-out
-    ctx.globalCompositeOperation = 'destination-out';
-    ctx.beginPath();
+    // Découper le trou pour l'ADM (effacer la zone ADM du masque)
+    maskCtx.globalCompositeOperation = 'destination-out';
+    maskCtx.beginPath();
     
     // Dessiner le polygone ADM
     const firstPoint = toPixel(admPolygon[0][0], admPolygon[0][1]);
-    ctx.moveTo(firstPoint[0], firstPoint[1]);
+    maskCtx.moveTo(firstPoint[0], firstPoint[1]);
     
     for (let i = 1; i < admPolygon.length; i++) {
       const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
-      ctx.lineTo(x, y);
+      maskCtx.lineTo(x, y);
     }
-    ctx.closePath();
-    ctx.fill();
+    maskCtx.closePath();
+    maskCtx.fill();
     
-    // Restaurer le mode de composition
-    ctx.globalCompositeOperation = 'source-over';
+    // Superposer le masque sur le canvas principal
+    ctx.drawImage(maskCanvas, 0, 0, maskCanvas.width, maskCanvas.height, 
+                  0, 0, this.layout.totalWidth, this.layout.totalHeight);
     
-    console.log('[ExportFrame] Mask drawn successfully with destination-out method');
+    console.log('[ExportFrame] Mask drawn successfully with temp canvas method');
     ctx.restore();
   }
   

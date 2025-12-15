@@ -577,6 +577,86 @@ pub async fn list_palettes() -> Json<Vec<String>> {
     Json(super::colors::list_palettes())
 }
 
+/// GET /thematic/cells/adm - Récupérer toutes les mailles d'un ADM (y compris vides)
+/// Utilisé pour l'export avec affichage des mailles sans données
+pub async fn get_adm_cells(
+    State(state): State<AppState>,
+    Query(params): Query<AdmCellsRequest>,
+) -> Result<Json<AdmCellsResponse>, (StatusCode, String)> {
+    let pool = &state.pool;
+    
+    // Construire la requête pour récupérer toutes les mailles de l'ADM
+    let mut query = String::from(
+        "SELECT 
+            cell_id,
+            ST_AsGeoJSON(geom)::json as geometry,
+            n_sondages,
+            adm1_name, adm2_name, adm3_name
+         FROM mailles_geotechnique_stats_wgs84 
+         WHERE 1=1"
+    );
+    
+    let mut param_index = 1;
+    
+    if params.adm1.is_some() {
+        query.push_str(&format!(" AND adm1_name = ${}", param_index));
+        param_index += 1;
+    }
+    if params.adm2.is_some() {
+        query.push_str(&format!(" AND adm2_name = ${}", param_index));
+        param_index += 1;
+    }
+    if params.adm3.is_some() {
+        query.push_str(&format!(" AND adm3_name = ${}", param_index));
+        // param_index += 1;
+    }
+    
+    let mut query_builder = sqlx::query(&query);
+    if let Some(adm1) = &params.adm1 {
+        query_builder = query_builder.bind(adm1);
+    }
+    if let Some(adm2) = &params.adm2 {
+        query_builder = query_builder.bind(adm2);
+    }
+    if let Some(adm3) = &params.adm3 {
+        query_builder = query_builder.bind(adm3);
+    }
+    
+    let rows = query_builder.fetch_all(pool).await.map_err(|e| {
+        (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur DB: {}", e))
+    })?;
+    
+    let mut cells: Vec<AdmCell> = Vec::new();
+    let mut total_count = 0;
+    let mut with_data_count = 0;
+    
+    for row in rows {
+        let cell_id: String = row.get("cell_id");
+        let geometry: serde_json::Value = row.get("geometry");
+        let n_sondages: Option<i32> = row.try_get("n_sondages").ok();
+        
+        let has_data = n_sondages.map(|n| n > 0).unwrap_or(false);
+        if has_data {
+            with_data_count += 1;
+        }
+        total_count += 1;
+        
+        cells.push(AdmCell {
+            cell_id,
+            geometry,
+            has_data,
+            n_sondages,
+        });
+    }
+    
+    Ok(Json(AdmCellsResponse {
+        cells,
+        total_count,
+        with_data_count,
+        without_data_count: total_count - with_data_count,
+    }))
+}
+
 impl Default for FilterConfig {
     fn default() -> Self {
         Self {
