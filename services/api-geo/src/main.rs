@@ -134,6 +134,8 @@ async fn main() -> anyhow::Result<()> {
         )
         // WebSocket endpoint
         .route("/ws", get(websocket::ws_handler))
+        // Routes publiques pour export cartographique
+        .route("/export/cells/adm", get(thematic::get_adm_cells))
         .route("/coverage/mailles", get(routes::get_coverage_mailles))
         .nest("/grid", routes::grid_router())
         // Survey management endpoints
@@ -224,7 +226,6 @@ async fn main() -> anyhow::Result<()> {
             get(thematic::get_config).delete(thematic::delete_config),
         )
         .route("/thematic/palettes", get(thematic::list_palettes))
-        .route("/thematic/cells/adm", get(thematic::get_adm_cells))
         // Geocoding endpoints
         .route("/geocode/suggestions", get(geocoding::list_suggestions))
         .route(

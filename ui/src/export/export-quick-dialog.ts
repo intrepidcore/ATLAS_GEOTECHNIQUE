@@ -1074,34 +1074,45 @@ export class ExportQuickDialog {
   /**
    * Récupère toutes les mailles d'un ADM (avec et sans données)
    * pour afficher les mailles vides en gris clair
+   * Utilise /coverage/mailles qui est une route publique
    */
   private async fetchAdmCells(
     admFilters: ActiveAdmFilters
   ): Promise<Array<{ geometry: any; has_data: boolean }>> {
-    const params = new URLSearchParams();
-    
-    if (admFilters.adm1) params.set('adm1', admFilters.adm1.name);
-    if (admFilters.adm2) params.set('adm2', admFilters.adm2.name);
-    if (admFilters.adm3) params.set('adm3', admFilters.adm3.name);
-    
     try {
-      const response = await fetch(
-        `http://localhost:8000/thematic/cells/adm?${params.toString()}`
-      );
+      const response = await fetch('http://localhost:8000/coverage/mailles');
       
       if (!response.ok) {
-        console.warn('[Export] Erreur API cells/adm:', response.status);
+        console.warn('[Export] Erreur API coverage/mailles:', response.status);
         return [];
       }
       
-      const data = await response.json();
-      console.log('[Export] Mailles ADM récupérées:', {
-        total: data.total_count,
-        withData: data.with_data_count,
-        withoutData: data.without_data_count
+      const geojson = await response.json();
+      const features = geojson.features || [];
+      
+      // Filtrer par ADM
+      const filtered = features.filter((f: any) => {
+        const props = f.properties || {};
+        if (admFilters.adm1 && props.adm1_name !== admFilters.adm1.name) return false;
+        if (admFilters.adm2 && props.adm2_name !== admFilters.adm2.name) return false;
+        if (admFilters.adm3 && props.adm3_name !== admFilters.adm3.name) return false;
+        return true;
       });
       
-      return data.cells || [];
+      // Transformer en format attendu
+      const cells = filtered.map((f: any) => ({
+        geometry: f.geometry,
+        has_data: f.properties?.has_data || f.properties?.n_sondages > 0
+      }));
+      
+      const withData = cells.filter((c: any) => c.has_data).length;
+      console.log('[Export] Mailles ADM récupérées:', {
+        total: cells.length,
+        withData,
+        withoutData: cells.length - withData
+      });
+      
+      return cells;
     } catch (e) {
       console.warn('[Export] Impossible de récupérer les mailles ADM:', e);
       return [];
