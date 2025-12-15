@@ -848,6 +848,19 @@ export class ExportQuickDialog {
         }
       }
       
+      // Dessiner les mailles vides si option activée
+      const showEmptyCells = (this.overlay?.querySelector('#export-show-empty-cells') as HTMLInputElement)?.checked ?? false;
+      if (showEmptyCells && this.options.zone === 'adm-filtered' && admFilters) {
+        try {
+          const cells = await this.fetchAdmCells(admFilters);
+          if (cells && cells.length > 0) {
+            exportFrame.drawEmptyCells(cells, bbox);
+          }
+        } catch (e) {
+          console.warn('[Export] Impossible de charger les mailles ADM:', e);
+        }
+      }
+      
       exportFrame.drawGridAndFrame(bbox);
       
       // Dessiner les labels des ADM limitrophes si zone filtrée et option activée
@@ -1056,6 +1069,43 @@ export class ExportQuickDialog {
     
     console.log('[Export] Voisins trouvés:', neighbors);
     return neighbors;
+  }
+  
+  /**
+   * Récupère toutes les mailles d'un ADM (avec et sans données)
+   * pour afficher les mailles vides en gris clair
+   */
+  private async fetchAdmCells(
+    admFilters: ActiveAdmFilters
+  ): Promise<Array<{ geometry: any; has_data: boolean }>> {
+    const params = new URLSearchParams();
+    
+    if (admFilters.adm1) params.set('adm1', admFilters.adm1.name);
+    if (admFilters.adm2) params.set('adm2', admFilters.adm2.name);
+    if (admFilters.adm3) params.set('adm3', admFilters.adm3.name);
+    
+    try {
+      const response = await fetch(
+        `http://localhost:8000/thematic/cells/adm?${params.toString()}`
+      );
+      
+      if (!response.ok) {
+        console.warn('[Export] Erreur API cells/adm:', response.status);
+        return [];
+      }
+      
+      const data = await response.json();
+      console.log('[Export] Mailles ADM récupérées:', {
+        total: data.total_count,
+        withData: data.with_data_count,
+        withoutData: data.without_data_count
+      });
+      
+      return data.cells || [];
+    } catch (e) {
+      console.warn('[Export] Impossible de récupérer les mailles ADM:', e);
+      return [];
+    }
   }
   
   /**

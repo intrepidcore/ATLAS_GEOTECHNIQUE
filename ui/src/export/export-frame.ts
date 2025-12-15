@@ -483,6 +483,57 @@ export class ExportFrame {
   }
   
   /**
+   * Dessine les mailles vides (sans données) en gris clair
+   * @param cells - Liste des mailles avec leur géométrie
+   * @param bbox - Bounding box de la carte
+   */
+  drawEmptyCells(
+    cells: Array<{ geometry: any; has_data: boolean }>,
+    bbox: BBox
+  ): void {
+    const { mapArea } = this.layout;
+    const ctx = this.ctx;
+    
+    // Convertir les coordonnées géo en pixels
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+      return [x, y];
+    };
+    
+    ctx.save();
+    ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; // Gris clair semi-transparent
+    ctx.strokeStyle = 'rgba(150, 150, 150, 0.5)';
+    ctx.lineWidth = 0.5;
+    
+    for (const cell of cells) {
+      // Ne dessiner que les mailles SANS données
+      if (cell.has_data) continue;
+      
+      const geom = cell.geometry;
+      if (!geom || geom.type !== 'Polygon') continue;
+      
+      const coords = geom.coordinates?.[0];
+      if (!coords || coords.length < 3) continue;
+      
+      ctx.beginPath();
+      const [startX, startY] = toPixel(coords[0][0], coords[0][1]);
+      ctx.moveTo(startX, startY);
+      
+      for (let i = 1; i < coords.length; i++) {
+        const [x, y] = toPixel(coords[i][0], coords[i][1]);
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+    console.log('[ExportFrame] Empty cells drawn:', cells.filter(c => !c.has_data).length);
+  }
+  
+  /**
    * Dessine la grille et le cadre
    */
   drawGridAndFrame(bbox: BBox): void {
