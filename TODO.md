@@ -2256,13 +2256,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 | Priorité | Action | Statut |
 |----------|--------|--------|
-| 1 | PageLayout A4 fixe + mapArea | ⏳ |
-| 2 | DPI 72 vs 300 fonctionnel | ⏳ |
-| 3 | Stats filtrées par ADM | ⏳ |
-| 4 | Légende = classes présentes uniquement | ⏳ |
+| 1 | PageLayout A4 fixe + mapArea | ✅ |
+| 2 | DPI 72 vs 300 fonctionnel | ✅ |
+| 3 | Stats filtrées par ADM | ✅ |
+| 4 | Légende = classes présentes uniquement | ✅ |
 | 5 | Mailles sans données (API + dessin) | ⏳ |
-| 6 | Option onlyAdmCells dans Export Pro | ⏳ |
-| 7 | Masque hors ADM fonctionnel | ⏳ |
+| 6 | Option onlyAdmCells dans Export Pro | ✅ |
+| 7 | Masque hors ADM fonctionnel | ⏳ (logs ajoutés) |
 | 8 | Labels limitrophes visibles | ⏳ |
 | 9 | Export Atlas utilisant les mêmes briques | ⏳ |
 
