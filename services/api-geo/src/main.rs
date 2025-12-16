@@ -137,6 +137,7 @@ async fn main() -> anyhow::Result<()> {
         // Routes publiques pour export cartographique
         .route("/export/cells/adm", get(thematic::get_adm_cells))
         .route("/coverage/mailles", get(routes::get_coverage_mailles))
+        .route("/adm-neighbors", get(routes::get_adm_neighbors))
         .nest("/grid", routes::grid_router())
         // Survey management endpoints
         .route("/grid/locate", get(surveys::locate_maille))
@@ -200,9 +201,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/adm3/geojson", get(surveys_adm::get_adm3_geojson))
         .route("/adm3", get(surveys::list_adm3))
         .route("/adm/:level", get(routes::list_adm_zones))
-        // ADM neighbors endpoint - route publique pour export cartographique
-        // URL distincte pour éviter conflit avec /adm/:level
-        .route("/adm-neighbors", get(routes::get_adm_neighbors))
+        // Note: /adm-neighbors déplacé vers routes publiques (avant auth middleware)
         // Audit log endpoints
         .route("/audit", get(audit::list_audit_logs))
         .route("/audit/export/csv", get(audit::export_audit_csv))

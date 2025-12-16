@@ -1196,7 +1196,13 @@ export class ThematicMapManager {
    * Retourne un tableau de [lng, lat] représentant le contour externe
    */
   getAdmPolygonCoords(): number[][] | null {
+    console.log('[ThematicMap] getAdmPolygonCoords called:', {
+      hasAdmOverlayLayer: !!this.admOverlayLayer,
+      layerCount: this.admOverlayLayer?.getLayers?.()?.length || 0
+    })
+    
     if (!this.admOverlayLayer || this.admOverlayLayer.getLayers().length === 0) {
+      console.warn('[ThematicMap] admOverlayLayer est vide ou inexistant')
       return null
     }
     
@@ -1208,12 +1214,20 @@ export class ThematicMapManager {
         
         if (layer.getLatLngs) {
           const latLngs = layer.getLatLngs()
+          console.log('[ThematicMap] Layer latLngs:', {
+            isArray: Array.isArray(latLngs),
+            length: latLngs?.length,
+            firstIsArray: Array.isArray(latLngs?.[0]),
+            sample: latLngs?.[0]?.[0] || latLngs?.[0]
+          })
+          
           // GeoJSON peut avoir plusieurs niveaux d'imbrication
           const ring = Array.isArray(latLngs[0]) 
             ? (Array.isArray(latLngs[0][0]) ? latLngs[0][0] : latLngs[0])
             : latLngs
           
           coords = ring.map((ll: any) => [ll.lng, ll.lat])
+          console.log('[ThematicMap] Coords extraites:', coords?.length, 'points')
         }
       })
       

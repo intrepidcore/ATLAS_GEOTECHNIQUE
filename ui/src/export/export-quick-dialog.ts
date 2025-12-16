@@ -881,6 +881,12 @@ export class ExportQuickDialog {
       
       // Dessiner le masque hors ADM si demandé
       const maskModeSelect = this.overlay?.querySelector('#export-mask-mode') as HTMLSelectElement;
+      console.log('[Export] Masque selector:', {
+        found: !!maskModeSelect,
+        value: maskModeSelect?.value,
+        selectedIndex: maskModeSelect?.selectedIndex,
+        options: maskModeSelect ? Array.from(maskModeSelect.options).map(o => ({ value: o.value, selected: o.selected })) : []
+      });
       const maskMode = (maskModeSelect?.value || 'none') as 'none' | 'context' | 'focus' | 'clip';
       const admPolygon = this.config.getAdmPolygon?.();
       console.log('[Export] Masque ADM - mode:', maskMode, 'polygon:', admPolygon?.length || 0, 'points');
