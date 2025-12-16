@@ -331,6 +331,9 @@ export interface ExportQuickDialogConfig {
   getAdmPolygon?: () => number[][] | null;
 }
 
+// Cache global des mailles ADM (partagé entre exports)
+const admCellsCache = new Map<string, Array<{ geometry: any; has_data: boolean }>>();
+
 export class ExportQuickDialog {
   private config: ExportQuickDialogConfig;
   private options: ExportOptions;
@@ -341,6 +344,25 @@ export class ExportQuickDialog {
     this.config = config;
     this.options = { ...DEFAULT_EXPORT_OPTIONS };
     this.injectStyles();
+  }
+  
+  /**
+   * Génère une clé de cache pour les mailles ADM
+   */
+  private static getAdmCacheKey(admFilters: ActiveAdmFilters): string {
+    const parts: string[] = [];
+    if (admFilters.adm1) parts.push(`adm1:${admFilters.adm1.name}`);
+    if (admFilters.adm2) parts.push(`adm2:${admFilters.adm2.name}`);
+    if (admFilters.adm3) parts.push(`adm3:${admFilters.adm3.name}`);
+    return parts.join('|') || 'all';
+  }
+  
+  /**
+   * Vide le cache des mailles ADM
+   */
+  static clearCache(): void {
+    admCellsCache.clear();
+    console.log('[Export] Cache mailles ADM vidé');
   }
   
   /**
@@ -1078,11 +1100,21 @@ export class ExportQuickDialog {
    * Récupère toutes les mailles d'un ADM (avec et sans données)
    * pour afficher les mailles vides en gris clair
    * Utilise /coverage/mailles qui est une route publique
+   * AVEC CACHE pour éviter les appels répétés sur la même zone
    */
   private async fetchAdmCells(
     admFilters: ActiveAdmFilters
   ): Promise<Array<{ geometry: any; has_data: boolean }>> {
+    // Vérifier le cache
+    const cacheKey = ExportQuickDialog.getAdmCacheKey(admFilters);
+    const cached = admCellsCache.get(cacheKey);
+    if (cached) {
+      console.log('[Export] Mailles ADM depuis CACHE:', cacheKey, cached.length, 'mailles');
+      return cached;
+    }
+    
     try {
+      console.log('[Export] Chargement mailles ADM depuis API...');
       const response = await fetch('http://localhost:8000/coverage/mailles');
       
       if (!response.ok) {
@@ -1108,8 +1140,12 @@ export class ExportQuickDialog {
         has_data: f.properties?.has_data || f.properties?.n_sondages > 0
       }));
       
+      // Stocker dans le cache
+      admCellsCache.set(cacheKey, cells);
+      
       const withData = cells.filter((c: any) => c.has_data).length;
-      console.log('[Export] Mailles ADM récupérées:', {
+      console.log('[Export] Mailles ADM chargées et mises en cache:', {
+        cacheKey,
         total: cells.length,
         withData,
         withoutData: cells.length - withData

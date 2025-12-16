@@ -255,8 +255,10 @@ export class ExportFrame {
       ctx.fillStyle = '#666666';
       
       const zonePath = formatAdmPath(admFilters);
-      const date = new Date().toLocaleDateString('fr-FR');
-      const subtitle = this.options.subtitle || `Zone : ${zonePath} – Export du ${date}`;
+      const now = new Date();
+      const date = now.toLocaleDateString('fr-FR');
+      const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      const subtitle = this.options.subtitle || `Zone : ${zonePath} – Export du ${date} à ${time}`;
       
       ctx.fillText(subtitle, titleArea.x + titleArea.width / 2, titleArea.y + 30);
     }
