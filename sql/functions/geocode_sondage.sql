@@ -13,7 +13,8 @@
 -- SRID :
 --   - sondages.geom : 4326 (WGS84)
 --   - mailles.geom : 25231 (UTM 31N Togo)
---   - adm*_tg.geom : 4326 (WGS84)
+--   - atlas.adm3.geom : 4326 (WGS84)
+--   - atlas.mailles.geom : 25231 (UTM 31N Togo)
 -- ============================================================================
 
 -- Fonction principale de géocodage
@@ -41,21 +42,17 @@ BEGIN
     -- 2) Transformer en SRID 25231 pour les mailles
     v_geom_25231 := ST_Transform(v_geom, 25231);
 
-    -- 3) Trouver la maille (point-in-polygon) - table dans schema public
+    -- 3) Trouver la maille (point-in-polygon) - atlas.mailles SRID 25231
     SELECT m.code INTO v_maille_code
-    FROM public.mailles m
+    FROM atlas.mailles m
     WHERE ST_Contains(m.geom, v_geom_25231)
     LIMIT 1;
 
-    -- 4) Trouver ADM3 (canton) - SRID 4326
-    SELECT a.id, a.name, a.adm2_name INTO v_adm3_id, v_adm3_name, v_adm2_name
-    FROM atlas.adm3_tg a
-    WHERE ST_Contains(a.geom, v_geom)
-    LIMIT 1;
-
-    -- 5) Trouver ADM1 (région) - SRID 4326
-    SELECT a.name INTO v_adm1_name
-    FROM atlas.adm1_tg a
+    -- 4) Trouver ADM3 (canton) via atlas.adm3 - SRID 4326
+    -- Cette table contient aussi adm2_fr et adm1_fr
+    SELECT a.gid, a.adm3_fr, a.adm2_fr, a.adm1_fr 
+    INTO v_adm3_id, v_adm3_name, v_adm2_name, v_adm1_name
+    FROM atlas.adm3 a
     WHERE ST_Contains(a.geom, v_geom)
     LIMIT 1;
 

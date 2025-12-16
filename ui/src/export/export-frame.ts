@@ -30,10 +30,10 @@ const LAYOUT_BASE = {
   margin: 20,           // Marge extérieure
   titleHeight: 50,      // Hauteur titre principal
   subtitleHeight: 20,   // Hauteur sous-titre (zone)
-  legendWidth: 160,     // Largeur zone légende (classes)
-  statsWidth: 160,      // Largeur zone stats
-  cartoucheWidth: 200,  // Largeur zone cartouche
-  footerHeight: 150,    // Hauteur footer (augmentée)
+  legendWidth: 180,     // Largeur zone légende (classes) - augmentée pour texte
+  statsWidth: 180,      // Largeur zone stats - augmentée
+  cartoucheWidth: 220,  // Largeur zone cartouche - augmentée
+  footerHeight: 170,    // Hauteur footer (augmentée pour plus de lignes)
   coordLabelMargin: 8,
   padding: 12
 };
@@ -628,9 +628,11 @@ export class ExportFrame {
     };
     
     ctx.save();
-    ctx.fillStyle = 'rgba(200, 200, 200, 0.3)'; // Gris clair semi-transparent
-    ctx.strokeStyle = 'rgba(150, 150, 150, 0.5)';
-    ctx.lineWidth = 0.5;
+    // Mailles vides : fond très léger + contour gris visible
+    const scale = this.dpi / 72;
+    ctx.fillStyle = 'rgba(220, 220, 220, 0.15)'; // Fond quasi-transparent
+    ctx.strokeStyle = 'rgba(180, 180, 180, 0.7)'; // Contour gris visible
+    ctx.lineWidth = 0.5 * scale;
     
     for (const cell of cells) {
       // Ne dessiner que les mailles SANS données
@@ -676,7 +678,7 @@ export class ExportFrame {
       options: grid
     });
     
-    // Dessiner la grille
+    // Dessiner la grille (avec DPI pour scaler les labels)
     renderGrid({
       ctx: this.ctx,
       mapArea,
@@ -684,7 +686,8 @@ export class ExportFrame {
       gridType: grid.type,
       showLabels: grid.showLabels,
       labelSides: grid.labelSides,
-      labelMargin: coordLabelMargin
+      labelMargin: coordLabelMargin,
+      dpi: this.dpi
     });
     
     // Dessiner le cadre

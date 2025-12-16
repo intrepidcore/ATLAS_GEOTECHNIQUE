@@ -187,35 +187,37 @@ export interface GridRenderOptions {
   showLabels: boolean;
   labelSides: GridOptions['labelSides'];
   labelMargin: number;
+  dpi?: number; // DPI pour scaler les éléments (défaut: 72)
 }
 
 /**
  * Dessine la grille sur un canvas 2D
  */
 export function renderGrid(opts: GridRenderOptions): void {
-  const { ctx, mapArea, gridOutput, gridType, showLabels, labelSides, labelMargin } = opts;
+  const { ctx, mapArea, gridOutput, gridType, showLabels, labelSides, labelMargin, dpi = 72 } = opts;
   const { linesX, linesY } = gridOutput;
+  const scale = dpi / 72;
   
   if (gridType === 'none') return;
   
   ctx.save();
   
-  // Style de base pour la grille
+  // Style de base pour la grille (scalé)
   ctx.strokeStyle = '#888888';
-  ctx.lineWidth = 0.5;
+  ctx.lineWidth = 0.5 * scale;
   ctx.setLineDash([]);
   
   // Dessiner selon le type
   if (gridType === 'cross') {
-    renderCrossGrid(ctx, mapArea, linesX, linesY);
+    renderCrossGrid(ctx, mapArea, linesX, linesY, scale);
   } else if (gridType === 'continuous') {
-    renderContinuousGrid(ctx, mapArea, linesX, linesY);
+    renderContinuousGrid(ctx, mapArea, linesX, linesY, scale);
   }
   // 'labels-only' ne dessine pas de lignes
   
   // Dessiner les labels si demandé
   if (showLabels) {
-    renderGridLabels(ctx, mapArea, linesX, linesY, labelSides, labelMargin);
+    renderGridLabels(ctx, mapArea, linesX, linesY, labelSides, labelMargin, scale);
   }
   
   ctx.restore();
@@ -228,12 +230,13 @@ function renderCrossGrid(
   ctx: CanvasRenderingContext2D,
   mapArea: { x: number; y: number; width: number; height: number },
   linesX: GridLine[],
-  linesY: GridLine[]
+  linesY: GridLine[],
+  scale: number = 1
 ): void {
-  const crossSize = 6; // demi-longueur de la croix en pixels (augmenté de 4 à 6)
+  const crossSize = Math.round(6 * scale); // demi-longueur de la croix scalée
   
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'; // Noir 60% opacité (plus visible)
-  ctx.lineWidth = 1.5; // Épaisseur augmentée
+  ctx.lineWidth = 1.5 * scale; // Épaisseur scalée
   
   // Pour chaque intersection
   for (const lineX of linesX) {
@@ -267,10 +270,11 @@ function renderContinuousGrid(
   ctx: CanvasRenderingContext2D,
   mapArea: { x: number; y: number; width: number; height: number },
   linesX: GridLine[],
-  linesY: GridLine[]
+  linesY: GridLine[],
+  scale: number = 1
 ): void {
   ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'; // Noir 60% opacité (plus visible)
-  ctx.lineWidth = 1.0; // Épaisseur augmentée pour meilleure lisibilité
+  ctx.lineWidth = 1.0 * scale; // Épaisseur scalée
   
   // Lignes verticales
   for (const line of linesX) {
@@ -304,10 +308,12 @@ function renderGridLabels(
   linesX: GridLine[],
   linesY: GridLine[],
   labelSides: GridOptions['labelSides'],
-  labelMargin: number
+  labelMargin: number,
+  scale: number = 1
 ): void {
   ctx.fillStyle = '#333333';
-  ctx.font = '10px Arial, sans-serif';
+  const fontSize = Math.round(10 * scale);
+  ctx.font = `${fontSize}px Arial, sans-serif`;
   
   // Labels X (haut et bas)
   for (const line of linesX) {
