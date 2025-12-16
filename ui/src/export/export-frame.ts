@@ -294,13 +294,11 @@ export class ExportFrame {
     console.log('[ExportFrame] drawAdmMask called:', { 
       mode, 
       polygonPoints: admPolygon?.length,
-      bbox,
-      firstPt: admPolygon?.[0],
-      lastPt: admPolygon?.[admPolygon?.length - 1]
+      bbox
     });
     
     if (mode === 'none' || !admPolygon || admPolygon.length < 3) {
-      console.log('[ExportFrame] drawAdmMask skipped - mode:', mode, 'polygon valid:', !!admPolygon);
+      console.log('[ExportFrame] drawAdmMask skipped');
       return;
     }
     
@@ -309,53 +307,60 @@ export class ExportFrame {
     
     // Opacité selon le mode: context=45%, focus=85%, clip=100%
     const opacity = mode === 'clip' ? 1.0 : (mode === 'focus' ? 0.85 : 0.45);
-    console.log('[ExportFrame] Drawing mask with opacity:', opacity, 'mapArea:', mapArea);
     
-    // Convertir les coordonnées lng/lat en pixels sur le canvas
+    // Convertir les coordonnées lng/lat en pixels sur le canvas (coordonnées logiques)
     const toPixel = (lng: number, lat: number): [number, number] => {
       const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
       const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
       return [x, y];
     };
     
-    // Vérifier que les premiers points sont dans la zone
-    const testPt = toPixel(admPolygon[0][0], admPolygon[0][1]);
-    console.log('[ExportFrame] First polygon point in pixels:', testPt);
-    
     ctx.save();
     
-    // MÉTHODE: Utiliser un canvas temporaire pour créer le masque
-    // puis le superposer sur le canvas principal
-    const maskCanvas = document.createElement('canvas');
-    maskCanvas.width = this.canvas.width;
-    maskCanvas.height = this.canvas.height;
-    const maskCtx = maskCanvas.getContext('2d')!;
-    maskCtx.scale(this.scale, this.scale);
+    // MÉTHODE DIRECTE: Dessiner le masque directement sur le canvas principal
+    // en utilisant clip() pour préserver la zone ADM
     
-    // Remplir tout le rectangle de la carte avec le masque blanc semi-transparent
-    maskCtx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-    maskCtx.fillRect(mapArea.x, mapArea.y, mapArea.width, mapArea.height);
+    // 1. Créer un chemin qui couvre la zone carte SAUF le polygone ADM
+    ctx.beginPath();
     
-    // Découper le trou pour l'ADM (effacer la zone ADM du masque)
-    maskCtx.globalCompositeOperation = 'destination-out';
-    maskCtx.beginPath();
+    // Rectangle extérieur (zone carte) - sens horaire
+    ctx.moveTo(mapArea.x, mapArea.y);
+    ctx.lineTo(mapArea.x + mapArea.width, mapArea.y);
+    ctx.lineTo(mapArea.x + mapArea.width, mapArea.y + mapArea.height);
+    ctx.lineTo(mapArea.x, mapArea.y + mapArea.height);
+    ctx.closePath();
     
-    // Dessiner le polygone ADM
+    // Polygone ADM intérieur (trou) - sens anti-horaire pour créer un trou
     const firstPoint = toPixel(admPolygon[0][0], admPolygon[0][1]);
-    maskCtx.moveTo(firstPoint[0], firstPoint[1]);
+    ctx.moveTo(firstPoint[0], firstPoint[1]);
     
+    // Parcourir en sens inverse pour créer le trou
+    for (let i = admPolygon.length - 1; i >= 0; i--) {
+      const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    
+    // Remplir avec le masque blanc semi-transparent
+    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+    ctx.fill('evenodd');
+    
+    // Dessiner aussi la bordure de l'ADM en pointillés
+    ctx.beginPath();
+    const startPt = toPixel(admPolygon[0][0], admPolygon[0][1]);
+    ctx.moveTo(startPt[0], startPt[1]);
     for (let i = 1; i < admPolygon.length; i++) {
       const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
-      maskCtx.lineTo(x, y);
+      ctx.lineTo(x, y);
     }
-    maskCtx.closePath();
-    maskCtx.fill();
+    ctx.closePath();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = '#3366cc';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.setLineDash([]);
     
-    // Superposer le masque sur le canvas principal
-    ctx.drawImage(maskCanvas, 0, 0, maskCanvas.width, maskCanvas.height, 
-                  0, 0, this.layout.totalWidth, this.layout.totalHeight);
-    
-    console.log('[ExportFrame] Mask drawn successfully with temp canvas method');
+    console.log('[ExportFrame] Mask drawn with evenodd fill rule');
     ctx.restore();
   }
   
@@ -389,8 +394,8 @@ export class ExportFrame {
     };
     
     ctx.save();
-    // Police plus grande et visible
-    ctx.font = 'italic bold 12px Arial, sans-serif';
+    // Police plus grande et visible (16px pour meilleure lisibilité)
+    ctx.font = 'italic bold 16px Arial, sans-serif';
     
     // Fonction pour dessiner un label avec halo
     const drawLabelWithHalo = (text: string, x: number, y: number, align: CanvasTextAlign, baseline: CanvasTextBaseline) => {
@@ -571,8 +576,11 @@ export class ExportFrame {
   
   /**
    * Dessine la légende reconstruite depuis les classes thématiques
+   * @param legendData - Données de légende
+   * @param showEmptyCells - Afficher l'entrée mailles sans données
+   * @param showAdmBoundary - Afficher l'entrée délimitation ADM
    */
-  drawLegend(legendData?: ThematicLegendData): void {
+  drawLegend(legendData?: ThematicLegendData, showEmptyCells: boolean = false, showAdmBoundary: boolean = false): void {
     if (!this.options.includeLegend) return;
     
     const { legendArea } = this.layout;
@@ -596,37 +604,72 @@ export class ExportFrame {
       : 'Légende';
     ctx.fillText(legendTitle, legendArea.x + 8, legendArea.y + 6);
     
-    // Si pas de données de légende, afficher un placeholder
-    if (!legendData || !legendData.classes || legendData.classes.length === 0) {
-      ctx.font = '10px Arial, sans-serif';
-      ctx.fillStyle = '#888888';
-      ctx.fillText('(aucune thématique active)', legendArea.x + 8, legendArea.y + 25);
-      return;
-    }
-    
-    // Dessiner les classes
-    const startY = legendArea.y + 24;
     const boxSize = 12;
     const lineHeight = 16;
     const textX = legendArea.x + 8 + boxSize + 6;
+    let currentY = legendArea.y + 24;
     
     ctx.font = '10px Arial, sans-serif';
     
-    legendData.classes.forEach((cls, i) => {
-      const y = startY + i * lineHeight;
-      
-      // Boîte de couleur
-      ctx.fillStyle = cls.color;
-      ctx.fillRect(legendArea.x + 8, y, boxSize, boxSize);
-      ctx.strokeStyle = '#666666';
+    // Si pas de données de légende, afficher un placeholder
+    if (!legendData || !legendData.classes || legendData.classes.length === 0) {
+      ctx.fillStyle = '#888888';
+      ctx.fillText('(aucune thématique active)', legendArea.x + 8, currentY);
+      currentY += lineHeight;
+    } else {
+      // Dessiner les classes thématiques
+      legendData.classes.forEach((cls) => {
+        // Boîte de couleur
+        ctx.fillStyle = cls.color;
+        ctx.fillRect(legendArea.x + 8, currentY, boxSize, boxSize);
+        ctx.strokeStyle = '#666666';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(legendArea.x + 8, currentY, boxSize, boxSize);
+        
+        // Label
+        ctx.fillStyle = '#333333';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(cls.label, textX, currentY + boxSize / 2);
+        currentY += lineHeight;
+      });
+    }
+    
+    // Ajouter une séparation si on a des entrées supplémentaires
+    if (showEmptyCells || showAdmBoundary) {
+      currentY += 4; // Petit espace
+    }
+    
+    // Entrée "Mailles sans données" si activée
+    if (showEmptyCells) {
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+      ctx.fillRect(legendArea.x + 8, currentY, boxSize, boxSize);
+      ctx.strokeStyle = 'rgba(150, 150, 150, 0.8)';
       ctx.lineWidth = 0.5;
-      ctx.strokeRect(legendArea.x + 8, y, boxSize, boxSize);
+      ctx.strokeRect(legendArea.x + 8, currentY, boxSize, boxSize);
       
-      // Label
       ctx.fillStyle = '#333333';
       ctx.textBaseline = 'middle';
-      ctx.fillText(cls.label, textX, y + boxSize / 2);
-    });
+      ctx.fillText('Sans données', textX, currentY + boxSize / 2);
+      currentY += lineHeight;
+    }
+    
+    // Entrée "Délimitation ADM" si activée
+    if (showAdmBoundary) {
+      // Dessiner une ligne pointillée bleue
+      ctx.beginPath();
+      ctx.setLineDash([3, 2]);
+      ctx.strokeStyle = '#3366cc';
+      ctx.lineWidth = 2;
+      ctx.moveTo(legendArea.x + 8, currentY + boxSize / 2);
+      ctx.lineTo(legendArea.x + 8 + boxSize, currentY + boxSize / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      ctx.fillStyle = '#333333';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Limite ADM', textX, currentY + boxSize / 2);
+      currentY += lineHeight;
+    }
   }
   
   /**

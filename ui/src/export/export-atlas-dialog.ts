@@ -24,6 +24,8 @@ export interface AtlasExportConfig {
   quality: 'web' | 'print';
   includeStats: boolean;
   includeNeighbors: boolean;
+  showEmptyCells: boolean;
+  onlyAdmCells: boolean;
 }
 
 export interface AtlasExportCallbacks {
@@ -280,7 +282,9 @@ export class ExportAtlasDialog {
       format: 'png',
       quality: 'print',
       includeStats: true,
-      includeNeighbors: true
+      includeNeighbors: true,
+      showEmptyCells: false,
+      onlyAdmCells: true
     };
     this.progress = {
       total: 0,
@@ -398,6 +402,14 @@ export class ExportAtlasDialog {
                 <input type="checkbox" id="atlas-neighbors" checked>
                 <span>Afficher ADM limitrophes</span>
               </label>
+              <label class="atlas-checkbox">
+                <input type="checkbox" id="atlas-show-empty-cells">
+                <span>Afficher mailles sans données</span>
+              </label>
+              <label class="atlas-checkbox">
+                <input type="checkbox" id="atlas-only-adm-cells" checked>
+                <span>Uniquement mailles dans l'ADM</span>
+              </label>
             </div>
           </div>
           
@@ -462,6 +474,8 @@ export class ExportAtlasDialog {
     const maskMode = (this.overlay.querySelector('#atlas-mask') as HTMLSelectElement)?.value as 'none' | 'context' | 'focus';
     const includeStats = (this.overlay.querySelector('#atlas-stats') as HTMLInputElement)?.checked;
     const includeNeighbors = (this.overlay.querySelector('#atlas-neighbors') as HTMLInputElement)?.checked;
+    const showEmptyCells = (this.overlay.querySelector('#atlas-show-empty-cells') as HTMLInputElement)?.checked;
+    const onlyAdmCells = (this.overlay.querySelector('#atlas-only-adm-cells') as HTMLInputElement)?.checked;
     
     return {
       levels,
@@ -470,7 +484,9 @@ export class ExportAtlasDialog {
       format,
       quality: 'print',
       includeStats,
-      includeNeighbors
+      includeNeighbors,
+      showEmptyCells,
+      onlyAdmCells
     };
   }
   

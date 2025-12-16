@@ -833,31 +833,33 @@ export class ExportQuickDialog {
       exportFrame.drawTitle(thematic, admFilters);
       await exportFrame.drawMapImage(mapCapture.canvas);
       
+      // Dessiner les mailles vides AVANT le masque (pour qu'elles soient visibles)
+      const showEmptyCells = (this.overlay?.querySelector('#export-show-empty-cells') as HTMLInputElement)?.checked ?? false;
+      let emptyCellsDrawn = false;
+      if (showEmptyCells && this.options.zone === 'adm-filtered' && admFilters) {
+        try {
+          const cells = await this.fetchAdmCells(admFilters);
+          console.log('[Export] Mailles récupérées:', cells.length, 'dont vides:', cells.filter(c => !c.has_data).length);
+          if (cells && cells.length > 0) {
+            exportFrame.drawEmptyCells(cells, bbox);
+            emptyCellsDrawn = cells.filter(c => !c.has_data).length > 0;
+          }
+        } catch (e) {
+          console.warn('[Export] Impossible de charger les mailles ADM:', e);
+        }
+      }
+      
       // Dessiner le masque hors ADM si demandé
       const maskModeSelect = this.overlay?.querySelector('#export-mask-mode') as HTMLSelectElement;
       const maskMode = (maskModeSelect?.value || 'none') as 'none' | 'context' | 'focus' | 'clip';
-      console.log('[Export] Masque ADM - mode:', maskMode, 'zone:', this.options.zone);
+      const admPolygon = this.config.getAdmPolygon?.();
+      console.log('[Export] Masque ADM - mode:', maskMode, 'polygon:', admPolygon?.length || 0, 'points');
       
       if (maskMode !== 'none' && this.options.zone === 'adm-filtered') {
-        const admPolygon = this.config.getAdmPolygon?.();
-        console.log('[Export] ADM polygon:', admPolygon ? `${admPolygon.length} points` : 'null');
         if (admPolygon && admPolygon.length >= 3) {
           exportFrame.drawAdmMask(admPolygon, bbox, maskMode);
         } else {
           console.warn('[Export] Pas de polygone ADM valide pour le masque');
-        }
-      }
-      
-      // Dessiner les mailles vides si option activée
-      const showEmptyCells = (this.overlay?.querySelector('#export-show-empty-cells') as HTMLInputElement)?.checked ?? false;
-      if (showEmptyCells && this.options.zone === 'adm-filtered' && admFilters) {
-        try {
-          const cells = await this.fetchAdmCells(admFilters);
-          if (cells && cells.length > 0) {
-            exportFrame.drawEmptyCells(cells, bbox);
-          }
-        } catch (e) {
-          console.warn('[Export] Impossible de charger les mailles ADM:', e);
         }
       }
       
@@ -879,7 +881,8 @@ export class ExportQuickDialog {
       
       // Récupérer les données de légende thématique
       const legendData = this.config.getThematicLegendData?.() || undefined;
-      exportFrame.drawLegend(legendData);
+      const hasAdmBoundary = maskMode !== 'none' && !!admPolygon && admPolygon.length >= 3;
+      exportFrame.drawLegend(legendData, emptyCellsDrawn, hasAdmBoundary);
       
       // Calculer et dessiner les statistiques si demandé
       if (this.options.includeStats && legendData) {
