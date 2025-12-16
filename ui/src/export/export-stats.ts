@@ -58,8 +58,59 @@ export interface StatsInput {
 }
 
 /**
+ * Filtre les features par ADM (adm1, adm2, adm3)
+ * Utilisé pour calculer les stats uniquement sur la zone exportée
+ */
+function filterFeaturesByAdm(
+  features: any[],
+  admFilters: StatsInput['admFilters']
+): any[] {
+  if (!features || features.length === 0) return [];
+  
+  const getAdmName = (adm: string | { code: string; name: string } | undefined): string | undefined => {
+    if (!adm) return undefined;
+    if (typeof adm === 'string') return adm;
+    return adm.name;
+  };
+  
+  const adm1Name = getAdmName(admFilters.adm1);
+  const adm2Name = getAdmName(admFilters.adm2);
+  const adm3Name = getAdmName(admFilters.adm3);
+  
+  // Si aucun filtre ADM, retourner toutes les features
+  if (!adm1Name && !adm2Name && !adm3Name) {
+    return features;
+  }
+  
+  return features.filter(f => {
+    const props = f.properties || f;
+    
+    // Filtrer par ADM1 si spécifié
+    if (adm1Name) {
+      const featureAdm1 = props.adm1_name || props.adm1 || props.region;
+      if (featureAdm1 && featureAdm1 !== adm1Name) return false;
+    }
+    
+    // Filtrer par ADM2 si spécifié
+    if (adm2Name) {
+      const featureAdm2 = props.adm2_name || props.adm2 || props.prefecture;
+      if (featureAdm2 && featureAdm2 !== adm2Name) return false;
+    }
+    
+    // Filtrer par ADM3 si spécifié
+    if (adm3Name) {
+      const featureAdm3 = props.adm3_name || props.adm3 || props.commune;
+      if (featureAdm3 && featureAdm3 !== adm3Name) return false;
+    }
+    
+    return true;
+  });
+}
+
+/**
  * Construit les statistiques d'export selon la thématique
  * Utilise les stats API enrichies si disponibles, sinon calcule depuis les features
+ * IMPORTANT: Les features sont filtrées par ADM pour refléter uniquement la zone exportée
  */
 export function buildExportStats(input: StatsInput): ExportStats {
   const { parameterId, parameterLabel, unit, apiStats, features = [], totalCellCount, classes = [], admFilters } = input;
@@ -71,6 +122,19 @@ export function buildExportStats(input: StatsInput): ExportStats {
     return adm.name;
   };
   const zoneName = getAdmName(admFilters.adm3) || getAdmName(admFilters.adm2) || getAdmName(admFilters.adm1) || 'Togo';
+  
+  // FILTRER les features par ADM avant de calculer les stats
+  const filteredFeatures = filterFeaturesByAdm(features, admFilters);
+  
+  console.log('[ExportStats] Features filtrées par ADM:', {
+    totalFeatures: features.length,
+    filteredFeatures: filteredFeatures.length,
+    admFilters: {
+      adm1: getAdmName(admFilters.adm1),
+      adm2: getAdmName(admFilters.adm2),
+      adm3: getAdmName(admFilters.adm3)
+    }
+  });
   
   // Utiliser les stats API si disponibles
   let nMaillesTotales: number;
@@ -86,14 +150,14 @@ export function buildExportStats(input: StatsInput): ExportStats {
     // Pas de values individuelles, on utilise les stats agrégées
     values = [];
   } else {
-    // Fallback: calculer depuis les features
-    nMaillesTotales = totalCellCount || features.length;
-    nMaillesAvecDonnees = features.filter(f => {
+    // Fallback: calculer depuis les features FILTRÉES
+    nMaillesTotales = totalCellCount || filteredFeatures.length;
+    nMaillesAvecDonnees = filteredFeatures.filter(f => {
       const val = f.properties?.value ?? f.value ?? f.properties?.[parameterId] ?? f[parameterId];
       return val !== null && val !== undefined && val > 0;
     }).length;
     
-    values = features
+    values = filteredFeatures
       .map(f => f.properties?.value ?? f.value ?? f.properties?.[parameterId] ?? f[parameterId])
       .filter(v => v !== null && v !== undefined && typeof v === 'number' && v > 0) as number[];
     

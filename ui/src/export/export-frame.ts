@@ -38,8 +38,10 @@ const LAYOUT = {
 };
 
 // Dimensions A4 en pixels selon DPI
+// A4 = 210mm x 297mm = 8.27" x 11.69"
+const A4_INCHES = { width: 8.27, height: 11.69 };
+
 const A4_DIMENSIONS = {
-  // A4 = 210mm x 297mm
   portrait: {
     72: { width: 595, height: 842 },
     150: { width: 1240, height: 1754 },
@@ -51,6 +53,25 @@ const A4_DIMENSIONS = {
     300: { width: 3508, height: 2480 }
   }
 };
+
+/**
+ * Calcule les dimensions A4 en pixels pour un DPI donné
+ */
+export function getA4Dimensions(
+  dpi: number,
+  orientation: 'portrait' | 'landscape' = 'portrait'
+): { width: number; height: number } {
+  // Utiliser les valeurs pré-calculées si disponibles
+  const precomputed = A4_DIMENSIONS[orientation];
+  if (dpi === 72) return precomputed[72];
+  if (dpi === 150) return precomputed[150];
+  if (dpi === 300) return precomputed[300];
+  
+  // Sinon calculer dynamiquement
+  const w = Math.round(A4_INCHES.width * dpi);
+  const h = Math.round(A4_INCHES.height * dpi);
+  return orientation === 'portrait' ? { width: w, height: h } : { width: h, height: w };
+}
 
 /**
  * Calcule les dimensions optimales de la zone carte pour un ADM donné
@@ -202,6 +223,7 @@ export class ExportFrame {
   private layout: ExportFrameLayout;
   private options: ExportOptions;
   private scale: number;
+  private dpi: number;
   
   constructor(
     mapWidth: number,
@@ -210,6 +232,7 @@ export class ExportFrame {
   ) {
     this.options = options;
     this.scale = QUALITY_SETTINGS[options.quality].scale;
+    this.dpi = QUALITY_SETTINGS[options.quality].dpi;
     
     // Calculer le layout
     this.layout = computeExportLayout(mapWidth, mapHeight, options);
@@ -229,6 +252,48 @@ export class ExportFrame {
     // Fond blanc
     this.ctx.fillStyle = '#ffffff';
     this.ctx.fillRect(0, 0, this.layout.totalWidth, this.layout.totalHeight);
+    
+    console.log('[ExportFrame] Créé avec dimensions:', {
+      mapWidth, mapHeight,
+      totalWidth: this.layout.totalWidth,
+      totalHeight: this.layout.totalHeight,
+      canvasWidth: this.canvas.width,
+      canvasHeight: this.canvas.height,
+      scale: this.scale,
+      dpi: this.dpi
+    });
+  }
+  
+  /**
+   * Crée un ExportFrame avec dimensions A4 fixes
+   * La carte sera centrée dans la zone disponible
+   */
+  static createA4(
+    options: ExportOptions,
+    orientation: 'portrait' | 'landscape' = 'portrait'
+  ): ExportFrame {
+    const dpi = QUALITY_SETTINGS[options.quality].dpi;
+    const a4 = getA4Dimensions(dpi, orientation);
+    
+    // Calculer la zone carte disponible dans le layout A4
+    const { margin, titleHeight, subtitleHeight, footerHeight, padding } = LAYOUT;
+    const labelSpace = options.grid.showLabels ? 40 : 0;
+    const headerHeight = options.includeTitle ? (titleHeight + subtitleHeight) : 0;
+    
+    // Zone disponible pour la carte
+    const availableWidth = a4.width - (margin * 2) - (labelSpace * 2);
+    const availableHeight = a4.height - (margin * 2) - headerHeight - footerHeight - (labelSpace * 2) - padding;
+    
+    console.log('[ExportFrame] Création A4 fixe:', {
+      orientation,
+      dpi,
+      pageWidth: a4.width,
+      pageHeight: a4.height,
+      mapAreaWidth: availableWidth,
+      mapAreaHeight: availableHeight
+    });
+    
+    return new ExportFrame(availableWidth, availableHeight, options);
   }
   
   /**
@@ -317,10 +382,22 @@ export class ExportFrame {
       return [x, y];
     };
     
+    // Debug: vérifier les premiers points convertis
+    const debugPoints = admPolygon.slice(0, 3).map(pt => ({
+      lng: pt[0], lat: pt[1],
+      pixel: toPixel(pt[0], pt[1])
+    }));
+    console.log('[ExportFrame] Masque ADM - conversion coords:', {
+      mapArea: { x: mapArea.x, y: mapArea.y, w: mapArea.width, h: mapArea.height },
+      bbox,
+      firstPoints: debugPoints,
+      opacity
+    });
+    
     ctx.save();
     
     // MÉTHODE DIRECTE: Dessiner le masque directement sur le canvas principal
-    // en utilisant clip() pour préserver la zone ADM
+    // en utilisant fill('evenodd') pour créer un trou
     
     // 1. Créer un chemin qui couvre la zone carte SAUF le polygone ADM
     ctx.beginPath();
@@ -346,6 +423,8 @@ export class ExportFrame {
     // Remplir avec le masque blanc semi-transparent
     ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
     ctx.fill('evenodd');
+    
+    console.log('[ExportFrame] Masque dessiné avec evenodd, opacity:', opacity);
     
     // Dessiner aussi la bordure de l'ADM en pointillés
     ctx.beginPath();
@@ -619,21 +698,35 @@ export class ExportFrame {
       ctx.fillText('(aucune thématique active)', legendArea.x + 8, currentY);
       currentY += lineHeight;
     } else {
-      // Dessiner les classes thématiques
-      legendData.classes.forEach((cls) => {
-        // Boîte de couleur
-        ctx.fillStyle = cls.color;
-        ctx.fillRect(legendArea.x + 8, currentY, boxSize, boxSize);
-        ctx.strokeStyle = '#666666';
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(legendArea.x + 8, currentY, boxSize, boxSize);
-        
-        // Label
-        ctx.fillStyle = '#333333';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(cls.label, textX, currentY + boxSize / 2);
+      // Filtrer les classes pour n'afficher que celles avec des mailles (count > 0)
+      // Si count n'est pas défini, on affiche la classe (compatibilité)
+      const visibleClasses = legendData.classes.filter(cls => 
+        cls.count === undefined || cls.count > 0
+      );
+      
+      console.log('[ExportFrame] Légende - classes visibles:', visibleClasses.length, '/', legendData.classes.length);
+      
+      if (visibleClasses.length === 0) {
+        ctx.fillStyle = '#888888';
+        ctx.fillText('(aucune donnée dans la zone)', legendArea.x + 8, currentY);
         currentY += lineHeight;
-      });
+      } else {
+        // Dessiner les classes thématiques présentes
+        visibleClasses.forEach((cls) => {
+          // Boîte de couleur
+          ctx.fillStyle = cls.color;
+          ctx.fillRect(legendArea.x + 8, currentY, boxSize, boxSize);
+          ctx.strokeStyle = '#666666';
+          ctx.lineWidth = 0.5;
+          ctx.strokeRect(legendArea.x + 8, currentY, boxSize, boxSize);
+          
+          // Label
+          ctx.fillStyle = '#333333';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(cls.label, textX, currentY + boxSize / 2);
+          currentY += lineHeight;
+        });
+      }
     }
     
     // Ajouter une séparation si on a des entrées supplémentaires

@@ -580,6 +580,12 @@ export class ExportQuickDialog {
                 <span>Afficher mailles sans données</span>
               </label>
               
+              <!-- Uniquement mailles dans l'ADM -->
+              <label class="export-checkbox" style="margin-top: 8px;">
+                <input type="checkbox" id="export-only-adm-cells" checked>
+                <span>Uniquement mailles dans l'ADM</span>
+              </label>
+              
               <!-- Afficher ADM/pays limitrophes -->
               <label class="export-checkbox" style="margin-top: 8px;">
                 <input type="checkbox" id="export-show-neighbors" checked>
@@ -844,12 +850,14 @@ export class ExportQuickDialog {
         maxY: bounds.north
       };
       
-      // Créer le frame d'export
-      const exportFrame = new ExportFrame(
-        mapCapture.width,
-        mapCapture.height,
-        this.options
-      );
+      // Créer le frame d'export avec dimensions A4 FIXES
+      // La carte sera redimensionnée pour s'adapter à la zone carte du layout A4
+      const exportFrame = ExportFrame.createA4(this.options, 'portrait');
+      
+      console.log('[Export] Frame A4 créé, capture:', {
+        captureWidth: mapCapture.width,
+        captureHeight: mapCapture.height
+      });
       
       // Dessiner les éléments
       exportFrame.drawTitle(thematic, admFilters);

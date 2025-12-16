@@ -41,9 +41,9 @@ BEGIN
     -- 2) Transformer en SRID 25231 pour les mailles
     v_geom_25231 := ST_Transform(v_geom, 25231);
 
-    -- 3) Trouver la maille (point-in-polygon)
+    -- 3) Trouver la maille (point-in-polygon) - table dans schema public
     SELECT m.code INTO v_maille_code
-    FROM atlas.mailles m
+    FROM public.mailles m
     WHERE ST_Contains(m.geom, v_geom_25231)
     LIMIT 1;
 
