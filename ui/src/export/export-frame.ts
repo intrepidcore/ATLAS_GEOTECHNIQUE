@@ -25,7 +25,8 @@ import {
 // Constantes de layout
 // ============================================================================
 
-const LAYOUT = {
+// Layout de base pour 72 DPI - sera multiplié par le ratio DPI
+const LAYOUT_BASE = {
   margin: 20,           // Marge extérieure
   titleHeight: 50,      // Hauteur titre principal
   subtitleHeight: 20,   // Hauteur sous-titre (zone)
@@ -36,6 +37,36 @@ const LAYOUT = {
   coordLabelMargin: 8,
   padding: 12
 };
+
+// Pour compatibilité avec le code existant (72 dpi)
+const LAYOUT = LAYOUT_BASE;
+
+/**
+ * Calcule les dimensions de layout ajustées pour un DPI donné
+ * Les valeurs de base sont pour 72 DPI
+ */
+function getScaledLayout(dpi: number) {
+  const ratio = dpi / 72;
+  return {
+    margin: Math.round(LAYOUT_BASE.margin * ratio),
+    titleHeight: Math.round(LAYOUT_BASE.titleHeight * ratio),
+    subtitleHeight: Math.round(LAYOUT_BASE.subtitleHeight * ratio),
+    legendWidth: Math.round(LAYOUT_BASE.legendWidth * ratio),
+    statsWidth: Math.round(LAYOUT_BASE.statsWidth * ratio),
+    cartoucheWidth: Math.round(LAYOUT_BASE.cartoucheWidth * ratio),
+    footerHeight: Math.round(LAYOUT_BASE.footerHeight * ratio),
+    coordLabelMargin: Math.round(LAYOUT_BASE.coordLabelMargin * ratio),
+    padding: Math.round(LAYOUT_BASE.padding * ratio),
+    // Tailles de police ajustées
+    fontTitle: Math.round(18 * ratio),
+    fontSubtitle: Math.round(12 * ratio),
+    fontLegend: Math.round(11 * ratio),
+    fontLegendTitle: Math.round(12 * ratio),
+    fontStats: Math.round(10 * ratio),
+    fontCartouche: Math.round(9 * ratio),
+    fontCoordLabel: Math.round(9 * ratio)
+  };
+}
 
 // Dimensions A4 en pixels selon DPI
 // A4 = 210mm x 297mm = 8.27" x 11.69"
@@ -139,12 +170,15 @@ export function computeOptimalMapDimensions(
 export function computeExportLayout(
   mapWidth: number,
   mapHeight: number,
-  options: ExportOptions
+  options: ExportOptions,
+  dpi: number = 72
 ): ExportFrameLayout {
-  const { margin, titleHeight, subtitleHeight, legendWidth, footerHeight, coordLabelMargin, padding } = LAYOUT;
+  // Utiliser le layout scalé pour le DPI
+  const scaled = getScaledLayout(dpi);
+  const { margin, titleHeight, subtitleHeight, legendWidth, footerHeight, coordLabelMargin, padding } = scaled;
   
-  // Espace pour les labels de coordonnées
-  const labelSpace = options.grid.showLabels ? 40 : 0;
+  // Espace pour les labels de coordonnées (scalé)
+  const labelSpace = options.grid.showLabels ? Math.round(40 * dpi / 72) : 0;
   
   // Calcul des dimensions totales
   const totalWidth = margin * 2 + labelSpace * 2 + mapWidth;
@@ -175,29 +209,29 @@ export function computeExportLayout(
   
   // Footer: Légende | Stats | Cartouche
   const footerY = mapArea.y + mapArea.height + labelSpace + padding;
-  const footerContentHeight = LAYOUT.footerHeight - padding * 2;
+  const footerContentHeight = footerHeight - padding * 2;
   
   // Zone légende (bas gauche)
   const legendArea = {
     x: margin,
     y: footerY,
-    width: LAYOUT.legendWidth,
+    width: scaled.legendWidth,
     height: footerContentHeight
   };
   
   // Zone stats (milieu)
   const statsArea = {
-    x: margin + LAYOUT.legendWidth + padding,
+    x: margin + scaled.legendWidth + padding,
     y: footerY,
-    width: LAYOUT.statsWidth,
+    width: scaled.statsWidth,
     height: footerContentHeight
   };
   
   // Zone cartouche (bas droit)
   const cartoucheArea = {
-    x: totalWidth - margin - LAYOUT.cartoucheWidth,
+    x: totalWidth - margin - scaled.cartoucheWidth,
     y: footerY,
-    width: LAYOUT.cartoucheWidth,
+    width: scaled.cartoucheWidth,
     height: footerContentHeight
   };
   
@@ -224,6 +258,7 @@ export class ExportFrame {
   private options: ExportOptions;
   private scale: number;
   private dpi: number;
+  private fonts: ReturnType<typeof getScaledLayout>;
   
   constructor(
     mapWidth: number,
@@ -233,9 +268,10 @@ export class ExportFrame {
     this.options = options;
     this.scale = QUALITY_SETTINGS[options.quality].scale;
     this.dpi = QUALITY_SETTINGS[options.quality].dpi;
+    this.fonts = getScaledLayout(this.dpi);
     
-    // Calculer le layout
-    this.layout = computeExportLayout(mapWidth, mapHeight, options);
+    // Calculer le layout avec le DPI pour les dimensions scalées
+    this.layout = computeExportLayout(mapWidth, mapHeight, options, this.dpi);
     
     // Créer le canvas
     this.canvas = document.createElement('canvas');
@@ -275,22 +311,24 @@ export class ExportFrame {
     const dpi = QUALITY_SETTINGS[options.quality].dpi;
     const a4 = getA4Dimensions(dpi, orientation);
     
-    // Calculer la zone carte disponible dans le layout A4
-    const { margin, titleHeight, subtitleHeight, footerHeight, padding } = LAYOUT;
-    const labelSpace = options.grid.showLabels ? 40 : 0;
-    const headerHeight = options.includeTitle ? (titleHeight + subtitleHeight) : 0;
+    // Utiliser le layout scalé pour le DPI
+    const scaledLayout = getScaledLayout(dpi);
+    const labelSpace = options.grid.showLabels ? Math.round(40 * dpi / 72) : 0;
+    const headerHeight = options.includeTitle ? (scaledLayout.titleHeight + scaledLayout.subtitleHeight) : 0;
     
     // Zone disponible pour la carte
-    const availableWidth = a4.width - (margin * 2) - (labelSpace * 2);
-    const availableHeight = a4.height - (margin * 2) - headerHeight - footerHeight - (labelSpace * 2) - padding;
+    const availableWidth = a4.width - (scaledLayout.margin * 2) - (labelSpace * 2);
+    const availableHeight = a4.height - (scaledLayout.margin * 2) - headerHeight - scaledLayout.footerHeight - (labelSpace * 2) - scaledLayout.padding;
     
     console.log('[ExportFrame] Création A4 fixe:', {
       orientation,
       dpi,
+      dpiRatio: dpi / 72,
       pageWidth: a4.width,
       pageHeight: a4.height,
       mapAreaWidth: availableWidth,
-      mapAreaHeight: availableHeight
+      mapAreaHeight: availableHeight,
+      scaledLayout: { margin: scaledLayout.margin, titleHeight: scaledLayout.titleHeight, footerHeight: scaledLayout.footerHeight }
     });
     
     return new ExportFrame(availableWidth, availableHeight, options);
@@ -305,18 +343,19 @@ export class ExportFrame {
     const { titleArea } = this.layout;
     const ctx = this.ctx;
     
-    // Titre principal
+    // Titre principal (police scalée)
     ctx.fillStyle = '#1a1a1a';
-    ctx.font = 'bold 18px Arial, sans-serif';
+    ctx.font = `bold ${this.fonts.fontTitle}px Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     
     const title = this.options.title || `Atlas Géotechnique – ${thematic.name}`;
-    ctx.fillText(title, titleArea.x + titleArea.width / 2, titleArea.y + 5);
+    const titleY = titleArea.y + Math.round(5 * this.dpi / 72);
+    ctx.fillText(title, titleArea.x + titleArea.width / 2, titleY);
     
-    // Sous-titre (zone + date)
+    // Sous-titre (zone + date) - police scalée
     if (this.options.zone === 'adm-filtered' || this.options.subtitle) {
-      ctx.font = '12px Arial, sans-serif';
+      ctx.font = `${this.fonts.fontSubtitle}px Arial, sans-serif`;
       ctx.fillStyle = '#666666';
       
       const zonePath = formatAdmPath(admFilters);
@@ -325,7 +364,8 @@ export class ExportFrame {
       const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
       const subtitle = this.options.subtitle || `Zone : ${zonePath} – Export du ${date} à ${time}`;
       
-      ctx.fillText(subtitle, titleArea.x + titleArea.width / 2, titleArea.y + 30);
+      const subtitleY = titleArea.y + Math.round(30 * this.dpi / 72);
+      ctx.fillText(subtitle, titleArea.x + titleArea.width / 2, subtitleY);
     }
   }
   
@@ -667,30 +707,34 @@ export class ExportFrame {
     const { legendArea } = this.layout;
     const ctx = this.ctx;
     
+    // Dimensions scalées pour le DPI
+    const scale = this.dpi / 72;
+    const padding = Math.round(8 * scale);
+    const boxSize = Math.round(12 * scale);
+    const lineHeight = Math.round(16 * scale);
+    
     // Cadre de la légende
     ctx.strokeStyle = '#cccccc';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = scale;
     ctx.fillStyle = '#fafafa';
     ctx.fillRect(legendArea.x, legendArea.y, legendArea.width, legendArea.height);
     ctx.strokeRect(legendArea.x, legendArea.y, legendArea.width, legendArea.height);
     
-    // Titre de la légende (paramètre + unité)
+    // Titre de la légende (paramètre + unité) - police scalée
     ctx.fillStyle = '#333333';
-    ctx.font = 'bold 11px Arial, sans-serif';
+    ctx.font = `bold ${this.fonts.fontLegendTitle}px Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     
     const legendTitle = legendData 
       ? `${legendData.parameterLabel}${legendData.unit ? ` (${legendData.unit})` : ''}`
       : 'Légende';
-    ctx.fillText(legendTitle, legendArea.x + 8, legendArea.y + 6);
+    ctx.fillText(legendTitle, legendArea.x + padding, legendArea.y + Math.round(6 * scale));
     
-    const boxSize = 12;
-    const lineHeight = 16;
-    const textX = legendArea.x + 8 + boxSize + 6;
-    let currentY = legendArea.y + 24;
+    const textX = legendArea.x + padding + boxSize + Math.round(6 * scale);
+    let currentY = legendArea.y + Math.round(24 * scale);
     
-    ctx.font = '10px Arial, sans-serif';
+    ctx.font = `${this.fonts.fontLegend}px Arial, sans-serif`;
     
     // Si pas de données de légende, afficher un placeholder
     if (!legendData || !legendData.classes || legendData.classes.length === 0) {
@@ -715,10 +759,10 @@ export class ExportFrame {
         visibleClasses.forEach((cls) => {
           // Boîte de couleur
           ctx.fillStyle = cls.color;
-          ctx.fillRect(legendArea.x + 8, currentY, boxSize, boxSize);
+          ctx.fillRect(legendArea.x + padding, currentY, boxSize, boxSize);
           ctx.strokeStyle = '#666666';
-          ctx.lineWidth = 0.5;
-          ctx.strokeRect(legendArea.x + 8, currentY, boxSize, boxSize);
+          ctx.lineWidth = 0.5 * scale;
+          ctx.strokeRect(legendArea.x + padding, currentY, boxSize, boxSize);
           
           // Label
           ctx.fillStyle = '#333333';
@@ -731,16 +775,16 @@ export class ExportFrame {
     
     // Ajouter une séparation si on a des entrées supplémentaires
     if (showEmptyCells || showAdmBoundary) {
-      currentY += 4; // Petit espace
+      currentY += Math.round(4 * scale); // Petit espace scalé
     }
     
     // Entrée "Mailles sans données" si activée
     if (showEmptyCells) {
       ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
-      ctx.fillRect(legendArea.x + 8, currentY, boxSize, boxSize);
+      ctx.fillRect(legendArea.x + padding, currentY, boxSize, boxSize);
       ctx.strokeStyle = 'rgba(150, 150, 150, 0.8)';
-      ctx.lineWidth = 0.5;
-      ctx.strokeRect(legendArea.x + 8, currentY, boxSize, boxSize);
+      ctx.lineWidth = 0.5 * scale;
+      ctx.strokeRect(legendArea.x + padding, currentY, boxSize, boxSize);
       
       ctx.fillStyle = '#333333';
       ctx.textBaseline = 'middle';
@@ -752,11 +796,11 @@ export class ExportFrame {
     if (showAdmBoundary) {
       // Dessiner une ligne pointillée bleue
       ctx.beginPath();
-      ctx.setLineDash([3, 2]);
+      ctx.setLineDash([Math.round(3 * scale), Math.round(2 * scale)]);
       ctx.strokeStyle = '#3366cc';
-      ctx.lineWidth = 2;
-      ctx.moveTo(legendArea.x + 8, currentY + boxSize / 2);
-      ctx.lineTo(legendArea.x + 8 + boxSize, currentY + boxSize / 2);
+      ctx.lineWidth = 2 * scale;
+      ctx.moveTo(legendArea.x + padding, currentY + boxSize / 2);
+      ctx.lineTo(legendArea.x + padding + boxSize, currentY + boxSize / 2);
       ctx.stroke();
       ctx.setLineDash([]);
       
@@ -774,19 +818,23 @@ export class ExportFrame {
     const { cartoucheArea } = this.layout;
     const ctx = this.ctx;
     
+    // Dimensions scalées pour le DPI
+    const scale = this.dpi / 72;
+    const padding = Math.round(10 * scale);
+    const lineHeight = Math.round(12 * scale);
+    
     // Cadre du cartouche
     ctx.strokeStyle = '#cccccc';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = scale;
     ctx.fillStyle = '#fafafa';
     ctx.fillRect(cartoucheArea.x, cartoucheArea.y, cartoucheArea.width, cartoucheArea.height);
     ctx.strokeRect(cartoucheArea.x, cartoucheArea.y, cartoucheArea.width, cartoucheArea.height);
     
-    const textX = cartoucheArea.x + 10;
-    let textY = cartoucheArea.y + 10;
-    const lineHeight = 12;
+    const textX = cartoucheArea.x + padding;
+    let textY = cartoucheArea.y + padding;
     
     ctx.fillStyle = '#333333';
-    ctx.font = '9px Arial, sans-serif';
+    ctx.font = `${this.fonts.fontCartouche}px Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     
@@ -817,20 +865,20 @@ export class ExportFrame {
     const date = new Date().toLocaleDateString('fr-FR');
     ctx.fillText(`Date : ${date}`, textX, textY);
     
-    // Barre d'échelle (à droite du cartouche)
+    // Barre d'échelle (à droite du cartouche) - positions scalées
     if (this.options.includeScaleBar) {
       this.drawScaleBar(
-        cartoucheArea.x + cartoucheArea.width - 100,
-        cartoucheArea.y + cartoucheArea.height - 25,
+        cartoucheArea.x + cartoucheArea.width - Math.round(100 * scale),
+        cartoucheArea.y + cartoucheArea.height - Math.round(25 * scale),
         scaleText
       );
     }
     
-    // Flèche du Nord
+    // Flèche du Nord - positions scalées
     if (this.options.includeNorthArrow) {
       this.drawNorthArrow(
-        cartoucheArea.x + cartoucheArea.width - 30,
-        cartoucheArea.y + 25
+        cartoucheArea.x + cartoucheArea.width - Math.round(30 * scale),
+        cartoucheArea.y + Math.round(25 * scale)
       );
     }
   }
@@ -840,8 +888,10 @@ export class ExportFrame {
    */
   private drawScaleBar(x: number, y: number, scaleText: string): void {
     const ctx = this.ctx;
-    const barWidth = 80;
-    const barHeight = 6;
+    const scale = this.dpi / 72;
+    const barWidth = Math.round(80 * scale);
+    const barHeight = Math.round(6 * scale);
+    const tickHeight = Math.round(3 * scale);
     
     // Barre
     ctx.fillStyle = '#000000';
@@ -849,25 +899,25 @@ export class ExportFrame {
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(x + barWidth / 2, y, barWidth / 2, barHeight);
     ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = scale;
     ctx.strokeRect(x, y, barWidth, barHeight);
     
     // Graduations
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(x, y - 3);
+    ctx.lineTo(x, y - tickHeight);
     ctx.moveTo(x + barWidth / 2, y);
-    ctx.lineTo(x + barWidth / 2, y - 3);
+    ctx.lineTo(x + barWidth / 2, y - tickHeight);
     ctx.moveTo(x + barWidth, y);
-    ctx.lineTo(x + barWidth, y - 3);
+    ctx.lineTo(x + barWidth, y - tickHeight);
     ctx.stroke();
     
-    // Label
+    // Label - police scalée
     ctx.fillStyle = '#333333';
-    ctx.font = '9px Arial, sans-serif';
+    ctx.font = `${this.fonts.fontCartouche}px Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
-    ctx.fillText(scaleText, x + barWidth / 2, y + barHeight + 2);
+    ctx.fillText(scaleText, x + barWidth / 2, y + barHeight + Math.round(2 * scale));
   }
   
   /**
@@ -875,7 +925,8 @@ export class ExportFrame {
    */
   private drawNorthArrow(x: number, y: number): void {
     const ctx = this.ctx;
-    const size = 20;
+    const scale = this.dpi / 72;
+    const size = Math.round(20 * scale);
     
     ctx.save();
     ctx.translate(x, y);
@@ -909,33 +960,35 @@ export class ExportFrame {
     const { statsArea } = this.layout;
     const ctx = this.ctx;
     
-    const padding = 6;
-    const headerHeight = 18;
-    const lineHeight = 12;
+    // Dimensions scalées pour le DPI
+    const scale = this.dpi / 72;
+    const padding = Math.round(6 * scale);
+    const headerHeight = Math.round(18 * scale);
+    const lineHeight = Math.round(12 * scale);
     
     // Cadre principal
     ctx.strokeStyle = '#cccccc';
-    ctx.lineWidth = 1;
+    ctx.lineWidth = scale;
     ctx.fillStyle = '#fafafa';
     ctx.fillRect(statsArea.x, statsArea.y, statsArea.width, statsArea.height);
     ctx.strokeRect(statsArea.x, statsArea.y, statsArea.width, statsArea.height);
     
-    // Titre
+    // Titre - police scalée
     ctx.fillStyle = '#333333';
-    ctx.font = 'bold 9px Arial, sans-serif';
+    ctx.font = `bold ${this.fonts.fontStats}px Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     ctx.fillText(stats.title, statsArea.x + padding, statsArea.y + padding);
     
     // Sous-titre (zone)
     if (stats.subtitle) {
-      ctx.font = '8px Arial, sans-serif';
+      ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
       ctx.fillStyle = '#666666';
-      ctx.fillText(stats.subtitle, statsArea.x + padding, statsArea.y + padding + 10);
+      ctx.fillText(stats.subtitle, statsArea.x + padding, statsArea.y + padding + Math.round(10 * scale));
     }
     
-    // Lignes de stats principales
-    ctx.font = '8px Arial, sans-serif';
+    // Lignes de stats principales - police scalée
+    ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
     let y = statsArea.y + headerHeight + padding;
     
     for (const row of stats.rows) {
@@ -953,24 +1006,25 @@ export class ExportFrame {
     
     // Contexte multi-niveaux (parent_context)
     if (stats.contextRows && stats.contextRows.length > 0) {
-      y += 4; // Petit espace
+      y += Math.round(4 * scale); // Petit espace scalé
       
       // Ligne de séparation
       ctx.strokeStyle = '#dddddd';
+      ctx.lineWidth = scale;
       ctx.beginPath();
       ctx.moveTo(statsArea.x + padding, y);
       ctx.lineTo(statsArea.x + statsArea.width - padding, y);
       ctx.stroke();
-      y += 6;
+      y += Math.round(6 * scale);
       
-      // Titre contexte
+      // Titre contexte - police scalée
       ctx.fillStyle = '#666666';
-      ctx.font = 'bold 8px Arial, sans-serif';
+      ctx.font = `bold ${Math.round(8 * scale)}px Arial, sans-serif`;
       ctx.fillText('Contexte', statsArea.x + padding, y);
       y += lineHeight;
       
-      // Lignes de contexte
-      ctx.font = '8px Arial, sans-serif';
+      // Lignes de contexte - police scalée
+      ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
       for (const row of stats.contextRows) {
         ctx.fillStyle = '#666666';
         ctx.fillText(row.label + ' :', statsArea.x + padding, y);

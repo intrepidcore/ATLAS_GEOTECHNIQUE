@@ -1209,10 +1209,29 @@ export class ThematicMapManager {
     try {
       let coords: number[][] | null = null
       
-      this.admOverlayLayer.eachLayer((layer: any) => {
-        if (coords) return // Prendre seulement le premier polygone
+      // Fonction récursive pour trouver le premier polygone dans les layers imbriqués
+      const findPolygonCoords = (layer: any, depth: number = 0): void => {
+        if (coords) return // Déjà trouvé
         
-        if (layer.getLatLngs) {
+        console.log(`[ThematicMap] Exploring layer depth=${depth}:`, {
+          type: layer.constructor?.name,
+          hasGetLatLngs: !!layer.getLatLngs,
+          hasGetLayers: !!layer.getLayers,
+          hasFeature: !!layer.feature
+        })
+        
+        // Si c'est un groupe de layers (L.GeoJSON, L.FeatureGroup), explorer les sous-layers
+        if (layer.getLayers && typeof layer.getLayers === 'function') {
+          const subLayers = layer.getLayers()
+          console.log(`[ThematicMap] Layer has ${subLayers.length} sub-layers`)
+          for (const subLayer of subLayers) {
+            findPolygonCoords(subLayer, depth + 1)
+            if (coords) return
+          }
+        }
+        
+        // Si c'est un polygone avec getLatLngs
+        if (layer.getLatLngs && typeof layer.getLatLngs === 'function') {
           const latLngs = layer.getLatLngs()
           console.log('[ThematicMap] Layer latLngs:', {
             isArray: Array.isArray(latLngs),
@@ -1222,14 +1241,27 @@ export class ThematicMapManager {
           })
           
           // GeoJSON peut avoir plusieurs niveaux d'imbrication
-          const ring = Array.isArray(latLngs[0]) 
-            ? (Array.isArray(latLngs[0][0]) ? latLngs[0][0] : latLngs[0])
-            : latLngs
+          // Polygon: [[LatLng, LatLng, ...]]
+          // MultiPolygon: [[[LatLng, ...]]]
+          let ring: any = latLngs
+          while (Array.isArray(ring) && Array.isArray(ring[0]) && !(ring[0] as any).lat) {
+            ring = ring[0]
+          }
           
-          coords = ring.map((ll: any) => [ll.lng, ll.lat])
-          console.log('[ThematicMap] Coords extraites:', coords?.length, 'points')
+          if (ring && ring.length > 0 && (ring[0] as any).lat !== undefined) {
+            coords = ring.map((ll: any) => [ll.lng, ll.lat])
+            console.log('[ThematicMap] Coords extraites:', coords?.length, 'points')
+          }
         }
+      }
+      
+      this.admOverlayLayer.eachLayer((layer: any) => {
+        findPolygonCoords(layer, 0)
       })
+      
+      if (!coords) {
+        console.warn('[ThematicMap] Aucune coordonnée trouvée dans admOverlayLayer')
+      }
       
       return coords
     } catch (e) {

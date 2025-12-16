@@ -719,6 +719,17 @@ export class ExportQuickDialog {
     const dialog = this.overlay.querySelector('.export-dialog');
     if (!dialog) return;
     
+    // ========== SAUVEGARDER TOUTES LES OPTIONS AVANT DE MODIFIER LE DOM ==========
+    // C'est CRITIQUE car body.innerHTML va détruire les éléments du formulaire
+    const savedOptions = {
+      hideGridLayer: (this.overlay.querySelector('#export-hide-grid-layer') as HTMLInputElement)?.checked ?? true,
+      showEmptyCells: (this.overlay.querySelector('#export-show-empty-cells') as HTMLInputElement)?.checked ?? false,
+      onlyAdmCells: (this.overlay.querySelector('#export-only-adm-cells') as HTMLInputElement)?.checked ?? true,
+      showNeighbors: (this.overlay.querySelector('#export-show-neighbors') as HTMLInputElement)?.checked ?? true,
+      maskMode: ((this.overlay.querySelector('#export-mask-mode') as HTMLSelectElement)?.value || 'context') as 'none' | 'context' | 'focus' | 'clip'
+    };
+    console.log('[Export] Options sauvegardées AVANT modification DOM:', savedOptions);
+    
     // Afficher le spinner
     const body = dialog.querySelector('.export-dialog-body');
     const footer = dialog.querySelector('.export-dialog-footer');
@@ -808,12 +819,11 @@ export class ExportQuickDialog {
       updateProgress('Attente du rendu thématique...');
       await new Promise(resolve => setTimeout(resolve, 800));
       
-      // Masquer la grille de fond si demandé
-      const hideGridLayer = (this.overlay?.querySelector('#export-hide-grid-layer') as HTMLInputElement)?.checked ?? true;
+      // Masquer la grille de fond si demandé (utiliser savedOptions)
       const gridLayer = this.config.getGridLayer?.();
       let gridWasVisible = false;
       
-      if (hideGridLayer && gridLayer && map) {
+      if (savedOptions.hideGridLayer && gridLayer && map) {
         gridWasVisible = map.hasLayer(gridLayer);
         if (gridWasVisible) {
           map.removeLayer(gridLayer);
@@ -863,10 +873,9 @@ export class ExportQuickDialog {
       exportFrame.drawTitle(thematic, admFilters);
       await exportFrame.drawMapImage(mapCapture.canvas);
       
-      // Dessiner les mailles vides AVANT le masque (pour qu'elles soient visibles)
-      const showEmptyCells = (this.overlay?.querySelector('#export-show-empty-cells') as HTMLInputElement)?.checked ?? false;
+      // Dessiner les mailles vides AVANT le masque (utiliser savedOptions)
       let emptyCellsDrawn = false;
-      if (showEmptyCells && this.options.zone === 'adm-filtered' && admFilters) {
+      if (savedOptions.showEmptyCells && this.options.zone === 'adm-filtered' && admFilters) {
         try {
           const cells = await this.fetchAdmCells(admFilters);
           console.log('[Export] Mailles récupérées:', cells.length, 'dont vides:', cells.filter(c => !c.has_data).length);
@@ -879,21 +888,13 @@ export class ExportQuickDialog {
         }
       }
       
-      // Dessiner le masque hors ADM si demandé
-      const maskModeSelect = this.overlay?.querySelector('#export-mask-mode') as HTMLSelectElement;
-      console.log('[Export] Masque selector:', {
-        found: !!maskModeSelect,
-        value: maskModeSelect?.value,
-        selectedIndex: maskModeSelect?.selectedIndex,
-        options: maskModeSelect ? Array.from(maskModeSelect.options).map(o => ({ value: o.value, selected: o.selected })) : []
-      });
-      const maskMode = (maskModeSelect?.value || 'none') as 'none' | 'context' | 'focus' | 'clip';
+      // Dessiner le masque hors ADM si demandé (utiliser savedOptions.maskMode)
       const admPolygon = this.config.getAdmPolygon?.();
-      console.log('[Export] Masque ADM - mode:', maskMode, 'polygon:', admPolygon?.length || 0, 'points');
+      console.log('[Export] Masque ADM - mode:', savedOptions.maskMode, 'polygon:', admPolygon?.length || 0, 'points');
       
-      if (maskMode !== 'none' && this.options.zone === 'adm-filtered') {
+      if (savedOptions.maskMode !== 'none' && this.options.zone === 'adm-filtered') {
         if (admPolygon && admPolygon.length >= 3) {
-          exportFrame.drawAdmMask(admPolygon, bbox, maskMode);
+          exportFrame.drawAdmMask(admPolygon, bbox, savedOptions.maskMode);
         } else {
           console.warn('[Export] Pas de polygone ADM valide pour le masque');
         }
@@ -901,9 +902,8 @@ export class ExportQuickDialog {
       
       exportFrame.drawGridAndFrame(bbox);
       
-      // Dessiner les labels des ADM limitrophes si zone filtrée et option activée
-      const showNeighbors = (this.overlay?.querySelector('#export-show-neighbors') as HTMLInputElement)?.checked ?? true;
-      if (showNeighbors && this.options.zone === 'adm-filtered' && admFilters) {
+      // Dessiner les labels des ADM limitrophes si zone filtrée et option activée (utiliser savedOptions)
+      if (savedOptions.showNeighbors && this.options.zone === 'adm-filtered' && admFilters) {
         try {
           const neighbors = await this.fetchAdmNeighbors(admFilters);
           const admPolygonForLabels = this.config.getAdmPolygon?.();
@@ -917,7 +917,7 @@ export class ExportQuickDialog {
       
       // Récupérer les données de légende thématique
       const legendData = this.config.getThematicLegendData?.() || undefined;
-      const hasAdmBoundary = maskMode !== 'none' && !!admPolygon && admPolygon.length >= 3;
+      const hasAdmBoundary = savedOptions.maskMode !== 'none' && !!admPolygon && admPolygon.length >= 3;
       exportFrame.drawLegend(legendData, emptyCellsDrawn, hasAdmBoundary);
       
       // Calculer et dessiner les statistiques si demandé
