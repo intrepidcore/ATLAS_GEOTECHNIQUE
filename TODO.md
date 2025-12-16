@@ -2110,3 +2110,170 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 | `ui/src/export/export-quick-dialog.ts` | + checkbox voisins, select masque 4 modes, apiStats |
 | `ui/src/thematic/thematic-types.ts` | + Statistics enrichie, ThematicExportState.apiStats |
 | `ui/src/thematic/thematic-maps.ts` | + apiStats dans updateExportState |
+
+---
+
+## 🚧 ROADMAP v4.0 - Refonte Export Pro & Atlas (2025-12-16)
+
+**Objectif** : Corriger les problèmes fondamentaux de l'export identifiés lors de la revue de code
+
+### Diagnostic des problèmes actuels
+
+#### Problème 1 : Format / emprise de la carte
+- La page a un ratio proche du A4, mais la carte "s'étire" avec le canvas
+- Pas de vrai "gabarit A4 fixe + carte centrée avec marges constantes"
+- Le canvas s'adapte à la capture au lieu d'avoir des dimensions fixes
+
+#### Problème 2 : Masque hors ADM
+- Le contour ADM (pointillé violet) est visible → coordonnées OK
+- Mais le remplissage de masque n'est pas dessiné ou pas visible
+- Causes probables : `drawAdmMask` pas appelé, appelé avant l'image, ou conversion lat/lon → pixels incorrecte
+
+#### Problème 3 : Mailles sans données
+- Option cochée dans l'UI mais aucune maille grise n'apparaît
+- Pas d'entrée "Sans données" dans la légende
+- Causes : API ne retourne pas les mailles vides, ou elles sont recouvertes
+
+#### Problème 4 : Labels ADM limitrophes
+- Option activée mais aucun label visible (Ghana, Bénin, etc.)
+- Causes : fonction pas appelée, ou recouvertes, ou `neighbors.length === 0`
+
+#### Problème 5 : Statistiques figées
+- Stats identiques quelle que soit la zone (Maritime → Maritime/Ave)
+- `buildExportStats` utilise `currentThematicData.statistics` (ADM1 uniquement)
+- Pas de recalcul pour ADM2/ADM3
+
+#### Problème 6 : DPI 72 vs 300
+- Aucune différence visible entre les deux options
+- Le canvas n'est pas redimensionné selon le DPI
+- `html2canvas` n'utilise pas le paramètre `scale`
+
+---
+
+### Étape 1 – Stabiliser le gabarit page A4
+
+**Objectif** : Séparer le format de la page de la fenêtre carto
+
+#### 1.1 Introduire un PageLayout unique
+- [ ] Créer type `PageLayout` avec dimensions fixes selon DPI :
+  - A4 portrait 72 dpi : 595×842 px
+  - A4 portrait 300 dpi : 2480×3508 px
+- [ ] Définir `mapArea`, `legendArea`, `statsArea`, `cartoucheArea` en % de la page
+- [ ] Layout indépendant de l'ADM et de la grille
+
+#### 1.2 Adapter le container HTML
+- [ ] Créer div `#export-frame` de dimension `(pageWidthPx, pageHeightPx)`
+- [ ] Carte Leaflet redimensionnée à `mapArea.width × mapArea.height`
+- [ ] Appeler `map.invalidateSize()` après redimensionnement
+
+#### 1.3 FitBounds indépendant de la page
+- [ ] Garder logique bbox ADM + marge (2–8%)
+- [ ] Paddings calculés en pixels dans mapArea, pas au niveau page
+
+#### 1.4 Implémenter vraiment le DPI
+- [ ] `scaleFactor = targetDpi / 72`
+- [ ] Dimensionner page : `A4_WIDTH_INCHES * targetDpi`
+- [ ] Appeler `html2canvas` avec `scale: scaleFactor`
+
+---
+
+### Étape 2 – Corriger les stats + légende par ADM
+
+**Objectif** : Stats et légende reflètent exactement la zone exportée
+
+#### 2.1 Filtrer les features par ADM
+- [ ] Si export "Zone filtrée (ADM1/ADM2/ADM3)" :
+  - Requête avec `adm1=...&adm2=...&adm3=...`
+  - OU filtrer côté frontend : `features.filter(f => f.properties.adm2_code === selectedAdm2Code)`
+
+#### 2.2 Refonte de buildExportStats
+- [ ] Travailler sur `featuresZone` (déjà filtrées ADM)
+- [ ] Calculer : `nCellsWithData`, `nCellsTotal`, `coverage`, `mean`
+- [ ] Passer ce bloc à `drawStats`
+
+#### 2.3 Légende = classes réellement présentes
+- [ ] Pour chaque classe : vérifier `classCount[k] > 0`
+- [ ] Ne pas ajouter les classes avec 0 mailles
+- [ ] Légende reflète uniquement la distribution de la zone
+
+---
+
+### Étape 3 – Mailles sans données + onlyAdmCells
+
+**Objectif** : Afficher les mailles vides et limiter aux mailles de l'ADM
+
+#### 3.1 Récupérer toutes les mailles de la zone
+- [ ] Endpoint `/coverage/mailles?adm1=...&adm2=...&adm3=...`
+- [ ] Retourne : `code`, `geometry`, `has_data` (bool)
+- [ ] Cache `admCellsCache` déjà en place
+
+#### 3.2 Dessiner les mailles vides
+- [ ] Si `showEmptyCells` coché :
+  - Mailles `has_data=true` : palette thématique
+  - Mailles `has_data=false` : gris clair `rgba(200, 200, 200, 0.3)`
+
+#### 3.3 Option "Uniquement mailles dans l'ADM"
+- [ ] Ajouter checkbox dans Export Pro (déjà dans Export Atlas)
+- [ ] Si `onlyAdmCells=true` : ne dessiner que les mailles de l'ADM
+
+#### 3.4 Légende enrichie
+- [ ] Si `showEmptyCells` → ligne "Sans données" (carré gris)
+- [ ] Si `showAdmBoundary` → ligne "Limite ADM" (pointillé violet)
+
+---
+
+### Étape 4 – Réparer le masque hors ADM + labels limitrophes
+
+**Objectif** : Masque et labels fonctionnent quel que soit le format
+
+#### 4.1 Tester drawAdmMask en sandbox
+- [ ] Test simple : canvas 800×800, mapArea [100,100,600,600]
+- [ ] ADM = rectangle interne [200,200,500,500]
+- [ ] Vérifier zone centrale claire + contour sombre
+
+#### 4.2 Vérifier conversion lat/lon → pixels
+- [ ] Utiliser `map.latLngToContainerPoint([lat, lon])`
+- [ ] Recentrer dans mapArea si décalé
+- [ ] Logger que (x,y) sont bien dans mapArea
+
+#### 4.3 Ordre de dessin correct
+1. Image de la carte (capture html2canvas)
+2. Grille
+3. Mailles (si redessinées à la main)
+4. Masque hors ADM
+5. Labels ADM limitrophes
+6. Cadre, coordonnées, légende, stats, cartouche
+
+#### 4.4 Labels limitrophes
+- [ ] Vérifier `neighbors && neighbors.length > 0 && options.showNeighbors`
+- [ ] Police : `italic 12px Arial` (pas 16px)
+- [ ] Halo blanc + texte #444
+- [ ] Position juste à l'extérieur de l'ADM
+
+---
+
+### Ordre d'implémentation recommandé
+
+| Priorité | Action | Statut |
+|----------|--------|--------|
+| 1 | PageLayout A4 fixe + mapArea | ⏳ |
+| 2 | DPI 72 vs 300 fonctionnel | ⏳ |
+| 3 | Stats filtrées par ADM | ⏳ |
+| 4 | Légende = classes présentes uniquement | ⏳ |
+| 5 | Mailles sans données (API + dessin) | ⏳ |
+| 6 | Option onlyAdmCells dans Export Pro | ⏳ |
+| 7 | Masque hors ADM fonctionnel | ⏳ |
+| 8 | Labels limitrophes visibles | ⏳ |
+| 9 | Export Atlas utilisant les mêmes briques | ⏳ |
+
+---
+
+### Fichiers à modifier
+
+| Fichier | Modifications prévues |
+|---------|----------------------|
+| `ui/src/export/export-frame.ts` | PageLayout A4, DPI, drawAdmMask, drawNeighborLabels |
+| `ui/src/export/export-quick-dialog.ts` | Container A4, filtrage features, checkbox onlyAdmCells |
+| `ui/src/export/export-stats.ts` | buildExportStats avec featuresZone |
+| `ui/src/export/export-atlas-dialog.ts` | Utiliser les mêmes briques que Export Pro |
+| `ui/src/export/capture-utils.ts` | html2canvas avec scale selon DPI |
