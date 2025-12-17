@@ -2334,20 +2334,18 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ### PHASE 2 — Bloc AUTH/UX : sécuriser & structurer
 
-#### 2.1 Forcer le login à l'entrée ✅ (DÉJÀ IMPLÉMENTÉ)
-> Implémenté dans `ui/src/App.tsx` lignes 419-434
-- [x] Guard global au boot: vérifier token valide (`authLoading` + `isAuthenticated`)
-- [x] Si absent/expiré → affichage `<LoginPage />`
-- [x] Composant App: `if (!isAuthenticated) return <LoginPage />`
-- [ ] ~~Centraliser `authClient` avec refresh automatique sur 401~~ (optionnel, non prioritaire)
-- [ ] ~~**Logs**: `[Auth] boot isAuthenticated=true|false reason=...`~~ (optionnel)
+#### 2.1 Forcer le login à l'entrée ✅
+> Implémenté dans `ui/src/main.ts` (carte) et `ui/src/App.tsx` (gestionnaire)
+- [x] **Carte (index.html)**: Guard dans `main.ts` - redirige vers `/db-manager.html` si non authentifié
+- [x] **Gestionnaire (db-manager.html)**: `if (!isAuthenticated) return <LoginPage />`
+- [x] **Logs**: `[Auth] boot isAuthenticated=true|false`
 
-#### 2.2 Redirection par rôle après login ✅ (DÉJÀ IMPLÉMENTÉ)
-> Implémenté dans `ui/src/App.tsx` lignes 436-477
+#### 2.2 Redirection par rôle après login ✅
+> Implémenté dans `ui/src/App.tsx` avec useEffect
 - [x] Décoder `user.roles[]` au login via `useAuth()` hook
-- [x] Étudiants uniquement → `ColabStudentPage` (espace terrain)
-- [x] Autres rôles (admin, supervisor, data_manager, etc.) → Gestionnaire BDD
-- [ ] ~~Wrapper `RequireRoles` pour protéger les routes sensibles~~ (optionnel, non prioritaire)
+- [x] Étudiants uniquement → restent sur `ColabStudentPage` (espace terrain)
+- [x] Autres rôles → redirection automatique vers `/index.html` (carte principale)
+- [x] **Logs**: `[Auth] Utilisateur non-étudiant authentifié - redirection vers carte`
 
 ---
 

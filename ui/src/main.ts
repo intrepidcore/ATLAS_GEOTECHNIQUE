@@ -3,6 +3,25 @@ console.log(
   new Date().toISOString()
 );
 
+// ============================================================================
+// GUARD D'AUTHENTIFICATION - Forcer le login à l'entrée
+// ============================================================================
+import { tokenStorage } from './services/auth-api'
+
+// Vérifier si l'utilisateur est authentifié
+const isAuthenticated = tokenStorage.isAuthenticated()
+console.log('[Auth] boot isAuthenticated=' + isAuthenticated)
+
+if (!isAuthenticated) {
+  // Rediriger vers la page de login (db-manager.html qui contient LoginPage)
+  console.log('[Auth] Non authentifié - redirection vers login')
+  window.location.href = '/db-manager.html'
+  // Arrêter l'exécution du reste du script
+  throw new Error('Redirection vers login')
+}
+
+// ============================================================================
+
 import L from 'leaflet'
 import { Chart, registerables } from 'chart.js'
 import proj4 from 'proj4'

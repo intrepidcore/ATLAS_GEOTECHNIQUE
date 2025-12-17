@@ -47,6 +47,20 @@ function App() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
 
+  // Redirection après login pour les non-étudiants vers la carte principale
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      const isStudentOnly = user.roles?.includes('student') && 
+        !user.roles?.some(r => ['admin', 'supervisor', 'data_manager', 'geo_analyst', 'editor', 'viewer'].includes(r))
+      
+      // Si non-étudiant et on vient de se connecter (vérifier si on est sur db-manager)
+      if (!isStudentOnly && window.location.pathname.includes('db-manager')) {
+        console.log('[Auth] Utilisateur non-étudiant authentifié - redirection vers carte')
+        window.location.href = '/index.html'
+      }
+    }
+  }, [isAuthenticated, user])
+
   // Charger les notifications
   useEffect(() => {
     if (isAuthenticated) {
