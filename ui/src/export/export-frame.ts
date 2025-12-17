@@ -105,6 +105,59 @@ export function getA4Dimensions(
 }
 
 /**
+ * SOURCE DE VÉRITÉ UNIQUE pour le layout A4 et l'aspect ratio cible
+ * Utilisé par:
+ * - export-frame.ts pour créer le canvas
+ * - export-quick-dialog.ts pour normaliser le viewport Leaflet
+ * 
+ * @returns Layout complet avec dimensions page, zone carte, et aspect ratio cible
+ */
+export function getA4Layout(
+  dpi: number,
+  orientation: 'portrait' | 'landscape' = 'portrait'
+): {
+  pageWidth: number;
+  pageHeight: number;
+  mapArea: { x: number; y: number; width: number; height: number };
+  targetAspectRatio: number;
+  margin: number;
+  titleHeight: number;
+  subtitleHeight: number;
+  footerHeight: number;
+} {
+  const pageDims = getA4Dimensions(dpi, orientation);
+  const scaled = getScaledLayout(dpi);
+  
+  // Zone carte = page - marges - titre - sous-titre - footer
+  const mapX = scaled.margin;
+  const mapY = scaled.margin + scaled.titleHeight + scaled.subtitleHeight;
+  const mapWidth = pageDims.width - 2 * scaled.margin;
+  const mapHeight = pageDims.height - 2 * scaled.margin - scaled.titleHeight - scaled.subtitleHeight - scaled.footerHeight;
+  
+  const targetAspectRatio = mapWidth / mapHeight;
+  
+  console.log('[getA4Layout] Layout calculé:', {
+    dpi,
+    pageWidth: pageDims.width,
+    pageHeight: pageDims.height,
+    mapWidth,
+    mapHeight,
+    targetAspectRatio: targetAspectRatio.toFixed(4)
+  });
+  
+  return {
+    pageWidth: pageDims.width,
+    pageHeight: pageDims.height,
+    mapArea: { x: mapX, y: mapY, width: mapWidth, height: mapHeight },
+    targetAspectRatio,
+    margin: scaled.margin,
+    titleHeight: scaled.titleHeight,
+    subtitleHeight: scaled.subtitleHeight,
+    footerHeight: scaled.footerHeight
+  };
+}
+
+/**
  * Calcule les dimensions optimales de la zone carte pour un ADM donné
  * La carte s'adapte au ratio de l'ADM tout en maximisant l'espace sur la page
  */
@@ -211,7 +264,11 @@ export function computeExportLayout(
   const footerY = mapArea.y + mapArea.height + labelSpace + padding;
   const footerContentHeight = footerHeight - padding * 2;
   
-  // Zone légende (bas gauche)
+  // Calculer les zones du footer de manière cohérente (pas de chevauchement)
+  const footerWidth = totalWidth - 2 * margin;
+  const gap = padding; // Espace entre les colonnes
+  
+  // Zone légende (bas gauche) - largeur fixe
   const legendArea = {
     x: margin,
     y: footerY,
@@ -219,21 +276,35 @@ export function computeExportLayout(
     height: footerContentHeight
   };
   
-  // Zone stats (milieu)
-  const statsArea = {
-    x: margin + scaled.legendWidth + padding,
-    y: footerY,
-    width: scaled.statsWidth,
-    height: footerContentHeight
-  };
-  
-  // Zone cartouche (bas droit)
+  // Zone cartouche (bas droit) - largeur fixe, positionnée depuis la droite
   const cartoucheArea = {
     x: totalWidth - margin - scaled.cartoucheWidth,
     y: footerY,
     width: scaled.cartoucheWidth,
     height: footerContentHeight
   };
+  
+  // Zone stats (milieu) - prend l'espace restant entre légende et cartouche
+  // IMPORTANT: statsArea.width est calculé pour ne PAS chevaucher cartoucheArea
+  const statsX = legendArea.x + legendArea.width + gap;
+  const statsWidth = cartoucheArea.x - statsX - gap;
+  
+  const statsArea = {
+    x: statsX,
+    y: footerY,
+    width: Math.max(statsWidth, 100), // Minimum 100px
+    height: footerContentHeight
+  };
+  
+  // Log pour debug du layout footer
+  console.log('[ExportFrame] Footer layout:', {
+    footerWidth,
+    legendArea: { x: legendArea.x, w: legendArea.width, right: legendArea.x + legendArea.width },
+    statsArea: { x: statsArea.x, w: statsArea.width, right: statsArea.x + statsArea.width },
+    cartoucheArea: { x: cartoucheArea.x, w: cartoucheArea.width },
+    gap,
+    noOverlap: statsArea.x + statsArea.width <= cartoucheArea.x
+  });
   
   return {
     totalWidth,
@@ -371,6 +442,7 @@ export class ExportFrame {
   
   /**
    * Dessine l'image de la carte capturée
+   * Utilise un rendu LETTERBOX pour préserver l'aspect ratio (évite l'étirement)
    */
   async drawMapImage(mapImageData: string | HTMLImageElement | HTMLCanvasElement): Promise<void> {
     const { mapArea } = this.layout;
@@ -384,7 +456,45 @@ export class ExportFrame {
       img = mapImageData;
     }
     
-    this.ctx.drawImage(img, mapArea.x, mapArea.y, mapArea.width, mapArea.height);
+    // ========== EXPÉRIENCE 2B: Rendu LETTERBOX pour préserver l'aspect ratio ==========
+    const srcW = img.width;
+    const srcH = img.height;
+    const dstW = mapArea.width;
+    const dstH = mapArea.height;
+    
+    const arSrc = srcW / srcH;
+    const arDst = dstW / dstH;
+    
+    let drawW: number;
+    let drawH: number;
+    let drawX: number;
+    let drawY: number;
+    
+    if (Math.abs(arSrc - arDst) < 0.01) {
+      // Aspect ratios quasi-identiques, pas besoin de letterbox
+      drawW = dstW;
+      drawH = dstH;
+      drawX = mapArea.x;
+      drawY = mapArea.y;
+    } else {
+      // Calculer le scale pour FIT (letterbox) - pas de stretch
+      const scale = Math.min(dstW / srcW, dstH / srcH);
+      drawW = srcW * scale;
+      drawH = srcH * scale;
+      
+      // Centrer dans la zone carte
+      drawX = mapArea.x + (dstW - drawW) / 2;
+      drawY = mapArea.y + (dstH - drawH) / 2;
+      
+      console.log('[ExportFrame] Letterbox applied:', {
+        src: { w: srcW, h: srcH, ar: arSrc.toFixed(3) },
+        dst: { w: dstW, h: dstH, ar: arDst.toFixed(3) },
+        draw: { w: drawW.toFixed(0), h: drawH.toFixed(0), x: drawX.toFixed(0), y: drawY.toFixed(0) },
+        scale: scale.toFixed(3)
+      });
+    }
+    
+    this.ctx.drawImage(img, drawX, drawY, drawW, drawH);
   }
   
   /**
@@ -610,11 +720,13 @@ export class ExportFrame {
   
   /**
    * Dessine les mailles vides (sans données) en gris clair
+   * IMPORTANT: Cette fonction ne dessine QUE les mailles SANS données
+   * Les mailles AVEC données sont dans la capture Leaflet (thématique)
    * @param cells - Liste des mailles avec leur géométrie
    * @param bbox - Bounding box de la carte
    */
   drawEmptyCells(
-    cells: Array<{ geometry: any; has_data: boolean }>,
+    cells: Array<{ geometry: any; has_data: boolean; value?: number }>,
     bbox: BBox
   ): void {
     const { mapArea } = this.layout;
@@ -627,17 +739,23 @@ export class ExportFrame {
       return [x, y];
     };
     
+    const scale = this.dpi / 72;
+    const emptyCells = cells.filter(c => !c.has_data);
+    const withDataCells = cells.filter(c => c.has_data);
+    
+    console.log('[ExportFrame] drawEmptyCells:', {
+      total: cells.length,
+      withData: withDataCells.length,
+      withoutData: emptyCells.length
+    });
+    
     ctx.save();
     // Mailles vides : fond très léger + contour gris visible
-    const scale = this.dpi / 72;
     ctx.fillStyle = 'rgba(220, 220, 220, 0.15)'; // Fond quasi-transparent
     ctx.strokeStyle = 'rgba(180, 180, 180, 0.7)'; // Contour gris visible
     ctx.lineWidth = 0.5 * scale;
     
-    for (const cell of cells) {
-      // Ne dessiner que les mailles SANS données
-      if (cell.has_data) continue;
-      
+    for (const cell of emptyCells) {
       const geom = cell.geometry;
       if (!geom || geom.type !== 'Polygon') continue;
       
@@ -658,7 +776,179 @@ export class ExportFrame {
     }
     
     ctx.restore();
-    console.log('[ExportFrame] Empty cells drawn:', cells.filter(c => !c.has_data).length);
+    console.log('[ExportFrame] Empty cells drawn:', emptyCells.length);
+  }
+  
+  /**
+   * Dessine les mailles avec données en mode DEBUG (rouge vif)
+   * Utile pour vérifier si les mailles thématiques sont bien présentes
+   * @param cells - Liste des mailles avec leur géométrie
+   * @param bbox - Bounding box de la carte
+   */
+  drawDataCellsDebug(
+    cells: Array<{ geometry: any; has_data: boolean; value?: number }>,
+    bbox: BBox
+  ): void {
+    const { mapArea } = this.layout;
+    const ctx = this.ctx;
+    
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+      return [x, y];
+    };
+    
+    const scale = this.dpi / 72;
+    const withDataCells = cells.filter(c => c.has_data);
+    
+    console.log('[ExportFrame] DEBUG: Drawing', withDataCells.length, 'cells with data in RED');
+    
+    ctx.save();
+    ctx.fillStyle = 'rgba(255, 0, 0, 0.6)'; // Rouge vif semi-transparent
+    ctx.strokeStyle = 'rgba(200, 0, 0, 1)'; // Contour rouge foncé
+    ctx.lineWidth = 1.5 * scale;
+    
+    for (const cell of withDataCells) {
+      const geom = cell.geometry;
+      if (!geom || geom.type !== 'Polygon') continue;
+      
+      const coords = geom.coordinates?.[0];
+      if (!coords || coords.length < 3) continue;
+      
+      ctx.beginPath();
+      const [startX, startY] = toPixel(coords[0][0], coords[0][1]);
+      ctx.moveTo(startX, startY);
+      
+      for (let i = 1; i < coords.length; i++) {
+        const [x, y] = toPixel(coords[i][0], coords[i][1]);
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    }
+    
+    ctx.restore();
+    console.log('[ExportFrame] DEBUG cells with data drawn:', withDataCells.length);
+  }
+  
+  /**
+   * Dessine les mailles avec données en utilisant les couleurs de la légende
+   * C'est la source de vérité unique pour le rendu thématique (pas de capture Leaflet)
+   * @param cells - Liste des mailles avec leur géométrie et valeur
+   * @param bbox - Bounding box de la carte
+   * @param classes - Classes de la légende avec couleurs et breaks
+   * @returns Comptage des mailles par classe (pour filtrer la légende)
+   */
+  drawColoredCells(
+    cells: Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>,
+    bbox: BBox,
+    classes: Array<{ min: number | null; max: number | null; color: string; label: string }>
+  ): Map<number, number> {
+    const { mapArea } = this.layout;
+    const ctx = this.ctx;
+    
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+      return [x, y];
+    };
+    
+    const scale = this.dpi / 72;
+    const withDataCells = cells.filter(c => c.has_data);
+    
+    // Comptage des mailles par classe (pour filtrer la légende)
+    const classUsageCount = new Map<number, number>();
+    
+    // Palette de couleurs plus saturées pour les classes basses (n_sondages)
+    // Les couleurs originales Blues sont trop pâles pour les valeurs faibles
+    const SATURATED_COLORS: Record<string, string> = {
+      '#f7fbff': '#a6d4f7', // Classe 0-1 : bleu très clair → bleu ciel visible
+      '#deebf7': '#7ec4f0', // Classe 1-2 : bleu clair → bleu moyen
+      '#c6dbef': '#52b3e9', // Classe 2-3 : bleu → bleu plus saturé
+    };
+    
+    // Fonction pour trouver la couleur d'une valeur selon les classes
+    const getColorForValue = (value: number): { color: string; classIndex: number } => {
+      for (let i = 0; i < classes.length; i++) {
+        const cls = classes[i];
+        const min = cls.min ?? -Infinity;
+        const max = cls.max ?? Infinity;
+        if (value >= min && value < max) {
+          // Utiliser couleur saturée si disponible
+          const saturated = SATURATED_COLORS[cls.color] || cls.color;
+          return { color: saturated, classIndex: i };
+        }
+        // Cas spécial pour la dernière classe (inclusive)
+        if (cls.max === null && value >= min) {
+          const saturated = SATURATED_COLORS[cls.color] || cls.color;
+          return { color: saturated, classIndex: i };
+        }
+      }
+      // Fallback: première classe ou gris
+      return { color: classes[0]?.color || '#cccccc', classIndex: 0 };
+    };
+    
+    // Log détaillé du mapping valeur → classe → couleur (debug)
+    const sampleMapping = withDataCells.slice(0, 10).map(c => {
+      const v = c.n_sondages ?? c.value ?? 0;
+      const { color, classIndex } = getColorForValue(v);
+      const classLabel = classes[classIndex]?.label || 'N/A';
+      return { value: v, classIndex, classLabel, color };
+    });
+    
+    console.log('[ExportFrame] drawColoredCells:', {
+      totalCells: cells.length,
+      withData: withDataCells.length,
+      classCount: classes.length,
+      classes: classes.map(c => ({ min: c.min, max: c.max, label: c.label, color: c.color })),
+      sampleMapping
+    });
+    
+    ctx.save();
+    // AMÉLIORATION VISIBILITÉ: stroke plus visible pour distinguer les mailles
+    ctx.lineWidth = 1.0 * scale; // Plus épais (était 0.3)
+    ctx.strokeStyle = 'rgba(50, 80, 120, 0.6)'; // Bleu-gris visible (était gris 0.3)
+    
+    let drawnCount = 0;
+    for (const cell of withDataCells) {
+      const geom = cell.geometry;
+      if (!geom || geom.type !== 'Polygon') continue;
+      
+      const coords = geom.coordinates?.[0];
+      if (!coords || coords.length < 3) continue;
+      
+      const value = cell.n_sondages ?? cell.value ?? 0;
+      const { color, classIndex } = getColorForValue(value);
+      
+      // Compter l'usage de cette classe
+      classUsageCount.set(classIndex, (classUsageCount.get(classIndex) || 0) + 1);
+      
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      const [startX, startY] = toPixel(coords[0][0], coords[0][1]);
+      ctx.moveTo(startX, startY);
+      
+      for (let i = 1; i < coords.length; i++) {
+        const [x, y] = toPixel(coords[i][0], coords[i][1]);
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      drawnCount++;
+    }
+    
+    ctx.restore();
+    
+    // Log du comptage par classe
+    const classCountLog: Record<string, number> = {};
+    classUsageCount.forEach((count, idx) => {
+      classCountLog[classes[idx]?.label || `class${idx}`] = count;
+    });
+    console.log('[ExportFrame] Colored cells drawn:', drawnCount, 'classUsage:', classCountLog);
+    
+    return classUsageCount;
   }
   
   /**
@@ -703,8 +993,14 @@ export class ExportFrame {
    * @param legendData - Données de légende
    * @param showEmptyCells - Afficher l'entrée mailles sans données
    * @param showAdmBoundary - Afficher l'entrée délimitation ADM
+   * @param classUsageCount - Comptage des mailles par classe (pour filtrer et afficher n=X)
    */
-  drawLegend(legendData?: ThematicLegendData, showEmptyCells: boolean = false, showAdmBoundary: boolean = false): void {
+  drawLegend(
+    legendData?: ThematicLegendData, 
+    showEmptyCells: boolean = false, 
+    showAdmBoundary: boolean = false,
+    classUsageCount?: Map<number, number>
+  ): void {
     if (!this.options.includeLegend) return;
     
     const { legendArea } = this.layout;
@@ -742,24 +1038,53 @@ export class ExportFrame {
     // Si pas de données de légende, afficher un placeholder
     if (!legendData || !legendData.classes || legendData.classes.length === 0) {
       ctx.fillStyle = '#888888';
-      ctx.fillText('(aucune thématique active)', legendArea.x + 8, currentY);
+      ctx.fillText('(aucune thématique active)', legendArea.x + padding, currentY);
       currentY += lineHeight;
     } else {
-      // Filtrer les classes pour n'afficher que celles avec des mailles (count > 0)
-      // Si count n'est pas défini, on affiche la classe (compatibilité)
-      const visibleClasses = legendData.classes.filter(cls => 
-        cls.count === undefined || cls.count > 0
-      );
+      // Filtrer les classes selon le comptage réel (classUsageCount)
+      // Si classUsageCount est fourni, n'afficher que les classes utilisées
+      // Sinon, utiliser le count de la classe ou afficher toutes
+      const classesWithCount = legendData.classes.map((cls, idx) => {
+        const usageCount = classUsageCount?.get(idx) ?? cls.count ?? undefined;
+        return { ...cls, actualCount: usageCount, index: idx };
+      });
       
-      console.log('[ExportFrame] Légende - classes visibles:', visibleClasses.length, '/', legendData.classes.length);
+      // Option: afficher toutes les classes mais griser celles à count=0
+      // Pour l'instant, on filtre pour n'afficher que les classes utilisées
+      const visibleClasses = classUsageCount 
+        ? classesWithCount.filter(cls => cls.actualCount !== undefined && cls.actualCount > 0)
+        : classesWithCount.filter(cls => cls.actualCount === undefined || cls.actualCount > 0);
+      
+      console.log('[ExportFrame] Légende - classes visibles:', visibleClasses.length, '/', legendData.classes.length,
+        'classUsageCount:', classUsageCount ? Object.fromEntries(classUsageCount) : 'N/A');
       
       if (visibleClasses.length === 0) {
         ctx.fillStyle = '#888888';
-        ctx.fillText('(aucune donnée dans la zone)', legendArea.x + 8, currentY);
+        ctx.fillText('(aucune donnée dans la zone)', legendArea.x + padding, currentY);
         currentY += lineHeight;
       } else {
+        // Calculer la largeur max des labels pour bbox dynamique
+        let maxLabelWidth = 0;
+        for (const cls of visibleClasses) {
+          const labelText = cls.actualCount !== undefined 
+            ? `${cls.label} (n=${cls.actualCount})`
+            : cls.label;
+          const measured = ctx.measureText(labelText);
+          maxLabelWidth = Math.max(maxLabelWidth, measured.width);
+        }
+        
+        // Calculer la largeur dynamique de la légende
+        const dynamicWidth = padding * 2 + boxSize + Math.round(6 * scale) + maxLabelWidth + Math.round(10 * scale);
+        const actualLegendWidth = Math.max(dynamicWidth, legendArea.width);
+        
+        console.log('[ExportFrame] Légende bbox dynamique:', {
+          maxLabelWidth: maxLabelWidth.toFixed(0),
+          dynamicWidth,
+          actualWidth: actualLegendWidth
+        });
+        
         // Dessiner les classes thématiques présentes
-        visibleClasses.forEach((cls) => {
+        for (const cls of visibleClasses) {
           // Boîte de couleur
           ctx.fillStyle = cls.color;
           ctx.fillRect(legendArea.x + padding, currentY, boxSize, boxSize);
@@ -767,12 +1092,15 @@ export class ExportFrame {
           ctx.lineWidth = 0.5 * scale;
           ctx.strokeRect(legendArea.x + padding, currentY, boxSize, boxSize);
           
-          // Label
+          // Label avec comptage (n=X) si disponible
           ctx.fillStyle = '#333333';
           ctx.textBaseline = 'middle';
-          ctx.fillText(cls.label, textX, currentY + boxSize / 2);
+          const labelText = cls.actualCount !== undefined 
+            ? `${cls.label} (n=${cls.actualCount})`
+            : cls.label;
+          ctx.fillText(labelText, textX, currentY + boxSize / 2);
           currentY += lineHeight;
-        });
+        }
       }
     }
     
@@ -969,6 +1297,23 @@ export class ExportFrame {
     const headerHeight = Math.round(18 * scale);
     const lineHeight = Math.round(12 * scale);
     
+    // DEBUG: Log état du contexte avant dessin
+    console.log('[ExportFrame] drawStats DEBUG:', {
+      statsArea,
+      scale,
+      globalAlpha: ctx.globalAlpha,
+      globalCompositeOperation: ctx.globalCompositeOperation,
+      fillStyle: ctx.fillStyle,
+      font: ctx.font,
+      rowCount: stats.rows.length,
+      rows: stats.rows.map(r => ({ label: r.label, value: r.value }))
+    });
+    
+    // S'assurer que le contexte est propre
+    ctx.save();
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    
     // Cadre principal
     ctx.strokeStyle = '#cccccc';
     ctx.lineWidth = scale;
@@ -976,38 +1321,53 @@ export class ExportFrame {
     ctx.fillRect(statsArea.x, statsArea.y, statsArea.width, statsArea.height);
     ctx.strokeRect(statsArea.x, statsArea.y, statsArea.width, statsArea.height);
     
+    
     // Titre - police scalée
     ctx.fillStyle = '#333333';
     ctx.font = `bold ${this.fonts.fontStats}px Arial, sans-serif`;
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
-    ctx.fillText(stats.title, statsArea.x + padding, statsArea.y + padding);
+    
+    const titleX = statsArea.x + padding;
+    const titleY = statsArea.y + padding;
+    console.log('[ExportFrame] drawStats TITLE:', { text: stats.title, x: titleX, y: titleY, font: ctx.font, fillStyle: ctx.fillStyle });
+    ctx.fillText(stats.title, titleX, titleY);
     
     // Sous-titre (zone)
     if (stats.subtitle) {
       ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
       ctx.fillStyle = '#666666';
-      ctx.fillText(stats.subtitle, statsArea.x + padding, statsArea.y + padding + Math.round(10 * scale));
+      const subtitleY = statsArea.y + padding + Math.round(10 * scale);
+      console.log('[ExportFrame] drawStats SUBTITLE:', { text: stats.subtitle, x: titleX, y: subtitleY });
+      ctx.fillText(stats.subtitle, titleX, subtitleY);
     }
     
     // Lignes de stats principales - police scalée
     ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
     let y = statsArea.y + headerHeight + padding;
     
-    for (const row of stats.rows) {
+    for (let i = 0; i < stats.rows.length; i++) {
+      const row = stats.rows[i];
+      const labelX = statsArea.x + padding;
+      const valueX = statsArea.x + statsArea.width - padding;
+      const valueText = row.unit ? `${row.value} ${row.unit}` : row.value;
+      
+      // DEBUG: Log chaque ligne
+      console.log(`[ExportFrame] drawStats ROW[${i}]:`, { label: row.label, value: valueText, labelX, valueX, y, font: ctx.font });
+      
       ctx.fillStyle = '#555555';
-      ctx.fillText(row.label + ' :', statsArea.x + padding, y);
+      ctx.textAlign = 'left';
+      ctx.fillText(row.label + ' :', labelX, y);
       
       ctx.fillStyle = '#333333';
-      const valueText = row.unit ? `${row.value} ${row.unit}` : row.value;
       ctx.textAlign = 'right';
-      ctx.fillText(valueText, statsArea.x + statsArea.width - padding, y);
+      ctx.fillText(valueText, valueX, y);
       ctx.textAlign = 'left';
       
       y += lineHeight;
     }
     
-    // Contexte multi-niveaux (parent_context)
+    // Contexte multi-niveaux (parent_context) - AVANT ctx.restore()
     if (stats.contextRows && stats.contextRows.length > 0) {
       y += Math.round(4 * scale); // Petit espace scalé
       
@@ -1030,17 +1390,27 @@ export class ExportFrame {
       ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
       for (const row of stats.contextRows) {
         ctx.fillStyle = '#666666';
+        ctx.textAlign = 'left';
         ctx.fillText(row.label + ' :', statsArea.x + padding, y);
         
         ctx.fillStyle = '#444444';
-        const valueText = row.unit ? `${row.value} ${row.unit}` : row.value;
+        const ctxValueText = row.unit ? `${row.value} ${row.unit}` : row.value;
         ctx.textAlign = 'right';
-        ctx.fillText(valueText, statsArea.x + statsArea.width - padding, y);
+        ctx.fillText(ctxValueText, statsArea.x + statsArea.width - padding, y);
         ctx.textAlign = 'left';
         
         y += lineHeight;
       }
     }
+    
+    ctx.restore();
+    
+    // Log final pour debug
+    console.log('[ExportFrame] drawStats COMPLETE:', {
+      rowsDrawn: stats.rows.length,
+      contextRowsDrawn: stats.contextRows?.length || 0,
+      finalY: y
+    });
   }
   
   /**

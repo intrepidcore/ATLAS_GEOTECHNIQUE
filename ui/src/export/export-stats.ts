@@ -1,43 +1,109 @@
 /**
  * Statistiques pour l'export de cartes thématiques
- * Atlas Géotechnique v3.1 - Stats enrichies avec contexte parent
+ * Atlas Géotechnique v3.2 - Stats ingénieur complètes par thématique
+ * 
+ * Organisation:
+ * 1. Socle commun (mailles, couverture, fiabilité, comparaison parent)
+ * 2. Stats spécifiques par thématique
  */
 
 export interface ExportStatsRow {
   label: string;
   value: string;
   unit?: string;
-  highlight?: boolean; // Pour mettre en évidence certaines lignes
+  highlight?: boolean;
 }
 
 export interface ExportStats {
   title: string;
   subtitle?: string;
   rows: ExportStatsRow[];
-  // Section contexte multi-niveaux (optionnelle)
   contextRows?: ExportStatsRow[];
 }
 
-/** Contexte parent depuis l'API */
 export interface ParentContext {
-  level: string;       // adm0, adm1, adm2
+  level: string;
   parent_name: string;
   parent_sum: number;
   parent_cells: number;
+  parent_mean?: number;
 }
 
-/** Statistiques enrichies depuis l'API */
 export interface ApiStatistics {
   min?: number;
   max?: number;
   mean?: number;
   median?: number;
   stddev?: number;
-  count: number;           // Mailles avec données (après filtres)
-  null_count?: number;     // Mailles sans données
-  count_total?: number;    // Total mailles dans la zone
-  sum?: number;            // Somme des valeurs
+  count: number;
+  null_count?: number;
+  count_total?: number;
+  sum?: number;
   parent_context?: ParentContext;
+}
+
+// ============================================================================
+// FORMATAGE ROBUSTE - Évite les bugs d'affichage
+// ============================================================================
+
+/**
+ * Formate un nombre de manière robuste
+ * Gère null, undefined, NaN, Infinity
+ */
+function formatNumber(value: number | null | undefined, decimals: number = 2, fallback: string = '—'): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return fallback;
+  }
+  // Arrondir et formater
+  const rounded = Number(value.toFixed(decimals));
+  // Supprimer les zéros inutiles après la virgule
+  if (decimals > 0 && rounded === Math.floor(rounded)) {
+    return rounded.toFixed(0);
+  }
+  return rounded.toFixed(decimals);
+}
+
+/**
+ * Formate un pourcentage
+ */
+function formatPercent(value: number | null | undefined, decimals: number = 1): string {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return '—';
+  }
+  return `${value.toFixed(decimals)} %`;
+}
+
+/**
+ * Formate une plage de valeurs
+ */
+function formatRange(min: number | null | undefined, max: number | null | undefined, decimals: number = 2): string {
+  const minStr = formatNumber(min, decimals);
+  const maxStr = formatNumber(max, decimals);
+  return `${minStr} / ${maxStr}`;
+}
+
+/**
+ * Formate médiane avec quartiles
+ */
+function formatMedianWithQuartiles(median: number, q1: number, q3: number, decimals: number = 2): string {
+  return `${formatNumber(median, decimals)} (${formatNumber(q1, decimals)}-${formatNumber(q3, decimals)})`;
+}
+
+/**
+ * Détermine le niveau de fiabilité basé sur le nombre de mailles avec données
+ */
+function computeReliability(nWithData: number, nTotal: number): { level: string; color: string } {
+  const coverage = nTotal > 0 ? (nWithData / nTotal) : 0;
+  
+  if (nWithData >= 20 && coverage >= 0.3) {
+    return { level: 'Bon', color: '#22c55e' };
+  } else if (nWithData >= 10 && coverage >= 0.15) {
+    return { level: 'Moyen', color: '#f59e0b' };
+  } else if (nWithData >= 3) {
+    return { level: 'Faible', color: '#ef4444' };
+  } else {
+    return { level: 'Très faible', color: '#dc2626' };
+  }
 }
 
 export interface StatsInput {
@@ -177,27 +243,94 @@ export function buildExportStats(input: StatsInput): ExportStats {
     return stats;
   }
   
-  // Stats selon la thématique
+  // Stats selon la thématique - Organisation par catégorie métier
   switch (parameterId) {
+    // ═══════════════════════════════════════════════════════════════════════
+    // COUVERTURE & INSTRUMENTATION
+    // ═══════════════════════════════════════════════════════════════════════
     case 'n_sondages':
-      stats.rows = buildSondagesStatsEnriched(apiStats, values, sum, nMaillesTotales, nMaillesAvecDonnees, classes);
+      stats.rows = buildSondagesStats(apiStats, values, sum, nMaillesTotales, nMaillesAvecDonnees);
       break;
+    case 'n_echantillons':
+      stats.rows = buildEchantillonsStats(apiStats, values, sum, nMaillesTotales, nMaillesAvecDonnees);
+      break;
+    case 'n_essais_total':
+      stats.rows = buildEssaisStats(apiStats, values, sum, nMaillesTotales, nMaillesAvecDonnees);
+      break;
+      
+    // ═══════════════════════════════════════════════════════════════════════
+    // ARGILOSITÉ / PLASTICITÉ
+    // ═══════════════════════════════════════════════════════════════════════
     case 'vbs_avg':
     case 'vbs_moy':
     case 'vbs_mean':
-      stats.rows = buildVbsStatsEnriched(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      stats.rows = buildVbsStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
       break;
     case 'ip_avg':
     case 'ip_moy':
     case 'ip_mean':
-      stats.rows = buildIpStatsEnriched(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      stats.rows = buildIpStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
       break;
+    case 'wl_avg':
+    case 'wl_moy':
+      stats.rows = buildWlStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+    case 'wp_avg':
+    case 'wp_moy':
+      stats.rows = buildWpStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+      
+    // ═══════════════════════════════════════════════════════════════════════
+    // POTENTIEL DE GONFLEMENT
+    // ═══════════════════════════════════════════════════════════════════════
+    case 'eg_avg':
+    case 'eg_moy':
+      stats.rows = buildEgAvgStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+    case 'eg_max':
+      stats.rows = buildEgMaxStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+    case 'eg_min':
+      stats.rows = buildEgMinStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+      
+    // ═══════════════════════════════════════════════════════════════════════
+    // COMPACITÉ / PORTANCE (PROCTOR)
+    // ═══════════════════════════════════════════════════════════════════════
+    case 'gamma_d_max_avg':
+    case 'gamma_d_max':
+      stats.rows = buildGammaDMaxStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+    case 'w_opt_avg':
+    case 'w_opt':
+      stats.rows = buildWOptStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+      
+    // ═══════════════════════════════════════════════════════════════════════
+    // GRANULOMÉTRIE
+    // ═══════════════════════════════════════════════════════════════════════
+    case 'passant_80um_avg':
+    case 'passant_80um':
+      stats.rows = buildPassant80umStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+    case 'passant_2mm_avg':
+    case 'passant_2mm':
+      stats.rows = buildPassant2mmStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+    case 'passant_20mm_avg':
+    case 'passant_20mm':
+      stats.rows = buildPassant20mmStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      break;
+      
+    // ═══════════════════════════════════════════════════════════════════════
+    // AUTRES / GÉNÉRIQUE
+    // ═══════════════════════════════════════════════════════════════════════
     case 'profondeur_max':
     case 'depth_max':
-      stats.rows = buildDepthStatsEnriched(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
+      stats.rows = buildDepthStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, unit);
       break;
     default:
-      stats.rows = buildGenericStatsEnriched(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, parameterLabel, unit);
+      stats.rows = buildGenericStats(apiStats, values, nMaillesTotales, nMaillesAvecDonnees, parameterLabel, unit);
   }
   
   // Ajouter le contexte parent si disponible
@@ -209,141 +342,579 @@ export function buildExportStats(input: StatsInput): ExportStats {
 }
 
 // ============================================================================
-// FONCTIONS STATS ENRICHIES (utilisent apiStats si disponible)
+// FONCTIONS UTILITAIRES DE CALCUL STATISTIQUE
 // ============================================================================
 
-/**
- * Stats enrichies pour "Nombre de sondages"
- */
-function buildSondagesStatsEnriched(
+function computeMedian(values: number[]): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+}
+
+function computeStdDev(values: number[], mean: number): number {
+  if (values.length < 2) return 0;
+  const squaredDiffs = values.map(v => Math.pow(v - mean, 2));
+  const variance = squaredDiffs.reduce((a, b) => a + b, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function computeQuartiles(values: number[]): { q1: number; q3: number } {
+  if (values.length < 4) return { q1: 0, q3: 0 };
+  const sorted = [...values].sort((a, b) => a - b);
+  const q1Idx = Math.floor(sorted.length * 0.25);
+  const q3Idx = Math.floor(sorted.length * 0.75);
+  return { q1: sorted[q1Idx], q3: sorted[q3Idx] };
+}
+
+function computePercentile(values: number[], percentile: number): number {
+  if (values.length === 0) return 0;
+  const sorted = [...values].sort((a, b) => a - b);
+  const idx = Math.floor(sorted.length * percentile / 100);
+  return sorted[Math.min(idx, sorted.length - 1)];
+}
+
+/** Extrait les stats de base depuis apiStats ou values */
+function extractBaseStats(apiStats: ApiStatistics | undefined, values: number[], nTotal: number, nWithData: number) {
+  const mean = apiStats?.mean ?? (values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0);
+  const min = apiStats?.min ?? (values.length > 0 ? Math.min(...values) : 0);
+  const max = apiStats?.max ?? (values.length > 0 ? Math.max(...values) : 0);
+  const median = apiStats?.median ?? computeMedian(values);
+  const stddev = apiStats?.stddev ?? computeStdDev(values, mean);
+  const cv = mean > 0 ? (stddev / mean) : 0;
+  const coverage = nTotal > 0 ? (nWithData / nTotal * 100) : 0;
+  const { q1, q3 } = computeQuartiles(values);
+  const p10 = computePercentile(values, 10);
+  const p90 = computePercentile(values, 90);
+  const reliability = computeReliability(nWithData, nTotal);
+  
+  return { mean, min, max, median, stddev, cv, coverage, q1, q3, p10, p90, reliability };
+}
+
+// ============================================================================
+// 1. COUVERTURE & INSTRUMENTATION
+// ============================================================================
+
+/** Stats pour Nombre de sondages (n_sondages) */
+function buildSondagesStats(
   apiStats: ApiStatistics | undefined,
   values: number[],
   sum: number,
-  nMaillesTotales: number,
-  nMaillesAvecDonnees: number,
-  classes: any[]
+  nTotal: number,
+  nWithData: number
 ): ExportStatsRow[] {
-  // Utiliser sum des apiStats, sinon calculer depuis values, sinon estimer depuis mean*count
   let total = apiStats?.sum ?? sum;
-  if (total === 0 && apiStats?.mean && apiStats.count > 0) {
-    total = apiStats.mean * apiStats.count;
-  }
-  if (total === 0 && values.length > 0) {
-    total = values.reduce((a, b) => a + b, 0);
-  }
+  if (total === 0 && apiStats?.mean && apiStats.count > 0) total = apiStats.mean * apiStats.count;
+  if (total === 0 && values.length > 0) total = values.reduce((a, b) => a + b, 0);
   
-  const moyenne = nMaillesAvecDonnees > 0 ? total / nMaillesAvecDonnees : 0;
-  const couverture = nMaillesTotales > 0 ? (nMaillesAvecDonnees / nMaillesTotales * 100) : 0;
+  const { mean, median, max, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
   
-  console.log('[ExportStats] Sondages:', { total, moyenne, couverture, apiStats, sum, values: values.length });
+  // Mailles denses (≥3 sondages)
+  const nDenses = values.filter(v => v >= 3).length;
+  const pctDenses = nWithData > 0 ? (nDenses / nWithData * 100) : 0;
+  
+  // Densité surfacique (mailles 2x2 km = 4 km²)
+  const aireZoneKm2 = nTotal * 4;
+  const densiteSurfacique = aireZoneKm2 > 0 ? (total / aireZoneKm2 * 100) : 0;
   
   const rows: ExportStatsRow[] = [
-    { label: 'Sondages total', value: Math.round(total).toString(), highlight: true },
-    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMaillesTotales}` },
-    { label: 'Couverture', value: couverture.toFixed(1), unit: '%' },
-    { label: 'Moyenne par maille', value: moyenne.toFixed(1) }
+    { label: 'Sondages total', value: formatNumber(total, 0), highlight: true },
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'Moyenne / maille', value: formatNumber(mean, 2) },
+    { label: 'Médiane', value: formatNumber(median, 1) },
+    { label: 'Max / maille', value: formatNumber(max, 0) },
+    { label: 'Mailles denses (≥3)', value: `${nDenses} (${formatNumber(pctDenses, 0)}%)` },
+    { label: 'Densité', value: `${formatNumber(densiteSurfacique, 1)} / 100 km²` }
   ];
-  
-  // Mailles denses (≥3 sondages) - utile pour planification
-  if (values.length > 0) {
-    const nDenses = values.filter(v => v >= 3).length;
-    rows.push({ label: 'Mailles denses (≥3)', value: nDenses.toString() });
-  }
   
   return rows;
 }
 
-/**
- * Stats enrichies pour VBS (argilosité)
- */
-function buildVbsStatsEnriched(
+/** Stats pour Nombre d'échantillons (n_echantillons) */
+function buildEchantillonsStats(
   apiStats: ApiStatistics | undefined,
   values: number[],
-  nMaillesTotales: number,
-  nMaillesAvecDonnees: number,
-  unit: string
+  sum: number,
+  nTotal: number,
+  nWithData: number
 ): ExportStatsRow[] {
-  const moyenne = apiStats?.mean ?? (values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0);
-  const min = apiStats?.min ?? (values.length > 0 ? Math.min(...values) : 0);
-  const max = apiStats?.max ?? (values.length > 0 ? Math.max(...values) : 0);
-  const couverture = nMaillesTotales > 0 ? (nMaillesAvecDonnees / nMaillesTotales * 100) : 0;
+  let total = apiStats?.sum ?? sum;
+  if (total === 0 && values.length > 0) total = values.reduce((a, b) => a + b, 0);
   
-  return [
-    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMaillesTotales}` },
-    { label: 'Couverture', value: couverture.toFixed(1), unit: '%' },
-    { label: 'VBS moyen', value: moyenne.toFixed(2), unit: unit || 'g/100g', highlight: true },
-    { label: 'VBS min / max', value: `${min.toFixed(2)} / ${max.toFixed(2)}`, unit: unit || 'g/100g' }
+  const { mean, median, max, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Échantillons total', value: formatNumber(total, 0), highlight: true },
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'Moyenne / maille', value: formatNumber(mean, 2) },
+    { label: 'Médiane', value: formatNumber(median, 1) },
+    { label: 'Max / maille', value: formatNumber(max, 0) }
   ];
+  
+  return rows;
 }
 
-/**
- * Stats enrichies pour IP (plasticité)
- */
-function buildIpStatsEnriched(
+/** Stats pour Nombre d'essais (n_essais_total) */
+function buildEssaisStats(
   apiStats: ApiStatistics | undefined,
   values: number[],
-  nMaillesTotales: number,
-  nMaillesAvecDonnees: number,
-  unit: string
+  sum: number,
+  nTotal: number,
+  nWithData: number
 ): ExportStatsRow[] {
-  const moyenne = apiStats?.mean ?? (values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0);
-  const min = apiStats?.min ?? (values.length > 0 ? Math.min(...values) : 0);
-  const max = apiStats?.max ?? (values.length > 0 ? Math.max(...values) : 0);
-  const couverture = nMaillesTotales > 0 ? (nMaillesAvecDonnees / nMaillesTotales * 100) : 0;
+  let total = apiStats?.sum ?? sum;
+  if (total === 0 && values.length > 0) total = values.reduce((a, b) => a + b, 0);
   
-  return [
-    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMaillesTotales}` },
-    { label: 'Couverture', value: couverture.toFixed(1), unit: '%' },
-    { label: 'IP moyen', value: moyenne.toFixed(1), unit: unit || '%', highlight: true },
-    { label: 'IP min / max', value: `${min.toFixed(1)} / ${max.toFixed(1)}`, unit: unit || '%' }
+  const { mean, median, max, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Essais total', value: formatNumber(total, 0), highlight: true },
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'Moyenne / maille', value: formatNumber(mean, 2) },
+    { label: 'Médiane', value: formatNumber(median, 1) },
+    { label: 'Max / maille', value: formatNumber(max, 0) }
   ];
+  
+  return rows;
 }
 
-/**
- * Stats enrichies pour profondeur d'investigation
- */
-function buildDepthStatsEnriched(
-  apiStats: ApiStatistics | undefined,
-  values: number[],
-  nMaillesTotales: number,
-  nMaillesAvecDonnees: number,
-  unit: string
-): ExportStatsRow[] {
-  const moyenne = apiStats?.mean ?? (values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0);
-  const min = apiStats?.min ?? (values.length > 0 ? Math.min(...values) : 0);
-  const max = apiStats?.max ?? (values.length > 0 ? Math.max(...values) : 0);
-  const couverture = nMaillesTotales > 0 ? (nMaillesAvecDonnees / nMaillesTotales * 100) : 0;
-  
-  return [
-    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMaillesTotales}` },
-    { label: 'Couverture', value: couverture.toFixed(1), unit: '%' },
-    { label: 'Profondeur moyenne', value: moyenne.toFixed(2), unit: unit || 'm', highlight: true },
-    { label: 'Prof. min / max', value: `${min.toFixed(2)} / ${max.toFixed(2)}`, unit: unit || 'm' }
-  ];
+// ============================================================================
+// 2. ARGILOSITÉ / PLASTICITÉ
+// ============================================================================
+
+/** Classification VBS selon seuils standards */
+function classifyVBS(value: number): string {
+  if (value >= 8) return 'Très argileux';
+  if (value >= 6) return 'Argileux';
+  if (value >= 2.5) return 'Limoneux';
+  if (value >= 1.5) return 'Sablo-limoneux';
+  if (value >= 0.2) return 'Sableux';
+  return 'Très sableux';
 }
 
-/**
- * Stats enrichies génériques
- */
-function buildGenericStatsEnriched(
+/** Stats pour VBS moyen (vbs_avg) */
+function buildVbsStats(
   apiStats: ApiStatistics | undefined,
   values: number[],
-  nMaillesTotales: number,
-  nMaillesAvecDonnees: number,
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || 'g/100g';
+  
+  // Classe dominante
+  const classeDominante = classifyVBS(median);
+  
+  // % mailles au-dessus seuil alerte (VBS ≥ 2.5 = sols argileux)
+  const nAboveSeuil = values.filter(v => v >= 2.5).length;
+  const pctAboveSeuil = values.length > 0 ? (nAboveSeuil / values.length * 100) : 0;
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'VBS médian (Q1-Q3)', value: `${formatNumber(median, 2)} (${formatNumber(q1, 1)}-${formatNumber(q3, 1)})`, unit: unitStr, highlight: true },
+    { label: 'VBS min / max', value: `${formatNumber(min, 2)} / ${formatNumber(max, 2)}`, unit: unitStr },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 2)} / ${formatNumber(p90, 2)}`, unit: unitStr },
+    { label: 'Classe dominante', value: classeDominante },
+    { label: '% sols argileux (≥2.5)', value: `${formatNumber(pctAboveSeuil, 0)}%` }
+  ];
+  
+  return rows;
+}
+
+/** Classification IP selon seuils standards */
+function classifyIP(value: number): string {
+  if (value > 40) return 'Très plastique';
+  if (value > 25) return 'Plastique';
+  if (value > 12) return 'Moyennement plastique';
+  if (value > 7) return 'Peu plastique';
+  return 'Non plastique';
+}
+
+/** Stats pour IP moyen (ip_avg) */
+function buildIpStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  
+  const classeDominante = classifyIP(median);
+  
+  // % mailles à risque (IP ≥ 25)
+  const nRisque = values.filter(v => v >= 25).length;
+  const pctRisque = values.length > 0 ? (nRisque / values.length * 100) : 0;
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'IP médian (Q1-Q3)', value: `${formatNumber(median, 1)} (${formatNumber(q1, 0)}-${formatNumber(q3, 0)})`, unit: unitStr, highlight: true },
+    { label: 'IP min / max', value: `${formatNumber(min, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 1)} / ${formatNumber(p90, 1)}`, unit: unitStr },
+    { label: 'Plasticité dominante', value: classeDominante },
+    { label: '% plastiques (IP≥25)', value: `${formatNumber(pctRisque, 0)}%` }
+  ];
+  
+  return rows;
+}
+
+/** Stats pour WL moyen (wl_avg) */
+function buildWlStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'WL médian (Q1-Q3)', value: `${formatNumber(median, 1)} (${formatNumber(q1, 0)}-${formatNumber(q3, 0)})`, unit: unitStr, highlight: true },
+    { label: 'WL min / max', value: `${formatNumber(min, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 1)} / ${formatNumber(p90, 1)}`, unit: unitStr }
+  ];
+  
+  return rows;
+}
+
+/** Stats pour WP moyen (wp_avg) */
+function buildWpStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'WP médian (Q1-Q3)', value: `${formatNumber(median, 1)} (${formatNumber(q1, 0)}-${formatNumber(q3, 0)})`, unit: unitStr, highlight: true },
+    { label: 'WP min / max', value: `${formatNumber(min, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 1)} / ${formatNumber(p90, 1)}`, unit: unitStr }
+  ];
+  
+  return rows;
+}
+
+// ============================================================================
+// 3. POTENTIEL DE GONFLEMENT
+// ============================================================================
+
+/** Classification Eg selon seuils standards */
+function classifyEg(value: number): string {
+  if (value >= 10) return 'Très fort';
+  if (value >= 5) return 'Fort';
+  if (value >= 2) return 'Modéré';
+  if (value >= 0.5) return 'Faible';
+  return 'Négligeable';
+}
+
+/** Stats pour Eg moyen (eg_avg) */
+function buildEgAvgStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  const p95 = computePercentile(values, 95);
+  
+  const classeDominante = classifyEg(median);
+  
+  // % mailles au-dessus seuil critique (Eg ≥ 5%)
+  const nCritique = values.filter(v => v >= 5).length;
+  const pctCritique = values.length > 0 ? (nCritique / values.length * 100) : 0;
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'Eg médian (Q1-Q3)', value: `${formatNumber(median, 2)} (${formatNumber(q1, 1)}-${formatNumber(q3, 1)})`, unit: unitStr, highlight: true },
+    { label: 'Eg P95 (pire cas)', value: formatNumber(p95, 2), unit: unitStr },
+    { label: 'Eg min / max', value: `${formatNumber(min, 2)} / ${formatNumber(max, 2)}`, unit: unitStr },
+    { label: 'Risque dominant', value: classeDominante },
+    { label: '% risque fort (≥5%)', value: `${formatNumber(pctCritique, 0)}%` }
+  ];
+  
+  return rows;
+}
+
+/** Stats pour Eg max (eg_max) */
+function buildEgMaxStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, max, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  const p95 = computePercentile(values, 95);
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'Eg max médian', value: formatNumber(median, 2), unit: unitStr, highlight: true },
+    { label: 'P90 / P95 / Max', value: `${formatNumber(p90, 1)} / ${formatNumber(p95, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: 'Risque pire cas', value: classifyEg(max) }
+  ];
+  
+  return rows;
+}
+
+/** Stats pour Eg min (eg_min) */
+function buildEgMinStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, p10, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'Eg min médian', value: formatNumber(median, 2), unit: unitStr, highlight: true },
+    { label: 'Min / P10', value: `${formatNumber(min, 2)} / ${formatNumber(p10, 2)}`, unit: unitStr }
+  ];
+  
+  return rows;
+}
+
+// ============================================================================
+// 4. COMPACITÉ / PORTANCE (PROCTOR)
+// ============================================================================
+
+/** Stats pour γd,max moyen (gamma_d_max_avg) */
+function buildGammaDMaxStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || 't/m³';
+  
+  // % mailles faible compacité (γd,max < 1.7)
+  const nFaible = values.filter(v => v < 1.7).length;
+  const pctFaible = values.length > 0 ? (nFaible / values.length * 100) : 0;
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'γd,max médian (Q1-Q3)', value: `${formatNumber(median, 2)} (${formatNumber(q1, 2)}-${formatNumber(q3, 2)})`, unit: unitStr, highlight: true },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 2)} / ${formatNumber(p90, 2)}`, unit: unitStr },
+    { label: 'Min / Max', value: `${formatNumber(min, 2)} / ${formatNumber(max, 2)}`, unit: unitStr },
+    { label: '% faible compacité (<1.7)', value: `${formatNumber(pctFaible, 0)}%` }
+  ];
+  
+  return rows;
+}
+
+/** Stats pour wopt moyenne (w_opt_avg) */
+function buildWOptStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  
+  // Fenêtre de compactage (wopt ± 2%)
+  const wOptMin = median - 2;
+  const wOptMax = median + 2;
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'wopt médian (Q1-Q3)', value: `${formatNumber(median, 1)} (${formatNumber(q1, 0)}-${formatNumber(q3, 0)})`, unit: unitStr, highlight: true },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 1)} / ${formatNumber(p90, 1)}`, unit: unitStr },
+    { label: 'Min / Max', value: `${formatNumber(min, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: 'Fenêtre compactage', value: `${formatNumber(wOptMin, 1)} - ${formatNumber(wOptMax, 1)}`, unit: unitStr }
+  ];
+  
+  return rows;
+}
+
+// ============================================================================
+// 5. GRANULOMÉTRIE
+// ============================================================================
+
+/** Classification fines selon % passant 80µm */
+function classifyFines(value: number): string {
+  if (value >= 70) return 'Très fin (argile)';
+  if (value >= 50) return 'Fin (limon argileux)';
+  if (value >= 35) return 'Moyen (limon)';
+  if (value >= 12) return 'Grossier (sable limoneux)';
+  return 'Très grossier (sable/gravier)';
+}
+
+/** Stats pour % passant 80µm (passant_80um_avg) */
+function buildPassant80umStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  
+  const classeDominante = classifyFines(median);
+  
+  // % mailles à fortes fines (≥50%)
+  const nFortesFines = values.filter(v => v >= 50).length;
+  const pctFortesFines = values.length > 0 ? (nFortesFines / values.length * 100) : 0;
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: '% <80µm médian (Q1-Q3)', value: `${formatNumber(median, 1)} (${formatNumber(q1, 0)}-${formatNumber(q3, 0)})`, unit: unitStr, highlight: true },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 1)} / ${formatNumber(p90, 1)}`, unit: unitStr },
+    { label: 'Min / Max', value: `${formatNumber(min, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: 'Texture dominante', value: classeDominante },
+    { label: '% fortes fines (≥50%)', value: `${formatNumber(pctFortesFines, 0)}%` }
+  ];
+  
+  return rows;
+}
+
+/** Stats pour % passant 2mm (passant_2mm_avg) */
+function buildPassant2mmStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  
+  const tendance = median >= 80 ? 'Plutôt fin' : median >= 50 ? 'Mixte' : 'Plutôt grossier';
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: '% <2mm médian (Q1-Q3)', value: `${formatNumber(median, 1)} (${formatNumber(q1, 0)}-${formatNumber(q3, 0)})`, unit: unitStr, highlight: true },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 1)} / ${formatNumber(p90, 1)}`, unit: unitStr },
+    { label: 'Min / Max', value: `${formatNumber(min, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: 'Tendance', value: tendance }
+  ];
+  
+  return rows;
+}
+
+/** Stats pour % passant 20mm (passant_20mm_avg) */
+function buildPassant20mmStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || '%';
+  
+  const tendance = median >= 90 ? 'Peu de graviers' : median >= 70 ? 'Graviers modérés' : 'Graveleux';
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: '% <20mm médian (Q1-Q3)', value: `${formatNumber(median, 1)} (${formatNumber(q1, 0)}-${formatNumber(q3, 0)})`, unit: unitStr, highlight: true },
+    { label: 'P10 / P90', value: `${formatNumber(p10, 1)} / ${formatNumber(p90, 1)}`, unit: unitStr },
+    { label: 'Min / Max', value: `${formatNumber(min, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: 'Tendance', value: tendance }
+  ];
+  
+  return rows;
+}
+
+// ============================================================================
+// 6. AUTRES / GÉNÉRIQUE
+// ============================================================================
+
+/** Stats pour profondeur d'investigation */
+function buildDepthStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
+  unit: string
+): ExportStatsRow[] {
+  const { median, min, max, q1, q3, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
+  const unitStr = unit || 'm';
+  
+  // % profondeur >= 10m
+  const nDeep = values.filter(v => v >= 10).length;
+  const pctDeep = values.length > 0 ? (nDeep / values.length * 100) : 0;
+  
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'Prof. médiane (Q1-Q3)', value: `${formatNumber(median, 1)} (${formatNumber(q1, 1)}-${formatNumber(q3, 1)})`, unit: unitStr, highlight: true },
+    { label: 'Prof. min / max', value: `${formatNumber(min, 1)} / ${formatNumber(max, 1)}`, unit: unitStr },
+    { label: '% prof. ≥10m', value: `${formatNumber(pctDeep, 0)}%` }
+  ];
+  
+  return rows;
+}
+
+/** Stats génériques pour paramètres non spécifiques */
+function buildGenericStats(
+  apiStats: ApiStatistics | undefined,
+  values: number[],
+  nTotal: number,
+  nWithData: number,
   parameterLabel: string,
   unit: string
 ): ExportStatsRow[] {
-  const moyenne = apiStats?.mean ?? (values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0);
-  const min = apiStats?.min ?? (values.length > 0 ? Math.min(...values) : 0);
-  const max = apiStats?.max ?? (values.length > 0 ? Math.max(...values) : 0);
-  const couverture = nMaillesTotales > 0 ? (nMaillesAvecDonnees / nMaillesTotales * 100) : 0;
+  const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
   
-  return [
-    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMaillesTotales}` },
-    { label: 'Couverture', value: couverture.toFixed(1), unit: '%' },
-    { label: 'Moyenne', value: moyenne.toFixed(2), unit, highlight: true },
-    { label: 'Min / Max', value: `${min.toFixed(2)} / ${max.toFixed(2)}`, unit }
+  const rows: ExportStatsRow[] = [
+    { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
+    { label: 'Couverture', value: formatPercent(coverage) },
+    { label: 'Fiabilité', value: reliability.level },
+    { label: 'Médiane (Q1-Q3)', value: formatMedianWithQuartiles(median, q1, q3), unit, highlight: true },
+    { label: 'P10 / P90', value: formatRange(p10, p90), unit },
+    { label: 'Min / Max', value: formatRange(min, max), unit }
   ];
+  
+  return rows;
 }
 
 /**
@@ -386,30 +957,3 @@ function buildParentContextRows(
   return rows;
 }
 
-// ============================================================================
-// FONCTIONS LEGACY (conservées pour compatibilité)
-// ============================================================================
-
-/**
- * Stats génériques legacy
- */
-function buildGenericStats(
-  values: number[],
-  nMailles: number,
-  nMaillesAvecDonnees: number,
-  parameterLabel: string,
-  unit: string
-): ExportStatsRow[] {
-  const moyenne = values.reduce((a, b) => a + b, 0) / values.length;
-  const min = Math.min(...values);
-  const max = Math.max(...values);
-  const couverture = (nMaillesAvecDonnees / nMailles * 100).toFixed(1);
-  
-  return [
-    { label: 'Moyenne', value: moyenne.toFixed(2), unit },
-    { label: 'Min', value: min.toFixed(2), unit },
-    { label: 'Max', value: max.toFixed(2), unit },
-    { label: 'Mailles avec données', value: `${nMaillesAvecDonnees} / ${nMailles}` },
-    { label: 'Couverture', value: couverture, unit: '%' }
-  ];
-}

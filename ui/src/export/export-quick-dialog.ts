@@ -16,9 +16,10 @@ import {
   ActiveAdmFilters,
   formatAdmPath,
   BBox,
-  ThematicLegendData
+  ThematicLegendData,
+  QUALITY_SETTINGS
 } from './export-types';
-import { ExportFrame, computeScaleText } from './export-frame';
+import { ExportFrame, computeScaleText, getA4Layout } from './export-frame';
 import {
   captureLeafletMap,
   generatePdf,
@@ -26,9 +27,14 @@ import {
   downloadDataURL,
   generateExportFilename,
   waitForTilesLoaded,
-  checkDependencies
+  waitForFrames,
+  validateCapture,
+  checkDependencies,
+  generateZipWithMetadata,
+  ExportMetadata
 } from './capture-utils';
 import { buildExportStats, ExportStats } from './export-stats';
+import { createExportTelemetry, ExportTelemetry } from './export-telemetry';
 
 // ============================================================================
 // Styles CSS du dialogue
@@ -309,6 +315,75 @@ const DIALOG_STYLES = `
   transform: rotate(180deg);
 }
 `;
+
+// ============================================================================
+// Helper Auth pour les appels API export
+// ============================================================================
+
+/**
+ * Récupère le token d'authentification depuis localStorage/sessionStorage
+ * Cherche dans plusieurs clés possibles, y compris les objets JSON
+ * Ordre de priorité:
+ * 1. atlas_token (clé principale unifiée)
+ * 2. atlas_auth.accessToken (AuthContext)
+ * 3. atlas_access_token (legacy)
+ * 4. access_token, token (fallback)
+ */
+function getAuthToken(): { key: string; token: string } | null {
+  // Clés simples (valeur = token directement)
+  const simpleKeys = ['atlas_token', 'atlas_access_token', 'access_token', 'token'];
+  
+  for (const k of simpleKeys) {
+    const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+    if (v && v.length > 10 && !v.startsWith('{')) {
+      return { key: k, token: v };
+    }
+  }
+  
+  // Clés JSON (valeur = objet avec accessToken)
+  const jsonKeys = ['atlas_auth'];
+  for (const k of jsonKeys) {
+    const v = localStorage.getItem(k) || sessionStorage.getItem(k);
+    if (v) {
+      try {
+        const parsed = JSON.parse(v);
+        const token = parsed.accessToken || parsed.access_token || parsed.token;
+        if (token && token.length > 10) {
+          return { key: `${k}.accessToken`, token };
+        }
+      } catch {}
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Crée les options fetch avec authentification
+ * Inclut le header Authorization et credentials
+ */
+function withAuth(init: RequestInit = {}): RequestInit {
+  const t = getAuthToken();
+  const headers = new Headers(init.headers || {});
+  
+  if (t) {
+    headers.set('Authorization', `Bearer ${t.token}`);
+  }
+  
+  console.log('[Export][AUTH]', {
+    found: !!t,
+    key: t?.key || 'none',
+    tokenLen: t?.token.length || 0,
+    tokenPrefix: t?.token.slice(0, 8) || 'N/A'
+  });
+  
+  // NOTE: Ne PAS utiliser credentials:'include' avec Bearer token
+  // car ça déclenche un CORS strict (wildcard '*' interdit avec credentials)
+  return { 
+    ...init, 
+    headers
+  };
+}
 
 // ============================================================================
 // Classe ExportQuickDialog
@@ -602,6 +677,12 @@ export class ExportQuickDialog {
                   <option value="clip">Découpage strict (100%)</option>
                 </select>
               </div>
+              
+              <!-- Export avec métadonnées -->
+              <label class="export-checkbox" style="margin-top: 12px;">
+                <input type="checkbox" id="export-include-metadata">
+                <span>Inclure métadonnées (ZIP avec logs)</span>
+              </label>
             </div>
           </div>
         </div>
@@ -719,6 +800,10 @@ export class ExportQuickDialog {
     const dialog = this.overlay.querySelector('.export-dialog');
     if (!dialog) return;
     
+    // ========== TÉLÉMÉTRIE: Créer une nouvelle instance pour cet export ==========
+    const telemetry = createExportTelemetry();
+    telemetry.startStage('UI');
+    
     // ========== SAUVEGARDER TOUTES LES OPTIONS AVANT DE MODIFIER LE DOM ==========
     // C'est CRITIQUE car body.innerHTML va détruire les éléments du formulaire
     const savedOptions = {
@@ -726,9 +811,27 @@ export class ExportQuickDialog {
       showEmptyCells: (this.overlay.querySelector('#export-show-empty-cells') as HTMLInputElement)?.checked ?? false,
       onlyAdmCells: (this.overlay.querySelector('#export-only-adm-cells') as HTMLInputElement)?.checked ?? true,
       showNeighbors: (this.overlay.querySelector('#export-show-neighbors') as HTMLInputElement)?.checked ?? true,
-      maskMode: ((this.overlay.querySelector('#export-mask-mode') as HTMLSelectElement)?.value || 'context') as 'none' | 'context' | 'focus' | 'clip'
+      maskMode: ((this.overlay.querySelector('#export-mask-mode') as HTMLSelectElement)?.value || 'context') as 'none' | 'context' | 'focus' | 'clip',
+      includeMetadata: (this.overlay.querySelector('#export-include-metadata') as HTMLInputElement)?.checked ?? false
     };
+    
+    // Enregistrer les options dans la télémétrie
+    const dpi = QUALITY_SETTINGS[this.options.quality].dpi;
+    telemetry.setOptions({
+      format: this.options.format,
+      quality: this.options.quality,
+      zone: this.options.zone,
+      dpi,
+      maskMode: savedOptions.maskMode,
+      showEmptyCells: savedOptions.showEmptyCells,
+      onlyAdmCells: savedOptions.onlyAdmCells,
+      showNeighbors: savedOptions.showNeighbors,
+      includeStats: this.options.includeStats,
+      includeLegend: this.options.includeLegend
+    });
+    
     console.log('[Export] Options sauvegardées AVANT modification DOM:', savedOptions);
+    console.log('[Export] includeMetadata sauvegardé:', savedOptions.includeMetadata);
     
     // Afficher le spinner
     const body = dialog.querySelector('.export-dialog-body');
@@ -760,12 +863,34 @@ export class ExportQuickDialog {
       const admFilters = this.config.getActiveAdmFilters();
       const map = this.config.getMap?.();
       
+      // Enregistrer thématique et filtres ADM
+      telemetry.setThematic({
+        id: thematic.parameter,
+        name: thematic.name,
+        unit: thematic.unit
+      });
+      telemetry.setAdmFilters({
+        adm1: admFilters.adm1?.name,
+        adm2: admFilters.adm2?.name,
+        adm3: admFilters.adm3?.name
+      });
+      telemetry.endStage();
+      
       // Sauvegarder la vue actuelle pour la restaurer après
       let originalBounds: any = null;
       let originalZoom: number | null = null;
       
       // Déterminer le bbox selon la zone sélectionnée
       let bounds: { north: number; south: number; east: number; west: number };
+      
+      // Calculer l'AR cible de la zone carte A4 (SOURCE DE VÉRITÉ UNIQUE)
+      const dpi = QUALITY_SETTINGS[this.options.quality].dpi;
+      const a4Layout = getA4Layout(dpi, 'portrait');
+      const targetMapAreaAR = a4Layout.targetAspectRatio;
+      console.log('[Export] AR cible zone carte A4 (getA4Layout):', targetMapAreaAR.toFixed(4));
+      
+      // Sauvegarder la taille originale du container pour restauration
+      let originalContainerStyle: { width: string; height: string } | null = null;
       
       if (this.options.zone === 'adm-filtered' && this.config.getAdmBounds) {
         // Zone filtrée : utiliser le bbox du polygone ADM optimisé pour la feuille
@@ -781,26 +906,114 @@ export class ExportQuickDialog {
             originalZoom = map.getZoom();
             
             updateProgress('Centrage sur la zone ADM...');
+            
+            // ========== ÉTAPE 4: Normaliser le viewport Leaflet ==========
+            // Redimensionner temporairement le container pour matcher l'AR cible
+            const container = this.config.mapContainer;
+            if (container) {
+              originalContainerStyle = {
+                width: container.style.width,
+                height: container.style.height
+              };
+              
+              // Calculer les nouvelles dimensions du container
+              // On garde la largeur et on ajuste la hauteur pour avoir le bon AR
+              const containerWidth = container.clientWidth;
+              const newContainerHeight = Math.round(containerWidth / targetMapAreaAR);
+              
+              console.log('[Export] Resize container pour AR cible:', {
+                originalW: containerWidth,
+                originalH: container.clientHeight,
+                originalAR: (containerWidth / container.clientHeight).toFixed(3),
+                newH: newContainerHeight,
+                targetAR: targetMapAreaAR.toFixed(3)
+              });
+              
+              container.style.height = `${newContainerHeight}px`;
+              map.invalidateSize({ animate: false });
+              
+              // Attendre le resize
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
             // Créer un LatLngBounds Leaflet et zoomer dessus
             const L = (window as any).L;
             const targetBounds = L.latLngBounds(
               [bounds.south, bounds.west],
               [bounds.north, bounds.east]
             );
-            map.fitBounds(targetBounds, { animate: false, padding: [0, 0] });
             
-            // Attendre que la carte se mette à jour (moveend)
-            await new Promise<void>(resolve => {
-              const onMoveEnd = () => {
-                map.off('moveend', onMoveEnd);
+            // ========== FIT BOUNDS ROBUSTE ==========
+            // IMPORTANT: maxZoom:18 pour éviter le clamp par un zoom restrictif
+            const z0 = map.getZoom();
+            map.fitBounds(targetBounds, { 
+              animate: false, 
+              padding: [0, 0],
+              maxZoom: 18  // CRITIQUE: pas de restriction de zoom
+            });
+            
+            // Attendre BOTH moveend ET zoomend (pas juste moveend)
+            const waitForEvent = (ev: string) => new Promise<void>(resolve => {
+              const handler = () => {
+                map.off(ev, handler);
                 resolve();
               };
-              map.on('moveend', onMoveEnd);
+              map.on(ev, handler);
               // Timeout de sécurité
               setTimeout(() => {
-                map.off('moveend', onMoveEnd);
+                map.off(ev, handler);
                 resolve();
-              }, 1000);
+              }, 2000);
+            });
+            
+            await Promise.all([
+              waitForEvent('moveend'),
+              waitForEvent('zoomend')
+            ]);
+            
+            // Attendre 2 frames pour que le navigateur peigne
+            await waitForFrames(2);
+            
+            // Log les dimensions finales du container
+            const z1 = map.getZoom();
+            if (container) {
+              console.log('[Export] Container après resize:', {
+                w: container.clientWidth,
+                h: container.clientHeight,
+                ar: (container.clientWidth / container.clientHeight).toFixed(3)
+              });
+            }
+            
+            // ========== ALIGNEMENT FOND/OVERLAYS ==========
+            // Récupérer les VRAIS bounds du viewport Leaflet après fitBounds
+            // C'est la SOURCE DE VÉRITÉ pour la projection (pas le bbox ADM demandé)
+            const effectiveBounds = map.getBounds();
+            bounds = {
+              north: effectiveBounds.getNorth(),
+              south: effectiveBounds.getSouth(),
+              east: effectiveBounds.getEast(),
+              west: effectiveBounds.getWest()
+            };
+            
+            console.log('[Export][FIT] Bounds après fitBoundsAndWait:', {
+              z0,
+              z1,
+              requested: { 
+                north: targetBounds.getNorth().toFixed(4), 
+                south: targetBounds.getSouth().toFixed(4), 
+                east: targetBounds.getEast().toFixed(4), 
+                west: targetBounds.getWest().toFixed(4) 
+              },
+              effective: {
+                north: bounds.north.toFixed(4),
+                south: bounds.south.toFixed(4),
+                east: bounds.east.toFixed(4),
+                west: bounds.west.toFixed(4)
+              },
+              deltaN: (bounds.north - targetBounds.getNorth()).toFixed(6),
+              deltaS: (bounds.south - targetBounds.getSouth()).toFixed(6),
+              deltaE: (bounds.east - targetBounds.getEast()).toFixed(6),
+              deltaW: (bounds.west - targetBounds.getWest()).toFixed(6)
             });
           }
         } else {
@@ -813,11 +1026,20 @@ export class ExportQuickDialog {
       }
       
       updateProgress('Attente du chargement des tuiles...');
-      await waitForTilesLoaded(this.config.mapContainer, 3000);
+      const tileResult = await waitForTilesLoaded(this.config.mapContainer, 5000);
+      telemetry.log('CAPTURE', { 
+        tiles: tileResult,
+        message: tileResult.timedOut ? 'Timeout tuiles' : 'Tuiles stables'
+      });
+      
+      // Attendre 2 frames d'animation pour laisser le navigateur peindre
+      await waitForFrames(2);
       
       // Attendre le rendu complet des layers thématiques (Canvas/SVG)
       updateProgress('Attente du rendu thématique...');
-      await new Promise(resolve => setTimeout(resolve, 800));
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      telemetry.startStage('CAPTURE');
       
       // Masquer la grille de fond si demandé (utiliser savedOptions)
       const gridLayer = this.config.getGridLayer?.();
@@ -833,16 +1055,118 @@ export class ExportQuickDialog {
       }
       
       updateProgress('Capture de la carte...');
-      let mapCapture;
+      
+      // ========== CAPTURE FOND UNIQUEMENT: Cacher TOUS les panes non-fond ==========
+      // On ne capture QUE les tuiles (tilePane). Tout le reste sera redessiné par l'export.
+      // Cela évite: double limite, mailles "temps réel" vs "export", incohérences visuelles.
+      const hiddenPanes: Record<string, string> = {};
+      
+      if (map) {
+        const panes = map.getPanes();
+        
+        // Log tous les panes disponibles pour debug
+        console.log('[Export] Panes Leaflet disponibles:', Object.keys(panes));
+        
+        // Liste des panes à cacher (tout sauf tilePane et mapPane)
+        const panesToHide = [
+          'overlayPane',      // GeoJSON, polygones ADM
+          'markerPane',       // Markers
+          'tooltipPane',      // Tooltips
+          'popupPane',        // Popups
+          'shadowPane',       // Ombres des markers
+          'thematicPane',     // Couche thématique custom
+          'thematicCirclesPane', // Cercles thématiques
+          'gridPane',         // Grille de fond
+        ];
+        
+        for (const paneName of panesToHide) {
+          const pane = panes[paneName];
+          if (pane && pane.style) {
+            hiddenPanes[paneName] = pane.style.display;
+            pane.style.display = 'none';
+          }
+        }
+        
+        telemetry.log('CAPTURE', { 
+          hiddenPanes: Object.keys(hiddenPanes),
+          message: 'All non-tile panes hidden - capturing background only'
+        });
+        
+        // Attendre le re-rendu
+        await new Promise(resolve => setTimeout(resolve, 150));
+      }
+      
+      telemetry.logAdmOverlayState(false, Object.keys(hiddenPanes).length > 0);
+      
+      let mapCapture: Awaited<ReturnType<typeof captureLeafletMap>> | null = null;
+      let captureAttempt = 0;
+      const MAX_CAPTURE_ATTEMPTS = 2;
+      
       try {
-        mapCapture = await captureLeafletMap(
-          this.config.mapContainer,
-          this.options.quality
-        );
+        // Boucle de retry pour captures noires/invalides
+        while (captureAttempt < MAX_CAPTURE_ATTEMPTS) {
+          captureAttempt++;
+          
+          mapCapture = await captureLeafletMap(
+            this.config.mapContainer,
+            this.options.quality
+          );
+          
+          // Valider que la capture n'est pas noire
+          const validation = validateCapture(mapCapture.canvas);
+          telemetry.log('CAPTURE', { 
+            attempt: captureAttempt,
+            validation,
+            dimensions: { w: mapCapture.canvas.width, h: mapCapture.canvas.height }
+          });
+          
+          if (validation.valid) {
+            break; // Capture OK
+          }
+          
+          if (captureAttempt < MAX_CAPTURE_ATTEMPTS) {
+            console.warn(`[Export] Capture invalide (attempt ${captureAttempt}), retry après attente tuiles...`);
+            telemetry.warn(`Capture invalide (blackRatio=${validation.blackRatio.toFixed(2)}), retry #${captureAttempt + 1}`);
+            
+            // Attendre plus longtemps avant retry
+            await waitForTilesLoaded(this.config.mapContainer, 3000);
+            await waitForFrames(3);
+            await new Promise(resolve => setTimeout(resolve, 500));
+          } else {
+            telemetry.warn(`Capture potentiellement invalide après ${MAX_CAPTURE_ATTEMPTS} tentatives`);
+          }
+        }
+        
+        if (!mapCapture) {
+          throw new Error('Échec de la capture après plusieurs tentatives');
+        }
+        
+        // Log dimensions de capture
+        telemetry.setCaptureDimensions(mapCapture.canvas.width, mapCapture.canvas.height);
       } finally {
+        // Restaurer TOUS les panes cachés
+        if (map && Object.keys(hiddenPanes).length > 0) {
+          const panes = map.getPanes();
+          for (const [paneName, originalDisplay] of Object.entries(hiddenPanes)) {
+            const pane = panes[paneName];
+            if (pane && pane.style) {
+              pane.style.display = originalDisplay;
+            }
+          }
+          telemetry.log('CAPTURE', { restoredPanes: Object.keys(hiddenPanes) });
+        }
+        
         // Restaurer la grille de fond
         if (gridWasVisible && gridLayer && map) {
           gridLayer.addTo(map);
+        }
+        
+        // Restaurer la taille originale du container si on l'avait changée
+        if (originalContainerStyle && this.config.mapContainer && map) {
+          this.config.mapContainer.style.width = originalContainerStyle.width;
+          this.config.mapContainer.style.height = originalContainerStyle.height;
+          map.invalidateSize({ animate: false });
+          console.log('[Export] Container restauré à sa taille originale');
         }
         
         // Restaurer la vue originale si on l'avait changée
@@ -850,6 +1174,9 @@ export class ExportQuickDialog {
           map.fitBounds(originalBounds, { animate: false });
         }
       }
+      
+      telemetry.endStage({ captureSuccess: true });
+      telemetry.startStage('LAYOUT');
       
       updateProgress('Génération du canevas...');
       
@@ -859,10 +1186,33 @@ export class ExportQuickDialog {
         maxX: bounds.east,
         maxY: bounds.north
       };
+      telemetry.setBbox(bbox);
       
       // Créer le frame d'export avec dimensions A4 FIXES
       // La carte sera redimensionnée pour s'adapter à la zone carte du layout A4
       const exportFrame = ExportFrame.createA4(this.options, 'portrait');
+      const layout = exportFrame.getLayout();
+      
+      // Log dimensions canvas et zone carte
+      telemetry.setCanvasDimensions(
+        layout.totalWidth,
+        layout.totalHeight,
+        layout.mapArea.width,
+        layout.mapArea.height
+      );
+      
+      // Log drawImage params pour debug aspect ratio
+      telemetry.logDrawImage(
+        mapCapture.canvas.width,
+        mapCapture.canvas.height,
+        layout.mapArea.width,
+        layout.mapArea.height,
+        layout.mapArea.x,
+        layout.mapArea.y
+      );
+      
+      telemetry.endStage();
+      telemetry.startStage('DRAW');
       
       console.log('[Export] Frame A4 créé, capture:', {
         captureWidth: mapCapture.width,
@@ -875,15 +1225,48 @@ export class ExportQuickDialog {
       
       // Dessiner les mailles vides AVANT le masque (utiliser savedOptions)
       let emptyCellsDrawn = false;
-      if (savedOptions.showEmptyCells && this.options.zone === 'adm-filtered' && admFilters) {
+      let cellsWithData = 0;
+      let cellsWithoutData = 0;
+      let admCells: Array<{ geometry: any; has_data: boolean; value?: number; n_sondages?: number }> = [];
+      
+      // Variable pour stocker le comptage des classes (pour filtrer la légende)
+      let classUsageCount: Map<number, number> | undefined;
+      
+      // TOUJOURS charger les mailles ADM si zone filtrée (pour stats locales)
+      if (this.options.zone === 'adm-filtered' && admFilters) {
+        telemetry.startStage('FETCH');
         try {
-          const cells = await this.fetchAdmCells(admFilters);
-          console.log('[Export] Mailles récupérées:', cells.length, 'dont vides:', cells.filter(c => !c.has_data).length);
-          if (cells && cells.length > 0) {
-            exportFrame.drawEmptyCells(cells, bbox);
-            emptyCellsDrawn = cells.filter(c => !c.has_data).length > 0;
+          admCells = await this.fetchAdmCells(admFilters);
+          cellsWithData = admCells.filter(c => c.has_data).length;
+          cellsWithoutData = admCells.filter(c => !c.has_data).length;
+          
+          telemetry.setCellCounts(admCells.length, cellsWithData, cellsWithoutData);
+          telemetry.endStage();
+          
+          console.log('[Export] Mailles ADM récupérées:', admCells.length, 'withData:', cellsWithData, 'withoutData:', cellsWithoutData);
+          
+          // Dessiner les mailles vides si option activée
+          if (savedOptions.showEmptyCells && admCells.length > 0) {
+            telemetry.startStage('GRID');
+            exportFrame.drawEmptyCells(admCells, bbox);
+            emptyCellsDrawn = cellsWithoutData > 0;
+            telemetry.endStage({ emptyCellsDrawn, count: cellsWithoutData });
+          }
+          
+          // NOUVEAU: Dessiner les mailles colorées côté export (source unique)
+          // On ne capture plus les mailles depuis Leaflet, on les dessine nous-mêmes
+          // IMPORTANT: Capturer le classUsageCount pour filtrer la légende
+          const legendDataForCells = this.config.getThematicLegendData?.();
+          if (legendDataForCells?.classes && admCells.length > 0 && cellsWithData > 0) {
+            telemetry.startStage('DRAW_CELLS');
+            classUsageCount = exportFrame.drawColoredCells(admCells, bbox, legendDataForCells.classes);
+            telemetry.endStage({ 
+              coloredCellsDrawn: cellsWithData,
+              classUsage: classUsageCount ? Object.fromEntries(classUsageCount) : {}
+            });
           }
         } catch (e) {
+          telemetry.error('Impossible de charger les mailles ADM', e as Error);
           console.warn('[Export] Impossible de charger les mailles ADM:', e);
         }
       }
@@ -893,10 +1276,14 @@ export class ExportQuickDialog {
       console.log('[Export] Masque ADM - mode:', savedOptions.maskMode, 'polygon:', admPolygon?.length || 0, 'points');
       
       if (savedOptions.maskMode !== 'none' && this.options.zone === 'adm-filtered') {
+        telemetry.startStage('MASK');
         if (admPolygon && admPolygon.length >= 3) {
           exportFrame.drawAdmMask(admPolygon, bbox, savedOptions.maskMode);
+          telemetry.endStage({ maskApplied: true, polygonPoints: admPolygon.length });
         } else {
+          telemetry.warn('Pas de polygone ADM valide pour le masque');
           console.warn('[Export] Pas de polygone ADM valide pour le masque');
+          telemetry.endStage({ maskApplied: false });
         }
       }
       
@@ -904,35 +1291,101 @@ export class ExportQuickDialog {
       
       // Dessiner les labels des ADM limitrophes si zone filtrée et option activée (utiliser savedOptions)
       if (savedOptions.showNeighbors && this.options.zone === 'adm-filtered' && admFilters) {
+        telemetry.startStage('NEIGHBORS');
         try {
           const neighbors = await this.fetchAdmNeighbors(admFilters);
           const admPolygonForLabels = this.config.getAdmPolygon?.();
+          telemetry.setNeighborCounts(neighbors.length, neighbors.length);
           if (neighbors && neighbors.length > 0) {
             exportFrame.drawNeighborLabels(neighbors, bbox, admPolygonForLabels);
           }
+          telemetry.endStage();
         } catch (e) {
+          telemetry.error('Impossible de charger les ADM limitrophes', e as Error);
           console.warn('[Export] Impossible de charger les ADM limitrophes:', e);
+          telemetry.endStage({ error: true });
         }
       }
       
       // Récupérer les données de légende thématique
+      telemetry.startStage('LEGEND');
       const legendData = this.config.getThematicLegendData?.() || undefined;
       const hasAdmBoundary = savedOptions.maskMode !== 'none' && !!admPolygon && admPolygon.length >= 3;
-      exportFrame.drawLegend(legendData, emptyCellsDrawn, hasAdmBoundary);
+      
+      if (legendData?.classes) {
+        // Compter les classes visibles selon classUsageCount (si disponible) ou count
+        const visibleClasses = classUsageCount 
+          ? legendData.classes.filter((_, idx) => (classUsageCount?.get(idx) ?? 0) > 0)
+          : legendData.classes.filter(c => c.count === undefined || c.count > 0);
+        telemetry.setLegendClasses(legendData.classes.length, visibleClasses.length);
+        console.log('[Export] Légende: classes totales:', legendData.classes.length, 'visibles:', visibleClasses.length);
+      }
+      // IMPORTANT: Passer classUsageCount pour filtrer la légende par classes réellement utilisées
+      exportFrame.drawLegend(legendData, emptyCellsDrawn, hasAdmBoundary, classUsageCount);
+      telemetry.endStage();
       
       // Calculer et dessiner les statistiques si demandé
+      // IMPORTANT: Utiliser admCells (données locales ADM) pour les stats, pas legendData.features (global)
       if (this.options.includeStats && legendData) {
+        telemetry.startStage('STATS');
+        
+        // Extraire les valeurs des mailles avec données pour calculs avancés (médiane, σ, Q1/Q3)
+        const cellValues = admCells
+          .filter(c => c.has_data)
+          .map(c => c.n_sondages || c.value || 0)
+          .filter(v => v > 0);
+        
+        // Calculer les stats depuis les mailles ADM locales (source de vérité)
+        const localStats = admCells.length > 0 ? {
+          count: cellsWithData,
+          null_count: cellsWithoutData,
+          count_total: admCells.length,
+          sum: cellValues.reduce((acc, v) => acc + v, 0),
+          mean: cellValues.length > 0 
+            ? cellValues.reduce((acc, v) => acc + v, 0) / cellValues.length 
+            : 0
+        } : undefined;
+        
+        console.log('[Export] Stats locales calculées depuis admCells:', {
+          ...localStats,
+          valuesCount: cellValues.length,
+          sampleValues: cellValues.slice(0, 10)
+        });
+        
+        // Créer des features simulées pour les calculs avancés (médiane, σ, Q1/Q3)
+        const featuresForStats = cellValues.map(v => ({ value: v }));
+        
         const statsData = buildExportStats({
           parameterId: legendData.parameterId || thematic.parameter,
           parameterLabel: legendData.parameterLabel || thematic.name,
           unit: legendData.unit || '',
-          features: legendData.features || [],
-          totalCellCount: legendData.totalCellCount || 0,
+          features: featuresForStats, // Passer les valeurs pour calculs avancés
+          totalCellCount: admCells.length || legendData.totalCellCount || 0,
           classes: legendData.classes || [],
           admFilters: admFilters || {},
-          apiStats: legendData.apiStats // Passer les stats enrichies de l'API
+          // Priorité aux stats locales ADM, sinon fallback sur apiStats
+          apiStats: localStats || legendData.apiStats
         });
+        
+        // Log les stats calculées pour debug
+        telemetry.setComputedStats({
+          title: statsData.title,
+          subtitle: statsData.subtitle,
+          rowCount: statsData.rows.length,
+          rows: statsData.rows.map(r => ({ label: r.label, value: r.value, unit: r.unit }))
+        });
+        
+        // Log les strings finales pour debug "stats vides"
+        telemetry.log('STATS', {
+          drawStatsInputKeys: Object.keys(statsData),
+          drawStatsStrings: statsData.rows.reduce((acc, r) => {
+            acc[r.label] = r.unit ? `${r.value} ${r.unit}` : r.value;
+            return acc;
+          }, {} as Record<string, string>)
+        });
+        
         exportFrame.drawStats(statsData);
+        telemetry.endStage();
       }
       
       // Calculer l'échelle
@@ -948,10 +1401,89 @@ export class ExportQuickDialog {
       const zoneName = formatAdmPath(admFilters);
       const filename = generateExportFilename(thematic.name, zoneName, this.options.format);
       
+      // Utiliser l'option métadonnées sauvegardée AVANT modification du DOM
+      const includeMetadata = savedOptions.includeMetadata;
+      console.log('[Export] Option includeMetadata:', includeMetadata);
+      
+      telemetry.startStage('SAVE');
+      
+      // Préparer les métadonnées si demandé
+      let metadata: ExportMetadata | undefined;
+      if (includeMetadata) {
+        metadata = {
+          version: '3.0',
+          exportDate: new Date().toISOString(),
+          runId: telemetry.getRunId(),
+          thematic: {
+            parameter: thematic.parameter,
+            name: thematic.name
+          },
+          zone: {
+            type: this.options.zone,
+            adm1: admFilters?.adm1?.name,
+            adm2: admFilters?.adm2?.name,
+            adm3: admFilters?.adm3?.name,
+            bounds
+          },
+          output: {
+            format: this.options.format,
+            quality: this.options.quality,
+            dpi,
+            dimensions: { width: layout.totalWidth, height: layout.totalHeight }
+          },
+          cells: admCells.length > 0 ? {
+            total: admCells.length,
+            withData: cellsWithData,
+            withoutData: cellsWithoutData
+          } : undefined,
+          legend: legendData?.classes ? {
+            classes: legendData.classes.map((c, idx) => ({
+              label: c.label,
+              color: c.color,
+              count: classUsageCount?.get(idx)
+            }))
+          } : undefined,
+          telemetry: telemetry.getStages(),
+          debugLogs: telemetry.getDebugLogs()
+        };
+      }
+      
       if (this.options.format === 'png') {
         updateProgress('Génération du PNG...');
-        const dataUrl = exportFrame.toDataURL('image/png');
-        downloadDataURL(dataUrl, filename);
+        
+        if (includeMetadata && metadata) {
+          // Export ZIP avec métadonnées
+          updateProgress('Création du ZIP avec métadonnées...');
+          const canvas = exportFrame.getCanvas();
+          const imageBlob = await new Promise<Blob>((resolve, reject) => {
+            canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Échec conversion canvas')), 'image/png');
+          });
+          
+          const zipBlob = await generateZipWithMetadata(imageBlob, filename, metadata);
+          const zipFilename = filename.replace('.png', '.zip');
+          
+          telemetry.log('SAVE', {
+            format: 'zip',
+            filename: zipFilename,
+            outputPx: { w: layout.totalWidth, h: layout.totalHeight },
+            dpi,
+            includesMetadata: true
+          });
+          
+          downloadBlob(zipBlob, zipFilename);
+        } else {
+          // Export PNG simple
+          const dataUrl = exportFrame.toDataURL('image/png');
+          
+          telemetry.log('SAVE', {
+            format: 'png',
+            filename,
+            outputPx: { w: layout.totalWidth, h: layout.totalHeight },
+            dpi
+          });
+          
+          downloadDataURL(dataUrl, filename);
+        }
       } else {
         // Vérifier jsPDF
         const deps = checkDependencies();
@@ -966,16 +1498,33 @@ export class ExportQuickDialog {
           title: `Atlas Géotechnique - ${thematic.name}`,
           filename
         });
-        downloadBlob(pdfBlob, filename);
+        
+        if (includeMetadata && metadata) {
+          // Export ZIP avec PDF + métadonnées
+          updateProgress('Création du ZIP avec métadonnées...');
+          const zipBlob = await generateZipWithMetadata(pdfBlob, filename, metadata);
+          const zipFilename = filename.replace('.pdf', '.zip');
+          downloadBlob(zipBlob, zipFilename);
+        } else {
+          downloadBlob(pdfBlob, filename);
+        }
       }
+      
+      // Finaliser la télémétrie
+      const exportMeta = telemetry.finalize();
+      
+      // Afficher le runId dans la console pour référence
+      console.log(`[Export] ✅ Export terminé - RunId: ${telemetry.getRunId()}`);
       
       // Succès - fermer le dialogue
       this.close();
       
-      // Toast de succès
-      this.showToast(`Export ${this.options.format.toUpperCase()} réussi !`, 'success');
+      // Toast de succès avec RunId
+      this.showToast(`Export ${this.options.format.toUpperCase()} réussi ! (${telemetry.getRunId()})`, 'success');
       
     } catch (error) {
+      telemetry.error('Export failed', error as Error);
+      telemetry.finalize();
       console.error('Erreur export:', error);
       
       // Afficher l'erreur
@@ -1086,7 +1635,8 @@ export class ExportQuickDialog {
     if (level && name) {
       try {
         const response = await fetch(
-          `http://localhost:8000/adm-neighbors?level=${level}&name=${encodeURIComponent(name)}`
+          `http://localhost:8000/adm-neighbors?level=${level}&name=${encodeURIComponent(name)}`,
+          withAuth()
         );
         
         if (response.ok) {
@@ -1118,7 +1668,7 @@ export class ExportQuickDialog {
    */
   private async fetchAdmCells(
     admFilters: ActiveAdmFilters
-  ): Promise<Array<{ geometry: any; has_data: boolean }>> {
+  ): Promise<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>> {
     // Vérifier le cache
     const cacheKey = ExportQuickDialog.getAdmCacheKey(admFilters);
     const cached = admCellsCache.get(cacheKey);
@@ -1128,7 +1678,58 @@ export class ExportQuickDialog {
     }
     
     try {
-      console.log('[Export] Chargement mailles ADM depuis API...');
+      // Utiliser /thematic/cells/adm qui retourne n_sondages (source de vérité pour stats)
+      const params = new URLSearchParams();
+      if (admFilters.adm1) params.append('adm1', admFilters.adm1.name);
+      if (admFilters.adm2) params.append('adm2', admFilters.adm2.name);
+      if (admFilters.adm3) params.append('adm3', admFilters.adm3.name);
+      
+      console.log('[Export] Chargement mailles ADM depuis /thematic/cells/adm...');
+      const response = await fetch(`http://localhost:8000/thematic/cells/adm?${params.toString()}`, withAuth());
+      
+      if (!response.ok) {
+        console.warn('[Export] Erreur API /thematic/cells/adm:', response.status, '- fallback sur /coverage/mailles');
+        return this.fetchAdmCellsFallback(admFilters);
+      }
+      
+      const data = await response.json();
+      const apiCells = data.cells || [];
+      
+      // Transformer en format attendu avec n_sondages
+      const cells = apiCells.map((c: any) => ({
+        geometry: c.geometry,
+        has_data: c.has_data,
+        n_sondages: c.n_sondages || 0,
+        value: c.n_sondages || 0 // Alias pour compatibilité
+      }));
+      
+      // Stocker dans le cache
+      admCellsCache.set(cacheKey, cells);
+      
+      const withData = cells.filter((c: any) => c.has_data).length;
+      const totalSondages = cells.reduce((sum: number, c: any) => sum + (c.n_sondages || 0), 0);
+      console.log('[Export] Mailles ADM chargées depuis /thematic/cells/adm:', {
+        cacheKey,
+        total: cells.length,
+        withData,
+        withoutData: cells.length - withData,
+        totalSondages
+      });
+      
+      return cells;
+    } catch (e) {
+      console.warn('[Export] Erreur fetchAdmCells:', e, '- fallback sur /coverage/mailles');
+      return this.fetchAdmCellsFallback(admFilters);
+    }
+  }
+  
+  /**
+   * Fallback: utilise /coverage/mailles si /thematic/cells/adm échoue
+   */
+  private async fetchAdmCellsFallback(
+    admFilters: ActiveAdmFilters
+  ): Promise<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>> {
+    try {
       const response = await fetch('http://localhost:8000/coverage/mailles');
       
       if (!response.ok) {
@@ -1151,23 +1752,15 @@ export class ExportQuickDialog {
       // Transformer en format attendu
       const cells = filtered.map((f: any) => ({
         geometry: f.geometry,
-        has_data: f.properties?.has_data || f.properties?.n_sondages > 0
+        has_data: f.properties?.has_data || f.properties?.n_sondages > 0,
+        n_sondages: f.properties?.n_sondages || 0,
+        value: f.properties?.n_sondages || 0
       }));
       
-      // Stocker dans le cache
-      admCellsCache.set(cacheKey, cells);
-      
-      const withData = cells.filter((c: any) => c.has_data).length;
-      console.log('[Export] Mailles ADM chargées et mises en cache:', {
-        cacheKey,
-        total: cells.length,
-        withData,
-        withoutData: cells.length - withData
-      });
-      
+      console.log('[Export] Mailles ADM (fallback coverage/mailles):', cells.length);
       return cells;
     } catch (e) {
-      console.warn('[Export] Impossible de récupérer les mailles ADM:', e);
+      console.warn('[Export] Impossible de récupérer les mailles ADM (fallback):', e);
       return [];
     }
   }
@@ -1271,6 +1864,8 @@ export class ExportQuickDialog {
     
     return newBounds;
   }
+  
+  // NOTE: computeTargetMapAreaAspectRatio supprimée - utiliser getA4Layout() à la place
 }
 
 // ============================================================================

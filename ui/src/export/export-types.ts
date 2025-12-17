@@ -228,6 +228,8 @@ export interface LegendClass {
   max: number | null;
   color: string;
   label: string;
+  /** Nombre de mailles dans cette classe (optionnel) */
+  count?: number;
 }
 
 /** État thématique complet pour l'export */
