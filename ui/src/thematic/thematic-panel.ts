@@ -1095,7 +1095,13 @@ export class ThematicPanel {
         getAdmBounds: () => this.manager.getAdmOverlayBounds?.() || null,
         
         // Récupère les coordonnées du polygone ADM pour le masque
-        getAdmPolygon: () => this.manager.getAdmPolygonCoords?.() || null
+        getAdmPolygon: () => this.manager.getAdmPolygonCoords?.() || null,
+        
+        // Récupère les features thématiques de l'écran (SOURCE DE VÉRITÉ pour l'export)
+        getThematicFeatures: () => {
+          const state = this.manager.getCurrentExportState?.()
+          return state?.features || null
+        }
       }
       
       this.exportDialog = createExportQuickDialog(config)

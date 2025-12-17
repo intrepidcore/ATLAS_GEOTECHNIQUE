@@ -1822,52 +1822,6 @@ export class ExportQuickDialog {
   }
   
   /**
-   * Fallback: utilise /coverage/mailles si /export/cells/adm échoue
-   * Note: La route /export/cells/adm est publique, donc ce fallback ne devrait
-   * être utilisé qu'en cas d'erreur réseau ou serveur.
-   */
-  private async fetchAdmCellsFallback(
-    admFilters: ActiveAdmFilters,
-    parameterId?: string
-  ): Promise<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>> {
-    try {
-      console.log('[Export] Fallback sur /coverage/mailles (paramètre couverture uniquement)');
-      const response = await fetch('http://localhost:8000/coverage/mailles');
-      
-      if (!response.ok) {
-        console.warn('[Export] Erreur API coverage/mailles:', response.status);
-        return [];
-      }
-      
-      const geojson = await response.json();
-      const features = geojson.features || [];
-      
-      // Filtrer par ADM
-      const filtered = features.filter((f: any) => {
-        const props = f.properties || {};
-        if (admFilters.adm1 && props.adm1_name !== admFilters.adm1.name) return false;
-        if (admFilters.adm2 && props.adm2_name !== admFilters.adm2.name) return false;
-        if (admFilters.adm3 && props.adm3_name !== admFilters.adm3.name) return false;
-        return true;
-      });
-      
-      // Transformer en format attendu
-      const cells = filtered.map((f: any) => ({
-        geometry: f.geometry,
-        has_data: f.properties?.has_data || f.properties?.n_sondages > 0,
-        n_sondages: f.properties?.n_sondages || 0,
-        value: f.properties?.n_sondages || 0
-      }));
-      
-      console.log('[Export] Mailles ADM (fallback coverage/mailles):', cells.length);
-      return cells;
-    } catch (e) {
-      console.warn('[Export] Impossible de récupérer les mailles ADM (fallback):', e);
-      return [];
-    }
-  }
-  
-  /**
    * Calcule l'emprise optimale pour que l'ADM occupe toute la zone carte
    * en respectant le ratio de la feuille A4
    * 

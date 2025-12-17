@@ -22,49 +22,85 @@ import {
 } from './grid-generator';
 
 // ============================================================================
-// Constantes de layout
+// Constantes de layout EN MILLIMÈTRES
 // ============================================================================
 
-// Layout de base pour 72 DPI - sera multiplié par le ratio DPI
+/**
+ * Layout défini en MILLIMÈTRES (taille physique constante)
+ * Le DPI sert à la NETTETÉ, pas à grossir le design.
+ * À 150 et 300 DPI, les cartouches ont la MÊME taille physique.
+ */
+const LAYOUT_MM = {
+  margin: 5,              // 5mm marge extérieure
+  titleHeight: 12,        // 12mm hauteur titre
+  subtitleHeight: 5,      // 5mm sous-titre
+  legendWidth: 45,        // 45mm largeur légende
+  statsWidth: 35,         // 35mm largeur stats (réduit)
+  cartoucheWidth: 55,     // 55mm largeur cartouche
+  footerHeight: 42,       // 42mm hauteur footer
+  coordLabelMargin: 2,    // 2mm marge labels coordonnées
+  padding: 3,             // 3mm padding interne
+  // Polices en mm (taille physique)
+  fontTitle: 4.5,         // 4.5mm ≈ 13pt
+  fontSubtitle: 3.2,      // 3.2mm ≈ 9pt
+  fontLegend: 2.5,        // 2.5mm ≈ 7pt
+  fontLegendTitle: 2.8,   // 2.8mm ≈ 8pt
+  fontStats: 2.2,         // 2.2mm ≈ 6pt
+  fontCartouche: 2.0,     // 2.0mm ≈ 6pt
+  fontCoordLabel: 2.0,    // 2.0mm ≈ 6pt
+  // Épaisseurs de traits en mm
+  borderWidth: 0.2,       // 0.2mm trait fin
+  boxBorderWidth: 0.15    // 0.15mm bordure boîtes
+};
+
+/**
+ * Convertit des millimètres en pixels pour un DPI donné
+ * Formule: px = mm * dpi / 25.4
+ */
+function mmToPx(mm: number, dpi: number): number {
+  return Math.round(mm * dpi / 25.4);
+}
+
+// Pour compatibilité avec le code existant (72 dpi)
 const LAYOUT_BASE = {
-  margin: 20,           // Marge extérieure
-  titleHeight: 50,      // Hauteur titre principal
-  subtitleHeight: 20,   // Hauteur sous-titre (zone)
-  legendWidth: 180,     // Largeur zone légende (classes) - augmentée pour texte
-  statsWidth: 180,      // Largeur zone stats - augmentée
-  cartoucheWidth: 220,  // Largeur zone cartouche - augmentée
-  footerHeight: 170,    // Hauteur footer (augmentée pour plus de lignes)
+  margin: 20,
+  titleHeight: 50,
+  subtitleHeight: 20,
+  legendWidth: 180,
+  statsWidth: 180,
+  cartoucheWidth: 220,
+  footerHeight: 170,
   coordLabelMargin: 8,
   padding: 12
 };
-
-// Pour compatibilité avec le code existant (72 dpi)
 const LAYOUT = LAYOUT_BASE;
 
 /**
- * Calcule les dimensions de layout ajustées pour un DPI donné
- * Les valeurs de base sont pour 72 DPI
+ * Calcule les dimensions de layout en pixels à partir des mm
+ * Le DPI augmente la netteté, pas la taille visuelle
  */
 function getScaledLayout(dpi: number) {
-  const ratio = dpi / 72;
   return {
-    margin: Math.round(LAYOUT_BASE.margin * ratio),
-    titleHeight: Math.round(LAYOUT_BASE.titleHeight * ratio),
-    subtitleHeight: Math.round(LAYOUT_BASE.subtitleHeight * ratio),
-    legendWidth: Math.round(LAYOUT_BASE.legendWidth * ratio),
-    statsWidth: Math.round(LAYOUT_BASE.statsWidth * ratio),
-    cartoucheWidth: Math.round(LAYOUT_BASE.cartoucheWidth * ratio),
-    footerHeight: Math.round(LAYOUT_BASE.footerHeight * ratio),
-    coordLabelMargin: Math.round(LAYOUT_BASE.coordLabelMargin * ratio),
-    padding: Math.round(LAYOUT_BASE.padding * ratio),
-    // Tailles de police ajustées
-    fontTitle: Math.round(18 * ratio),
-    fontSubtitle: Math.round(12 * ratio),
-    fontLegend: Math.round(11 * ratio),
-    fontLegendTitle: Math.round(12 * ratio),
-    fontStats: Math.round(10 * ratio),
-    fontCartouche: Math.round(9 * ratio),
-    fontCoordLabel: Math.round(9 * ratio)
+    margin: mmToPx(LAYOUT_MM.margin, dpi),
+    titleHeight: mmToPx(LAYOUT_MM.titleHeight, dpi),
+    subtitleHeight: mmToPx(LAYOUT_MM.subtitleHeight, dpi),
+    legendWidth: mmToPx(LAYOUT_MM.legendWidth, dpi),
+    statsWidth: mmToPx(LAYOUT_MM.statsWidth, dpi),
+    cartoucheWidth: mmToPx(LAYOUT_MM.cartoucheWidth, dpi),
+    footerHeight: mmToPx(LAYOUT_MM.footerHeight, dpi),
+    coordLabelMargin: mmToPx(LAYOUT_MM.coordLabelMargin, dpi),
+    padding: mmToPx(LAYOUT_MM.padding, dpi),
+    // Tailles de police en pixels (basées sur mm)
+    fontTitle: mmToPx(LAYOUT_MM.fontTitle, dpi),
+    fontSubtitle: mmToPx(LAYOUT_MM.fontSubtitle, dpi),
+    fontLegend: mmToPx(LAYOUT_MM.fontLegend, dpi),
+    fontLegendTitle: mmToPx(LAYOUT_MM.fontLegendTitle, dpi),
+    fontStats: mmToPx(LAYOUT_MM.fontStats, dpi),
+    fontCartouche: mmToPx(LAYOUT_MM.fontCartouche, dpi),
+    fontCoordLabel: mmToPx(LAYOUT_MM.fontCoordLabel, dpi),
+    // Épaisseurs de traits
+    borderWidth: mmToPx(LAYOUT_MM.borderWidth, dpi),
+    boxBorderWidth: mmToPx(LAYOUT_MM.boxBorderWidth, dpi)
   };
 }
 
