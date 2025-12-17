@@ -2376,11 +2376,11 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 | Priorité | Action | Statut |
 |----------|--------|--------|
-| 1 | 1.1 Fixer route /export/cells/adm | ⏳ |
-| 2 | 1.3 ThematicDataCache (données écran) | ⏳ |
-| 3 | 1.2 Mapping classes/labels cohérent | ⏳ |
-| 4 | 1.4 Layout en mm (DPI = netteté) | ⏳ |
-| 5 | 2.1 Forcer login à l'entrée | ⏳ |
-| 6 | 2.2 Redirection par rôle | ⏳ |
-| 7 | 3.1 Wizard création utilisateur | ⏳ |
-| 8 | 3.2 Moderniser liste utilisateurs | ⏳ |
+| 1 | 1.1 Fixer route /export/cells/adm | ✅ |
+| 2 | 1.3 ThematicDataCache (données écran) | ✅ |
+| 3 | 1.2 Mapping classes/labels cohérent | ✅ |
+| 4 | 1.4 Layout en mm (DPI = netteté) | ✅ |
+| 5 | 2.1 Forcer login à l'entrée | ✅ (déjà implémenté) |
+| 6 | 2.2 Redirection par rôle | ✅ (déjà implémenté) |
+| 7 | 3.1 Wizard création utilisateur | ✅ |
+| 8 | 3.2 Moderniser liste utilisateurs | ✅ |

@@ -13,7 +13,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from '@/components/ui/dialog'
-import { Users, Shield, Key, Plus, Trash2, Edit, AlertTriangle, Loader2, RefreshCw, LogIn, LogOut, GraduationCap, Building2, Phone, Hash, BookOpen } from 'lucide-react'
+import { Users, Shield, Key, Plus, Trash2, Edit, AlertTriangle, Loader2, RefreshCw, LogIn, LogOut, GraduationCap, Building2, Phone, Hash, BookOpen, Search, Filter, UserCheck, UserX } from 'lucide-react'
 import {
   usersApi,
   rolesApi,
@@ -25,6 +25,7 @@ import {
   type Permission as ApiPermission,
   type PermissionsByResource,
 } from '@/services/auth-api'
+import { UserWizard } from './UserWizard'
 
 interface Role {
   id: string
@@ -439,75 +440,151 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
 
           {/* Users Tab */}
           <TabsContent value="users" className="flex-1 overflow-auto">
-            <div className="mb-4">
+            {/* Barre d'actions et filtres */}
+            <div className="flex flex-wrap items-center gap-3 mb-4">
               <Button
                 onClick={() => {
-                  setEditingUser({
-                    id: '',
-                    email: '',
-                    username: '',
-                    roles: [],
-                    is_active: true,
-                  })
-                  setNewUserPassword('')
+                  setEditingUser(null)
                   setShowUserModal(true)
                 }}
+                className="bg-blue-600 hover:bg-blue-700"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Nouvel utilisateur
               </Button>
+              
+              {/* Recherche */}
+              <div className="relative flex-1 min-w-[200px] max-w-xs">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Input
+                  placeholder="Rechercher..."
+                  className="pl-10"
+                  onChange={(e) => {
+                    // Filtrage local simple
+                    const query = e.target.value.toLowerCase()
+                    // TODO: Implémenter le filtrage côté state
+                  }}
+                />
+              </div>
+              
+              {/* Stats rapides */}
+              <div className="flex items-center gap-4 text-sm text-slate-500">
+                <span className="flex items-center gap-1">
+                  <UserCheck className="h-4 w-4 text-green-500" />
+                  {users.filter(u => u.is_active).length} actifs
+                </span>
+                <span className="flex items-center gap-1">
+                  <UserX className="h-4 w-4 text-gray-400" />
+                  {users.filter(u => !u.is_active).length} inactifs
+                </span>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              {users.map(user => (
-                <div
-                  key={user.id}
-                  className="border rounded-lg p-4 flex items-center justify-between hover:bg-slate-50"
-                >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="font-semibold">{getUserDisplayName(user)}</h3>
-                      <span className="text-sm text-slate-500">@{user.username}</span>
-                      {!user.is_active && <Badge variant="secondary">Inactif</Badge>}
+            {/* Liste des utilisateurs avec design moderne */}
+            <div className="space-y-3">
+              {users.map(user => {
+                // Couleurs par rôle principal
+                const primaryRole = user.roles[0]
+                const roleColors: Record<string, string> = {
+                  admin: 'border-l-red-500',
+                  editor: 'border-l-blue-500',
+                  viewer: 'border-l-gray-400',
+                  student: 'border-l-green-500',
+                  supervisor: 'border-l-purple-500',
+                  data_manager: 'border-l-orange-500',
+                  geo_analyst: 'border-l-cyan-500',
+                }
+                const borderColor = roleColors[primaryRole] || 'border-l-gray-300'
+                
+                // Avatar avec initiales
+                const initials = (user.first_name?.[0] || '') + (user.last_name?.[0] || user.username[0] || '')
+                
+                return (
+                  <div
+                    key={user.id}
+                    className={`border rounded-lg p-4 flex items-center gap-4 hover:bg-slate-50 transition-colors border-l-4 ${borderColor}`}
+                  >
+                    {/* Avatar */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-medium ${
+                      user.is_active ? 'bg-blue-500' : 'bg-gray-400'
+                    }`}>
+                      {initials.toUpperCase()}
                     </div>
-                    <p className="text-sm text-slate-600">{user.email}</p>
-                    <div className="flex gap-1 mt-2">
-                      {user.roles.map(roleId => {
-                        const role = roles.find(r => r.id === roleId)
-                        return (
-                          <Badge key={roleId} variant="outline">
-                            {role?.name || roleId}
+                    
+                    {/* Infos */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold text-gray-900">{getUserDisplayName(user)}</h3>
+                        <span className="text-sm text-slate-500">@{user.username}</span>
+                        {!user.is_active && (
+                          <Badge variant="secondary" className="bg-gray-100 text-gray-600">
+                            Inactif
                           </Badge>
-                        )
-                      })}
+                        )}
+                      </div>
+                      <p className="text-sm text-slate-600 truncate">{user.email}</p>
+                      <div className="flex flex-wrap gap-1 mt-2">
+                        {user.roles.map(roleId => {
+                          const role = roles.find(r => r.id === roleId)
+                          const badgeColors: Record<string, string> = {
+                            admin: 'bg-red-100 text-red-800 border-red-200',
+                            editor: 'bg-blue-100 text-blue-800 border-blue-200',
+                            viewer: 'bg-gray-100 text-gray-800 border-gray-200',
+                            student: 'bg-green-100 text-green-800 border-green-200',
+                            supervisor: 'bg-purple-100 text-purple-800 border-purple-200',
+                            data_manager: 'bg-orange-100 text-orange-800 border-orange-200',
+                            geo_analyst: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+                          }
+                          return (
+                            <Badge 
+                              key={roleId} 
+                              className={`text-xs ${badgeColors[roleId] || 'bg-gray-100 text-gray-800'}`}
+                            >
+                              {role?.name || roleId}
+                            </Badge>
+                          )
+                        })}
+                      </div>
+                      {user.last_login_at && (
+                        <p className="text-xs text-slate-400 mt-1">
+                          Dernière connexion: {new Date(user.last_login_at).toLocaleString()}
+                        </p>
+                      )}
                     </div>
-                    {user.last_login_at && (
-                      <p className="text-xs text-slate-400 mt-1">
-                        Dernière connexion: {new Date(user.last_login_at).toLocaleString()}
-                      </p>
-                    )}
+                    
+                    {/* Actions */}
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setEditingUser(user)
+                          setShowUserModal(true)
+                        }}
+                        title="Modifier"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Supprimer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        setEditingUser(user)
-                        setShowUserModal(true)
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDeleteUser(user.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                )
+              })}
+              
+              {users.length === 0 && (
+                <div className="text-center py-12 text-gray-500">
+                  <Users className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                  <p>Aucun utilisateur trouvé</p>
                 </div>
-              ))}
+              )}
             </div>
           </TabsContent>
 
@@ -625,194 +702,17 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
         </DialogFooter>
       </DialogContent>
 
-      {/* User Edit Modal */}
-      {showUserModal && editingUser && (
-        <Dialog open={showUserModal} onOpenChange={setShowUserModal}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingUser.id ? 'Modifier utilisateur' : 'Nouvel utilisateur'}
-              </DialogTitle>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              <div>
-                <Label>Username</Label>
-                <Input
-                  value={editingUser.username}
-                  onChange={e => setEditingUser({ ...editingUser, username: e.target.value })}
-                  disabled={!!editingUser.id}
-                />
-              </div>
-
-              <div>
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={editingUser.email}
-                  onChange={e => setEditingUser({ ...editingUser, email: e.target.value })}
-                />
-              </div>
-
-              {!editingUser.id && (
-                <div>
-                  <Label>Mot de passe</Label>
-                  <Input
-                    type="password"
-                    value={newUserPassword}
-                    onChange={e => setNewUserPassword(e.target.value)}
-                    placeholder="Min. 8 caractères"
-                  />
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Prénom</Label>
-                  <Input
-                    value={editingUser.first_name || ''}
-                    onChange={e => setEditingUser({ ...editingUser, first_name: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <Label>Nom</Label>
-                  <Input
-                    value={editingUser.last_name || ''}
-                    onChange={e => setEditingUser({ ...editingUser, last_name: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <Label>Rôles</Label>
-                <div className="space-y-2 mt-2">
-                  {roles.map(role => (
-                    <div key={role.id} className="flex items-center gap-2">
-                      <Checkbox
-                        checked={editingUser.roles.includes(role.id)}
-                        onCheckedChange={() => toggleUserRole(role.id)}
-                      />
-                      <Label className="cursor-pointer">{role.name}</Label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Champs spécifiques Étudiant */}
-              {editingUser.roles.includes('student') && (
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="font-medium text-sm text-slate-700 mb-3 flex items-center gap-2">
-                    <GraduationCap className="h-4 w-4" />
-                    Informations étudiant
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Matricule (facultatif)</Label>
-                      <Input
-                        value={studentFields.matricule || ''}
-                        onChange={e => setStudentFields({ ...studentFields, matricule: e.target.value })}
-                        placeholder="2024-GC-001"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Téléphone</Label>
-                      <Input
-                        value={studentFields.phone || ''}
-                        onChange={e => setStudentFields({ ...studentFields, phone: e.target.value })}
-                        placeholder="+228 90 00 00 00"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Établissement *</Label>
-                      <Input
-                        value={studentFields.school || ''}
-                        onChange={e => setStudentFields({ ...studentFields, school: e.target.value })}
-                        placeholder="ENSI Lomé"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Filière *</Label>
-                      <Input
-                        value={studentFields.program || ''}
-                        onChange={e => setStudentFields({ ...studentFields, program: e.target.value })}
-                        placeholder="Génie Civil"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Niveau</Label>
-                      <select
-                        value={studentFields.level || 'L3'}
-                        onChange={e => setStudentFields({ ...studentFields, level: e.target.value })}
-                        className="w-full h-10 px-3 border rounded-md text-sm"
-                      >
-                        <option value="L3">Licence 3</option>
-                        <option value="M1">Master 1</option>
-                        <option value="M2">Master 2</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Champs spécifiques Encadreur */}
-              {editingUser.roles.includes('supervisor') && (
-                <div className="border-t pt-4 mt-4">
-                  <h4 className="font-medium text-sm text-slate-700 mb-3 flex items-center gap-2">
-                    <Building2 className="h-4 w-4" />
-                    Informations encadreur
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <Label className="text-xs">Organisation *</Label>
-                      <Input
-                        value={supervisorFields.organization || ''}
-                        onChange={e => setSupervisorFields({ ...supervisorFields, organization: e.target.value })}
-                        placeholder="Université de Lomé"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">Fonction / Poste</Label>
-                      <Input
-                        value={supervisorFields.title || ''}
-                        onChange={e => setSupervisorFields({ ...supervisorFields, title: e.target.value })}
-                        placeholder="Maître de conférences"
-                      />
-                    </div>
-                    <div className="col-span-2">
-                      <Label className="text-xs">Spécialité</Label>
-                      <Input
-                        value={supervisorFields.specialty || ''}
-                        onChange={e => setSupervisorFields({ ...supervisorFields, specialty: e.target.value })}
-                        placeholder="Géotechnique, Hydrogéologie..."
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  checked={editingUser.is_active}
-                  onCheckedChange={checked =>
-                    setEditingUser({ ...editingUser, is_active: checked as boolean })
-                  }
-                />
-                <Label>Actif</Label>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowUserModal(false)}>
-                Annuler
-              </Button>
-              <Button onClick={handleSaveUser} disabled={loading}>
-                {loading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Enregistrer
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+      {/* User Wizard Modal */}
+      <UserWizard
+        open={showUserModal}
+        onClose={() => {
+          setShowUserModal(false)
+          setEditingUser(null)
+        }}
+        onSuccess={loadData}
+        editUser={editingUser}
+        availableRoles={roles.map(r => ({ id: r.id, name: r.name, description: r.description }))}
+      />
 
       {/* Role Edit Modal */}
       {showRoleModal && editingRole && (
