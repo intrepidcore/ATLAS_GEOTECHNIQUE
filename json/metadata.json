@@ -1,7 +1,7 @@
 {
   "version": "3.0",
-  "exportDate": "2025-12-17T19:14:40.351Z",
-  "runId": "20251217_191432_N7FB",
+  "exportDate": "2025-12-17T19:29:59.332Z",
+  "runId": "20251217_192953_G1D6",
   "thematic": {
     "parameter": "vbs_avg",
     "name": "VBS moyen"
@@ -27,8 +27,8 @@
     }
   },
   "cells": {
-    "total": 1092,
-    "withData": 15,
+    "total": 1143,
+    "withData": 66,
     "withoutData": 1077
   },
   "legend": {
@@ -40,11 +40,12 @@
       {
         "label": "0.2 - 1.5",
         "color": "#fdae61",
-        "count": 14
+        "count": 62
       },
       {
         "label": "1.5 - 2.5",
-        "color": "#fee08b"
+        "color": "#fee08b",
+        "count": 3
       },
       {
         "label": "2.5 - 6.0",
@@ -64,69 +65,69 @@
   "telemetry": {
     "stages": {
       "UI": {
-        "durationMs": 2,
-        "startMs": 131240.19999998808,
-        "endMs": 131241.80000001192
+        "durationMs": 1,
+        "startMs": 180019.39999997616,
+        "endMs": 180020.79999998212
       },
       "FIT": {
-        "durationMs": 2122,
-        "startMs": 131242.90000000596,
-        "endMs": 133365
+        "durationMs": 2190,
+        "startMs": 180021.59999999404,
+        "endMs": 182212
       },
       "TILES_WAIT": {
-        "durationMs": 417,
-        "startMs": 133365.5,
-        "endMs": 133782.5
+        "durationMs": 416,
+        "startMs": 182212.39999997616,
+        "endMs": 182628.69999998808
       },
       "CAPTURE": {
-        "durationMs": 869,
-        "startMs": 134296,
-        "endMs": 135165.40000000596
+        "durationMs": 898,
+        "startMs": 183149.79999998212,
+        "endMs": 184047.5
       },
       "LAYOUT": {
-        "durationMs": 3,
-        "startMs": 135165.69999998808,
-        "endMs": 135169
+        "durationMs": 7,
+        "startMs": 184048.19999998808,
+        "endMs": 184055.09999999404
       },
       "DRAW": {
-        "durationMs": 117,
-        "startMs": 135169.40000000596,
-        "endMs": 135286.30000001192
+        "durationMs": 138,
+        "startMs": 184055.29999998212,
+        "endMs": 184193
       },
       "FETCH": {
-        "durationMs": 3759,
-        "startMs": 135286.69999998808,
-        "endMs": 139046.09999999404
+        "durationMs": 1657,
+        "startMs": 184195.19999998808,
+        "endMs": 185852.09999999404
       },
       "GRID": {
-        "durationMs": 9,
-        "startMs": 139046.5,
-        "endMs": 139055.69999998808
+        "durationMs": 8,
+        "startMs": 185852.29999998212,
+        "endMs": 185860.5
       },
       "DRAW_CELLS": {
-        "durationMs": 2,
-        "startMs": 139056.59999999404,
-        "endMs": 139058.90000000596
+        "durationMs": 1,
+        "startMs": 185860.79999998212,
+        "endMs": 185861.69999998808
       },
       "MASK": {
-        "durationMs": 3,
-        "startMs": 139061.59999999404,
-        "endMs": 139064.30000001192
+        "durationMs": 1,
+        "startMs": 185863.09999999404,
+        "endMs": 185864.39999997616
       },
       "NEIGHBORS": {
-        "durationMs": 355,
-        "startMs": 139066,
-        "endMs": 139420.59999999404
+        "durationMs": 232,
+        "startMs": 185865,
+        "endMs": 186097.39999997616
       },
       "LEGEND": {
-        "durationMs": 3,
-        "startMs": 139420.90000000596,
-        "endMs": 139423.90000000596
+        "durationMs": 1,
+        "startMs": 186097.59999999404,
+        "endMs": 186098.5
       },
       "STATS": {
-        "durationMs": 7,
-        "startMs": 139424.09999999404,
-        "endMs": 139431
+        "durationMs": 2,
+        "startMs": 186098.69999998808,
+        "endMs": 186100.69999998808
       }
     },
     "errors": [],
@@ -136,14 +137,14 @@
   },
   "debugLogs": [
     {
-      "timestamp": "2025-12-17T19:14:32.159Z",
+      "timestamp": "2025-12-17T19:29:53.250Z",
       "stage": "UI",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:32.159Z",
+      "timestamp": "2025-12-17T19:29:53.250Z",
       "stage": "UI",
       "data": {
         "options": {
@@ -161,7 +162,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:32.160Z",
+      "timestamp": "2025-12-17T19:29:53.251Z",
       "stage": "UI",
       "data": {
         "thematic": {
@@ -172,7 +173,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:32.161Z",
+      "timestamp": "2025-12-17T19:29:53.251Z",
       "stage": "UI",
       "data": {
         "admFilters": {
@@ -182,33 +183,33 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:32.161Z",
+      "timestamp": "2025-12-17T19:29:53.251Z",
       "stage": "UI",
       "data": {
         "event": "end",
-        "durationMs": 2
+        "durationMs": 1
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:32.162Z",
+      "timestamp": "2025-12-17T19:29:53.252Z",
       "stage": "FIT",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:34.284Z",
+      "timestamp": "2025-12-17T19:29:55.442Z",
       "stage": "FIT",
       "data": {
         "event": "end",
-        "durationMs": 2122
+        "durationMs": 2190
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:34.284Z",
+      "timestamp": "2025-12-17T19:29:55.442Z",
       "stage": "FIT",
       "data": {
-        "z0": 10,
+        "z0": 8,
         "z1": 10,
         "requested": {
           "north": "6.8915",
@@ -225,26 +226,26 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:34.284Z",
+      "timestamp": "2025-12-17T19:29:55.443Z",
       "stage": "TILES_WAIT",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:34.701Z",
+      "timestamp": "2025-12-17T19:29:55.859Z",
       "stage": "TILES_WAIT",
       "data": {
         "event": "end",
-        "durationMs": 417
+        "durationMs": 416
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:34.702Z",
+      "timestamp": "2025-12-17T19:29:55.859Z",
       "stage": "TILES_WAIT",
       "data": {
         "tiles": {
-          "loaded": 29,
+          "loaded": 16,
           "errors": 0,
           "pending": 0,
           "stableMs": 306,
@@ -254,14 +255,14 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:35.215Z",
+      "timestamp": "2025-12-17T19:29:56.380Z",
       "stage": "CAPTURE",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:35.216Z",
+      "timestamp": "2025-12-17T19:29:56.381Z",
       "stage": "CAPTURE",
       "data": {
         "hiddenPanes": [
@@ -277,7 +278,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:35.368Z",
+      "timestamp": "2025-12-17T19:29:56.533Z",
       "stage": "CAPTURE",
       "data": {
         "admOverlay": {
@@ -287,7 +288,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.079Z",
+      "timestamp": "2025-12-17T19:29:57.170Z",
       "stage": "CAPTURE",
       "data": {
         "attempt": 1,
@@ -303,7 +304,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.080Z",
+      "timestamp": "2025-12-17T19:29:57.170Z",
       "stage": "CAPTURE",
       "data": {
         "captureWidth": 2169,
@@ -312,7 +313,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.080Z",
+      "timestamp": "2025-12-17T19:29:57.171Z",
       "stage": "CAPTURE",
       "data": {
         "restoredPanes": [
@@ -327,23 +328,23 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.084Z",
+      "timestamp": "2025-12-17T19:29:57.278Z",
       "stage": "CAPTURE",
       "data": {
         "event": "end",
-        "durationMs": 869,
+        "durationMs": 898,
         "captureSuccess": true
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.085Z",
+      "timestamp": "2025-12-17T19:29:57.278Z",
       "stage": "LAYOUT",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.085Z",
+      "timestamp": "2025-12-17T19:29:57.279Z",
       "stage": "LAYOUT",
       "data": {
         "bbox": {
@@ -358,7 +359,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.087Z",
+      "timestamp": "2025-12-17T19:29:57.284Z",
       "stage": "LAYOUT",
       "data": {
         "canvasWidth": 2480,
@@ -369,7 +370,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.088Z",
+      "timestamp": "2025-12-17T19:29:57.285Z",
       "stage": "DRAW",
       "data": {
         "drawImage": {
@@ -388,116 +389,117 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.088Z",
+      "timestamp": "2025-12-17T19:29:57.285Z",
       "stage": "LAYOUT",
       "data": {
         "event": "end",
-        "durationMs": 3
+        "durationMs": 7
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.088Z",
+      "timestamp": "2025-12-17T19:29:57.286Z",
       "stage": "DRAW",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.205Z",
+      "timestamp": "2025-12-17T19:29:57.423Z",
       "stage": "DRAW",
       "data": {
         "event": "end",
-        "durationMs": 117
+        "durationMs": 138
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:36.206Z",
+      "timestamp": "2025-12-17T19:29:57.425Z",
       "stage": "FETCH",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.965Z",
+      "timestamp": "2025-12-17T19:29:59.082Z",
       "stage": "FILTER",
       "data": {
-        "totalCells": 1092,
-        "cellsWithData": 15,
+        "totalCells": 1143,
+        "cellsWithData": 66,
         "cellsWithoutData": 1077,
-        "coveragePct": "1.4%"
+        "coveragePct": "5.8%"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.965Z",
+      "timestamp": "2025-12-17T19:29:59.082Z",
       "stage": "FETCH",
       "data": {
         "event": "end",
-        "durationMs": 3759
+        "durationMs": 1657
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.965Z",
+      "timestamp": "2025-12-17T19:29:59.083Z",
       "stage": "GRID",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.975Z",
+      "timestamp": "2025-12-17T19:29:59.091Z",
       "stage": "GRID",
       "data": {
         "event": "end",
-        "durationMs": 9,
+        "durationMs": 8,
         "emptyCellsDrawn": true,
         "count": 1077
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.976Z",
+      "timestamp": "2025-12-17T19:29:59.091Z",
       "stage": "DRAW_CELLS",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.978Z",
+      "timestamp": "2025-12-17T19:29:59.092Z",
       "stage": "DRAW_CELLS",
       "data": {
         "event": "end",
-        "durationMs": 2,
-        "coloredCellsDrawn": 15,
+        "durationMs": 1,
+        "coloredCellsDrawn": 66,
         "classUsage": {
-          "1": 14,
+          "1": 62,
+          "2": 3,
           "3": 1
         }
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.981Z",
+      "timestamp": "2025-12-17T19:29:59.093Z",
       "stage": "MASK",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.983Z",
+      "timestamp": "2025-12-17T19:29:59.095Z",
       "stage": "MASK",
       "data": {
         "event": "end",
-        "durationMs": 3,
+        "durationMs": 1,
         "maskApplied": true,
         "polygonPoints": 390
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:39.985Z",
+      "timestamp": "2025-12-17T19:29:59.095Z",
       "stage": "NEIGHBORS",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.326Z",
+      "timestamp": "2025-12-17T19:29:59.327Z",
       "stage": "NEIGHBORS",
       "data": {
         "neighborsFound": 2,
@@ -505,45 +507,45 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.340Z",
+      "timestamp": "2025-12-17T19:29:59.328Z",
       "stage": "NEIGHBORS",
       "data": {
         "event": "end",
-        "durationMs": 355
+        "durationMs": 232
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.340Z",
+      "timestamp": "2025-12-17T19:29:59.328Z",
       "stage": "LEGEND",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.340Z",
+      "timestamp": "2025-12-17T19:29:59.328Z",
       "stage": "LEGEND",
       "data": {
         "totalClasses": 6,
-        "visibleClasses": 2
+        "visibleClasses": 3
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.343Z",
+      "timestamp": "2025-12-17T19:29:59.329Z",
       "stage": "LEGEND",
       "data": {
         "event": "end",
-        "durationMs": 3
+        "durationMs": 1
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.343Z",
+      "timestamp": "2025-12-17T19:29:59.329Z",
       "stage": "STATS",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.346Z",
+      "timestamp": "2025-12-17T19:29:59.330Z",
       "stage": "STATS",
       "data": {
         "computedStats": {
@@ -553,11 +555,11 @@
           "rows": [
             {
               "label": "Mailles avec données",
-              "value": "15 / 1092"
+              "value": "66 / 1143"
             },
             {
               "label": "Couverture",
-              "value": "1.4 %"
+              "value": "5.8 %"
             },
             {
               "label": "Fiabilité",
@@ -584,14 +586,14 @@
             },
             {
               "label": "% sols argileux (≥2.5)",
-              "value": "7%"
+              "value": "2%"
             }
           ]
         }
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.346Z",
+      "timestamp": "2025-12-17T19:29:59.330Z",
       "stage": "STATS",
       "data": {
         "drawStatsInputKeys": [
@@ -600,34 +602,34 @@
           "rows"
         ],
         "drawStatsStrings": {
-          "Mailles avec données": "15 / 1092",
-          "Couverture": "1.4 %",
+          "Mailles avec données": "66 / 1143",
+          "Couverture": "5.8 %",
           "Fiabilité": "Faible",
           "VBS médian (Q1-Q3)": "1 (1-1) g/100g",
           "VBS min / max": "1 / 3 g/100g",
           "P10 / P90": "1 / 1 g/100g",
           "Classe dominante": "Sableux",
-          "% sols argileux (≥2.5)": "7%"
+          "% sols argileux (≥2.5)": "2%"
         }
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.350Z",
+      "timestamp": "2025-12-17T19:29:59.331Z",
       "stage": "STATS",
       "data": {
         "event": "end",
-        "durationMs": 7
+        "durationMs": 2
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.351Z",
+      "timestamp": "2025-12-17T19:29:59.332Z",
       "stage": "SAVE",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.352Z",
+      "timestamp": "2025-12-17T19:29:59.332Z",
       "stage": "SAVE",
       "data": {
         "event": "end",
@@ -635,30 +637,30 @@
       }
     },
     {
-      "timestamp": "2025-12-17T19:14:40.352Z",
+      "timestamp": "2025-12-17T19:29:59.333Z",
       "stage": "ENCODE",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T19:15:01.105Z",
+      "timestamp": "2025-12-17T19:30:09.883Z",
       "stage": "ENCODE",
       "data": {
         "event": "end",
-        "durationMs": 20753
+        "durationMs": 10550
       }
     },
     {
-      "timestamp": "2025-12-17T19:15:01.106Z",
+      "timestamp": "2025-12-17T19:30:09.883Z",
       "stage": "ENCODE",
       "data": {
-        "sizeBytes": 14412866,
-        "sizeKB": 14075
+        "sizeBytes": 14415053,
+        "sizeKB": 14077
       }
     },
     {
-      "timestamp": "2025-12-17T19:15:01.106Z",
+      "timestamp": "2025-12-17T19:30:09.884Z",
       "stage": "ZIP",
       "data": {
         "event": "start"
@@ -667,652 +669,634 @@
   ],
   "consoleLogs": [
     {
-      "timestamp": "2025-12-17T19:14:32.159Z",
+      "timestamp": "2025-12-17T19:29:53.250Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][UI] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.159Z",
+      "timestamp": "2025-12-17T19:29:53.250Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_191432_N7FB {\"options\":{\"format\":\"png\",\"quality\":\"print\",\"zone\":\"adm-filtered\",\"dpi\":300,\"maskMode\":\"context\",\"showEmptyCells\":true,\"onlyAdmCells\":true,\"showNeighbors\":true,\"includeStats\":true,\"includeLegend\":true}}"
+      "message": "[Export][UI] runId=20251217_192953_G1D6 {\"options\":{\"format\":\"png\",\"quality\":\"print\",\"zone\":\"adm-filtered\",\"dpi\":300,\"maskMode\":\"context\",\"showEmptyCells\":true,\"onlyAdmCells\":true,\"showNeighbors\":true,\"includeStats\":true,\"includeLegend\":true}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.160Z",
+      "timestamp": "2025-12-17T19:29:53.250Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Options sauvegardées AVANT modification DOM: {\"hideGridLayer\":true,\"showEmptyCells\":true,\"onlyAdmCells\":true,\"showNeighbors\":true,\"maskMode\":\"context\",\"includeMetadata\":true}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.160Z",
+      "timestamp": "2025-12-17T19:29:53.250Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] includeMetadata sauvegardé: true"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.160Z",
+      "timestamp": "2025-12-17T19:29:53.251Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_191432_N7FB {\"thematic\":{\"id\":\"vbs_avg\",\"name\":\"VBS moyen\",\"unit\":\"g/100g\"}}"
+      "message": "[Export][UI] runId=20251217_192953_G1D6 {\"thematic\":{\"id\":\"vbs_avg\",\"name\":\"VBS moyen\",\"unit\":\"g/100g\"}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.161Z",
+      "timestamp": "2025-12-17T19:29:53.251Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_191432_N7FB {\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
+      "message": "[Export][UI] runId=20251217_192953_G1D6 {\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.161Z",
+      "timestamp": "2025-12-17T19:29:53.251Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":2}"
+      "message": "[Export][UI] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":1}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.161Z",
+      "timestamp": "2025-12-17T19:29:53.251Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] AR cible zone carte A4 (getA4Layout): 0.8771"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.161Z",
+      "timestamp": "2025-12-17T19:29:53.251Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Emprise optimisée: {\"admOriginal\":{\"width\":\"0.5088\",\"height\":\"0.6810\"},\"compactness\":\"0.74\",\"margins\":{\"h\":\"3%\",\"v\":\"3%\"},\"currentRatio\":\"1.347\",\"sheetRatio\":\"1.110\",\"newBounds\":{\"width\":\"0.6546\",\"height\":\"0.7219\"}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.162Z",
+      "timestamp": "2025-12-17T19:29:53.252Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Zone filtrée ADM optimisée pour feuille: {\"west\":0.8240799909356596,\"east\":1.4786910090643404,\"south\":6.16959977,\"north\":6.89150323}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.162Z",
+      "timestamp": "2025-12-17T19:29:53.252Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FIT] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][FIT] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:32.162Z",
+      "timestamp": "2025-12-17T19:29:53.252Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Resize container pour AR cible: {\"originalW\":708,\"originalH\":1024,\"originalAR\":\"0.691\",\"newH\":807,\"targetAR\":\"0.877\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:34.283Z",
+      "timestamp": "2025-12-17T19:29:55.442Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Container après resize: {\"w\":708,\"h\":807,\"ar\":\"0.877\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:34.284Z",
+      "timestamp": "2025-12-17T19:29:55.442Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FIT] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":2122}"
+      "message": "[Export][FIT] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":2190}"
     },
     {
-      "timestamp": "2025-12-17T19:14:34.284Z",
+      "timestamp": "2025-12-17T19:29:55.442Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FIT] runId=20251217_191432_N7FB {\"z0\":10,\"z1\":10,\"requested\":{\"north\":\"6.8915\",\"south\":\"6.1696\",\"east\":\"1.4787\",\"west\":\"0.8241\"},\"effective\":{\"north\":\"7.0805\",\"south\":\"5.9794\",\"east\":\"1.6370\",\"west\":\"0.6647\"}}"
+      "message": "[Export][FIT] runId=20251217_192953_G1D6 {\"z0\":8,\"z1\":10,\"requested\":{\"north\":\"6.8915\",\"south\":\"6.1696\",\"east\":\"1.4787\",\"west\":\"0.8241\"},\"effective\":{\"north\":\"7.0805\",\"south\":\"5.9794\",\"east\":\"1.6370\",\"west\":\"0.6647\"}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:34.284Z",
+      "timestamp": "2025-12-17T19:29:55.443Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][TILES_WAIT] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][TILES_WAIT] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:34.701Z",
+      "timestamp": "2025-12-17T19:29:55.859Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][TILES] Tuiles stables: {\"loaded\":29,\"errors\":0,\"stableMs\":306}"
+      "message": "[Export][TILES] Tuiles stables: {\"loaded\":16,\"errors\":0,\"stableMs\":306}"
     },
     {
-      "timestamp": "2025-12-17T19:14:34.701Z",
+      "timestamp": "2025-12-17T19:29:55.859Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][TILES_WAIT] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":417}"
+      "message": "[Export][TILES_WAIT] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":416}"
     },
     {
-      "timestamp": "2025-12-17T19:14:34.702Z",
+      "timestamp": "2025-12-17T19:29:55.859Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][TILES_WAIT] runId=20251217_191432_N7FB {\"tiles\":{\"loaded\":29,\"errors\":0,\"pending\":0,\"stableMs\":306,\"timedOut\":false},\"message\":\"Tuiles stables\"}"
+      "message": "[Export][TILES_WAIT] runId=20251217_192953_G1D6 {\"tiles\":{\"loaded\":16,\"errors\":0,\"pending\":0,\"stableMs\":306,\"timedOut\":false},\"message\":\"Tuiles stables\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:35.215Z",
+      "timestamp": "2025-12-17T19:29:56.380Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][CAPTURE] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:35.216Z",
+      "timestamp": "2025-12-17T19:29:56.381Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Panes Leaflet disponibles: [\"mapPane\",\"tilePane\",\"overlayPane\",\"shadowPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"thematicPane\",\"thematicCirclesPane\"]"
     },
     {
-      "timestamp": "2025-12-17T19:14:35.216Z",
+      "timestamp": "2025-12-17T19:29:56.381Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_191432_N7FB {\"hiddenPanes\":[\"overlayPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"shadowPane\",\"thematicPane\",\"thematicCirclesPane\"],\"message\":\"All non-tile panes hidden - capturing background only\"}"
+      "message": "[Export][CAPTURE] runId=20251217_192953_G1D6 {\"hiddenPanes\":[\"overlayPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"shadowPane\",\"thematicPane\",\"thematicCirclesPane\"],\"message\":\"All non-tile panes hidden - capturing background only\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:35.368Z",
+      "timestamp": "2025-12-17T19:29:56.533Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_191432_N7FB {\"admOverlay\":{\"visibleBeforeCapture\":false,\"hiddenForCapture\":true}}"
+      "message": "[Export][CAPTURE] runId=20251217_192953_G1D6 {\"admOverlay\":{\"visibleBeforeCapture\":false,\"hiddenForCapture\":true}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.079Z",
+      "timestamp": "2025-12-17T19:29:57.170Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export][QA] Validation capture: {\"blackRatio\":\"0.00\",\"blackCount\":0,\"sampleCount\":50,\"valid\":true}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.079Z",
+      "timestamp": "2025-12-17T19:29:57.170Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_191432_N7FB {\"attempt\":1,\"validation\":{\"valid\":true,\"blackRatio\":0,\"sampleCount\":50},\"dimensions\":{\"w\":2169,\"h\":2421}}"
+      "message": "[Export][CAPTURE] runId=20251217_192953_G1D6 {\"attempt\":1,\"validation\":{\"valid\":true,\"blackRatio\":0,\"sampleCount\":50},\"dimensions\":{\"w\":2169,\"h\":2421}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.080Z",
+      "timestamp": "2025-12-17T19:29:57.170Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_191432_N7FB {\"captureWidth\":2169,\"captureHeight\":2421,\"captureAspectRatio\":\"0.896\"}"
+      "message": "[Export][CAPTURE] runId=20251217_192953_G1D6 {\"captureWidth\":2169,\"captureHeight\":2421,\"captureAspectRatio\":\"0.896\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.080Z",
+      "timestamp": "2025-12-17T19:29:57.171Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_191432_N7FB {\"restoredPanes\":[\"overlayPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"shadowPane\",\"thematicPane\",\"thematicCirclesPane\"]}"
+      "message": "[Export][CAPTURE] runId=20251217_192953_G1D6 {\"restoredPanes\":[\"overlayPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"shadowPane\",\"thematicPane\",\"thematicCirclesPane\"]}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.083Z",
+      "timestamp": "2025-12-17T19:29:57.177Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Container restauré à sa taille originale"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.084Z",
+      "timestamp": "2025-12-17T19:29:57.278Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":869,\"captureSuccess\":true}"
+      "message": "[Export][CAPTURE] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":898,\"captureSuccess\":true}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.085Z",
+      "timestamp": "2025-12-17T19:29:57.278Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LAYOUT] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][LAYOUT] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.085Z",
+      "timestamp": "2025-12-17T19:29:57.279Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LAYOUT] runId=20251217_191432_N7FB {\"bbox\":{\"minX\":0.6646728515625,\"minY\":5.979412036211429,\"maxX\":1.636962890625,\"maxY\":7.08045084645532},\"bboxWidth\":\"0.9723\",\"bboxHeight\":\"1.1010\",\"bboxAspectRatio\":\"0.883\"}"
+      "message": "[Export][LAYOUT] runId=20251217_192953_G1D6 {\"bbox\":{\"minX\":0.6646728515625,\"minY\":5.979412036211429,\"maxX\":1.636962890625,\"maxY\":7.08045084645532},\"bboxWidth\":\"0.9723\",\"bboxHeight\":\"1.1010\",\"bboxAspectRatio\":\"0.883\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.085Z",
+      "timestamp": "2025-12-17T19:29:57.279Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Création A4 fixe: {\"orientation\":\"portrait\",\"dpi\":300,\"dpiRatio\":4.166666666666667,\"pageWidth\":2480,\"pageHeight\":3508,\"mapAreaWidth\":2028,\"mapAreaHeight\":2324,\"scaledLayout\":{\"margin\":59,\"titleHeight\":142,\"footerHeight\":496}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.085Z",
+      "timestamp": "2025-12-17T19:29:57.279Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Footer layout: {\"footerWidth\":2362,\"legendArea\":{\"x\":59,\"w\":531,\"right\":590},\"statsArea\":{\"x\":625,\"w\":1111,\"right\":1736},\"cartoucheArea\":{\"x\":1771,\"w\":650},\"gap\":35,\"noOverlap\":true}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.087Z",
+      "timestamp": "2025-12-17T19:29:57.284Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Créé avec dimensions: {\"mapWidth\":2028,\"mapHeight\":2324,\"totalWidth\":2480,\"totalHeight\":3508,\"canvasWidth\":7440,\"canvasHeight\":10524,\"scale\":3,\"dpi\":300}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.087Z",
+      "timestamp": "2025-12-17T19:29:57.284Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LAYOUT] runId=20251217_191432_N7FB {\"canvasWidth\":2480,\"canvasHeight\":3508,\"mapAreaWidth\":2028,\"mapAreaHeight\":2324,\"mapAreaAspectRatio\":\"0.873\"}"
+      "message": "[Export][LAYOUT] runId=20251217_192953_G1D6 {\"canvasWidth\":2480,\"canvasHeight\":3508,\"mapAreaWidth\":2028,\"mapAreaHeight\":2324,\"mapAreaAspectRatio\":\"0.873\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.088Z",
+      "timestamp": "2025-12-17T19:29:57.285Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW] runId=20251217_191432_N7FB {\"drawImage\":{\"srcW\":2169,\"srcH\":2421,\"arSrc\":\"0.896\",\"dstW\":2028,\"dstH\":2324,\"arDst\":\"0.873\",\"dstX\":226,\"dstY\":427,\"scaleX\":\"0.935\",\"scaleY\":\"0.960\",\"aspectRatioMismatch\":true}}"
+      "message": "[Export][DRAW] runId=20251217_192953_G1D6 {\"drawImage\":{\"srcW\":2169,\"srcH\":2421,\"arSrc\":\"0.896\",\"dstW\":2028,\"dstH\":2324,\"arDst\":\"0.873\",\"dstX\":226,\"dstY\":427,\"scaleX\":\"0.935\",\"scaleY\":\"0.960\",\"aspectRatioMismatch\":true}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.088Z",
+      "timestamp": "2025-12-17T19:29:57.285Z",
       "level": "warn",
       "tag": "[Export]",
-      "message": "[Export][WARN] runId=20251217_191432_N7FB Aspect ratio mismatch: src=0.896 dst=0.873 - image will be stretched!"
+      "message": "[Export][WARN] runId=20251217_192953_G1D6 Aspect ratio mismatch: src=0.896 dst=0.873 - image will be stretched!"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.088Z",
+      "timestamp": "2025-12-17T19:29:57.285Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LAYOUT] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":3}"
+      "message": "[Export][LAYOUT] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":7}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.088Z",
+      "timestamp": "2025-12-17T19:29:57.286Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][DRAW] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.089Z",
+      "timestamp": "2025-12-17T19:29:57.286Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Frame A4 créé, capture: {\"captureWidth\":723,\"captureHeight\":807}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.204Z",
+      "timestamp": "2025-12-17T19:29:57.415Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Letterbox applied: {\"src\":{\"w\":2169,\"h\":2421,\"ar\":\"0.896\"},\"dst\":{\"w\":2028,\"h\":2324,\"ar\":\"0.873\"},\"draw\":{\"w\":\"2028\",\"h\":\"2264\",\"x\":\"226\",\"y\":\"457\"},\"scale\":\"0.935\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.205Z",
+      "timestamp": "2025-12-17T19:29:57.423Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":117}"
+      "message": "[Export][DRAW] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":138}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.206Z",
+      "timestamp": "2025-12-17T19:29:57.425Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FETCH] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][FETCH] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.206Z",
+      "timestamp": "2025-12-17T19:29:57.426Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export][DATA] thematicSource: SCREEN featureCount: 66"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.207Z",
+      "timestamp": "2025-12-17T19:29:57.426Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DATA] Sample feature structure: {\"hasProperties\":true,\"propertyKeys\":[\"code\",\"n_essais_geo\",\"n_sondages\",\"value\"],\"sampleProps\":{\"code\":\"TG-0485-0226-01\",\"n_essais_geo\":9,\"n_sondages\":1,\"value\":6.82}}"
+      "message": "[Export][DATA] Sample feature structure: {\"hasProperties\":true,\"propertyKeys\":[\"code\",\"n_essais_geo\",\"n_sondages\",\"value\"],\"sampleProps\":{\"code\":\"TG-0485-0226-01\",\"n_essais_geo\":9,\"n_sondages\":1,\"value\":6.82},\"hasGeometry\":true}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.207Z",
+      "timestamp": "2025-12-17T19:29:57.427Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DATA] valuesIndex: 66 mailles avec valeurs, exemples: [[\"TG-0485-0226-01\",6.82],[\"TG-0486-0203-01\",0.4766666666666667],[\"TG-0487-0223-01\",3.214444444444444],[\"TG-0488-0201-01\",0.4766666666666667],[\"TG-0488-0224-01\",2.5433333333333334]]"
+      "message": "[Export][DATA] Features thématiques directes: {\"total\":66,\"withData\":66,\"sampleValues\":[{\"code\":\"TG-0485-0226-01\",\"value\":6.82},{\"code\":\"TG-0486-0203-01\",\"value\":0.4766666666666667},{\"code\":\"TG-0487-0223-01\",\"value\":3.214444444444444},{\"code\":\"TG-0488-0201-01\",\"value\":0.4766666666666667},{\"code\":\"TG-0488-0224-01\",\"value\":2.5433333333333334}]}"
     },
     {
-      "timestamp": "2025-12-17T19:14:36.208Z",
-      "level": "log",
-      "tag": "[Export]",
-      "message": "[Export] Chargement grille ADM depuis /export/cells/adm..."
-    },
-    {
-      "timestamp": "2025-12-17T19:14:36.242Z",
-      "level": "warn",
-      "tag": "[Export]",
-      "message": "[Export] Erreur API /export/cells/adm: 401 - fallback coverage"
-    },
-    {
-      "timestamp": "2025-12-17T19:14:36.242Z",
+      "timestamp": "2025-12-17T19:29:57.427Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Fallback sur /coverage/mailles pour la grille"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.962Z",
+      "timestamp": "2025-12-17T19:29:59.082Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DATA] gridCodes exemples: [\"TG-0530-0195-01\",\"TG-0530-0193-01\",\"TG-0525-0202-01\",\"TG-0516-0202-01\",\"TG-0527-0214-01\"]"
+      "message": "[Export][DATA] Grille combinée: {\"thematicCells\":66,\"emptyCells\":1077,\"total\":1143}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.964Z",
+      "timestamp": "2025-12-17T19:29:59.082Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][JOIN] Résultat jointure: {\"totalCells\":1092,\"withData\":15,\"withValue\":15,\"fromScreen\":66,\"missing\":0}"
+      "message": "[Export][FILTER] runId=20251217_192953_G1D6 {\"totalCells\":1143,\"cellsWithData\":66,\"cellsWithoutData\":1077,\"coveragePct\":\"5.8%\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.965Z",
+      "timestamp": "2025-12-17T19:29:59.082Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FILTER] runId=20251217_191432_N7FB {\"totalCells\":1092,\"cellsWithData\":15,\"cellsWithoutData\":1077,\"coveragePct\":\"1.4%\"}"
+      "message": "[Export][FETCH] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":1657}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.965Z",
+      "timestamp": "2025-12-17T19:29:59.082Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FETCH] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":3759}"
+      "message": "[Export] Mailles ADM récupérées: 1143 withData: 66 withoutData: 1077"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.965Z",
+      "timestamp": "2025-12-17T19:29:59.083Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Mailles ADM récupérées: 1092 withData: 15 withoutData: 1077"
+      "message": "[Export][GRID] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.965Z",
-      "level": "log",
-      "tag": "[Export]",
-      "message": "[Export][GRID] runId=20251217_191432_N7FB {\"event\":\"start\"}"
-    },
-    {
-      "timestamp": "2025-12-17T19:14:39.966Z",
+      "timestamp": "2025-12-17T19:29:59.083Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] drawEmptyCells: {\"total\":1092,\"withData\":15,\"withoutData\":1077}"
+      "message": "[ExportFrame] drawEmptyCells: {\"total\":1143,\"withData\":66,\"withoutData\":1077}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.974Z",
+      "timestamp": "2025-12-17T19:29:59.091Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Empty cells drawn: 1077"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.975Z",
+      "timestamp": "2025-12-17T19:29:59.091Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][GRID] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":9,\"emptyCellsDrawn\":true,\"count\":1077}"
+      "message": "[Export][GRID] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":8,\"emptyCellsDrawn\":true,\"count\":1077}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.976Z",
+      "timestamp": "2025-12-17T19:29:59.091Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW_CELLS] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][DRAW_CELLS] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.977Z",
+      "timestamp": "2025-12-17T19:29:59.091Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] drawColoredCells: {\"totalCells\":1092,\"withData\":15,\"classCount\":6,\"classes\":[{\"min\":null,\"max\":0.2,\"label\":\"≤ 0.2\",\"color\":\"#d73027\"},{\"min\":0.2,\"max\":1.5,\"label\":\"0.2 - 1.5\",\"color\":\"#fdae61\"},{\"min\":1.5,\"max\":2.5,\"label\":\"1.5 - 2.5\",\"color\":\"#fee08b\"},{\"min\":2.5,\"max\":6,\"label\":\"2.5 - 6.0\",\"color\":\"#d9ef8b\"},{\"min\":6,\"max\":8,\"label\":\"6.0 - 8.0\",\"color\":\"#a6d96a\"},{\"min\":8,\"max\":null,\"label\":\"> 8.0\",\"color\":\"#1a9850\"}],\"sampleMapping\":[{\"value\":1,\"classIndex\":1,\"classLabel\":\"0.2 -"
+      "message": "[ExportFrame] drawColoredCells: {\"totalCells\":1143,\"withData\":66,\"classCount\":6,\"classes\":[{\"min\":null,\"max\":0.2,\"label\":\"≤ 0.2\",\"color\":\"#d73027\"},{\"min\":0.2,\"max\":1.5,\"label\":\"0.2 - 1.5\",\"color\":\"#fdae61\"},{\"min\":1.5,\"max\":2.5,\"label\":\"1.5 - 2.5\",\"color\":\"#fee08b\"},{\"min\":2.5,\"max\":6,\"label\":\"2.5 - 6.0\",\"color\":\"#d9ef8b\"},{\"min\":6,\"max\":8,\"label\":\"6.0 - 8.0\",\"color\":\"#a6d96a\"},{\"min\":8,\"max\":null,\"label\":\"> 8.0\",\"color\":\"#1a9850\"}],\"sampleMapping\":[{\"value\":1,\"classIndex\":1,\"classLabel\":\"0.2 -"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.978Z",
+      "timestamp": "2025-12-17T19:29:59.092Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] Colored cells drawn: 15 classUsage: {\"0.2 - 1.5\":14,\"2.5 - 6.0\":1}"
+      "message": "[ExportFrame] Colored cells drawn: 66 classUsage: {\"0.2 - 1.5\":62,\"2.5 - 6.0\":1,\"1.5 - 2.5\":3}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.978Z",
+      "timestamp": "2025-12-17T19:29:59.092Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW_CELLS] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":2,\"coloredCellsDrawn\":15,\"classUsage\":{\"1\":14,\"3\":1}}"
+      "message": "[Export][DRAW_CELLS] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":1,\"coloredCellsDrawn\":66,\"classUsage\":{\"1\":62,\"2\":3,\"3\":1}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.978Z",
+      "timestamp": "2025-12-17T19:29:59.092Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] getAdmPolygonCoords called: {\"hasAdmOverlayLayer\":true,\"layerCount\":1}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.979Z",
+      "timestamp": "2025-12-17T19:29:59.092Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=0: {\"type\":\"NewClass\",\"hasGetLatLngs\":false,\"hasGetLayers\":true,\"hasFeature\":false}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.979Z",
+      "timestamp": "2025-12-17T19:29:59.092Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer has 1 sub-layers"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.979Z",
+      "timestamp": "2025-12-17T19:29:59.093Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=1: {\"type\":\"NewClass\",\"hasGetLatLngs\":true,\"hasGetLayers\":false,\"hasFeature\":true}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.980Z",
+      "timestamp": "2025-12-17T19:29:59.093Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer latLngs: {\"isArray\":true,\"length\":1,\"firstIsArray\":true,\"sample\":[{\"lat\":6.808442,\"lng\":1.121805},{\"lat\":6.808033,\"lng\":1.122039},{\"lat\":6.808042,\"lng\":1.122214},{\"lat\":6.806302,\"lng\":1.126836},{\"lat\":6.804788,\"lng\":1.132997},{\"lat\":6.80041,\"lng\":1.13719},{\"lat\":6.797776,\"lng\":1.13808},{\"lat\":6.794056,\"lng\":1.141831},{\"lat\":6.792988,\"lng\":1.149968},{\"lat\":6.787749,\"lng\":1.15878},{\"lat\":6.784905,\"lng\":1.162088},{\"lat\":6.781612,\"lng\":1.16276},{\"lat\":6.779865,\"lng\":1.165624},{\"l"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.980Z",
+      "timestamp": "2025-12-17T19:29:59.093Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Coords extraites: 390 points"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.980Z",
+      "timestamp": "2025-12-17T19:29:59.093Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Masque ADM - mode: context polygon: 390 points"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.981Z",
+      "timestamp": "2025-12-17T19:29:59.093Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][MASK] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][MASK] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.981Z",
+      "timestamp": "2025-12-17T19:29:59.094Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] drawAdmMask called: {\"mode\":\"context\",\"polygonPoints\":390,\"bbox\":{\"minX\":0.6646728515625,\"minY\":5.979412036211429,\"maxX\":1.636962890625,\"maxY\":7.08045084645532}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.982Z",
+      "timestamp": "2025-12-17T19:29:59.094Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Masque ADM - conversion coords: {\"mapArea\":{\"x\":226,\"y\":427,\"w\":2028,\"h\":2324},\"bbox\":{\"minX\":0.6646728515625,\"minY\":5.979412036211429,\"maxX\":1.636962890625,\"maxY\":7.08045084645532},\"firstPoints\":[{\"lng\":1.121805,\"lat\":6.808442,\"pixel\":[1179.4850299661016,1001.1383076425216]},{\"lng\":1.122039,\"lat\":6.808033,\"pixel\":[1179.9731065491526,1002.0015978291683]},{\"lng\":1.122214,\"lat\":6.808042,\"pixel\":[1180.338121087759,1001.9826012235935]}],\"opacity\":0.45}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.982Z",
+      "timestamp": "2025-12-17T19:29:59.094Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Masque dessiné avec evenodd, opacity: 0.45"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.983Z",
+      "timestamp": "2025-12-17T19:29:59.095Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Mask drawn with evenodd fill rule"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.983Z",
+      "timestamp": "2025-12-17T19:29:59.095Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][MASK] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":3,\"maskApplied\":true,\"polygonPoints\":390}"
+      "message": "[Export][MASK] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":1,\"maskApplied\":true,\"polygonPoints\":390}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.985Z",
+      "timestamp": "2025-12-17T19:29:59.095Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][NEIGHBORS] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][NEIGHBORS] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:39.986Z",
+      "timestamp": "2025-12-17T19:29:59.096Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export][AUTH] {\"found\":true,\"key\":\"atlas_token\",\"tokenLen\":2197,\"tokenPrefix\":\"eyJ0eXAi\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.324Z",
+      "timestamp": "2025-12-17T19:29:59.326Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Voisins trouvés: [{\"label\":\"Golfe de Guinée\",\"direction\":\"S\",\"lon\":1.1513855,\"lat\":6.090031000000001},{\"label\":\"Bénin\",\"direction\":\"E\",\"lon\":1.5057880000000001,\"lat\":6.5305515}]"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.325Z",
+      "timestamp": "2025-12-17T19:29:59.326Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] getAdmPolygonCoords called: {\"hasAdmOverlayLayer\":true,\"layerCount\":1}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.325Z",
+      "timestamp": "2025-12-17T19:29:59.326Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=0: {\"type\":\"NewClass\",\"hasGetLatLngs\":false,\"hasGetLayers\":true,\"hasFeature\":false}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.325Z",
+      "timestamp": "2025-12-17T19:29:59.326Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer has 1 sub-layers"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.325Z",
+      "timestamp": "2025-12-17T19:29:59.326Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=1: {\"type\":\"NewClass\",\"hasGetLatLngs\":true,\"hasGetLayers\":false,\"hasFeature\":true}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.326Z",
+      "timestamp": "2025-12-17T19:29:59.327Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer latLngs: {\"isArray\":true,\"length\":1,\"firstIsArray\":true,\"sample\":[{\"lat\":6.808442,\"lng\":1.121805},{\"lat\":6.808033,\"lng\":1.122039},{\"lat\":6.808042,\"lng\":1.122214},{\"lat\":6.806302,\"lng\":1.126836},{\"lat\":6.804788,\"lng\":1.132997},{\"lat\":6.80041,\"lng\":1.13719},{\"lat\":6.797776,\"lng\":1.13808},{\"lat\":6.794056,\"lng\":1.141831},{\"lat\":6.792988,\"lng\":1.149968},{\"lat\":6.787749,\"lng\":1.15878},{\"lat\":6.784905,\"lng\":1.162088},{\"lat\":6.781612,\"lng\":1.16276},{\"lat\":6.779865,\"lng\":1.165624},{\"l"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.326Z",
+      "timestamp": "2025-12-17T19:29:59.327Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Coords extraites: 390 points"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.326Z",
+      "timestamp": "2025-12-17T19:29:59.327Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][NEIGHBORS] runId=20251217_191432_N7FB {\"neighborsFound\":2,\"neighborsDrawn\":2}"
+      "message": "[Export][NEIGHBORS] runId=20251217_192953_G1D6 {\"neighborsFound\":2,\"neighborsDrawn\":2}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.340Z",
+      "timestamp": "2025-12-17T19:29:59.328Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][NEIGHBORS] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":355}"
+      "message": "[Export][NEIGHBORS] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":232}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.340Z",
+      "timestamp": "2025-12-17T19:29:59.328Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LEGEND] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][LEGEND] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.340Z",
+      "timestamp": "2025-12-17T19:29:59.328Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LEGEND] runId=20251217_191432_N7FB {\"totalClasses\":6,\"visibleClasses\":2}"
+      "message": "[Export][LEGEND] runId=20251217_192953_G1D6 {\"totalClasses\":6,\"visibleClasses\":3}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.340Z",
+      "timestamp": "2025-12-17T19:29:59.328Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Légende: classes totales: 6 visibles: 2"
+      "message": "[Export] Légende: classes totales: 6 visibles: 3"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.341Z",
+      "timestamp": "2025-12-17T19:29:59.328Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] Légende - classes visibles: 2 / 6 classUsageCount: {\"1\":14,\"3\":1}"
+      "message": "[ExportFrame] Légende - classes visibles: 3 / 6 classUsageCount: {\"1\":62,\"2\":3,\"3\":1}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.342Z",
+      "timestamp": "2025-12-17T19:29:59.329Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Légende bbox dynamique: {\"maxLabelWidth\":\"206\",\"dynamicWidth\":388.95703125,\"actualWidth\":531}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.343Z",
+      "timestamp": "2025-12-17T19:29:59.329Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LEGEND] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":3}"
+      "message": "[Export][LEGEND] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":1}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.343Z",
+      "timestamp": "2025-12-17T19:29:59.329Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][STATS] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.344Z",
+      "timestamp": "2025-12-17T19:29:59.329Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Stats locales calculées depuis admCells: {\"count\":15,\"null_count\":1077,\"count_total\":1092,\"sum\":17,\"mean\":1.1333333333333333,\"valuesCount\":15,\"sampleValues\":[1,3,1,1,1,1,1,1,1,1]}"
+      "message": "[Export] Stats locales calculées depuis admCells: {\"count\":66,\"null_count\":1077,\"count_total\":1143,\"sum\":71,\"mean\":1.0757575757575757,\"valuesCount\":66,\"sampleValues\":[1,1,3,1,1,1,1,1,1,1]}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.344Z",
+      "timestamp": "2025-12-17T19:29:59.329Z",
       "level": "log",
       "tag": "[ExportStats]",
-      "message": "[ExportStats] Features filtrées par ADM: {\"totalFeatures\":15,\"filteredFeatures\":15,\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
+      "message": "[ExportStats] Features filtrées par ADM: {\"totalFeatures\":66,\"filteredFeatures\":66,\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.345Z",
+      "timestamp": "2025-12-17T19:29:59.330Z",
       "level": "log",
       "tag": "[ExportStats]",
-      "message": "[ExportStats] Values extraites: {\"parameterId\":\"vbs_avg\",\"totalFeatures\":15,\"valuesCount\":15,\"sampleValues\":[1,3,1,1,1]}"
+      "message": "[ExportStats] Values extraites: {\"parameterId\":\"vbs_avg\",\"totalFeatures\":66,\"valuesCount\":66,\"sampleValues\":[1,1,3,1,1]}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.346Z",
+      "timestamp": "2025-12-17T19:29:59.330Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] runId=20251217_191432_N7FB {\"computedStats\":{\"title\":\"Statistiques\",\"subtitle\":\"Zio\",\"rowCount\":8,\"rows\":[{\"label\":\"Mailles avec données\",\"value\":\"15 / 1092\"},{\"label\":\"Couverture\",\"value\":\"1.4 %\"},{\"label\":\"Fiabilité\",\"value\":\"Faible\"},{\"label\":\"VBS médian (Q1-Q3)\",\"value\":\"1 (1-1)\",\"unit\":\"g/100g\"},{\"label\":\"VBS min / max\",\"value\":\"1 / 3\",\"unit\":\"g/100g\"},{\"label\":\"P10 / P90\",\"value\":\"1 / 1\",\"unit\":\"g/100g\"},{\"label\":\"Classe dominante\",\"value\":\"Sableux\"},{\"label\":\"% sols argile"
+      "message": "[Export][STATS] runId=20251217_192953_G1D6 {\"computedStats\":{\"title\":\"Statistiques\",\"subtitle\":\"Zio\",\"rowCount\":8,\"rows\":[{\"label\":\"Mailles avec données\",\"value\":\"66 / 1143\"},{\"label\":\"Couverture\",\"value\":\"5.8 %\"},{\"label\":\"Fiabilité\",\"value\":\"Faible\"},{\"label\":\"VBS médian (Q1-Q3)\",\"value\":\"1 (1-1)\",\"unit\":\"g/100g\"},{\"label\":\"VBS min / max\",\"value\":\"1 / 3\",\"unit\":\"g/100g\"},{\"label\":\"P10 / P90\",\"value\":\"1 / 1\",\"unit\":\"g/100g\"},{\"label\":\"Classe dominante\",\"value\":\"Sableux\"},{\"label\":\"% sols argile"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.346Z",
+      "timestamp": "2025-12-17T19:29:59.330Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] runId=20251217_191432_N7FB {\"drawStatsInputKeys\":[\"title\",\"subtitle\",\"rows\"],\"drawStatsStrings\":{\"Mailles avec données\":\"15 / 1092\",\"Couverture\":\"1.4 %\",\"Fiabilité\":\"Faible\",\"VBS médian (Q1-Q3)\":\"1 (1-1) g/100g\",\"VBS min / max\":\"1 / 3 g/100g\",\"P10 / P90\":\"1 / 1 g/100g\",\"Classe dominante\":\"Sableux\",\"% sols argileux (≥2.5)\":\"7%\"}}"
+      "message": "[Export][STATS] runId=20251217_192953_G1D6 {\"drawStatsInputKeys\":[\"title\",\"subtitle\",\"rows\"],\"drawStatsStrings\":{\"Mailles avec données\":\"66 / 1143\",\"Couverture\":\"5.8 %\",\"Fiabilité\":\"Faible\",\"VBS médian (Q1-Q3)\":\"1 (1-1) g/100g\",\"VBS min / max\":\"1 / 3 g/100g\",\"P10 / P90\":\"1 / 1 g/100g\",\"Classe dominante\":\"Sableux\",\"% sols argileux (≥2.5)\":\"2%\"}}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.347Z",
+      "timestamp": "2025-12-17T19:29:59.330Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] drawStats 2-col layout: {\"statsArea\":{\"x\":625,\"y\":2953,\"width\":1111,\"height\":426},\"labelMaxWidth\":518,\"rowCount\":8}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.350Z",
+      "timestamp": "2025-12-17T19:29:59.331Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] drawStats COMPLETE: {\"rowsDrawn\":8,\"contextRowsDrawn\":0,\"finalY\":3389}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.350Z",
+      "timestamp": "2025-12-17T19:29:59.331Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":7}"
+      "message": "[Export][STATS] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":2}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.351Z",
+      "timestamp": "2025-12-17T19:29:59.331Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Option includeMetadata: true"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.351Z",
+      "timestamp": "2025-12-17T19:29:59.332Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][SAVE] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][SAVE] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.352Z",
+      "timestamp": "2025-12-17T19:29:59.332Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][SAVE] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":1}"
+      "message": "[Export][SAVE] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":1}"
     },
     {
-      "timestamp": "2025-12-17T19:14:40.352Z",
+      "timestamp": "2025-12-17T19:29:59.333Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][ENCODE] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][ENCODE] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T19:15:01.105Z",
+      "timestamp": "2025-12-17T19:30:09.883Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][ENCODE] runId=20251217_191432_N7FB {\"event\":\"end\",\"durationMs\":20753}"
+      "message": "[Export][ENCODE] runId=20251217_192953_G1D6 {\"event\":\"end\",\"durationMs\":10550}"
     },
     {
-      "timestamp": "2025-12-17T19:15:01.106Z",
+      "timestamp": "2025-12-17T19:30:09.883Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][ENCODE] runId=20251217_191432_N7FB {\"sizeBytes\":14412866,\"sizeKB\":14075}"
+      "message": "[Export][ENCODE] runId=20251217_192953_G1D6 {\"sizeBytes\":14415053,\"sizeKB\":14077}"
     },
     {
-      "timestamp": "2025-12-17T19:15:01.106Z",
+      "timestamp": "2025-12-17T19:30:09.884Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][ZIP] runId=20251217_191432_N7FB {\"event\":\"start\"}"
+      "message": "[Export][ZIP] runId=20251217_192953_G1D6 {\"event\":\"start\"}"
     }
   ]
 }

@@ -7,6 +7,7 @@ import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
 import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut, Bell } from 'lucide-react'
+import { UserProfileMenu } from '@/components/UserProfileMenu'
 import { RBACManager } from '@/components/RBACManager'
 import { SchemaTableSelector } from '@/components/SchemaTableSelector'
 import { SchemaTree } from '@/components/SchemaTree'
@@ -470,17 +471,7 @@ function App() {
                 </div>
               </div>
               <div className="flex items-center gap-4">
-                <span className="text-sm text-blue-100">
-                  {user?.first_name || user?.username}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={logout}
-                  className="text-white hover:bg-blue-500"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
+                <UserProfileMenu user={user} onLogout={logout} />
               </div>
             </div>
           </div>
@@ -564,32 +555,8 @@ function App() {
                 )}
               </div>
 
-              {/* User info */}
-              <div className="flex items-center gap-2 text-sm">
-                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                  <span className="text-blue-600 font-medium">
-                    {user?.username?.charAt(0).toUpperCase() || 'U'}
-                  </span>
-                </div>
-                <div className="hidden sm:block">
-                  <div className="font-medium text-slate-900">{user?.username}</div>
-                  <div className="text-xs text-slate-500">{user?.roles?.join(', ')}</div>
-                </div>
-              </div>
-              {/* Logout button */}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={logout}
-                className="text-slate-500 hover:text-red-600"
-                title="Déconnexion"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-slate-500">v2.0.0</span>
-                <div className="h-2 w-2 rounded-full bg-green-500" title="API Connectée" />
-              </div>
+              {/* Menu profil utilisateur */}
+              <UserProfileMenu user={user} onLogout={logout} />
             </div>
           </div>
         </div>

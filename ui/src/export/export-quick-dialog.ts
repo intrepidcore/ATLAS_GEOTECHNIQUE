@@ -1337,10 +1337,20 @@ export class ExportQuickDialog {
         telemetry.startStage('STATS');
         
         // Extraire les valeurs des mailles avec données pour calculs avancés (médiane, σ, Q1/Q3)
+        // IMPORTANT: Utiliser c.value en priorité (valeur thématique), pas n_sondages
         const cellValues = admCells
-          .filter(c => c.has_data)
-          .map(c => c.n_sondages || c.value || 0)
-          .filter(v => v > 0);
+          .filter(c => c.has_data && c.value != null)
+          .map(c => c.value as number)
+          .filter(v => typeof v === 'number' && Number.isFinite(v));
+        
+        console.log('[Export][STATS] Valeurs extraites pour stats:', {
+          totalCells: admCells.length,
+          withData: admCells.filter(c => c.has_data).length,
+          withValue: cellValues.length,
+          sampleValues: cellValues.slice(0, 10),
+          min: cellValues.length > 0 ? Math.min(...cellValues) : null,
+          max: cellValues.length > 0 ? Math.max(...cellValues) : null
+        });
         
         // Calculer les stats depuis les mailles ADM locales (source de vérité)
         const localStats = admCells.length > 0 ? {
@@ -1716,8 +1726,18 @@ export class ExportQuickDialog {
     // NOUVELLE APPROCHE: Utiliser directement les features thématiques de l'écran
     // car les codes de mailles peuvent être différents entre l'API thématique et la grille de couverture
     if (hasScreenData) {
+      // Récupérer le polygone ADM pour filtrage géographique
+      const admPolygon = this.config.getAdmPolygon?.();
+      const hasAdmPolygon = admPolygon && admPolygon.length >= 3;
+      
+      console.log('[Export][DATA] Filtrage ADM:', {
+        hasAdmPolygon,
+        polygonPoints: admPolygon?.length || 0,
+        admFilters: { adm1: admFilters.adm1?.name, adm2: admFilters.adm2?.name }
+      });
+      
       // Extraire les valeurs et géométries des features thématiques
-      const thematicCells: Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number; code?: string }> = [];
+      const allThematicCells: Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number; code?: string; centroid?: {lat: number, lng: number} }> = [];
       
       for (const f of screenFeatures) {
         const props = f.properties || {};
@@ -1738,29 +1758,61 @@ export class ExportQuickDialog {
         
         const code = props.code || props.grid_id || props.cell_id || props.id;
         
-        thematicCells.push({
+        // Calculer le centroïde de la maille pour le test d'inclusion
+        const centroid = this.computeCentroid(geometry);
+        
+        allThematicCells.push({
           geometry,
           has_data: value != null && !isNaN(value),
           n_sondages: props.n_sondages || 0,
           value: value != null && !isNaN(value) ? value : undefined,
-          code: code ? String(code) : undefined
+          code: code ? String(code) : undefined,
+          centroid
         });
       }
       
-      // Filtrer par ADM si nécessaire (vérifier les propriétés ADM des features)
-      // Note: Les features thématiques peuvent ne pas avoir les propriétés ADM,
-      // donc on les garde toutes et on laisse le masque ADM faire le travail visuel
+      // FILTRAGE GÉOGRAPHIQUE: Ne garder que les mailles dont le centroïde est dans le polygone ADM
+      let thematicCells = allThematicCells;
+      if (hasAdmPolygon && this.options.onlyAdmCells) {
+        // Convertir le polygone ADM en format {lat, lng}[] si nécessaire
+        const polygonPoints = admPolygon.map((p: any) => {
+          // Le polygone peut être [{lat, lng}] ou [[lng, lat]]
+          if (typeof p.lat === 'number' && typeof p.lng === 'number') {
+            return p;
+          }
+          // Format [lng, lat]
+          if (Array.isArray(p) && p.length >= 2) {
+            return { lng: p[0], lat: p[1] };
+          }
+          return p;
+        });
+        
+        thematicCells = allThematicCells.filter(cell => {
+          if (!cell.centroid) return false;
+          return this.pointInPolygon(cell.centroid, polygonPoints);
+        });
+        
+        console.log('[Export][DATA] Filtrage géographique ADM:', {
+          avant: allThematicCells.length,
+          après: thematicCells.length,
+          filtrées: allThematicCells.length - thematicCells.length
+        });
+      }
       
       const withData = thematicCells.filter(c => c.has_data).length;
       const sampleValues = thematicCells.filter(c => c.value != null).slice(0, 5).map(c => ({ code: c.code, value: c.value }));
       
-      console.log('[Export][DATA] Features thématiques directes:', {
+      console.log('[Export][DATA] Features thématiques après filtrage:', {
         total: thematicCells.length,
         withData,
-        sampleValues
+        sampleValues,
+        valueRange: withData > 0 ? {
+          min: Math.min(...thematicCells.filter(c => c.value != null).map(c => c.value as number)),
+          max: Math.max(...thematicCells.filter(c => c.value != null).map(c => c.value as number))
+        } : null
       });
       
-      // Récupérer aussi la grille vide pour les mailles sans données
+      // Récupérer aussi la grille vide pour les mailles sans données (déjà filtrée par ADM)
       const emptyGrid = await this.fetchGridFromCoverage(admFilters);
       
       // Créer un Set des codes thématiques pour éviter les doublons
@@ -1798,7 +1850,10 @@ export class ExportQuickDialog {
       if (admFilters.adm3) params.append('adm3', admFilters.adm3.name);
       
       console.log('[Export] Chargement grille ADM depuis /export/cells/adm...');
-      const response = await fetch(`http://localhost:8000/export/cells/adm?${params.toString()}`);
+      // Ajouter l'authentification pour éviter l'erreur 401
+      const token = localStorage.getItem('atlas_token') || localStorage.getItem('atlas_access_token');
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch(`http://localhost:8000/export/cells/adm?${params.toString()}`, { headers });
       
       if (response.ok) {
         const data = await response.json();
@@ -1966,6 +2021,80 @@ export class ExportQuickDialog {
   }
   
   // NOTE: computeTargetMapAreaAspectRatio supprimée - utiliser getA4Layout() à la place
+  
+  /**
+   * Calcule le centroïde d'une géométrie GeoJSON
+   */
+  private computeCentroid(geometry: any): { lat: number; lng: number } | undefined {
+    if (!geometry) return undefined;
+    
+    try {
+      // Pour un Polygon, calculer le centroïde du premier anneau
+      if (geometry.type === 'Polygon' && geometry.coordinates?.[0]) {
+        const ring = geometry.coordinates[0];
+        let sumLng = 0, sumLat = 0;
+        for (const coord of ring) {
+          sumLng += coord[0];
+          sumLat += coord[1];
+        }
+        return {
+          lng: sumLng / ring.length,
+          lat: sumLat / ring.length
+        };
+      }
+      
+      // Pour un MultiPolygon, utiliser le premier polygone
+      if (geometry.type === 'MultiPolygon' && geometry.coordinates?.[0]?.[0]) {
+        const ring = geometry.coordinates[0][0];
+        let sumLng = 0, sumLat = 0;
+        for (const coord of ring) {
+          sumLng += coord[0];
+          sumLat += coord[1];
+        }
+        return {
+          lng: sumLng / ring.length,
+          lat: sumLat / ring.length
+        };
+      }
+      
+      // Pour un Point
+      if (geometry.type === 'Point' && geometry.coordinates) {
+        return {
+          lng: geometry.coordinates[0],
+          lat: geometry.coordinates[1]
+        };
+      }
+    } catch (e) {
+      console.warn('[Export] Erreur calcul centroïde:', e);
+    }
+    
+    return undefined;
+  }
+  
+  /**
+   * Test si un point est à l'intérieur d'un polygone (algorithme ray casting)
+   * @param point Point à tester {lat, lng}
+   * @param polygon Tableau de points [{lat, lng}, ...]
+   */
+  private pointInPolygon(point: { lat: number; lng: number }, polygon: Array<{ lat: number; lng: number }>): boolean {
+    if (!point || !polygon || polygon.length < 3) return false;
+    
+    const x = point.lng;
+    const y = point.lat;
+    let inside = false;
+    
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lng, yi = polygon[i].lat;
+      const xj = polygon[j].lng, yj = polygon[j].lat;
+      
+      const intersect = ((yi > y) !== (yj > y)) &&
+        (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+      
+      if (intersect) inside = !inside;
+    }
+    
+    return inside;
+  }
 }
 
 // ============================================================================
