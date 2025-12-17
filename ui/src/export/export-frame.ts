@@ -1283,8 +1283,33 @@ export class ExportFrame {
   }
   
   /**
+   * Découpe un texte en lignes pour tenir dans une largeur max
+   */
+  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let currentLine = '';
+    
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word;
+      const testWidth = ctx.measureText(testLine).width;
+      
+      if (testWidth > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    return lines.length > 0 ? lines : [text];
+  }
+  
+  /**
    * Dessine le bloc de statistiques avec layout 2 colonnes dynamiques
-   * - Labels: colonne gauche avec largeur max (wrap si nécessaire)
+   * - Labels: colonne gauche avec word-wrap si nécessaire
    * - Valeurs: colonne droite alignée à droite, police monospace
    */
   drawStats(stats?: ExportStats): void {
@@ -1297,19 +1322,16 @@ export class ExportFrame {
     const scale = this.dpi / 72;
     const padding = Math.round(6 * scale);
     const headerHeight = Math.round(18 * scale);
-    const lineHeight = Math.round(11 * scale);
+    const lineHeight = Math.round(10 * scale);
     const fontSize = Math.round(7 * scale);
     
-    // Layout 2 colonnes: 55% label, 45% valeur
-    const labelMaxWidth = Math.round((statsArea.width - padding * 3) * 0.55);
-    const valueColX = statsArea.x + padding + labelMaxWidth + padding;
-    const valueMaxWidth = statsArea.width - padding * 2 - labelMaxWidth - padding;
+    // Layout 2 colonnes: 50% label, 50% valeur
+    const labelMaxWidth = Math.round((statsArea.width - padding * 3) * 0.50);
+    const valueX = statsArea.x + statsArea.width - padding;
     
     console.log('[ExportFrame] drawStats 2-col layout:', {
       statsArea,
       labelMaxWidth,
-      valueColX,
-      valueMaxWidth,
       rowCount: stats.rows.length
     });
     
@@ -1345,39 +1367,37 @@ export class ExportFrame {
     
     // Lignes de stats principales
     let y = statsArea.y + headerHeight + padding;
+    const labelX = statsArea.x + padding;
     
     for (let i = 0; i < stats.rows.length; i++) {
       const row = stats.rows[i];
-      const labelX = statsArea.x + padding;
       const valueText = row.unit ? `${row.value} ${row.unit}` : row.value;
       
-      // Label: police normale, tronqué si trop long
+      // Label: police normale, word-wrap si trop long
       ctx.font = `${fontSize}px Arial, sans-serif`;
       ctx.fillStyle = row.highlight ? '#1a5276' : '#555555';
       ctx.textAlign = 'left';
       
-      // Tronquer le label si nécessaire
-      let displayLabel = row.label;
-      let labelWidth = ctx.measureText(displayLabel + ' :').width;
-      if (labelWidth > labelMaxWidth) {
-        while (labelWidth > labelMaxWidth && displayLabel.length > 3) {
-          displayLabel = displayLabel.slice(0, -1);
-          labelWidth = ctx.measureText(displayLabel + '… :').width;
-        }
-        displayLabel += '…';
-      }
-      ctx.fillText(displayLabel + ' :', labelX, y);
+      // Word-wrap le label
+      const labelWithColon = row.label + ' :';
+      const labelLines = this.wrapText(ctx, labelWithColon, labelMaxWidth);
       
-      // Valeur: police monospace, alignée à droite, highlight si demandé
+      // Dessiner chaque ligne du label
+      for (let lineIdx = 0; lineIdx < labelLines.length; lineIdx++) {
+        ctx.fillText(labelLines[lineIdx], labelX, y + lineIdx * lineHeight);
+      }
+      
+      // Valeur: alignée avec la première ligne du label
       ctx.font = row.highlight 
         ? `bold ${fontSize}px 'Consolas', 'Monaco', monospace`
         : `${fontSize}px 'Consolas', 'Monaco', monospace`;
       ctx.fillStyle = row.highlight ? '#1a5276' : '#333333';
       ctx.textAlign = 'right';
-      ctx.fillText(valueText, statsArea.x + statsArea.width - padding, y);
+      ctx.fillText(valueText, valueX, y);
       ctx.textAlign = 'left';
       
-      y += lineHeight;
+      // Avancer Y en tenant compte du nombre de lignes du label
+      y += lineHeight * labelLines.length;
     }
     
     // Contexte multi-niveaux (parent_context)
@@ -1399,22 +1419,27 @@ export class ExportFrame {
       ctx.fillText('Contexte', statsArea.x + padding, y);
       y += lineHeight;
       
-      // Lignes de contexte
+      // Lignes de contexte avec word-wrap
       ctx.font = `${fontSize}px Arial, sans-serif`;
       for (const row of stats.contextRows) {
+        const ctxValueText = row.unit ? `${row.value} ${row.unit}` : row.value;
+        const ctxLabelWithColon = row.label + ' :';
+        const ctxLabelLines = this.wrapText(ctx, ctxLabelWithColon, labelMaxWidth);
+        
         ctx.fillStyle = '#666666';
         ctx.textAlign = 'left';
-        ctx.fillText(row.label + ' :', statsArea.x + padding, y);
+        for (let lineIdx = 0; lineIdx < ctxLabelLines.length; lineIdx++) {
+          ctx.fillText(ctxLabelLines[lineIdx], labelX, y + lineIdx * lineHeight);
+        }
         
         ctx.fillStyle = '#444444';
         ctx.font = `${fontSize}px 'Consolas', 'Monaco', monospace`;
-        const ctxValueText = row.unit ? `${row.value} ${row.unit}` : row.value;
         ctx.textAlign = 'right';
-        ctx.fillText(ctxValueText, statsArea.x + statsArea.width - padding, y);
+        ctx.fillText(ctxValueText, valueX, y);
         ctx.textAlign = 'left';
         ctx.font = `${fontSize}px Arial, sans-serif`;
         
-        y += lineHeight;
+        y += lineHeight * ctxLabelLines.length;
       }
     }
     

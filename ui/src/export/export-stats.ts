@@ -85,7 +85,7 @@ function formatRange(min: number | null | undefined, max: number | null | undefi
 /**
  * Formate médiane avec quartiles
  */
-function formatMedianWithQuartiles(median: number, q1: number, q3: number, decimals: number = 2): string {
+function formatMedianWithQuartiles(median: number | null, q1: number | null, q3: number | null, decimals: number = 2): string {
   return `${formatNumber(median, decimals)} (${formatNumber(q1, decimals)}-${formatNumber(q3, decimals)})`;
 }
 
@@ -359,16 +359,16 @@ function computeStdDev(values: number[], mean: number): number {
   return Math.sqrt(variance);
 }
 
-function computeQuartiles(values: number[]): { q1: number; q3: number } {
-  if (values.length < 4) return { q1: 0, q3: 0 };
+function computeQuartiles(values: number[]): { q1: number | null; q3: number | null } {
+  if (values.length < 4) return { q1: null, q3: null };
   const sorted = [...values].sort((a, b) => a - b);
   const q1Idx = Math.floor(sorted.length * 0.25);
   const q3Idx = Math.floor(sorted.length * 0.75);
   return { q1: sorted[q1Idx], q3: sorted[q3Idx] };
 }
 
-function computePercentile(values: number[], percentile: number): number {
-  if (values.length === 0) return 0;
+function computePercentile(values: number[], percentile: number): number | null {
+  if (values.length < 5) return null; // Pas assez de données pour percentiles fiables
   const sorted = [...values].sort((a, b) => a - b);
   const idx = Math.floor(sorted.length * percentile / 100);
   return sorted[Math.min(idx, sorted.length - 1)];
@@ -377,9 +377,9 @@ function computePercentile(values: number[], percentile: number): number {
 /** Extrait les stats de base depuis apiStats ou values */
 function extractBaseStats(apiStats: ApiStatistics | undefined, values: number[], nTotal: number, nWithData: number) {
   const mean = apiStats?.mean ?? (values.length > 0 ? values.reduce((a, b) => a + b, 0) / values.length : 0);
-  const min = apiStats?.min ?? (values.length > 0 ? Math.min(...values) : 0);
-  const max = apiStats?.max ?? (values.length > 0 ? Math.max(...values) : 0);
-  const median = apiStats?.median ?? computeMedian(values);
+  const min = apiStats?.min ?? (values.length > 0 ? Math.min(...values) : null);
+  const max = apiStats?.max ?? (values.length > 0 ? Math.max(...values) : null);
+  const median = apiStats?.median ?? (values.length > 0 ? computeMedian(values) : null);
   const stddev = apiStats?.stddev ?? computeStdDev(values, mean);
   const cv = mean > 0 ? (stddev / mean) : 0;
   const coverage = nTotal > 0 ? (nWithData / nTotal * 100) : 0;
@@ -489,7 +489,8 @@ function buildEssaisStats(
 // ============================================================================
 
 /** Classification VBS selon seuils standards */
-function classifyVBS(value: number): string {
+function classifyVBS(value: number | null): string {
+  if (value === null) return '—';
   if (value >= 8) return 'Très argileux';
   if (value >= 6) return 'Argileux';
   if (value >= 2.5) return 'Limoneux';
@@ -531,7 +532,8 @@ function buildVbsStats(
 }
 
 /** Classification IP selon seuils standards */
-function classifyIP(value: number): string {
+function classifyIP(value: number | null): string {
+  if (value === null) return '—';
   if (value > 40) return 'Très plastique';
   if (value > 25) return 'Plastique';
   if (value > 12) return 'Moyennement plastique';
@@ -616,12 +618,12 @@ function buildWpStats(
   return rows;
 }
 
-// ============================================================================
 // 3. POTENTIEL DE GONFLEMENT
 // ============================================================================
 
 /** Classification Eg selon seuils standards */
-function classifyEg(value: number): string {
+function classifyEg(value: number | null): string {
+  if (value === null) return '—';
   if (value >= 10) return 'Très fort';
   if (value >= 5) return 'Fort';
   if (value >= 2) return 'Modéré';
@@ -751,8 +753,8 @@ function buildWOptStats(
   const unitStr = unit || '%';
   
   // Fenêtre de compactage (wopt ± 2%)
-  const wOptMin = median - 2;
-  const wOptMax = median + 2;
+  const wOptMin = median !== null ? median - 2 : null;
+  const wOptMax = median !== null ? median + 2 : null;
   
   const rows: ExportStatsRow[] = [
     { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
@@ -772,7 +774,8 @@ function buildWOptStats(
 // ============================================================================
 
 /** Classification fines selon % passant 80µm */
-function classifyFines(value: number): string {
+function classifyFines(value: number | null): string {
+  if (value === null) return '—';
   if (value >= 70) return 'Très fin (argile)';
   if (value >= 50) return 'Fin (limon argileux)';
   if (value >= 35) return 'Moyen (limon)';
@@ -822,7 +825,7 @@ function buildPassant2mmStats(
   const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
   const unitStr = unit || '%';
   
-  const tendance = median >= 80 ? 'Plutôt fin' : median >= 50 ? 'Mixte' : 'Plutôt grossier';
+  const tendance = median === null ? '—' : median >= 80 ? 'Plutôt fin' : median >= 50 ? 'Mixte' : 'Plutôt grossier';
   
   const rows: ExportStatsRow[] = [
     { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },
@@ -848,7 +851,7 @@ function buildPassant20mmStats(
   const { median, min, max, q1, q3, p10, p90, coverage, reliability } = extractBaseStats(apiStats, values, nTotal, nWithData);
   const unitStr = unit || '%';
   
-  const tendance = median >= 90 ? 'Peu de graviers' : median >= 70 ? 'Graviers modérés' : 'Graveleux';
+  const tendance = median === null ? '—' : median >= 90 ? 'Peu de graviers' : median >= 70 ? 'Graviers modérés' : 'Graveleux';
   
   const rows: ExportStatsRow[] = [
     { label: 'Mailles avec données', value: `${nWithData} / ${nTotal}` },

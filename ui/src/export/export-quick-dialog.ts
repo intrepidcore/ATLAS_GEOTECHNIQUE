@@ -1266,7 +1266,13 @@ export class ExportQuickDialog {
               classUsage: classUsageCount ? Object.fromEntries(classUsageCount) : {}
             });
           }
-        } catch (e) {
+        } catch (e: any) {
+          telemetry.endStage();
+          // Pour les thématiques valeurs, l'erreur d'auth est BLOQUANTE
+          // On propage l'erreur pour informer l'utilisateur
+          if (e?.message?.includes('authentification requise')) {
+            throw e; // Propager l'erreur pour bloquer l'export
+          }
           telemetry.error('Impossible de charger les mailles ADM', e as Error);
           console.warn('[Export] Impossible de charger les mailles ADM:', e);
         }
