@@ -47,6 +47,7 @@ import { initRealtime, onWsEvent } from './realtime'
 import { router } from './router'
 import { SondagesManagerPage } from './pages/sondages-manager-page'
 import { getGridFeatureStyle, COLORS, WEIGHT, OPACITY, CELL_SELECTED_STYLE, GRID_HOVER_STYLE } from './map-style'
+import { initUserMenu } from './user-menu'
 import { 
   currentFilters, 
   filteredStats,
@@ -3887,6 +3888,8 @@ if (document.readyState === 'loading') {
     initWebSocket()
     // v2.8.0: Routing
     initRouting()
+    // v3.0.0: Menu profil utilisateur
+    initUserMenu()
   }, { once: true })
 } else {
   updateAppVersion()
@@ -3902,4 +3905,6 @@ if (document.readyState === 'loading') {
   initWebSocket()
   // v2.8.0: Routing
   initRouting()
+  // v3.0.0: Menu profil utilisateur
+  initUserMenu()
 }
