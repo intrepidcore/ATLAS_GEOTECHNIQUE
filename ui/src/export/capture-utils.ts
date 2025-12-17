@@ -567,6 +567,7 @@ export interface ExportMetadata {
   };
   telemetry?: Record<string, any>;
   debugLogs?: Array<{ timestamp: string; stage: string; data: Record<string, any> }>;
+  consoleLogs?: Array<{ timestamp: string; level: string; tag: string; message: string }>;
 }
 
 /**
@@ -584,10 +585,12 @@ export async function generateZipWithMetadata(
   if (JSZip) {
     // Utiliser JSZip si disponible
     const zip = new JSZip();
-    zip.file(imageFilename, imageBlob);
-    zip.file('metadata.json', JSON.stringify(metadata, null, 2));
-    zip.file('README.txt', generateReadmeContent(metadata));
-    return zip.generateAsync({ type: 'blob' });
+    // PNG est déjà compressé → STORE (compression: 'STORE') pour éviter CPU inutile
+    zip.file(imageFilename, imageBlob, { compression: 'STORE' });
+    // JSON/TXT sont petits → compression normale
+    zip.file('metadata.json', JSON.stringify(metadata, null, 2), { compression: 'DEFLATE' });
+    zip.file('README.txt', generateReadmeContent(metadata), { compression: 'DEFLATE' });
+    return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
   }
   
   // Fallback: créer un ZIP minimal sans compression

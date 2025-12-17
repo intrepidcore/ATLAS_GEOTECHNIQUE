@@ -1283,7 +1283,9 @@ export class ExportFrame {
   }
   
   /**
-   * Dessine le bloc de statistiques
+   * Dessine le bloc de statistiques avec layout 2 colonnes dynamiques
+   * - Labels: colonne gauche avec largeur max (wrap si nécessaire)
+   * - Valeurs: colonne droite alignée à droite, police monospace
    */
   drawStats(stats?: ExportStats): void {
     if (!this.options.includeStats || !stats) return;
@@ -1295,18 +1297,20 @@ export class ExportFrame {
     const scale = this.dpi / 72;
     const padding = Math.round(6 * scale);
     const headerHeight = Math.round(18 * scale);
-    const lineHeight = Math.round(12 * scale);
+    const lineHeight = Math.round(11 * scale);
+    const fontSize = Math.round(7 * scale);
     
-    // DEBUG: Log état du contexte avant dessin
-    console.log('[ExportFrame] drawStats DEBUG:', {
+    // Layout 2 colonnes: 55% label, 45% valeur
+    const labelMaxWidth = Math.round((statsArea.width - padding * 3) * 0.55);
+    const valueColX = statsArea.x + padding + labelMaxWidth + padding;
+    const valueMaxWidth = statsArea.width - padding * 2 - labelMaxWidth - padding;
+    
+    console.log('[ExportFrame] drawStats 2-col layout:', {
       statsArea,
-      scale,
-      globalAlpha: ctx.globalAlpha,
-      globalCompositeOperation: ctx.globalCompositeOperation,
-      fillStyle: ctx.fillStyle,
-      font: ctx.font,
-      rowCount: stats.rows.length,
-      rows: stats.rows.map(r => ({ label: r.label, value: r.value }))
+      labelMaxWidth,
+      valueColX,
+      valueMaxWidth,
+      rowCount: stats.rows.length
     });
     
     // S'assurer que le contexte est propre
@@ -1321,7 +1325,6 @@ export class ExportFrame {
     ctx.fillRect(statsArea.x, statsArea.y, statsArea.width, statsArea.height);
     ctx.strokeRect(statsArea.x, statsArea.y, statsArea.width, statsArea.height);
     
-    
     // Titre - police scalée
     ctx.fillStyle = '#333333';
     ctx.font = `bold ${this.fonts.fontStats}px Arial, sans-serif`;
@@ -1330,46 +1333,56 @@ export class ExportFrame {
     
     const titleX = statsArea.x + padding;
     const titleY = statsArea.y + padding;
-    console.log('[ExportFrame] drawStats TITLE:', { text: stats.title, x: titleX, y: titleY, font: ctx.font, fillStyle: ctx.fillStyle });
     ctx.fillText(stats.title, titleX, titleY);
     
     // Sous-titre (zone)
     if (stats.subtitle) {
-      ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
+      ctx.font = `${Math.round(7 * scale)}px Arial, sans-serif`;
       ctx.fillStyle = '#666666';
       const subtitleY = statsArea.y + padding + Math.round(10 * scale);
-      console.log('[ExportFrame] drawStats SUBTITLE:', { text: stats.subtitle, x: titleX, y: subtitleY });
       ctx.fillText(stats.subtitle, titleX, subtitleY);
     }
     
-    // Lignes de stats principales - police scalée
-    ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
+    // Lignes de stats principales
     let y = statsArea.y + headerHeight + padding;
     
     for (let i = 0; i < stats.rows.length; i++) {
       const row = stats.rows[i];
       const labelX = statsArea.x + padding;
-      const valueX = statsArea.x + statsArea.width - padding;
       const valueText = row.unit ? `${row.value} ${row.unit}` : row.value;
       
-      // DEBUG: Log chaque ligne
-      console.log(`[ExportFrame] drawStats ROW[${i}]:`, { label: row.label, value: valueText, labelX, valueX, y, font: ctx.font });
-      
-      ctx.fillStyle = '#555555';
+      // Label: police normale, tronqué si trop long
+      ctx.font = `${fontSize}px Arial, sans-serif`;
+      ctx.fillStyle = row.highlight ? '#1a5276' : '#555555';
       ctx.textAlign = 'left';
-      ctx.fillText(row.label + ' :', labelX, y);
       
-      ctx.fillStyle = '#333333';
+      // Tronquer le label si nécessaire
+      let displayLabel = row.label;
+      let labelWidth = ctx.measureText(displayLabel + ' :').width;
+      if (labelWidth > labelMaxWidth) {
+        while (labelWidth > labelMaxWidth && displayLabel.length > 3) {
+          displayLabel = displayLabel.slice(0, -1);
+          labelWidth = ctx.measureText(displayLabel + '… :').width;
+        }
+        displayLabel += '…';
+      }
+      ctx.fillText(displayLabel + ' :', labelX, y);
+      
+      // Valeur: police monospace, alignée à droite, highlight si demandé
+      ctx.font = row.highlight 
+        ? `bold ${fontSize}px 'Consolas', 'Monaco', monospace`
+        : `${fontSize}px 'Consolas', 'Monaco', monospace`;
+      ctx.fillStyle = row.highlight ? '#1a5276' : '#333333';
       ctx.textAlign = 'right';
-      ctx.fillText(valueText, valueX, y);
+      ctx.fillText(valueText, statsArea.x + statsArea.width - padding, y);
       ctx.textAlign = 'left';
       
       y += lineHeight;
     }
     
-    // Contexte multi-niveaux (parent_context) - AVANT ctx.restore()
+    // Contexte multi-niveaux (parent_context)
     if (stats.contextRows && stats.contextRows.length > 0) {
-      y += Math.round(4 * scale); // Petit espace scalé
+      y += Math.round(3 * scale);
       
       // Ligne de séparation
       ctx.strokeStyle = '#dddddd';
@@ -1378,26 +1391,28 @@ export class ExportFrame {
       ctx.moveTo(statsArea.x + padding, y);
       ctx.lineTo(statsArea.x + statsArea.width - padding, y);
       ctx.stroke();
-      y += Math.round(6 * scale);
+      y += Math.round(5 * scale);
       
-      // Titre contexte - police scalée
+      // Titre contexte
       ctx.fillStyle = '#666666';
-      ctx.font = `bold ${Math.round(8 * scale)}px Arial, sans-serif`;
+      ctx.font = `bold ${Math.round(7 * scale)}px Arial, sans-serif`;
       ctx.fillText('Contexte', statsArea.x + padding, y);
       y += lineHeight;
       
-      // Lignes de contexte - police scalée
-      ctx.font = `${Math.round(8 * scale)}px Arial, sans-serif`;
+      // Lignes de contexte
+      ctx.font = `${fontSize}px Arial, sans-serif`;
       for (const row of stats.contextRows) {
         ctx.fillStyle = '#666666';
         ctx.textAlign = 'left';
         ctx.fillText(row.label + ' :', statsArea.x + padding, y);
         
         ctx.fillStyle = '#444444';
+        ctx.font = `${fontSize}px 'Consolas', 'Monaco', monospace`;
         const ctxValueText = row.unit ? `${row.value} ${row.unit}` : row.value;
         ctx.textAlign = 'right';
         ctx.fillText(ctxValueText, statsArea.x + statsArea.width - padding, y);
         ctx.textAlign = 'left';
+        ctx.font = `${fontSize}px Arial, sans-serif`;
         
         y += lineHeight;
       }
@@ -1405,7 +1420,6 @@ export class ExportFrame {
     
     ctx.restore();
     
-    // Log final pour debug
     console.log('[ExportFrame] drawStats COMPLETE:', {
       rowsDrawn: stats.rows.length,
       contextRowsDrawn: stats.contextRows?.length || 0,

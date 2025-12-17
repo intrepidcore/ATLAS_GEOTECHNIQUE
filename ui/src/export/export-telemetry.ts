@@ -14,6 +14,8 @@ export type ExportStage =
   | 'UI'         // Interaction utilisateur (options sélectionnées)
   | 'FETCH'      // Récupération des données (mailles, ADM, voisins)
   | 'FILTER'     // Filtrage des données par ADM
+  | 'FIT'        // Resize + fitBounds + waitForFrames
+  | 'TILES_WAIT' // Attente stabilité des tuiles
   | 'CAPTURE'    // Capture html2canvas de la carte Leaflet
   | 'LAYOUT'     // Calcul du layout A4 et zones
   | 'DRAW'       // Dessin sur le canvas (carte, masque, mailles)
@@ -23,7 +25,9 @@ export type ExportStage =
   | 'STATS'      // Calcul et rendu des statistiques
   | 'LEGEND'     // Génération de la légende
   | 'NEIGHBORS'  // Labels des ADM voisins
-  | 'SAVE';      // Sauvegarde finale (PNG/PDF)
+  | 'ENCODE'     // Canvas → PNG blob
+  | 'ZIP'        // Compression ZIP + création blob
+  | 'SAVE';      // Sauvegarde finale (téléchargement)
 
 export interface ExportTiming {
   stage: ExportStage;
@@ -199,6 +203,82 @@ export class ExportTelemetry {
    */
   getDebugLogs(): Array<{ timestamp: string; stage: ExportStage; data: Record<string, any> }> {
     return this.debugLogs;
+  }
+  
+  /**
+   * Buffer pour les logs console capturés
+   */
+  private consoleLogs: Array<{ timestamp: string; level: string; tag: string; message: string }> = [];
+  private originalConsoleLog: typeof console.log | null = null;
+  private originalConsoleWarn: typeof console.warn | null = null;
+  private originalConsoleError: typeof console.error | null = null;
+  
+  /**
+   * Démarre la capture des console.log/warn/error avec tags [Export], [ExportFrame], [ExportStats]
+   */
+  startConsoleCapture(): void {
+    if (this.originalConsoleLog) return; // Déjà en capture
+    
+    this.originalConsoleLog = console.log;
+    this.originalConsoleWarn = console.warn;
+    this.originalConsoleError = console.error;
+    
+    const captureLog = (level: string, ...args: any[]) => {
+      const message = args.map(a => typeof a === 'object' ? JSON.stringify(a) : String(a)).join(' ');
+      
+      // Capturer uniquement les logs avec tags export
+      const exportTags = ['[Export]', '[ExportFrame]', '[ExportStats]', '[ThematicMap]'];
+      const matchedTag = exportTags.find(tag => message.includes(tag));
+      
+      if (matchedTag) {
+        this.consoleLogs.push({
+          timestamp: new Date().toISOString(),
+          level,
+          tag: matchedTag,
+          message: message.substring(0, 500) // Limiter la taille
+        });
+      }
+    };
+    
+    console.log = (...args: any[]) => {
+      captureLog('log', ...args);
+      this.originalConsoleLog!.apply(console, args);
+    };
+    
+    console.warn = (...args: any[]) => {
+      captureLog('warn', ...args);
+      this.originalConsoleWarn!.apply(console, args);
+    };
+    
+    console.error = (...args: any[]) => {
+      captureLog('error', ...args);
+      this.originalConsoleError!.apply(console, args);
+    };
+  }
+  
+  /**
+   * Arrête la capture et restaure les fonctions console originales
+   */
+  stopConsoleCapture(): void {
+    if (this.originalConsoleLog) {
+      console.log = this.originalConsoleLog;
+      this.originalConsoleLog = null;
+    }
+    if (this.originalConsoleWarn) {
+      console.warn = this.originalConsoleWarn;
+      this.originalConsoleWarn = null;
+    }
+    if (this.originalConsoleError) {
+      console.error = this.originalConsoleError;
+      this.originalConsoleError = null;
+    }
+  }
+  
+  /**
+   * Retourne les logs console capturés
+   */
+  getConsoleLogs(): Array<{ timestamp: string; level: string; tag: string; message: string }> {
+    return this.consoleLogs;
   }
   
   /**

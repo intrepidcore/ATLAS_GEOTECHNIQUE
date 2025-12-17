@@ -802,6 +802,7 @@ export class ExportQuickDialog {
     
     // ========== TÉLÉMÉTRIE: Créer une nouvelle instance pour cet export ==========
     const telemetry = createExportTelemetry();
+    telemetry.startConsoleCapture(); // Capturer les console.log [Export]
     telemetry.startStage('UI');
     
     // ========== SAUVEGARDER TOUTES LES OPTIONS AVANT DE MODIFIER LE DOM ==========
@@ -906,6 +907,7 @@ export class ExportQuickDialog {
             originalZoom = map.getZoom();
             
             updateProgress('Centrage sur la zone ADM...');
+            telemetry.startStage('FIT');
             
             // ========== ÉTAPE 4: Normaliser le viewport Leaflet ==========
             // Redimensionner temporairement le container pour matcher l'AR cible
@@ -995,7 +997,8 @@ export class ExportQuickDialog {
               west: effectiveBounds.getWest()
             };
             
-            console.log('[Export][FIT] Bounds après fitBoundsAndWait:', {
+            telemetry.endStage(); // FIT
+            telemetry.log('FIT', {
               z0,
               z1,
               requested: { 
@@ -1009,11 +1012,7 @@ export class ExportQuickDialog {
                 south: bounds.south.toFixed(4),
                 east: bounds.east.toFixed(4),
                 west: bounds.west.toFixed(4)
-              },
-              deltaN: (bounds.north - targetBounds.getNorth()).toFixed(6),
-              deltaS: (bounds.south - targetBounds.getSouth()).toFixed(6),
-              deltaE: (bounds.east - targetBounds.getEast()).toFixed(6),
-              deltaW: (bounds.west - targetBounds.getWest()).toFixed(6)
+              }
             });
           }
         } else {
@@ -1026,8 +1025,10 @@ export class ExportQuickDialog {
       }
       
       updateProgress('Attente du chargement des tuiles...');
+      telemetry.startStage('TILES_WAIT');
       const tileResult = await waitForTilesLoaded(this.config.mapContainer, 5000);
-      telemetry.log('CAPTURE', { 
+      telemetry.endStage(); // TILES_WAIT
+      telemetry.log('TILES_WAIT', { 
         tiles: tileResult,
         message: tileResult.timedOut ? 'Timeout tuiles' : 'Tuiles stables'
       });
@@ -1236,7 +1237,7 @@ export class ExportQuickDialog {
       if (this.options.zone === 'adm-filtered' && admFilters) {
         telemetry.startStage('FETCH');
         try {
-          admCells = await this.fetchAdmCells(admFilters);
+          admCells = await this.fetchAdmCells(admFilters, thematic.parameter);
           cellsWithData = admCells.filter(c => c.has_data).length;
           cellsWithoutData = admCells.filter(c => !c.has_data).length;
           
@@ -1444,7 +1445,8 @@ export class ExportQuickDialog {
             }))
           } : undefined,
           telemetry: telemetry.getStages(),
-          debugLogs: telemetry.getDebugLogs()
+          debugLogs: telemetry.getDebugLogs(),
+          consoleLogs: telemetry.getConsoleLogs()
         };
       }
       
@@ -1453,15 +1455,24 @@ export class ExportQuickDialog {
         
         if (includeMetadata && metadata) {
           // Export ZIP avec métadonnées
-          updateProgress('Création du ZIP avec métadonnées...');
+          updateProgress('Encodage PNG...');
+          telemetry.startStage('ENCODE');
           const canvas = exportFrame.getCanvas();
           const imageBlob = await new Promise<Blob>((resolve, reject) => {
             canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Échec conversion canvas')), 'image/png');
           });
+          telemetry.endStage(); // ENCODE
+          telemetry.log('ENCODE', { sizeBytes: imageBlob.size, sizeKB: Math.round(imageBlob.size / 1024) });
           
+          updateProgress('Création du ZIP...');
+          telemetry.startStage('ZIP');
           const zipBlob = await generateZipWithMetadata(imageBlob, filename, metadata);
+          telemetry.endStage(); // ZIP
+          telemetry.log('ZIP', { sizeBytes: zipBlob.size, sizeKB: Math.round(zipBlob.size / 1024) });
+          
           const zipFilename = filename.replace('.png', '.zip');
           
+          telemetry.startStage('SAVE');
           telemetry.log('SAVE', {
             format: 'zip',
             filename: zipFilename,
@@ -1471,10 +1482,14 @@ export class ExportQuickDialog {
           });
           
           downloadBlob(zipBlob, zipFilename);
+          telemetry.endStage(); // SAVE
         } else {
           // Export PNG simple
+          telemetry.startStage('ENCODE');
           const dataUrl = exportFrame.toDataURL('image/png');
+          telemetry.endStage(); // ENCODE
           
+          telemetry.startStage('SAVE');
           telemetry.log('SAVE', {
             format: 'png',
             filename,
@@ -1483,6 +1498,7 @@ export class ExportQuickDialog {
           });
           
           downloadDataURL(dataUrl, filename);
+          telemetry.endStage(); // SAVE
         }
       } else {
         // Vérifier jsPDF
@@ -1544,6 +1560,7 @@ export class ExportQuickDialog {
         if (exportBtn) exportBtn.textContent = 'Réessayer';
       }
     } finally {
+      telemetry.stopConsoleCapture(); // Arrêter la capture des console.log
       this.isExporting = false;
     }
   }
@@ -1667,7 +1684,8 @@ export class ExportQuickDialog {
    * AVEC CACHE pour éviter les appels répétés sur la même zone
    */
   private async fetchAdmCells(
-    admFilters: ActiveAdmFilters
+    admFilters: ActiveAdmFilters,
+    parameterId?: string
   ): Promise<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>> {
     // Vérifier le cache
     const cacheKey = ExportQuickDialog.getAdmCacheKey(admFilters);
@@ -1688,8 +1706,8 @@ export class ExportQuickDialog {
       const response = await fetch(`http://localhost:8000/thematic/cells/adm?${params.toString()}`, withAuth());
       
       if (!response.ok) {
-        console.warn('[Export] Erreur API /thematic/cells/adm:', response.status, '- fallback sur /coverage/mailles');
-        return this.fetchAdmCellsFallback(admFilters);
+        console.warn('[Export] Erreur API /thematic/cells/adm:', response.status, '- tentative fallback');
+        return this.fetchAdmCellsFallback(admFilters, parameterId);
       }
       
       const data = await response.json();
@@ -1718,18 +1736,50 @@ export class ExportQuickDialog {
       
       return cells;
     } catch (e) {
-      console.warn('[Export] Erreur fetchAdmCells:', e, '- fallback sur /coverage/mailles');
-      return this.fetchAdmCellsFallback(admFilters);
+      console.warn('[Export] Erreur fetchAdmCells:', e, '- tentative fallback');
+      return this.fetchAdmCellsFallback(admFilters, parameterId);
     }
   }
   
   /**
+   * Paramètres thématiques qui NE DOIVENT PAS utiliser le fallback coverage
+   * Car coverage ne contient que n_sondages, pas les valeurs VBS/IP/Eg/etc.
+   */
+  private static readonly VALUE_PARAMETERS = new Set([
+    'vbs_avg', 'ip_avg', 'wl_avg', 'wp_avg',           // Argilosité
+    'eg_avg', 'eg_max', 'eg_min',                       // Gonflement
+    'gamma_d_max_avg', 'w_opt_avg',                     // Compacité
+    'passant_80um_avg', 'passant_2mm_avg', 'passant_20mm_avg', // Granulométrie
+    'depth_avg', 'depth_max'                            // Profondeur
+  ]);
+  
+  /**
+   * Vérifie si un paramètre est une thématique "valeurs" (pas coverage)
+   */
+  private static isValueParameter(parameterId: string): boolean {
+    return ExportQuickDialog.VALUE_PARAMETERS.has(parameterId);
+  }
+  
+  /**
    * Fallback: utilise /coverage/mailles si /thematic/cells/adm échoue
+   * ATTENTION: Ne fonctionne QUE pour les paramètres de couverture (n_sondages, n_echantillons, n_essais)
+   * Pour les thématiques valeurs (VBS, IP, Eg...), on lève une erreur propre.
    */
   private async fetchAdmCellsFallback(
-    admFilters: ActiveAdmFilters
+    admFilters: ActiveAdmFilters,
+    parameterId?: string
   ): Promise<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>> {
+    // STOPPER le fallback pour les thématiques valeurs
+    if (parameterId && ExportQuickDialog.isValueParameter(parameterId)) {
+      console.error(`[Export] ERREUR: Impossible d'exporter ${parameterId} - authentification requise`);
+      throw new Error(
+        `Export thématique "${parameterId}" impossible : authentification requise.\n` +
+        `Veuillez vous reconnecter ou vérifier votre session.`
+      );
+    }
+    
     try {
+      console.log('[Export] Fallback sur /coverage/mailles (paramètre couverture uniquement)');
       const response = await fetch('http://localhost:8000/coverage/mailles');
       
       if (!response.ok) {
