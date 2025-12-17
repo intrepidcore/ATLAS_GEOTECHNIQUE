@@ -1708,40 +1708,87 @@ export class ExportQuickDialog {
       console.log('[Export][DATA] Sample feature structure:', {
         hasProperties: !!sampleFeature.properties,
         propertyKeys: sampleFeature.properties ? Object.keys(sampleFeature.properties) : [],
-        sampleProps: sampleFeature.properties
+        sampleProps: sampleFeature.properties,
+        hasGeometry: !!sampleFeature.geometry
       });
     }
     
-    // Créer un index des valeurs par code de maille (pour jointure rapide)
-    // Les features de l'écran peuvent avoir différentes propriétés selon la source
-    const valuesByCode = new Map<string, number>();
-    for (const f of screenFeatures) {
-      const props = f.properties || {};
-      // Essayer plusieurs propriétés possibles pour le code de maille
-      const code = props.code || props.grid_id || props.cell_id || props.id;
-      // Essayer plusieurs propriétés possibles pour la valeur:
-      // 1. D'abord "value" (propriété standard)
-      // 2. Ensuite le parameterId passé en argument (ex: "vbs_avg")
-      // 3. Fallback sur les noms de paramètres courants
-      let value = props.value;
-      if (value == null && parameterId) {
-        value = props[parameterId];
+    // NOUVELLE APPROCHE: Utiliser directement les features thématiques de l'écran
+    // car les codes de mailles peuvent être différents entre l'API thématique et la grille de couverture
+    if (hasScreenData) {
+      // Extraire les valeurs et géométries des features thématiques
+      const thematicCells: Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number; code?: string }> = [];
+      
+      for (const f of screenFeatures) {
+        const props = f.properties || {};
+        const geometry = f.geometry;
+        
+        if (!geometry) continue;
+        
+        // Extraire la valeur
+        let value = props.value;
+        if (value == null && parameterId) {
+          value = props[parameterId];
+        }
+        if (value == null) {
+          value = props.vbs_avg ?? props.n_sondages ?? props.passant_80um_avg ?? 
+                  props.passant_2mm_avg ?? props.wl_avg ?? props.wp_avg ?? props.ip_avg ??
+                  props.gamma_d_max_avg ?? props.w_opt_avg;
+        }
+        
+        const code = props.code || props.grid_id || props.cell_id || props.id;
+        
+        thematicCells.push({
+          geometry,
+          has_data: value != null && !isNaN(value),
+          n_sondages: props.n_sondages || 0,
+          value: value != null && !isNaN(value) ? value : undefined,
+          code: code ? String(code) : undefined
+        });
       }
-      if (value == null) {
-        value = props.vbs_avg ?? props.n_sondages ?? props.passant_80um_avg ?? 
-                props.passant_2mm_avg ?? props.wl_avg ?? props.wp_avg ?? props.ip_avg ??
-                props.gamma_d_max_avg ?? props.w_opt_avg;
-      }
-      if (code && value != null && !isNaN(value)) {
-        valuesByCode.set(String(code), value);
-      }
+      
+      // Filtrer par ADM si nécessaire (vérifier les propriétés ADM des features)
+      // Note: Les features thématiques peuvent ne pas avoir les propriétés ADM,
+      // donc on les garde toutes et on laisse le masque ADM faire le travail visuel
+      
+      const withData = thematicCells.filter(c => c.has_data).length;
+      const sampleValues = thematicCells.filter(c => c.value != null).slice(0, 5).map(c => ({ code: c.code, value: c.value }));
+      
+      console.log('[Export][DATA] Features thématiques directes:', {
+        total: thematicCells.length,
+        withData,
+        sampleValues
+      });
+      
+      // Récupérer aussi la grille vide pour les mailles sans données
+      const emptyGrid = await this.fetchGridFromCoverage(admFilters);
+      
+      // Créer un Set des codes thématiques pour éviter les doublons
+      const thematicCodes = new Set(thematicCells.map(c => c.code).filter(Boolean));
+      
+      // Ajouter les mailles vides de la grille qui ne sont pas dans les features thématiques
+      const emptyCells = emptyGrid
+        .filter(cell => !thematicCodes.has(cell.cell_id))
+        .map(cell => ({
+          geometry: cell.geometry,
+          has_data: false,
+          n_sondages: 0,
+          value: undefined
+        }));
+      
+      console.log('[Export][DATA] Grille combinée:', {
+        thematicCells: thematicCells.length,
+        emptyCells: emptyCells.length,
+        total: thematicCells.length + emptyCells.length
+      });
+      
+      // Retourner les features thématiques + les mailles vides
+      return [...thematicCells, ...emptyCells];
     }
     
-    // Debug: afficher quelques exemples de codes et valeurs
-    const sampleEntries = Array.from(valuesByCode.entries()).slice(0, 5);
-    console.log('[Export][DATA] valuesIndex:', valuesByCode.size, 'mailles avec valeurs, exemples:', sampleEntries);
+    // FALLBACK: Si pas de features thématiques, utiliser l'ancienne méthode
+    console.log('[Export] Pas de features thématiques, fallback sur grille de couverture');
     
-    // 2. Récupérer la grille (géométries) depuis l'API
     let gridCells: Array<{ cell_id?: string; geometry: any; has_data: boolean; n_sondages?: number }> = [];
     
     try {
@@ -1771,46 +1818,12 @@ export class ExportQuickDialog {
       gridCells = await this.fetchGridFromCoverage(admFilters);
     }
     
-    // Debug: afficher quelques exemples de codes de la grille
-    const sampleGridCodes = gridCells.slice(0, 5).map(c => c.cell_id);
-    console.log('[Export][DATA] gridCodes exemples:', sampleGridCodes);
-    
-    // 3. JOINTURE: enrichir la grille avec les valeurs thématiques de l'écran
-    const enrichedCells = gridCells.map(cell => {
-      const code = cell.cell_id ? String(cell.cell_id) : undefined;
-      const screenValue = code ? valuesByCode.get(code) : undefined;
-      
-      // Si on a une valeur de l'écran, l'utiliser (priorité absolue)
-      if (screenValue != null) {
-        return {
-          geometry: cell.geometry,
-          has_data: true,
-          n_sondages: cell.n_sondages || 0,
-          value: screenValue // VRAIE VALEUR thématique
-        };
-      }
-      
-      // Sinon, utiliser les données de la grille
-      return {
-        geometry: cell.geometry,
-        has_data: cell.has_data,
-        n_sondages: cell.n_sondages || 0,
-        value: cell.has_data ? (cell.n_sondages || 0) : undefined
-      };
-    });
-    
-    const withData = enrichedCells.filter(c => c.has_data).length;
-    const withValue = enrichedCells.filter(c => c.value != null).length;
-    
-    console.log('[Export][JOIN] Résultat jointure:', {
-      totalCells: enrichedCells.length,
-      withData,
-      withValue,
-      fromScreen: valuesByCode.size,
-      missing: withData - withValue
-    });
-    
-    return enrichedCells;
+    return gridCells.map(cell => ({
+      geometry: cell.geometry,
+      has_data: cell.has_data,
+      n_sondages: cell.n_sondages || 0,
+      value: cell.has_data ? (cell.n_sondages || 0) : undefined
+    }));
   }
   
   /**
