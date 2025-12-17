@@ -110,6 +110,11 @@ export interface ExportOptions {
   grid: GridOptions;
   frameStyle: FrameStyle;
   
+  // Options de filtrage et affichage
+  showEmptyCells?: boolean;
+  onlyAdmCells?: boolean;
+  maskMode?: 'none' | 'context' | 'focus' | 'clip';
+  
   // Métadonnées
   title?: string;
   subtitle?: string;

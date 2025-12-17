@@ -3,7 +3,7 @@
  * Atlas Géotechnique v3.0
  */
 
-import { initAuth } from './services/auth-api';
+import { tokenStorage } from './services/auth-api';
 
 interface UserInfo {
   username?: string;
@@ -242,21 +242,33 @@ class UserMenu {
 
   private async loadUser(): Promise<void> {
     try {
-      const auth = initAuth();
-      if (auth.isAuthenticated()) {
-        const token = localStorage.getItem('atlas_token') || localStorage.getItem('atlas_access_token');
+      if (tokenStorage.isAuthenticated()) {
+        const token = tokenStorage.getAccessToken();
         if (token) {
           const response = await fetch('http://localhost:8000/auth/me', {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (response.ok) {
             this.user = await response.json();
-            this.render();
+            this.updateUI();
+          } else {
+            console.warn('[UserMenu] Erreur auth/me:', response.status);
           }
         }
       }
     } catch (e) {
       console.warn('[UserMenu] Erreur chargement utilisateur:', e);
+    }
+  }
+  
+  private updateUI(): void {
+    // Mettre à jour le menu si déjà monté
+    if (this.container && this.user) {
+      const existingMenu = this.container.parentElement;
+      if (existingMenu) {
+        const newElement = this.render();
+        existingMenu.replaceChild(newElement, this.container);
+      }
     }
   }
 

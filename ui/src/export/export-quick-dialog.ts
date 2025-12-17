@@ -839,6 +839,14 @@ export class ExportQuickDialog {
     console.log('[Export] Options sauvegardées AVANT modification DOM:', savedOptions);
     console.log('[Export] includeMetadata sauvegardé:', savedOptions.includeMetadata);
     
+    // IMPORTANT: Mettre à jour this.options avec les valeurs du DOM pour que fetchAdmCells les utilise
+    this.options = {
+      ...this.options,
+      showEmptyCells: savedOptions.showEmptyCells,
+      onlyAdmCells: savedOptions.onlyAdmCells,
+      maskMode: savedOptions.maskMode
+    };
+    
     // Afficher le spinner
     const body = dialog.querySelector('.export-dialog-body');
     const footer = dialog.querySelector('.export-dialog-footer');
@@ -1740,7 +1748,7 @@ export class ExportQuickDialog {
       const allThematicCells: Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number; code?: string; centroid?: {lat: number, lng: number} }> = [];
       
       for (const f of screenFeatures) {
-        const props = f.properties || {};
+        const props: any = f.properties || {};
         const geometry = f.geometry;
         
         if (!geometry) continue;
