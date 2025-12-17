@@ -1268,11 +1268,6 @@ export class ExportQuickDialog {
           }
         } catch (e: any) {
           telemetry.endStage();
-          // Pour les thématiques valeurs, l'erreur d'auth est BLOQUANTE
-          // On propage l'erreur pour informer l'utilisateur
-          if (e?.message?.includes('authentification requise')) {
-            throw e; // Propager l'erreur pour bloquer l'export
-          }
           telemetry.error('Impossible de charger les mailles ADM', e as Error);
           console.warn('[Export] Impossible de charger les mailles ADM:', e);
         }
@@ -1708,11 +1703,13 @@ export class ExportQuickDialog {
       if (admFilters.adm2) params.append('adm2', admFilters.adm2.name);
       if (admFilters.adm3) params.append('adm3', admFilters.adm3.name);
       
-      console.log('[Export] Chargement mailles ADM depuis /thematic/cells/adm...');
-      const response = await fetch(`http://localhost:8000/thematic/cells/adm?${params.toString()}`, withAuth());
+      // Utiliser la route PUBLIQUE /export/cells/adm (pas d'auth requise)
+      // au lieu de /thematic/cells/adm (protégée)
+      console.log('[Export] Chargement mailles ADM depuis /export/cells/adm (route publique)...');
+      const response = await fetch(`http://localhost:8000/export/cells/adm?${params.toString()}`);
       
       if (!response.ok) {
-        console.warn('[Export] Erreur API /thematic/cells/adm:', response.status, '- tentative fallback');
+        console.warn('[Export] Erreur API /export/cells/adm:', response.status, '- tentative fallback');
         return this.fetchAdmCellsFallback(admFilters, parameterId);
       }
       
@@ -1748,42 +1745,14 @@ export class ExportQuickDialog {
   }
   
   /**
-   * Paramètres thématiques qui NE DOIVENT PAS utiliser le fallback coverage
-   * Car coverage ne contient que n_sondages, pas les valeurs VBS/IP/Eg/etc.
-   */
-  private static readonly VALUE_PARAMETERS = new Set([
-    'vbs_avg', 'ip_avg', 'wl_avg', 'wp_avg',           // Argilosité
-    'eg_avg', 'eg_max', 'eg_min',                       // Gonflement
-    'gamma_d_max_avg', 'w_opt_avg',                     // Compacité
-    'passant_80um_avg', 'passant_2mm_avg', 'passant_20mm_avg', // Granulométrie
-    'depth_avg', 'depth_max'                            // Profondeur
-  ]);
-  
-  /**
-   * Vérifie si un paramètre est une thématique "valeurs" (pas coverage)
-   */
-  private static isValueParameter(parameterId: string): boolean {
-    return ExportQuickDialog.VALUE_PARAMETERS.has(parameterId);
-  }
-  
-  /**
-   * Fallback: utilise /coverage/mailles si /thematic/cells/adm échoue
-   * ATTENTION: Ne fonctionne QUE pour les paramètres de couverture (n_sondages, n_echantillons, n_essais)
-   * Pour les thématiques valeurs (VBS, IP, Eg...), on lève une erreur propre.
+   * Fallback: utilise /coverage/mailles si /export/cells/adm échoue
+   * Note: La route /export/cells/adm est publique, donc ce fallback ne devrait
+   * être utilisé qu'en cas d'erreur réseau ou serveur.
    */
   private async fetchAdmCellsFallback(
     admFilters: ActiveAdmFilters,
     parameterId?: string
   ): Promise<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>> {
-    // STOPPER le fallback pour les thématiques valeurs
-    if (parameterId && ExportQuickDialog.isValueParameter(parameterId)) {
-      console.error(`[Export] ERREUR: Impossible d'exporter ${parameterId} - authentification requise`);
-      throw new Error(
-        `Export thématique "${parameterId}" impossible : authentification requise.\n` +
-        `Veuillez vous reconnecter ou vérifier votre session.`
-      );
-    }
-    
     try {
       console.log('[Export] Fallback sur /coverage/mailles (paramètre couverture uniquement)');
       const response = await fetch('http://localhost:8000/coverage/mailles');
