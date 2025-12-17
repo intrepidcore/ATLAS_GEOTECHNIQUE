@@ -1702,21 +1702,44 @@ export class ExportQuickDialog {
     console.log('[Export][DATA] thematicSource:', hasScreenData ? 'SCREEN' : 'API', 
       'featureCount:', screenFeatures.length);
     
+    // Debug: afficher la structure d'une feature pour comprendre les propriétés
+    if (screenFeatures.length > 0) {
+      const sampleFeature = screenFeatures[0];
+      console.log('[Export][DATA] Sample feature structure:', {
+        hasProperties: !!sampleFeature.properties,
+        propertyKeys: sampleFeature.properties ? Object.keys(sampleFeature.properties) : [],
+        sampleProps: sampleFeature.properties
+      });
+    }
+    
     // Créer un index des valeurs par code de maille (pour jointure rapide)
     // Les features de l'écran peuvent avoir différentes propriétés selon la source
     const valuesByCode = new Map<string, number>();
     for (const f of screenFeatures) {
+      const props = f.properties || {};
       // Essayer plusieurs propriétés possibles pour le code de maille
-      const code = f.properties?.code || f.properties?.grid_id || f.properties?.cell_id || f.properties?.id;
-      const value = f.properties?.value;
+      const code = props.code || props.grid_id || props.cell_id || props.id;
+      // Essayer plusieurs propriétés possibles pour la valeur:
+      // 1. D'abord "value" (propriété standard)
+      // 2. Ensuite le parameterId passé en argument (ex: "vbs_avg")
+      // 3. Fallback sur les noms de paramètres courants
+      let value = props.value;
+      if (value == null && parameterId) {
+        value = props[parameterId];
+      }
+      if (value == null) {
+        value = props.vbs_avg ?? props.n_sondages ?? props.passant_80um_avg ?? 
+                props.passant_2mm_avg ?? props.wl_avg ?? props.wp_avg ?? props.ip_avg ??
+                props.gamma_d_max_avg ?? props.w_opt_avg;
+      }
       if (code && value != null && !isNaN(value)) {
         valuesByCode.set(String(code), value);
       }
     }
     
-    // Debug: afficher quelques exemples de codes
-    const sampleCodes = Array.from(valuesByCode.keys()).slice(0, 5);
-    console.log('[Export][DATA] valuesIndex:', valuesByCode.size, 'mailles avec valeurs, exemples:', sampleCodes);
+    // Debug: afficher quelques exemples de codes et valeurs
+    const sampleEntries = Array.from(valuesByCode.entries()).slice(0, 5);
+    console.log('[Export][DATA] valuesIndex:', valuesByCode.size, 'mailles avec valeurs, exemples:', sampleEntries);
     
     // 2. Récupérer la grille (géométries) depuis l'API
     let gridCells: Array<{ cell_id?: string; geometry: any; has_data: boolean; n_sondages?: number }> = [];

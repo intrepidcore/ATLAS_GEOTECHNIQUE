@@ -205,7 +205,15 @@ export function buildExportStats(input: StatsInput): ExportStats {
   // TOUJOURS extraire les values des features pour les quartiles/percentiles
   // Même si apiStats est disponible, on a besoin des valeurs individuelles
   const allValues = filteredFeatures
-    .map(f => f.properties?.value ?? f.value ?? f.properties?.[parameterId] ?? f[parameterId])
+    .map(f => {
+      const props = f.properties || f;
+      // Essayer plusieurs propriétés pour la valeur
+      let val = props.value;
+      if (val == null) val = props[parameterId];
+      if (val == null) val = f.value;
+      if (val == null) val = f[parameterId];
+      return val;
+    })
     .filter(v => v !== null && v !== undefined && typeof v === 'number' && Number.isFinite(v)) as number[];
   
   console.log('[ExportStats] Values extraites:', {
