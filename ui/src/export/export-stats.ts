@@ -202,31 +202,37 @@ export function buildExportStats(input: StatsInput): ExportStats {
     }
   });
   
-  // Utiliser les stats API si disponibles
+  // TOUJOURS extraire les values des features pour les quartiles/percentiles
+  // Même si apiStats est disponible, on a besoin des valeurs individuelles
+  const allValues = filteredFeatures
+    .map(f => f.properties?.value ?? f.value ?? f.properties?.[parameterId] ?? f[parameterId])
+    .filter(v => v !== null && v !== undefined && typeof v === 'number' && Number.isFinite(v)) as number[];
+  
+  console.log('[ExportStats] Values extraites:', {
+    parameterId,
+    totalFeatures: filteredFeatures.length,
+    valuesCount: allValues.length,
+    sampleValues: allValues.slice(0, 5)
+  });
+  
+  // Utiliser les stats API si disponibles, sinon calculer
   let nMaillesTotales: number;
   let nMaillesAvecDonnees: number;
   let sum: number;
   let values: number[];
   
-  if (apiStats) {
+  if (apiStats && apiStats.count > 0) {
     // Stats enrichies depuis l'API
     nMaillesTotales = apiStats.count_total ?? (apiStats.count + (apiStats.null_count ?? 0));
     nMaillesAvecDonnees = apiStats.count;
     sum = apiStats.sum ?? 0;
-    // Pas de values individuelles, on utilise les stats agrégées
-    values = [];
+    // Utiliser les values extraites pour les quartiles/percentiles
+    values = allValues;
   } else {
     // Fallback: calculer depuis les features FILTRÉES
     nMaillesTotales = totalCellCount || filteredFeatures.length;
-    nMaillesAvecDonnees = filteredFeatures.filter(f => {
-      const val = f.properties?.value ?? f.value ?? f.properties?.[parameterId] ?? f[parameterId];
-      return val !== null && val !== undefined && val > 0;
-    }).length;
-    
-    values = filteredFeatures
-      .map(f => f.properties?.value ?? f.value ?? f.properties?.[parameterId] ?? f[parameterId])
-      .filter(v => v !== null && v !== undefined && typeof v === 'number' && v > 0) as number[];
-    
+    nMaillesAvecDonnees = allValues.length;
+    values = allValues;
     sum = values.reduce((a, b) => a + b, 0);
   }
   
