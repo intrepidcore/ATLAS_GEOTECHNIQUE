@@ -894,16 +894,26 @@ export class ThematicMapManager {
     const stats = this.currentData.statistics
     
     // Construire les classes avec bornes
+    // breaks = [b0, b1, b2, ...] définit les seuils entre classes
+    // Classe 0: min=null, max=breaks[0]
+    // Classe 1: min=breaks[0], max=breaks[1]
+    // Classe N-1: min=breaks[N-2], max=null
     const classes: ThematicClassBreak[] = []
+    const breaks = classification.breaks || []
+    
+    console.log('[ThematicMap] Building classes from breaks:', breaks, 'labels:', classification.labels)
+    
     for (let i = 0; i < classification.n_classes; i++) {
       classes.push({
         index: i,
-        min: i === 0 ? null : classification.breaks[i],
-        max: i === classification.n_classes - 1 ? null : classification.breaks[i + 1],
+        min: i === 0 ? null : breaks[i - 1],
+        max: i === classification.n_classes - 1 ? null : breaks[i],
         color: classification.colors[i],
         label: classification.labels[i]
       })
     }
+    
+    console.log('[ThematicMap] Classes built:', classes.map(c => ({ label: c.label, min: c.min, max: c.max })))
     
     this.currentExportState = {
       parameterId: this.currentConfig.parameter,

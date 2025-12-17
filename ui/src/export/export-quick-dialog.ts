@@ -1703,16 +1703,20 @@ export class ExportQuickDialog {
       'featureCount:', screenFeatures.length);
     
     // Créer un index des valeurs par code de maille (pour jointure rapide)
+    // Les features de l'écran peuvent avoir différentes propriétés selon la source
     const valuesByCode = new Map<string, number>();
     for (const f of screenFeatures) {
-      const code = f.properties?.code || f.properties?.grid_id;
+      // Essayer plusieurs propriétés possibles pour le code de maille
+      const code = f.properties?.code || f.properties?.grid_id || f.properties?.cell_id || f.properties?.id;
       const value = f.properties?.value;
       if (code && value != null && !isNaN(value)) {
-        valuesByCode.set(code, value);
+        valuesByCode.set(String(code), value);
       }
     }
     
-    console.log('[Export][DATA] valuesIndex:', valuesByCode.size, 'mailles avec valeurs');
+    // Debug: afficher quelques exemples de codes
+    const sampleCodes = Array.from(valuesByCode.keys()).slice(0, 5);
+    console.log('[Export][DATA] valuesIndex:', valuesByCode.size, 'mailles avec valeurs, exemples:', sampleCodes);
     
     // 2. Récupérer la grille (géométries) depuis l'API
     let gridCells: Array<{ cell_id?: string; geometry: any; has_data: boolean; n_sondages?: number }> = [];
@@ -1744,9 +1748,13 @@ export class ExportQuickDialog {
       gridCells = await this.fetchGridFromCoverage(admFilters);
     }
     
+    // Debug: afficher quelques exemples de codes de la grille
+    const sampleGridCodes = gridCells.slice(0, 5).map(c => c.cell_id);
+    console.log('[Export][DATA] gridCodes exemples:', sampleGridCodes);
+    
     // 3. JOINTURE: enrichir la grille avec les valeurs thématiques de l'écran
     const enrichedCells = gridCells.map(cell => {
-      const code = cell.cell_id;
+      const code = cell.cell_id ? String(cell.cell_id) : undefined;
       const screenValue = code ? valuesByCode.get(code) : undefined;
       
       // Si on a une valeur de l'écran, l'utiliser (priorité absolue)

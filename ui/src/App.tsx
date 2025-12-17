@@ -48,6 +48,9 @@ function App() {
   const [showNotifications, setShowNotifications] = useState(false)
 
   // Redirection après login pour les non-étudiants vers la carte principale
+  // État pour éviter le flash pendant la redirection
+  const [isRedirecting, setIsRedirecting] = useState(false)
+  
   useEffect(() => {
     if (isAuthenticated && user) {
       const isStudentOnly = user.roles?.includes('student') && 
@@ -56,6 +59,7 @@ function App() {
       // Si non-étudiant et on vient de se connecter (vérifier si on est sur db-manager)
       if (!isStudentOnly && window.location.pathname.includes('db-manager')) {
         console.log('[Auth] Utilisateur non-étudiant authentifié - redirection vers carte')
+        setIsRedirecting(true)
         window.location.href = '/index.html'
       }
     }
@@ -430,13 +434,13 @@ function App() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [hasUnsavedChanges])
 
-  // Afficher le loader pendant le chargement de l'auth
-  if (authLoading) {
+  // Afficher le loader pendant le chargement de l'auth ou la redirection
+  if (authLoading || isRedirecting) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600">Chargement...</p>
+          <p className="text-slate-600">{isRedirecting ? 'Redirection vers la carte...' : 'Chargement...'}</p>
         </div>
       </div>
     )
