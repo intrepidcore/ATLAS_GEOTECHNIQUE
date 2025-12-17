@@ -404,6 +404,11 @@ export interface ExportQuickDialogConfig {
   getAdmBounds?: () => { north: number; south: number; east: number; west: number } | null;
   /** Récupère les coordonnées du polygone ADM pour le masque */
   getAdmPolygon?: () => number[][] | null;
+  /** 
+   * Récupère les features thématiques actuellement affichées à l'écran
+   * C'est la SOURCE DE VÉRITÉ pour l'export (mêmes valeurs que l'écran)
+   */
+  getThematicFeatures?: () => Array<{ properties: { code?: string; value?: number; grid_id?: string }; geometry: any }> | null;
 }
 
 // Cache global des mailles ADM (partagé entre exports)
@@ -1680,67 +1685,139 @@ export class ExportQuickDialog {
   
   /**
    * Récupère toutes les mailles d'un ADM (avec et sans données)
-   * pour afficher les mailles vides en gris clair
-   * Utilise /coverage/mailles qui est une route publique
-   * AVEC CACHE pour éviter les appels répétés sur la même zone
+   * STRATÉGIE HYBRIDE:
+   * 1. Récupérer la grille (géométries) depuis /export/cells/adm ou /coverage/mailles
+   * 2. Enrichir avec les VRAIES VALEURS thématiques depuis l'écran (getThematicFeatures)
+   * 
+   * Cela garantit que l'export utilise les MÊMES VALEURS que l'écran.
    */
   private async fetchAdmCells(
     admFilters: ActiveAdmFilters,
     parameterId?: string
   ): Promise<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>> {
-    // Vérifier le cache
-    const cacheKey = ExportQuickDialog.getAdmCacheKey(admFilters);
-    const cached = admCellsCache.get(cacheKey);
-    if (cached) {
-      console.log('[Export] Mailles ADM depuis CACHE:', cacheKey, cached.length, 'mailles');
-      return cached;
+    // 1. Récupérer les features thématiques de l'écran (SOURCE DE VÉRITÉ)
+    const screenFeatures = this.config.getThematicFeatures?.() || [];
+    const hasScreenData = screenFeatures.length > 0;
+    
+    console.log('[Export][DATA] thematicSource:', hasScreenData ? 'SCREEN' : 'API', 
+      'featureCount:', screenFeatures.length);
+    
+    // Créer un index des valeurs par code de maille (pour jointure rapide)
+    const valuesByCode = new Map<string, number>();
+    for (const f of screenFeatures) {
+      const code = f.properties?.code || f.properties?.grid_id;
+      const value = f.properties?.value;
+      if (code && value != null && !isNaN(value)) {
+        valuesByCode.set(code, value);
+      }
     }
     
+    console.log('[Export][DATA] valuesIndex:', valuesByCode.size, 'mailles avec valeurs');
+    
+    // 2. Récupérer la grille (géométries) depuis l'API
+    let gridCells: Array<{ cell_id?: string; geometry: any; has_data: boolean; n_sondages?: number }> = [];
+    
     try {
-      // Utiliser /thematic/cells/adm qui retourne n_sondages (source de vérité pour stats)
       const params = new URLSearchParams();
       if (admFilters.adm1) params.append('adm1', admFilters.adm1.name);
       if (admFilters.adm2) params.append('adm2', admFilters.adm2.name);
       if (admFilters.adm3) params.append('adm3', admFilters.adm3.name);
       
-      // Utiliser la route PUBLIQUE /export/cells/adm (pas d'auth requise)
-      // au lieu de /thematic/cells/adm (protégée)
-      console.log('[Export] Chargement mailles ADM depuis /export/cells/adm (route publique)...');
+      console.log('[Export] Chargement grille ADM depuis /export/cells/adm...');
       const response = await fetch(`http://localhost:8000/export/cells/adm?${params.toString()}`);
       
-      if (!response.ok) {
-        console.warn('[Export] Erreur API /export/cells/adm:', response.status, '- tentative fallback');
-        return this.fetchAdmCellsFallback(admFilters, parameterId);
+      if (response.ok) {
+        const data = await response.json();
+        gridCells = (data.cells || []).map((c: any) => ({
+          cell_id: c.cell_id,
+          geometry: c.geometry,
+          has_data: c.has_data,
+          n_sondages: c.n_sondages || 0
+        }));
+        console.log('[Export] Grille ADM chargée:', gridCells.length, 'mailles');
+      } else {
+        console.warn('[Export] Erreur API /export/cells/adm:', response.status, '- fallback coverage');
+        gridCells = await this.fetchGridFromCoverage(admFilters);
+      }
+    } catch (e) {
+      console.warn('[Export] Erreur fetchAdmCells:', e, '- fallback coverage');
+      gridCells = await this.fetchGridFromCoverage(admFilters);
+    }
+    
+    // 3. JOINTURE: enrichir la grille avec les valeurs thématiques de l'écran
+    const enrichedCells = gridCells.map(cell => {
+      const code = cell.cell_id;
+      const screenValue = code ? valuesByCode.get(code) : undefined;
+      
+      // Si on a une valeur de l'écran, l'utiliser (priorité absolue)
+      if (screenValue != null) {
+        return {
+          geometry: cell.geometry,
+          has_data: true,
+          n_sondages: cell.n_sondages || 0,
+          value: screenValue // VRAIE VALEUR thématique
+        };
       }
       
-      const data = await response.json();
-      const apiCells = data.cells || [];
+      // Sinon, utiliser les données de la grille
+      return {
+        geometry: cell.geometry,
+        has_data: cell.has_data,
+        n_sondages: cell.n_sondages || 0,
+        value: cell.has_data ? (cell.n_sondages || 0) : undefined
+      };
+    });
+    
+    const withData = enrichedCells.filter(c => c.has_data).length;
+    const withValue = enrichedCells.filter(c => c.value != null).length;
+    
+    console.log('[Export][JOIN] Résultat jointure:', {
+      totalCells: enrichedCells.length,
+      withData,
+      withValue,
+      fromScreen: valuesByCode.size,
+      missing: withData - withValue
+    });
+    
+    return enrichedCells;
+  }
+  
+  /**
+   * Récupère la grille depuis /coverage/mailles (fallback)
+   */
+  private async fetchGridFromCoverage(
+    admFilters: ActiveAdmFilters
+  ): Promise<Array<{ cell_id?: string; geometry: any; has_data: boolean; n_sondages?: number }>> {
+    try {
+      console.log('[Export] Fallback sur /coverage/mailles pour la grille');
+      const response = await fetch('http://localhost:8000/coverage/mailles');
       
-      // Transformer en format attendu avec n_sondages
-      const cells = apiCells.map((c: any) => ({
-        geometry: c.geometry,
-        has_data: c.has_data,
-        n_sondages: c.n_sondages || 0,
-        value: c.n_sondages || 0 // Alias pour compatibilité
-      }));
+      if (!response.ok) {
+        console.warn('[Export] Erreur API coverage/mailles:', response.status);
+        return [];
+      }
       
-      // Stocker dans le cache
-      admCellsCache.set(cacheKey, cells);
+      const geojson = await response.json();
+      const features = geojson.features || [];
       
-      const withData = cells.filter((c: any) => c.has_data).length;
-      const totalSondages = cells.reduce((sum: number, c: any) => sum + (c.n_sondages || 0), 0);
-      console.log('[Export] Mailles ADM chargées depuis /thematic/cells/adm:', {
-        cacheKey,
-        total: cells.length,
-        withData,
-        withoutData: cells.length - withData,
-        totalSondages
+      // Filtrer par ADM
+      const filtered = features.filter((f: any) => {
+        const props = f.properties || {};
+        if (admFilters.adm1 && props.adm1_name !== admFilters.adm1.name) return false;
+        if (admFilters.adm2 && props.adm2_name !== admFilters.adm2.name) return false;
+        if (admFilters.adm3 && props.adm3_name !== admFilters.adm3.name) return false;
+        return true;
       });
       
-      return cells;
+      return filtered.map((f: any) => ({
+        cell_id: f.properties?.code || f.properties?.cell_id,
+        geometry: f.geometry,
+        has_data: f.properties?.has_data || f.properties?.n_sondages > 0,
+        n_sondages: f.properties?.n_sondages || 0
+      }));
     } catch (e) {
-      console.warn('[Export] Erreur fetchAdmCells:', e, '- tentative fallback');
-      return this.fetchAdmCellsFallback(admFilters, parameterId);
+      console.warn('[Export] Erreur fetchGridFromCoverage:', e);
+      return [];
     }
   }
   

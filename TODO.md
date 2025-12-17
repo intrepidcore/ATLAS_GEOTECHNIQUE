@@ -2277,3 +2277,110 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 | `ui/src/export/export-stats.ts` | buildExportStats avec featuresZone |
 | `ui/src/export/export-atlas-dialog.ts` | Utiliser les mêmes briques que Export Pro |
 | `ui/src/export/capture-utils.ts` | html2canvas avec scale selon DPI |
+
+---
+
+## 🚀 SPRINT EXPORT v3.1 — Cohérence Export = Écran (17 déc 2025)
+
+### Diagnostic des problèmes actuels
+
+**A. "4 classes à l'écran" vs "2 classes à l'export"**
+- L'écran affiche `/thematic/data` avec 66 features et valeurs VBS réelles
+- L'export appelle `/export/cells/adm` → 401 → fallback `/coverage/mailles`
+- Le fallback ne contient que `n_sondages`, pas les valeurs VBS
+- Résultat: export basé sur données différentes de l'écran
+
+**B. Stats "nulles" / incohérentes**
+- Les fonctions de stats reçoivent des `values[]` vides ou incorrectes
+- Quartiles/percentiles deviennent `null` → affichés comme "—" ou "0"
+
+**C. Cartouches trop gros en 300 DPI**
+- Scaling actuel: `tout * (dpi/72)` → polices/traits visuellement trop gros
+- Le DPI devrait augmenter la netteté, pas gonfler le design
+
+---
+
+### PHASE 1 — Bloc EXPORT : technique & rendu
+
+#### 1.1 Fixer la route `/export/cells/adm` (401)
+- [ ] **Backend**: Vérifier que la route est montée AVANT le layer d'auth dans `main.rs`
+- [ ] **Backend**: Vérifier que `thematic::get_adm_cells` n'a pas d'extracteur `AuthUser`
+- [ ] **Frontend**: Centraliser appels dans `fetchAdmCells()` sans header Authorization
+- [ ] **Gestion erreurs**: Si 401 et pas de données écran → abandonner avec message clair
+- [ ] **Logs**: `[FETCH] cellsAdmStatus=200|401 source=export/cells/adm`
+
+#### 1.2 Corriger le mapping classes/labels
+- [ ] Créer type `LegendClass = { label, min, max, color, count? }`
+- [ ] Fonction unique `buildLegendClassesFromBreaks(breaks, colors, labels)`
+- [ ] Vérifier cohérence `labels.length == breaks.length + 1`
+- [ ] Propager `exportState.classes` depuis config écran
+- [ ] `drawColoredCells` et `drawLegend` utilisent le même `classes[]`
+- [ ] **Logs**: `[ThematicMap] Classification classes=...`
+
+#### 1.3 Récupérer les vraies valeurs VBS (ThematicDataCache)
+- [ ] Créer `ThematicDataCache` dans ThematicMap après fetch `/thematic/data`
+- [ ] Stocker `{ parameterId, admFilters, features[] }`
+- [ ] Exposer `getCurrentThematicData()` pour l'export
+- [ ] À l'export: priorité aux données écran si disponibles
+- [ ] Jointure `gridCell.id ↔ thematicFeature.grid_id`
+- [ ] Stats basées sur ces valeurs, pas sur `n_sondages`
+- [ ] **Logs**: `[Export][DATA] thematicSource="screen"|"api" featureCount=66`
+
+#### 1.4 Dissocier DPI et taille UI (layout en mm)
+- [ ] Définir constantes en mm: `LAYOUT_MM = { margin: 5, fontTitle: 4.5, fontLegend: 2.8, ... }`
+- [ ] Fonction `mmToPx(mm, dpi) = Math.round(mm * dpi / 25.4)`
+- [ ] Remplacer `CONST * ratio` par `mmToPx(LAYOUT_MM.xxx, dpi)`
+- [ ] Polices: `ctx.font = ${mmToPx(fontLegend, dpi)}px Arial`
+- [ ] **QA**: Exporter en 150 et 300 dpi → même taille physique des cartouches
+
+---
+
+### PHASE 2 — Bloc AUTH/UX : sécuriser & structurer
+
+#### 2.1 Forcer le login à l'entrée
+- [ ] Guard global au boot: vérifier token valide
+- [ ] Si absent/expiré → redirection vers `/login`
+- [ ] Composant App: `if (!isAuthenticated) return <LoginPage />`
+- [ ] Centraliser `authClient` avec refresh automatique sur 401
+- [ ] **Logs**: `[Auth] boot isAuthenticated=true|false reason=...`
+
+#### 2.2 Redirection par rôle après login
+- [ ] Décoder `user.roles[]` au login, stocker dans `AuthStore`
+- [ ] Table de mapping `ROLE_HOME: { ADMIN: '/admin', STUDENT: '/missions', ... }`
+- [ ] Après login → `navigate(ROLE_HOME[rolePrincipal])`
+- [ ] Wrapper `RequireRoles` pour protéger les routes sensibles
+
+---
+
+### PHASE 3 — Bloc GESTION UTILISATEURS : ergonomie
+
+#### 3.1 Wizard création utilisateur (stepper moderne)
+- [ ] Étape 1: Identité (nom, prénom, email, mot de passe)
+- [ ] Étape 2: Rôle(s) avec cards visuelles
+- [ ] Étape 3: Champs spécifiques (étudiant: matricule, école; encadrant: institution)
+- [ ] Étape 4: Récapitulatif + confirmation
+- [ ] Utiliser `react-hook-form` + `zod` pour validation
+- [ ] Stepper visuel avec barre de progression
+- [ ] **Logs**: `[RBAC][CREATE_USER] role=STUDENT email=...`
+
+#### 3.2 Moderniser liste utilisateurs
+- [ ] Design: Avatar initiales, badges rôles colorés, statut actif/désactivé
+- [ ] Actions rapides: éditer, réinitialiser mdp, désactiver
+- [ ] Filtres: recherche nom/email, multiselect rôles, toggle actifs
+- [ ] Pagination/lazy-loading backend
+- [ ] Bouton "Créer" ouvre le wizard (3.1)
+
+---
+
+### Ordre d'implémentation
+
+| Priorité | Action | Statut |
+|----------|--------|--------|
+| 1 | 1.1 Fixer route /export/cells/adm | ⏳ |
+| 2 | 1.3 ThematicDataCache (données écran) | ⏳ |
+| 3 | 1.2 Mapping classes/labels cohérent | ⏳ |
+| 4 | 1.4 Layout en mm (DPI = netteté) | ⏳ |
+| 5 | 2.1 Forcer login à l'entrée | ⏳ |
+| 6 | 2.2 Redirection par rôle | ⏳ |
+| 7 | 3.1 Wizard création utilisateur | ⏳ |
+| 8 | 3.2 Moderniser liste utilisateurs | ⏳ |
