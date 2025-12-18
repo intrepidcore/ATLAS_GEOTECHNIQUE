@@ -927,7 +927,7 @@ export class ExportFrame {
     
     // Log détaillé du mapping valeur → classe → couleur (debug)
     const sampleMapping = withDataCells.slice(0, 10).map(c => {
-      const v = c.n_sondages ?? c.value ?? 0;
+      const v = c.value ?? c.n_sondages ?? 0;
       const { color, classIndex } = getColorForValue(v);
       const classLabel = classes[classIndex]?.label || 'N/A';
       return { value: v, classIndex, classLabel, color };
@@ -954,7 +954,8 @@ export class ExportFrame {
       const coords = geom.coordinates?.[0];
       if (!coords || coords.length < 3) continue;
       
-      const value = cell.n_sondages ?? cell.value ?? 0;
+      // IMPORTANT: Utiliser cell.value (valeur thématique) en priorité, pas n_sondages
+      const value = cell.value ?? cell.n_sondages ?? 0;
       const { color, classIndex } = getColorForValue(value);
       
       // Compter l'usage de cette classe
