@@ -167,7 +167,7 @@ Transformer le système de géocodage en un workflow complet et temps réel avec
 - [X] Messages dédiés pour erreurs/vide
 - [X] **BUG JSON** : Parsing robuste avec try/catch
   - Gestion erreur si `candidates` mal formé
-  - Affichage candidats avec scores
+  - Affichage candidats avec scoresQuelle
 - [X] **BUG INTRUS** : Modal sondages fermé lors navigation
 
 ### 3.4 Onglet « Import » 🔧
@@ -917,15 +917,15 @@ Le KPI "% spread" représente la part de données "diffusées/virtuelles" dans u
 
 #### ✅ Résumé actions concrètes
 
-| Priorité | Action                                        | Statut |
-| -------- | --------------------------------------------- | ------ |
-| 1        | Supprimer hoverLayer (clignotement)           | ✅     |
-| 2        | Pattern robuste survol/clic                   | ✅     |
-| 3        | Normaliser essais_par_type (plus de undefined)| ✅     |
-| 4        | Créer cell-metrics.ts (source unique)         | ✅     |
-| 5        | Refactorer loadMailleDetails avec metrics     | ✅     |
-| 6        | Fonctions de rendu modulaires                 | ✅     |
-| 7        | Synthèse toujours présente                    | ✅     |
+| Priorité | Action                                         | Statut |
+| --------- | ---------------------------------------------- | ------ |
+| 1         | Supprimer hoverLayer (clignotement)            | ✅     |
+| 2         | Pattern robuste survol/clic                    | ✅     |
+| 3         | Normaliser essais_par_type (plus de undefined) | ✅     |
+| 4         | Créer cell-metrics.ts (source unique)         | ✅     |
+| 5         | Refactorer loadMailleDetails avec metrics      | ✅     |
+| 6         | Fonctions de rendu modulaires                  | ✅     |
+| 7         | Synthèse toujours présente                   | ✅     |
 
 ---
 
@@ -974,15 +974,15 @@ Le KPI "% spread" représente la part de données "diffusées/virtuelles" dans u
 
 #### ✅ Résumé actions concrètes
 
-| Priorité | Action                                        | Statut |
-| -------- | --------------------------------------------- | ------ |
-| 1        | API expose 6 types d'essais                   | ✅     |
-| 2        | Légende bleue pour mailles random             | ✅     |
-| 3        | Module tile-manager.ts                        | ✅     |
-| 4        | Migration grid_code + trigger                 | ✅     |
-| 5        | Paramètre grid_code sur API sondages          | ✅     |
-| 6        | Bouton "Gérer" dans panneau maille            | ✅     |
-| 7        | Bandeau filtre maille dans liste sondages     | ✅     |
+| Priorité | Action                                    | Statut |
+| --------- | ----------------------------------------- | ------ |
+| 1         | API expose 6 types d'essais               | ✅     |
+| 2         | Légende bleue pour mailles random        | ✅     |
+| 3         | Module tile-manager.ts                    | ✅     |
+| 4         | Migration grid_code + trigger             | ✅     |
+| 5         | Paramètre grid_code sur API sondages     | ✅     |
+| 6         | Bouton "Gérer" dans panneau maille       | ✅     |
+| 7         | Bandeau filtre maille dans liste sondages | ✅     |
 
 ---
 
@@ -1048,17 +1048,20 @@ curl "http://localhost:8081/"
 #### 🔧 Phase 1 : Vue matérialisée complète (Migration 044)
 
 ##### Problème identifié
+
 - La vue `mailles_geotechnique_stats` utilisait l'ancienne table `essais_geotechniques`
 - Les nouvelles tables source of truth (`essais_atterberg`, `essais_vbs`, etc.) n'étaient pas agrégées
 - Résultat : cartes thématiques "belles mais fausses"
 
 ##### Solution implémentée
+
 - [X] Nouvelle vue matérialisée `atlas.mv_mailles_geotech` avec agrégats complets
 - [X] CTEs pour chaque type d'essai (Atterberg, VBS, Proctor, Gonflement, Granulo, Classif)
 - [X] Vue de compatibilité `mailles_geotechnique_stats_wgs84` pour l'API existante
 - [X] Fonction `refresh_mv_mailles_geotech()` pour rafraîchissement
 
 ##### Colonnes disponibles pour cartes thématiques
+
 - **Instrumentation** : n_sondages, n_echantillons, n_essais_total, n_essais_* par type
 - **Profondeur** : depth_min_m, depth_max_m, depth_mean_m
 - **Atterberg** : wl_avg, wp_avg, ip_avg, ip_min, ip_max, ip_stddev
@@ -1069,6 +1072,7 @@ curl "http://localhost:8081/"
 - **Qualité** : has_data, has_exact_location, has_random_location
 
 ##### Résultats après migration
+
 - 29407 mailles totales
 - 106 mailles avec données
 - 114 sondages, 306 échantillons, 991 essais
@@ -1077,14 +1081,17 @@ curl "http://localhost:8081/"
 #### 🔧 Phase 2 : UI Panneau Thématique v2.0
 
 ##### Refactorisation complète du panneau
+
 Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 **Bloc A - Objectif métier**
+
 - [X] Sélecteur d'objectif : Couverture, Argilosité, Gonflement, Compacité, Granulométrie, Personnalisé
 - [X] Paramètres filtrés par objectif avec description et formule
 - [X] Palette par défaut selon l'objectif
 
 **Bloc B - Style & Classification**
+
 - [X] Types de carte : Choroplèthe, Cercles proportionnels, Binaire
 - [X] Méthodes : Quantiles, Intervalles égaux, Jenks, Seuils manuels
 - [X] Nombre de classes (3-9)
@@ -1092,17 +1099,20 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [X] Slider opacité avec affichage %
 
 **Bloc C - Filtres**
+
 - [X] Filtres géographiques (ADM1/2/3)
 - [X] Sondages minimum (échelle 1-5 pour n_sondages)
 - [X] Checkbox "Exclure mailles sans données"
 - [X] Filtres avancés repliables (profondeur min/max)
 
 **Bloc D - Actions & Exports**
+
 - [X] Boutons Appliquer / Auto-Zoom / Réinitialiser
 - [X] Sauvegarde configuration
 - [X] Export GeoJSON / PNG
 
 ##### Corrections apportées
+
 - [X] Classification avec breaks par défaut pour n_sondages (1, 2, 3, 4, 5)
 - [X] Légende avec contraste automatique du texte (noir/blanc selon luminosité)
 - [X] Affichage du nom du paramètre et de l'unité dans la légende
@@ -1111,28 +1121,33 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 🔧 Phase 2.1 : Corrections cartes thématiques (2025-11-26)
 
 ##### 1. Cercles proportionnels corrigés
+
 - [X] Mailles en fond gris clair avec contour fin (couche polygonLayer)
 - [X] Cercles L.circleMarker au centroïde de chaque maille (couche circleLayer)
 - [X] Rayon proportionnel à √valeur (perception visuelle correcte)
 - [X] Couleur issue de la palette de classification
 
 ##### 2. Carte binaire (présence/absence)
+
 - [X] 2 classes uniquement : < seuil (gris) / ≥ seuil (vert)
 - [X] Seuil par défaut = médiane (configurable via binary_threshold)
 - [X] Méthode et nombre de classes grisés quand type = binary
 
 ##### 3. Cascade ADM1 → ADM2 → ADM3
+
 - [X] ADM1 change → recharge ADM2 via API `/adm/adm2?adm1_code=`
 - [X] ADM2 change → recharge ADM3 via API `/adm/adm3?adm2_code=`
 - [X] Reset cascade si "toutes régions" sélectionné
 
 ##### 4. Algorithme de classes anti-dégénérées
+
 - [X] Fonction `sanitizeBreaks()` : supprime doublons, arrondit à 1 décimale
 - [X] Réduction automatique du nombre de classes si données concentrées
 - [X] Labels lisibles : ≤ b0, b0-b1, ..., > bN
 - [X] Log console si classes réduites
 
 ##### Fichiers modifiés
+
 - `ui/src/thematic/thematic-types.ts` - Nouveaux types métier (ObjectifMetier, etc.)
 - `ui/src/thematic/thematic-panel.ts` - Panneau refactorisé avec 4 blocs + cascade ADM
 - `ui/src/thematic/thematic-maps.ts` - Cercles proportionnels, binaire, sanitizeBreaks
@@ -1145,11 +1160,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 🔧 Corrections apportées
 
 ##### 1. Router - Support des query params
+
 - [X] Le router matche maintenant sur le path sans les query params
 - [X] Route `/sondages?grid=XXX` fonctionne correctement
 - [X] Nouvelle méthode `getQueryParams()` pour récupérer les params
 
 ##### 2. Tuiles offline - Auto-configuration via TileJSON
+
 - [X] Nouvelle fonction `initOfflineTiles()` qui récupère le TileJSON du tileserver
 - [X] Configuration automatique de l'URL, minZoom (5), maxZoom (15), bounds
 - [X] Fallback gracieux si tileserver indisponible (reste sur OSM)
@@ -1157,6 +1174,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [X] Plus de carte grise : zooms et bounds respectés
 
 ##### 3. Onglet "Nouveau Sondage Géotechnique"
+
 - [X] Ajouté dans la sidebar du gestionnaire sondages
 - [X] Réutilisation du composant `GeotechnicalFormManager` existant
 - [X] Formulaire complet avec :
@@ -1179,46 +1197,52 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ### 🐛 Problèmes identifiés
 
-| Priorité | Problème | Cause |
-|----------|----------|-------|
-| 🔴 Haute | Légende vide dans l'export | `getLegendHtml()` capture un div vide, pas les classes thématiques |
-| 🔴 Haute | Couche thématique non visible | html2canvas ne capture pas correctement les layers Leaflet SVG/Canvas |
-| 🟡 Moyenne | Grille de fond (mailles) visible | Surcharge visuelle, devrait être masquée pendant l'export |
-| 🟡 Moyenne | Export QGIS échoue (500) | Colonne `geom_4326` inexistante côté backend |
-| 🟢 Basse | Cartouche incomplet | Manque SCR des données (25231) et filtres ADM actifs |
+| Priorité  | Problème                        | Cause                                                                 |
+| ---------- | -------------------------------- | --------------------------------------------------------------------- |
+| 🔴 Haute   | Légende vide dans l'export      | `getLegendHtml()` capture un div vide, pas les classes thématiques |
+| 🔴 Haute   | Couche thématique non visible   | html2canvas ne capture pas correctement les layers Leaflet SVG/Canvas |
+| 🟡 Moyenne | Grille de fond (mailles) visible | Surcharge visuelle, devrait être masquée pendant l'export           |
+| 🟡 Moyenne | Export QGIS échoue (500)        | Colonne `geom_4326` inexistante côté backend                      |
+| 🟢 Basse   | Cartouche incomplet              | Manque SCR des données (25231) et filtres ADM actifs                 |
 
 ---
 
 ### ✅ Corrections à implémenter
 
 #### 3.0.1.1 Légende reconstruite depuis config thématique
+
 - [X] Ne plus capturer le HTML de la légende existante
 - [X] Récupérer `ThematicExportState` avec classes, couleurs, labels
 - [X] Dessiner la légende programmatiquement dans le canvas d'export
 - [X] Inclure : titre paramètre, unité, classes avec couleurs
 
 #### 3.0.1.2 Masquer grille de fond pendant l'export
+
 - [X] Avant capture : désactiver temporairement `gridLayer` (mailles sans données)
 - [X] Après capture : restaurer l'état précédent
 - [X] Option dans le dialogue : "Masquer grille de fond" (coché par défaut)
 
 #### 3.0.1.3 Améliorer le cartouche
+
 - [X] Ajouter "SCR des données : UTM 31N (EPSG:25231)"
 - [X] Afficher les filtres ADM actifs si présents
 - [X] Format : "Zone : Région Maritime / Préfecture de Zio"
 
 #### 3.0.1.4 Calcul grille intelligent (nice step)
+
 - [X] Fonction `niceStep(rawStep)` : normalise en 10^n × {1, 2, 5}
 - [X] Cible 8-12 lignes de grille sur le côté le plus court
 - [X] Exemples : 0.037° → 0.05°, 2300m → 2000m
 
 #### 3.0.1.5 Correction export QGIS (backend)
+
 - [X] Corriger requête SQL : `geom_4326` → `geom` (la vue utilise `geom` pas `geom_4326`)
 - [X] Rebuild API Rust en release
 
 ---
 
 #### 3.0.1.6 Capture couche thématique (Canvas Leaflet)
+
 - [X] Fonction `prepareSvgForCapture()` pour forcer styles inline SVG
 - [X] Gestion des Canvas Leaflet (preferCanvas: true)
 - [ ] **À TESTER** : Vérifier si les polygones colorés sont maintenant capturés
@@ -1228,6 +1252,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ### 🔧 CORRECTIONS v3.0.4 - ADM Centré + Grille Visible
 
 #### 3.0.4.1 ADM centré en grand (Zone filtrée)
+
 **Problème** : "Zone filtrée (Maritime)" utilise l'extent actuel de la carte, pas le bbox du polygone ADM.
 **Solution** : Calculer le bbox du polygone ADM + marge 5-10%
 
@@ -1247,6 +1272,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Ajouter dans cartouche : "Zone : Région Maritime (ADM1)"
 
 #### 3.0.4.2 Améliorer visibilité grille de coordonnées
+
 **Problème** : Les croix de grille sont très peu visibles sur le fond OSM.
 **Solution** : Augmenter opacité et épaisseur
 
@@ -1259,6 +1285,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Si "Masquer grille de fond" coché → augmenter opacité à 0.7
 
 #### 3.0.4.3 Algorithme niceStep amélioré
+
 **Problème** : Pas de grille pas toujours "propre" (0.10°, 0.20°, 0.50°)
 **Solution** : Forcer les pas standards
 
@@ -1268,6 +1295,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Aligner sur valeurs rondes : `x0 = floor(minX / step) * step`
 
 #### 3.0.4.4 Cohérence pas X et Y
+
 - [ ] Utiliser le même pas pour X et Y si possible
 - [ ] Sinon, utiliser des pas du même ordre de grandeur
 
@@ -1294,10 +1322,10 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ### 📋 Vue d'ensemble des 2 modules d'export
 
-| Module | Objectif | Complexité | Priorité |
-|--------|----------|------------|----------|
-| **Export Rapide** | 1-2 clics pour image propre (mail, WhatsApp, rapport rapide) | Moyenne | P1 |
-| **Mise en Page Avancée** | Page dédiée QGIS-like pour rapports pro | Haute | P2 |
+| Module                          | Objectif                                                     | Complexité | Priorité |
+| ------------------------------- | ------------------------------------------------------------ | ----------- | --------- |
+| **Export Rapide**         | 1-2 clics pour image propre (mail, WhatsApp, rapport rapide) | Moyenne     | P1        |
+| **Mise en Page Avancée** | Page dédiée QGIS-like pour rapports pro                    | Haute       | P2        |
 
 ---
 
@@ -1312,12 +1340,14 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 1.1 UI - Mini-dialogue d'export ✅
 
 ##### 1.1.1 Composant dialogue ✅
+
 - [X] Créer composant `ExportQuickDialog` dans `ui/src/export/`
 - [X] Bouton déclencheur "Export Pro (PNG/PDF)" dans panneau thématique
 - [X] Modal léger avec formulaire compact
 - [X] Fermeture : bouton X, clic extérieur, ESC
 
 ##### 1.1.2 Options du dialogue ✅
+
 - [X] **Format** : Select `PNG` / `PDF`
 - [X] **Qualité** : Select `Standard (web 72dpi)` / `Impression (300dpi)`
 - [X] **Zone** :
@@ -1329,6 +1359,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - [X] `[ ] Afficher statistiques globales`
 
 ##### 1.1.3 Options grille & coordonnées ✅
+
 - [X] **SCR / Coordonnées** :
   - [X] Select `WGS84 – EPSG:4326` / `UTM 31N – EPSG:25231`
 - [X] **Grille** : Select
@@ -1349,17 +1380,20 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 1.2 Génération du canevas d'export ✅
 
 ##### 1.2.1 Structure HTML du canevas ✅
+
 - [X] Classe `ExportFrame` dans `ui/src/export/export-frame.ts`
 - [X] Structure Canvas avec layout calculé dynamiquement
 - [X] Fond blanc, marges 15px
 - [X] Cadre autour de la zone carte (simple/double/zébré)
 
 ##### 1.2.2 Titre automatique ✅
+
 - [X] Générer titre depuis `ThematicExportState.parameterLabel`
 - [X] Générer sous-titre depuis filtres ADM actifs
 - [X] Police : titre 18px bold, sous-titre 12px regular
 
 ##### 1.2.3 Cartouche standardisé ✅
+
 - [X] Position : bas droit, sous la carte
 - [X] Contenu :
   - [X] `Source : Atlas Géotechnique v2.6.0`
@@ -1371,6 +1405,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - [X] Flèche du Nord
 
 ##### 1.2.4 Légende reconstruite ✅ (v3.0.1)
+
 - [X] Récupérer classes depuis `ThematicExportState.classes`
 - [X] Dessiner légende programmatiquement (pas de capture HTML)
 - [X] Titre = parameterLabel + unit
@@ -1381,10 +1416,12 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 1.3 Algorithme de grille automatique ✅
 
 ##### 1.3.1 Récupération de l'emprise ✅
+
 - [X] Récupérer `bounds` depuis Leaflet (en 4326)
 - [X] Calculer largeur/hauteur de l'emprise
 
 ##### 1.3.2 Calcul du pas de grille ✅ (v3.0.1)
+
 - [X] Fonction `niceStep(rawStep)` : normalise en 10^n × {1, 2, 5}
 - [X] `computeOptimalStep()` avec targetDivisions = 5
 - [X] Liste des pas "propres" par SCR :
@@ -1393,18 +1430,21 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [X] `adjustStepForMaxLines()` : max 10 lignes
 
 ##### 1.3.3 Génération des éléments de grille ✅
+
 - [X] **Type Croix** : croix aux intersections
 - [X] **Type Continue** : lignes complètes
 - [X] **Type Labels uniquement** : pas de lignes
 - [X] Fonctions `renderGrid()` dans `grid-generator.ts`
 
 ##### 1.3.4 Étiquettes de coordonnées ✅
+
 - [X] Position : autour du cadre (4 côtés configurables)
 - [X] Format selon SCR :
   - 25231 : `123 400 m`
   - 4326 : `6.234°E`, `1.207°N`
 
 ##### 1.3.5 Cadre de la carte ✅
+
 - [X] **Simple** : rectangle 1px noir
 - [X] **Double** : 2 rectangles
 - [X] **Zébré** : alternance noir/blanc (style QGIS)
@@ -1414,28 +1454,33 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 1.4 Capture et téléchargement ✅
 
 ##### 1.4.1 Mode capture frontend ✅
+
 - [X] `captureLeafletMap()` dans `capture-utils.ts`
 - [X] Masquer contrôles Leaflet, panneaux, modals
 - [X] `waitForTilesLoaded()` : attendre chargement tuiles
 - [X] `prepareSvgForCapture()` : forcer styles inline SVG/Canvas ← v3.0.3
 
 ##### 1.4.2 Génération PNG ✅
+
 - [X] html2canvas via CDN
 - [X] Options : `scale: 1|3`, `useCORS: true`, `backgroundColor: '#ffffff'`
 - [X] `downloadDataURL()` pour téléchargement
 - [X] Nom fichier : `atlas_<theme>_<zone>_<date>.png`
 
 ##### 1.4.3 Génération PDF simple ✅
+
 - [X] jsPDF via CDN
 - [X] `generatePdf()` : PNG → PDF A4/A3
 - [X] Centrage automatique dans la page
 - [X] Métadonnées PDF (titre, auteur)
 
 ##### 1.4.4 Gestion CORS tuiles ✅
+
 - [X] `useCORS: true` dans html2canvas
 - [X] Tileserver local NextGIS disponible
 
 ##### 1.4.5 Problèmes connus 🔧
+
 - [ ] **Couche thématique non capturée** : html2canvas ne capture pas toujours les Canvas Leaflet (preferCanvas: true)
   - Solution potentielle : leaflet-image ou capture directe du Canvas
 
@@ -1450,11 +1495,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 2.1 Navigation et structure de page
 
 ##### 2.1.1 Accès à la page
+
 - [ ] Bouton "Mise en page avancée (QGIS)" dans panneau Exports
 - [ ] Route `#/print-layout` dans le router
 - [ ] Créer composant `PrintLayoutPage` dans `ui/src/print-layout/`
 
 ##### 2.1.2 Layout 3 colonnes
+
 - [ ] **Colonne gauche (300px)** : Paramètres
 - [ ] **Zone centrale (flex)** : Canevas WYSIWYG
 - [ ] **Colonne droite (200px)** : Actions
@@ -1465,12 +1512,14 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 2.2 Colonne gauche - Paramètres
 
 ##### 2.2.1 Bloc "Mise en page"
+
 - [ ] **Format** : Select `A4` / `A3`
 - [ ] **Orientation** : Radio `Portrait` / `Paysage`
 - [ ] **Marges** : Input numérique (mm), défaut 10mm
 - [ ] Preview dimensions en pixels
 
 ##### 2.2.2 Bloc "Zone d'export" (CRITIQUE)
+
 - [ ] **Mode** : Select
   - [ ] `Vue actuelle` (viewport Leaflet)
   - [ ] `ADM1 (Région)` → dropdown régions
@@ -1486,6 +1535,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - [ ] Trace le polygone ADM en trait fort sur la carte
 
 ##### 2.2.3 Bloc "Contenu cartographique"
+
 - [ ] **Thématique** : Select (liste des couches existantes)
   - [ ] Nombre de sondages
   - [ ] VBS moyenne
@@ -1499,6 +1549,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - [ ] Aucun (blanc)
 
 ##### 2.2.4 Bloc "Grille & Coordonnées"
+
 - [ ] **Type de grille** : Select
   - [ ] `Aucune`
   - [ ] `Croix` (défaut)
@@ -1522,11 +1573,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - [ ] `Tout afficher` / `Extrémités seulement`
 
 ##### 2.2.5 Bloc "Cadre"
+
 - [ ] **Style** : Select `Sans` / `Simple` / `Double` / `Zébré`
 - [ ] **Épaisseur** : Input (mm)
 - [ ] **Couleur** : Color picker
 
 ##### 2.2.6 Bloc "Éléments cartographiques"
+
 - [ ] Checkboxes avec positionnement :
   - [ ] `[x] Légende du thème actif` → Position: Select (HG, HD, BG, BD)
   - [ ] `[x] Barre d'échelle` → Position: Select
@@ -1537,6 +1590,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - [ ] `[ ] Cadre texte libre` → Textarea
 
 ##### 2.2.7 Bloc "Cartouche & Titre"
+
 - [ ] **Titre principal** : Input texte
   - [ ] Pré-rempli : `Carte – <nom thématique>`
 - [ ] **Sous-titre** : Input texte
@@ -1547,6 +1601,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] **Date** : Auto (éditable)
 
 ##### 2.2.8 Bloc "Statistiques géotechniques"
+
 - [ ] Checkboxes pour inclure dans l'export :
   - [ ] `[ ] Nombre de sondages`
   - [ ] `[ ] Profondeur min / moy / max`
@@ -1561,12 +1616,14 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 2.3 Zone centrale - Canevas WYSIWYG
 
 ##### 2.3.1 Rendu du canevas
+
 - [ ] Rectangle représentant la page (A4/A3, portrait/paysage)
 - [ ] Échelle de visualisation ajustable (zoom canevas)
 - [ ] Fond blanc avec ombre portée
 - [ ] Marges visualisées (lignes pointillées)
 
 ##### 2.3.2 Zones du canevas
+
 - [ ] **Zone carte** : ~70% de la hauteur
   - [ ] Carte Leaflet embarquée
   - [ ] Grille et coordonnées superposées
@@ -1579,6 +1636,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] **Zone légende** : position configurable
 
 ##### 2.3.3 Interactions canevas
+
 - [ ] Drag & drop pour repositionner éléments (optionnel v2)
 - [ ] Resize des zones (optionnel v2)
 - [ ] Preview temps réel des modifications
@@ -1588,11 +1646,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 2.4 Colonne droite - Actions
 
 ##### 2.4.1 Boutons d'export
+
 - [ ] **Exporter en PNG** : Bouton principal
 - [ ] **Exporter en PDF** : Bouton principal
 - [ ] **DPI simulé** : Select `150` / `300` / `600`
 
 ##### 2.4.2 Gestion des modèles
+
 - [ ] **Enregistrer ce modèle** : Bouton
   - [ ] Nom du modèle : Input
   - [ ] Sauvegarde JSON des paramètres en BDD
@@ -1601,6 +1661,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - [ ] Applique tous les paramètres
 
 ##### 2.4.3 Actions secondaires
+
 - [ ] **Réinitialiser** : Remet valeurs par défaut
 - [ ] **Aperçu plein écran** : Ouvre preview dans nouvel onglet
 
@@ -1609,6 +1670,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 2.5 Backend - API Export
 
 ##### 2.5.1 Endpoint `/export/context`
+
 - [ ] Créer route `GET /export/context?adm_level=3&adm_id=199`
 - [ ] Retourne :
   ```json
@@ -1625,6 +1687,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Simplifier géométrie pour affichage (ST_Simplify)
 
 ##### 2.5.2 Endpoint `/export/stats`
+
 - [ ] Créer route `GET /export/stats?adm_level=3&adm_id=199` ou `?bbox=...`
 - [ ] Retourne stats géotechniques pour la zone :
   ```json
@@ -1651,6 +1714,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Requêtes SQL avec `ST_Within` ou `ST_Intersects` sur la zone
 
 ##### 2.5.3 Endpoint `/export/templates`
+
 - [ ] `GET /export/templates` : Liste des modèles sauvegardés
 - [ ] `POST /export/templates` : Créer un modèle (JSON params)
 - [ ] `DELETE /export/templates/:id` : Supprimer un modèle
@@ -1674,6 +1738,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 3.1 Synchronisation filtres UI
 
 ##### 3.1.1 Filtres d'affichage vs Zone d'export
+
 - [ ] Clarifier dans l'UI :
   - **Filtres d'affichage** : ce qui apparaît sur la carte (panneau droit actuel)
   - **Zone d'export** : ce qui définit la fenêtre + les stats (module export)
@@ -1681,6 +1746,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Option de découplage dans mise en page avancée
 
 ##### 3.1.2 Réutilisation des sélecteurs ADM
+
 - [ ] Extraire composant `AdmSelector` réutilisable
 - [ ] Props : `level`, `parentCode`, `onChange`
 - [ ] Cascade automatique ADM1 → ADM2 → ADM3
@@ -1691,6 +1757,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 3.2 Affichage du contour ADM
 
 ##### 3.2.1 Contour sur la carte exportée
+
 - [ ] Récupérer géométrie ADM via `/export/context`
 - [ ] Tracer polygone avec style fort :
   - [ ] Couleur : violet foncé (#6b21a8) ou configurable
@@ -1699,6 +1766,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Option : remplissage semi-transparent (10% opacité)
 
 ##### 3.2.2 Option "Mailles voisines"
+
 - [ ] Checkbox "Afficher mailles voisines hors ADM"
 - [ ] Si activé :
   - [ ] Mailles dans l'ADM : couleur normale
@@ -1714,11 +1782,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 4.1 Stratégie PNG
 
 ##### 4.1.1 Librairie de capture
+
 - [ ] Évaluer `html2canvas` vs `dom-to-image-more`
 - [ ] Installer la librairie choisie
 - [ ] Créer wrapper `captureElement(element, options)`
 
 ##### 4.1.2 Gestion haute résolution
+
 - [ ] Option `scale` pour simuler DPI :
   - 72 dpi (web) : scale = 1
   - 150 dpi : scale = 2
@@ -1726,6 +1796,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Attention à la mémoire pour grandes images
 
 ##### 4.1.3 Gestion CORS tuiles
+
 - [ ] Détecter erreurs CORS lors de la capture
 - [ ] Solutions :
   - [ ] Proxy backend pour tuiles externes
@@ -1738,6 +1809,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 4.2 Stratégie PDF
 
 ##### 4.2.1 PDF côté client (simple)
+
 - [ ] Utiliser `jsPDF`
 - [ ] Workflow :
   1. Générer PNG haute résolution
@@ -1747,6 +1819,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Limites : pas de vectoriel, taille fichier importante
 
 ##### 4.2.2 PDF côté serveur (pro - optionnel v2)
+
 - [ ] Service Node.js avec Puppeteer/Playwright
 - [ ] Workflow :
   1. Frontend envoie JSON layout au backend
@@ -1756,6 +1829,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Avantages : PDF propre, texte sélectionnable, petite taille
 
 ##### 4.2.3 Endpoint backend PDF (optionnel v2)
+
 - [ ] `POST /export/pdf`
 - [ ] Body : JSON avec tous les paramètres de mise en page
 - [ ] Retourne : fichier PDF binaire
@@ -1770,6 +1844,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 5.1 World File (PNG géoréférencé)
 
 ##### 5.1.1 Génération du world file
+
 - [ ] À côté de `map.png`, générer `map.pgw` :
   ```
   <taille pixel X>
@@ -1782,10 +1857,12 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Calculer depuis bbox et dimensions image
 
 ##### 5.1.2 Fichier PRJ
+
 - [ ] Générer `map.prj` avec définition WKT du SCR
 - [ ] Templates pour EPSG:4326 et EPSG:25231
 
 ##### 5.1.3 Export ZIP
+
 - [ ] Bouton "Télécharger PNG géoréférencé"
 - [ ] Crée ZIP contenant : `map.png`, `map.pgw`, `map.prj`
 - [ ] Utilisable directement dans QGIS/ArcGIS
@@ -1795,11 +1872,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 5.2 GeoPDF (optionnel - complexe)
 
 ##### 5.2.1 Recherche
+
 - [ ] Étudier format GeoPDF (structure ISO 32000)
 - [ ] Évaluer librairies : GDAL, reportlab, etc.
 - [ ] Décider si faisable côté backend Python/Node
 
 ##### 5.2.2 Implémentation (si faisable)
+
 - [ ] Service backend dédié
 - [ ] Génération PDF avec métadonnées géospatiales
 - [ ] Test ouverture dans Acrobat / QGIS
@@ -1813,11 +1892,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 6.1 Barre d'échelle graphique
 
 ##### 6.1.1 Calcul de l'échelle
+
 - [ ] Récupérer échelle depuis Leaflet (`map.getZoom()`, `map.getBounds()`)
 - [ ] Calculer distance réelle pour largeur donnée (ex: 100px)
 - [ ] Arrondir à valeur "propre" (1km, 2km, 5km, 10km, etc.)
 
 ##### 6.1.2 Rendu de la barre
+
 - [ ] Barre horizontale avec graduations
 - [ ] Label : `0 ──── 5 km`
 - [ ] Style : trait noir 2px, fond blanc semi-transparent
@@ -1828,11 +1909,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 6.2 Flèche du Nord
 
 ##### 6.2.1 Design
+
 - [ ] SVG flèche simple (style classique)
 - [ ] Lettre "N" au-dessus
 - [ ] Taille : 30-50px
 
 ##### 6.2.2 Intégration
+
 - [ ] Position configurable (défaut: haut droit)
 - [ ] Rotation si carte non orientée nord (rare)
 
@@ -1841,10 +1924,12 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 #### 6.3 Graticule (grandes zones)
 
 ##### 6.3.1 Quand l'afficher
+
 - [ ] Option activable pour zones > 100km
 - [ ] Utile pour cartes régionales/nationales
 
 ##### 6.3.2 Rendu
+
 - [ ] Lignes de latitude/longitude
 - [ ] Labels aux intersections avec le cadre
 - [ ] Style : trait fin pointillé
@@ -1853,33 +1938,33 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ### 📊 Résumé des fichiers à créer
 
-| Fichier | Description |
-|---------|-------------|
-| `ui/src/export/export-quick-dialog.ts` | Dialogue export rapide |
-| `ui/src/export/export-frame.ts` | Canevas d'export avec grille |
-| `ui/src/export/grid-generator.ts` | Algorithme de grille automatique |
-| `ui/src/export/capture-utils.ts` | Utilitaires html2canvas/jsPDF |
-| `ui/src/print-layout/print-layout-page.ts` | Page mise en page avancée |
-| `ui/src/print-layout/layout-canvas.ts` | Canevas WYSIWYG |
-| `ui/src/print-layout/layout-params.ts` | Panneau paramètres |
-| `ui/src/components/adm-selector.ts` | Sélecteur ADM réutilisable |
-| `api/src/routes/export.rs` | Routes API export |
-| `migrations/050_export_templates.sql` | Table modèles d'export |
+| Fichier                                      | Description                      |
+| -------------------------------------------- | -------------------------------- |
+| `ui/src/export/export-quick-dialog.ts`     | Dialogue export rapide           |
+| `ui/src/export/export-frame.ts`            | Canevas d'export avec grille     |
+| `ui/src/export/grid-generator.ts`          | Algorithme de grille automatique |
+| `ui/src/export/capture-utils.ts`           | Utilitaires html2canvas/jsPDF    |
+| `ui/src/print-layout/print-layout-page.ts` | Page mise en page avancée       |
+| `ui/src/print-layout/layout-canvas.ts`     | Canevas WYSIWYG                  |
+| `ui/src/print-layout/layout-params.ts`     | Panneau paramètres              |
+| `ui/src/components/adm-selector.ts`        | Sélecteur ADM réutilisable     |
+| `api/src/routes/export.rs`                 | Routes API export                |
+| `migrations/050_export_templates.sql`      | Table modèles d'export          |
 
 ---
 
 ### 📅 Planning suggéré
 
-| Phase | Contenu | Durée estimée |
-|-------|---------|---------------|
-| **Phase 1** | Export rapide PNG (sans grille) | 2-3 jours |
-| **Phase 2** | Grille automatique + coordonnées | 2-3 jours |
-| **Phase 3** | Export rapide PDF + cartouche | 1-2 jours |
-| **Phase 4** | Page mise en page avancée (structure) | 3-4 jours |
-| **Phase 5** | Paramètres complets + WYSIWYG | 3-4 jours |
-| **Phase 6** | API backend stats/context | 2-3 jours |
-| **Phase 7** | World file + ZIP géoréférencé | 1-2 jours |
-| **Phase 8** | Tests, polish, documentation | 2-3 jours |
+| Phase             | Contenu                                | Durée estimée |
+| ----------------- | -------------------------------------- | --------------- |
+| **Phase 1** | Export rapide PNG (sans grille)        | 2-3 jours       |
+| **Phase 2** | Grille automatique + coordonnées      | 2-3 jours       |
+| **Phase 3** | Export rapide PDF + cartouche          | 1-2 jours       |
+| **Phase 4** | Page mise en page avancée (structure) | 3-4 jours       |
+| **Phase 5** | Paramètres complets + WYSIWYG         | 3-4 jours       |
+| **Phase 6** | API backend stats/context              | 2-3 jours       |
+| **Phase 7** | World file + ZIP géoréférencé      | 1-2 jours       |
+| **Phase 8** | Tests, polish, documentation           | 2-3 jours       |
 
 **Total estimé** : 16-24 jours de développement
 
@@ -1910,6 +1995,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.0.5.1 Statistiques dans l'export ✅ IMPLÉMENTÉ
+
 **Problème** : Case "Statistiques" cochée mais rien ne s'affiche
 **Solution** : Implémenter `buildExportStats()` pour chaque thématique
 
@@ -1927,9 +2013,11 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.0.5.2 ADM Limitrophes (labels sur les bords) ✅ IMPLÉMENTÉ
+
 **Objectif** : Afficher les noms des ADM/pays qui bordent l'ADM exportée
 
 #### Backend - Endpoint `/adm-neighbors`
+
 - [X] Créer endpoint `GET /adm-neighbors?level=adm1&name=Maritime` → `adm_neighbors.rs`
 - [X] Requête PostGIS `ST_Touches(geom, geom_cible)` pour voisins
 - [X] Calculer point de label sur frontière commune
@@ -1941,6 +2029,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - Pays : juste le nom (Ghana, Bénin, Burkina Faso)
 
 #### Frontend - Dessin des labels
+
 - [X] `fetchAdmNeighbors()` dans export-quick-dialog.ts
 - [X] `drawNeighborLabels()` dans export-frame.ts
 - [X] Gestion anti-collision (max 3 labels par côté)
@@ -1949,6 +2038,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.0.5.3 Masque hors ADM (focus/contexte) ✅ IMPLÉMENTÉ
+
 **Objectif** : Griser/blanchir ce qui est en dehors de l'ADM
 
 - [X] Option "Masque hors ADM" dans Export Pro (select: none/context/focus)
@@ -1961,6 +2051,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.0.5.4 Grille continue plus visible ✅ IMPLÉMENTÉ
+
 **Problème** : Opacité grille trop faible
 **Solution** : Augmenter opacité à 0.6-0.7
 
@@ -1971,9 +2062,11 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.0.5.5 Export Atlas Complet (batch automatique) ✅ IMPLÉMENTÉ
+
 **Objectif** : Un clic pour exporter TOUTES les cartes thématiques du Togo
 
 #### UI - Bouton et dialogue
+
 - [X] Ajouter bouton "📚 Export Atlas complet" dans panneau thématique
 - [X] Dialogue de configuration :
   - Niveaux : [x] ADM3, [x] ADM2, [x] ADM1
@@ -1985,6 +2078,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [X] Récupération automatique des listes ADM via API
 
 #### Backend - Job batch
+
 - [ ] Endpoint `POST /thematic/export/atlas` (optionnel - frontend fait le batch)
 - [X] Lister ADM3/ADM2/ADM1 via endpoints existants
 - [X] Boucle séquentielle frontend avec progression
@@ -1992,6 +2086,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [X] Fichier index.json avec métadonnées
 
 #### Config par défaut "Atlas"
+
 - [X] Format : PNG 300dpi
 - [X] Zone : ADM + marge 2%
 - [X] Grille : Continue, opacité 0.6
@@ -2005,9 +2100,11 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ## 🚀 v3.1 - Moteur d'Export Atlas Géotechnique Pro
 
 ### 3.1.0 Statistiques enrichies ✅ IMPLÉMENTÉ
+
 **Objectif** : Stats vraiment utiles pour l'ingénieur
 
 #### Backend (api-geo)
+
 - [X] Ajouter `count_total` : nb mailles totales dans la zone
 - [X] Ajouter `sum` : somme des valeurs pour densité
 - [X] Ajouter `parent_context` : contexte parent pour comparaisons multi-niveaux
@@ -2017,6 +2114,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
   - `parent_cells` : total mailles parent
 
 #### Frontend (export-stats.ts)
+
 - [X] Interface `ApiStatistics` avec nouveaux champs
 - [X] Interface `ParentContext` pour comparaisons
 - [X] Fonctions stats enrichies par thématique
@@ -2026,6 +2124,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.1.1 Cadrage dynamique ✅ IMPLÉMENTÉ
+
 **Objectif** : Zone carte adaptée au ratio de l'ADM
 
 - [X] Fonction `computeOptimalMapDimensions(admRatio, dpi, orientation)`
@@ -2036,6 +2135,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.1.2 Masque hors ADM - 4 modes ✅ IMPLÉMENTÉ
+
 **Objectif** : Contrôle fin de l'atténuation hors zone
 
 - [X] Mode "Aucun" : pas de masque
@@ -2046,6 +2146,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.1.3 ADM/Pays limitrophes ✅ IMPLÉMENTÉ
+
 **Objectif** : Labels des zones voisines sur les bords de l'ADM
 
 - [X] Checkbox "Afficher ADM/pays limitrophes" dans dialogue
@@ -2057,6 +2158,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.1.4 Masque ADM corrigé ✅ IMPLÉMENTÉ
+
 **Objectif** : Masque fonctionnel avec polygones complexes
 
 - [X] Méthode destination-out pour masques semi-transparents
@@ -2066,6 +2168,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.1.5 Stats enrichies dans export ✅ IMPLÉMENTÉ
+
 **Objectif** : Afficher parent_context dans les stats
 
 - [X] apiStats passées à buildExportStats
@@ -2076,6 +2179,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ---
 
 ### 3.1.6 Option mailles sans données ✅ UI AJOUTÉE
+
 **Objectif** : Voir toutes les mailles de l'ADM
 
 - [X] Checkbox "Afficher mailles sans données" dans dialogue export
@@ -2087,11 +2191,13 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ### 3.1.7 À FAIRE - Prochaines étapes
 
 #### Backend mailles vides
+
 - [ ] Endpoint `/thematic/cells/adm` pour toutes mailles d'un ADM
 - [ ] Inclure mailles à valeur NULL dans la réponse
 - [ ] Frontend: dessiner mailles vides en gris clair
 
 #### Export Atlas complet
+
 - [ ] Rebrancher avec nouvelles stats enrichies
 - [ ] Utiliser masque et cadrage dynamique
 - [ ] Arborescence : `atlas/{parameter}/{level}/ADM_CODE.png`
@@ -2100,16 +2206,16 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ### 📁 Fichiers modifiés v3.1
 
-| Fichier | Modifications |
-|---------|---------------|
-| `services/api-geo/src/thematic/types.rs` | + Statistics enrichies, ParentContext |
-| `services/api-geo/src/thematic/statistics.rs` | + calculate_statistics_extended() |
-| `services/api-geo/src/thematic/routes.rs` | + calculate_count_total(), calculate_parent_context() |
-| `ui/src/export/export-stats.ts` | Refacto complète avec ApiStatistics, contextRows |
-| `ui/src/export/export-frame.ts` | + computeOptimalMapDimensions(), masque destination-out, labels bords ADM |
-| `ui/src/export/export-quick-dialog.ts` | + checkbox voisins, select masque 4 modes, apiStats |
-| `ui/src/thematic/thematic-types.ts` | + Statistics enrichie, ThematicExportState.apiStats |
-| `ui/src/thematic/thematic-maps.ts` | + apiStats dans updateExportState |
+| Fichier                                         | Modifications                                                             |
+| ----------------------------------------------- | ------------------------------------------------------------------------- |
+| `services/api-geo/src/thematic/types.rs`      | + Statistics enrichies, ParentContext                                     |
+| `services/api-geo/src/thematic/statistics.rs` | + calculate_statistics_extended()                                         |
+| `services/api-geo/src/thematic/routes.rs`     | + calculate_count_total(), calculate_parent_context()                     |
+| `ui/src/export/export-stats.ts`               | Refacto complète avec ApiStatistics, contextRows                         |
+| `ui/src/export/export-frame.ts`               | + computeOptimalMapDimensions(), masque destination-out, labels bords ADM |
+| `ui/src/export/export-quick-dialog.ts`        | + checkbox voisins, select masque 4 modes, apiStats                       |
+| `ui/src/thematic/thematic-types.ts`           | + Statistics enrichie, ThematicExportState.apiStats                       |
+| `ui/src/thematic/thematic-maps.ts`            | + apiStats dans updateExportState                                         |
 
 ---
 
@@ -2120,30 +2226,36 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ### Diagnostic des problèmes actuels
 
 #### Problème 1 : Format / emprise de la carte
+
 - La page a un ratio proche du A4, mais la carte "s'étire" avec le canvas
 - Pas de vrai "gabarit A4 fixe + carte centrée avec marges constantes"
 - Le canvas s'adapte à la capture au lieu d'avoir des dimensions fixes
 
 #### Problème 2 : Masque hors ADM
+
 - Le contour ADM (pointillé violet) est visible → coordonnées OK
 - Mais le remplissage de masque n'est pas dessiné ou pas visible
 - Causes probables : `drawAdmMask` pas appelé, appelé avant l'image, ou conversion lat/lon → pixels incorrecte
 
 #### Problème 3 : Mailles sans données
+
 - Option cochée dans l'UI mais aucune maille grise n'apparaît
 - Pas d'entrée "Sans données" dans la légende
 - Causes : API ne retourne pas les mailles vides, ou elles sont recouvertes
 
 #### Problème 4 : Labels ADM limitrophes
+
 - Option activée mais aucun label visible (Ghana, Bénin, etc.)
 - Causes : fonction pas appelée, ou recouvertes, ou `neighbors.length === 0`
 
 #### Problème 5 : Statistiques figées
+
 - Stats identiques quelle que soit la zone (Maritime → Maritime/Ave)
 - `buildExportStats` utilise `currentThematicData.statistics` (ADM1 uniquement)
 - Pas de recalcul pour ADM2/ADM3
 
 #### Problème 6 : DPI 72 vs 300
+
 - Aucune différence visible entre les deux options
 - Le canvas n'est pas redimensionné selon le DPI
 - `html2canvas` n'utilise pas le paramètre `scale`
@@ -2155,6 +2267,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 **Objectif** : Séparer le format de la page de la fenêtre carto
 
 #### 1.1 Introduire un PageLayout unique
+
 - [ ] Créer type `PageLayout` avec dimensions fixes selon DPI :
   - A4 portrait 72 dpi : 595×842 px
   - A4 portrait 300 dpi : 2480×3508 px
@@ -2162,15 +2275,18 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - [ ] Layout indépendant de l'ADM et de la grille
 
 #### 1.2 Adapter le container HTML
+
 - [ ] Créer div `#export-frame` de dimension `(pageWidthPx, pageHeightPx)`
 - [ ] Carte Leaflet redimensionnée à `mapArea.width × mapArea.height`
 - [ ] Appeler `map.invalidateSize()` après redimensionnement
 
 #### 1.3 FitBounds indépendant de la page
+
 - [ ] Garder logique bbox ADM + marge (2–8%)
 - [ ] Paddings calculés en pixels dans mapArea, pas au niveau page
 
 #### 1.4 Implémenter vraiment le DPI
+
 - [ ] `scaleFactor = targetDpi / 72`
 - [ ] Dimensionner page : `A4_WIDTH_INCHES * targetDpi`
 - [ ] Appeler `html2canvas` avec `scale: scaleFactor`
@@ -2182,16 +2298,19 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 **Objectif** : Stats et légende reflètent exactement la zone exportée
 
 #### 2.1 Filtrer les features par ADM
+
 - [ ] Si export "Zone filtrée (ADM1/ADM2/ADM3)" :
   - Requête avec `adm1=...&adm2=...&adm3=...`
   - OU filtrer côté frontend : `features.filter(f => f.properties.adm2_code === selectedAdm2Code)`
 
 #### 2.2 Refonte de buildExportStats
+
 - [ ] Travailler sur `featuresZone` (déjà filtrées ADM)
 - [ ] Calculer : `nCellsWithData`, `nCellsTotal`, `coverage`, `mean`
 - [ ] Passer ce bloc à `drawStats`
 
 #### 2.3 Légende = classes réellement présentes
+
 - [ ] Pour chaque classe : vérifier `classCount[k] > 0`
 - [ ] Ne pas ajouter les classes avec 0 mailles
 - [ ] Légende reflète uniquement la distribution de la zone
@@ -2203,20 +2322,24 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 **Objectif** : Afficher les mailles vides et limiter aux mailles de l'ADM
 
 #### 3.1 Récupérer toutes les mailles de la zone
+
 - [ ] Endpoint `/coverage/mailles?adm1=...&adm2=...&adm3=...`
 - [ ] Retourne : `code`, `geometry`, `has_data` (bool)
 - [ ] Cache `admCellsCache` déjà en place
 
 #### 3.2 Dessiner les mailles vides
+
 - [ ] Si `showEmptyCells` coché :
   - Mailles `has_data=true` : palette thématique
   - Mailles `has_data=false` : gris clair `rgba(200, 200, 200, 0.3)`
 
 #### 3.3 Option "Uniquement mailles dans l'ADM"
+
 - [ ] Ajouter checkbox dans Export Pro (déjà dans Export Atlas)
 - [ ] Si `onlyAdmCells=true` : ne dessiner que les mailles de l'ADM
 
 #### 3.4 Légende enrichie
+
 - [ ] Si `showEmptyCells` → ligne "Sans données" (carré gris)
 - [ ] Si `showAdmBoundary` → ligne "Limite ADM" (pointillé violet)
 
@@ -2227,16 +2350,19 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 **Objectif** : Masque et labels fonctionnent quel que soit le format
 
 #### 4.1 Tester drawAdmMask en sandbox
+
 - [ ] Test simple : canvas 800×800, mapArea [100,100,600,600]
 - [ ] ADM = rectangle interne [200,200,500,500]
 - [ ] Vérifier zone centrale claire + contour sombre
 
 #### 4.2 Vérifier conversion lat/lon → pixels
+
 - [ ] Utiliser `map.latLngToContainerPoint([lat, lon])`
 - [ ] Recentrer dans mapArea si décalé
 - [ ] Logger que (x,y) sont bien dans mapArea
 
 #### 4.3 Ordre de dessin correct
+
 1. Image de la carte (capture html2canvas)
 2. Grille
 3. Mailles (si redessinées à la main)
@@ -2245,6 +2371,7 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 6. Cadre, coordonnées, légende, stats, cartouche
 
 #### 4.4 Labels limitrophes
+
 - [ ] Vérifier `neighbors && neighbors.length > 0 && options.showNeighbors`
 - [ ] Police : `italic 12px Arial` (pas 16px)
 - [ ] Halo blanc + texte #444
@@ -2254,29 +2381,29 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 
 ### Ordre d'implémentation recommandé
 
-| Priorité | Action | Statut |
-|----------|--------|--------|
-| 1 | PageLayout A4 fixe + mapArea | ✅ |
-| 2 | DPI 72 vs 300 fonctionnel | ✅ |
-| 3 | Stats filtrées par ADM | ✅ |
-| 4 | Légende = classes présentes uniquement | ✅ |
-| 5 | Mailles sans données (API + dessin) | ⏳ |
-| 6 | Option onlyAdmCells dans Export Pro | ✅ |
-| 7 | Masque hors ADM fonctionnel | ⏳ (logs ajoutés) |
-| 8 | Labels limitrophes visibles | ⏳ |
-| 9 | Export Atlas utilisant les mêmes briques | ⏳ |
+| Priorité | Action                                    | Statut             |
+| --------- | ----------------------------------------- | ------------------ |
+| 1         | PageLayout A4 fixe + mapArea              | ✅                 |
+| 2         | DPI 72 vs 300 fonctionnel                 | ✅                 |
+| 3         | Stats filtrées par ADM                   | ✅                 |
+| 4         | Légende = classes présentes uniquement  | ✅                 |
+| 5         | Mailles sans données (API + dessin)      | ⏳                 |
+| 6         | Option onlyAdmCells dans Export Pro       | ✅                 |
+| 7         | Masque hors ADM fonctionnel               | ⏳ (logs ajoutés) |
+| 8         | Labels limitrophes visibles               | ⏳                 |
+| 9         | Export Atlas utilisant les mêmes briques | ⏳                 |
 
 ---
 
 ### Fichiers à modifier
 
-| Fichier | Modifications prévues |
-|---------|----------------------|
-| `ui/src/export/export-frame.ts` | PageLayout A4, DPI, drawAdmMask, drawNeighborLabels |
+| Fichier                                  | Modifications prévues                                 |
+| ---------------------------------------- | ------------------------------------------------------ |
+| `ui/src/export/export-frame.ts`        | PageLayout A4, DPI, drawAdmMask, drawNeighborLabels    |
 | `ui/src/export/export-quick-dialog.ts` | Container A4, filtrage features, checkbox onlyAdmCells |
-| `ui/src/export/export-stats.ts` | buildExportStats avec featuresZone |
-| `ui/src/export/export-atlas-dialog.ts` | Utiliser les mêmes briques que Export Pro |
-| `ui/src/export/capture-utils.ts` | html2canvas avec scale selon DPI |
+| `ui/src/export/export-stats.ts`        | buildExportStats avec featuresZone                     |
+| `ui/src/export/export-atlas-dialog.ts` | Utiliser les mêmes briques que Export Pro             |
+| `ui/src/export/capture-utils.ts`       | html2canvas avec scale selon DPI                       |
 
 ---
 
@@ -2285,16 +2412,19 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ### Diagnostic des problèmes actuels
 
 **A. "4 classes à l'écran" vs "2 classes à l'export"**
+
 - L'écran affiche `/thematic/data` avec 66 features et valeurs VBS réelles
 - L'export appelle `/export/cells/adm` → 401 → fallback `/coverage/mailles`
 - Le fallback ne contient que `n_sondages`, pas les valeurs VBS
 - Résultat: export basé sur données différentes de l'écran
 
 **B. Stats "nulles" / incohérentes**
+
 - Les fonctions de stats reçoivent des `values[]` vides ou incorrectes
 - Quartiles/percentiles deviennent `null` → affichés comme "—" ou "0"
 
 **C. Cartouches trop gros en 300 DPI**
+
 - Scaling actuel: `tout * (dpi/72)` → polices/traits visuellement trop gros
 - Le DPI devrait augmenter la netteté, pas gonfler le design
 
@@ -2303,83 +2433,146 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 ### PHASE 1 — Bloc EXPORT : technique & rendu
 
 #### 1.1 Fixer la route `/export/cells/adm` (401) ✅
+
 > Stratégie hybride: grille API + valeurs écran (`export-quick-dialog.ts`)
-- [x] **Frontend**: `fetchAdmCells()` utilise `/export/cells/adm` sans auth
-- [x] **Frontend**: Fallback sur `/coverage/mailles` si erreur
-- [x] **Frontend**: Jointure avec données écran via `getThematicFeatures()`
-- [x] **Logs**: `[Export][DATA] thematicSource=SCREEN|API featureCount=X`
+
+- [X] **Frontend**: `fetchAdmCells()` utilise `/export/cells/adm` sans auth
+- [X] **Frontend**: Fallback sur `/coverage/mailles` si erreur
+- [X] **Frontend**: Jointure avec données écran via `getThematicFeatures()`
+- [X] **Logs**: `[Export][DATA] thematicSource=SCREEN|API featureCount=X`
 
 #### 1.2 Corriger le mapping classes/labels ✅
+
 > Via `getThematicFeatures()` - même source que l'écran
-- [x] Type `LegendClass` existant dans `export-types.ts`
-- [x] `exportState.classes` propagé depuis config écran
-- [x] `drawColoredCells` et `drawLegend` utilisent le même `classes[]`
+
+- [X] Type `LegendClass` existant dans `export-types.ts`
+- [X] `exportState.classes` propagé depuis config écran
+- [X] `drawColoredCells` et `drawLegend` utilisent le même `classes[]`
 
 #### 1.3 Récupérer les vraies valeurs VBS (ThematicDataCache) ✅
+
 > Implémenté dans `export-quick-dialog.ts` et `thematic-panel.ts`
-- [x] `getThematicFeatures()` expose les features de l'écran
-- [x] `getCurrentExportState()` dans `ThematicMapManager` stocke les données
-- [x] À l'export: priorité aux données écran (SOURCE DE VÉRITÉ)
-- [x] Jointure `gridCell.cell_id ↔ thematicFeature.code`
-- [x] **Logs**: `[Export][JOIN] Résultat jointure: totalCells, withData, withValue`
+
+- [X] `getThematicFeatures()` expose les features de l'écran
+- [X] `getCurrentExportState()` dans `ThematicMapManager` stocke les données
+- [X] À l'export: priorité aux données écran (SOURCE DE VÉRITÉ)
+- [X] Jointure `gridCell.cell_id ↔ thematicFeature.code`
+- [X] **Logs**: `[Export][JOIN] Résultat jointure: totalCells, withData, withValue`
 
 #### 1.4 Dissocier DPI et taille UI (layout en mm) ✅
+
 > Implémenté dans `export-frame.ts`
-- [x] `LAYOUT_MM` définit toutes les constantes en mm
-- [x] `mmToPx(mm, dpi)` convertit mm → pixels
-- [x] Polices: 2.0-4.5mm, bordures: 0.15-0.2mm
-- [x] **QA**: À 150 et 300 DPI, même taille physique des cartouches
+
+- [X] `LAYOUT_MM` définit toutes les constantes en mm
+- [X] `mmToPx(mm, dpi)` convertit mm → pixels
+- [X] Polices: 2.0-4.5mm, bordures: 0.15-0.2mm
+- [X] **QA**: À 150 et 300 DPI, même taille physique des cartouches
 
 ---
 
 ### PHASE 2 — Bloc AUTH/UX : sécuriser & structurer
 
 #### 2.1 Forcer le login à l'entrée ✅
+
 > Implémenté dans `ui/src/main.ts` (carte) et `ui/src/App.tsx` (gestionnaire)
-- [x] **Carte (index.html)**: Guard dans `main.ts` - redirige vers `/db-manager.html` si non authentifié
-- [x] **Gestionnaire (db-manager.html)**: `if (!isAuthenticated) return <LoginPage />`
-- [x] **Logs**: `[Auth] boot isAuthenticated=true|false`
+
+- [X] **Carte (index.html)**: Guard dans `main.ts` - redirige vers `/db-manager.html` si non authentifié
+- [X] **Gestionnaire (db-manager.html)**: `if (!isAuthenticated) return <LoginPage />`
+- [X] **Logs**: `[Auth] boot isAuthenticated=true|false`
 
 #### 2.2 Redirection par rôle après login ✅
+
 > Implémenté dans `ui/src/App.tsx` avec useEffect
-- [x] Décoder `user.roles[]` au login via `useAuth()` hook
-- [x] Étudiants uniquement → restent sur `ColabStudentPage` (espace terrain)
-- [x] Autres rôles → redirection automatique vers `/index.html` (carte principale)
-- [x] **Logs**: `[Auth] Utilisateur non-étudiant authentifié - redirection vers carte`
+
+- [X] Décoder `user.roles[]` au login via `useAuth()` hook
+- [X] Étudiants uniquement → restent sur `ColabStudentPage` (espace terrain)
+- [X] Autres rôles → redirection automatique vers `/index.html` (carte principale)
+- [X] **Logs**: `[Auth] Utilisateur non-étudiant authentifié - redirection vers carte`
 
 ---
 
 ### PHASE 3 — Bloc GESTION UTILISATEURS : ergonomie
 
 #### 3.1 Wizard création utilisateur (stepper moderne) ✅
+
 > Nouveau composant `ui/src/components/UserWizard.tsx`
-- [x] Étape 1: Identité (nom, prénom, email, mot de passe)
-- [x] Étape 2: Rôle(s) avec cards visuelles colorées
-- [x] Étape 3: Champs spécifiques (étudiant: matricule, école; encadrant: institution)
-- [x] Étape 4: Récapitulatif + confirmation
-- [x] Validation par étape avec messages d'erreur
-- [x] Stepper visuel avec indicateurs de progression
-- [x] **Logs**: `[RBAC][CREATE_USER] role=... email=...`
+
+- [X] Étape 1: Identité (nom, prénom, email, mot de passe)
+- [X] Étape 2: Rôle(s) avec cards visuelles colorées
+- [X] Étape 3: Champs spécifiques (étudiant: matricule, école; encadrant: institution)
+- [X] Étape 4: Récapitulatif + confirmation
+- [X] Validation par étape avec messages d'erreur
+- [X] Stepper visuel avec indicateurs de progression
+- [X] **Logs**: `[RBAC][CREATE_USER] role=... email=...`
 
 #### 3.2 Moderniser liste utilisateurs ✅
+
 > Modifié dans `ui/src/components/RBACManager.tsx`
-- [x] Design: Avatar initiales, badges rôles colorés, bordure gauche par rôle
-- [x] Actions rapides: éditer, supprimer (avec confirmation)
-- [x] Stats rapides: compteur actifs/inactifs
-- [x] Barre de recherche (structure en place)
-- [x] Bouton "Créer" ouvre le wizard (3.1)
+
+- [X] Design: Avatar initiales, badges rôles colorés, bordure gauche par rôle
+- [X] Actions rapides: éditer, supprimer (avec confirmation)
+- [X] Stats rapides: compteur actifs/inactifs
+- [X] Barre de recherche (structure en place)
+- [X] Bouton "Créer" ouvre le wizard (3.1)
 
 ---
 
 ### Ordre d'implémentation
 
-| Priorité | Action | Statut |
-|----------|--------|--------|
-| 1 | 1.1 Fixer route /export/cells/adm | ✅ |
-| 2 | 1.3 ThematicDataCache (données écran) | ✅ |
-| 3 | 1.2 Mapping classes/labels cohérent | ✅ |
-| 4 | 1.4 Layout en mm (DPI = netteté) | ✅ |
-| 5 | 2.1 Forcer login à l'entrée | ✅ (déjà implémenté) |
-| 6 | 2.2 Redirection par rôle | ✅ (déjà implémenté) |
-| 7 | 3.1 Wizard création utilisateur | ✅ |
-| 8 | 3.2 Moderniser liste utilisateurs | ✅ |
+| Priorité | Action                                  | Statut                   |
+| --------- | --------------------------------------- | ------------------------ |
+| 1         | 1.1 Fixer route /export/cells/adm       | ✅                       |
+| 2         | 1.3 ThematicDataCache (données écran) | ✅                       |
+| 3         | 1.2 Mapping classes/labels cohérent    | ✅                       |
+| 4         | 1.4 Layout en mm (DPI = netteté)       | ✅                       |
+| 5         | 2.1 Forcer login à l'entrée           | ✅ (déjà implémenté) |
+| 6         | 2.2 Redirection par rôle               | ✅ (supprimée - accès libre db-manager) |
+| 7         | 3.1 Wizard création utilisateur        | ✅                       |
+| 8         | 3.2 Moderniser liste utilisateurs       | ✅                       |
+
+---
+
+## 🔧 v3.2 - Corrections Export et Navigation (2025-12-18)
+
+### 3.2.1 Navigation et boutons header
+
+#### Problème identifié
+
+- Bouton "Gestion BDD" déconnectait l'utilisateur (redirection automatique vers carte)
+- Bouton "Connexion" affiché au lieu du menu profil (erreur 401 sur /auth/me)
+
+#### Corrections apportées
+
+- [X] Suppression de la redirection automatique après login dans `App.tsx`
+- [X] Menu profil utilise le cache localStorage en priorité (`tokenStorage.getUser()`)
+- [X] Fallback sur API `/auth/me` si pas de cache
+
+### 3.2.2 Export - Filtrage géographique mailles vides
+
+#### Problème identifié
+
+- Les mailles vides de `/coverage/mailles` n'étaient pas filtrées par le polygone ADM
+- 1077 mailles affichées au lieu de ~100 dans Zio
+
+#### Corrections apportées
+
+- [X] Mise à jour de `this.options` avec les valeurs du DOM avant `fetchAdmCells`
+- [X] Filtrage géographique des mailles thématiques (centroïde dans polygone ADM)
+- [X] Filtrage géographique des mailles vides (même algorithme)
+- [X] Ajout des propriétés `showEmptyCells`, `onlyAdmCells`, `maskMode` à `ExportOptions`
+
+### 3.2.3 Export - Légende cohérente
+
+#### Comportement attendu
+
+- La légende affiche uniquement les classes présentes dans la zone exportée
+- Log: `[Export][LEGEND] {totalClasses: 6, visibleClasses: 2}` = correct
+- Si Zio n'a que 2 classes de VBS, la légende n'affiche que ces 2 classes
+
+### 3.2.4 Mailles à cheval sur frontière ADM
+
+#### Règle métier
+
+- Une maille appartient à l'ADM si son **centroïde** est dans le polygone ADM
+- Algorithme: `pointInPolygon(centroid, admPolygon)` avec ray casting
+- Les mailles dont le centroïde est hors ADM sont exclues même si elles chevauchent la frontière

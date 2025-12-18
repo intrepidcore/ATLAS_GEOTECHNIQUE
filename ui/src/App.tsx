@@ -48,23 +48,12 @@ function App() {
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
 
-  // Redirection après login pour les non-étudiants vers la carte principale
   // État pour éviter le flash pendant la redirection
   const [isRedirecting, setIsRedirecting] = useState(false)
   
-  useEffect(() => {
-    if (isAuthenticated && user) {
-      const isStudentOnly = user.roles?.includes('student') && 
-        !user.roles?.some(r => ['admin', 'supervisor', 'data_manager', 'geo_analyst', 'editor', 'viewer'].includes(r))
-      
-      // Si non-étudiant et on vient de se connecter (vérifier si on est sur db-manager)
-      if (!isStudentOnly && window.location.pathname.includes('db-manager')) {
-        console.log('[Auth] Utilisateur non-étudiant authentifié - redirection vers carte')
-        setIsRedirecting(true)
-        window.location.href = '/index.html'
-      }
-    }
-  }, [isAuthenticated, user])
+  // NOTE: La redirection automatique après login a été supprimée
+  // Les utilisateurs non-étudiants peuvent maintenant accéder librement à db-manager.html
+  // La redirection se fait uniquement via le bouton "Retour à la carte" si nécessaire
 
   // Charger les notifications
   useEffect(() => {

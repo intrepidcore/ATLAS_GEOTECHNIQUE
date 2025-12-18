@@ -243,6 +243,16 @@ class UserMenu {
   private async loadUser(): Promise<void> {
     try {
       if (tokenStorage.isAuthenticated()) {
+        // D'abord essayer de récupérer l'utilisateur depuis le localStorage (plus rapide)
+        const cachedUser = tokenStorage.getUser();
+        if (cachedUser) {
+          this.user = cachedUser;
+          this.updateUI();
+          console.log('[UserMenu] Utilisateur chargé depuis cache:', cachedUser.username);
+          return;
+        }
+        
+        // Sinon, appeler l'API
         const token = tokenStorage.getAccessToken();
         if (token) {
           const response = await fetch('http://localhost:8000/auth/me', {
@@ -250,9 +260,14 @@ class UserMenu {
           });
           if (response.ok) {
             this.user = await response.json();
+            // Sauvegarder pour les prochaines fois
+            if (this.user) {
+              tokenStorage.setUser(this.user as any);
+            }
             this.updateUI();
           } else {
             console.warn('[UserMenu] Erreur auth/me:', response.status);
+            // Si 401, le token est invalide - ne pas afficher le menu
           }
         }
       }

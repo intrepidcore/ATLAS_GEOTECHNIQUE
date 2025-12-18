@@ -1,7 +1,7 @@
 {
   "version": "3.0",
-  "exportDate": "2025-12-17T20:51:39.705Z",
-  "runId": "20251217_205132_BG1M",
+  "exportDate": "2025-12-18T12:28:54.121Z",
+  "runId": "20251218_122841_FQKV",
   "thematic": {
     "parameter": "vbs_avg",
     "name": "VBS moyen"
@@ -11,10 +11,10 @@
     "adm1": "Maritime",
     "adm2": "Zio",
     "bounds": {
-      "north": 7.08045084645532,
-      "south": 5.979412036211429,
-      "east": 1.636962890625,
-      "west": 0.6646728515625
+      "north": 7.083176475142764,
+      "south": 5.976680390439319,
+      "east": 1.6397094726562502,
+      "west": 0.6632995605468751
     }
   },
   "output": {
@@ -27,8 +27,8 @@
     }
   },
   "cells": {
-    "total": 1143,
-    "withData": 66,
+    "total": 1093,
+    "withData": 16,
     "withoutData": 1077
   },
   "legend": {
@@ -40,12 +40,11 @@
       {
         "label": "0.2 - 1.5",
         "color": "#fdae61",
-        "count": 62
+        "count": 15
       },
       {
         "label": "1.5 - 2.5",
-        "color": "#fee08b",
-        "count": 3
+        "color": "#fee08b"
       },
       {
         "label": "2.5 - 6.0",
@@ -66,85 +65,85 @@
     "stages": {
       "UI": {
         "durationMs": 1,
-        "startMs": 78194.40000000596,
-        "endMs": 78195.5
+        "startMs": 17288954.700000018,
+        "endMs": 17288955.700000018
       },
       "FIT": {
-        "durationMs": 2159,
-        "startMs": 78196.30000001192,
-        "endMs": 80355.20000001788
+        "durationMs": 2192,
+        "startMs": 17288956.400000006,
+        "endMs": 17291148.600000024
       },
       "TILES_WAIT": {
-        "durationMs": 410,
-        "startMs": 80355.60000002384,
-        "endMs": 80765.20000001788
+        "durationMs": 1910,
+        "startMs": 17291148.900000006,
+        "endMs": 17293059
       },
       "CAPTURE": {
-        "durationMs": 785,
-        "startMs": 81286.60000002384,
-        "endMs": 82071.80000001192
+        "durationMs": 4731,
+        "startMs": 17293573.300000012,
+        "endMs": 17298304.100000024
       },
       "LAYOUT": {
-        "durationMs": 56,
-        "startMs": 82072.60000002384,
-        "endMs": 82128.70000001788
+        "durationMs": 55,
+        "startMs": 17298304.300000012,
+        "endMs": 17298359.700000018
       },
       "DRAW": {
-        "durationMs": 9,
-        "startMs": 82128.70000001788,
-        "endMs": 82137.40000000596
+        "durationMs": 6,
+        "startMs": 17298360,
+        "endMs": 17298365.5
       },
       "FETCH": {
-        "durationMs": 2968,
-        "startMs": 82137.5,
-        "endMs": 85105.40000000596
+        "durationMs": 2919,
+        "startMs": 17298366.100000024,
+        "endMs": 17301285.100000024
       },
       "GRID": {
         "durationMs": 3,
-        "startMs": 85105.60000002384,
-        "endMs": 85108.30000001192
+        "startMs": 17301285.400000006,
+        "endMs": 17301288.600000024
       },
       "DRAW_CELLS": {
         "durationMs": 1,
-        "startMs": 85108.5,
-        "endMs": 85109.40000000596
+        "startMs": 17301288.800000012,
+        "endMs": 17301289.300000012
       },
       "MASK": {
         "durationMs": 1,
-        "startMs": 85110,
-        "endMs": 85110.90000000596
+        "startMs": 17301290.100000024,
+        "endMs": 17301290.700000018
       },
       "NEIGHBORS": {
-        "durationMs": 165,
-        "startMs": 85112.80000001192,
-        "endMs": 85278.10000002384
+        "durationMs": 153,
+        "startMs": 17301291.900000006,
+        "endMs": 17301444.600000024
       },
       "LEGEND": {
-        "durationMs": 5,
-        "startMs": 85278.30000001192,
-        "endMs": 85282.90000000596
+        "durationMs": 1,
+        "startMs": 17301444.800000012,
+        "endMs": 17301446.100000024
       },
       "STATS": {
-        "durationMs": 11,
-        "startMs": 85283,
-        "endMs": 85293.90000000596
+        "durationMs": 4,
+        "startMs": 17301446.200000018,
+        "endMs": 17301450.200000018
       }
     },
     "errors": [],
     "warnings": [
-      "Aspect ratio mismatch: src=0.896 dst=0.873 - image will be stretched!"
+      "Aspect ratio mismatch: src=0.895 dst=0.873 - image will be stretched!"
     ]
   },
   "debugLogs": [
     {
-      "timestamp": "2025-12-17T20:51:32.600Z",
+      "timestamp": "2025-12-18T12:28:41.624Z",
       "stage": "UI",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:32.600Z",
+      "timestamp": "2025-12-18T12:28:41.624Z",
       "stage": "UI",
       "data": {
         "options": {
@@ -162,7 +161,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:32.600Z",
+      "timestamp": "2025-12-18T12:28:41.625Z",
       "stage": "UI",
       "data": {
         "thematic": {
@@ -173,7 +172,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.625Z",
       "stage": "UI",
       "data": {
         "admFilters": {
@@ -183,7 +182,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.625Z",
       "stage": "UI",
       "data": {
         "event": "end",
@@ -191,22 +190,22 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.626Z",
       "stage": "FIT",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:34.760Z",
+      "timestamp": "2025-12-18T12:28:43.818Z",
       "stage": "FIT",
       "data": {
         "event": "end",
-        "durationMs": 2159
+        "durationMs": 2192
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:34.760Z",
+      "timestamp": "2025-12-18T12:28:43.818Z",
       "stage": "FIT",
       "data": {
         "z0": 8,
@@ -218,30 +217,30 @@
           "west": "0.8241"
         },
         "effective": {
-          "north": "7.0805",
-          "south": "5.9794",
-          "east": "1.6370",
-          "west": "0.6647"
+          "north": "7.0832",
+          "south": "5.9767",
+          "east": "1.6397",
+          "west": "0.6633"
         }
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:34.761Z",
+      "timestamp": "2025-12-18T12:28:43.818Z",
       "stage": "TILES_WAIT",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:35.170Z",
+      "timestamp": "2025-12-18T12:28:45.728Z",
       "stage": "TILES_WAIT",
       "data": {
         "event": "end",
-        "durationMs": 410
+        "durationMs": 1910
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:35.170Z",
+      "timestamp": "2025-12-18T12:28:45.728Z",
       "stage": "TILES_WAIT",
       "data": {
         "tiles": {
@@ -255,14 +254,14 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:35.692Z",
+      "timestamp": "2025-12-18T12:28:46.243Z",
       "stage": "CAPTURE",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:35.692Z",
+      "timestamp": "2025-12-18T12:28:46.243Z",
       "stage": "CAPTURE",
       "data": {
         "hiddenPanes": [
@@ -278,7 +277,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:35.844Z",
+      "timestamp": "2025-12-18T12:28:46.395Z",
       "stage": "CAPTURE",
       "data": {
         "admOverlay": {
@@ -288,7 +287,7 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.418Z",
+      "timestamp": "2025-12-18T12:28:50.904Z",
       "stage": "CAPTURE",
       "data": {
         "attempt": 1,
@@ -298,22 +297,22 @@
           "sampleCount": 50
         },
         "dimensions": {
-          "w": 2169,
-          "h": 2421
+          "w": 2178,
+          "h": 2433
         }
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.418Z",
+      "timestamp": "2025-12-18T12:28:50.904Z",
       "stage": "CAPTURE",
       "data": {
-        "captureWidth": 2169,
-        "captureHeight": 2421,
-        "captureAspectRatio": "0.896"
+        "captureWidth": 2178,
+        "captureHeight": 2433,
+        "captureAspectRatio": "0.895"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.418Z",
+      "timestamp": "2025-12-18T12:28:50.904Z",
       "stage": "CAPTURE",
       "data": {
         "restoredPanes": [
@@ -328,38 +327,38 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.477Z",
+      "timestamp": "2025-12-18T12:28:50.973Z",
       "stage": "CAPTURE",
       "data": {
         "event": "end",
-        "durationMs": 785,
+        "durationMs": 4731,
         "captureSuccess": true
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.478Z",
+      "timestamp": "2025-12-18T12:28:50.974Z",
       "stage": "LAYOUT",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.478Z",
+      "timestamp": "2025-12-18T12:28:50.974Z",
       "stage": "LAYOUT",
       "data": {
         "bbox": {
-          "minX": 0.6646728515625,
-          "minY": 5.979412036211429,
-          "maxX": 1.636962890625,
-          "maxY": 7.08045084645532
+          "minX": 0.6632995605468751,
+          "minY": 5.976680390439319,
+          "maxX": 1.6397094726562502,
+          "maxY": 7.083176475142764
         },
-        "bboxWidth": "0.9723",
-        "bboxHeight": "1.1010",
-        "bboxAspectRatio": "0.883"
+        "bboxWidth": "0.9764",
+        "bboxHeight": "1.1065",
+        "bboxAspectRatio": "0.882"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.533Z",
+      "timestamp": "2025-12-18T12:28:51.028Z",
       "stage": "LAYOUT",
       "data": {
         "canvasWidth": 2480,
@@ -370,81 +369,81 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.534Z",
+      "timestamp": "2025-12-18T12:28:51.029Z",
       "stage": "DRAW",
       "data": {
         "drawImage": {
-          "srcW": 2169,
-          "srcH": 2421,
-          "arSrc": "0.896",
+          "srcW": 2178,
+          "srcH": 2433,
+          "arSrc": "0.895",
           "dstW": 2028,
           "dstH": 2324,
           "arDst": "0.873",
           "dstX": 226,
           "dstY": 427,
-          "scaleX": "0.935",
-          "scaleY": "0.960",
+          "scaleX": "0.931",
+          "scaleY": "0.955",
           "aspectRatioMismatch": true
         }
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.534Z",
+      "timestamp": "2025-12-18T12:28:51.029Z",
       "stage": "LAYOUT",
       "data": {
         "event": "end",
-        "durationMs": 56
+        "durationMs": 55
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.534Z",
+      "timestamp": "2025-12-18T12:28:51.029Z",
       "stage": "DRAW",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.035Z",
       "stage": "DRAW",
       "data": {
         "event": "end",
-        "durationMs": 9
+        "durationMs": 6
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.035Z",
       "stage": "FETCH",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.510Z",
+      "timestamp": "2025-12-18T12:28:53.954Z",
       "stage": "FILTER",
       "data": {
-        "totalCells": 1143,
-        "cellsWithData": 66,
+        "totalCells": 1093,
+        "cellsWithData": 16,
         "cellsWithoutData": 1077,
-        "coveragePct": "5.8%"
+        "coveragePct": "1.5%"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.511Z",
+      "timestamp": "2025-12-18T12:28:53.955Z",
       "stage": "FETCH",
       "data": {
         "event": "end",
-        "durationMs": 2968
+        "durationMs": 2919
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.511Z",
+      "timestamp": "2025-12-18T12:28:53.955Z",
       "stage": "GRID",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.513Z",
+      "timestamp": "2025-12-18T12:28:53.958Z",
       "stage": "GRID",
       "data": {
         "event": "end",
@@ -454,35 +453,34 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.514Z",
+      "timestamp": "2025-12-18T12:28:53.958Z",
       "stage": "DRAW_CELLS",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "stage": "DRAW_CELLS",
       "data": {
         "event": "end",
         "durationMs": 1,
-        "coloredCellsDrawn": 66,
+        "coloredCellsDrawn": 16,
         "classUsage": {
-          "1": 62,
-          "2": 3,
+          "1": 15,
           "3": 1
         }
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "stage": "MASK",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.516Z",
+      "timestamp": "2025-12-18T12:28:53.960Z",
       "stage": "MASK",
       "data": {
         "event": "end",
@@ -492,14 +490,14 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.518Z",
+      "timestamp": "2025-12-18T12:28:53.961Z",
       "stage": "NEIGHBORS",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.680Z",
+      "timestamp": "2025-12-18T12:28:54.113Z",
       "stage": "NEIGHBORS",
       "data": {
         "neighborsFound": 2,
@@ -507,45 +505,45 @@
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.683Z",
+      "timestamp": "2025-12-18T12:28:54.114Z",
       "stage": "NEIGHBORS",
       "data": {
         "event": "end",
-        "durationMs": 165
+        "durationMs": 153
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.683Z",
+      "timestamp": "2025-12-18T12:28:54.114Z",
       "stage": "LEGEND",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.684Z",
+      "timestamp": "2025-12-18T12:28:54.114Z",
       "stage": "LEGEND",
       "data": {
         "totalClasses": 6,
-        "visibleClasses": 3
+        "visibleClasses": 2
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.688Z",
+      "timestamp": "2025-12-18T12:28:54.115Z",
       "stage": "LEGEND",
       "data": {
         "event": "end",
-        "durationMs": 5
+        "durationMs": 1
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.688Z",
+      "timestamp": "2025-12-18T12:28:54.116Z",
       "stage": "STATS",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.689Z",
+      "timestamp": "2025-12-18T12:28:54.117Z",
       "stage": "STATS",
       "data": {
         "computedStats": {
@@ -555,11 +553,11 @@
           "rows": [
             {
               "label": "Mailles avec données",
-              "value": "66 / 1143"
+              "value": "16 / 1093"
             },
             {
               "label": "Couverture",
-              "value": "5.8 %"
+              "value": "1.5 %"
             },
             {
               "label": "Fiabilité",
@@ -567,17 +565,17 @@
             },
             {
               "label": "VBS médian (Q1-Q3)",
-              "value": "3.16 (1.6-5.3)",
+              "value": "3.93 (2.2-6.8)",
               "unit": "g/100g"
             },
             {
               "label": "VBS min / max",
-              "value": "0.48 / 16.39",
+              "value": "0.84 / 7.63",
               "unit": "g/100g"
             },
             {
               "label": "P10 / P90",
-              "value": "1.14 / 7.63",
+              "value": "0.90 / 7.33",
               "unit": "g/100g"
             },
             {
@@ -586,14 +584,14 @@
             },
             {
               "label": "% sols argileux (≥2.5)",
-              "value": "61%"
+              "value": "69%"
             }
           ]
         }
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.690Z",
+      "timestamp": "2025-12-18T12:28:54.117Z",
       "stage": "STATS",
       "data": {
         "drawStatsInputKeys": [
@@ -602,65 +600,65 @@
           "rows"
         ],
         "drawStatsStrings": {
-          "Mailles avec données": "66 / 1143",
-          "Couverture": "5.8 %",
+          "Mailles avec données": "16 / 1093",
+          "Couverture": "1.5 %",
           "Fiabilité": "Faible",
-          "VBS médian (Q1-Q3)": "3.16 (1.6-5.3) g/100g",
-          "VBS min / max": "0.48 / 16.39 g/100g",
-          "P10 / P90": "1.14 / 7.63 g/100g",
+          "VBS médian (Q1-Q3)": "3.93 (2.2-6.8) g/100g",
+          "VBS min / max": "0.84 / 7.63 g/100g",
+          "P10 / P90": "0.90 / 7.33 g/100g",
           "Classe dominante": "Limoneux",
-          "% sols argileux (≥2.5)": "61%"
+          "% sols argileux (≥2.5)": "69%"
         }
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.699Z",
+      "timestamp": "2025-12-18T12:28:54.120Z",
       "stage": "STATS",
       "data": {
         "event": "end",
-        "durationMs": 11
+        "durationMs": 4
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.705Z",
+      "timestamp": "2025-12-18T12:28:54.121Z",
       "stage": "SAVE",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.705Z",
+      "timestamp": "2025-12-18T12:28:54.121Z",
       "stage": "SAVE",
       "data": {
         "event": "end",
-        "durationMs": 0
+        "durationMs": 1
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:39.705Z",
+      "timestamp": "2025-12-18T12:28:54.121Z",
       "stage": "ENCODE",
       "data": {
         "event": "start"
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:55.718Z",
+      "timestamp": "2025-12-18T12:29:11.523Z",
       "stage": "ENCODE",
       "data": {
         "event": "end",
-        "durationMs": 16013
+        "durationMs": 17402
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:55.722Z",
+      "timestamp": "2025-12-18T12:29:11.524Z",
       "stage": "ENCODE",
       "data": {
-        "sizeBytes": 14437566,
-        "sizeKB": 14099
+        "sizeBytes": 14465517,
+        "sizeKB": 14126
       }
     },
     {
-      "timestamp": "2025-12-17T20:51:55.724Z",
+      "timestamp": "2025-12-18T12:29:11.525Z",
       "stage": "ZIP",
       "data": {
         "event": "start"
@@ -669,682 +667,688 @@
   ],
   "consoleLogs": [
     {
-      "timestamp": "2025-12-17T20:51:32.600Z",
+      "timestamp": "2025-12-18T12:28:41.624Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][UI] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.600Z",
+      "timestamp": "2025-12-18T12:28:41.624Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_205132_BG1M {\"options\":{\"format\":\"png\",\"quality\":\"print\",\"zone\":\"adm-filtered\",\"dpi\":300,\"maskMode\":\"context\",\"showEmptyCells\":true,\"onlyAdmCells\":true,\"showNeighbors\":true,\"includeStats\":true,\"includeLegend\":true}}"
+      "message": "[Export][UI] runId=20251218_122841_FQKV {\"options\":{\"format\":\"png\",\"quality\":\"print\",\"zone\":\"adm-filtered\",\"dpi\":300,\"maskMode\":\"context\",\"showEmptyCells\":true,\"onlyAdmCells\":true,\"showNeighbors\":true,\"includeStats\":true,\"includeLegend\":true}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.600Z",
+      "timestamp": "2025-12-18T12:28:41.624Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Options sauvegardées AVANT modification DOM: {\"hideGridLayer\":true,\"showEmptyCells\":true,\"onlyAdmCells\":true,\"showNeighbors\":true,\"maskMode\":\"context\",\"includeMetadata\":true}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.600Z",
+      "timestamp": "2025-12-18T12:28:41.624Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] includeMetadata sauvegardé: true"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.625Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_205132_BG1M {\"thematic\":{\"id\":\"vbs_avg\",\"name\":\"VBS moyen\",\"unit\":\"g/100g\"}}"
+      "message": "[Export][UI] runId=20251218_122841_FQKV {\"thematic\":{\"id\":\"vbs_avg\",\"name\":\"VBS moyen\",\"unit\":\"g/100g\"}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.625Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_205132_BG1M {\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
+      "message": "[Export][UI] runId=20251218_122841_FQKV {\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.625Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][UI] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":1}"
+      "message": "[Export][UI] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":1}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.625Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] AR cible zone carte A4 (getA4Layout): 0.8771"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.626Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Emprise optimisée: {\"admOriginal\":{\"width\":\"0.5088\",\"height\":\"0.6810\"},\"compactness\":\"0.74\",\"margins\":{\"h\":\"3%\",\"v\":\"3%\"},\"currentRatio\":\"1.347\",\"sheetRatio\":\"1.110\",\"newBounds\":{\"width\":\"0.6546\",\"height\":\"0.7219\"}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.626Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Zone filtrée ADM optimisée pour feuille: {\"west\":0.8240799909356596,\"east\":1.4786910090643404,\"south\":6.16959977,\"north\":6.89150323}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.601Z",
+      "timestamp": "2025-12-18T12:28:41.626Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FIT] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][FIT] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:32.602Z",
+      "timestamp": "2025-12-18T12:28:41.626Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Resize container pour AR cible: {\"originalW\":708,\"originalH\":1024,\"originalAR\":\"0.691\",\"newH\":807,\"targetAR\":\"0.877\"}"
+      "message": "[Export] Resize container pour AR cible: {\"originalW\":711,\"originalH\":1024,\"originalAR\":\"0.694\",\"newH\":811,\"targetAR\":\"0.877\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:34.760Z",
+      "timestamp": "2025-12-18T12:28:43.818Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Container après resize: {\"w\":708,\"h\":807,\"ar\":\"0.877\"}"
+      "message": "[Export] Container après resize: {\"w\":711,\"h\":811,\"ar\":\"0.877\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:34.760Z",
+      "timestamp": "2025-12-18T12:28:43.818Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FIT] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":2159}"
+      "message": "[Export][FIT] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":2192}"
     },
     {
-      "timestamp": "2025-12-17T20:51:34.761Z",
+      "timestamp": "2025-12-18T12:28:43.818Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FIT] runId=20251217_205132_BG1M {\"z0\":8,\"z1\":10,\"requested\":{\"north\":\"6.8915\",\"south\":\"6.1696\",\"east\":\"1.4787\",\"west\":\"0.8241\"},\"effective\":{\"north\":\"7.0805\",\"south\":\"5.9794\",\"east\":\"1.6370\",\"west\":\"0.6647\"}}"
+      "message": "[Export][FIT] runId=20251218_122841_FQKV {\"z0\":8,\"z1\":10,\"requested\":{\"north\":\"6.8915\",\"south\":\"6.1696\",\"east\":\"1.4787\",\"west\":\"0.8241\"},\"effective\":{\"north\":\"7.0832\",\"south\":\"5.9767\",\"east\":\"1.6397\",\"west\":\"0.6633\"}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:34.761Z",
+      "timestamp": "2025-12-18T12:28:43.818Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][TILES_WAIT] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][TILES_WAIT] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:35.170Z",
+      "timestamp": "2025-12-18T12:28:45.728Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export][TILES] Tuiles stables: {\"loaded\":16,\"errors\":0,\"stableMs\":306}"
     },
     {
-      "timestamp": "2025-12-17T20:51:35.170Z",
+      "timestamp": "2025-12-18T12:28:45.728Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][TILES_WAIT] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":410}"
+      "message": "[Export][TILES_WAIT] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":1910}"
     },
     {
-      "timestamp": "2025-12-17T20:51:35.170Z",
+      "timestamp": "2025-12-18T12:28:45.728Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][TILES_WAIT] runId=20251217_205132_BG1M {\"tiles\":{\"loaded\":16,\"errors\":0,\"pending\":0,\"stableMs\":306,\"timedOut\":false},\"message\":\"Tuiles stables\"}"
+      "message": "[Export][TILES_WAIT] runId=20251218_122841_FQKV {\"tiles\":{\"loaded\":16,\"errors\":0,\"pending\":0,\"stableMs\":306,\"timedOut\":false},\"message\":\"Tuiles stables\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:35.692Z",
+      "timestamp": "2025-12-18T12:28:46.243Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][CAPTURE] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:35.692Z",
+      "timestamp": "2025-12-18T12:28:46.243Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Panes Leaflet disponibles: [\"mapPane\",\"tilePane\",\"overlayPane\",\"shadowPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"thematicPane\",\"thematicCirclesPane\"]"
     },
     {
-      "timestamp": "2025-12-17T20:51:35.692Z",
+      "timestamp": "2025-12-18T12:28:46.243Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_205132_BG1M {\"hiddenPanes\":[\"overlayPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"shadowPane\",\"thematicPane\",\"thematicCirclesPane\"],\"message\":\"All non-tile panes hidden - capturing background only\"}"
+      "message": "[Export][CAPTURE] runId=20251218_122841_FQKV {\"hiddenPanes\":[\"overlayPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"shadowPane\",\"thematicPane\",\"thematicCirclesPane\"],\"message\":\"All non-tile panes hidden - capturing background only\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:35.844Z",
+      "timestamp": "2025-12-18T12:28:46.395Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_205132_BG1M {\"admOverlay\":{\"visibleBeforeCapture\":false,\"hiddenForCapture\":true}}"
+      "message": "[Export][CAPTURE] runId=20251218_122841_FQKV {\"admOverlay\":{\"visibleBeforeCapture\":false,\"hiddenForCapture\":true}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.418Z",
+      "timestamp": "2025-12-18T12:28:50.903Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export][QA] Validation capture: {\"blackRatio\":\"0.00\",\"blackCount\":0,\"sampleCount\":50,\"valid\":true}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.418Z",
+      "timestamp": "2025-12-18T12:28:50.904Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_205132_BG1M {\"attempt\":1,\"validation\":{\"valid\":true,\"blackRatio\":0,\"sampleCount\":50},\"dimensions\":{\"w\":2169,\"h\":2421}}"
+      "message": "[Export][CAPTURE] runId=20251218_122841_FQKV {\"attempt\":1,\"validation\":{\"valid\":true,\"blackRatio\":0,\"sampleCount\":50},\"dimensions\":{\"w\":2178,\"h\":2433}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.418Z",
+      "timestamp": "2025-12-18T12:28:50.904Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_205132_BG1M {\"captureWidth\":2169,\"captureHeight\":2421,\"captureAspectRatio\":\"0.896\"}"
+      "message": "[Export][CAPTURE] runId=20251218_122841_FQKV {\"captureWidth\":2178,\"captureHeight\":2433,\"captureAspectRatio\":\"0.895\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.418Z",
+      "timestamp": "2025-12-18T12:28:50.904Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_205132_BG1M {\"restoredPanes\":[\"overlayPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"shadowPane\",\"thematicPane\",\"thematicCirclesPane\"]}"
+      "message": "[Export][CAPTURE] runId=20251218_122841_FQKV {\"restoredPanes\":[\"overlayPane\",\"markerPane\",\"tooltipPane\",\"popupPane\",\"shadowPane\",\"thematicPane\",\"thematicCirclesPane\"]}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.420Z",
+      "timestamp": "2025-12-18T12:28:50.906Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Container restauré à sa taille originale"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.477Z",
+      "timestamp": "2025-12-18T12:28:50.973Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][CAPTURE] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":785,\"captureSuccess\":true}"
+      "message": "[Export][CAPTURE] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":4731,\"captureSuccess\":true}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.478Z",
+      "timestamp": "2025-12-18T12:28:50.974Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LAYOUT] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][LAYOUT] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.478Z",
+      "timestamp": "2025-12-18T12:28:50.974Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LAYOUT] runId=20251217_205132_BG1M {\"bbox\":{\"minX\":0.6646728515625,\"minY\":5.979412036211429,\"maxX\":1.636962890625,\"maxY\":7.08045084645532},\"bboxWidth\":\"0.9723\",\"bboxHeight\":\"1.1010\",\"bboxAspectRatio\":\"0.883\"}"
+      "message": "[Export][LAYOUT] runId=20251218_122841_FQKV {\"bbox\":{\"minX\":0.6632995605468751,\"minY\":5.976680390439319,\"maxX\":1.6397094726562502,\"maxY\":7.083176475142764},\"bboxWidth\":\"0.9764\",\"bboxHeight\":\"1.1065\",\"bboxAspectRatio\":\"0.882\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.478Z",
+      "timestamp": "2025-12-18T12:28:50.974Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Création A4 fixe: {\"orientation\":\"portrait\",\"dpi\":300,\"dpiRatio\":4.166666666666667,\"pageWidth\":2480,\"pageHeight\":3508,\"mapAreaWidth\":2028,\"mapAreaHeight\":2324,\"scaledLayout\":{\"margin\":59,\"titleHeight\":142,\"footerHeight\":496}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.478Z",
+      "timestamp": "2025-12-18T12:28:50.974Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Footer layout: {\"footerWidth\":2362,\"legendArea\":{\"x\":59,\"w\":531,\"right\":590},\"statsArea\":{\"x\":625,\"w\":1111,\"right\":1736},\"cartoucheArea\":{\"x\":1771,\"w\":650},\"gap\":35,\"noOverlap\":true}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.533Z",
+      "timestamp": "2025-12-18T12:28:50.978Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Créé avec dimensions: {\"mapWidth\":2028,\"mapHeight\":2324,\"totalWidth\":2480,\"totalHeight\":3508,\"canvasWidth\":7440,\"canvasHeight\":10524,\"scale\":3,\"dpi\":300}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.533Z",
+      "timestamp": "2025-12-18T12:28:51.028Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LAYOUT] runId=20251217_205132_BG1M {\"canvasWidth\":2480,\"canvasHeight\":3508,\"mapAreaWidth\":2028,\"mapAreaHeight\":2324,\"mapAreaAspectRatio\":\"0.873\"}"
+      "message": "[Export][LAYOUT] runId=20251218_122841_FQKV {\"canvasWidth\":2480,\"canvasHeight\":3508,\"mapAreaWidth\":2028,\"mapAreaHeight\":2324,\"mapAreaAspectRatio\":\"0.873\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.534Z",
+      "timestamp": "2025-12-18T12:28:51.029Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW] runId=20251217_205132_BG1M {\"drawImage\":{\"srcW\":2169,\"srcH\":2421,\"arSrc\":\"0.896\",\"dstW\":2028,\"dstH\":2324,\"arDst\":\"0.873\",\"dstX\":226,\"dstY\":427,\"scaleX\":\"0.935\",\"scaleY\":\"0.960\",\"aspectRatioMismatch\":true}}"
+      "message": "[Export][DRAW] runId=20251218_122841_FQKV {\"drawImage\":{\"srcW\":2178,\"srcH\":2433,\"arSrc\":\"0.895\",\"dstW\":2028,\"dstH\":2324,\"arDst\":\"0.873\",\"dstX\":226,\"dstY\":427,\"scaleX\":\"0.931\",\"scaleY\":\"0.955\",\"aspectRatioMismatch\":true}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.534Z",
+      "timestamp": "2025-12-18T12:28:51.029Z",
       "level": "warn",
       "tag": "[Export]",
-      "message": "[Export][WARN] runId=20251217_205132_BG1M Aspect ratio mismatch: src=0.896 dst=0.873 - image will be stretched!"
+      "message": "[Export][WARN] runId=20251218_122841_FQKV Aspect ratio mismatch: src=0.895 dst=0.873 - image will be stretched!"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.534Z",
+      "timestamp": "2025-12-18T12:28:51.029Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LAYOUT] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":56}"
+      "message": "[Export][LAYOUT] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":55}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.534Z",
+      "timestamp": "2025-12-18T12:28:51.029Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][DRAW] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.534Z",
+      "timestamp": "2025-12-18T12:28:51.030Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Frame A4 créé, capture: {\"captureWidth\":723,\"captureHeight\":807}"
+      "message": "[Export] Frame A4 créé, capture: {\"captureWidth\":726,\"captureHeight\":811}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.542Z",
+      "timestamp": "2025-12-18T12:28:51.031Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] Letterbox applied: {\"src\":{\"w\":2169,\"h\":2421,\"ar\":\"0.896\"},\"dst\":{\"w\":2028,\"h\":2324,\"ar\":\"0.873\"},\"draw\":{\"w\":\"2028\",\"h\":\"2264\",\"x\":\"226\",\"y\":\"457\"},\"scale\":\"0.935\"}"
+      "message": "[ExportFrame] Letterbox applied: {\"src\":{\"w\":2178,\"h\":2433,\"ar\":\"0.895\"},\"dst\":{\"w\":2028,\"h\":2324,\"ar\":\"0.873\"},\"draw\":{\"w\":\"2028\",\"h\":\"2265\",\"x\":\"226\",\"y\":\"456\"},\"scale\":\"0.931\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.035Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":9}"
+      "message": "[Export][DRAW] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":6}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.036Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FETCH] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][FETCH] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.036Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export][DATA] thematicSource: SCREEN featureCount: 66"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.036Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export][DATA] Sample feature structure: {\"hasProperties\":true,\"propertyKeys\":[\"code\",\"n_essais_geo\",\"n_sondages\",\"value\"],\"sampleProps\":{\"code\":\"TG-0485-0226-01\",\"n_essais_geo\":9,\"n_sondages\":1,\"value\":6.82},\"hasGeometry\":true}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.036Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] getAdmPolygonCoords called: {\"hasAdmOverlayLayer\":true,\"layerCount\":1}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.036Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=0: {\"type\":\"NewClass\",\"hasGetLatLngs\":false,\"hasGetLayers\":true,\"hasFeature\":false}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.037Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer has 1 sub-layers"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.543Z",
+      "timestamp": "2025-12-18T12:28:51.037Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=1: {\"type\":\"NewClass\",\"hasGetLatLngs\":true,\"hasGetLayers\":false,\"hasFeature\":true}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.544Z",
+      "timestamp": "2025-12-18T12:28:51.037Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer latLngs: {\"isArray\":true,\"length\":1,\"firstIsArray\":true,\"sample\":[{\"lat\":6.808442,\"lng\":1.121805},{\"lat\":6.808033,\"lng\":1.122039},{\"lat\":6.808042,\"lng\":1.122214},{\"lat\":6.806302,\"lng\":1.126836},{\"lat\":6.804788,\"lng\":1.132997},{\"lat\":6.80041,\"lng\":1.13719},{\"lat\":6.797776,\"lng\":1.13808},{\"lat\":6.794056,\"lng\":1.141831},{\"lat\":6.792988,\"lng\":1.149968},{\"lat\":6.787749,\"lng\":1.15878},{\"lat\":6.784905,\"lng\":1.162088},{\"lat\":6.781612,\"lng\":1.16276},{\"lat\":6.779865,\"lng\":1.165624},{\"l"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.544Z",
+      "timestamp": "2025-12-18T12:28:51.037Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Coords extraites: 390 points"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.544Z",
+      "timestamp": "2025-12-18T12:28:51.037Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export][DATA] Filtrage ADM: {\"hasAdmPolygon\":true,\"polygonPoints\":390,\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.544Z",
+      "timestamp": "2025-12-18T12:28:51.037Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DATA] Features thématiques après filtrage: {\"total\":66,\"withData\":66,\"sampleValues\":[{\"code\":\"TG-0485-0226-01\",\"value\":6.82},{\"code\":\"TG-0486-0203-01\",\"value\":0.4766666666666667},{\"code\":\"TG-0487-0223-01\",\"value\":3.214444444444444},{\"code\":\"TG-0488-0201-01\",\"value\":0.4766666666666667},{\"code\":\"TG-0488-0224-01\",\"value\":2.5433333333333334}],\"valueRange\":{\"min\":0.4766666666666667,\"max\":16.39}}"
+      "message": "[Export][DATA] Filtrage géographique ADM: {\"avant\":66,\"après\":16,\"filtrées\":50}"
     },
     {
-      "timestamp": "2025-12-17T20:51:36.544Z",
+      "timestamp": "2025-12-18T12:28:51.037Z",
+      "level": "log",
+      "tag": "[Export]",
+      "message": "[Export][DATA] Features thématiques après filtrage: {\"total\":16,\"withData\":16,\"sampleValues\":[{\"code\":\"TG-0485-0226-01\",\"value\":6.82},{\"code\":\"TG-0487-0223-01\",\"value\":3.214444444444444},{\"code\":\"TG-0488-0224-01\",\"value\":2.5433333333333334},{\"code\":\"TG-0488-0226-01\",\"value\":3.7466666666666666},{\"code\":\"TG-0490-0217-01\",\"value\":1.6333333333333333}],\"valueRange\":{\"min\":0.8433333333333334,\"max\":7.633333333333333}}"
+    },
+    {
+      "timestamp": "2025-12-18T12:28:51.037Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Fallback sur /coverage/mailles pour la grille"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.510Z",
+      "timestamp": "2025-12-18T12:28:53.954Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DATA] Grille combinée: {\"thematicCells\":66,\"emptyCells\":1077,\"total\":1143}"
+      "message": "[Export][DATA] Grille combinée: {\"thematicCells\":16,\"emptyCells\":1077,\"total\":1093}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.510Z",
+      "timestamp": "2025-12-18T12:28:53.954Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FILTER] runId=20251217_205132_BG1M {\"totalCells\":1143,\"cellsWithData\":66,\"cellsWithoutData\":1077,\"coveragePct\":\"5.8%\"}"
+      "message": "[Export][FILTER] runId=20251218_122841_FQKV {\"totalCells\":1093,\"cellsWithData\":16,\"cellsWithoutData\":1077,\"coveragePct\":\"1.5%\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.511Z",
+      "timestamp": "2025-12-18T12:28:53.955Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][FETCH] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":2968}"
+      "message": "[Export][FETCH] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":2919}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.511Z",
+      "timestamp": "2025-12-18T12:28:53.955Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Mailles ADM récupérées: 1143 withData: 66 withoutData: 1077"
+      "message": "[Export] Mailles ADM récupérées: 1093 withData: 16 withoutData: 1077"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.511Z",
+      "timestamp": "2025-12-18T12:28:53.955Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][GRID] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][GRID] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.511Z",
+      "timestamp": "2025-12-18T12:28:53.955Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] drawEmptyCells: {\"total\":1143,\"withData\":66,\"withoutData\":1077}"
+      "message": "[ExportFrame] drawEmptyCells: {\"total\":1093,\"withData\":16,\"withoutData\":1077}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.513Z",
+      "timestamp": "2025-12-18T12:28:53.958Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Empty cells drawn: 1077"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.513Z",
+      "timestamp": "2025-12-18T12:28:53.958Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][GRID] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":3,\"emptyCellsDrawn\":true,\"count\":1077}"
+      "message": "[Export][GRID] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":3,\"emptyCellsDrawn\":true,\"count\":1077}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.514Z",
+      "timestamp": "2025-12-18T12:28:53.958Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW_CELLS] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][DRAW_CELLS] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.514Z",
+      "timestamp": "2025-12-18T12:28:53.958Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] drawColoredCells: {\"totalCells\":1143,\"withData\":66,\"classCount\":6,\"classes\":[{\"min\":null,\"max\":0.2,\"label\":\"≤ 0.2\",\"color\":\"#d73027\"},{\"min\":0.2,\"max\":1.5,\"label\":\"0.2 - 1.5\",\"color\":\"#fdae61\"},{\"min\":1.5,\"max\":2.5,\"label\":\"1.5 - 2.5\",\"color\":\"#fee08b\"},{\"min\":2.5,\"max\":6,\"label\":\"2.5 - 6.0\",\"color\":\"#d9ef8b\"},{\"min\":6,\"max\":8,\"label\":\"6.0 - 8.0\",\"color\":\"#a6d96a\"},{\"min\":8,\"max\":null,\"label\":\"> 8.0\",\"color\":\"#1a9850\"}],\"sampleMapping\":[{\"value\":1,\"classIndex\":1,\"classLabel\":\"0.2 -"
+      "message": "[ExportFrame] drawColoredCells: {\"totalCells\":1093,\"withData\":16,\"classCount\":6,\"classes\":[{\"min\":null,\"max\":0.2,\"label\":\"≤ 0.2\",\"color\":\"#d73027\"},{\"min\":0.2,\"max\":1.5,\"label\":\"0.2 - 1.5\",\"color\":\"#fdae61\"},{\"min\":1.5,\"max\":2.5,\"label\":\"1.5 - 2.5\",\"color\":\"#fee08b\"},{\"min\":2.5,\"max\":6,\"label\":\"2.5 - 6.0\",\"color\":\"#d9ef8b\"},{\"min\":6,\"max\":8,\"label\":\"6.0 - 8.0\",\"color\":\"#a6d96a\"},{\"min\":8,\"max\":null,\"label\":\"> 8.0\",\"color\":\"#1a9850\"}],\"sampleMapping\":[{\"value\":1,\"classIndex\":1,\"classLabel\":\"0.2 -"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.514Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] Colored cells drawn: 66 classUsage: {\"0.2 - 1.5\":62,\"2.5 - 6.0\":1,\"1.5 - 2.5\":3}"
+      "message": "[ExportFrame] Colored cells drawn: 16 classUsage: {\"0.2 - 1.5\":15,\"2.5 - 6.0\":1}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][DRAW_CELLS] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":1,\"coloredCellsDrawn\":66,\"classUsage\":{\"1\":62,\"2\":3,\"3\":1}}"
+      "message": "[Export][DRAW_CELLS] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":1,\"coloredCellsDrawn\":16,\"classUsage\":{\"1\":15,\"3\":1}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] getAdmPolygonCoords called: {\"hasAdmOverlayLayer\":true,\"layerCount\":1}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=0: {\"type\":\"NewClass\",\"hasGetLatLngs\":false,\"hasGetLayers\":true,\"hasFeature\":false}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer has 1 sub-layers"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=1: {\"type\":\"NewClass\",\"hasGetLatLngs\":true,\"hasGetLayers\":false,\"hasFeature\":true}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer latLngs: {\"isArray\":true,\"length\":1,\"firstIsArray\":true,\"sample\":[{\"lat\":6.808442,\"lng\":1.121805},{\"lat\":6.808033,\"lng\":1.122039},{\"lat\":6.808042,\"lng\":1.122214},{\"lat\":6.806302,\"lng\":1.126836},{\"lat\":6.804788,\"lng\":1.132997},{\"lat\":6.80041,\"lng\":1.13719},{\"lat\":6.797776,\"lng\":1.13808},{\"lat\":6.794056,\"lng\":1.141831},{\"lat\":6.792988,\"lng\":1.149968},{\"lat\":6.787749,\"lng\":1.15878},{\"lat\":6.784905,\"lng\":1.162088},{\"lat\":6.781612,\"lng\":1.16276},{\"lat\":6.779865,\"lng\":1.165624},{\"l"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Coords extraites: 390 points"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Masque ADM - mode: context polygon: 390 points"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.959Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][MASK] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][MASK] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.515Z",
+      "timestamp": "2025-12-18T12:28:53.960Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] drawAdmMask called: {\"mode\":\"context\",\"polygonPoints\":390,\"bbox\":{\"minX\":0.6646728515625,\"minY\":5.979412036211429,\"maxX\":1.636962890625,\"maxY\":7.08045084645532}}"
+      "message": "[ExportFrame] drawAdmMask called: {\"mode\":\"context\",\"polygonPoints\":390,\"bbox\":{\"minX\":0.6632995605468751,\"minY\":5.976680390439319,\"maxX\":1.6397094726562502,\"maxY\":7.083176475142764}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.516Z",
+      "timestamp": "2025-12-18T12:28:53.960Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] Masque ADM - conversion coords: {\"mapArea\":{\"x\":226,\"y\":427,\"w\":2028,\"h\":2324},\"bbox\":{\"minX\":0.6646728515625,\"minY\":5.979412036211429,\"maxX\":1.636962890625,\"maxY\":7.08045084645532},\"firstPoints\":[{\"lng\":1.121805,\"lat\":6.808442,\"pixel\":[1179.4850299661016,1001.1383076425216]},{\"lng\":1.122039,\"lat\":6.808033,\"pixel\":[1179.9731065491526,1002.0015978291683]},{\"lng\":1.122214,\"lat\":6.808042,\"pixel\":[1180.338121087759,1001.9826012235935]}],\"opacity\":0.45}"
+      "message": "[ExportFrame] Masque ADM - conversion coords: {\"mapArea\":{\"x\":226,\"y\":427,\"w\":2028,\"h\":2324},\"bbox\":{\"minX\":0.6632995605468751,\"minY\":5.976680390439319,\"maxX\":1.6397094726562502,\"maxY\":7.083176475142764},\"firstPoints\":[{\"lng\":1.121805,\"lat\":6.808442,\"pixel\":[1178.314207054852,1004.031341600187]},{\"lng\":1.122039,\"lat\":6.808033,\"pixel\":[1178.8002242430375,1004.8903740117256]},{\"lng\":1.122214,\"lat\":6.808042,\"pixel\":[1179.1636986359117,1004.8714710980234]}],\"opacity\":0.45}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.516Z",
+      "timestamp": "2025-12-18T12:28:53.960Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Masque dessiné avec evenodd, opacity: 0.45"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.516Z",
+      "timestamp": "2025-12-18T12:28:53.960Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Mask drawn with evenodd fill rule"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.516Z",
+      "timestamp": "2025-12-18T12:28:53.960Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][MASK] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":1,\"maskApplied\":true,\"polygonPoints\":390}"
+      "message": "[Export][MASK] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":1,\"maskApplied\":true,\"polygonPoints\":390}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.518Z",
+      "timestamp": "2025-12-18T12:28:53.961Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][NEIGHBORS] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][NEIGHBORS] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.518Z",
+      "timestamp": "2025-12-18T12:28:53.962Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][AUTH] {\"found\":true,\"key\":\"atlas_token\",\"tokenLen\":2197,\"tokenPrefix\":\"eyJ0eXAi\"}"
+      "message": "[Export][AUTH] {\"found\":false,\"key\":\"none\",\"tokenLen\":0,\"tokenPrefix\":\"N/A\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.679Z",
+      "timestamp": "2025-12-18T12:28:54.111Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Voisins trouvés: [{\"label\":\"Golfe de Guinée\",\"direction\":\"S\",\"lon\":1.1513855,\"lat\":6.090031000000001},{\"label\":\"Bénin\",\"direction\":\"E\",\"lon\":1.5057880000000001,\"lat\":6.5305515}]"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.679Z",
+      "timestamp": "2025-12-18T12:28:54.112Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] getAdmPolygonCoords called: {\"hasAdmOverlayLayer\":true,\"layerCount\":1}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.680Z",
+      "timestamp": "2025-12-18T12:28:54.112Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=0: {\"type\":\"NewClass\",\"hasGetLatLngs\":false,\"hasGetLayers\":true,\"hasFeature\":false}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.680Z",
+      "timestamp": "2025-12-18T12:28:54.112Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer has 1 sub-layers"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.680Z",
+      "timestamp": "2025-12-18T12:28:54.112Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Exploring layer depth=1: {\"type\":\"NewClass\",\"hasGetLatLngs\":true,\"hasGetLayers\":false,\"hasFeature\":true}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.680Z",
+      "timestamp": "2025-12-18T12:28:54.112Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Layer latLngs: {\"isArray\":true,\"length\":1,\"firstIsArray\":true,\"sample\":[{\"lat\":6.808442,\"lng\":1.121805},{\"lat\":6.808033,\"lng\":1.122039},{\"lat\":6.808042,\"lng\":1.122214},{\"lat\":6.806302,\"lng\":1.126836},{\"lat\":6.804788,\"lng\":1.132997},{\"lat\":6.80041,\"lng\":1.13719},{\"lat\":6.797776,\"lng\":1.13808},{\"lat\":6.794056,\"lng\":1.141831},{\"lat\":6.792988,\"lng\":1.149968},{\"lat\":6.787749,\"lng\":1.15878},{\"lat\":6.784905,\"lng\":1.162088},{\"lat\":6.781612,\"lng\":1.16276},{\"lat\":6.779865,\"lng\":1.165624},{\"l"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.680Z",
+      "timestamp": "2025-12-18T12:28:54.113Z",
       "level": "log",
       "tag": "[ThematicMap]",
       "message": "[ThematicMap] Coords extraites: 390 points"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.680Z",
+      "timestamp": "2025-12-18T12:28:54.113Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][NEIGHBORS] runId=20251217_205132_BG1M {\"neighborsFound\":2,\"neighborsDrawn\":2}"
+      "message": "[Export][NEIGHBORS] runId=20251218_122841_FQKV {\"neighborsFound\":2,\"neighborsDrawn\":2}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.683Z",
+      "timestamp": "2025-12-18T12:28:54.114Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][NEIGHBORS] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":165}"
+      "message": "[Export][NEIGHBORS] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":153}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.683Z",
+      "timestamp": "2025-12-18T12:28:54.114Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LEGEND] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][LEGEND] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.684Z",
+      "timestamp": "2025-12-18T12:28:54.114Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LEGEND] runId=20251217_205132_BG1M {\"totalClasses\":6,\"visibleClasses\":3}"
+      "message": "[Export][LEGEND] runId=20251218_122841_FQKV {\"totalClasses\":6,\"visibleClasses\":2}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.684Z",
+      "timestamp": "2025-12-18T12:28:54.114Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Légende: classes totales: 6 visibles: 3"
+      "message": "[Export] Légende: classes totales: 6 visibles: 2"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.685Z",
+      "timestamp": "2025-12-18T12:28:54.115Z",
       "level": "log",
       "tag": "[ExportFrame]",
-      "message": "[ExportFrame] Légende - classes visibles: 3 / 6 classUsageCount: {\"1\":62,\"2\":3,\"3\":1}"
+      "message": "[ExportFrame] Légende - classes visibles: 2 / 6 classUsageCount: {\"1\":15,\"3\":1}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.687Z",
+      "timestamp": "2025-12-18T12:28:54.115Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] Légende bbox dynamique: {\"maxLabelWidth\":\"206\",\"dynamicWidth\":388.95703125,\"actualWidth\":531}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.688Z",
+      "timestamp": "2025-12-18T12:28:54.115Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][LEGEND] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":5}"
+      "message": "[Export][LEGEND] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":1}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.688Z",
+      "timestamp": "2025-12-18T12:28:54.116Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][STATS] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.688Z",
+      "timestamp": "2025-12-18T12:28:54.116Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] Valeurs extraites pour stats: {\"totalCells\":1143,\"withData\":66,\"withValue\":66,\"sampleValues\":[6.82,0.4766666666666667,3.214444444444444,0.4766666666666667,2.5433333333333334,3.7466666666666666,1.6333333333333333,4.55,4.166666666666667,5.136666666666667],\"min\":0.4766666666666667,\"max\":16.39}"
+      "message": "[Export][STATS] Valeurs extraites pour stats: {\"totalCells\":1093,\"withData\":16,\"withValue\":16,\"sampleValues\":[6.82,3.214444444444444,2.5433333333333334,3.7466666666666666,1.6333333333333333,4.55,4.166666666666667,7.326666666666667,7.326666666666667,7.633333333333333],\"min\":0.8433333333333334,\"max\":7.633333333333333}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.689Z",
+      "timestamp": "2025-12-18T12:28:54.116Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export] Stats locales calculées depuis admCells: {\"count\":66,\"null_count\":1077,\"count_total\":1143,\"sum\":279.5594444444446,\"mean\":4.235749158249161,\"valuesCount\":66,\"sampleValues\":[6.82,0.4766666666666667,3.214444444444444,0.4766666666666667,2.5433333333333334,3.7466666666666666,1.6333333333333333,4.55,4.166666666666667,5.136666666666667]}"
+      "message": "[Export] Stats locales calculées depuis admCells: {\"count\":16,\"null_count\":1077,\"count_total\":1093,\"sum\":63.53111111111112,\"mean\":3.970694444444445,\"valuesCount\":16,\"sampleValues\":[6.82,3.214444444444444,2.5433333333333334,3.7466666666666666,1.6333333333333333,4.55,4.166666666666667,7.326666666666667,7.326666666666667,7.633333333333333]}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.689Z",
+      "timestamp": "2025-12-18T12:28:54.116Z",
       "level": "log",
       "tag": "[ExportStats]",
-      "message": "[ExportStats] Features filtrées par ADM: {\"totalFeatures\":66,\"filteredFeatures\":66,\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
+      "message": "[ExportStats] Features filtrées par ADM: {\"totalFeatures\":16,\"filteredFeatures\":16,\"admFilters\":{\"adm1\":\"Maritime\",\"adm2\":\"Zio\"}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.689Z",
+      "timestamp": "2025-12-18T12:28:54.117Z",
       "level": "log",
       "tag": "[ExportStats]",
-      "message": "[ExportStats] Values extraites: {\"parameterId\":\"vbs_avg\",\"totalFeatures\":66,\"valuesCount\":66,\"sampleValues\":[6.82,0.4766666666666667,3.214444444444444,0.4766666666666667,2.5433333333333334]}"
+      "message": "[ExportStats] Values extraites: {\"parameterId\":\"vbs_avg\",\"totalFeatures\":16,\"valuesCount\":16,\"sampleValues\":[6.82,3.214444444444444,2.5433333333333334,3.7466666666666666,1.6333333333333333]}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.689Z",
+      "timestamp": "2025-12-18T12:28:54.117Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] runId=20251217_205132_BG1M {\"computedStats\":{\"title\":\"Statistiques\",\"subtitle\":\"Zio\",\"rowCount\":8,\"rows\":[{\"label\":\"Mailles avec données\",\"value\":\"66 / 1143\"},{\"label\":\"Couverture\",\"value\":\"5.8 %\"},{\"label\":\"Fiabilité\",\"value\":\"Faible\"},{\"label\":\"VBS médian (Q1-Q3)\",\"value\":\"3.16 (1.6-5.3)\",\"unit\":\"g/100g\"},{\"label\":\"VBS min / max\",\"value\":\"0.48 / 16.39\",\"unit\":\"g/100g\"},{\"label\":\"P10 / P90\",\"value\":\"1.14 / 7.63\",\"unit\":\"g/100g\"},{\"label\":\"Classe dominante\",\"value\":\"Limoneux\"},{\""
+      "message": "[Export][STATS] runId=20251218_122841_FQKV {\"computedStats\":{\"title\":\"Statistiques\",\"subtitle\":\"Zio\",\"rowCount\":8,\"rows\":[{\"label\":\"Mailles avec données\",\"value\":\"16 / 1093\"},{\"label\":\"Couverture\",\"value\":\"1.5 %\"},{\"label\":\"Fiabilité\",\"value\":\"Faible\"},{\"label\":\"VBS médian (Q1-Q3)\",\"value\":\"3.93 (2.2-6.8)\",\"unit\":\"g/100g\"},{\"label\":\"VBS min / max\",\"value\":\"0.84 / 7.63\",\"unit\":\"g/100g\"},{\"label\":\"P10 / P90\",\"value\":\"0.90 / 7.33\",\"unit\":\"g/100g\"},{\"label\":\"Classe dominante\",\"value\":\"Limoneux\"},{\"l"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.690Z",
+      "timestamp": "2025-12-18T12:28:54.117Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] runId=20251217_205132_BG1M {\"drawStatsInputKeys\":[\"title\",\"subtitle\",\"rows\"],\"drawStatsStrings\":{\"Mailles avec données\":\"66 / 1143\",\"Couverture\":\"5.8 %\",\"Fiabilité\":\"Faible\",\"VBS médian (Q1-Q3)\":\"3.16 (1.6-5.3) g/100g\",\"VBS min / max\":\"0.48 / 16.39 g/100g\",\"P10 / P90\":\"1.14 / 7.63 g/100g\",\"Classe dominante\":\"Limoneux\",\"% sols argileux (≥2.5)\":\"61%\"}}"
+      "message": "[Export][STATS] runId=20251218_122841_FQKV {\"drawStatsInputKeys\":[\"title\",\"subtitle\",\"rows\"],\"drawStatsStrings\":{\"Mailles avec données\":\"16 / 1093\",\"Couverture\":\"1.5 %\",\"Fiabilité\":\"Faible\",\"VBS médian (Q1-Q3)\":\"3.93 (2.2-6.8) g/100g\",\"VBS min / max\":\"0.84 / 7.63 g/100g\",\"P10 / P90\":\"0.90 / 7.33 g/100g\",\"Classe dominante\":\"Limoneux\",\"% sols argileux (≥2.5)\":\"69%\"}}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.690Z",
+      "timestamp": "2025-12-18T12:28:54.118Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] drawStats 2-col layout: {\"statsArea\":{\"x\":625,\"y\":2953,\"width\":1111,\"height\":426},\"labelMaxWidth\":518,\"rowCount\":8}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.699Z",
+      "timestamp": "2025-12-18T12:28:54.119Z",
       "level": "log",
       "tag": "[ExportFrame]",
       "message": "[ExportFrame] drawStats COMPLETE: {\"rowsDrawn\":8,\"contextRowsDrawn\":0,\"finalY\":3389}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.699Z",
+      "timestamp": "2025-12-18T12:28:54.120Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][STATS] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":11}"
+      "message": "[Export][STATS] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":4}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.705Z",
+      "timestamp": "2025-12-18T12:28:54.120Z",
       "level": "log",
       "tag": "[Export]",
       "message": "[Export] Option includeMetadata: true"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.705Z",
+      "timestamp": "2025-12-18T12:28:54.121Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][SAVE] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][SAVE] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.705Z",
+      "timestamp": "2025-12-18T12:28:54.121Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][SAVE] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":0}"
+      "message": "[Export][SAVE] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":1}"
     },
     {
-      "timestamp": "2025-12-17T20:51:39.705Z",
+      "timestamp": "2025-12-18T12:28:54.121Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][ENCODE] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][ENCODE] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     },
     {
-      "timestamp": "2025-12-17T20:51:55.718Z",
+      "timestamp": "2025-12-18T12:29:11.523Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][ENCODE] runId=20251217_205132_BG1M {\"event\":\"end\",\"durationMs\":16013}"
+      "message": "[Export][ENCODE] runId=20251218_122841_FQKV {\"event\":\"end\",\"durationMs\":17402}"
     },
     {
-      "timestamp": "2025-12-17T20:51:55.722Z",
+      "timestamp": "2025-12-18T12:29:11.524Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][ENCODE] runId=20251217_205132_BG1M {\"sizeBytes\":14437566,\"sizeKB\":14099}"
+      "message": "[Export][ENCODE] runId=20251218_122841_FQKV {\"sizeBytes\":14465517,\"sizeKB\":14126}"
     },
     {
-      "timestamp": "2025-12-17T20:51:55.724Z",
+      "timestamp": "2025-12-18T12:29:11.525Z",
       "level": "log",
       "tag": "[Export]",
-      "message": "[Export][ZIP] runId=20251217_205132_BG1M {\"event\":\"start\"}"
+      "message": "[Export][ZIP] runId=20251218_122841_FQKV {\"event\":\"start\"}"
     }
   ]
 }

@@ -1820,21 +1820,43 @@ export class ExportQuickDialog {
         } : null
       });
       
-      // Récupérer aussi la grille vide pour les mailles sans données (déjà filtrée par ADM)
+      // Récupérer aussi la grille vide pour les mailles sans données
       const emptyGrid = await this.fetchGridFromCoverage(admFilters);
       
       // Créer un Set des codes thématiques pour éviter les doublons
       const thematicCodes = new Set(thematicCells.map(c => c.code).filter(Boolean));
       
-      // Ajouter les mailles vides de la grille qui ne sont pas dans les features thématiques
-      const emptyCells = emptyGrid
-        .filter(cell => !thematicCodes.has(cell.cell_id))
-        .map(cell => ({
-          geometry: cell.geometry,
-          has_data: false,
-          n_sondages: 0,
-          value: undefined
-        }));
+      // Filtrer les mailles vides: exclure celles déjà dans thematicCells
+      let emptyCellsRaw = emptyGrid.filter(cell => !thematicCodes.has(cell.cell_id));
+      
+      // FILTRAGE GÉOGRAPHIQUE des mailles vides par polygone ADM (même logique que thematicCells)
+      if (hasAdmPolygon && this.options.onlyAdmCells) {
+        const polygonPoints = admPolygon.map((p: any) => {
+          if (typeof p.lat === 'number' && typeof p.lng === 'number') return p;
+          if (Array.isArray(p) && p.length >= 2) return { lng: p[0], lat: p[1] };
+          return p;
+        });
+        
+        const beforeCount = emptyCellsRaw.length;
+        emptyCellsRaw = emptyCellsRaw.filter(cell => {
+          const centroid = this.computeCentroid(cell.geometry);
+          if (!centroid) return false;
+          return this.pointInPolygon(centroid, polygonPoints);
+        });
+        
+        console.log('[Export][DATA] Filtrage géographique mailles vides:', {
+          avant: beforeCount,
+          après: emptyCellsRaw.length,
+          filtrées: beforeCount - emptyCellsRaw.length
+        });
+      }
+      
+      const emptyCells = emptyCellsRaw.map(cell => ({
+        geometry: cell.geometry,
+        has_data: false,
+        n_sondages: 0,
+        value: undefined
+      }));
       
       console.log('[Export][DATA] Grille combinée:', {
         thematicCells: thematicCells.length,
