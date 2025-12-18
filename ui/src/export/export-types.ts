@@ -89,7 +89,7 @@ export const DEFAULT_GRID_OPTIONS: GridOptions = {
 
 export type ExportFormat = 'png' | 'pdf';
 
-export type ExportQuality = 'web' | 'print';
+export type ExportQuality = 'web' | 'standard' | 'print' | 'hd';
 
 export type ExportZone = 'viewport' | 'adm-filtered';
 
@@ -155,7 +155,9 @@ export interface ExportDimensions {
 
 export const QUALITY_SETTINGS: Record<ExportQuality, { scale: number; dpi: number }> = {
   web: { scale: 1, dpi: 72 },
-  print: { scale: 3, dpi: 300 }
+  standard: { scale: 2, dpi: 150 },
+  print: { scale: 2, dpi: 150 },  // Alias pour standard
+  hd: { scale: 3, dpi: 300 }
 };
 
 // ============================================================================

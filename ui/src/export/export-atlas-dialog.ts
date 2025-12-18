@@ -633,7 +633,8 @@ export class ExportAtlasDialog {
                 <label>Qualité</label>
                 <select id="atlas-quality">
                   <option value="web">Web (72 DPI)</option>
-                  <option value="print" selected>Impression (150 DPI)</option>
+                  <option value="print">Standard (150 DPI)</option>
+                  <option value="hd" selected>HD (300 DPI)</option>
                 </select>
               </div>
               <div class="atlas-field">
@@ -1227,6 +1228,8 @@ export class ExportAtlasDialog {
     const failed = results.filter(r => !r.success).length;
     
     // Générer le ZIP si disponible et des exports ont réussi
+    console.log('[Atlas] Finalisation export:', { zip: !!zip, successful, failed, completed, total });
+    
     if (zip && successful > 0) {
       try {
         // Ajouter un fichier index.json avec les métadonnées
@@ -1247,25 +1250,51 @@ export class ExportAtlasDialog {
         };
         zip.file('index.json', JSON.stringify(indexData, null, 2));
         
-        // Générer et télécharger le ZIP
-        const zipBlob = await zip.generateAsync({ type: 'blob' });
+        console.log('[Atlas] Génération du ZIP en cours...');
+        this.updateProgress('Compression du fichier ZIP...', 99);
+        
+        // Générer le ZIP avec compression
+        const zipBlob = await zip.generateAsync({ 
+          type: 'blob',
+          compression: 'DEFLATE',
+          compressionOptions: { level: 6 }
+        });
+        
+        console.log('[Atlas] ZIP généré, taille:', (zipBlob.size / 1024 / 1024).toFixed(2), 'Mo');
+        
         const timestamp = new Date().toISOString().slice(0, 10);
         const filename = `atlas_geotechnique_${timestamp}.zip`;
         
+        // Méthode de téléchargement améliorée
         const url = URL.createObjectURL(zipBlob);
+        console.log('[Atlas] Blob URL créé:', url);
+        
+        // Créer un lien et déclencher le téléchargement
         const a = document.createElement('a');
+        a.style.display = 'none';
         a.href = url;
         a.download = filename;
         document.body.appendChild(a);
+        
+        // Petit délai pour s'assurer que le navigateur est prêt
+        await new Promise(r => setTimeout(r, 100));
+        
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        console.log('[Atlas] Téléchargement déclenché');
+        
+        // Attendre un peu avant de révoquer l'URL (laisser le temps au téléchargement de démarrer)
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          console.log('[Atlas] Blob URL révoqué');
+        }, 5000);
         
         this.updateProgress('Export terminé!', 100);
         this.showResults(results, completed, total, true);
         return;
       } catch (e) {
         console.error('[Atlas] Erreur génération ZIP:', e);
+        alert(`Erreur lors de la génération du ZIP: ${e}`);
       }
     }
     

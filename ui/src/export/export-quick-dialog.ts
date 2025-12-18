@@ -549,8 +549,9 @@ export class ExportQuickDialog {
               <div class="export-field">
                 <label>Qualité</label>
                 <select id="export-quality">
-                  <option value="web" ${this.options.quality === 'web' ? 'selected' : ''}>Standard (web, 72 dpi)</option>
-                  <option value="print" ${this.options.quality === 'print' ? 'selected' : ''}>Impression (300 dpi)</option>
+                  <option value="web" ${this.options.quality === 'web' ? 'selected' : ''}>Web (72 DPI)</option>
+                  <option value="standard" ${this.options.quality === 'standard' ? 'selected' : ''}>Standard (150 DPI)</option>
+                  <option value="print" ${this.options.quality === 'print' ? 'selected' : ''}>HD (300 DPI)</option>
                 </select>
               </div>
             </div>
@@ -1295,21 +1296,29 @@ export class ExportQuickDialog {
         telemetry.startStage('MASK');
         if (savedOptions.maskMode !== 'none') {
           // Dessiner le masque avec la bordure incluse
+          console.log('[Export] Dessin masque ADM mode:', savedOptions.maskMode);
           exportFrame.drawAdmMask(admPolygon, bbox, savedOptions.maskMode);
           telemetry.endStage({ maskApplied: true, polygonPoints: admPolygon.length });
         } else {
           // Masque "aucun" mais on dessine quand même la bordure ADM
-          exportFrame.drawAdmBoundary(admPolygon, bbox);
+          console.log('[Export] Masque=none, dessin bordure ADM uniquement');
+          exportFrame.drawAdmBoundary(admPolygon, bbox, '#3366cc', 2.5);
           telemetry.endStage({ maskApplied: false, boundaryDrawn: true, polygonPoints: admPolygon.length });
         }
       } else if (this.options.zone === 'adm-filtered') {
         telemetry.startStage('MASK');
         telemetry.warn('Pas de polygone ADM valide pour le masque/bordure');
-        console.warn('[Export] Pas de polygone ADM valide pour le masque/bordure');
+        console.warn('[Export] Pas de polygone ADM valide pour le masque/bordure, zone:', this.options.zone, 'polygon:', admPolygon);
         telemetry.endStage({ maskApplied: false });
       }
       
       exportFrame.drawGridAndFrame(bbox);
+      
+      // Re-dessiner la bordure ADM après la grille si masque=none (pour qu'elle soit visible au-dessus)
+      if (this.options.zone === 'adm-filtered' && admPolygon && admPolygon.length >= 3 && savedOptions.maskMode === 'none') {
+        console.log('[Export] Re-dessin bordure ADM après grille (masque=none)');
+        exportFrame.drawAdmBoundary(admPolygon, bbox, '#3366cc', 2.5);
+      }
       
       // Dessiner les labels des ADM limitrophes si zone filtrée et option activée (utiliser savedOptions)
       if (savedOptions.showNeighbors && this.options.zone === 'adm-filtered' && admFilters) {
