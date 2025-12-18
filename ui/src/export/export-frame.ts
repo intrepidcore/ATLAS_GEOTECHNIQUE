@@ -632,6 +632,56 @@ export class ExportFrame {
   }
   
   /**
+   * Dessine uniquement la bordure de l'ADM (sans masque)
+   * Utile quand maskMode='none' mais qu'on veut quand même voir la délimitation
+   * @param admPolygon - Coordonnées du polygone ADM [[lng, lat], ...]
+   * @param bbox - Bounding box de la carte
+   * @param color - Couleur de la bordure (défaut: bleu)
+   * @param lineWidth - Épaisseur de la ligne (défaut: 2)
+   */
+  drawAdmBoundary(
+    admPolygon: number[][] | null,
+    bbox: BBox,
+    color: string = '#3366cc',
+    lineWidth: number = 2
+  ): void {
+    if (!admPolygon || admPolygon.length < 3) {
+      console.log('[ExportFrame] drawAdmBoundary skipped - no polygon');
+      return;
+    }
+    
+    const { mapArea } = this.layout;
+    const ctx = this.ctx;
+    
+    // Convertir les coordonnées lng/lat en pixels
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+      return [x, y];
+    };
+    
+    ctx.save();
+    
+    // Dessiner la bordure de l'ADM en pointillés
+    ctx.beginPath();
+    const startPt = toPixel(admPolygon[0][0], admPolygon[0][1]);
+    ctx.moveTo(startPt[0], startPt[1]);
+    for (let i = 1; i < admPolygon.length; i++) {
+      const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
+      ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.setLineDash([6, 4]);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    console.log('[ExportFrame] ADM boundary drawn (standalone)');
+    ctx.restore();
+  }
+  
+  /**
    * Dessine les délimitations des ADM de niveau inférieur
    * @param subAdmPolygons - Liste des polygones des sous-ADM [{name, polygon}]
    * @param bbox - Bounding box de la carte

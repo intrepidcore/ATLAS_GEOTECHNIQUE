@@ -1291,16 +1291,22 @@ export class ExportQuickDialog {
       const admPolygon = this.config.getAdmPolygon?.();
       console.log('[Export] Masque ADM - mode:', savedOptions.maskMode, 'polygon:', admPolygon?.length || 0, 'points');
       
-      if (savedOptions.maskMode !== 'none' && this.options.zone === 'adm-filtered') {
+      if (this.options.zone === 'adm-filtered' && admPolygon && admPolygon.length >= 3) {
         telemetry.startStage('MASK');
-        if (admPolygon && admPolygon.length >= 3) {
+        if (savedOptions.maskMode !== 'none') {
+          // Dessiner le masque avec la bordure incluse
           exportFrame.drawAdmMask(admPolygon, bbox, savedOptions.maskMode);
           telemetry.endStage({ maskApplied: true, polygonPoints: admPolygon.length });
         } else {
-          telemetry.warn('Pas de polygone ADM valide pour le masque');
-          console.warn('[Export] Pas de polygone ADM valide pour le masque');
-          telemetry.endStage({ maskApplied: false });
+          // Masque "aucun" mais on dessine quand même la bordure ADM
+          exportFrame.drawAdmBoundary(admPolygon, bbox);
+          telemetry.endStage({ maskApplied: false, boundaryDrawn: true, polygonPoints: admPolygon.length });
         }
+      } else if (this.options.zone === 'adm-filtered') {
+        telemetry.startStage('MASK');
+        telemetry.warn('Pas de polygone ADM valide pour le masque/bordure');
+        console.warn('[Export] Pas de polygone ADM valide pour le masque/bordure');
+        telemetry.endStage({ maskApplied: false });
       }
       
       exportFrame.drawGridAndFrame(bbox);
