@@ -1050,8 +1050,9 @@ export class ExportQuickDialog {
       await waitForFrames(2);
       
       // Attendre le rendu complet des layers thématiques (Canvas/SVG)
+      // Optimisé: 300ms au lieu de 500ms (suffisant pour la plupart des cas)
       updateProgress('Attente du rendu thématique...');
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
       telemetry.startStage('CAPTURE');
       
@@ -1106,8 +1107,8 @@ export class ExportQuickDialog {
           message: 'All non-tile panes hidden - capturing background only'
         });
         
-        // Attendre le re-rendu
-        await new Promise(resolve => setTimeout(resolve, 150));
+        // Attendre le re-rendu (optimisé: 80ms au lieu de 150ms)
+        await new Promise(resolve => setTimeout(resolve, 80));
       }
       
       telemetry.logAdmOverlayState(false, Object.keys(hiddenPanes).length > 0);
@@ -1142,10 +1143,10 @@ export class ExportQuickDialog {
             console.warn(`[Export] Capture invalide (attempt ${captureAttempt}), retry après attente tuiles...`);
             telemetry.warn(`Capture invalide (blackRatio=${validation.blackRatio.toFixed(2)}), retry #${captureAttempt + 1}`);
             
-            // Attendre plus longtemps avant retry
-            await waitForTilesLoaded(this.config.mapContainer, 3000);
+            // Attendre avant retry (optimisé: 300ms au lieu de 500ms)
+            await waitForTilesLoaded(this.config.mapContainer, 2000);
             await waitForFrames(3);
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise(resolve => setTimeout(resolve, 300));
           } else {
             telemetry.warn(`Capture potentiellement invalide après ${MAX_CAPTURE_ATTEMPTS} tentatives`);
           }

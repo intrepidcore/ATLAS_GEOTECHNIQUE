@@ -115,6 +115,10 @@ export interface ExportOptions {
   onlyAdmCells?: boolean;
   maskMode?: 'none' | 'context' | 'focus' | 'clip';
   
+  // Délimitations sous-ADM (ex: afficher les préfectures dans une région)
+  showSubAdmBoundaries?: boolean;
+  subAdmLevel?: 'adm2' | 'adm3';
+  
   // Métadonnées
   title?: string;
   subtitle?: string;

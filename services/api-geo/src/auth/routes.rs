@@ -5,6 +5,7 @@ use axum::{
     routing::{delete, get, post},
     Json, Router,
 };
+use chrono::Datelike;
 use std::net::SocketAddr;
 use uuid::Uuid;
 use validator::Validate;
@@ -656,9 +657,14 @@ async fn register_student(
     .await?;
 
     // Créer la fiche étudiant dans colab_students
+    // Note: promotion est obligatoire, on utilise l'année académique courante
+    let current_year = chrono::Utc::now().format("%Y").to_string();
+    let next_year = (chrono::Utc::now().year() + 1).to_string();
+    let promotion = format!("{}-{}", current_year, next_year);
+    
     sqlx::query(
         r#"
-        INSERT INTO atlas.colab_students (user_id, matricule, etablissement, filiere, niveau, telephone)
+        INSERT INTO atlas.colab_students (user_id, matricule, etablissement, filiere, niveau, promotion)
         VALUES ($1, $2, $3, $4, $5, $6)
         "#,
     )
@@ -667,7 +673,7 @@ async fn register_student(
     .bind(&request.student_info.school)
     .bind(&request.student_info.program)
     .bind(&request.student_info.level)
-    .bind(&request.phone)
+    .bind(&promotion)
     .execute(&mut *tx)
     .await?;
 

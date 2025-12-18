@@ -254,8 +254,10 @@ const ATLAS_DIALOG_STYLES = `
 
 const AVAILABLE_THEMATICS = [
   { id: 'n_sondages', label: 'Nombre de sondages' },
-  { id: 'vbs_moy', label: 'VBS moyen (argilosité)' },
-  { id: 'ip_moy', label: 'IP moyen (plasticité)' },
+  { id: 'vbs_avg', label: 'VBS moyen (argilosité)' },
+  { id: 'ip_avg', label: 'IP moyen (plasticité)' },
+  { id: 'wl_avg', label: 'Limite de liquidité (WL)' },
+  { id: 'wp_avg', label: 'Limite de plasticité (WP)' },
   { id: 'profondeur_max', label: 'Profondeur max' },
 ];
 
@@ -570,7 +572,11 @@ export class ExportAtlasDialog {
       try {
         const response = await fetch(`http://localhost:8000/${level}`);
         if (response.ok) {
-          admLists[level] = await response.json();
+          const allAdms = await response.json();
+          // Filtrer les ADM qui ont au moins une maille avec données
+          const admsWithData = await this.filterAdmsWithData(allAdms, level);
+          admLists[level] = admsWithData;
+          console.log(`[Atlas] ${level}: ${admsWithData.length}/${allAdms.length} ADM avec données`);
         } else {
           admLists[level] = [];
         }
@@ -640,8 +646,8 @@ export class ExportAtlasDialog {
             try {
               // Changer la thématique et l'ADM
               await this.callbacks.setThematicAndAdm(thematicId, level, adm.name);
-              // Attendre le rendu
-              await new Promise(r => setTimeout(r, 1500));
+              // Attendre le rendu (optimisé: 800ms au lieu de 1500ms)
+              await new Promise(r => setTimeout(r, 800));
               // Capturer la carte
               blob = await this.callbacks.captureCurrentMap();
               success = blob !== null;
@@ -794,6 +800,47 @@ export class ExportAtlasDialog {
     
     if (progressText) progressText.textContent = text;
     if (progressFill) progressFill.style.width = `${percent}%`;
+  }
+  
+  /**
+   * Filtre les ADM qui ont au moins une maille avec données
+   */
+  private async filterAdmsWithData(
+    adms: Array<{ code: string; name: string }>,
+    level: string
+  ): Promise<Array<{ code: string; name: string }>> {
+    try {
+      // Récupérer les mailles avec données
+      const response = await fetch('http://localhost:8000/coverage/mailles');
+      if (!response.ok) return adms; // En cas d'erreur, retourner tous les ADM
+      
+      const geojson = await response.json();
+      const features = geojson.features || [];
+      
+      // Créer un Set des ADM qui ont des mailles avec données
+      const admsWithData = new Set<string>();
+      
+      for (const f of features) {
+        const props = f.properties || {};
+        const hasData = props.has_data || props.n_sondages > 0;
+        if (!hasData) continue;
+        
+        // Ajouter les noms ADM correspondants
+        if (level === 'adm1' && props.adm1_name) {
+          admsWithData.add(props.adm1_name);
+        } else if (level === 'adm2' && props.adm2_name) {
+          admsWithData.add(props.adm2_name);
+        } else if (level === 'adm3' && props.adm3_name) {
+          admsWithData.add(props.adm3_name);
+        }
+      }
+      
+      // Filtrer les ADM
+      return adms.filter(adm => admsWithData.has(adm.name));
+    } catch (e) {
+      console.warn('[Atlas] Erreur filtrage ADM avec données:', e);
+      return adms; // En cas d'erreur, retourner tous les ADM
+    }
   }
 }
 

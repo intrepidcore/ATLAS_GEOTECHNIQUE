@@ -632,6 +632,60 @@ export class ExportFrame {
   }
   
   /**
+   * Dessine les délimitations des ADM de niveau inférieur
+   * @param subAdmPolygons - Liste des polygones des sous-ADM [{name, polygon}]
+   * @param bbox - Bounding box de la carte
+   * @param style - Style de ligne ('dashed' | 'solid')
+   */
+  drawSubAdmBoundaries(
+    subAdmPolygons: Array<{ name: string; polygon: number[][] }>,
+    bbox: BBox,
+    style: 'dashed' | 'solid' = 'dashed'
+  ): void {
+    if (!subAdmPolygons || subAdmPolygons.length === 0) return;
+    
+    const { mapArea } = this.layout;
+    const ctx = this.ctx;
+    const scale = this.dpi / 72;
+    
+    // Convertir les coordonnées lng/lat en pixels
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+      return [x, y];
+    };
+    
+    ctx.save();
+    
+    // Style des lignes
+    ctx.strokeStyle = '#666666';
+    ctx.lineWidth = 1 * scale;
+    if (style === 'dashed') {
+      ctx.setLineDash([4 * scale, 2 * scale]);
+    }
+    
+    for (const subAdm of subAdmPolygons) {
+      if (!subAdm.polygon || subAdm.polygon.length < 3) continue;
+      
+      ctx.beginPath();
+      const [startX, startY] = toPixel(subAdm.polygon[0][0], subAdm.polygon[0][1]);
+      ctx.moveTo(startX, startY);
+      
+      for (let i = 1; i < subAdm.polygon.length; i++) {
+        const [x, y] = toPixel(subAdm.polygon[i][0], subAdm.polygon[i][1]);
+        ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.stroke();
+    }
+    
+    ctx.setLineDash([]);
+    ctx.restore();
+    
+    console.log('[ExportFrame] Sub-ADM boundaries drawn:', subAdmPolygons.length);
+  }
+  
+  /**
    * Dessine les labels des ADM limitrophes sur les bords du polygone ADM
    * Les labels sont positionnés aux coordonnées réelles des voisins, sur le bord de l'ADM
    * @param neighbors - Liste des voisins avec direction et coordonnées
@@ -1048,13 +1102,48 @@ export class ExportFrame {
     const padding = Math.round(8 * scale);
     const boxSize = Math.round(12 * scale);
     const lineHeight = Math.round(16 * scale);
+    const titleHeight = Math.round(24 * scale);
     
-    // Cadre de la légende
+    // Calculer le nombre d'entrées pour la hauteur dynamique
+    let numEntries = 0;
+    let visibleClasses: Array<{ label: string; color: string; actualCount?: number; index: number }> = [];
+    
+    if (legendData?.classes && legendData.classes.length > 0) {
+      const classesWithCount = legendData.classes.map((cls, idx) => {
+        const usageCount = classUsageCount?.get(idx) ?? cls.count ?? undefined;
+        return { ...cls, actualCount: usageCount, index: idx };
+      });
+      
+      visibleClasses = classUsageCount 
+        ? classesWithCount.filter(cls => cls.actualCount !== undefined && cls.actualCount > 0)
+        : classesWithCount.filter(cls => cls.actualCount === undefined || cls.actualCount > 0);
+      
+      numEntries = visibleClasses.length > 0 ? visibleClasses.length : 1; // Au moins 1 pour "aucune donnée"
+    } else {
+      numEntries = 1; // "aucune thématique active"
+    }
+    
+    if (showEmptyCells) numEntries++;
+    if (showAdmBoundary) numEntries++;
+    
+    // Hauteur dynamique: titre + entrées + padding
+    const dynamicHeight = titleHeight + (numEntries * lineHeight) + padding * 2;
+    // Hauteur minimale = hauteur du layout (pour aligner avec stats/cartouche)
+    const actualHeight = Math.max(dynamicHeight, legendArea.height);
+    
+    console.log('[ExportFrame] Légende hauteur dynamique:', {
+      numEntries,
+      dynamicHeight,
+      layoutHeight: legendArea.height,
+      actualHeight
+    });
+    
+    // Cadre de la légende avec hauteur dynamique
     ctx.strokeStyle = '#cccccc';
     ctx.lineWidth = scale;
     ctx.fillStyle = '#fafafa';
-    ctx.fillRect(legendArea.x, legendArea.y, legendArea.width, legendArea.height);
-    ctx.strokeRect(legendArea.x, legendArea.y, legendArea.width, legendArea.height);
+    ctx.fillRect(legendArea.x, legendArea.y, legendArea.width, actualHeight);
+    ctx.strokeRect(legendArea.x, legendArea.y, legendArea.width, actualHeight);
     
     // Titre de la légende (paramètre + unité) - police scalée
     ctx.fillStyle = '#333333';
@@ -1077,67 +1166,31 @@ export class ExportFrame {
       ctx.fillStyle = '#888888';
       ctx.fillText('(aucune thématique active)', legendArea.x + padding, currentY);
       currentY += lineHeight;
+    } else if (visibleClasses.length === 0) {
+      ctx.fillStyle = '#888888';
+      ctx.fillText('(aucune donnée dans la zone)', legendArea.x + padding, currentY);
+      currentY += lineHeight;
     } else {
-      // Filtrer les classes selon le comptage réel (classUsageCount)
-      // Si classUsageCount est fourni, n'afficher que les classes utilisées
-      // Sinon, utiliser le count de la classe ou afficher toutes
-      const classesWithCount = legendData.classes.map((cls, idx) => {
-        const usageCount = classUsageCount?.get(idx) ?? cls.count ?? undefined;
-        return { ...cls, actualCount: usageCount, index: idx };
-      });
-      
-      // Option: afficher toutes les classes mais griser celles à count=0
-      // Pour l'instant, on filtre pour n'afficher que les classes utilisées
-      const visibleClasses = classUsageCount 
-        ? classesWithCount.filter(cls => cls.actualCount !== undefined && cls.actualCount > 0)
-        : classesWithCount.filter(cls => cls.actualCount === undefined || cls.actualCount > 0);
-      
       console.log('[ExportFrame] Légende - classes visibles:', visibleClasses.length, '/', legendData.classes.length,
         'classUsageCount:', classUsageCount ? Object.fromEntries(classUsageCount) : 'N/A');
       
-      if (visibleClasses.length === 0) {
-        ctx.fillStyle = '#888888';
-        ctx.fillText('(aucune donnée dans la zone)', legendArea.x + padding, currentY);
+      // Dessiner les classes thématiques présentes
+      for (const cls of visibleClasses) {
+        // Boîte de couleur
+        ctx.fillStyle = cls.color;
+        ctx.fillRect(legendArea.x + padding, currentY, boxSize, boxSize);
+        ctx.strokeStyle = '#666666';
+        ctx.lineWidth = 0.5 * scale;
+        ctx.strokeRect(legendArea.x + padding, currentY, boxSize, boxSize);
+        
+        // Label avec comptage (n=X) si disponible
+        ctx.fillStyle = '#333333';
+        ctx.textBaseline = 'middle';
+        const labelText = cls.actualCount !== undefined 
+          ? `${cls.label} (n=${cls.actualCount})`
+          : cls.label;
+        ctx.fillText(labelText, textX, currentY + boxSize / 2);
         currentY += lineHeight;
-      } else {
-        // Calculer la largeur max des labels pour bbox dynamique
-        let maxLabelWidth = 0;
-        for (const cls of visibleClasses) {
-          const labelText = cls.actualCount !== undefined 
-            ? `${cls.label} (n=${cls.actualCount})`
-            : cls.label;
-          const measured = ctx.measureText(labelText);
-          maxLabelWidth = Math.max(maxLabelWidth, measured.width);
-        }
-        
-        // Calculer la largeur dynamique de la légende
-        const dynamicWidth = padding * 2 + boxSize + Math.round(6 * scale) + maxLabelWidth + Math.round(10 * scale);
-        const actualLegendWidth = Math.max(dynamicWidth, legendArea.width);
-        
-        console.log('[ExportFrame] Légende bbox dynamique:', {
-          maxLabelWidth: maxLabelWidth.toFixed(0),
-          dynamicWidth,
-          actualWidth: actualLegendWidth
-        });
-        
-        // Dessiner les classes thématiques présentes
-        for (const cls of visibleClasses) {
-          // Boîte de couleur
-          ctx.fillStyle = cls.color;
-          ctx.fillRect(legendArea.x + padding, currentY, boxSize, boxSize);
-          ctx.strokeStyle = '#666666';
-          ctx.lineWidth = 0.5 * scale;
-          ctx.strokeRect(legendArea.x + padding, currentY, boxSize, boxSize);
-          
-          // Label avec comptage (n=X) si disponible
-          ctx.fillStyle = '#333333';
-          ctx.textBaseline = 'middle';
-          const labelText = cls.actualCount !== undefined 
-            ? `${cls.label} (n=${cls.actualCount})`
-            : cls.label;
-          ctx.fillText(labelText, textX, currentY + boxSize / 2);
-          currentY += lineHeight;
-        }
       }
     }
     
