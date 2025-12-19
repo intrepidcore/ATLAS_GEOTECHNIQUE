@@ -910,8 +910,8 @@ export class ThematicPanel {
   /**
    * Reset thematic map
    */
-  private resetThematic(): void {
-    this.manager.clear()
+  private async resetThematic(): Promise<void> {
+    await this.manager.clear()
     this.currentConfig = getDefaultConfig()
     this.applyConfigToUI(this.currentConfig)
     

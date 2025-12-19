@@ -2576,3 +2576,365 @@ Organisation en 4 blocs métier pour ingénieurs géotechniciens :
 - Une maille appartient à l'ADM si son **centroïde** est dans le polygone ADM
 - Algorithme: `pointInPolygon(centroid, admPolygon)` avec ray casting
 - Les mailles dont le centroïde est hors ADM sont exclues même si elles chevauchent la frontière
+
+---
+
+## 🔧 v3.3 - Corrections Import AMESSEFE & Cartes Thématiques (2025-12-19)
+
+### 3.3.1 Migration données Limites d'Atterberg ✅
+
+#### Problème identifié
+
+- Les données limites (wl, wp, ip) importées par AMESSEFE étaient dans `essais_geotechniques`
+- L'API `/sondages/:id/details` lit depuis `essais_atterberg`
+- Résultat: les limites n'apparaissaient pas dans le panneau de détails du sondage
+
+#### Corrections apportées
+
+- [X] Migration SQL: 225 enregistrements de `essais_geotechniques` vers `essais_atterberg`
+- [X] Vérification: API retourne maintenant wl, wp, ip pour les sondages AMESSEFE
+- [X] Total `essais_atterberg`: 276 enregistrements (51 existants + 225 migrés)
+
+### 3.3.2 Mailles non cliquables après carte thématique ✅
+
+#### Problème identifié
+
+- La couche thématique masque la grille originale (`hideGridLayer()`)
+- Les clics sur les mailles thématiques n'étaient pas propagés
+- Après réinitialisation, la grille restaurée perdait ses événements de clic
+
+#### Corrections apportées
+
+- [X] Ajout événement `click` sur `bindFeatureHighlight()` dans `thematic-maps.ts`
+- [X] Émission événement `thematicmap:cellclick` avec code, properties, latlng, layer
+- [X] Écouteur dans `main.ts` pour propager vers la logique de sélection existante
+- [X] Modification `clear()` pour recharger complètement la grille avec `loadGrid(false)`
+
+### 3.3.3 Vérification données granulométriques ✅
+
+- [X] Table `granulo_points`: 1313 enregistrements totaux
+- [X] AMESSEFE: 149 points avec méthode `tamisage_amessefe`
+- [X] API `/sondages/:id/details` retourne correctement les données granulo
+- [X] Exemple "katore": 3 points (0.08mm) aux profondeurs 1.0, 1.5, 2.0m
+
+---
+
+## 🚀 ROADMAP v4.0 - Outils d'Analyse Géotechnique Avancés
+
+**Objectif** : Enrichir Atlas avec des outils d'analyse, visualisation et aide à la décision pour ingénieurs géotechniciens.
+
+---
+
+### 📊 Catégorie A : Visualisations Avancées
+
+#### A.1 Courbe granulométrique interactive
+
+**Objectif** : Afficher la courbe granulométrique complète d'un échantillon
+
+- [ ] Graphique semi-log (tamis en X log, passant % en Y linéaire)
+- [ ] Superposition de plusieurs profondeurs sur le même graphique
+- [ ] Zones de classification (argile, limon, sable, gravier)
+- [ ] Export PNG/SVG de la courbe
+- [ ] Calcul automatique: D10, D30, D60, Cu, Cc
+
+#### A.2 Diagramme de plasticité (Casagrande)
+
+**Objectif** : Positionner les échantillons sur le diagramme WL vs IP
+
+- [ ] Graphique WL (x) vs IP (y) avec ligne A et ligne U
+- [ ] Zones de classification: CL, CH, ML, MH, OL, OH
+- [ ] Points colorés par maille ou par source
+- [ ] Tooltip avec détails échantillon au survol
+- [ ] Filtrage par ADM, profondeur, source
+
+#### A.3 Profil géotechnique vertical
+
+**Objectif** : Visualiser les paramètres en fonction de la profondeur
+
+- [ ] Graphique profondeur (Y inversé) vs paramètre (X)
+- [ ] Paramètres: VBS, IP, WL, passant 80µm
+- [ ] Superposition de plusieurs sondages
+- [ ] Zones de classification colorées en fond
+- [ ] Export pour rapports
+
+#### A.4 Carte de chaleur (heatmap) interpolée
+
+**Objectif** : Interpolation spatiale des paramètres géotechniques
+
+- [ ] Interpolation IDW (Inverse Distance Weighting)
+- [ ] Interpolation Krigeage (si données suffisantes)
+- [ ] Choix du paramètre à interpoler
+- [ ] Ajustement rayon d'influence
+- [ ] Affichage isolignes (contours)
+
+---
+
+### 🔬 Catégorie B : Analyses Statistiques
+
+#### B.1 Tableau de bord statistique par zone
+
+**Objectif** : Synthèse statistique complète pour une zone ADM
+
+- [ ] Stats descriptives: n, min, max, moy, médiane, écart-type
+- [ ] Histogramme de distribution pour chaque paramètre
+- [ ] Box plots comparatifs entre ADM2/ADM3
+- [ ] Tests de normalité (Shapiro-Wilk)
+- [ ] Export Excel/CSV des statistiques
+
+#### B.2 Corrélations entre paramètres
+
+**Objectif** : Analyser les relations entre paramètres géotechniques
+
+- [ ] Matrice de corrélation (heatmap)
+- [ ] Scatter plots interactifs (ex: VBS vs IP)
+- [ ] Régression linéaire avec R²
+- [ ] Identification des outliers
+- [ ] Corrélations empiriques: IP = f(VBS), WL = f(passant 80µm)
+
+#### B.3 Analyse de variabilité spatiale
+
+**Objectif** : Quantifier l'hétérogénéité des sols
+
+- [ ] Variogramme expérimental
+- [ ] Portée et palier de variabilité
+- [ ] Coefficient de variation par zone
+- [ ] Carte de fiabilité des données (densité de points)
+
+---
+
+### 📋 Catégorie C : Aide à la Décision
+
+#### C.1 Classification automatique des sols
+
+**Objectif** : Classifier automatiquement selon plusieurs systèmes
+
+- [ ] Classification GTR (Guide des Terrassements Routiers)
+- [ ] Classification USCS (Unified Soil Classification System)
+- [ ] Classification HRB (Highway Research Board)
+- [ ] Affichage multi-classification dans fiche sondage
+- [ ] Export tableau de classification par zone
+
+#### C.2 Alertes et seuils géotechniques
+
+**Objectif** : Identifier les zones à risque
+
+- [ ] Définition de seuils personnalisables (ex: IP > 35 = argileux)
+- [ ] Alertes visuelles sur carte (mailles en rouge si seuil dépassé)
+- [ ] Rapport des zones à risque de gonflement (VBS > 6, IP > 40)
+- [ ] Notification si nouvelles données dépassent seuils
+
+#### C.3 Recommandations de fondations
+
+**Objectif** : Suggestions basées sur les paramètres mesurés
+
+- [ ] Règles métier configurables
+- [ ] Suggestions: fondations superficielles, profondes, traitement de sol
+- [ ] Profondeur d'ancrage recommandée
+- [ ] Export rapport de recommandations
+
+---
+
+### 📤 Catégorie D : Export et Rapports
+
+#### D.1 Rapport géotechnique automatique
+
+**Objectif** : Générer un rapport PDF complet pour une zone
+
+- [ ] Page de garde avec carte de localisation
+- [ ] Tableau récapitulatif des sondages
+- [ ] Fiches individuelles par sondage
+- [ ] Graphiques (granulo, plasticité, profils)
+- [ ] Synthèse et conclusions automatiques
+- [ ] Template personnalisable (logo, en-tête)
+
+#### D.2 Export données brutes enrichies
+
+**Objectif** : Exporter les données pour traitement externe
+
+- [ ] Export Excel multi-feuilles (sondages, échantillons, essais)
+- [ ] Export GeoPackage pour SIG
+- [ ] Export CSV avec métadonnées
+- [ ] Filtres: zone ADM, période, source, type d'essai
+
+#### D.3 Atlas thématique complet (batch)
+
+**Objectif** : Générer toutes les cartes thématiques d'une zone
+
+- [ ] Sélection des paramètres à cartographier
+- [ ] Génération batch de toutes les cartes
+- [ ] Mise en page cohérente (même échelle, même légende)
+- [ ] Export ZIP avec index HTML navigable
+
+---
+
+### 🔄 Catégorie E : Collecte et Qualité
+
+#### E.1 Formulaire terrain mobile amélioré
+
+**Objectif** : Saisie terrain optimisée pour géotechniciens
+
+- [ ] Mode hors-ligne complet avec sync
+- [ ] Saisie vocale des valeurs
+- [ ] Photo géolocalisée des échantillons
+- [ ] Validation temps réel des valeurs (plages acceptables)
+- [ ] Historique des modifications
+
+#### E.2 Contrôle qualité des données
+
+**Objectif** : Détecter et corriger les anomalies
+
+- [ ] Détection automatique des outliers (IQR, Z-score)
+- [ ] Vérification cohérence: IP = WL - WP
+- [ ] Alertes si valeurs hors plages physiques
+- [ ] Workflow de validation (brouillon → validé → publié)
+- [ ] Historique des corrections avec audit
+
+#### E.3 Import multi-sources
+
+**Objectif** : Centraliser les données de différentes sources
+
+- [ ] Import Excel avec mapping colonnes intelligent
+- [ ] Import depuis autres bases géotechniques
+- [ ] Détection et fusion des doublons
+- [ ] Normalisation automatique des localités
+- [ ] Rapport d'import avec statistiques
+
+---
+
+## 📋 v3.4 - Corrections et Organisation (2025-12-19)
+
+### 🔧 Corrections UI/UX
+
+#### 1. Réinitialisation carte thématique - Écouteurs d'événements
+**Problème:** Après réinitialisation de la carte thématique, les mailles de la grille n'étaient plus cliquables.
+
+**Cause racine:** 
+- `loadGrid()` attachait les événements `zoomend`/`movestart` à chaque appel, créant des doublons
+- `clear()` n'attendait pas le rechargement async de la grille
+
+**Corrections apportées:**
+- `@ui/src/main.ts`: Ajout d'un flag `_gridEventsAttached` pour n'attacher les événements qu'une seule fois
+- `@ui/src/thematic/thematic-maps.ts`: `clear()` rendu async avec `await loadGrid(false)`
+- `@ui/src/thematic/thematic-panel.ts`: `resetThematic()` rendu async
+
+**Fichiers modifiés:**
+```
+ui/src/main.ts                    # Flag _gridEventsAttached (lignes 1643-1677)
+ui/src/thematic/thematic-maps.ts  # clear() async (lignes 852-885)
+ui/src/thematic/thematic-panel.ts # resetThematic() async (lignes 913-923)
+```
+
+#### 2. Données granulométriques non affichées
+**Diagnostic:** Les données granulo pour "tsevie deve" n'existaient pas dans la base (pas un bug UI).
+- L'API retourne correctement `granulometrie: []` quand aucune donnée n'existe
+- Le sondage AMESSEFE "tsevie deve" n'avait pas de données granulo importées
+- Autres sondages AMESSEFE (lama-tessi, koudjouwde, etc.) ont bien des données granulo
+
+**Action:** Aucune correction nécessaire - comportement normal.
+
+---
+
+### 📁 Organisation des fichiers d'import
+
+#### Structure créée:
+```
+data/xlsx/
+├── IMPORT/                    # Fichiers bruts à importer
+│   ├── ADANDOGOU Afiwa Pamela.xlsx
+│   ├── SOGLO Ferdinand.xlsx
+│   ├── TCHESSI Ezani Léleng Richard.xlsx
+│   ├── NGOAPO Roxane Lenira Chrisie.xlsx
+│   └── ...
+└── RAW/
+    ├── LEGACY/                # Anciens atlas_import_* déplacés
+    │   ├── atlas_import_ADOTE_*.xlsx
+    │   ├── atlas_import_AOKNDOR*.xlsx
+    │   └── ...
+    └── atlas_import_*.xlsx    # Nouveaux fichiers canonisés
+```
+
+#### Fichiers canonisés (nouveaux):
+| Source | Fichier canonisé | Sondages | Échantillons | Atterberg | VBS | Granulo |
+|--------|------------------|----------|--------------|-----------|-----|---------|
+| TCHESSI | atlas_import_TCHESSI.xlsx | 4 | 12 | 9 | 9 | 318 |
+| SOGLO Ferdinand | atlas_import_SOGLO_Ferdinand.xlsx | 6 | 18 | 12 | 12 | 414 |
+| ADANDOGOU | atlas_import_ADANDOGOU.xlsx | 4 | 12 | 9 | 9 | 477 |
+| NGOAPO | atlas_import_NGOAPO.xlsx | 4 | 12 | 6 | 6 | 228 |
+
+---
+
+### 🛠️ Nouveau script de canonisation
+
+**Fichier:** `scripts/canonize_xlsx_to_atlas_import.py`
+
+**Usage:**
+```bash
+# Fichier unique
+python scripts/canonize_xlsx_to_atlas_import.py <input.xlsx> <output.xlsx> --source "Nom"
+
+# Mode batch
+python scripts/canonize_xlsx_to_atlas_import.py --batch <input_dir> <output_dir>
+```
+
+**Fonctionnalités:**
+- Détection automatique des types de feuilles (AGT, AGS, Atterberg, VBS)
+- Extraction des localités depuis les noms de feuilles
+- Extraction des profondeurs depuis les en-têtes de colonnes
+- Génération du format atlas_import_template.xlsx standardisé
+
+---
+
+### ⏳ Imports en attente
+
+Les fichiers suivants sont canonisés et prêts pour import:
+- [ ] `data/xlsx/RAW/atlas_import_TCHESSI.xlsx`
+- [ ] `data/xlsx/RAW/atlas_import_SOGLO_Ferdinand.xlsx`
+- [ ] `data/xlsx/RAW/atlas_import_ADANDOGOU.xlsx`
+- [ ] `data/xlsx/RAW/atlas_import_NGOAPO.xlsx`
+
+**Commande d'import suggérée:**
+```bash
+python scripts/import_via_api.py data/xlsx/RAW/atlas_import_TCHESSI.xlsx
+```
+
+---
+
+### ✅ Priorités d'implémentation suggérées
+
+| Priorité | Fonctionnalité | Complexité | Impact |
+|----------|----------------|------------|--------|
+| 🔴 P1 | A.2 Diagramme de plasticité | Moyenne | Élevé |
+| 🔴 P1 | A.1 Courbe granulométrique | Moyenne | Élevé |
+| 🔴 P1 | C.1 Classification automatique GTR/USCS | Moyenne | Élevé |
+| 🟡 P2 | B.1 Tableau de bord statistique | Moyenne | Moyen |
+| 🟡 P2 | A.3 Profil géotechnique vertical | Faible | Moyen |
+| 🟡 P2 | D.2 Export Excel enrichi | Faible | Moyen |
+| 🟢 P3 | B.2 Corrélations entre paramètres | Moyenne | Moyen |
+| 🟢 P3 | D.1 Rapport PDF automatique | Haute | Élevé |
+| 🟢 P3 | A.4 Heatmap interpolée | Haute | Moyen |
+| 🔵 P4 | E.2 Contrôle qualité données | Moyenne | Moyen |
+| 🔵 P4 | C.2 Alertes et seuils | Faible | Moyen |
+
+---
+
+### 📁 Architecture technique suggérée
+
+```
+ui/src/
+├── analysis/                    # Nouveaux outils d'analyse
+│   ├── granulo-chart.ts        # Courbe granulométrique
+│   ├── plasticity-chart.ts     # Diagramme Casagrande
+│   ├── depth-profile.ts        # Profil vertical
+│   ├── stats-dashboard.ts      # Tableau de bord stats
+│   ├── correlation-matrix.ts   # Matrice corrélations
+│   └── classification.ts       # Classifications GTR/USCS
+├── reports/                     # Génération de rapports
+│   ├── pdf-generator.ts        # Export PDF
+│   ├── excel-export.ts         # Export Excel enrichi
+│   └── report-templates/       # Templates personnalisables
+└── quality/                     # Contrôle qualité
+    ├── outlier-detection.ts    # Détection anomalies
+    └── validation-rules.ts     # Règles de validation
+```
+
+---

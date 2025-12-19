@@ -1640,35 +1640,41 @@ async function loadGrid(useBbox = false) {
     const bounds = gridLayer.getBounds()
     if (bounds.isValid() && !useBbox) map.fitBounds(bounds, { padding: [12, 12] })
 
-    // Redessiner les mailles lors du zoom pour ajuster les contours
-    map.on('zoomend', () => {
-      // Chantier A - Réinitialiser le survol lors du zoom
-      if (hoveredCell && hoveredCell !== selectedCell) {
-        hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))
-        hoveredCell = null
-      }
-      
-      // Redessiner les mailles avec le nouveau zoom
-      if (gridLayer) {
-        gridLayer.eachLayer((layer: any) => {
-          const feature = layer.feature
-          if (feature && layer !== selectedCell) {
-            // Ne redessiner que les mailles visibles (qui passent les filtres)
-            if (featureMatchesFilters(feature, currentFilters)) {
-              layer.setStyle(styleFeature(feature))
+    // Attacher les événements une seule fois (éviter les doublons)
+    if (!(window as any)._gridEventsAttached) {
+      // Redessiner les mailles lors du zoom pour ajuster les contours
+      map.on('zoomend', () => {
+        // Chantier A - Réinitialiser le survol lors du zoom
+        if (hoveredCell && hoveredCell !== selectedCell) {
+          hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))
+          hoveredCell = null
+        }
+        
+        // Redessiner les mailles avec le nouveau zoom
+        if (gridLayer) {
+          gridLayer.eachLayer((layer: any) => {
+            const feature = layer.feature
+            if (feature && layer !== selectedCell) {
+              // Ne redessiner que les mailles visibles (qui passent les filtres)
+              if (featureMatchesFilters(feature, currentFilters)) {
+                layer.setStyle(styleFeature(feature))
+              }
             }
-          }
-        })
-      }
-    })
-    
-    // Chantier A - Réinitialiser le survol lors du déplacement
-    map.on('movestart', () => {
-      if (hoveredCell && hoveredCell !== selectedCell) {
-        hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))
-        hoveredCell = null
-      }
-    })
+          })
+        }
+      })
+      
+      // Chantier A - Réinitialiser le survol lors du déplacement
+      map.on('movestart', () => {
+        if (hoveredCell && hoveredCell !== selectedCell) {
+          hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))
+          hoveredCell = null
+        }
+      })
+      
+      ;(window as any)._gridEventsAttached = true
+      console.log('[loadGrid] Événements zoomend/movestart attachés (une seule fois)')
+    }
 
     buildAdmFilters(gj)
     lastBounds = map.getBounds()
@@ -3482,6 +3488,47 @@ console.log('[INIT] Initialisation cartes thématiques...')
 const thematicManager = new ThematicMapManager(map, API_GEO)
 const thematicPanel = new ThematicPanel(thematicManager)
 console.log('[INIT] ✅ Cartes thématiques initialisées (Export Pro intégré dans le panneau)')
+
+// Écouter les clics sur les mailles thématiques pour propager vers la grille
+map.on('thematicmap:cellclick', async (e: any) => {
+  const { code, properties, latlng, layer } = e
+  console.log('[Main] Clic thématique reçu pour maille:', code)
+  
+  // Mettre à jour la sélection visuelle
+  if (selectedCell && selectedCell !== layer) {
+    selectedCell.setStyle(getDefaultStyle((selectedCell as any).feature))
+  }
+  selectedCell = layer
+  selectedMailleCode = code
+  selectedMailleProps = properties
+  layer.setStyle(CELL_SELECTED_STYLE)
+  layer.bringToFront()
+  
+  // Zoomer sur la maille
+  const bounds = layer.getBounds()
+  map.fitBounds(bounds, { maxZoom: 14 })
+  
+  // Auto-générer le code sondage
+  await generateSurveyCode(code)
+  
+  // Auto-remplir lon/lat avec le centre de la maille
+  const center = bounds.getCenter()
+  const lonInput = document.getElementById('surveyLon') as HTMLInputElement
+  const latInput = document.getElementById('surveyLat') as HTMLInputElement
+  if (lonInput && latInput) {
+    lonInput.value = center.lng.toFixed(6)
+    latInput.value = center.lat.toFixed(6)
+  }
+  
+  // Toast de confirmation
+  toast(`📍 Maille sélectionnée: ${code}`, 'ok')
+  
+  // Charger les détails complets de la maille
+  await loadMailleDetails(code)
+  
+  // Charger les mailles voisines
+  loadNeighbors(code)
+})
 
 // Le wizard sera initialisé dans bootstrap() pour éviter les problèmes de portée
 // V2 - désactivé pour tests

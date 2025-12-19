@@ -636,7 +636,7 @@ export class ThematicMapManager {
   }
   
   /**
-   * Bind highlight behavior on hover
+   * Bind highlight behavior on hover and click
    */
   private bindFeatureHighlight(layer: L.Layer, config: ThematicMapConfig): void {
     ;(layer as any).on({
@@ -651,6 +651,21 @@ export class ThematicMapManager {
       },
       mouseout: (e: any) => {
         this.polygonLayer?.resetStyle(e.target)
+      },
+      click: (e: any) => {
+        // Propager le clic vers la maille correspondante dans la grille originale
+        const feature = e.target.feature
+        const code = feature?.properties?.code
+        if (code) {
+          console.log('[ThematicMap] Clic sur maille thématique:', code)
+          // Émettre un événement personnalisé pour que main.ts puisse le gérer
+          this.map.fire('thematicmap:cellclick', { 
+            code, 
+            properties: feature.properties,
+            latlng: e.latlng,
+            layer: e.target
+          })
+        }
       }
     })
   }
@@ -834,7 +849,7 @@ export class ThematicMapManager {
   /**
    * Nettoyer la carte
    */
-  clear(): void {
+  async clear(): Promise<void> {
     this.clearLayers()
     
     if (this.legendControl) {
@@ -842,15 +857,29 @@ export class ThematicMapManager {
       this.legendControl = null
     }
     
-    // Restaurer la couche de couverture (grille rouge) si elle existe
-    const gridLayer = (window as any).gridLayer
-    if (gridLayer && !this.map.hasLayer(gridLayer)) {
-      console.log('[ThematicMap] Restauration de la couche de couverture')
-      gridLayer.addTo(this.map)
+    // Restaurer la couche de couverture (grille) en la rechargeant complètement
+    // pour que les événements de clic soient ré-attachés
+    const loadGrid = (window as any).loadGrid
+    if (loadGrid) {
+      console.log('[ThematicMap] Rechargement complet de la grille de couverture')
+      try {
+        await loadGrid(false)
+        console.log('[ThematicMap] Grille rechargée avec succès')
+      } catch (err) {
+        console.error('[ThematicMap] Erreur rechargement grille:', err)
+      }
+    } else {
+      // Fallback: juste ajouter la couche existante (sans événements)
+      const gridLayer = (window as any).gridLayer
+      if (gridLayer && !this.map.hasLayer(gridLayer)) {
+        console.log('[ThematicMap] Restauration de la couche de couverture (fallback)')
+        gridLayer.addTo(this.map)
+      }
     }
     
     this.currentConfig = null
     this.currentClassification = null
+    this.currentData = null
     
     this.map.fire('thematicmap:cleared')
   }
