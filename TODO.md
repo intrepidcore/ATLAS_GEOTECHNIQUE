@@ -2938,3 +2938,221 @@ ui/src/
 ```
 
 ---
+
+---
+
+## 🚀 ROADMAP v3.4.1 → v3.4.4 - Export Atlas Amélioré (2025-12-22)
+
+**Objectif** : Améliorer l'architecture export, les palettes, les graphes et la qualité des données.
+
+### 📋 Organisation en Sprints
+
+| Version | Nom | Objectif | Priorité |
+|---------|-----|----------|----------|
+| **v3.4.1** | Stabilité Export | Bounds + masque + skip thématiques vides + légendes | 🔴 Critique |
+| **v3.4.2** | Cohérence Visuelle | Palettes centralisées + graphes améliorés | 🟠 Moyenne |
+| **v3.4.3** | Pack Analyse | Excel unique + QA summary | 🟠 Moyenne |
+| **v3.4.4** | Performance & Impression | PNG optimisé + métadonnées 300 DPI | 🟢 Basse |
+
+---
+
+### 🔴 v3.4.1 - Stabilité Export (CRITIQUE)
+
+#### A1. computeTightBoundsWithMargin() - Correction ratio cos(lat)
+
+**Problème** : Le ratio géographique ADM (largeur/hauteur en degrés) n'est pas corrigé par la latitude (projection Mercator). Maritime déborde, Plateaux a trop de marge.
+
+**Source de vérité** :
+- Bounds effectifs = ceux renvoyés par Leaflet après `fitBounds()` (pas le bbox théorique)
+- Mise en page = `LAYOUT_MM` + DPI
+
+**Fichiers à modifier** :
+- [ ] `ui/src/export/export-quick-dialog.ts` : Créer `computeTightBoundsWithMargin()`
+- [ ] `ui/src/export/export-types.ts` : Ajouter `marginPercent: number` (défaut 5%)
+
+**Cas limites à gérer** :
+- ADM très petite (1 commune) → zoom max limité à 15
+- ADM très allongée → ajuster pour éviter bandes vides
+- Minimum et maximum de zoom export
+
+**Tests** :
+- [ ] Test unitaire avec 3 ADM fictives (Maritime, Plateaux, Kara)
+- [ ] Vérifier ratio visuel identique entre régions
+
+#### A2. Bounds effectifs Leaflet pour le masque ADM
+
+**Problème** : Le masque est dessiné avec le bbox calculé, pas les bounds effectifs de Leaflet.
+
+**Fichiers à modifier** :
+- [ ] `ui/src/export/export-quick-dialog.ts` : Après `fitBounds()`, récupérer bounds effectifs
+- [ ] `ui/src/export/export-frame.ts` : `drawAdmMask()` utilise les bounds effectifs
+
+#### E2. Skip thématiques sans données + QA avant export
+
+**Problème** : Proctor (gamma_d_max, w_opt) échoue systématiquement car aucune donnée.
+
+**Actions** :
+- [ ] Avant export, vérifier si `grid_*.geojson` a des features
+- [ ] Si vide, skip avec message dans `index.json` : `skipped: [{ thematic, reason: 'no_data' }]`
+- [ ] Dans l'UI, griser les thématiques sans données
+- [ ] QA avant export : si `sondage_id` manquant > X% → warning UI
+
+**Fichiers à modifier** :
+- [ ] `ui/src/export/export-atlas-dialog.ts` : Vérification avant export
+- [ ] `ui/src/thematic/thematic-panel.ts` : Griser thématiques vides
+
+#### E3. Remplir légendes dans metadata.json et README.md
+
+**Problème** : `legends` vide dans `metadata.json` et `README.md`.
+
+**Actions** :
+- [ ] Après génération de chaque carte, récupérer la classification utilisée
+- [ ] Écrire dans `metadata.legends[thematic]` : classes, couleurs, labels, unité, méthode
+- [ ] Enregistrer aussi le nom de la palette + si inversée
+
+**Fichiers à modifier** :
+- [ ] `ui/src/export/capture-utils.ts` : Dans `generateZipWithMetadata()`
+- [ ] `ui/src/export/export-atlas-dialog.ts` : Passer classification à metadata
+
+---
+
+### 🟠 v3.4.2 - Cohérence Visuelle
+
+#### B1-B4. THEMATIC_PALETTE_MAP centralisé
+
+**Mapping thématique → palette** :
+
+| Thématique | Palette | Justification |
+|------------|---------|---------------|
+| `vbs_avg` | YlOrRd | Risque argileux (chaud) |
+| `ip_avg` | PuRd | Plasticité (mauve/rose) |
+| `eg_avg` | Blues | Gonflement (bleu) |
+| `passant_80um_avg` | BrBG | Fines vs sables (divergent) |
+| `passant_2mm_avg` | YlGnBu | Granulométrie |
+| `n_sondages` | Greens | Densité de données |
+| `gamma_d_max_avg` | Oranges | Compacité |
+| `w_opt_avg` | Blues | Teneur en eau |
+| `wl_avg` | PuBu | Limite de liquidité |
+| `wp_avg` | BuPu | Limite de plasticité |
+
+**Compatibilité impression/daltonisme** :
+- Éviter palettes trop saturées (Turbo, Spectral)
+- Privilégier Viridis, Cividis pour daltonisme
+
+**Fichiers à modifier** :
+- [ ] `ui/src/thematic/thematic-types.ts` : Créer `THEMATIC_PALETTE_MAP`
+- [ ] `ui/src/thematic/thematic-maps.ts` : `getColors()` lit depuis `THEMATIC_PALETTE_MAP`
+- [ ] `ui/src/export/export-frame.ts` : `drawLegend()` et `drawColoredCells()` utilisent même source
+- [ ] `ui/src/thematic/thematic-panel.ts` : Pré-sélectionner palette recommandée
+
+#### C1-C5. Amélioration des graphes statistiques
+
+**Guidelines visuelles "Style Atlas"** :
+- Police : Arial/Helvetica, titre 14pt bold, axes 11pt
+- Fond : Gris très clair (#f8f9fa), grille fine (#e0e0e0)
+- Couleurs : Cohérentes avec la thématique (même palette que carte)
+- Footer : `n = X | moy = Y.YY unité | médiane = Z.ZZ | Q1–Q3 = A–B | min = C | max = D`
+- Seuils : Lignes verticales pointillées sur histogrammes aux breaks de classification
+
+**Améliorations** :
+- [ ] Boxplots multi-préfectures (grouper par ADM2)
+- [ ] Histogrammes : ajouter lignes verticales aux seuils de classes
+- [ ] Scatterplots : afficher r et p-value, pas seulement R²
+- [ ] Filtrer mailles avec `n_sondages >= 2` pour corrélations
+- [ ] Unités sur tous les axes
+
+**Fichiers à modifier** :
+- [ ] Nouveau `ui/src/export/chart-config.ts` : Configuration centralisée styles
+- [ ] `ui/src/export/export-atlas-dialog.ts` : Génération graphes améliorés
+
+**Nouveaux graphes** :
+- [ ] Matrice de corrélation (heatmap VBS/IP/Eg/% fines)
+- [ ] Graphes par région (même structure que national, filtré par ADM1)
+
+---
+
+### 🟠 v3.4.3 - Pack Analyse Avancée
+
+#### D1-D4. Export Excel unique
+
+**Objectif** : Générer `atlas_geotechnique_donnees_analyse.xlsx` avec une feuille par dataset.
+
+**Feuilles** :
+| Feuille | Source | Colonnes clés |
+|---------|--------|---------------|
+| `grille_nationale` | referentiels/grille_nationale.geojson | code, adm1, adm2, adm3 |
+| `adm1` | referentiels/adm1.geojson | name |
+| `adm2` | referentiels/adm2.geojson | name, adm1 |
+| `grid_vbs_avg` | donnees_agregees/grid_vbs_avg.geojson | grid_id, value, n_sondages |
+| `grid_ip_avg` | idem | idem |
+| `grid_eg_avg` | idem | idem |
+| `grid_passant_80um_avg` | idem | idem |
+| `grid_passant_2mm_avg` | idem | idem |
+| `sondages` | donnees_brutes/sondages.csv | toutes colonnes |
+| `essais_atterberg` | donnees_brutes/essais_atterberg.csv | toutes colonnes |
+| `essais_vbs` | donnees_brutes/essais_vbs.csv | toutes colonnes |
+| `essais_granulo` | donnees_brutes/essais_granulo.csv | toutes colonnes |
+| `essais_proctor` | donnees_brutes/essais_proctor.csv | toutes colonnes |
+| `GRID_WIDE` | Jointure grilles | 1 ligne = 1 maille, toutes thématiques |
+| `DICT_COLONNES` | Métadonnées | nom, définition, unité, source |
+
+**Fichiers à créer/modifier** :
+- [ ] Nouveau `ui/src/export/export-excel.ts` : Module SheetJS
+- [ ] `ui/src/export/export-atlas-dialog.ts` : Checkbox "Inclure fichier Excel"
+- [ ] `ui/src/export/capture-utils.ts` : Ajouter Excel au ZIP
+
+#### E4. QA summary dans Excel
+
+**Contrôles QA** :
+| Contrôle | Seuil d'alerte | Action |
+|----------|----------------|--------|
+| % coordonnées x,y vides | > 10% | ⚠️ Warning |
+| % sondage_id manquant dans essais | > 5% | ⚠️ Warning |
+| Cohérence sondage ↔ essais | Essais orphelins | 🔴 Erreur |
+| Valeurs hors plage (IP < 0, VBS < 0) | Toute occurrence | 🔴 Erreur |
+
+**Fichiers à modifier** :
+- [ ] `ui/src/export/export-excel.ts` : Onglet `_QA_SUMMARY`
+
+---
+
+### 🟢 v3.4.4 - Performance & Impression
+
+#### E1. Optimisation PNG + métadonnées 300 DPI
+
+**Problème** : PNG ~15.5 Mo/image, métadonnées DPI = 96 au lieu de 300.
+
+**Solutions** :
+| Solution | Impact | Implémentation |
+|----------|--------|----------------|
+| Compression PNG optimisée | -30 à -50% | Post-traitement pngquant |
+| Format WebP (optionnel) | -60 à -80% | Option dans dialogue |
+| Métadonnées DPI | Aucun sur taille | Chunk pHYs (11811 px/m = 300 DPI) |
+
+**Mode "export léger"** :
+- Option UI pour export 150 DPI (diffusion numérique)
+- Export 300 DPI reste l'option "impression"
+
+**Fichiers à modifier** :
+- [ ] `ui/src/export/export-frame.ts` : Injection métadonnées DPI
+- [ ] `ui/src/export/export-quick-dialog.ts` : Option qualité légère
+
+---
+
+### ✅ Checklist de validation
+
+#### Tests manuels
+- [ ] Export Maritime : carte ne déborde pas
+- [ ] Export Plateaux : marge homogène
+- [ ] Export Proctor : skip avec message (pas d'erreur)
+- [ ] Légendes présentes dans metadata.json
+- [ ] Palettes cohérentes carte ↔ graphes
+- [ ] Excel généré avec toutes les feuilles
+- [ ] QA summary correct
+
+#### Tests automatiques
+- [ ] Test unitaire `computeTightBoundsWithMargin()` avec 3 ADM
+- [ ] Script vérifiant `legends[...]` non vide si `grid_*` a des features
+- [ ] Script QA vérifiant % valeurs manquantes
+
+---
