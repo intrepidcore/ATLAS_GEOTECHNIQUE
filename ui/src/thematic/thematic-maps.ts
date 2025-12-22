@@ -9,19 +9,23 @@ import type {
   ThematicExportState,
   ThematicClassBreak
 } from './thematic-types'
-import { getParameterById } from './thematic-types'
+import { getParameterById, getRecommendedPalette, PALETTE_OPTIONS } from './thematic-types'
 
 export class ThematicMapManager {
   private map: L.Map
   private apiUrl: string
   private polygonLayer: L.GeoJSON | null = null  // Couche des polygones (mailles)
   private circleLayer: L.LayerGroup | null = null // Couche des cercles proportionnels
-  private admOverlayLayer: L.LayerGroup  // Couche des contours ADM
+  public admOverlayLayer: L.LayerGroup  // Couche des contours ADM (public pour accès externe)
   private currentConfig: ThematicMapConfig | null = null
   private legendControl: L.Control | null = null
   private currentClassification: Classification | null = null
   private currentData: ThematicData | null = null
   private currentExportState: ThematicExportState | null = null
+  
+  // État de chargement pour waitUntilReady
+  private _isReady: boolean = true
+  private _readyCallbacks: Array<() => void> = []
   
   constructor(map: L.Map, apiUrl: string) {
     this.map = map
@@ -30,9 +34,52 @@ export class ThematicMapManager {
   }
   
   /**
+   * Indique si le manager est prêt (carte chargée)
+   */
+  get isReady(): boolean {
+    return this._isReady
+  }
+  
+  /**
+   * Attend que le manager soit prêt
+   */
+  async waitUntilReady(timeoutMs: number = 5000): Promise<void> {
+    if (this._isReady) return
+    
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        const idx = this._readyCallbacks.indexOf(resolve)
+        if (idx >= 0) this._readyCallbacks.splice(idx, 1)
+        console.warn('[ThematicMap] waitUntilReady timeout')
+        resolve() // Résoudre quand même pour éviter les blocages
+      }, timeoutMs)
+      
+      this._readyCallbacks.push(() => {
+        clearTimeout(timeout)
+        resolve()
+      })
+    })
+  }
+  
+  /**
+   * Marque le manager comme prêt et notifie les callbacks
+   */
+  private setReady(ready: boolean): void {
+    this._isReady = ready
+    if (ready) {
+      const callbacks = [...this._readyCallbacks]
+      this._readyCallbacks = []
+      callbacks.forEach(cb => cb())
+    }
+  }
+  
+  /**
    * Charger et afficher une carte thématique
    */
   async loadThematicMap(config: ThematicMapConfig): Promise<void> {
+    // Marquer comme non prêt au début du chargement
+    this.setReady(false)
+    
     try {
       console.log('[ThematicMap] Chargement config:', config)
       
@@ -72,8 +119,12 @@ export class ThematicMapManager {
       // 8. Émettre événement
       this.map.fire('thematicmap:loaded', { config, data, classification })
       
+      // 9. Marquer comme prêt
+      this.setReady(true)
+      
     } catch (error) {
       console.error('[ThematicMap] Erreur:', error)
+      this.setReady(true) // Marquer comme prêt même en cas d'erreur pour éviter les blocages
       throw error
     }
   }
@@ -291,28 +342,43 @@ export class ThematicMapManager {
   }
   
   /**
-   * Récupérer les couleurs d'une palette
+   * Récupérer les couleurs d'une palette (v3.4.2 - utilise THEMATIC_PALETTE_MAP)
    */
   private async getColors(palette: string, n: number): Promise<string[]> {
-    // Palettes hardcodées pour fallback
+    // Palettes complètes pour interpolation (v3.4.2 enrichi)
     const palettes: Record<string, string[]> = {
+      // Séquentielles monochrome
       'Blues': ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'],
       'Greens': ['#f7fcf5', '#e5f5e0', '#c7e9c0', '#a1d99b', '#74c476', '#41ab5d', '#238b45', '#006d2c', '#00441b'],
       'Reds': ['#fff5f0', '#fee0d2', '#fcbba1', '#fc9272', '#fb6a4a', '#ef3b2c', '#cb181d', '#a50f15', '#67000d'],
+      'Oranges': ['#fff5eb', '#fee6ce', '#fdd0a2', '#fdae6b', '#fd8d3c', '#f16913', '#d94801', '#a63603', '#7f2704'],
+      'Purples': ['#fcfbfd', '#efedf5', '#dadaeb', '#bcbddc', '#9e9ac8', '#807dba', '#6a51a3', '#54278f', '#3f007d'],
+      // Séquentielles multi-teintes
+      'YlOrRd': ['#ffffcc', '#ffeda0', '#fed976', '#feb24c', '#fd8d3c', '#fc4e2a', '#e31a1c', '#bd0026', '#800026'],
+      'YlGnBu': ['#ffffd9', '#edf8b1', '#c7e9b4', '#7fcdbb', '#41b6c4', '#1d91c0', '#225ea8', '#253494', '#081d58'],
+      'PuBu': ['#fff7fb', '#ece7f2', '#d0d1e6', '#a6bddb', '#74a9cf', '#3690c0', '#0570b0', '#045a8d', '#023858'],
+      'BuPu': ['#f7fcfd', '#e0ecf4', '#bfd3e6', '#9ebcda', '#8c96c6', '#8c6bb1', '#88419d', '#810f7c', '#4d004b'],
+      'PuRd': ['#f7f4f9', '#e7e1ef', '#d4b9da', '#c994c7', '#df65b0', '#e7298a', '#ce1256', '#980043', '#67001f'],
+      // Accessibles daltonisme
+      'Viridis': ['#440154', '#482878', '#3e4989', '#31688e', '#26828e', '#1f9e89', '#35b779', '#6ece58', '#b5de2b', '#fde724'],
+      'Cividis': ['#00204d', '#00306f', '#2b4a74', '#4d637b', '#6d7c82', '#8d9589', '#acae91', '#cbc89d', '#e8e2ab', '#ffea46'],
+      // Divergentes
       'RdYlGn': ['#d73027', '#f46d43', '#fdae61', '#fee08b', '#ffffbf', '#d9ef8b', '#a6d96a', '#66bd63', '#1a9850'],
       'RdBu': ['#b2182b', '#d6604d', '#f4a582', '#fddbc7', '#f7f7f7', '#d1e5f0', '#92c5de', '#4393c3', '#2166ac'],
-      'Viridis': ['#440154', '#482878', '#3e4989', '#31688e', '#26828e', '#1f9e89', '#35b779', '#6ece58', '#b5de2b', '#fde724']
+      'BrBG': ['#8c510a', '#bf812d', '#dfc27d', '#f6e8c3', '#f5f5f5', '#c7eae5', '#80cdc1', '#35978f', '#01665e'],
+      'PuOr': ['#7f3b08', '#b35806', '#e08214', '#fdb863', '#fee0b6', '#f7f7f7', '#d8daeb', '#b2abd2', '#8073ac', '#542788', '#2d004b']
     }
     
     const colors = palettes[palette] || palettes['Blues']
     
     // Échantillonner uniformément
     if (n >= colors.length) return colors
+    if (n <= 1) return [colors[Math.floor(colors.length / 2)]]
     
     const step = (colors.length - 1) / (n - 1)
     return Array.from({ length: n }, (_, i) => {
       const idx = Math.round(i * step)
-      return colors[idx]
+      return colors[Math.min(idx, colors.length - 1)]
     })
   }
   

@@ -508,6 +508,315 @@ export class ExportQuickDialog {
     }
   };
   
+  // ============================================================================
+  // API PUBLIQUE POUR EXPORT PROGRAMMATIQUE (utilisé par Export Complet)
+  // ============================================================================
+  
+  /**
+   * Interface pour les options d'export programmatique
+   */
+  public static readonly SingleExportOptionsDefaults = {
+    quality: 'hd' as ExportQuality,
+    maskMode: 'context' as 'none' | 'context' | 'focus' | 'clip',
+    showEmptyCells: true,
+    onlyAdmCells: true,
+    includeStats: true,
+    includeLegend: true,
+    includeNeighbors: true,
+    boundaryLevel: 'none' as 'none' | 'adm1' | 'adm2'
+  };
+  
+  /**
+   * Exporte une carte unique de manière programmatique (sans UI)
+   * Utilisé par Export Complet pour générer chaque carte du batch
+   * 
+   * @param options Options d'export
+   * @returns Blob PNG de la carte exportée, ou null en cas d'erreur
+   */
+  async exportSingle(options: {
+    quality?: ExportQuality;
+    maskMode?: 'none' | 'context' | 'focus' | 'clip';
+    showEmptyCells?: boolean;
+    onlyAdmCells?: boolean;
+    includeStats?: boolean;
+    includeLegend?: boolean;
+    includeNeighbors?: boolean;
+    boundaryLevel?: 'none' | 'adm1' | 'adm2';
+    onProgress?: (message: string) => void;
+  } = {}): Promise<Blob | null> {
+    // Fusionner avec les options par défaut
+    const opts = { ...ExportQuickDialog.SingleExportOptionsDefaults, ...options };
+    const onProgress = opts.onProgress || (() => {});
+    
+    // Configurer les options internes
+    this.options = {
+      ...this.options,
+      quality: opts.quality,
+      zone: 'adm-filtered',
+      showEmptyCells: opts.showEmptyCells,
+      onlyAdmCells: opts.onlyAdmCells,
+      maskMode: opts.maskMode,
+      includeStats: opts.includeStats,
+      includeLegend: opts.includeLegend
+    };
+    
+    try {
+      // Récupérer les infos thématiques et ADM
+      const thematic = this.config.getActiveThematic() || {
+        name: 'Carte géotechnique',
+        parameter: 'n_sondages'
+      };
+      const admFilters = this.config.getActiveAdmFilters();
+      const map = this.config.getMap?.();
+      
+      if (!map) {
+        console.error('[ExportSingle] Map non disponible');
+        return null;
+      }
+      
+      // Sauvegarder la vue actuelle pour la restaurer après
+      let originalBounds: any = null;
+      let originalContainerStyle: { width: string; height: string } | null = null;
+      
+      // Calculer le bbox optimal pour l'ADM
+      const admBounds = this.config.getAdmBounds?.();
+      let bounds: { north: number; south: number; east: number; west: number };
+      
+      if (admBounds) {
+        bounds = this.computeOptimalBoundsForSheet(admBounds);
+        
+        // Calculer l'AR cible de la zone carte A4
+        const dpi = QUALITY_SETTINGS[opts.quality].dpi;
+        const a4Layout = getA4Layout(dpi, 'portrait');
+        const targetMapAreaAR = a4Layout.targetAspectRatio;
+        
+        // Sauvegarder et redimensionner le container
+        const container = this.config.mapContainer;
+        if (container) {
+          originalBounds = map.getBounds();
+          originalContainerStyle = {
+            width: container.style.width,
+            height: container.style.height
+          };
+          
+          const containerWidth = container.clientWidth;
+          const newContainerHeight = Math.round(containerWidth / targetMapAreaAR);
+          container.style.height = `${newContainerHeight}px`;
+          map.invalidateSize({ animate: false });
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        // Zoomer sur le bbox ADM
+        onProgress('Centrage sur la zone ADM...');
+        const L = (window as any).L;
+        const targetBounds = L.latLngBounds(
+          [bounds.south, bounds.west],
+          [bounds.north, bounds.east]
+        );
+        
+        map.fitBounds(targetBounds, { animate: false, padding: [0, 0], maxZoom: 18 });
+        
+        // Attendre la fin du déplacement
+        await new Promise<void>(resolve => {
+          const handler = () => { map.off('moveend', handler); resolve(); };
+          map.on('moveend', handler);
+          setTimeout(() => { map.off('moveend', handler); resolve(); }, 2000);
+        });
+        await waitForFrames(2);
+        
+        // Récupérer les bounds effectifs
+        const effectiveBounds = map.getBounds();
+        bounds = {
+          north: effectiveBounds.getNorth(),
+          south: effectiveBounds.getSouth(),
+          east: effectiveBounds.getEast(),
+          west: effectiveBounds.getWest()
+        };
+      } else {
+        bounds = this.config.getMapBounds();
+      }
+      
+      // Attendre le chargement des tuiles
+      onProgress('Chargement des tuiles...');
+      await waitForTilesLoaded(this.config.mapContainer, 5000);
+      await waitForFrames(2);
+      await new Promise(resolve => setTimeout(resolve, 300));
+      
+      // Masquer tous les panes non-tuiles avant capture
+      onProgress('Capture du fond de carte...');
+      const hiddenPanes: Record<string, string> = {};
+      const panes = map.getPanes();
+      const panesToHide = ['overlayPane', 'markerPane', 'tooltipPane', 'popupPane', 'shadowPane', 'thematicPane', 'thematicCirclesPane', 'gridPane'];
+      
+      for (const paneName of panesToHide) {
+        const pane = panes[paneName];
+        if (pane?.style) {
+          hiddenPanes[paneName] = pane.style.display;
+          pane.style.display = 'none';
+        }
+      }
+      await new Promise(resolve => setTimeout(resolve, 80));
+      
+      // Capturer le fond de carte
+      let mapCapture: Awaited<ReturnType<typeof captureLeafletMap>> | null = null;
+      try {
+        mapCapture = await captureLeafletMap(this.config.mapContainer, opts.quality);
+        
+        // Valider la capture
+        const validation = validateCapture(mapCapture.canvas);
+        if (!validation.valid) {
+          console.warn('[ExportSingle] Capture potentiellement invalide, retry...');
+          await waitForTilesLoaded(this.config.mapContainer, 2000);
+          await waitForFrames(3);
+          mapCapture = await captureLeafletMap(this.config.mapContainer, opts.quality);
+        }
+      } finally {
+        // Restaurer les panes
+        for (const [paneName, originalDisplay] of Object.entries(hiddenPanes)) {
+          const pane = panes[paneName];
+          if (pane?.style) pane.style.display = originalDisplay;
+        }
+        
+        // Restaurer le container
+        if (originalContainerStyle && this.config.mapContainer) {
+          this.config.mapContainer.style.width = originalContainerStyle.width;
+          this.config.mapContainer.style.height = originalContainerStyle.height;
+          map.invalidateSize({ animate: false });
+        }
+        
+        // Restaurer la vue
+        if (originalBounds) {
+          map.fitBounds(originalBounds, { animate: false });
+        }
+      }
+      
+      if (!mapCapture) {
+        console.error('[ExportSingle] Échec de la capture');
+        return null;
+      }
+      
+      // Créer le frame d'export A4
+      onProgress('Génération du canevas...');
+      const bbox: BBox = { minX: bounds.west, minY: bounds.south, maxX: bounds.east, maxY: bounds.north };
+      const exportFrame = ExportFrame.createA4(this.options, 'portrait');
+      
+      // Dessiner les éléments
+      exportFrame.drawTitle(thematic, admFilters);
+      await exportFrame.drawMapImage(mapCapture.canvas);
+      
+      // Charger et dessiner les mailles
+      let admCells: Array<{ geometry: any; has_data: boolean; value?: number; n_sondages?: number }> = [];
+      let cellsWithData = 0;
+      let cellsWithoutData = 0;
+      let classUsageCount: Map<number, number> | undefined;
+      const legendData = this.config.getThematicLegendData?.() || undefined;
+      
+      if (admFilters) {
+        onProgress('Chargement des mailles...');
+        try {
+          admCells = await this.fetchAdmCells(admFilters, thematic.parameter);
+          cellsWithData = admCells.filter(c => c.has_data).length;
+          cellsWithoutData = admCells.filter(c => !c.has_data).length;
+          
+          // Dessiner les mailles vides
+          if (opts.showEmptyCells && admCells.length > 0) {
+            exportFrame.drawEmptyCells(admCells, bbox);
+          }
+          
+          // Dessiner les mailles colorées
+          if (legendData?.classes && cellsWithData > 0) {
+            classUsageCount = exportFrame.drawColoredCells(admCells, bbox, legendData.classes);
+          }
+        } catch (e) {
+          console.warn('[ExportSingle] Erreur chargement mailles:', e);
+        }
+      }
+      
+      // Dessiner le masque ADM
+      const admPolygon = this.config.getAdmPolygon?.();
+      if (admPolygon && admPolygon.length >= 3) {
+        if (opts.maskMode !== 'none') {
+          exportFrame.drawAdmMask(admPolygon, bbox, opts.maskMode);
+        } else {
+          exportFrame.drawAdmBoundary(admPolygon, bbox, '#3366cc', 2.5);
+        }
+      }
+      
+      // Dessiner la grille et le cadre
+      exportFrame.drawGridAndFrame(bbox);
+      
+      // Re-dessiner la bordure si masque=none
+      if (admPolygon && admPolygon.length >= 3 && opts.maskMode === 'none') {
+        exportFrame.drawAdmBoundary(admPolygon, bbox, '#3366cc', 2.5);
+      }
+      
+      // Dessiner les voisins
+      if (opts.includeNeighbors && admFilters) {
+        try {
+          const neighbors = await this.fetchAdmNeighbors(admFilters);
+          if (neighbors.length > 0) {
+            exportFrame.drawNeighborLabels(neighbors, bbox, admPolygon);
+          }
+        } catch (e) {
+          console.warn('[ExportSingle] Erreur voisins:', e);
+        }
+      }
+      
+      // Dessiner la légende
+      const hasAdmBoundary = opts.maskMode !== 'none' && !!admPolygon && admPolygon.length >= 3;
+      const emptyCellsDrawn = opts.showEmptyCells && cellsWithoutData > 0;
+      exportFrame.drawLegend(legendData, emptyCellsDrawn, hasAdmBoundary, classUsageCount);
+      
+      // Dessiner les statistiques
+      if (opts.includeStats && legendData) {
+        onProgress('Calcul des statistiques...');
+        const cellValues = admCells
+          .filter(c => c.has_data && c.value != null)
+          .map(c => c.value as number)
+          .filter(v => typeof v === 'number' && Number.isFinite(v));
+        
+        const localStats = admCells.length > 0 ? {
+          count: cellsWithData,
+          null_count: cellsWithoutData,
+          count_total: admCells.length,
+          sum: cellValues.reduce((acc, v) => acc + v, 0),
+          mean: cellValues.length > 0 ? cellValues.reduce((acc, v) => acc + v, 0) / cellValues.length : 0
+        } : undefined;
+        
+        const featuresForStats = cellValues.map(v => ({ value: v }));
+        const statsData = buildExportStats({
+          parameterId: legendData.parameterId || thematic.parameter,
+          parameterLabel: legendData.parameterLabel || thematic.name,
+          unit: legendData.unit || '',
+          features: featuresForStats,
+          totalCellCount: admCells.length || legendData.totalCellCount || 0,
+          classes: legendData.classes || [],
+          admFilters: admFilters || {},
+          apiStats: localStats || legendData.apiStats
+        });
+        
+        exportFrame.drawStats(statsData);
+      }
+      
+      // Dessiner le cartouche avec l'échelle
+      const centerLat = (bounds.north + bounds.south) / 2;
+      const scaleText = computeScaleText(mapCapture.width, bounds.east - bounds.west, centerLat);
+      exportFrame.drawCartouche(scaleText);
+      
+      // Générer le blob PNG avec métadonnées DPI correctes (v3.4.4)
+      onProgress('Encodage PNG...');
+      const dpi = QUALITY_SETTINGS[opts.quality].dpi;
+      const blob = await exportFrame.toBlobWithDpi(dpi);
+      
+      console.log(`[ExportSingle] ✅ Export réussi: ${(blob.size / 1024 / 1024).toFixed(2)} Mo (${dpi} DPI)`);
+      return blob;
+      
+    } catch (error) {
+      console.error('[ExportSingle] Erreur:', error);
+      return null;
+    }
+  }
+  
   /**
    * Affiche une erreur de dépendance manquante
    */

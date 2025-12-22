@@ -128,7 +128,7 @@ export interface MapCaptureResult {
 
 export async function captureLeafletMap(
   mapContainer: HTMLElement,
-  quality: 'web' | 'standard' | 'print' | 'hd' = 'web'
+  quality: 'web' | 'standard' | 'print' | 'hd' | 'light' = 'web'
 ): Promise<MapCaptureResult> {
   const scale = QUALITY_SETTINGS[quality].scale;
   

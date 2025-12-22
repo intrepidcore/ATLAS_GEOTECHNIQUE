@@ -16,6 +16,7 @@ import { ActiveAdmFilters, ExportQuality } from './export-types';
 import { exportData, downloadBlob, type ExportDataConfig } from './export-data';
 import { generateAllCharts, type ThematicChartSet } from './chart-generator';
 import { ExportQuickDialog, type ExportQuickDialogConfig } from './export-quick-dialog';
+import { generateAnalysisExcel, type ExportExcelOptions } from './export-excel';
 
 // ============================================================================
 // Types
@@ -55,6 +56,8 @@ export interface AtlasExportConfig {
   };
   // Export graphes statistiques
   exportCharts: boolean;
+  // Export Excel unique (v3.4.3)
+  exportExcel: boolean;
 }
 
 export interface AtlasExportCallbacks {
@@ -551,7 +554,8 @@ export class ExportAtlasDialog {
         includeSondages: true,
         includeEssais: true
       },
-      exportCharts: false
+      exportCharts: false,
+      exportExcel: false
     };
     this.progress = {
       total: 0,
@@ -1174,7 +1178,8 @@ export class ExportAtlasDialog {
       boundaryLevel,
       exportData: exportDataEnabled,
       dataOptions,
-      exportCharts: (this.overlay.querySelector('#atlas-export-charts') as HTMLInputElement)?.checked || false
+      exportCharts: (this.overlay.querySelector('#atlas-export-charts') as HTMLInputElement)?.checked || false,
+      exportExcel: (this.overlay.querySelector('#atlas-export-excel') as HTMLInputElement)?.checked || false
     };
   }
   
@@ -1481,6 +1486,72 @@ export class ExportAtlasDialog {
             console.log(`[Atlas] ${chartCount} graphes ajoutés au ZIP`);
           } catch (e) {
             console.warn('[Atlas] Erreur génération graphes:', e);
+          }
+        }
+        
+        // ========== EXPORT EXCEL UNIQUE (v3.4.3) ==========
+        if (config?.exportExcel) {
+          this.updateProgress('Génération du fichier Excel...', 97);
+          console.log('[Atlas] Génération Excel activée');
+          
+          try {
+            // Collecter les données GeoJSON et CSV pour l'Excel
+            const geojsonFiles = new Map<string, any>();
+            const csvFiles = new Map<string, string>();
+            
+            // Récupérer les grilles thématiques
+            for (const thematicId of config.thematics) {
+              try {
+                const url = `http://localhost:8000/thematic/data?parameter=${thematicId}&include_geometry=false`;
+                const response = await fetch(url);
+                if (response.ok) {
+                  const data = await response.json();
+                  geojsonFiles.set(`grid_${thematicId}`, data);
+                }
+              } catch (e) {
+                console.warn(`[Atlas] Erreur chargement ${thematicId} pour Excel:`, e);
+              }
+            }
+            
+            // Récupérer les données brutes CSV
+            const csvEndpoints = [
+              { name: 'sondages', url: 'http://localhost:8000/export/sondages?format=csv' },
+              { name: 'essais_atterberg', url: 'http://localhost:8000/export/essais/atterberg?format=csv' },
+              { name: 'essais_vbs', url: 'http://localhost:8000/export/essais/vbs?format=csv' },
+              { name: 'essais_granulo', url: 'http://localhost:8000/export/essais/granulo?format=csv' },
+              { name: 'essais_proctor', url: 'http://localhost:8000/export/essais/proctor?format=csv' }
+            ];
+            
+            for (const endpoint of csvEndpoints) {
+              try {
+                const response = await fetch(endpoint.url);
+                if (response.ok) {
+                  const csvContent = await response.text();
+                  csvFiles.set(endpoint.name, csvContent);
+                }
+              } catch (e) {
+                console.warn(`[Atlas] Erreur chargement ${endpoint.name} pour Excel:`, e);
+              }
+            }
+            
+            // Générer le fichier Excel
+            const excelBlob = await generateAnalysisExcel({
+              geojsonFiles,
+              csvFiles,
+              includeGridWide: true,
+              includeDictionary: true,
+              includeQASummary: true,
+              metadata: {
+                exportDate: new Date().toLocaleDateString('fr-FR'),
+                version: '3.4.3'
+              }
+            });
+            
+            // Ajouter au ZIP
+            zip.file('atlas_geotechnique_donnees_analyse.xlsx', excelBlob);
+            console.log('[Atlas] Fichier Excel ajouté au ZIP');
+          } catch (e) {
+            console.warn('[Atlas] Erreur génération Excel:', e);
           }
         }
         
