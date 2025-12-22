@@ -31,7 +31,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     icon: '📍',
     parameters: ['n_sondages', 'n_echantillons', 'n_essais_total'],
     defaultParameter: 'n_sondages',
-    defaultPalette: 'Blues'
+    defaultPalette: 'Greens'
   },
   {
     id: 'argilosite',
@@ -40,7 +40,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     icon: '🧱',
     parameters: ['vbs_avg', 'ip_avg', 'wl_avg', 'wp_avg'],
     defaultParameter: 'vbs_avg',
-    defaultPalette: 'RdYlGn'
+    defaultPalette: 'YlOrRd'
   },
   {
     id: 'gonflement',
@@ -49,7 +49,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     icon: '⚠️',
     parameters: ['eg_avg', 'eg_max', 'eg_min'],
     defaultParameter: 'eg_avg',
-    defaultPalette: 'Reds'
+    defaultPalette: 'Blues'
   },
   {
     id: 'compacite',
@@ -58,7 +58,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     icon: '🔨',
     parameters: ['gamma_d_max_avg', 'w_opt_avg'],
     defaultParameter: 'gamma_d_max_avg',
-    defaultPalette: 'RdYlGn'
+    defaultPalette: 'Oranges'
   },
   {
     id: 'granulometrie',
@@ -67,7 +67,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     icon: '📊',
     parameters: ['passant_80um_avg', 'passant_2mm_avg', 'passant_20mm_avg'],
     defaultParameter: 'passant_80um_avg',
-    defaultPalette: 'Greens'
+    defaultPalette: 'BrBG'
   },
   {
     id: 'personnalise',
@@ -76,7 +76,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     icon: '⚙️',
     parameters: [], // Tous les paramètres
     defaultParameter: 'n_sondages',
-    defaultPalette: 'Blues'
+    defaultPalette: 'Greens'
   }
 ]
 
@@ -109,7 +109,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     category: 'density',
     description: 'Densité de sondages par maille (UTM 2 km × 2 km)',
     defaultBreaks: [1, 2, 3, 4, 5],
-    defaultPalette: 'Blues'
+    defaultPalette: 'Greens'
   },
   {
     id: 'n_echantillons',
@@ -117,7 +117,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: '',
     category: 'density',
     description: 'Nombre total d\'échantillons prélevés par maille',
-    defaultPalette: 'Blues'
+    defaultPalette: 'Greens'
   },
   {
     id: 'n_essais_total',
@@ -125,7 +125,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: '',
     category: 'density',
     description: 'Nombre total d\'essais géotechniques par maille',
-    defaultPalette: 'Blues'
+    defaultPalette: 'Greens'
   },
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -139,7 +139,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     description: 'Valeur de Bleu de Méthylène moyenne - mesure de l\'argilosité',
     formula: 'VBS = masse de bleu absorbé / masse de sol sec × 100',
     defaultBreaks: [0.2, 1.5, 2.5, 6, 8],
-    defaultPalette: 'RdYlGn',
+    defaultPalette: 'YlOrRd',
     minEssaisField: 'n_essais_vbs'
   },
   {
@@ -150,7 +150,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     description: 'Indice de plasticité moyen - caractérise la plasticité du sol',
     formula: 'IP = WL - WP',
     defaultBreaks: [7, 12, 25, 40],
-    defaultPalette: 'RdYlGn',
+    defaultPalette: 'PuRd',
     minEssaisField: 'n_essais_atterberg'
   },
   {
@@ -159,7 +159,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: '%',
     category: 'atterberg',
     description: 'Teneur en eau à la transition plastique → liquide',
-    defaultPalette: 'Blues',
+    defaultPalette: 'PuBu',
     minEssaisField: 'n_essais_atterberg'
   },
   {
@@ -168,7 +168,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: '%',
     category: 'atterberg',
     description: 'Teneur en eau à la transition solide → plastique',
-    defaultPalette: 'Blues',
+    defaultPalette: 'BuPu',
     minEssaisField: 'n_essais_atterberg'
   },
 
@@ -217,7 +217,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     description: 'Densité sèche maximale moyenne au Proctor',
     formula: 'γd,max = masse sèche / volume à compactage optimal',
     defaultBreaks: [1.6, 1.8, 2.0, 2.2],
-    defaultPalette: 'RdYlGn',
+    defaultPalette: 'Oranges',
     minEssaisField: 'n_essais_proctor'
   },
   {
@@ -242,7 +242,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     category: 'granulo',
     description: 'Fraction argileuse + limoneuse (< 80µm)',
     defaultBreaks: [12, 35, 50, 70],
-    defaultPalette: 'Greens',
+    defaultPalette: 'BrBG',
     minEssaisField: 'n_essais_granulo'
   },
   {
@@ -251,7 +251,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: '%',
     category: 'granulo',
     description: 'Fraction sable + fines (< 2mm)',
-    defaultPalette: 'Greens',
+    defaultPalette: 'YlGnBu',
     minEssaisField: 'n_essais_granulo'
   },
   {
@@ -260,7 +260,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: '%',
     category: 'granulo',
     description: 'Fraction graviers + fines (< 20mm)',
-    defaultPalette: 'Greens',
+    defaultPalette: 'YlGnBu',
     minEssaisField: 'n_essais_granulo'
   }
 ]
@@ -515,14 +515,70 @@ export interface SavedConfig {
 // PALETTES DE COULEURS
 // ============================================================================
 
+/**
+ * Mapping centralisé thématique → palette recommandée
+ * Source de vérité unique pour cartes ET graphes
+ * 
+ * Critères de sélection:
+ * - Compatibilité impression (éviter palettes trop saturées)
+ * - Accessibilité daltonisme (Viridis, Cividis préférés)
+ * - Cohérence sémantique (rouge=risque, bleu=eau, vert=densité)
+ */
+export interface ThematicPaletteConfig {
+  palette: string
+  reversed?: boolean
+  diverging?: boolean
+  midpoint?: number
+  /** Description pour l'UI */
+  rationale?: string
+}
+
+export const THEMATIC_PALETTE_MAP: Record<string, ThematicPaletteConfig> = {
+  // Couverture & instrumentation
+  'n_sondages': { palette: 'Greens', rationale: 'Densité de données (vert=bien couvert)' },
+  'n_echantillons': { palette: 'Greens', rationale: 'Densité de données' },
+  'n_essais_total': { palette: 'Greens', rationale: 'Densité de données' },
+  
+  // Argilosité / plasticité - palettes chaudes (risque argileux)
+  'vbs_avg': { palette: 'YlOrRd', rationale: 'Risque argileux croissant (jaune→rouge)' },
+  'ip_avg': { palette: 'PuRd', rationale: 'Plasticité (mauve/rose)' },
+  'wl_avg': { palette: 'PuBu', rationale: 'Limite de liquidité (bleu)' },
+  'wp_avg': { palette: 'BuPu', rationale: 'Limite de plasticité (violet)' },
+  
+  // Gonflement - palette bleue (eau/gonflement)
+  'eg_avg': { palette: 'Blues', rationale: 'Gonflement (bleu=eau)' },
+  'eg_max': { palette: 'Blues', rationale: 'Gonflement maximal' },
+  'eg_min': { palette: 'Greens', reversed: true, rationale: 'Gonflement minimal (vert=faible risque)' },
+  
+  // Compacité / Proctor
+  'gamma_d_max_avg': { palette: 'Oranges', rationale: 'Compacité (orange)' },
+  'w_opt_avg': { palette: 'Blues', rationale: 'Teneur en eau optimale' },
+  
+  // Granulométrie - palette divergente (fines vs grossiers)
+  'passant_80um_avg': { palette: 'BrBG', diverging: true, midpoint: 50, rationale: 'Fines vs sables (divergent)' },
+  'passant_2mm_avg': { palette: 'YlGnBu', rationale: 'Granulométrie' },
+  'passant_20mm_avg': { palette: 'YlGnBu', rationale: 'Granulométrie' }
+}
+
+/**
+ * Récupère la palette recommandée pour un paramètre
+ * Fallback sur 'Blues' si non défini
+ */
+export function getRecommendedPalette(parameterId: string): ThematicPaletteConfig {
+  return THEMATIC_PALETTE_MAP[parameterId] || { palette: 'Blues' }
+}
+
 export interface PaletteOption {
   value: string
   label: string
   type: 'sequential' | 'diverging'
   colors: string[]  // Preview colors
+  /** Accessible aux daltoniens */
+  colorblindSafe?: boolean
 }
 
 export const PALETTE_OPTIONS: PaletteOption[] = [
+  // Séquentielles - Monochrome
   { 
     value: 'Blues', 
     label: 'Bleus', 
@@ -548,6 +604,62 @@ export const PALETTE_OPTIONS: PaletteOption[] = [
     colors: ['#fff5eb', '#fd8d3c', '#7f2704']
   },
   { 
+    value: 'Purples', 
+    label: 'Violets', 
+    type: 'sequential',
+    colors: ['#fcfbfd', '#9e9ac8', '#3f007d']
+  },
+  
+  // Séquentielles - Multi-teintes
+  { 
+    value: 'YlOrRd', 
+    label: 'Jaune-Orange-Rouge', 
+    type: 'sequential',
+    colors: ['#ffffcc', '#fd8d3c', '#800026']
+  },
+  { 
+    value: 'YlGnBu', 
+    label: 'Jaune-Vert-Bleu', 
+    type: 'sequential',
+    colors: ['#ffffd9', '#41b6c4', '#081d58']
+  },
+  { 
+    value: 'PuBu', 
+    label: 'Violet-Bleu', 
+    type: 'sequential',
+    colors: ['#fff7fb', '#67a9cf', '#023858']
+  },
+  { 
+    value: 'BuPu', 
+    label: 'Bleu-Violet', 
+    type: 'sequential',
+    colors: ['#f7fcfd', '#8c96c6', '#4d004b']
+  },
+  { 
+    value: 'PuRd', 
+    label: 'Violet-Rouge', 
+    type: 'sequential',
+    colors: ['#f7f4f9', '#df65b0', '#67001f']
+  },
+  
+  // Séquentielles - Accessibles daltonisme
+  { 
+    value: 'Viridis', 
+    label: 'Viridis (daltonisme)', 
+    type: 'sequential',
+    colors: ['#440154', '#21918c', '#fde725'],
+    colorblindSafe: true
+  },
+  { 
+    value: 'Cividis', 
+    label: 'Cividis (daltonisme)', 
+    type: 'sequential',
+    colors: ['#00204d', '#7c7b78', '#ffea46'],
+    colorblindSafe: true
+  },
+  
+  // Divergentes
+  { 
     value: 'RdYlGn', 
     label: 'Rouge-Jaune-Vert', 
     type: 'diverging',
@@ -560,10 +672,16 @@ export const PALETTE_OPTIONS: PaletteOption[] = [
     colors: ['#b2182b', '#f7f7f7', '#2166ac']
   },
   { 
-    value: 'Viridis', 
-    label: 'Viridis', 
-    type: 'sequential',
-    colors: ['#440154', '#21918c', '#fde725']
+    value: 'BrBG', 
+    label: 'Brun-Bleu-Vert', 
+    type: 'diverging',
+    colors: ['#8c510a', '#f5f5f5', '#01665e']
+  },
+  { 
+    value: 'PuOr', 
+    label: 'Violet-Orange', 
+    type: 'diverging',
+    colors: ['#7f3b08', '#f7f7f7', '#2d004b']
   }
 ]
 

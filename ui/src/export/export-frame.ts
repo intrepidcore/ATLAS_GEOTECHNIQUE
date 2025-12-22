@@ -736,6 +736,90 @@ export class ExportFrame {
   }
   
   /**
+   * Dessine les frontières ADM à partir de features GeoJSON
+   * Utilisé pour superposer les limites ADM1 ou ADM2 sur la carte exportée
+   * @param features - Features GeoJSON avec geometry
+   * @param bbox - Bounding box de la carte
+   * @param level - Niveau ADM ('adm1' | 'adm2')
+   */
+  drawAdmBoundaries(
+    features: Array<{ geometry: any; properties?: any }>,
+    bbox: BBox,
+    level: 'adm1' | 'adm2' = 'adm1'
+  ): void {
+    if (!features || features.length === 0) {
+      console.log('[ExportFrame] drawAdmBoundaries skipped - no features');
+      return;
+    }
+    
+    const { mapArea } = this.layout;
+    const ctx = this.ctx;
+    const scale = this.dpi / 72;
+    
+    // Convertir les coordonnées lng/lat en pixels
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
+      return [x, y];
+    };
+    
+    ctx.save();
+    
+    // Style selon le niveau ADM
+    const color = level === 'adm1' ? '#cc3333' : '#3366cc';
+    const lineWidth = level === 'adm1' ? 2.5 * scale : 1.5 * scale;
+    const dashPattern = level === 'adm1' ? [] : [6 * scale, 3 * scale];
+    
+    ctx.strokeStyle = color;
+    ctx.lineWidth = lineWidth;
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if (dashPattern.length > 0) {
+      ctx.setLineDash(dashPattern);
+    }
+    
+    let drawnCount = 0;
+    
+    for (const feature of features) {
+      const geom = feature.geometry;
+      if (!geom) continue;
+      
+      // Extraire les coordonnées selon le type de géométrie
+      let rings: number[][][] = [];
+      
+      if (geom.type === 'Polygon') {
+        rings = geom.coordinates;
+      } else if (geom.type === 'MultiPolygon') {
+        for (const polygon of geom.coordinates) {
+          rings.push(...polygon);
+        }
+      }
+      
+      // Dessiner chaque anneau
+      for (const ring of rings) {
+        if (!ring || ring.length < 3) continue;
+        
+        ctx.beginPath();
+        const [startX, startY] = toPixel(ring[0][0], ring[0][1]);
+        ctx.moveTo(startX, startY);
+        
+        for (let i = 1; i < ring.length; i++) {
+          const [x, y] = toPixel(ring[i][0], ring[i][1]);
+          ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        drawnCount++;
+      }
+    }
+    
+    ctx.setLineDash([]);
+    ctx.restore();
+    
+    console.log(`[ExportFrame] ADM boundaries drawn: ${drawnCount} rings for ${features.length} features (${level})`);
+  }
+  
+  /**
    * Dessine les labels des ADM limitrophes sur les bords du polygone ADM
    * Les labels sont positionnés aux coordonnées réelles des voisins, sur le bord de l'ADM
    * @param neighbors - Liste des voisins avec direction et coordonnées
@@ -1641,6 +1725,143 @@ export class ExportFrame {
       );
     });
   }
+  
+  /**
+   * Exporte en Blob avec métadonnées DPI correctes (v3.4.4)
+   * Injecte le chunk pHYs dans le PNG pour définir la résolution physique
+   * 
+   * @param targetDpi DPI cible (défaut: 300 pour impression)
+   */
+  async toBlobWithDpi(targetDpi: number = 300): Promise<Blob> {
+    const blob = await this.toBlob('image/png');
+    return injectPngDpiMetadata(blob, targetDpi);
+  }
+}
+
+// ============================================================================
+// Utilitaire pour injecter les métadonnées DPI dans un PNG
+// ============================================================================
+
+/**
+ * Injecte le chunk pHYs dans un PNG pour définir la résolution physique
+ * Le chunk pHYs contient: pixels par unité X, pixels par unité Y, unité (1 = mètre)
+ * 
+ * 300 DPI = 11811 pixels/mètre (300 / 25.4 * 1000)
+ * 150 DPI = 5906 pixels/mètre
+ * 72 DPI = 2835 pixels/mètre
+ */
+export async function injectPngDpiMetadata(pngBlob: Blob, dpi: number): Promise<Blob> {
+  const buffer = await pngBlob.arrayBuffer();
+  const data = new Uint8Array(buffer);
+  
+  // Vérifier la signature PNG
+  const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
+  for (let i = 0; i < 8; i++) {
+    if (data[i] !== pngSignature[i]) {
+      console.warn('[DPI] Fichier non PNG, retour sans modification');
+      return pngBlob;
+    }
+  }
+  
+  // Calculer pixels par mètre
+  const pixelsPerMeter = Math.round(dpi / 25.4 * 1000);
+  
+  // Créer le chunk pHYs (9 bytes de données)
+  // Format: 4 bytes X ppm, 4 bytes Y ppm, 1 byte unit (1 = meter)
+  const physData = new Uint8Array(9);
+  const physView = new DataView(physData.buffer);
+  physView.setUint32(0, pixelsPerMeter, false); // Big-endian
+  physView.setUint32(4, pixelsPerMeter, false);
+  physData[8] = 1; // Unit = meter
+  
+  // Calculer le CRC du chunk pHYs
+  const physType = new Uint8Array([112, 72, 89, 115]); // 'pHYs'
+  const physCrcData = new Uint8Array(4 + 9);
+  physCrcData.set(physType, 0);
+  physCrcData.set(physData, 4);
+  const physCrc = crc32Png(physCrcData);
+  
+  // Construire le chunk complet (length + type + data + crc)
+  const physChunk = new Uint8Array(4 + 4 + 9 + 4);
+  const physChunkView = new DataView(physChunk.buffer);
+  physChunkView.setUint32(0, 9, false); // Length
+  physChunk.set(physType, 4);
+  physChunk.set(physData, 8);
+  physChunkView.setUint32(17, physCrc, false);
+  
+  // Trouver la position après IHDR pour insérer pHYs
+  // IHDR est toujours le premier chunk après la signature (8 bytes)
+  let pos = 8;
+  
+  // Lire la longueur du chunk IHDR
+  const ihdrLength = new DataView(data.buffer).getUint32(pos, false);
+  pos += 4 + 4 + ihdrLength + 4; // length + type + data + crc
+  
+  // Vérifier si pHYs existe déjà et le supprimer
+  let newData = data;
+  let insertPos = pos;
+  
+  while (pos < data.length - 12) {
+    const chunkLength = new DataView(data.buffer).getUint32(pos, false);
+    const chunkType = String.fromCharCode(data[pos + 4], data[pos + 5], data[pos + 6], data[pos + 7]);
+    
+    if (chunkType === 'pHYs') {
+      // Supprimer le chunk existant
+      const before = data.slice(0, pos);
+      const after = data.slice(pos + 4 + 4 + chunkLength + 4);
+      newData = new Uint8Array(before.length + after.length);
+      newData.set(before, 0);
+      newData.set(after, before.length);
+      insertPos = pos;
+      break;
+    }
+    
+    if (chunkType === 'IDAT' || chunkType === 'IEND') {
+      // Insérer avant IDAT ou IEND
+      insertPos = pos;
+      break;
+    }
+    
+    pos += 4 + 4 + chunkLength + 4;
+  }
+  
+  // Insérer le nouveau chunk pHYs
+  const result = new Uint8Array(newData.length + physChunk.length);
+  result.set(newData.slice(0, insertPos), 0);
+  result.set(physChunk, insertPos);
+  result.set(newData.slice(insertPos), insertPos + physChunk.length);
+  
+  console.log('[DPI] Métadonnées PNG injectées:', {
+    dpi,
+    pixelsPerMeter,
+    originalSize: data.length,
+    newSize: result.length
+  });
+  
+  return new Blob([result], { type: 'image/png' });
+}
+
+/**
+ * Calcule le CRC32 pour les chunks PNG (polynôme standard)
+ */
+function crc32Png(data: Uint8Array): number {
+  let crc = 0xFFFFFFFF;
+  
+  // Table CRC32 pré-calculée (polynôme PNG/ZIP)
+  const table = new Uint32Array(256);
+  for (let i = 0; i < 256; i++) {
+    let c = i;
+    for (let j = 0; j < 8; j++) {
+      c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    }
+    table[i] = c;
+  }
+  
+  for (let i = 0; i < data.length; i++) {
+    crc = table[(crc ^ data[i]) & 0xFF] ^ (crc >>> 8);
+  }
+  
+  return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
 // ============================================================================

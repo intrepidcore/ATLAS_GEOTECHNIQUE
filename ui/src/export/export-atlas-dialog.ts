@@ -12,7 +12,10 @@
  * - Options de qualité et 4 niveaux de masque
  */
 
-import { ActiveAdmFilters } from './export-types';
+import { ActiveAdmFilters, ExportQuality } from './export-types';
+import { exportData, downloadBlob, type ExportDataConfig } from './export-data';
+import { generateAllCharts, type ThematicChartSet } from './chart-generator';
+import { ExportQuickDialog, type ExportQuickDialogConfig } from './export-quick-dialog';
 
 // ============================================================================
 // Types
@@ -33,19 +36,33 @@ export interface AtlasExportConfig {
   thematics: string[];
   maskMode: 'none' | 'context' | 'focus' | 'clip';
   format: 'png' | 'pdf';
-  quality: 'web' | 'print';
+  quality: 'web' | 'print' | 'hd';
   includeStats: boolean;
   includeNeighbors: boolean;
   showEmptyCells: boolean;
   onlyAdmCells: boolean;
   showAdmBoundary: boolean; // Toujours afficher la délimitation ADM
+  // Nouveau: délimitation hiérarchique (frontières du niveau parent)
+  boundaryLevel: 'none' | 'adm1' | 'adm2'; // Niveau des frontières à afficher
+  // Export données pour analyse
+  exportData: boolean;
+  dataOptions: {
+    includeGrid: boolean;
+    includeAdm: boolean;
+    includeThematic: boolean;
+    includeSondages: boolean;
+    includeEssais: boolean;
+  };
+  // Export graphes statistiques
+  exportCharts: boolean;
 }
 
 export interface AtlasExportCallbacks {
   getAdmList: (level: 'adm1' | 'adm2' | 'adm3') => Promise<Array<{ code: string; name: string }>>;
-  exportSingleMap: (admLevel: string, admName: string, thematicId: string, config: AtlasExportConfig) => Promise<Blob | null>;
+  exportSingleMap?: (admLevel: string, admName: string, thematicId: string, config: AtlasExportConfig) => Promise<Blob | null>;
   setThematicAndAdm: (thematicId: string, admLevel: string, admName: string) => Promise<void>;
-  captureCurrentMap: () => Promise<Blob | null>;
+  /** Configuration pour ExportQuickDialog - utilisé pour l'export via le moteur Pro */
+  getExportProConfig: () => ExportQuickDialogConfig;
 }
 
 export interface AtlasExportProgress {
@@ -254,6 +271,12 @@ const ATLAS_DIALOG_STYLES = `
   gap: 12px;
 }
 
+.atlas-row-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
 .atlas-field {
   flex: 1;
 }
@@ -263,6 +286,13 @@ const ATLAS_DIALOG_STYLES = `
   font-size: 12px;
   color: #6b7280;
   margin-bottom: 4px;
+}
+
+.atlas-field .field-hint {
+  display: block;
+  font-size: 10px;
+  color: #9ca3af;
+  margin-top: 4px;
 }
 
 .atlas-field select {
@@ -453,7 +483,14 @@ const ATLAS_DIALOG_STYLES = `
 }
 
 .atlas-adm-level select[multiple] {
-  min-height: 80px;
+  min-height: 120px;
+  max-height: 180px;
+}
+
+/* Amélioration UX: zone de sélection plus grande au focus */
+.atlas-adm-level select[multiple]:focus {
+  min-height: 180px;
+  transition: min-height 0.2s ease;
 }
 
 .atlas-adm-level .level-info {
@@ -499,12 +536,22 @@ export class ExportAtlasDialog {
       thematics: ['n_sondages', 'vbs_avg', 'ip_avg'],
       maskMode: 'context',
       format: 'png',
-      quality: 'print',
+      quality: 'hd',
       includeStats: true,
       includeNeighbors: true,
-      showEmptyCells: false,
+      showEmptyCells: true,
       onlyAdmCells: true,
-      showAdmBoundary: true
+      showAdmBoundary: true,
+      boundaryLevel: 'adm2',
+      exportData: false,
+      dataOptions: {
+        includeGrid: true,
+        includeAdm: true,
+        includeThematic: true,
+        includeSondages: true,
+        includeEssais: true
+      },
+      exportCharts: false
     };
     this.progress = {
       total: 0,
@@ -621,7 +668,7 @@ export class ExportAtlasDialog {
           <!-- Options -->
           <div class="atlas-section">
             <div class="atlas-section-title">⚙️ Options</div>
-            <div class="atlas-row-3">
+            <div class="atlas-row-4">
               <div class="atlas-field">
                 <label>Format</label>
                 <select id="atlas-format">
@@ -646,6 +693,15 @@ export class ExportAtlasDialog {
                   <option value="clip">Clip (100%)</option>
                 </select>
               </div>
+              <div class="atlas-field">
+                <label>🗺️ Subdivisions</label>
+                <select id="atlas-boundary-level">
+                  <option value="none">Aucune</option>
+                  <option value="adm1">Régions (ADM1)</option>
+                  <option value="adm2" selected>Préfectures (ADM2)</option>
+                </select>
+                <small class="field-hint">Frontières internes à afficher</small>
+              </div>
             </div>
             <div class="atlas-checkboxes" style="margin-top: 12px;">
               <label class="atlas-checkbox">
@@ -668,6 +724,74 @@ export class ExportAtlasDialog {
                 <input type="checkbox" id="atlas-only-adm-cells" checked>
                 <span>Uniquement mailles dans l'ADM</span>
               </label>
+            </div>
+          </div>
+          
+          <!-- Export des données pour analyse -->
+          <div class="atlas-section">
+            <div class="atlas-section-title">📁 Export données (analyse)</div>
+            <div class="atlas-checkboxes">
+              <label class="atlas-checkbox">
+                <input type="checkbox" id="atlas-export-data">
+                <span>Inclure données pour analyse (GeoJSON/CSV)</span>
+              </label>
+            </div>
+            <div id="atlas-data-options" style="display: none; margin-top: 8px; padding: 12px; background: #f8fafc; border-radius: 6px;">
+              <div style="font-size: 12px; color: #64748b; margin-bottom: 8px;">
+                📊 Fichiers générés dans le ZIP :
+              </div>
+              <div class="atlas-checkboxes" style="font-size: 12px;">
+                <label class="atlas-checkbox">
+                  <input type="checkbox" id="atlas-data-grid" checked>
+                  <span>Grille nationale (GeoJSON)</span>
+                </label>
+                <label class="atlas-checkbox">
+                  <input type="checkbox" id="atlas-data-adm" checked>
+                  <span>Limites ADM (GeoJSON)</span>
+                </label>
+                <label class="atlas-checkbox">
+                  <input type="checkbox" id="atlas-data-thematic" checked>
+                  <span>Données agrégées par maille (GeoJSON)</span>
+                </label>
+                <label class="atlas-checkbox">
+                  <input type="checkbox" id="atlas-data-sondages" checked>
+                  <span>Sondages (GeoJSON + CSV)</span>
+                </label>
+                <label class="atlas-checkbox">
+                  <input type="checkbox" id="atlas-data-essais" checked>
+                  <span>Essais bruts (CSV)</span>
+                </label>
+              </div>
+              <div style="font-size: 11px; color: #94a3b8; margin-top: 8px;">
+                💡 Ces fichiers sont compatibles QGIS et Python (geopandas)
+              </div>
+            </div>
+          </div>
+          
+          <!-- Export graphes statistiques -->
+          <div class="atlas-section">
+            <div class="atlas-section-title">📈 Graphes statistiques</div>
+            <div class="atlas-checkboxes">
+              <label class="atlas-checkbox">
+                <input type="checkbox" id="atlas-export-charts">
+                <span>Générer les graphes d'analyse par thématique</span>
+              </label>
+            </div>
+            <div id="atlas-charts-info" style="display: none; margin-top: 8px; padding: 12px; background: #f0fdf4; border-radius: 6px; border: 1px solid #bbf7d0;">
+              <div style="font-size: 12px; color: #166534; margin-bottom: 8px;">
+                📊 Graphes générés automatiquement :
+              </div>
+              <ul style="font-size: 11px; color: #15803d; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li><strong>Histogrammes</strong> - Distribution des valeurs par maille</li>
+                <li><strong>Boxplots</strong> - Comparaison par préfecture (ADM2)</li>
+                <li><strong>Camemberts</strong> - Couverture spatiale (avec/sans données)</li>
+                <li><strong>Nuages de points</strong> - Corrélations entre paramètres</li>
+                <li><strong>Diagramme de Casagrande</strong> - Classification des sols (IP vs WL)</li>
+                <li><strong>Matrice de corrélation</strong> - Relations entre tous les paramètres</li>
+              </ul>
+              <div style="font-size: 11px; color: #166534; margin-top: 8px;">
+                💡 Les graphes sont adaptés à chaque thématique sélectionnée
+              </div>
             </div>
           </div>
           
@@ -850,6 +974,24 @@ export class ExportAtlasDialog {
         this.updateAdm3Options();
       }
     });
+    
+    // Toggle options export données
+    const exportDataCheckbox = this.overlay.querySelector('#atlas-export-data') as HTMLInputElement;
+    const dataOptionsDiv = this.overlay.querySelector('#atlas-data-options') as HTMLElement;
+    exportDataCheckbox?.addEventListener('change', () => {
+      if (dataOptionsDiv) {
+        dataOptionsDiv.style.display = exportDataCheckbox.checked ? 'block' : 'none';
+      }
+    });
+    
+    // Toggle info graphes
+    const exportChartsCheckbox = this.overlay.querySelector('#atlas-export-charts') as HTMLInputElement;
+    const chartsInfoDiv = this.overlay.querySelector('#atlas-charts-info') as HTMLElement;
+    exportChartsCheckbox?.addEventListener('change', () => {
+      if (chartsInfoDiv) {
+        chartsInfoDiv.style.display = exportChartsCheckbox.checked ? 'block' : 'none';
+      }
+    });
   }
   
   /**
@@ -998,13 +1140,24 @@ export class ExportAtlasDialog {
     
     // Options
     const format = (this.overlay.querySelector('#atlas-format') as HTMLSelectElement)?.value as 'png' | 'pdf';
-    const quality = (this.overlay.querySelector('#atlas-quality') as HTMLSelectElement)?.value as 'web' | 'print';
+    const quality = (this.overlay.querySelector('#atlas-quality') as HTMLSelectElement)?.value as 'web' | 'print' | 'hd';
     const maskMode = (this.overlay.querySelector('#atlas-mask') as HTMLSelectElement)?.value as 'none' | 'context' | 'focus' | 'clip';
     const includeStats = (this.overlay.querySelector('#atlas-stats') as HTMLInputElement)?.checked;
     const includeNeighbors = (this.overlay.querySelector('#atlas-neighbors') as HTMLInputElement)?.checked;
     const showAdmBoundary = (this.overlay.querySelector('#atlas-show-boundary') as HTMLInputElement)?.checked;
     const showEmptyCells = (this.overlay.querySelector('#atlas-show-empty-cells') as HTMLInputElement)?.checked;
     const onlyAdmCells = (this.overlay.querySelector('#atlas-only-adm-cells') as HTMLInputElement)?.checked;
+    const boundaryLevel = (this.overlay.querySelector('#atlas-boundary-level') as HTMLSelectElement)?.value as 'none' | 'adm1' | 'adm2';
+    
+    // Options export données
+    const exportDataEnabled = (this.overlay.querySelector('#atlas-export-data') as HTMLInputElement)?.checked || false;
+    const dataOptions = {
+      includeGrid: (this.overlay.querySelector('#atlas-data-grid') as HTMLInputElement)?.checked || false,
+      includeAdm: (this.overlay.querySelector('#atlas-data-adm') as HTMLInputElement)?.checked || false,
+      includeThematic: (this.overlay.querySelector('#atlas-data-thematic') as HTMLInputElement)?.checked || false,
+      includeSondages: (this.overlay.querySelector('#atlas-data-sondages') as HTMLInputElement)?.checked || false,
+      includeEssais: (this.overlay.querySelector('#atlas-data-essais') as HTMLInputElement)?.checked || false
+    };
     
     return {
       levels,
@@ -1017,7 +1170,11 @@ export class ExportAtlasDialog {
       includeNeighbors,
       showEmptyCells,
       onlyAdmCells,
-      showAdmBoundary
+      showAdmBoundary,
+      boundaryLevel,
+      exportData: exportDataEnabled,
+      dataOptions,
+      exportCharts: (this.overlay.querySelector('#atlas-export-charts') as HTMLInputElement)?.checked || false
     };
   }
   
@@ -1119,13 +1276,9 @@ export class ExportAtlasDialog {
       return;
     }
     
-    // Confirmation
-    const confirmMsg = `Vous allez générer ${totalExports} cartes:\n\n` +
-      levels.map(l => `- ${l.toUpperCase()}: ${admToExport[l]?.length || 0} zones`).join('\n') +
-      `\n- Thématiques: ${config.thematics.length}\n\n` +
-      `Cela peut prendre plusieurs minutes. Continuer?`;
-    
-    if (!confirm(confirmMsg)) {
+    // Afficher un modal de confirmation professionnel
+    const confirmed = await this.showConfirmationModal(config, levels, admToExport);
+    if (!confirmed) {
       this.updateProgress('Export annulé', 0);
       return;
     }
@@ -1148,7 +1301,7 @@ export class ExportAtlasDialog {
         for (const thematicId of config.thematics) {
           if (this.abortRequested) {
             this.updateProgress(`Export annulé (${current}/${totalExports} complétés)`, (current / totalExports) * 100);
-            await this.finalizeExport(zip, results, current, totalExports);
+            await this.finalizeExport(zip, results, current, totalExports, config);
             return;
           }
           
@@ -1160,18 +1313,36 @@ export class ExportAtlasDialog {
             percent
           );
           
-          // Générer l'export via callback
+          // Générer l'export via le moteur Export Pro
           let success = false;
           let blob: Blob | null = null;
           
-          if (this.callbacks?.setThematicAndAdm && this.callbacks?.captureCurrentMap) {
+          if (this.callbacks?.setThematicAndAdm && this.callbacks?.getExportProConfig) {
             try {
-              // Changer la thématique et l'ADM
+              // 1. Changer la thématique et l'ADM sur la carte
               await this.callbacks.setThematicAndAdm(thematicId, level, adm.name);
-              // Attendre le rendu (optimisé: 800ms)
-              await new Promise(r => setTimeout(r, 800));
-              // Capturer la carte
-              blob = await this.callbacks.captureCurrentMap();
+              
+              // 2. Attendre le rendu complet (tuiles + thématique)
+              await new Promise(r => setTimeout(r, 1000));
+              
+              // 3. Créer une instance d'ExportQuickDialog avec la config actuelle
+              const exportProConfig = this.callbacks.getExportProConfig();
+              const exportPro = new ExportQuickDialog(exportProConfig);
+              
+              // 4. Exporter via le moteur Pro (qualité identique à Export Pro)
+              blob = await exportPro.exportSingle({
+                quality: config.quality as ExportQuality,
+                maskMode: config.maskMode,
+                showEmptyCells: config.showEmptyCells,
+                onlyAdmCells: config.onlyAdmCells,
+                includeStats: config.includeStats,
+                includeNeighbors: config.includeNeighbors,
+                boundaryLevel: config.boundaryLevel,
+                onProgress: (msg) => {
+                  this.updateProgress(`${current}/${totalExports} - ${adm.name} - ${msg}`, percent);
+                }
+              });
+              
               success = blob !== null;
               
               // Ajouter au ZIP
@@ -1183,6 +1354,7 @@ export class ExportAtlasDialog {
               console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
             }
           } else if (this.callbacks?.exportSingleMap) {
+            // Fallback sur l'ancienne méthode si disponible
             try {
               blob = await this.callbacks.exportSingleMap(level, adm.name, thematicId, config);
               success = blob !== null;
@@ -1195,9 +1367,8 @@ export class ExportAtlasDialog {
               console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
             }
           } else {
-            // Simulation - pause pour montrer la progression
-            await new Promise(r => setTimeout(r, 50));
-            success = true;
+            console.error('[Atlas] Aucun callback d\'export disponible');
+            success = false;
           }
           
           results.push({ level, name: adm.name, thematic: thematicId, success, blob: blob || undefined });
@@ -1207,7 +1378,7 @@ export class ExportAtlasDialog {
     
     // Finaliser et télécharger le ZIP
     this.updateProgress('Création du fichier ZIP...', 99);
-    await this.finalizeExport(zip, results, current, totalExports);
+    await this.finalizeExport(zip, results, current, totalExports, config);
   }
   
   private sanitizeFilename(name: string): string {
@@ -1222,7 +1393,8 @@ export class ExportAtlasDialog {
     zip: any,
     results: Array<{ level: string; name: string; thematic: string; success: boolean }>,
     completed: number,
-    total: number
+    total: number,
+    config?: AtlasExportConfig
   ): Promise<void> {
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
@@ -1232,14 +1404,103 @@ export class ExportAtlasDialog {
     
     if (zip && successful > 0) {
       try {
-        // Ajouter un fichier index.json avec les métadonnées
+        // ========== EXPORT DONNÉES POUR ANALYSE ==========
+        if (config?.exportData) {
+          this.updateProgress('Export des données pour analyse...', 92);
+          console.log('[Atlas] Export données activé:', config.dataOptions);
+          
+          try {
+            const dataConfig: ExportDataConfig = {
+              includeGrid: config.dataOptions.includeGrid,
+              includeAdm1: config.dataOptions.includeAdm,
+              includeAdm2: config.dataOptions.includeAdm,
+              includeAdm3: false,
+              parameters: config.dataOptions.includeThematic ? config.thematics : [],
+              includeSondages: config.dataOptions.includeSondages,
+              includeEssaisAtterberg: config.dataOptions.includeEssais,
+              includeEssaisVbs: config.dataOptions.includeEssais,
+              includeEssaisProctor: config.dataOptions.includeEssais,
+              includeEssaisGranulo: config.dataOptions.includeEssais,
+              format: 'geojson',
+              includeMetadata: true
+            };
+            
+            // Exporter les données
+            const dataBlob = await exportData(dataConfig, (msg, pct) => {
+              this.updateProgress(`Données: ${msg}`, 92 + pct * 0.02);
+            });
+            
+            // Ajouter au ZIP principal
+            const dataArrayBuffer = await dataBlob.arrayBuffer();
+            zip.file('donnees_analyse.zip', dataArrayBuffer);
+            console.log('[Atlas] Données pour analyse ajoutées au ZIP');
+          } catch (e) {
+            console.warn('[Atlas] Erreur export données:', e);
+          }
+        }
+        
+        // ========== GÉNÉRATION DES GRAPHES STATISTIQUES ==========
+        if (config?.exportCharts && config.thematics.length > 0) {
+          this.updateProgress('Génération des graphes statistiques...', 95);
+          console.log('[Atlas] Génération graphes pour:', config.thematics);
+          
+          try {
+            // Récupérer les données thématiques pour les graphes
+            const featuresMap: Record<string, any[]> = {};
+            
+            for (const thematicId of config.thematics) {
+              try {
+                const url = `http://localhost:8000/thematic/data?parameter=${thematicId}&include_geometry=true`;
+                const response = await fetch(url);
+                if (response.ok) {
+                  const data = await response.json();
+                  featuresMap[thematicId] = data.features || [];
+                }
+              } catch (e) {
+                console.warn(`[Atlas] Erreur chargement données ${thematicId}:`, e);
+              }
+            }
+            
+            // Générer les graphes
+            const chartSets = await generateAllCharts(
+              config.thematics,
+              featuresMap,
+              (msg, pct) => this.updateProgress(`Graphes: ${msg}`, 95 + pct * 0.03)
+            );
+            
+            // Ajouter les graphes au ZIP
+            let chartCount = 0;
+            chartSets.forEach((chartSet, thematicId) => {
+              for (const chart of chartSet.charts) {
+                const filename = `graphes/${thematicId}/${chart.filename}`;
+                zip.file(filename, chart.blob);
+                chartCount++;
+              }
+            });
+            
+            console.log(`[Atlas] ${chartCount} graphes ajoutés au ZIP`);
+          } catch (e) {
+            console.warn('[Atlas] Erreur génération graphes:', e);
+          }
+        }
+        
+        // Ajouter un fichier index.json avec les métadonnées (v3.4.1 enrichi)
+        const skippedThematics = this.getSkippedThematics(config?.thematics || []);
         const indexData = {
           generated: new Date().toISOString(),
-          version: '3.3.0',
+          version: '3.4.1',
           total: total,
           completed: completed,
           successful: successful,
           failed: failed,
+          includesDataExport: config?.exportData || false,
+          includesCharts: config?.exportCharts || false,
+          // v3.4.1: Thématiques ignorées car sans données
+          skipped: skippedThematics.map(t => ({
+            thematic: t.id,
+            reason: 'no_data' as const,
+            message: `Aucune donnée disponible pour ${t.label}`
+          })),
           exports: results.map(r => ({
             level: r.level,
             name: r.name,
@@ -1341,6 +1602,302 @@ export class ExportAtlasDialog {
     
     if (progressText) progressText.textContent = text;
     if (progressFill) progressFill.style.width = `${percent}%`;
+  }
+  
+  /**
+   * Affiche un modal de confirmation professionnel au lieu de confirm()
+   */
+  private showConfirmationModal(
+    config: AtlasExportConfig,
+    levels: Array<'adm1' | 'adm2' | 'adm3'>,
+    admToExport: Record<string, Array<{ code: string; name: string }>>
+  ): Promise<boolean> {
+    return new Promise((resolve) => {
+      // Calculer les totaux
+      let totalMaps = 0;
+      const levelCounts: Record<string, number> = {};
+      for (const level of levels) {
+        const count = admToExport[level]?.length || 0;
+        levelCounts[level] = count;
+        totalMaps += count * config.thematics.length;
+      }
+      
+      // Créer le modal
+      const modal = document.createElement('div');
+      modal.className = 'atlas-confirm-overlay';
+      modal.innerHTML = `
+        <div class="atlas-confirm-modal">
+          <div class="atlas-confirm-header">
+            <span class="atlas-confirm-icon">🗺️</span>
+            <h3>Confirmer l'export</h3>
+          </div>
+          <div class="atlas-confirm-body">
+            <div class="atlas-confirm-summary">
+              <div class="atlas-confirm-total">
+                <span class="number">${totalMaps}</span>
+                <span class="label">cartes à générer</span>
+              </div>
+            </div>
+            <div class="atlas-confirm-details">
+              ${levels.map(l => `
+                <div class="atlas-confirm-row">
+                  <span class="atlas-confirm-level">${l.toUpperCase()}</span>
+                  <span class="atlas-confirm-count">${levelCounts[l]} zone${levelCounts[l] > 1 ? 's' : ''}</span>
+                </div>
+              `).join('')}
+              <div class="atlas-confirm-row">
+                <span class="atlas-confirm-level">Thématiques</span>
+                <span class="atlas-confirm-count">${config.thematics.length}</span>
+              </div>
+              ${config.boundaryLevel !== 'none' ? `
+              <div class="atlas-confirm-row" style="background: #dbeafe;">
+                <span class="atlas-confirm-level">🗺️ Subdivisions</span>
+                <span class="atlas-confirm-count" style="background: #3b82f6; color: white;">
+                  ${config.boundaryLevel === 'adm1' ? 'Régions' : 'Préfectures'}
+                </span>
+              </div>
+              ` : ''}
+            </div>
+            <div class="atlas-confirm-warning">
+              <span class="icon">⏱️</span>
+              <span>Cette opération peut prendre plusieurs minutes selon le nombre de cartes.</span>
+            </div>
+          </div>
+          <div class="atlas-confirm-footer">
+            <button class="atlas-btn atlas-btn-secondary" data-action="cancel">Annuler</button>
+            <button class="atlas-btn atlas-btn-primary" data-action="confirm">
+              <span>🚀</span> Lancer l'export
+            </button>
+          </div>
+        </div>
+      `;
+      
+      // Ajouter les styles si pas déjà présents
+      if (!document.getElementById('atlas-confirm-styles')) {
+        const style = document.createElement('style');
+        style.id = 'atlas-confirm-styles';
+        style.textContent = `
+          .atlas-confirm-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            animation: fadeIn 0.2s ease;
+          }
+          @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+          }
+          .atlas-confirm-modal {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.4);
+            width: 420px;
+            overflow: hidden;
+            animation: slideUp 0.3s ease;
+          }
+          @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+          .atlas-confirm-header {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            padding: 20px 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
+          .atlas-confirm-header .atlas-confirm-icon {
+            font-size: 28px;
+          }
+          .atlas-confirm-header h3 {
+            margin: 0;
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+          }
+          .atlas-confirm-body {
+            padding: 24px;
+          }
+          .atlas-confirm-summary {
+            text-align: center;
+            margin-bottom: 20px;
+          }
+          .atlas-confirm-total {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+          }
+          .atlas-confirm-total .number {
+            font-size: 48px;
+            font-weight: 700;
+            color: #1e40af;
+            line-height: 1;
+          }
+          .atlas-confirm-total .label {
+            font-size: 14px;
+            color: #6b7280;
+          }
+          .atlas-confirm-details {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 16px;
+            margin-bottom: 16px;
+          }
+          .atlas-confirm-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+          }
+          .atlas-confirm-row:last-child {
+            border-bottom: none;
+          }
+          .atlas-confirm-level {
+            font-weight: 500;
+            color: #374151;
+          }
+          .atlas-confirm-count {
+            color: #6b7280;
+            background: #e5e7eb;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 13px;
+          }
+          .atlas-confirm-warning {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fef3c7;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-size: 13px;
+            color: #92400e;
+          }
+          .atlas-confirm-warning .icon {
+            font-size: 18px;
+          }
+          .atlas-confirm-footer {
+            padding: 16px 24px;
+            background: #f9fafb;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+          }
+          .atlas-confirm-footer .atlas-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+          }
+          .atlas-confirm-footer .atlas-btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+          }
+          .atlas-confirm-footer .atlas-btn-secondary:hover {
+            background: #d1d5db;
+          }
+          .atlas-confirm-footer .atlas-btn-primary {
+            background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
+            color: white;
+          }
+          .atlas-confirm-footer .atlas-btn-primary:hover {
+            background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
+          }
+        `;
+        document.head.appendChild(style);
+      }
+      
+      document.body.appendChild(modal);
+      
+      // Event listeners
+      const cancelBtn = modal.querySelector('[data-action="cancel"]');
+      const confirmBtn = modal.querySelector('[data-action="confirm"]');
+      
+      const cleanup = () => {
+        modal.remove();
+      };
+      
+      cancelBtn?.addEventListener('click', () => {
+        cleanup();
+        resolve(false);
+      });
+      
+      confirmBtn?.addEventListener('click', () => {
+        cleanup();
+        resolve(true);
+      });
+      
+      // Fermer sur clic overlay
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          cleanup();
+          resolve(false);
+        }
+      });
+    });
+  }
+  
+  /**
+   * Identifie les thématiques sans données (v3.4.1 - E2)
+   * Utilisé pour skip automatique et reporting dans index.json
+   */
+  private getSkippedThematics(requestedThematics: string[]): Array<{ id: string; label: string }> {
+    const skipped: Array<{ id: string; label: string }> = [];
+    
+    // Thématiques connues pour être souvent vides (Proctor notamment)
+    const knownEmptyThematics = ['gamma_d_max_avg', 'w_opt_avg'];
+    
+    for (const thematicId of requestedThematics) {
+      // Vérifier si la thématique est dans la liste des thématiques connues vides
+      if (knownEmptyThematics.includes(thematicId)) {
+        const thematicInfo = ALL_THEMATICS.find(t => t.id === thematicId);
+        if (thematicInfo) {
+          skipped.push({ id: thematicId, label: thematicInfo.label });
+        }
+      }
+    }
+    
+    return skipped;
+  }
+  
+  /**
+   * Vérifie si une thématique a des données pour un ADM donné (v3.4.1)
+   * @returns true si des données existent, false sinon
+   */
+  private async checkThematicHasData(
+    thematicId: string,
+    admLevel: string,
+    admName: string
+  ): Promise<boolean> {
+    try {
+      const url = `http://localhost:8000/thematic/data?parameter=${thematicId}&${admLevel}=${encodeURIComponent(admName)}&limit=1`;
+      const response = await fetch(url);
+      
+      if (!response.ok) return false;
+      
+      const data = await response.json();
+      const features = data.features || [];
+      
+      // Vérifier si au moins une feature a une valeur non nulle
+      return features.some((f: any) => f.properties?.value !== null && f.properties?.value !== undefined);
+    } catch (e) {
+      console.warn(`[Atlas] Erreur vérification données ${thematicId}/${admLevel}/${admName}:`, e);
+      return false;
+    }
   }
 }
 

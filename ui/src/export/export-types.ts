@@ -89,9 +89,16 @@ export const DEFAULT_GRID_OPTIONS: GridOptions = {
 
 export type ExportFormat = 'png' | 'pdf';
 
-export type ExportQuality = 'web' | 'standard' | 'print' | 'hd';
+export type ExportQuality = 'web' | 'standard' | 'print' | 'hd' | 'light';
 
 export type ExportZone = 'viewport' | 'adm-filtered';
+
+/**
+ * Mode d'export v3.4.4
+ * - 'print': Export haute qualité pour impression (300 DPI, métadonnées DPI correctes)
+ * - 'digital': Export léger pour diffusion numérique (150 DPI, taille réduite)
+ */
+export type ExportMode = 'print' | 'digital';
 
 export interface ExportOptions {
   format: ExportFormat;
@@ -157,7 +164,8 @@ export const QUALITY_SETTINGS: Record<ExportQuality, { scale: number; dpi: numbe
   web: { scale: 1, dpi: 72 },
   standard: { scale: 2, dpi: 150 },
   print: { scale: 2, dpi: 150 },  // Alias pour standard
-  hd: { scale: 3, dpi: 300 }
+  hd: { scale: 3, dpi: 300 },
+  light: { scale: 2, dpi: 150 }   // Export léger pour diffusion numérique (v3.4.4)
 };
 
 // ============================================================================

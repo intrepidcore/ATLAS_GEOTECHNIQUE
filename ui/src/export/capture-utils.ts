@@ -539,6 +539,7 @@ export interface ExportMetadata {
   thematic: {
     parameter: string;
     name: string;
+    unit?: string;
   };
   zone: {
     type: string;
@@ -562,12 +563,47 @@ export interface ExportMetadata {
     withData: number;
     withoutData: number;
   };
+  /** Légendes enrichies v3.4.1 - Source de vérité pour reproduction */
+  legends?: Record<string, LegendMetadata>;
+  /** Légende simple (rétro-compatibilité) */
   legend?: {
     classes: Array<{ label: string; color: string; count?: number }>;
   };
+  /** Thématiques ignorées car sans données */
+  skipped?: Array<{ thematic: string; reason: 'no_data' | 'error'; message?: string }>;
   telemetry?: Record<string, any>;
   debugLogs?: Array<{ timestamp: string; stage: string; data: Record<string, any> }>;
   consoleLogs?: Array<{ timestamp: string; level: string; tag: string; message: string }>;
+}
+
+/**
+ * Métadonnées de légende enrichies v3.4.1
+ * Permet de reproduire exactement la carte à partir des métadonnées
+ */
+export interface LegendMetadata {
+  parameterId: string;
+  parameterLabel: string;
+  unit: string;
+  mapType: 'choropleth' | 'proportional' | 'binary';
+  palette: string;
+  paletteReversed?: boolean;
+  classificationMethod: string;
+  classes: Array<{
+    index: number;
+    label: string;
+    min: number | null;
+    max: number | null;
+    color: string;
+    count: number;
+  }>;
+  statistics?: {
+    count: number;
+    min: number;
+    max: number;
+    mean: number;
+    median: number;
+    stddev?: number;
+  };
 }
 
 /**
@@ -603,22 +639,83 @@ export async function generateZipWithMetadata(
 }
 
 /**
- * Génère le contenu du README
+ * Génère le contenu du README enrichi v3.4.1
  */
 function generateReadmeContent(metadata: ExportMetadata): string {
-  return `Atlas Géotechnique du Togo - Export
+  let content = `Atlas Géotechnique du Togo - Export
 =====================================
 
 Date d'export: ${metadata.exportDate}
 Run ID: ${metadata.runId}
 
-Thématique: ${metadata.thematic.name} (${metadata.thematic.parameter})
+Thématique: ${metadata.thematic.name} (${metadata.thematic.parameter})${metadata.thematic.unit ? ` [${metadata.thematic.unit}]` : ''}
 Zone: ${metadata.zone.adm3 || metadata.zone.adm2 || metadata.zone.adm1 || 'Togo'}
 
 Format: ${metadata.output.format.toUpperCase()}
 Qualité: ${metadata.output.quality} (${metadata.output.dpi} DPI)
 Dimensions: ${metadata.output.dimensions.width} x ${metadata.output.dimensions.height} px
+`;
 
+  // Ajouter les statistiques de mailles si disponibles
+  if (metadata.cells) {
+    content += `
+Mailles:
+- Total: ${metadata.cells.total}
+- Avec données: ${metadata.cells.withData}
+- Sans données: ${metadata.cells.withoutData}
+`;
+  }
+
+  // Ajouter la légende si disponible
+  if (metadata.legends) {
+    const legendKeys = Object.keys(metadata.legends);
+    if (legendKeys.length > 0) {
+      content += `
+Légende:
+`;
+      for (const key of legendKeys) {
+        const legend = metadata.legends[key];
+        content += `
+  ${legend.parameterLabel} (${legend.unit || '-'})
+  Méthode: ${legend.classificationMethod}
+  Palette: ${legend.palette}${legend.paletteReversed ? ' (inversée)' : ''}
+  Classes:
+`;
+        for (const cls of legend.classes) {
+          content += `    - ${cls.label}: ${cls.color} (n=${cls.count})\n`;
+        }
+        
+        if (legend.statistics) {
+          content += `  Statistiques:
+    - Min: ${legend.statistics.min}
+    - Max: ${legend.statistics.max}
+    - Moyenne: ${legend.statistics.mean?.toFixed(2) || '-'}
+    - Médiane: ${legend.statistics.median?.toFixed(2) || '-'}
+`;
+        }
+      }
+    }
+  } else if (metadata.legend?.classes) {
+    // Rétro-compatibilité avec l'ancien format
+    content += `
+Légende:
+`;
+    for (const cls of metadata.legend.classes) {
+      content += `  - ${cls.label}: ${cls.color}${cls.count !== undefined ? ` (n=${cls.count})` : ''}\n`;
+    }
+  }
+
+  // Ajouter les thématiques ignorées si présentes
+  if (metadata.skipped && metadata.skipped.length > 0) {
+    content += `
+Thématiques ignorées:
+`;
+    for (const skip of metadata.skipped) {
+      content += `  - ${skip.thematic}: ${skip.reason}${skip.message ? ` (${skip.message})` : ''}\n`;
+    }
+  }
+
+  content += `
 Fichiers inclus:
 - Image de la carte (${metadata.output.format})
 - metadata.json (métadonnées complètes)
@@ -626,6 +723,8 @@ Fichiers inclus:
 
 Pour plus d'informations, consultez metadata.json
 `;
+
+  return content;
 }
 
 /**
