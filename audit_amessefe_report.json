@@ -137,661 +137,854 @@
   },
   "db_stats": {
     "sondages": {
-      "Abobo": {
-        "id": "caf50769-3720-4caf-a3a8-1d28dcc2bfcf",
-        "code": "Abobo"
-      },
-      "Adétikopé": {
-        "id": "d961ae36-3e0a-4c22-b7be-e7605162efd5",
-        "code": "Adétikopé"
-      },
-      "Adjengré (Pounpoun)": {
-        "id": "7d745626-552f-40e2-b445-ff46fb9f4242",
-        "code": "Adjengré (Pounpoun)"
-      },
-      "Adjengré (Pounpouni)": {
-        "id": "7f7d4db6-aa8a-4288-b30a-9aee87ba60da",
-        "code": "Adjengré (Pounpouni)"
-      },
-      "Agotivé": {
-        "id": "89be212b-8468-4516-b576-0efdd0fdcea1",
-        "code": "Agotivé"
-      },
-      "Akéi": {
-        "id": "916afd64-40ba-44a5-a069-7c7fd56f2c30",
-        "code": "Akéi"
-      },
-      "Aképé": {
-        "id": "ca43f239-12d7-4591-b46b-1c52e30ca5f3",
-        "code": "Aképé"
-      },
-      "Akié": {
-        "id": "84bc130a-0dfc-4911-ac86-f02e8b72305d",
-        "code": "Akié"
-      },
-      "Alibi": {
-        "id": "16083c6f-905d-4411-a61d-c9446efade3b",
-        "code": "Alibi"
-      },
-      "Anié": {
-        "id": "4464c71e-b7c5-4ad9-8aa9-e67065abc03e",
-        "code": "Anié"
-      },
-      "Apéhéme": {
-        "id": "4b054c62-d04f-480a-b60a-dcdda5a87917",
-        "code": "Apéhéme"
-      },
-      "Apéssito": {
-        "id": "bfedaf99-88c0-49dd-93c5-80bd2668f09c",
-        "code": "Apéssito"
-      },
-      "Apéyéyémé": {
-        "id": "4e255df0-558f-4631-9ee1-64ba31e4c1e1",
-        "code": "Apéyéyémé"
-      },
-      "Assahoun": {
-        "id": "709e9ef3-60ff-4af3-a77d-d0413aaca15f",
-        "code": "Assahoun"
-      },
-      "Badja": {
-        "id": "62cf5523-91ad-4537-9583-fd43ae1c7000",
-        "code": "Badja"
-      },
-      "Badomé": {
-        "id": "78ce0d5d-2afc-4958-b2c0-cbe9fbcd4498",
-        "code": "Badomé"
-      },
-      "Bassar (kpankissi)": {
-        "id": "525715b6-35f0-4229-9112-1f7641e44570",
-        "code": "Bassar (kpankissi)"
-      },
-      "Bassar (Kpankissi)": {
-        "id": "72cd6c85-819d-443a-82b2-b74d021d03af",
-        "code": "Bassar (Kpankissi)"
-      },
-      "Belgique": {
-        "id": "b0d6d97a-2d70-4d49-b5e3-cd9d1873d7aa",
-        "code": "Belgique"
-      },
-      "Bitchabe": {
-        "id": "0b6eee74-9bf1-434b-8da8-690f7e0bb9ae",
-        "code": "Bitchabe"
-      },
-      "Bitchabé": {
-        "id": "9f90a856-ac9f-498c-b9bd-25536fd9c891",
-        "code": "Bitchabé"
-      },
-      "Bohou": {
-        "id": "b1f23e84-0c5e-4141-8959-cfa6890e4507",
-        "code": "Bohou"
-      },
-      "Campement": {
-        "id": "6cf500ee-5eb4-4d4d-b3fa-128f6dac9ced",
-        "code": "Campement"
-      },
-      "Dalavé": {
-        "id": "e25b8c1f-af27-43cb-8871-4e514d298736",
-        "code": "Dalavé"
-      },
-      "Dikamé": {
-        "id": "f1e834f1-d44d-401d-8adb-62981e81cb87",
-        "code": "Dikamé"
-      },
-      "Dimouri": {
-        "id": "7807e509-d287-487e-a049-7aeb75df7761",
-        "code": "Dimouri"
-      },
-      "Djagblé": {
-        "id": "e41a30c6-5d11-497a-a8a3-8e7dad128744",
-        "code": "Djagblé"
-      },
-      "Djidjolé": {
-        "id": "a201b9a9-763f-4699-9003-73c56cd6743f",
-        "code": "Djidjolé"
-      },
-      "Doutikopé": {
-        "id": "c1abe76b-f746-4030-b2fd-a3452a2333b2",
-        "code": "Doutikopé"
-      },
-      "Dzogbékomé": {
-        "id": "9805598c-f4b8-4727-b7ec-064765ab1f55",
-        "code": "Dzogbékomé"
-      },
-      "Dzogbékopé": {
-        "id": "dfd86eb4-273a-4aa6-9f4e-66ad887fe70a",
-        "code": "Dzogbékopé"
-      },
-      "Gbatopé": {
-        "id": "3427f149-bda2-4798-849c-030844ecf598",
-        "code": "Gbatopé"
-      },
-      "Hahotoé": {
-        "id": "7fac86c9-177b-4dfd-b87f-3c2ff927118f",
-        "code": "Hahotoé"
-      },
-      "Kabou(okpandoukpo)": {
-        "id": "3b074f99-50cd-403f-b1a5-0d13e39d4cb2",
-        "code": "Kabou(okpandoukpo)"
-      },
-      "Kabou (okpandoupo)": {
-        "id": "642ff5b6-71be-464e-9a1c-d9cc031fa8fa",
-        "code": "Kabou (okpandoupo)"
-      },
-      "Kadambara": {
-        "id": "339b7814-e485-41ef-a90c-0552e63b8712",
-        "code": "Kadambara"
-      },
-      "Kamina Barrage": {
-        "id": "3fc5deed-f899-40b4-a309-b9f80461be8a",
-        "code": "Kamina Barrage"
-      },
-      "Kamina Dakré": {
-        "id": "c52104a6-3b1c-4077-bd9b-7affb480d3d6",
-        "code": "Kamina Dakré"
-      },
-      "Kaniamboua (Bago)": {
-        "id": "f3a19c0c-83d9-4fc0-bfbc-e5bb2149716a",
-        "code": "Kaniamboua (Bago)"
-      },
-      "Katore": {
-        "id": "16f48e2b-74e6-4e16-9a53-7298faa2d24f",
-        "code": "Katore"
-      },
-      "Kevé": {
-        "id": "cb5356fd-e8b7-4651-a08d-3a03ca94fb88",
-        "code": "Kevé"
-      },
-      "Kévé": {
-        "id": "33fdcfd2-6502-4e3d-a4ba-0b99c519eab6",
-        "code": "Kévé"
-      },
-      "Komah": {
-        "id": "70cf25ce-8897-4d86-8693-df281b9f3a44",
-        "code": "Komah"
-      },
-      "Korbongou": {
-        "id": "c0e6bc68-81ea-44e6-8942-d068104a4a94",
-        "code": "Korbongou"
-      },
-      "Koudjoundè": {
-        "id": "4c83fc22-b616-49a9-9a2d-05fedba8152c",
-        "code": "Koudjoundè"
-      },
-      "koudjouwdè": {
-        "id": "568b1c80-6679-4178-afc1-2c193f6b19fd",
-        "code": "koudjouwdè"
-      },
-      "Koudjouwdè": {
-        "id": "9b94ae30-616c-4b8c-804f-1629fe80095a",
-        "code": "Koudjouwdè"
-      },
-      "Kovié": {
-        "id": "60daa5ce-6a2b-4d24-9943-6e028def1a50",
-        "code": "Kovié"
-      },
-      "Kpadapé": {
-        "id": "2f0511ef-8921-4430-972f-98b1d779ef30",
-        "code": "Kpadapé"
-      },
-      "Kparatao": {
-        "id": "74698423-c977-4b13-b953-36731a3c89f8",
-        "code": "Kparatao"
-      },
-      "Kpawa": {
-        "id": "2a6e8814-9d72-420b-b055-7178ca9ca33b",
-        "code": "Kpawa"
-      },
-      "Kpimé (Séva)": {
-        "id": "57ce1cc8-9255-4988-9570-ab01e8652403",
-        "code": "Kpimé (Séva)"
-      },
-      "Kpimé Séva": {
-        "id": "9fa7a177-100b-406c-b291-a71800f29237",
-        "code": "Kpimé Séva"
-      },
-      "Kpimé (Tomégbé)": {
-        "id": "ca2de496-1d90-4350-a785-cb7c483f18b7",
-        "code": "Kpimé (Tomégbé)"
-      },
-      "Kpimé Tomégbé": {
-        "id": "4fe2c60a-5165-4a50-aba6-3b08cdf0139c",
-        "code": "Kpimé Tomégbé"
-      },
-      "Kpimé (Woumé)": {
-        "id": "a4bcb48e-692a-4d3f-8409-7ed3090b5abf",
-        "code": "Kpimé (Woumé)"
-      },
-      "Kpimé Woumé": {
-        "id": "48b3e9bd-6a80-422c-a36c-9114274b5fd3",
-        "code": "Kpimé Woumé"
-      },
-      "Kpiné (Woumé)": {
-        "id": "89c7da15-6bcf-46b7-a439-b229c0af1b24",
-        "code": "Kpiné (Woumé)"
-      },
-      "Kpodzi": {
-        "id": "ace47f2b-d28d-4687-af15-d7ef8c601f8a",
-        "code": "Kpodzi"
-      },
-      "Lama Feing": {
-        "id": "63aa15d8-d505-4016-b7b9-7792b79c95cd",
-        "code": "Lama Feing"
-      },
-      "Lama Tchamdè": {
-        "id": "180972fa-51b4-456f-8a96-9e75cd64d927",
-        "code": "Lama Tchamdè"
-      },
-      "Lama-tessi": {
-        "id": "8e43d107-6e12-4c2e-8866-b5ffb6580059",
-        "code": "Lama-tessi"
-      },
-      "Lavié Apédomé": {
-        "id": "64f20595-b571-4c82-9bd1-8a666dff8ac6",
-        "code": "Lavié Apédomé"
-      },
-      "Mission tové": {
-        "id": "c41b7a65-957e-4839-b884-42d03bd5a1f3",
-        "code": "Mission tové"
-      },
-      "Nyamassila": {
-        "id": "b96b1ede-7e91-4acb-9962-37d6f275bc96",
-        "code": "Nyamassila"
-      },
-      "Ountivou": {
-        "id": "65b7470f-cdb1-4ac4-9ea3-50805826d89a",
-        "code": "Ountivou"
-      },
-      "Pitiah": {
-        "id": "198d2be8-e73f-4e4a-bef9-d5254daf908d",
-        "code": "Pitiah"
-      },
-      "Pittah": {
-        "id": "df903bd3-156e-4516-a3dd-15a3c08f5878",
-        "code": "Pittah"
-      },
-      "Sanfatoule": {
-        "id": "56bc5156-6212-4b4a-bb42-0cf7300bf03e",
-        "code": "Sanfatoule"
-      },
-      "Sanfatoute": {
-        "id": "245e7f1a-fe86-4226-9976-b04969681c94",
-        "code": "Sanfatoute"
-      },
-      "Sevagan": {
-        "id": "1846e769-ea26-45a3-9d52-88c7210e6d1c",
-        "code": "Sevagan"
-      },
-      "Sevegan": {
-        "id": "13b91f45-6c48-4739-9ad5-08a1fdd4e236",
-        "code": "Sevegan"
-      },
-      "Solim": {
-        "id": "6d60eb43-5e8e-426a-b0be-a93564760770",
-        "code": "Solim"
-      },
-      "Sotouboua (Sondè)": {
-        "id": "30b73445-2ef4-4cff-a9bf-78c1db2a1821",
-        "code": "Sotouboua (Sondè)"
-      },
-      "Sotouboua (Soudè)": {
-        "id": "cbf5afd7-1e2d-4b42-9530-232c6809e00e",
-        "code": "Sotouboua (Soudè)"
-      },
-      "Srikpui(Togblecopé)": {
-        "id": "7c2c1dfd-2608-42cf-a752-b30645601a9a",
-        "code": "Srikpui(Togblecopé)"
-      },
-      "Srikpui (Togblécopé)": {
-        "id": "1b27247a-af57-471a-8e3a-663d3e45ac6a",
-        "code": "Srikpui (Togblécopé)"
-      },
-      "Tchalo": {
-        "id": "9b0e6e6c-e619-4a93-ba92-5a3c58384798",
-        "code": "Tchalo"
-      },
-      "Tchamba": {
-        "id": "2bdf49d1-e15a-4f07-9d07-fc1af0b15cb4",
-        "code": "Tchamba"
-      },
-      "Tchamdè": {
-        "id": "1811f3a9-5ca7-47fa-a674-f9bd883e0ddc",
-        "code": "Tchamdè"
-      },
-      "Tchitchao": {
-        "id": "7be7a1ca-aaa2-4483-8246-0e658a78bab0",
-        "code": "Tchitchao"
-      },
-      "Tekpo": {
-        "id": "60208c51-7c75-461e-98bf-7bb223bf6e35",
-        "code": "Tekpo"
-      },
-      "Tovégan": {
-        "id": "95e65db4-9a05-4b6d-bee6-7e6afeb78f85",
-        "code": "Tovégan"
-      },
-      "Tovègan": {
-        "id": "8b7e7603-ad27-4dd0-8603-fd66e476f190",
-        "code": "Tovègan"
-      },
-      "Tsévié blévé": {
-        "id": "166270ec-24b3-45cc-903a-25c5e5dd0705",
-        "code": "Tsévié blévé"
-      },
-      "Tsévié dalavémodji": {
-        "id": "7f534817-7e97-4aa1-94b7-b485e7f88fdb",
-        "code": "Tsévié dalavémodji"
-      },
-      "Tsévié dévé": {
-        "id": "b38b9cb8-e019-4011-a41e-adb08981cb24",
-        "code": "Tsévié dévé"
-      },
-      "Wli": {
-        "id": "71a1e08b-0b29-4cfa-85d3-892d57d21f74",
-        "code": "Wli"
-      },
-      "Womé (Cascade)": {
-        "id": "3b74640a-6f9d-4cc9-9b54-63e84689ee7b",
-        "code": "Womé (Cascade)"
-      },
-      "Womé Cascade": {
-        "id": "ab7fc4a2-932c-4048-8e12-e912314e3bad",
-        "code": "Womé Cascade"
-      },
-      "Womé (Ville)": {
-        "id": "32afa7a1-1db5-4c53-8926-42e9531e6ad4",
-        "code": "Womé (Ville)"
-      },
-      "Womé Ville": {
-        "id": "df5d031c-eaf8-4672-988d-d07be2814e38",
-        "code": "Womé Ville"
-      },
-      "Womé(Ville)": {
-        "id": "19302b07-1978-47ed-912a-280aea002b05",
-        "code": "Womé(Ville)"
-      },
-      "Womé (Zongo)": {
-        "id": "0d1297bf-a3ec-44cd-b036-529a362fa2b5",
-        "code": "Womé (Zongo)"
-      },
-      "Womé Zongo": {
-        "id": "2d3e5802-7820-4eaa-941e-9bb6fb6f6ffe",
-        "code": "Womé Zongo"
-      },
-      "Yade": {
-        "id": "40be303e-cbde-4d03-a694-f98f3cbaafd3",
-        "code": "Yade"
-      },
-      "Zomayi": {
-        "id": "28575332-8b0a-4320-97d5-7b1092a4fa9d",
-        "code": "Zomayi"
-      },
-      "Zongo 1": {
-        "id": "34fd7db3-d26a-4aef-a891-eb24485daa52",
-        "code": "Zongo 1"
-      },
-      "Zongo 2": {
-        "id": "0dcf584c-fc33-4df9-904e-66cd75c5fb49",
-        "code": "Zongo 2"
+      "abobo": {
+        "id": "f2c9bbf1-87b4-4e07-9a7d-731caf8ec8d1",
+        "code": null
+      },
+      "adetikope": {
+        "id": "2c4d7372-3368-496f-be54-def7f4df80c9",
+        "code": null
+      },
+      "adjengre (pounpoun)": {
+        "id": "c714c749-1f23-45d0-a643-2fd7674cf806",
+        "code": null
+      },
+      "adjengre (pounpouni)": {
+        "id": "0e773d08-0273-4533-a26b-7d786613759f",
+        "code": null
+      },
+      "agotive": {
+        "id": "de7b993b-c67d-4a5f-b3cb-94d28ae81d2e",
+        "code": null
+      },
+      "akei": {
+        "id": "341cf40d-2a32-4b80-9ef6-a53798d1790f",
+        "code": null
+      },
+      "akepe": {
+        "id": "eb309ed5-0c0b-44cb-982f-a18ab136f31e",
+        "code": null
+      },
+      "akie": {
+        "id": "7ae1c12e-f5f8-41fa-a497-d846ec0dd912",
+        "code": null
+      },
+      "alibi": {
+        "id": "be29a0c4-5539-4ad1-81f3-d9cb01f7a25f",
+        "code": null
+      },
+      "anie": {
+        "id": "be3f8f3e-a021-4d9a-8530-75a82087c5ff",
+        "code": null
+      },
+      "apeheme": {
+        "id": "09e5e414-aad8-4a9e-adc7-9e6465f3f01c",
+        "code": null
+      },
+      "apessito": {
+        "id": "0ba484e7-4a0c-494a-ae92-4ed0a70dbbc8",
+        "code": null
+      },
+      "apeyeyeme": {
+        "id": "dabe1d93-ed0d-416a-8905-923b7e7e8304",
+        "code": null
+      },
+      "assahoun": {
+        "id": "80d962c4-a997-462e-8db9-6a49353ceeb9",
+        "code": null
+      },
+      "badja": {
+        "id": "6f9bcbc2-f8bc-4919-beae-e243f04dcb4a",
+        "code": null
+      },
+      "badome": {
+        "id": "320a9e78-2885-4f0d-ab42-d939e5fd5069",
+        "code": null
+      },
+      "bassar (kpankissi)": {
+        "id": "a85fea7a-401c-4216-a83e-123682e0f793",
+        "code": null
+      },
+      "belgique": {
+        "id": "5e520d32-dfab-4cd9-8637-9c72c100ca0e",
+        "code": null
+      },
+      "bitchabe": {
+        "id": "7b201c5b-a329-412a-b980-0b7cd0356e4d",
+        "code": null
+      },
+      "bohou": {
+        "id": "b1f0173d-104f-4dcb-b034-f92151e7dc74",
+        "code": null
+      },
+      "campement": {
+        "id": "6b496a6c-e153-48a5-a880-72f730f54df1",
+        "code": null
+      },
+      "dalave": {
+        "id": "ffe424da-260a-4a55-b148-bc2eb2d8effa",
+        "code": null
+      },
+      "dikame": {
+        "id": "9f2440d9-56b7-4385-a9d4-e3d8537d47b3",
+        "code": null
+      },
+      "dimouri": {
+        "id": "86524e5c-c205-4ae0-8627-7a24e0a0454d",
+        "code": null
+      },
+      "djagble": {
+        "id": "1bc93689-fb61-4174-98fd-d15def92abdc",
+        "code": null
+      },
+      "djidjole": {
+        "id": "865a6df2-cdb0-4d1a-b789-ec70b5d4220e",
+        "code": null
+      },
+      "doutikope": {
+        "id": "df863e0b-5bbc-4024-96ee-1753178d1e5f",
+        "code": null
+      },
+      "dzogbekome": {
+        "id": "5a097dcd-62f9-497b-8dd6-dceff33e7ea1",
+        "code": null
+      },
+      "dzogbekope": {
+        "id": "a91798f9-0560-4b7b-88b4-2cdfb7c3eb55",
+        "code": null
+      },
+      "gbatope": {
+        "id": "bae943b3-59ef-4d42-8789-b3dda6ca230a",
+        "code": null
+      },
+      "hahotoe": {
+        "id": "69eb30e2-650e-450e-8f18-dc4c79a884bf",
+        "code": null
+      },
+      "kabou (okpandoukpo)": {
+        "id": "d7d79a69-9842-4acf-8f11-9cab09c60e6e",
+        "code": null
+      },
+      "kabou (okpandoupo)": {
+        "id": "76cb356a-505d-4aaa-a870-352cbb2f98b4",
+        "code": null
+      },
+      "kadambara": {
+        "id": "19652692-c246-414f-9683-315685449665",
+        "code": null
+      },
+      "kamina barrage": {
+        "id": "3f106a59-dfdf-4799-a354-5c254126bb97",
+        "code": null
+      },
+      "kamina dakre": {
+        "id": "47d01049-79dc-4728-aafb-f8e52a9b54ca",
+        "code": null
+      },
+      "kaniamboua (bago)": {
+        "id": "a9a82a4d-5c12-4792-8e74-9df158f978c3",
+        "code": null
+      },
+      "katore": {
+        "id": "084da9a5-f7fe-4e43-b9cd-29b1397ef421",
+        "code": null
+      },
+      "keve": {
+        "id": "bd779368-bd0f-473a-853b-9c5eb29eaec9",
+        "code": null
+      },
+      "komah": {
+        "id": "e9042379-22c2-4086-94bf-a47de27a9452",
+        "code": null
+      },
+      "korbongou": {
+        "id": "44d564d2-ca59-4253-b5f9-29094f700e91",
+        "code": null
+      },
+      "koudjounde": {
+        "id": "b24da769-d47c-4386-879a-d8dd3fcfc91b",
+        "code": null
+      },
+      "koudjouwde": {
+        "id": "a2b4e4b9-8348-420b-86d0-632ac9153965",
+        "code": null
+      },
+      "kovie": {
+        "id": "dde4d3ad-2aed-44dc-8e6c-f9ab6bb9f516",
+        "code": null
+      },
+      "kpadape": {
+        "id": "b2f1079b-2aa5-4de5-8fb8-dc5da7de46b6",
+        "code": null
+      },
+      "kparatao": {
+        "id": "335f0f48-4d46-466f-8a69-553d9460800a",
+        "code": null
+      },
+      "kpawa": {
+        "id": "48633f8f-453e-4e82-a703-573271fce6c5",
+        "code": null
+      },
+      "kpime (seva)": {
+        "id": "66e23502-7650-4d3b-8e9f-7c666e2f1530",
+        "code": null
+      },
+      "kpime seva": {
+        "id": "c71b140a-a6c8-45b0-9705-eb329df0ac9b",
+        "code": null
+      },
+      "kpime (tomegbe)": {
+        "id": "187f0670-057f-4b41-a276-8a7223157f9e",
+        "code": null
+      },
+      "kpime tomegbe": {
+        "id": "6492e6d4-a41c-41a9-b50b-1e07cc1e6620",
+        "code": null
+      },
+      "kpime (woume)": {
+        "id": "0b858bab-7063-49bd-a844-f902e047807c",
+        "code": null
+      },
+      "kpime woume": {
+        "id": "326379b7-26ac-4edf-baa8-89042442086a",
+        "code": null
+      },
+      "kpine (woume)": {
+        "id": "0f1f1956-69b4-43fc-9b3f-1a45d5037d67",
+        "code": null
+      },
+      "kpodzi": {
+        "id": "7e2f6022-fb7d-4bf9-b6cb-cb43e3760b24",
+        "code": null
+      },
+      "lama feing": {
+        "id": "3307c9f5-bbc3-42fd-b532-f9e8753ada88",
+        "code": null
+      },
+      "lama tchamde": {
+        "id": "8c3250d4-9f40-43ed-b944-33b20657f170",
+        "code": null
+      },
+      "lama-tessi": {
+        "id": "3bc31972-6776-4600-8e32-f630ddf177ad",
+        "code": null
+      },
+      "lavie apedome": {
+        "id": "3fa2db3d-28ec-4698-8632-f1ebcf46c876",
+        "code": null
+      },
+      "mission tove": {
+        "id": "0d45d97d-fcfc-46a9-b148-e7c0d9136292",
+        "code": null
+      },
+      "nyamassila": {
+        "id": "936e0232-fad0-4ce0-aad0-4d34d4e57d7e",
+        "code": null
+      },
+      "ountivou": {
+        "id": "08fc31ce-b4e6-4727-b500-8f98de93685f",
+        "code": null
+      },
+      "pitiah": {
+        "id": "13c704d6-bd36-4f2d-b89d-338600632902",
+        "code": null
+      },
+      "pittah": {
+        "id": "19522a6e-608b-4300-9cda-1af35ef1e47e",
+        "code": null
+      },
+      "sanfatoule": {
+        "id": "ec818b4c-4382-4c9e-b53a-6b244bffbba3",
+        "code": null
+      },
+      "sanfatoute": {
+        "id": "5e9cabf7-8bed-480b-a01a-eb2bf39e16ca",
+        "code": null
+      },
+      "sevagan": {
+        "id": "2406c020-8f4e-4dc6-853d-278f4fd1be8d",
+        "code": null
+      },
+      "sevegan": {
+        "id": "5a27e443-611f-49ca-aa29-454af36d2858",
+        "code": null
+      },
+      "solim": {
+        "id": "7bb9f2b4-fcbc-464a-9135-0a28f3eb8fdc",
+        "code": null
+      },
+      "sotouboua (sonde)": {
+        "id": "ccf5c64d-0543-4c67-ad65-10116173c241",
+        "code": null
+      },
+      "sotouboua (soude)": {
+        "id": "0baba09f-0f95-4466-85ce-44e2ee417386",
+        "code": null
+      },
+      "srikpui (togblecope)": {
+        "id": "253bac99-93cb-4cde-a455-6fcdae831db7",
+        "code": null
+      },
+      "tchalo": {
+        "id": "f651b4e7-70ee-44bd-9697-f594ed092ba3",
+        "code": null
+      },
+      "tchamba": {
+        "id": "33263da2-7cbf-480f-a6cb-e600f41bbf74",
+        "code": null
+      },
+      "tchamde": {
+        "id": "2ebde8c8-26bc-4093-8aba-f35d02bd6b1c",
+        "code": null
+      },
+      "tchitchao": {
+        "id": "0a5fa7bd-8ed4-4170-96e5-6a065bad0d1c",
+        "code": null
+      },
+      "tekpo": {
+        "id": "4148c74d-2a5b-4835-8b47-15fe72c6048c",
+        "code": null
+      },
+      "tovegan": {
+        "id": "7e9359b5-5d13-4426-8cf1-67626d05215f",
+        "code": null
+      },
+      "tsevie bleve": {
+        "id": "b7bffcb2-bc55-4d47-91f3-17dcdae38001",
+        "code": null
+      },
+      "tsevie dalavemodji": {
+        "id": "ffeb39bc-2073-4b02-a5c1-8023c4766e8b",
+        "code": null
+      },
+      "tsevie deve": {
+        "id": "9df6e1b6-77d0-4739-82f5-21c13acd3449",
+        "code": null
+      },
+      "wli": {
+        "id": "2b947f57-ca24-45b5-9e38-82f1f030b6a6",
+        "code": null
+      },
+      "wome (cascade)": {
+        "id": "eb33d98b-0692-43ba-9567-a6b6f2d886da",
+        "code": null
+      },
+      "wome cascade": {
+        "id": "c4cb13da-b92b-4231-80cc-330e5eb66295",
+        "code": null
+      },
+      "wome (ville)": {
+        "id": "5c1e304b-9ab3-4001-9e3f-fab19f6da5bd",
+        "code": null
+      },
+      "wome ville": {
+        "id": "082d7cde-6873-42a1-9431-c565f6f1ed49",
+        "code": null
+      },
+      "wome (zongo)": {
+        "id": "595c7212-737b-431d-bbe7-58553be0b44c",
+        "code": null
+      },
+      "wome zongo": {
+        "id": "09ae5def-c2f3-4553-b0c2-9a4805725b47",
+        "code": null
+      },
+      "yade": {
+        "id": "29d4099e-30b6-47d4-97c8-265478176a41",
+        "code": null
+      },
+      "zomayi": {
+        "id": "3de5f9b7-793b-4f3d-8e1f-26f12f53ac7f",
+        "code": null
+      },
+      "zongo 1": {
+        "id": "1f221cab-171f-4b50-8232-7033e583a5e5",
+        "code": null
+      },
+      "zongo 2": {
+        "id": "f8f74d38-50a6-4caa-b379-9ceeb181c438",
+        "code": null
       }
     },
     "echantillons": {
-      "Kamina Barrage": 3,
-      "Korbongou": 3,
-      "Bitchabé": 3,
-      "Sanfatoute": 3,
-      "Apéyéyémé": 3,
-      "Wli": 3,
-      "Nyamassila": 3,
-      "koudjouwdè": 3,
-      "Lama Tchamdè": 3,
-      "Dzogbékomé": 3,
-      "Tovègan": 3,
-      "Womé Ville": 3,
-      "Tsévié blévé": 3,
-      "Kabou (okpandoupo)": 3,
-      "Komah": 3,
-      "Tsévié dévé": 3,
-      "Tekpo": 3,
-      "Akié": 3,
-      "Kévé": 3,
-      "Tchamba": 3,
-      "Kpadapé": 3,
-      "Koudjoundè": 3,
-      "Sevagan": 3,
-      "Dzogbékopé": 3,
-      "Sevegan": 3,
-      "Campement": 3,
-      "Adétikopé": 3,
-      "Tsévié dalavémodji": 3,
-      "Kadambara": 3,
-      "Kamina Dakré": 3,
-      "Solim": 3,
-      "Kpawa": 3,
-      "Womé (Ville)": 3,
-      "Kpimé Séva": 3,
-      "Pittah": 3,
-      "Zomayi": 3,
-      "Kpimé Woumé": 3,
-      "Djagblé": 3,
-      "Yade": 3,
-      "Bitchabe": 3,
-      "Adjengré (Pounpoun)": 3,
-      "Lavié Apédomé": 3,
-      "Kaniamboua (Bago)": 3,
-      "Womé Zongo": 3,
-      "Womé (Cascade)": 3,
-      "Koudjouwdè": 3,
-      "Hahotoé": 3,
-      "Doutikopé": 3,
-      "Apéhéme": 3,
-      "Adjengré (Pounpouni)": 3,
-      "Tovégan": 3,
-      "Womé(Ville)": 3,
-      "Kabou(okpandoukpo)": 3,
-      "Bassar (kpankissi)": 3,
-      "Dikamé": 3,
-      "Kpimé Tomégbé": 3,
-      "Kevé": 3,
-      "Zongo 2": 3,
-      "Sanfatoule": 3,
-      "Sotouboua (Sondè)": 3,
-      "Dalavé": 3,
-      "Bohou": 3,
-      "Kpimé (Séva)": 3,
-      "Katore": 3,
-      "Anié": 3,
-      "Aképé": 3,
-      "Kpiné (Woumé)": 3,
-      "Mission tové": 3,
-      "Kpimé (Woumé)": 3,
-      "Belgique": 3,
-      "Tchitchao": 3,
-      "Kpimé (Tomégbé)": 3,
-      "Badja": 3,
-      "Abobo": 3,
-      "Tchalo": 3,
-      "Kparatao": 3,
-      "Akéi": 3,
-      "Kpodzi": 3,
-      "Kovié": 3,
-      "Badomé": 3,
-      "Sotouboua (Soudè)": 3,
-      "Lama Feing": 3,
-      "Ountivou": 3,
-      "Tchamdè": 3,
-      "Alibi": 3,
-      "Dimouri": 3,
-      "Womé (Zongo)": 3,
-      "Gbatopé": 3,
-      "Lama-tessi": 3,
-      "Srikpui (Togblécopé)": 3,
-      "Srikpui(Togblecopé)": 3,
-      "Apéssito": 3,
-      "Djidjolé": 3,
-      "Bassar (Kpankissi)": 3,
-      "Zongo 1": 3,
-      "Assahoun": 3,
-      "Pitiah": 3,
-      "Womé Cascade": 3,
-      "Agotivé": 3
+      "yade": 3,
+      "sotouboua (soude)": 3,
+      "pittah": 3,
+      "bassar (kpankissi)": 3,
+      "tchitchao": 3,
+      "adetikope": 3,
+      "tovegan": 3,
+      "wome (ville)": 3,
+      "kpime (woume)": 3,
+      "zongo 2": 3,
+      "bohou": 3,
+      "kpime seva": 3,
+      "dalave": 3,
+      "agotive": 3,
+      "kpine (woume)": 3,
+      "tchalo": 3,
+      "lama feing": 3,
+      "kabou (okpandoukpo)": 3,
+      "badja": 3,
+      "kparatao": 3,
+      "belgique": 3,
+      "tekpo": 3,
+      "apeheme": 3,
+      "wome zongo": 3,
+      "tsevie dalavemodji": 3,
+      "sanfatoule": 3,
+      "lavie apedome": 3,
+      "korbongou": 3,
+      "gbatope": 3,
+      "kadambara": 3,
+      "akepe": 3,
+      "katore": 3,
+      "srikpui (togblecope)": 3,
+      "dzogbekome": 3,
+      "adjengre (pounpouni)": 3,
+      "tchamba": 3,
+      "wome (zongo)": 3,
+      "dikame": 3,
+      "kpime woume": 3,
+      "kpime tomegbe": 3,
+      "djagble": 3,
+      "apeyeyeme": 3,
+      "kpadape": 3,
+      "hahotoe": 3,
+      "lama-tessi": 3,
+      "badome": 3,
+      "tchamde": 3,
+      "ountivou": 3,
+      "djidjole": 3,
+      "anie": 3,
+      "akei": 3,
+      "dimouri": 3,
+      "akie": 3,
+      "kamina barrage": 3,
+      "alibi": 3,
+      "wome (cascade)": 3,
+      "kpawa": 3,
+      "campement": 3,
+      "bitchabe": 3,
+      "abobo": 3,
+      "nyamassila": 3,
+      "sevagan": 3,
+      "kpime (tomegbe)": 3,
+      "koudjouwde": 3,
+      "zomayi": 3,
+      "wli": 3,
+      "kovie": 3,
+      "wome ville": 3,
+      "solim": 3,
+      "sevegan": 3,
+      "kabou (okpandoupo)": 3,
+      "dzogbekope": 3,
+      "apessito": 3,
+      "adjengre (pounpoun)": 3,
+      "tsevie deve": 3,
+      "tsevie bleve": 3,
+      "pitiah": 3,
+      "sanfatoute": 3,
+      "mission tove": 3,
+      "wome cascade": 3,
+      "kaniamboua (bago)": 3,
+      "kpodzi": 3,
+      "doutikope": 3,
+      "sotouboua (sonde)": 3,
+      "kamina dakre": 3,
+      "lama tchamde": 3,
+      "zongo 1": 3,
+      "koudjounde": 3,
+      "assahoun": 3,
+      "kpime (seva)": 3,
+      "keve": 3,
+      "komah": 3
     },
     "vbs": {
-      "Kamina Barrage": 3,
-      "Apéyéyémé": 3,
-      "Nyamassila": 3,
-      "Kadambara": 3,
-      "Kamina Dakré": 3,
-      "Adjengré (Pounpoun)": 3,
-      "Kaniamboua (Bago)": 3,
-      "Sotouboua (Sondè)": 3,
-      "Anié": 3,
-      "Badomé": 3,
-      "Ountivou": 3,
-      "Agotivé": 3
+      "yade": 3,
+      "pittah": 3,
+      "bassar (kpankissi)": 3,
+      "tchitchao": 3,
+      "adetikope": 3,
+      "tovegan": 3,
+      "wome (ville)": 2,
+      "kpime (woume)": 3,
+      "bohou": 3,
+      "zongo 2": 3,
+      "dalave": 3,
+      "agotive": 3,
+      "tchalo": 3,
+      "lama feing": 3,
+      "kabou (okpandoukpo)": 3,
+      "badja": 3,
+      "kparatao": 3,
+      "belgique": 3,
+      "tekpo": 3,
+      "apeheme": 3,
+      "tsevie dalavemodji": 3,
+      "lavie apedome": 3,
+      "korbongou": 3,
+      "gbatope": 3,
+      "akepe": 3,
+      "kadambara": 3,
+      "katore": 3,
+      "srikpui (togblecope)": 3,
+      "dzogbekome": 3,
+      "tchamba": 3,
+      "dikame": 3,
+      "djagble": 3,
+      "apeyeyeme": 3,
+      "kpadape": 3,
+      "hahotoe": 3,
+      "lama-tessi": 3,
+      "badome": 3,
+      "tchamde": 3,
+      "djidjole": 3,
+      "ountivou": 3,
+      "akei": 3,
+      "anie": 3,
+      "dimouri": 3,
+      "kamina barrage": 3,
+      "alibi": 3,
+      "wome (cascade)": 3,
+      "kpawa": 3,
+      "bitchabe": 3,
+      "campement": 3,
+      "abobo": 3,
+      "nyamassila": 3,
+      "kpime (tomegbe)": 3,
+      "koudjouwde": 3,
+      "zomayi": 3,
+      "wli": 3,
+      "kovie": 3,
+      "solim": 3,
+      "sevegan": 3,
+      "apessito": 3,
+      "adjengre (pounpoun)": 3,
+      "tsevie deve": 3,
+      "tsevie bleve": 3,
+      "sanfatoute": 3,
+      "mission tove": 3,
+      "kaniamboua (bago)": 3,
+      "kpodzi": 3,
+      "doutikope": 3,
+      "sotouboua (sonde)": 3,
+      "kamina dakre": 3,
+      "lama tchamde": 3,
+      "zongo 1": 3,
+      "assahoun": 3,
+      "kpime (seva)": 3,
+      "keve": 3,
+      "komah": 3
     },
     "limites": {
-      "Adjengré (Pounpouni)": 3,
-      "Agotivé": 3,
-      "Anié": 3,
-      "Apéyéyémé": 3,
-      "Badomé": 3,
-      "Kadambara": 3,
-      "Kamina Barrage": 3,
-      "Kamina Dakré": 3,
-      "Kaniamboua (Bago)": 3,
-      "Nyamassila": 3,
-      "Ountivou": 3,
-      "Sotouboua (Sondè)": 3
+      "bassar (kpankissi)": 3,
+      "tchitchao": 3,
+      "adetikope": 3,
+      "tovegan": 3,
+      "zongo 2": 3,
+      "bohou": 3,
+      "kpime seva": 3,
+      "dalave": 3,
+      "agotive": 3,
+      "tchalo": 3,
+      "lama feing": 3,
+      "badja": 3,
+      "belgique": 3,
+      "tekpo": 3,
+      "apeheme": 3,
+      "wome zongo": 3,
+      "tsevie dalavemodji": 3,
+      "lavie apedome": 3,
+      "korbongou": 3,
+      "gbatope": 3,
+      "kadambara": 3,
+      "akepe": 3,
+      "katore": 3,
+      "srikpui (togblecope)": 3,
+      "adjengre (pounpouni)": 3,
+      "tchamba": 3,
+      "dikame": 3,
+      "kpime woume": 3,
+      "kpime tomegbe": 3,
+      "djagble": 3,
+      "apeyeyeme": 3,
+      "kpadape": 3,
+      "hahotoe": 3,
+      "lama-tessi": 3,
+      "badome": 3,
+      "tchamde": 3,
+      "ountivou": 3,
+      "djidjole": 3,
+      "anie": 3,
+      "akei": 3,
+      "dimouri": 3,
+      "kamina barrage": 3,
+      "alibi": 3,
+      "kpawa": 3,
+      "campement": 3,
+      "bitchabe": 3,
+      "abobo": 3,
+      "nyamassila": 3,
+      "sevagan": 3,
+      "zomayi": 3,
+      "wli": 3,
+      "kovie": 3,
+      "wome ville": 3,
+      "solim": 3,
+      "kabou (okpandoupo)": 3,
+      "dzogbekope": 3,
+      "apessito": 3,
+      "tsevie deve": 3,
+      "tsevie bleve": 3,
+      "sanfatoute": 3,
+      "mission tove": 3,
+      "wome cascade": 3,
+      "kaniamboua (bago)": 3,
+      "kpodzi": 3,
+      "doutikope": 3,
+      "sotouboua (sonde)": 3,
+      "kamina dakre": 3,
+      "lama tchamde": 3,
+      "zongo 1": 3,
+      "koudjounde": 3,
+      "assahoun": 3,
+      "keve": 3,
+      "komah": 3,
+      "yade": 3,
+      "pittah": 3
     },
     "classif": {
-      "Kamina Barrage": 3,
-      "Apéyéyémé": 3,
-      "Sotouboua (Sondè)": 3,
-      "Nyamassila": 3,
-      "Anié": 3,
-      "Kadambara": 3,
-      "Kamina Dakré": 3,
-      "Badomé": 3,
-      "Ountivou": 3,
-      "Kaniamboua (Bago)": 3,
-      "Adjengré (Pounpouni)": 3,
-      "Agotivé": 3
+      "bassar (kpankissi)": 3,
+      "tchitchao": 3,
+      "adetikope": 3,
+      "tovegan": 3,
+      "zongo 2": 3,
+      "bohou": 3,
+      "kpime seva": 3,
+      "dalave": 3,
+      "agotive": 3,
+      "tchalo": 2,
+      "lama feing": 3,
+      "badja": 3,
+      "kparatao": 3,
+      "belgique": 3,
+      "tekpo": 3,
+      "apeheme": 3,
+      "wome zongo": 3,
+      "tsevie dalavemodji": 3,
+      "lavie apedome": 3,
+      "korbongou": 3,
+      "gbatope": 3,
+      "kadambara": 3,
+      "akepe": 3,
+      "katore": 3,
+      "srikpui (togblecope)": 3,
+      "adjengre (pounpouni)": 3,
+      "tchamba": 3,
+      "dikame": 3,
+      "kpime woume": 3,
+      "kpime tomegbe": 3,
+      "djagble": 3,
+      "apeyeyeme": 3,
+      "kpadape": 3,
+      "hahotoe": 3,
+      "lama-tessi": 3,
+      "badome": 3,
+      "tchamde": 3,
+      "ountivou": 3,
+      "djidjole": 3,
+      "anie": 3,
+      "akei": 3,
+      "dimouri": 3,
+      "kamina barrage": 3,
+      "alibi": 3,
+      "kpawa": 3,
+      "campement": 3,
+      "bitchabe": 3,
+      "abobo": 3,
+      "nyamassila": 3,
+      "sevagan": 2,
+      "zomayi": 3,
+      "wli": 3,
+      "kovie": 3,
+      "wome ville": 3,
+      "solim": 3,
+      "kabou (okpandoupo)": 3,
+      "dzogbekope": 3,
+      "apessito": 3,
+      "tsevie deve": 3,
+      "tsevie bleve": 3,
+      "sanfatoute": 3,
+      "mission tove": 3,
+      "wome cascade": 3,
+      "kaniamboua (bago)": 3,
+      "kpodzi": 3,
+      "doutikope": 3,
+      "sotouboua (sonde)": 3,
+      "kamina dakre": 3,
+      "lama tchamde": 3,
+      "zongo 1": 3,
+      "koudjounde": 3,
+      "assahoun": 3,
+      "keve": 3,
+      "komah": 3,
+      "yade": 3,
+      "pittah": 3
     },
     "granulo": {
-      "Kamina Barrage": 3,
-      "Korbongou": 3,
-      "Apéyéyémé": 3,
-      "Wli": 3,
-      "Nyamassila": 3,
-      "Lama Tchamdè": 3,
-      "koudjouwdè": 3,
-      "Kabou (okpandoupo)": 3,
-      "Tsévié blévé": 3,
-      "Komah": 3,
-      "Tekpo": 3,
-      "Tsévié dévé": 3,
-      "Akié": 3,
-      "Tchamba": 3,
-      "Kpadapé": 3,
-      "Sevagan": 3,
-      "Dzogbékopé": 3,
-      "Campement": 3,
-      "Adétikopé": 3,
-      "Tsévié dalavémodji": 3,
-      "Kadambara": 3,
-      "Kamina Dakré": 3,
-      "Solim": 3,
-      "Kpawa": 3,
-      "Womé (Ville)": 3,
-      "Zomayi": 3,
-      "Djagblé": 3,
-      "Yade": 3,
-      "Bitchabe": 3,
-      "Lavié Apédomé": 3,
-      "Kaniamboua (Bago)": 2,
-      "Womé (Cascade)": 3,
-      "Doutikopé": 3,
-      "Hahotoé": 3,
-      "Apéhéme": 3,
-      "Adjengré (Pounpouni)": 3,
-      "Tovégan": 3,
-      "Dikamé": 3,
-      "Kevé": 3,
-      "Sanfatoule": 3,
-      "Zongo 2": 3,
-      "Bohou": 3,
-      "Dalavé": 3,
-      "Kpimé (Séva)": 3,
-      "Katore": 3,
-      "Anié": 3,
-      "Aképé": 3,
-      "Kpiné (Woumé)": 3,
-      "Mission tové": 3,
-      "Belgique": 2,
-      "Tchitchao": 3,
-      "Kpimé (Tomégbé)": 3,
-      "Badja": 3,
-      "Abobo": 3,
-      "Tchalo": 3,
-      "Kparatao": 3,
-      "Kpodzi": 3,
-      "Kovié": 3,
-      "Badomé": 3,
-      "Lama Feing": 3,
-      "Sotouboua (Soudè)": 3,
-      "Ountivou": 3,
-      "Tchamdè": 3,
-      "Alibi": 3,
-      "Dimouri": 3,
-      "Womé (Zongo)": 3,
-      "Gbatopé": 3,
-      "Lama-tessi": 3,
-      "Srikpui (Togblécopé)": 3,
-      "Apéssito": 3,
-      "Bassar (Kpankissi)": 3,
-      "Djidjolé": 3,
-      "Zongo 1": 3,
-      "Assahoun": 3,
-      "Pitiah": 3,
-      "Agotivé": 3
+      "bassar (kpankissi)": 3,
+      "tchitchao": 3,
+      "wome (ville)": 3,
+      "bohou": 3,
+      "agotive": 3,
+      "kpine (woume)": 3,
+      "tchalo": 3,
+      "lama feing": 3,
+      "kparatao": 3,
+      "sanfatoule": 3,
+      "lavie apedome": 3,
+      "korbongou": 3,
+      "kadambara": 3,
+      "katore": 3,
+      "adjengre (pounpouni)": 3,
+      "tchamba": 3,
+      "wome (zongo)": 3,
+      "apeyeyeme": 3,
+      "kpadape": 3,
+      "lama-tessi": 3,
+      "badome": 3,
+      "tchamde": 3,
+      "djidjole": 3,
+      "ountivou": 3,
+      "anie": 3,
+      "dimouri": 3,
+      "akie": 3,
+      "kamina barrage": 3,
+      "alibi": 3,
+      "wome (cascade)": 3,
+      "kpawa": 3,
+      "bitchabe": 3,
+      "campement": 3,
+      "nyamassila": 3,
+      "kpime (tomegbe)": 3,
+      "koudjouwde": 3,
+      "zomayi": 3,
+      "solim": 3,
+      "kabou (okpandoupo)": 3,
+      "apessito": 3,
+      "pitiah": 3,
+      "kaniamboua (bago)": 2,
+      "kpodzi": 3,
+      "doutikope": 3,
+      "kamina dakre": 3,
+      "lama tchamde": 3,
+      "kpime (seva)": 3,
+      "komah": 3,
+      "yade": 3,
+      "sotouboua (soude)": 3
     },
     "gonflement": {
-      "Kamina Barrage": 3,
-      "Apéyéyémé": 3,
-      "Sotouboua (Sondè)": 3,
-      "Nyamassila": 3,
-      "Anié": 3,
-      "Kadambara": 3,
-      "Kamina Dakré": 3,
-      "Badomé": 3,
-      "Ountivou": 3,
-      "Kaniamboua (Bago)": 3,
-      "Adjengré (Pounpouni)": 3,
-      "Agotivé": 3
+      "yade": 3,
+      "pittah": 3,
+      "bassar (kpankissi)": 3,
+      "tchitchao": 3,
+      "adetikope": 3,
+      "tovegan": 3,
+      "wome (ville)": 3,
+      "kpime (woume)": 3,
+      "zongo 2": 3,
+      "bohou": 3,
+      "dalave": 3,
+      "agotive": 3,
+      "tchalo": 3,
+      "lama feing": 3,
+      "badja": 3,
+      "kparatao": 3,
+      "belgique": 3,
+      "tekpo": 3,
+      "apeheme": 3,
+      "tsevie dalavemodji": 3,
+      "lavie apedome": 3,
+      "korbongou": 3,
+      "gbatope": 3,
+      "kadambara": 3,
+      "akepe": 3,
+      "katore": 3,
+      "srikpui (togblecope)": 3,
+      "adjengre (pounpouni)": 3,
+      "tchamba": 3,
+      "wome (zongo)": 3,
+      "dikame": 3,
+      "djagble": 3,
+      "apeyeyeme": 3,
+      "kpadape": 3,
+      "hahotoe": 3,
+      "lama-tessi": 3,
+      "badome": 3,
+      "tchamde": 3,
+      "ountivou": 3,
+      "djidjole": 3,
+      "anie": 3,
+      "akei": 3,
+      "dimouri": 3,
+      "kamina barrage": 3,
+      "alibi": 3,
+      "wome (cascade)": 3,
+      "kpawa": 3,
+      "campement": 3,
+      "bitchabe": 3,
+      "abobo": 3,
+      "nyamassila": 3,
+      "sevagan": 3,
+      "kpime (tomegbe)": 3,
+      "zomayi": 3,
+      "wli": 3,
+      "kovie": 3,
+      "solim": 3,
+      "kabou (okpandoupo)": 3,
+      "dzogbekope": 3,
+      "apessito": 3,
+      "tsevie deve": 3,
+      "tsevie bleve": 3,
+      "sanfatoute": 3,
+      "mission tove": 3,
+      "kaniamboua (bago)": 3,
+      "kpodzi": 3,
+      "doutikope": 3,
+      "sotouboua (sonde)": 3,
+      "kamina dakre": 3,
+      "lama tchamde": 3,
+      "zongo 1": 3,
+      "koudjounde": 3,
+      "assahoun": 3,
+      "kpime (seva)": 3,
+      "keve": 3,
+      "komah": 3
     }
   },
   "comparison_summary": {
     "total_localites": 78,
     "vbs": {
       "excel": 36,
-      "db": 36
+      "db": 224
     },
     "limites": {
       "excel": 36,
-      "db": 36
+      "db": 225
     },
     "granulo": {
       "excel": 226,
-      "db": 226
+      "db": 149
     },
     "classif": {
       "excel": 36,
-      "db": 36
+      "db": 226
     },
     "gonflement": {
       "excel": 36,
-      "db": 36
+      "db": 228
     }
   },
-  "has_issues": false
+  "has_issues": true
 }

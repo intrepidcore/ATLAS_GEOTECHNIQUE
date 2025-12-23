@@ -14,6 +14,13 @@ import {
   getObjectifById,
   getDefaultConfig
 } from './thematic-types'
+import {
+  type ThematicState,
+  detectObjectif,
+  computeTightBoundsForAdm,
+  getExportFitOptions,
+  fitMapForExport
+} from './thematic-state'
 
 /**
  * Panneau de configuration des cartes thématiques v2.0
@@ -410,15 +417,230 @@ export class ThematicPanel {
   }
   
   /**
-   * Populate palette select with color previews
+   * Populate palette select with color previews (v3.5.0)
+   * Crée un sélecteur personnalisé avec aperçu gradient
    */
   private populatePaletteSelect(): void {
     const select = this.elements.paletteSelect
     if (!select) return
     
-    select.innerHTML = PALETTE_OPTIONS.map(p => 
-      `<option value="${p.value}">${p.label}</option>`
-    ).join('')
+    // Créer le conteneur pour le sélecteur personnalisé avec gradient
+    const parent = select.parentElement
+    if (!parent) return
+    
+    // Vérifier si le sélecteur personnalisé existe déjà
+    let customContainer = parent.querySelector('.palette-custom-select') as HTMLElement
+    if (!customContainer) {
+      customContainer = document.createElement('div')
+      customContainer.className = 'palette-custom-select'
+      parent.insertBefore(customContainer, select)
+    }
+    
+    // Masquer le select natif mais le garder pour la valeur
+    select.style.display = 'none'
+    
+    // Créer le bouton de sélection avec aperçu
+    const currentPalette = PALETTE_OPTIONS.find(p => p.value === select.value) || PALETTE_OPTIONS[0]
+    const gradient = this.createGradientStyle(currentPalette.colors)
+    
+    customContainer.innerHTML = `
+      <div class="palette-selected" tabindex="0">
+        <span class="palette-gradient" style="background: ${gradient}"></span>
+        <span class="palette-name">${currentPalette.label}</span>
+        <span class="palette-chevron">▼</span>
+      </div>
+      <div class="palette-dropdown">
+        ${PALETTE_OPTIONS.map(p => `
+          <div class="palette-option ${p.value === currentPalette.value ? 'selected' : ''}" data-value="${p.value}">
+            <span class="palette-gradient" style="background: ${this.createGradientStyle(p.colors)}"></span>
+            <span class="palette-name">${p.label}</span>
+            ${p.colorblindSafe ? '<span class="palette-badge">♿</span>' : ''}
+          </div>
+        `).join('')}
+      </div>
+    `
+    
+    // Event listeners
+    const selectedEl = customContainer.querySelector('.palette-selected') as HTMLElement
+    const dropdownEl = customContainer.querySelector('.palette-dropdown') as HTMLElement
+    
+    selectedEl?.addEventListener('click', () => {
+      customContainer.classList.toggle('open')
+    })
+    
+    selectedEl?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        customContainer.classList.toggle('open')
+      }
+    })
+    
+    // Fermer le dropdown si on clique ailleurs
+    document.addEventListener('click', (e) => {
+      if (!customContainer.contains(e.target as Node)) {
+        customContainer.classList.remove('open')
+      }
+    })
+    
+    // Sélection d'une option
+    dropdownEl?.querySelectorAll('.palette-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        const value = (opt as HTMLElement).dataset.value || ''
+        select.value = value
+        select.dispatchEvent(new Event('change'))
+        
+        // Mettre à jour l'affichage
+        const palette = PALETTE_OPTIONS.find(p => p.value === value)
+        if (palette) {
+          const gradientEl = selectedEl.querySelector('.palette-gradient') as HTMLElement
+          const nameEl = selectedEl.querySelector('.palette-name') as HTMLElement
+          if (gradientEl) gradientEl.style.background = this.createGradientStyle(palette.colors)
+          if (nameEl) nameEl.textContent = palette.label
+        }
+        
+        // Mettre à jour la sélection visuelle
+        dropdownEl.querySelectorAll('.palette-option').forEach(o => o.classList.remove('selected'))
+        opt.classList.add('selected')
+        
+        customContainer.classList.remove('open')
+      })
+    })
+    
+    // Injecter les styles CSS si pas déjà fait
+    this.injectPaletteStyles()
+  }
+  
+  /**
+   * Crée un style de gradient CSS à partir d'un tableau de couleurs
+   */
+  private createGradientStyle(colors: string[]): string {
+    return `linear-gradient(to right, ${colors.join(', ')})`
+  }
+  
+  /**
+   * Injecte les styles CSS pour le sélecteur de palette personnalisé
+   */
+  private injectPaletteStyles(): void {
+    if (document.getElementById('palette-select-styles')) return
+    
+    const style = document.createElement('style')
+    style.id = 'palette-select-styles'
+    style.textContent = `
+      .palette-custom-select {
+        position: relative;
+        width: 100%;
+      }
+      
+      .palette-selected {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: border-color 0.2s;
+      }
+      
+      .palette-selected:hover {
+        border-color: #3b82f6;
+      }
+      
+      .palette-selected:focus {
+        outline: none;
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+      }
+      
+      .palette-gradient {
+        width: 60px;
+        height: 16px;
+        border-radius: 3px;
+        flex-shrink: 0;
+        border: 1px solid rgba(0,0,0,0.1);
+      }
+      
+      .palette-name {
+        flex: 1;
+        font-size: 13px;
+        font-family: 'Consolas', 'Monaco', monospace;
+        color: #374151;
+      }
+      
+      .palette-chevron {
+        font-size: 10px;
+        color: #9ca3af;
+        transition: transform 0.2s;
+      }
+      
+      .palette-custom-select.open .palette-chevron {
+        transform: rotate(180deg);
+      }
+      
+      .palette-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        max-height: 250px;
+        overflow-y: auto;
+        background: white;
+        border: 1px solid #d1d5db;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        display: none;
+        margin-top: 4px;
+      }
+      
+      .palette-custom-select.open .palette-dropdown {
+        display: block;
+      }
+      
+      .palette-option {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      
+      .palette-option:hover {
+        background: #f3f4f6;
+      }
+      
+      .palette-option.selected {
+        background: #eff6ff;
+      }
+      
+      .palette-option .palette-gradient {
+        width: 50px;
+        height: 14px;
+      }
+      
+      .palette-badge {
+        font-size: 11px;
+        padding: 2px 4px;
+        background: #dbeafe;
+        color: #1d4ed8;
+        border-radius: 3px;
+      }
+      
+      /* Scrollbar styling */
+      .palette-dropdown::-webkit-scrollbar {
+        width: 6px;
+      }
+      .palette-dropdown::-webkit-scrollbar-track {
+        background: #f1f1f1;
+      }
+      .palette-dropdown::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+      }
+    `
+    document.head.appendChild(style)
   }
   
   /**
@@ -1118,79 +1340,134 @@ export class ThematicPanel {
     const mapContainer = document.getElementById('map')
     
     const callbacks = {
-      // Changer la thématique et le filtre ADM
+      // Changer la thématique et le filtre ADM - VERSION ROBUSTE
       setThematicAndAdm: async (thematicId: string, admLevel: string, admName: string): Promise<void> => {
-        console.log(`[Atlas] Changement: ${thematicId} / ${admLevel} / ${admName}`)
+        console.log(`[Atlas] setThematicAndAdm: ${thematicId} / ${admLevel} / ${admName}`)
         
-        // Mettre à jour les sélecteurs ADM
-        if (admLevel === 'adm1' && this.elements.adm1Select) {
-          // Trouver l'option correspondante
-          const options = Array.from(this.elements.adm1Select.options)
-          const option = options.find(o => o.text === admName || o.value === admName)
-          if (option) {
-            this.elements.adm1Select.value = option.value
-            this.elements.adm1Select.dispatchEvent(new Event('change'))
-          }
+        // 1. Construire l'état thématique (source unique de vérité)
+        const admFilters: ThematicState['admFilters'] = {}
+        if (admLevel === 'adm1') {
+          admFilters.adm1 = admName
+        } else if (admLevel === 'adm2') {
+          admFilters.adm1 = this.elements.adm1Select?.value || undefined
+          admFilters.adm2 = admName
+        } else if (admLevel === 'adm3') {
+          admFilters.adm1 = this.elements.adm1Select?.value || undefined
+          admFilters.adm2 = this.elements.adm2Select?.value || undefined
+          admFilters.adm3 = admName
         }
         
-        // Mettre à jour le paramètre thématique
+        // 2. Synchroniser les sélecteurs UI SANS dispatchEvent (évite les effets de bord)
+        if (this.elements.adm1Select) {
+          this.elements.adm1Select.value = admFilters.adm1 || ''
+        }
+        if (this.elements.adm2Select) {
+          this.elements.adm2Select.value = admFilters.adm2 || ''
+        }
+        if (this.elements.adm3Select) {
+          this.elements.adm3Select.value = admFilters.adm3 || ''
+        }
         if (this.elements.parameterSelect) {
           this.elements.parameterSelect.value = thematicId
-          this.elements.parameterSelect.dispatchEvent(new Event('change'))
         }
         
-        // Appliquer la carte thématique
-        await this.applyThematic()
-        
-        // Attendre le rendu
-        await new Promise(r => setTimeout(r, 1000))
-      },
-      
-      // Capturer la carte actuelle avec ExportFrame (masque, stats, cadrage)
-      captureCurrentMap: async (): Promise<Blob | null> => {
-        if (!mapContainer || !map) return null
-        
-        try {
-          // Utiliser le même mécanisme que ExportQuickDialog
-          const { captureLeafletMap } = await import('../export/capture-utils')
-          const { ExportFrame, computeScaleText } = await import('../export/export-frame')
-          const { buildExportStats } = await import('../export/export-stats')
-          
-          // Récupérer les bounds de la carte
-          const bounds = map.getBounds()
-          const bbox = {
-            minX: bounds.getWest(),
-            minY: bounds.getSouth(),
-            maxX: bounds.getEast(),
-            maxY: bounds.getNorth()
+        // 3. Construire la config directement (pas via UI)
+        const config: ThematicMapConfig = {
+          ...this.currentConfig,
+          parameter: thematicId,
+          filters: {
+            ...this.currentConfig.filters,
+            adm1: admFilters.adm1,
+            adm2: admFilters.adm2,
+            adm3: admFilters.adm3
           }
+        }
+        
+        // 4. Charger la carte thématique directement via le manager
+        console.log(`[Atlas] Chargement carte: ${thematicId}`)
+        await this.manager.loadThematicMap(config)
+        
+        // 5. Attendre que le manager soit prêt
+        await this.manager.waitUntilReady(5000)
+        
+        // 6. Mettre à jour l'overlay ADM
+        await this.manager.updateAdmOverlay(
+          admFilters.adm1 || null,
+          admFilters.adm2 || null,
+          admFilters.adm3 || null
+        )
+        
+        // 7. Attendre le rendu de l'overlay
+        await new Promise(r => setTimeout(r, 300))
+        
+        // 8. Cadrer la carte avec marges serrées
+        const L = (window as any).L
+        const admBounds = this.manager.getAdmOverlayBounds?.()
+        if (map && admBounds) {
+          // Calculer bounds serrés
+          const tightBounds = computeTightBoundsForAdm(admBounds)
+          const fitOptions = getExportFitOptions()
           
-          // Capturer la carte
-          const mapCapture = await captureLeafletMap(mapContainer, 'print')
-          
-          // Créer l'ExportFrame avec options
-          const exportFrame = new ExportFrame(mapCapture.width, mapCapture.height, {
-            format: 'png',
-            quality: 'print',
-            zone: 'adm-filtered',
-            includeTitle: true,
-            includeLegend: true,
-            includeStats: true,
-            includeScaleBar: true,
-            includeNorthArrow: true,
-            includeScrInfo: true,
-            grid: { type: 'cross', scr: 'EPSG:4326', targetDivisions: 5, showLabels: true, labelSides: { top: true, bottom: true, left: true, right: true } },
-            frameStyle: 'zebra'
+          console.log(`[Atlas] Cadrage serré:`, {
+            original: admBounds,
+            tight: tightBounds,
+            paddingPx: fitOptions.paddingPx
           })
           
-          // Récupérer les données thématiques
-          const state = this.manager.getCurrentExportState?.()
-          const thematic = { 
-            name: state?.parameterLabel || 'Carte', 
-            parameter: state?.parameterId || ''
-          }
-          // Récupérer les filtres ADM actifs
-          const admFilters = {
+          // Invalider la taille (comme export Pro)
+          map.invalidateSize(false)
+          
+          // Créer bounds Leaflet
+          const leafletBounds = L.latLngBounds(
+            [tightBounds.south, tightBounds.west],
+            [tightBounds.north, tightBounds.east]
+          )
+          
+          // Appliquer le zoom
+          map.fitBounds(leafletBounds, {
+            animate: false,
+            padding: [fitOptions.paddingPx, fitOptions.paddingPx],
+            maxZoom: fitOptions.maxZoom
+          })
+          
+          // Attendre la fin du zoom
+          await new Promise<void>(resolve => {
+            const handler = () => {
+              map.off('moveend', handler)
+              resolve()
+            }
+            map.on('moveend', handler)
+            setTimeout(() => {
+              map.off('moveend', handler)
+              resolve()
+            }, 1500)
+          })
+        }
+        
+        // 9. Attendre le rendu final des tuiles
+        await new Promise(r => setTimeout(r, 400))
+        
+        console.log(`[Atlas] Carte prête: ${thematicId} / ${admLevel} / ${admName}`)
+      },
+      
+      // Fournir la configuration pour ExportQuickDialog (moteur Export Pro)
+      getExportProConfig: () => {
+        const state = this.manager.getCurrentExportState?.()
+        
+        // mapContainer ne peut pas être null ici car on est dans openExportAtlasDialog
+        // qui vérifie déjà que mapContainer existe
+        return {
+          mapContainer: mapContainer as HTMLElement,
+          getMapBounds: () => {
+            const b = map.getBounds()
+            return { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() }
+          },
+          getActiveThematic: () => ({
+            name: state?.parameterLabel || 'Carte',
+            parameter: state?.parameterId || 'n_sondages',
+            unit: state?.unit
+          }),
+          getActiveAdmFilters: () => ({
             adm1: this.elements.adm1Select?.value ? { 
               code: this.elements.adm1Select.value, 
               name: this.elements.adm1Select.options[this.elements.adm1Select.selectedIndex]?.text || '' 
@@ -1203,58 +1480,28 @@ export class ThematicPanel {
               code: this.elements.adm3Select.value, 
               name: this.elements.adm3Select.options[this.elements.adm3Select.selectedIndex]?.text || '' 
             } : undefined
+          }),
+          getThematicLegendData: () => state || null,
+          getGridLayer: () => (window as any).gridLayer,
+          getMap: () => map,
+          getAdmBounds: () => {
+            const polygon = this.manager.getAdmPolygonCoords?.()
+            if (!polygon || polygon.length < 3) return null
+            const lats = polygon.map((p: number[]) => p[1])
+            const lngs = polygon.map((p: number[]) => p[0])
+            return {
+              north: Math.max(...lats),
+              south: Math.min(...lats),
+              east: Math.max(...lngs),
+              west: Math.min(...lngs)
+            }
+          },
+          getAdmPolygon: () => {
+            return this.manager.getAdmPolygonCoords?.() || null
+          },
+          getThematicFeatures: () => {
+            return state?.features || null
           }
-          
-          // Dessiner les éléments
-          exportFrame.drawTitle(thematic, admFilters)
-          await exportFrame.drawMapImage(mapCapture.canvas)
-          
-          // Masque ADM
-          const admPolygon = this.manager.getAdmPolygonCoords?.()
-          if (admPolygon && admPolygon.length >= 3) {
-            exportFrame.drawAdmMask(admPolygon, bbox, 'context')
-          }
-          
-          exportFrame.drawGridAndFrame(bbox)
-          
-          // Légende et stats
-          const legendData = state ? {
-            parameterId: state.parameterId,
-            parameterLabel: state.parameterLabel,
-            unit: state.unit,
-            mapType: state.mapType,
-            classes: state.classes,
-            features: state.features || [],
-            totalCellCount: state.totalCellCount || 0,
-            apiStats: state.apiStats
-          } : undefined
-          
-          exportFrame.drawLegend(legendData)
-          
-          if (legendData) {
-            const statsData = buildExportStats({
-              parameterId: legendData.parameterId,
-              parameterLabel: legendData.parameterLabel,
-              unit: legendData.unit,
-              features: legendData.features,
-              totalCellCount: legendData.totalCellCount,
-              classes: legendData.classes,
-              admFilters,
-              apiStats: legendData.apiStats
-            })
-            exportFrame.drawStats(statsData)
-          }
-          
-          // Cartouche
-          const centerLat = (bounds.getNorth() + bounds.getSouth()) / 2
-          const scaleText = computeScaleText(mapCapture.width, bounds.getEast() - bounds.getWest(), centerLat)
-          exportFrame.drawCartouche(scaleText)
-          
-          // Convertir en Blob
-          return exportFrame.toBlob('image/png')
-        } catch (e) {
-          console.error('[Atlas] Erreur capture ExportFrame:', e)
-          return null
         }
       },
       

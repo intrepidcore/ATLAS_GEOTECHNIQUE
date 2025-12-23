@@ -38,7 +38,8 @@ def generate_suggestions():
         
         # Générer suggestions
         print("\n🔄 Génération des suggestions...")
-        conn.execute(open(Path(__file__).parent.parent / 'step1_generate_suggestions.sql').read())
+        sql_path = Path(__file__).parent.parent / 'sql' / 'step1_generate_suggestions.sql'
+        conn.execute(open(sql_path).read())
         conn.commit()
         
         # Statistiques

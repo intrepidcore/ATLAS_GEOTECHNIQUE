@@ -17,6 +17,8 @@ import { exportData, downloadBlob, type ExportDataConfig } from './export-data';
 import { generateAllCharts, type ThematicChartSet } from './chart-generator';
 import { ExportQuickDialog, type ExportQuickDialogConfig } from './export-quick-dialog';
 import { generateAnalysisExcel, type ExportExcelOptions } from './export-excel';
+import { getExportProgressModal, type ExportProgressModal } from './export-progress-modal';
+import { PALETTE_OPTIONS, getRecommendedPalette } from '../thematic/thematic-types';
 
 // ============================================================================
 // Types
@@ -58,6 +60,8 @@ export interface AtlasExportConfig {
   exportCharts: boolean;
   // Export Excel unique (v3.4.3)
   exportExcel: boolean;
+  // Palettes par thématique (v3.5.0)
+  thematicPalettes: Record<string, string>;
 }
 
 export interface AtlasExportCallbacks {
@@ -261,6 +265,39 @@ const ATLAS_DIALOG_STYLES = `
   font-size: 11px;
   color: #6b7280;
   margin-left: auto;
+}
+
+/* Sélecteur de palette par thématique (v3.5.0) */
+.atlas-thematic-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.atlas-thematic-row .atlas-checkbox {
+  flex: 1;
+}
+
+.atlas-palette-select {
+  width: 100px;
+  padding: 4px 6px;
+  font-size: 11px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  background: #f9fafb;
+  cursor: pointer;
+}
+
+.atlas-palette-select:hover {
+  border-color: #3b82f6;
+}
+
+.atlas-palette-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
 }
 
 .atlas-row {
@@ -555,7 +592,8 @@ export class ExportAtlasDialog {
         includeEssais: true
       },
       exportCharts: false,
-      exportExcel: false
+      exportExcel: false,
+      thematicPalettes: {}
     };
     this.progress = {
       total: 0,
@@ -729,6 +767,40 @@ export class ExportAtlasDialog {
                 <span>Uniquement mailles dans l'ADM</span>
               </label>
             </div>
+            
+            <!-- Options avancées (v3.5.0) -->
+            <details class="atlas-advanced-options" style="margin-top: 12px;">
+              <summary style="cursor: pointer; font-size: 12px; color: #6b7280; padding: 8px 0;">
+                ⚙️ Options avancées
+              </summary>
+              <div class="atlas-row" style="margin-top: 12px;">
+                <div class="atlas-field">
+                  <label>🔲 Type de grille</label>
+                  <select id="atlas-grid-type">
+                    <option value="square" selected>Carrée (1km)</option>
+                    <option value="hex">Hexagonale</option>
+                    <option value="none">Sans grille</option>
+                  </select>
+                </div>
+                <div class="atlas-field">
+                  <label>🌐 SCR affiché</label>
+                  <select id="atlas-crs">
+                    <option value="EPSG:4326" selected>WGS84 (EPSG:4326)</option>
+                    <option value="EPSG:3857">Web Mercator (EPSG:3857)</option>
+                    <option value="EPSG:32631">UTM 31N (EPSG:32631)</option>
+                  </select>
+                </div>
+                <div class="atlas-field">
+                  <label>🗺️ Style carte</label>
+                  <select id="atlas-basemap">
+                    <option value="osm" selected>OSM Standard</option>
+                    <option value="satellite">ESRI Satellite</option>
+                    <option value="topo">ESRI Topo</option>
+                    <option value="offline">Offline Local</option>
+                  </select>
+                </div>
+              </div>
+            </details>
           </div>
           
           <!-- Export des données pour analyse -->
@@ -795,6 +867,32 @@ export class ExportAtlasDialog {
               </ul>
               <div style="font-size: 11px; color: #166534; margin-top: 8px;">
                 💡 Les graphes sont adaptés à chaque thématique sélectionnée
+              </div>
+            </div>
+          </div>
+          
+          <!-- Export Excel unique (v3.4.3) -->
+          <div class="atlas-section">
+            <div class="atlas-section-title">📊 Export Excel (analyse)</div>
+            <div class="atlas-checkboxes">
+              <label class="atlas-checkbox">
+                <input type="checkbox" id="atlas-export-excel">
+                <span>Générer un fichier Excel unique pour analyse</span>
+              </label>
+            </div>
+            <div id="atlas-excel-info" style="display: none; margin-top: 8px; padding: 12px; background: #eff6ff; border-radius: 6px; border: 1px solid #bfdbfe;">
+              <div style="font-size: 12px; color: #1e40af; margin-bottom: 8px;">
+                📋 Feuilles générées dans le fichier Excel :
+              </div>
+              <ul style="font-size: 11px; color: #1d4ed8; margin: 0; padding-left: 20px; line-height: 1.6;">
+                <li><strong>_GRID_WIDE</strong> - Données pivotées (une ligne par maille, colonnes = paramètres)</li>
+                <li><strong>_DICT_COLONNES</strong> - Dictionnaire des colonnes avec unités et descriptions</li>
+                <li><strong>_QA_SUMMARY</strong> - Contrôles qualité automatiques (valeurs aberrantes, couverture)</li>
+                <li><strong>Sondages</strong> - Liste complète des sondages avec métadonnées</li>
+                <li><strong>Essais_*</strong> - Données brutes par type d'essai (Atterberg, VBS, Granulo...)</li>
+              </ul>
+              <div style="font-size: 11px; color: #1e40af; margin-top: 8px;">
+                💡 Compatible Excel, LibreOffice et Python (pandas)
               </div>
             </div>
           </div>
@@ -884,17 +982,29 @@ export class ExportAtlasDialog {
   }
   
   /**
-   * Rendu des thématiques en accordéon
+   * Rendu des thématiques en accordéon avec sélecteur de palette (v3.5.0)
    */
   private renderThematicsAccordion(): string {
     const items = THEMATIC_CATEGORIES.map((cat, idx) => {
       const isOpen = idx === 0 || idx === 1 || idx === 2; // Ouvrir les 3 premiers
-      const params = cat.parameters.map(p => `
-        <label class="atlas-checkbox">
-          <input type="checkbox" name="thematic" value="${p.id}" ${['n_sondages', 'vbs_avg', 'ip_avg'].includes(p.id) ? 'checked' : ''}>
-          <span>${p.label}${p.unit ? ` (${p.unit})` : ''}</span>
-        </label>
-      `).join('');
+      const params = cat.parameters.map(p => {
+        const recommendedPalette = getRecommendedPalette(p.id);
+        const paletteOptions = PALETTE_OPTIONS.map(pal => 
+          `<option value="${pal.value}" ${pal.value === recommendedPalette.palette ? 'selected' : ''}>${pal.label}</option>`
+        ).join('');
+        
+        return `
+          <div class="atlas-thematic-row">
+            <label class="atlas-checkbox">
+              <input type="checkbox" name="thematic" value="${p.id}" ${['n_sondages', 'vbs_avg', 'ip_avg'].includes(p.id) ? 'checked' : ''}>
+              <span>${p.label}${p.unit ? ` (${p.unit})` : ''}</span>
+            </label>
+            <select id="atlas-palette-${p.id}" class="atlas-palette-select" title="Palette pour ${p.label}">
+              ${paletteOptions}
+            </select>
+          </div>
+        `;
+      }).join('');
       
       return `
         <div class="atlas-accordion-item ${isOpen ? 'open' : ''}">
@@ -994,6 +1104,15 @@ export class ExportAtlasDialog {
     exportChartsCheckbox?.addEventListener('change', () => {
       if (chartsInfoDiv) {
         chartsInfoDiv.style.display = exportChartsCheckbox.checked ? 'block' : 'none';
+      }
+    });
+    
+    // Toggle info Excel (v3.4.3)
+    const exportExcelCheckbox = this.overlay.querySelector('#atlas-export-excel') as HTMLInputElement;
+    const excelInfoDiv = this.overlay.querySelector('#atlas-excel-info') as HTMLElement;
+    exportExcelCheckbox?.addEventListener('change', () => {
+      if (excelInfoDiv) {
+        excelInfoDiv.style.display = exportExcelCheckbox.checked ? 'block' : 'none';
       }
     });
   }
@@ -1163,6 +1282,19 @@ export class ExportAtlasDialog {
       includeEssais: (this.overlay.querySelector('#atlas-data-essais') as HTMLInputElement)?.checked || false
     };
     
+    // Collecter les palettes par thématique (v3.5.0)
+    const thematicPalettes: Record<string, string> = {};
+    thematics.forEach(thematicId => {
+      const paletteSelect = this.overlay?.querySelector(`#atlas-palette-${thematicId}`) as HTMLSelectElement;
+      if (paletteSelect?.value) {
+        thematicPalettes[thematicId] = paletteSelect.value;
+      } else {
+        // Utiliser la palette recommandée par défaut
+        const recommended = getRecommendedPalette(thematicId);
+        thematicPalettes[thematicId] = recommended.palette;
+      }
+    });
+    
     return {
       levels,
       selectedAdms,
@@ -1179,9 +1311,12 @@ export class ExportAtlasDialog {
       exportData: exportDataEnabled,
       dataOptions,
       exportCharts: (this.overlay.querySelector('#atlas-export-charts') as HTMLInputElement)?.checked || false,
-      exportExcel: (this.overlay.querySelector('#atlas-export-excel') as HTMLInputElement)?.checked || false
+      exportExcel: (this.overlay.querySelector('#atlas-export-excel') as HTMLInputElement)?.checked || false,
+      thematicPalettes
     };
   }
+  
+  private progressModal: ExportProgressModal | null = null;
   
   private async startExport(): Promise<void> {
     if (this.isExporting) return;
@@ -1202,7 +1337,7 @@ export class ExportAtlasDialog {
     this.abortRequested = false;
     this.config = config;
     
-    // Afficher la progression
+    // Afficher la progression simple
     const progressDiv = this.overlay?.querySelector('#atlas-progress') as HTMLElement;
     const exportBtn = this.overlay?.querySelector('#atlas-export-btn') as HTMLButtonElement;
     const closeBtn = this.overlay?.querySelector('[data-action="close"]') as HTMLButtonElement;
@@ -1225,6 +1360,7 @@ export class ExportAtlasDialog {
       await this.runBatchExport(config);
     } catch (e) {
       console.error('[Atlas Export] Erreur:', e);
+      this.progressModal?.fail(String(e));
       alert(`Erreur lors de l'export: ${e}`);
     } finally {
       this.isExporting = false;
@@ -1288,11 +1424,24 @@ export class ExportAtlasDialog {
       return;
     }
     
+    // Ouvrir le modal de progression verbose
+    this.progressModal = getExportProgressModal();
+    this.progressModal.open(totalExports, () => {
+      // Callback de fermeture du modal
+    });
+    this.progressModal.log('info', 'CONFIG', `Niveaux: ${levels.join(', ')}`);
+    this.progressModal.log('info', 'CONFIG', `Thématiques: ${config.thematics.join(', ')}`);
+    this.progressModal.log('info', 'CONFIG', `Qualité: ${config.quality} | Masque: ${config.maskMode}`);
+    this.progressModal.log('info', 'CONFIG', `Options: stats=${config.includeStats}, voisins=${config.includeNeighbors}, mailles vides=${config.showEmptyCells}`);
+    
     // Préparer le ZIP
     const JSZip = (window as any).JSZip;
     let zip: any = null;
     if (JSZip) {
       zip = new JSZip();
+      this.progressModal.log('success', 'ZIP', 'JSZip initialisé');
+    } else {
+      this.progressModal.log('warning', 'ZIP', 'JSZip non disponible - export sans ZIP');
     }
     
     // Générer les exports
@@ -1301,10 +1450,12 @@ export class ExportAtlasDialog {
     
     for (const level of levels) {
       const admList = admToExport[level] || [];
+      this.progressModal?.log('info', 'LEVEL', `Traitement niveau ${level.toUpperCase()}: ${admList.length} ADM`);
       
       for (const adm of admList) {
         for (const thematicId of config.thematics) {
           if (this.abortRequested) {
+            this.progressModal?.log('warning', 'ABORT', 'Export annulé par l\'utilisateur');
             this.updateProgress(`Export annulé (${current}/${totalExports} complétés)`, (current / totalExports) * 100);
             await this.finalizeExport(zip, results, current, totalExports, config);
             return;
@@ -1313,6 +1464,12 @@ export class ExportAtlasDialog {
           current++;
           const percent = (current / totalExports) * 100;
           const thematicLabel = ALL_THEMATICS.find(t => t.id === thematicId)?.label || thematicId;
+          const startTime = Date.now();
+          
+          // Log début de carte
+          this.progressModal?.startMap(level, adm.name, thematicId, current - 1);
+          this.progressModal?.updateProgress(current - 1, adm.name, thematicId, 'Préparation...');
+          
           this.updateProgress(
             `${current}/${totalExports} - ${level.toUpperCase()} ${adm.name} - ${thematicLabel}`,
             percent
@@ -1325,16 +1482,20 @@ export class ExportAtlasDialog {
           if (this.callbacks?.setThematicAndAdm && this.callbacks?.getExportProConfig) {
             try {
               // 1. Changer la thématique et l'ADM sur la carte
+              this.progressModal?.logStep('Chargement thématique et ADM...');
               await this.callbacks.setThematicAndAdm(thematicId, level, adm.name);
               
               // 2. Attendre le rendu complet (tuiles + thématique)
+              this.progressModal?.logStep('Attente rendu carte (1s)...');
               await new Promise(r => setTimeout(r, 1000));
               
               // 3. Créer une instance d'ExportQuickDialog avec la config actuelle
+              this.progressModal?.logStep('Initialisation moteur export...');
               const exportProConfig = this.callbacks.getExportProConfig();
               const exportPro = new ExportQuickDialog(exportProConfig);
               
               // 4. Exporter via le moteur Pro (qualité identique à Export Pro)
+              this.progressModal?.logStep('Capture et rendu PNG...');
               blob = await exportPro.exportSingle({
                 quality: config.quality as ExportQuality,
                 maskMode: config.maskMode,
@@ -1344,34 +1505,47 @@ export class ExportAtlasDialog {
                 includeNeighbors: config.includeNeighbors,
                 boundaryLevel: config.boundaryLevel,
                 onProgress: (msg) => {
+                  this.progressModal?.logStep(msg);
                   this.updateProgress(`${current}/${totalExports} - ${adm.name} - ${msg}`, percent);
                 }
               });
               
               success = blob !== null;
+              const duration = Date.now() - startTime;
               
               // Ajouter au ZIP
               if (zip && blob) {
                 const filename = this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`);
                 zip.file(filename, blob);
+                this.progressModal?.endMapSuccess(adm.name, thematicId, duration, blob.size);
+              } else if (!blob) {
+                this.progressModal?.endMapError(adm.name, thematicId, 'Blob null');
               }
             } catch (e) {
+              const errorMsg = e instanceof Error ? e.message : String(e);
+              this.progressModal?.endMapError(adm.name, thematicId, errorMsg);
               console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
             }
           } else if (this.callbacks?.exportSingleMap) {
             // Fallback sur l'ancienne méthode si disponible
+            this.progressModal?.logStep('Utilisation fallback exportSingleMap...');
             try {
               blob = await this.callbacks.exportSingleMap(level, adm.name, thematicId, config);
               success = blob !== null;
+              const duration = Date.now() - startTime;
               
               if (zip && blob) {
                 const filename = this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`);
                 zip.file(filename, blob);
+                this.progressModal?.endMapSuccess(adm.name, thematicId, duration, blob.size);
               }
             } catch (e) {
+              const errorMsg = e instanceof Error ? e.message : String(e);
+              this.progressModal?.endMapError(adm.name, thematicId, errorMsg);
               console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
             }
           } else {
+            this.progressModal?.log('error', 'EXPORT', 'Aucun callback d\'export disponible');
             console.error('[Atlas] Aucun callback d\'export disponible');
             success = false;
           }
@@ -1403,6 +1577,10 @@ export class ExportAtlasDialog {
   ): Promise<void> {
     const successful = results.filter(r => r.success).length;
     const failed = results.filter(r => !r.success).length;
+    
+    // Démarrer la phase de finalisation dans le modal
+    this.progressModal?.startFinalization();
+    this.progressModal?.log('info', 'FINAL', `Cartes exportées: ${successful}/${total} (${failed} erreurs)`);
     
     // Générer le ZIP si disponible et des exports ont réussi
     console.log('[Atlas] Finalisation export:', { zip: !!zip, successful, failed, completed, total });
@@ -1582,6 +1760,7 @@ export class ExportAtlasDialog {
         };
         zip.file('index.json', JSON.stringify(indexData, null, 2));
         
+        this.progressModal?.log('info', 'ZIP', 'Compression du fichier ZIP...');
         console.log('[Atlas] Génération du ZIP en cours...');
         this.updateProgress('Compression du fichier ZIP...', 99);
         
@@ -1592,7 +1771,9 @@ export class ExportAtlasDialog {
           compressionOptions: { level: 6 }
         });
         
-        console.log('[Atlas] ZIP généré, taille:', (zipBlob.size / 1024 / 1024).toFixed(2), 'Mo');
+        const zipSizeMB = zipBlob.size / 1024 / 1024;
+        console.log('[Atlas] ZIP généré, taille:', zipSizeMB.toFixed(2), 'Mo');
+        this.progressModal?.log('success', 'ZIP', `ZIP généré: ${zipSizeMB.toFixed(2)} Mo`);
         
         const timestamp = new Date().toISOString().slice(0, 10);
         const filename = `atlas_geotechnique_${timestamp}.zip`;
@@ -1612,6 +1793,7 @@ export class ExportAtlasDialog {
         await new Promise(r => setTimeout(r, 100));
         
         a.click();
+        this.progressModal?.log('success', 'DOWNLOAD', `Téléchargement: ${filename}`);
         console.log('[Atlas] Téléchargement déclenché');
         
         // Attendre un peu avant de révoquer l'URL (laisser le temps au téléchargement de démarrer)
@@ -1622,6 +1804,10 @@ export class ExportAtlasDialog {
         }, 5000);
         
         this.updateProgress('Export terminé!', 100);
+        
+        // Marquer l'export comme terminé dans le modal
+        this.progressModal?.complete(zipSizeMB);
+        
         this.showResults(results, completed, total, true);
         return;
       } catch (e) {

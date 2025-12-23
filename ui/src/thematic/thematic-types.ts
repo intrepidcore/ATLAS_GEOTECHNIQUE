@@ -581,19 +581,19 @@ export const PALETTE_OPTIONS: PaletteOption[] = [
   // Séquentielles - Monochrome
   { 
     value: 'Blues', 
-    label: 'Bleus', 
+    label: 'Blues', 
     type: 'sequential',
     colors: ['#f7fbff', '#6baed6', '#08306b']
   },
   { 
     value: 'Greens', 
-    label: 'Verts', 
+    label: 'Greens', 
     type: 'sequential',
     colors: ['#f7fcf5', '#74c476', '#00441b']
   },
   { 
     value: 'Reds', 
-    label: 'Rouges', 
+    label: 'Reds', 
     type: 'sequential',
     colors: ['#fff5f0', '#fb6a4a', '#67000d']
   },
@@ -605,7 +605,7 @@ export const PALETTE_OPTIONS: PaletteOption[] = [
   },
   { 
     value: 'Purples', 
-    label: 'Violets', 
+    label: 'Purples', 
     type: 'sequential',
     colors: ['#fcfbfd', '#9e9ac8', '#3f007d']
   },
@@ -613,31 +613,31 @@ export const PALETTE_OPTIONS: PaletteOption[] = [
   // Séquentielles - Multi-teintes
   { 
     value: 'YlOrRd', 
-    label: 'Jaune-Orange-Rouge', 
+    label: 'YlOrRd', 
     type: 'sequential',
     colors: ['#ffffcc', '#fd8d3c', '#800026']
   },
   { 
     value: 'YlGnBu', 
-    label: 'Jaune-Vert-Bleu', 
+    label: 'YlGnBu', 
     type: 'sequential',
     colors: ['#ffffd9', '#41b6c4', '#081d58']
   },
   { 
     value: 'PuBu', 
-    label: 'Violet-Bleu', 
+    label: 'PuBu', 
     type: 'sequential',
     colors: ['#fff7fb', '#67a9cf', '#023858']
   },
   { 
     value: 'BuPu', 
-    label: 'Bleu-Violet', 
+    label: 'BuPu', 
     type: 'sequential',
     colors: ['#f7fcfd', '#8c96c6', '#4d004b']
   },
   { 
     value: 'PuRd', 
-    label: 'Violet-Rouge', 
+    label: 'PuRd', 
     type: 'sequential',
     colors: ['#f7f4f9', '#df65b0', '#67001f']
   },
@@ -645,14 +645,14 @@ export const PALETTE_OPTIONS: PaletteOption[] = [
   // Séquentielles - Accessibles daltonisme
   { 
     value: 'Viridis', 
-    label: 'Viridis (daltonisme)', 
+    label: 'Viridis ♿', 
     type: 'sequential',
     colors: ['#440154', '#21918c', '#fde725'],
     colorblindSafe: true
   },
   { 
     value: 'Cividis', 
-    label: 'Cividis (daltonisme)', 
+    label: 'Cividis ♿', 
     type: 'sequential',
     colors: ['#00204d', '#7c7b78', '#ffea46'],
     colorblindSafe: true
@@ -661,25 +661,25 @@ export const PALETTE_OPTIONS: PaletteOption[] = [
   // Divergentes
   { 
     value: 'RdYlGn', 
-    label: 'Rouge-Jaune-Vert', 
+    label: 'RdYlGn', 
     type: 'diverging',
     colors: ['#d73027', '#ffffbf', '#1a9850']
   },
   { 
     value: 'RdBu', 
-    label: 'Rouge-Bleu', 
+    label: 'RdBu', 
     type: 'diverging',
     colors: ['#b2182b', '#f7f7f7', '#2166ac']
   },
   { 
     value: 'BrBG', 
-    label: 'Brun-Bleu-Vert', 
+    label: 'BrBG', 
     type: 'diverging',
     colors: ['#8c510a', '#f5f5f5', '#01665e']
   },
   { 
     value: 'PuOr', 
-    label: 'Violet-Orange', 
+    label: 'PuOr', 
     type: 'diverging',
     colors: ['#7f3b08', '#f7f7f7', '#2d004b']
   }

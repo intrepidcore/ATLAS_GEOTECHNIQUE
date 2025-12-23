@@ -583,7 +583,7 @@ export class ExportQuickDialog {
       let bounds: { north: number; south: number; east: number; west: number };
       
       if (admBounds) {
-        bounds = this.computeOptimalBoundsForSheet(admBounds);
+        bounds = this.computeOptimalBoundsForSheet(admBounds, opts.quality);
         
         // Calculer l'AR cible de la zone carte A4
         const dpi = QUALITY_SETTINGS[opts.quality].dpi;
@@ -1221,7 +1221,7 @@ export class ExportQuickDialog {
         const admBounds = this.config.getAdmBounds();
         if (admBounds) {
           // Calculer l'emprise "pro serrée" adaptée au ratio de la zone carte
-          bounds = this.computeOptimalBoundsForSheet(admBounds);
+          bounds = this.computeOptimalBoundsForSheet(admBounds, this.options.quality);
           console.log('[Export] Zone filtrée ADM optimisée pour feuille:', bounds);
           
           // IMPORTANT: Zoomer la carte sur le bbox ADM AVANT la capture
@@ -2286,7 +2286,8 @@ export class ExportQuickDialog {
    * 4. Centrer l'ADM dans ce nouveau bbox
    */
   private computeOptimalBoundsForSheet(
-    admBounds: { north: number; south: number; east: number; west: number }
+    admBounds: { north: number; south: number; east: number; west: number },
+    quality: ExportQuality = 'hd'
   ): { north: number; south: number; east: number; west: number } {
     
     // Dimensions du bbox ADM en degrés
@@ -2305,54 +2306,62 @@ export class ExportQuickDialog {
     const admHeightKm = admHeight * 111;
     const compactness = admWidthKm / admHeightKm; // >1 = horizontal, <1 = vertical
     
-    // Marges ASYMÉTRIQUES selon la forme de l'ADM
-    // Pour un ADM horizontal (comme Maritime): peu de marge verticale
-    // Pour un ADM vertical: peu de marge horizontale
+    // Marges RÉDUITES et ADAPTATIVES selon la forme de l'ADM (v3.5.0)
+    // Objectif: minimiser les marges tout en gardant l'ADM lisible
     let marginH: number; // marge horizontale (Est/Ouest)
     let marginV: number; // marge verticale (Nord/Sud)
     
-    if (compactness > 1.5) {
-      // ADM très horizontal → marge verticale minimale
-      marginH = 0.05; // 5%
-      marginV = 0.02; // 2%
-    } else if (compactness < 0.67) {
-      // ADM très vertical → marge horizontale minimale
+    if (compactness > 2.0) {
+      // ADM très horizontal (ex: Maritime) → marges minimales
       marginH = 0.02; // 2%
-      marginV = 0.05; // 5%
-    } else {
-      // ADM compact → marges égales
+      marginV = 0.01; // 1%
+    } else if (compactness > 1.3) {
+      // ADM horizontal modéré
       marginH = 0.03; // 3%
+      marginV = 0.015; // 1.5%
+    } else if (compactness < 0.5) {
+      // ADM très vertical → marges minimales
+      marginH = 0.01; // 1%
+      marginV = 0.02; // 2%
+    } else if (compactness < 0.77) {
+      // ADM vertical modéré
+      marginH = 0.015; // 1.5%
       marginV = 0.03; // 3%
+    } else {
+      // ADM compact → marges égales réduites
+      marginH = 0.02; // 2%
+      marginV = 0.02; // 2%
     }
     
     // Appliquer les marges asymétriques
     let W1 = admWidth * (1 + 2 * marginH);
     let H1 = admHeight * (1 + 2 * marginV);
     
-    // Ratio de la zone carte sur A4 portrait
-    // Zone carte: ~180mm largeur x ~200mm hauteur (après titre, légende, cartouche)
-    const sheetRatio = 1.11;
+    // Utiliser le ratio EXACT de la zone carte A4 depuis getA4Layout (v3.5.0)
+    const dpi = QUALITY_SETTINGS[quality]?.dpi || 300;
+    const layout = getA4Layout(dpi, 'portrait');
+    const sheetRatio = layout.targetAspectRatio; // Ratio largeur/hauteur de la zone carte
     
-    // Ratio actuel de l'emprise avec marges
-    const currentRatio = H1 / (W1 * latCorrection);
+    // Ratio actuel de l'emprise avec marges (largeur/hauteur en km)
+    const currentRatio = (W1 * latCorrection) / H1;
     
     let W2 = W1;
     let H2 = H1;
     
     if (currentRatio > sheetRatio) {
-      // Emprise plus "verticale" que la feuille → élargir la largeur
-      W2 = (H1 / sheetRatio) / latCorrection;
-    } else if (currentRatio < sheetRatio) {
       // Emprise plus "horizontale" que la feuille → augmenter la hauteur
       // MAIS limiter l'ajout de hauteur pour éviter trop de mer/vide
-      const idealH2 = W1 * latCorrection * sheetRatio;
-      const maxExtraHeight = admHeight * 0.15; // Max 15% de hauteur ADM en plus
+      const idealH2 = (W1 * latCorrection) / sheetRatio;
+      const maxExtraHeight = admHeight * 0.10; // Max 10% de hauteur ADM en plus (réduit de 15%)
       H2 = Math.min(idealH2, H1 + maxExtraHeight);
       
       // Si on a limité la hauteur, réajuster la largeur
       if (H2 < idealH2) {
-        W2 = (H2 / sheetRatio) / latCorrection;
+        W2 = (H2 * sheetRatio) / latCorrection;
       }
+    } else if (currentRatio < sheetRatio) {
+      // Emprise plus "verticale" que la feuille → élargir la largeur
+      W2 = (H1 * sheetRatio) / latCorrection;
     }
     
     // Calculer le nouveau bbox centré sur l'ADM
@@ -2363,12 +2372,12 @@ export class ExportQuickDialog {
       north: centerLat + H2 / 2
     };
     
-    console.log('[Export] Emprise optimisée:', {
+    console.log('[Export] Emprise optimisée (v3.5.0):', {
       admOriginal: { width: admWidth.toFixed(4), height: admHeight.toFixed(4) },
       compactness: compactness.toFixed(2),
-      margins: { h: (marginH * 100).toFixed(0) + '%', v: (marginV * 100).toFixed(0) + '%' },
-      currentRatio: currentRatio.toFixed(3),
-      sheetRatio: sheetRatio.toFixed(3),
+      margins: { h: (marginH * 100).toFixed(1) + '%', v: (marginV * 100).toFixed(1) + '%' },
+      currentRatio: currentRatio.toFixed(4),
+      sheetRatio: sheetRatio.toFixed(4),
       newBounds: { width: W2.toFixed(4), height: H2.toFixed(4) }
     });
     
