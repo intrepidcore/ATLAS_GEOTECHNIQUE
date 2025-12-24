@@ -526,6 +526,7 @@ export class ThematicPanel {
     const style = document.createElement('style')
     style.id = 'palette-select-styles'
     style.textContent = `
+      /* Sélecteur de palette - DARK MODE (v3.5.1) */
       .palette-custom-select {
         position: relative;
         width: 100%;
@@ -536,21 +537,22 @@ export class ThematicPanel {
         align-items: center;
         gap: 8px;
         padding: 8px 12px;
-        background: white;
-        border: 1px solid #d1d5db;
+        background: #1e293b;
+        border: 1px solid #334155;
         border-radius: 6px;
         cursor: pointer;
-        transition: border-color 0.2s;
+        transition: border-color 0.2s, background 0.2s;
       }
       
       .palette-selected:hover {
         border-color: #3b82f6;
+        background: #1e3a5f;
       }
       
       .palette-selected:focus {
         outline: none;
         border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
       }
       
       .palette-gradient {
@@ -558,19 +560,19 @@ export class ThematicPanel {
         height: 16px;
         border-radius: 3px;
         flex-shrink: 0;
-        border: 1px solid rgba(0,0,0,0.1);
+        border: 1px solid rgba(255,255,255,0.15);
       }
       
       .palette-name {
         flex: 1;
         font-size: 13px;
         font-family: 'Consolas', 'Monaco', monospace;
-        color: #374151;
+        color: #e2e8f0;
       }
       
       .palette-chevron {
         font-size: 10px;
-        color: #9ca3af;
+        color: #94a3b8;
         transition: transform 0.2s;
       }
       
@@ -585,10 +587,10 @@ export class ThematicPanel {
         right: 0;
         max-height: 250px;
         overflow-y: auto;
-        background: white;
-        border: 1px solid #d1d5db;
+        background: #1e293b;
+        border: 1px solid #334155;
         border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         z-index: 1000;
         display: none;
         margin-top: 4px;
@@ -605,14 +607,15 @@ export class ThematicPanel {
         padding: 8px 12px;
         cursor: pointer;
         transition: background 0.15s;
+        color: #e2e8f0;
       }
       
       .palette-option:hover {
-        background: #f3f4f6;
+        background: #334155;
       }
       
       .palette-option.selected {
-        background: #eff6ff;
+        background: #1e3a5f;
       }
       
       .palette-option .palette-gradient {
@@ -824,6 +827,14 @@ export class ThematicPanel {
     this.elements.parameterSelect?.addEventListener('change', () => {
       this.updateParameterDescription()
       this.updatePaletteFromParameter()
+    })
+    
+    // Palette change -> RECHARGER LA CARTE (v3.5.1 - fix bug "toujours bleu")
+    this.elements.paletteSelect?.addEventListener('change', () => {
+      const palette = this.elements.paletteSelect?.value || 'Blues'
+      console.log(`[ThematicUI] Palette sélectionnée: ${palette}`)
+      // Recharger la carte avec la nouvelle palette
+      this.applyThematic()
     })
     
     // Map type change -> update classification controls

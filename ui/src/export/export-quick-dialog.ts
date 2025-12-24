@@ -2276,110 +2276,171 @@ export class ExportQuickDialog {
   }
   
   /**
-   * Calcule l'emprise optimale pour que l'ADM occupe toute la zone carte
-   * en respectant le ratio de la feuille A4
+   * Calcule l'emprise optimale pour l'export A4 (v3.5.1 - Algorithme avancé corrigé)
    * 
-   * Algorithme:
-   * 1. Partir du bbox ADM brut
-   * 2. Ajouter une marge minimale (2-3%)
-   * 3. Adapter au ratio de la zone carte (A4 portrait ≈ 1.29)
-   * 4. Centrer l'ADM dans ce nouveau bbox
+   * Basé sur ALGORITHME BOUNDS_EXPORT.md :
+   * 1. Projection en coordonnées métriques (correction Mercator)
+   * 2. Calcul slenderness (étirement)
+   * 3. Marges anisotropes selon la forme - RÉDUITES pour maximiser l'occupation
+   * 4. Ajustement au ratio de la zone carte A4
+   * 5. Clamp anti-rognage
+   * 
+   * @param admBounds Bbox brut de l'ADM en WGS84
+   * @param quality Qualité d'export pour déterminer le DPI
+   * @param admName Nom de l'ADM pour le log (optionnel)
    */
   private computeOptimalBoundsForSheet(
     admBounds: { north: number; south: number; east: number; west: number },
-    quality: ExportQuality = 'hd'
+    quality: ExportQuality = 'hd',
+    admName?: string
   ): { north: number; south: number; east: number; west: number } {
     
-    // Dimensions du bbox ADM en degrés
-    const admWidth = admBounds.east - admBounds.west;
-    const admHeight = admBounds.north - admBounds.south;
+    // ========================================================================
+    // ÉTAPE 1 : Bbox ADM brut et conversion en mètres
+    // ========================================================================
+    const admWidthDeg = admBounds.east - admBounds.west;
+    const admHeightDeg = admBounds.north - admBounds.south;
     
-    // Centre de l'ADM
+    // Centre de l'ADM (pour correction Mercator et centrage final)
     const centerLat = (admBounds.north + admBounds.south) / 2;
     const centerLng = (admBounds.east + admBounds.west) / 2;
     
-    // Correction latitude (1° lat ≈ 111km, 1° lng ≈ 111km * cos(lat))
-    const latCorrection = Math.cos(centerLat * Math.PI / 180);
+    // Correction Mercator : 1° lng ≈ 111km * cos(lat)
+    const cosLat = Math.cos(centerLat * Math.PI / 180);
     
-    // Calculer la compacité de l'ADM (ratio largeur/hauteur en km)
-    const admWidthKm = admWidth * 111 * latCorrection;
-    const admHeightKm = admHeight * 111;
-    const compactness = admWidthKm / admHeightKm; // >1 = horizontal, <1 = vertical
+    // Dimensions en km (approximation locale)
+    const W0_km = admWidthDeg * 111 * cosLat;
+    const H0_km = admHeightDeg * 111;
     
-    // Marges RÉDUITES et ADAPTATIVES selon la forme de l'ADM (v3.5.0)
-    // Objectif: minimiser les marges tout en gardant l'ADM lisible
-    let marginH: number; // marge horizontale (Est/Ouest)
-    let marginV: number; // marge verticale (Nord/Sud)
+    // ========================================================================
+    // ÉTAPE 2 : Calcul des indicateurs de forme
+    // ========================================================================
     
-    if (compactness > 2.0) {
-      // ADM très horizontal (ex: Maritime) → marges minimales
-      marginH = 0.02; // 2%
-      marginV = 0.01; // 1%
-    } else if (compactness > 1.3) {
-      // ADM horizontal modéré
-      marginH = 0.03; // 3%
-      marginV = 0.015; // 1.5%
-    } else if (compactness < 0.5) {
-      // ADM très vertical → marges minimales
-      marginH = 0.01; // 1%
-      marginV = 0.02; // 2%
-    } else if (compactness < 0.77) {
-      // ADM vertical modéré
-      marginH = 0.015; // 1.5%
-      marginV = 0.03; // 3%
+    // Slenderness S = max/min (1 = carré, >1 = étiré)
+    const S = Math.max(W0_km, H0_km) / Math.min(W0_km, H0_km);
+    
+    // Direction longue/courte
+    const isHorizontal = W0_km >= H0_km;
+    
+    // Aspect ratio ADM (largeur/hauteur en km)
+    const AR_adm = W0_km / H0_km;
+    
+    // ========================================================================
+    // ÉTAPE 3 : Calcul des marges anisotropes (v3.5.1 - RÉDUITES)
+    // ========================================================================
+    // Objectif: occupation ≥ 0.70 sur chaque axe
+    // Paramètres ajustés pour des marges plus serrées
+    const µ0 = 0.02;      // Marge de base 2% (était 3%)
+    const µ_min = 0.01;   // Marge min 1% (était 1.5%)
+    const µ_max = 0.05;   // Marge max 5% (était 8%)
+    const S0 = 2.0;       // Seuil de slenderness (était 1.8)
+    
+    // Facteur de forme f_S : 0 si S≈1, tend vers 1 si S≥S0
+    const f_S = Math.min(1, Math.max(0, (S - 1) / (S0 - 1)));
+    
+    // Coefficients de déformation des marges
+    const alpha = 0.6 * µ0;  // Réduction max sur direction courte (était 0.5)
+    const beta = 0.2 * µ0;   // Augmentation max sur direction longue (était 0.3)
+    
+    // Marges brutes - TRÈS réduites sur direction courte pour formes étirées
+    let µ_short = µ0 - alpha * f_S;  // Direction courte : marge réduite
+    let µ_long = µ0 + beta * f_S;    // Direction longue : marge légèrement augmentée
+    
+    // Borner les marges
+    µ_short = Math.max(µ_min, Math.min(µ0, µ_short));
+    µ_long = Math.max(µ0, Math.min(µ_max, µ_long));
+    
+    // Assigner selon direction
+    let µx: number, µy: number;
+    if (isHorizontal) {
+      µx = µ_long;   // Largeur = direction longue
+      µy = µ_short;  // Hauteur = direction courte
     } else {
-      // ADM compact → marges égales réduites
-      marginH = 0.02; // 2%
-      marginV = 0.02; // 2%
+      µx = µ_short;  // Largeur = direction courte
+      µy = µ_long;   // Hauteur = direction longue
     }
     
-    // Appliquer les marges asymétriques
-    let W1 = admWidth * (1 + 2 * marginH);
-    let H1 = admHeight * (1 + 2 * marginV);
+    // ========================================================================
+    // ÉTAPE 4 : Boîte élargie avec marges (en degrés)
+    // ========================================================================
+    const W1 = admWidthDeg * (1 + 2 * µx);
+    const H1 = admHeightDeg * (1 + 2 * µy);
     
-    // Utiliser le ratio EXACT de la zone carte A4 depuis getA4Layout (v3.5.0)
+    // ========================================================================
+    // ÉTAPE 5 : Ajustement au ratio de la zone carte A4
+    // ========================================================================
     const dpi = QUALITY_SETTINGS[quality]?.dpi || 300;
     const layout = getA4Layout(dpi, 'portrait');
-    const sheetRatio = layout.targetAspectRatio; // Ratio largeur/hauteur de la zone carte
+    const AR_frame = layout.targetAspectRatio; // Ratio largeur/hauteur de la zone carte
     
-    // Ratio actuel de l'emprise avec marges (largeur/hauteur en km)
-    const currentRatio = (W1 * latCorrection) / H1;
+    // Ratio actuel de la boîte avec marges (en km pour comparaison correcte)
+    const W1_km = W1 * 111 * cosLat;
+    const H1_km = H1 * 111;
+    const AR_1 = W1_km / H1_km;
     
     let W2 = W1;
     let H2 = H1;
     
-    if (currentRatio > sheetRatio) {
-      // Emprise plus "horizontale" que la feuille → augmenter la hauteur
-      // MAIS limiter l'ajout de hauteur pour éviter trop de mer/vide
-      const idealH2 = (W1 * latCorrection) / sheetRatio;
-      const maxExtraHeight = admHeight * 0.10; // Max 10% de hauteur ADM en plus (réduit de 15%)
-      H2 = Math.min(idealH2, H1 + maxExtraHeight);
-      
-      // Si on a limité la hauteur, réajuster la largeur
-      if (H2 < idealH2) {
-        W2 = (H2 * sheetRatio) / latCorrection;
-      }
-    } else if (currentRatio < sheetRatio) {
-      // Emprise plus "verticale" que la feuille → élargir la largeur
-      W2 = (H1 * sheetRatio) / latCorrection;
+    if (AR_1 > AR_frame) {
+      // Boîte plus "large" que le cadre → augmenter la hauteur
+      const H2_km = W1_km / AR_frame;
+      H2 = H2_km / 111;
+    } else if (AR_1 < AR_frame) {
+      // Boîte plus "haute" que le cadre → augmenter la largeur
+      const W2_km = H1_km * AR_frame;
+      W2 = W2_km / (111 * cosLat);
     }
     
-    // Calculer le nouveau bbox centré sur l'ADM
+    // ========================================================================
+    // ÉTAPE 6 : Clamp anti-rognage (marge de sécurité minimale)
+    // ========================================================================
+    // S'assurer que l'ADM original est entièrement contenu avec marge de sécurité
+    const securityMargin = 0.005; // 0.5% de marge de sécurité anti-rognage
+    const halfW2 = W2 / 2;
+    const halfH2 = H2 / 2;
+    
+    // Vérifier que les bounds originaux sont contenus
+    const minWestNeeded = Math.abs(admBounds.west - centerLng) * (1 + securityMargin);
+    const maxEastNeeded = Math.abs(admBounds.east - centerLng) * (1 + securityMargin);
+    const minSouthNeeded = Math.abs(admBounds.south - centerLat) * (1 + securityMargin);
+    const maxNorthNeeded = Math.abs(admBounds.north - centerLat) * (1 + securityMargin);
+    
+    // Ajuster si nécessaire
+    const finalHalfW = Math.max(halfW2, minWestNeeded, maxEastNeeded);
+    const finalHalfH = Math.max(halfH2, minSouthNeeded, maxNorthNeeded);
+    
+    // ========================================================================
+    // ÉTAPE 7 : Construire le bbox final centré sur l'ADM
+    // ========================================================================
     const newBounds = {
-      west: centerLng - W2 / 2,
-      east: centerLng + W2 / 2,
-      south: centerLat - H2 / 2,
-      north: centerLat + H2 / 2
+      west: centerLng - finalHalfW,
+      east: centerLng + finalHalfW,
+      south: centerLat - finalHalfH,
+      north: centerLat + finalHalfH
     };
     
-    console.log('[Export] Emprise optimisée (v3.5.0):', {
-      admOriginal: { width: admWidth.toFixed(4), height: admHeight.toFixed(4) },
-      compactness: compactness.toFixed(2),
-      margins: { h: (marginH * 100).toFixed(1) + '%', v: (marginV * 100).toFixed(1) + '%' },
-      currentRatio: currentRatio.toFixed(4),
-      sheetRatio: sheetRatio.toFixed(4),
-      newBounds: { width: W2.toFixed(4), height: H2.toFixed(4) }
-    });
+    // ========================================================================
+    // ÉTAPE 8 : Calcul des taux d'occupation (v3.5.1)
+    // ========================================================================
+    const finalWidthDeg = finalHalfW * 2;
+    const finalHeightDeg = finalHalfH * 2;
+    const finalWidthKm = finalWidthDeg * 111 * cosLat;
+    const finalHeightKm = finalHeightDeg * 111;
+    
+    const occ_x = W0_km / finalWidthKm;
+    const occ_y = H0_km / finalHeightKm;
+    const occ_area = (W0_km * H0_km) / (finalWidthKm * finalHeightKm);
+    
+    // Log structuré pour diagnostic (v3.5.1)
+    console.log(`[Export][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
+    console.log(`[Export][Bounds] ADM: ${admName || 'inconnu'}`);
+    console.log(`[Export][Bounds] Dimensions ADM: ${W0_km.toFixed(1)}km × ${H0_km.toFixed(1)}km`);
+    console.log(`[Export][Bounds] Slenderness: ${S.toFixed(2)} | Direction: ${isHorizontal ? 'horizontal' : 'vertical'}`);
+    console.log(`[Export][Bounds] AR_adm: ${AR_adm.toFixed(3)} | AR_frame: ${AR_frame.toFixed(3)}`);
+    console.log(`[Export][Bounds] Marges: µx=${(µx * 100).toFixed(1)}% µy=${(µy * 100).toFixed(1)}% (f_S=${f_S.toFixed(2)})`);
+    console.log(`[Export][Bounds] Dimensions finales: ${finalWidthKm.toFixed(1)}km × ${finalHeightKm.toFixed(1)}km`);
+    console.log(`[Export][Bounds] 📊 OCCUPATION: occ_x=${(occ_x * 100).toFixed(1)}% occ_y=${(occ_y * 100).toFixed(1)}% occ_area=${(occ_area * 100).toFixed(1)}%`);
+    console.log(`[Export][Bounds] ${occ_x >= 0.70 && occ_y >= 0.70 ? '✅ Occupation OK (≥70%)' : '⚠️ Occupation faible (<70%)'}`);
     
     return newBounds;
   }

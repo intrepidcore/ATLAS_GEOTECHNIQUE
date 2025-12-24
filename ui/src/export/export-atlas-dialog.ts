@@ -1379,6 +1379,14 @@ export class ExportAtlasDialog {
    * Exécute l'export batch séquentiel
    */
   private async runBatchExport(config: AtlasExportConfig): Promise<void> {
+    // Log de configuration (v3.5.1 - debug)
+    console.log('[Atlas][CONFIG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('[Atlas][CONFIG] Qualité:', config.quality);
+    console.log('[Atlas][CONFIG] Export Data:', config.exportData);
+    console.log('[Atlas][CONFIG] Export Charts:', config.exportCharts);
+    console.log('[Atlas][CONFIG] Export Excel:', config.exportExcel);
+    console.log('[Atlas][CONFIG] Thématiques:', config.thematics);
+    
     // Déterminer les ADM à exporter
     const levels: Array<'adm1' | 'adm2' | 'adm3'> = [];
     if (config.levels.adm1) levels.push('adm1');
@@ -1667,10 +1675,13 @@ export class ExportAtlasDialog {
           }
         }
         
-        // ========== EXPORT EXCEL UNIQUE (v3.4.3) ==========
+        // ========== EXPORT EXCEL UNIQUE (v3.5.1) ==========
+        console.log('[Atlas][EXCEL] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+        console.log('[Atlas][EXCEL] Flag exportExcel:', config?.exportExcel);
         if (config?.exportExcel) {
           this.updateProgress('Génération du fichier Excel...', 97);
-          console.log('[Atlas] Génération Excel activée');
+          console.log('[Atlas][EXCEL] Démarrage génération Excel...');
+          this.progressModal?.log('info', 'EXCEL', 'Préparation des données Excel...');
           
           try {
             // Collecter les données GeoJSON et CSV pour l'Excel
@@ -1726,11 +1737,16 @@ export class ExportAtlasDialog {
             });
             
             // Ajouter au ZIP
+            const excelSizeMB = excelBlob.size / 1024 / 1024;
             zip.file('atlas_geotechnique_donnees_analyse.xlsx', excelBlob);
-            console.log('[Atlas] Fichier Excel ajouté au ZIP');
+            console.log(`[Atlas][EXCEL] ✅ Fichier Excel ajouté au ZIP (${excelSizeMB.toFixed(2)} Mo)`);
+            this.progressModal?.log('success', 'EXCEL', `Fichier Excel généré: ${excelSizeMB.toFixed(2)} Mo`);
           } catch (e) {
-            console.warn('[Atlas] Erreur génération Excel:', e);
+            console.error('[Atlas][EXCEL] ❌ Erreur génération Excel:', e);
+            this.progressModal?.log('error', 'EXCEL', `Erreur: ${e}`);
           }
+        } else {
+          console.log('[Atlas][EXCEL] Export Excel désactivé (checkbox non cochée)');
         }
         
         // Ajouter un fichier index.json avec les métadonnées (v3.4.1 enrichi)

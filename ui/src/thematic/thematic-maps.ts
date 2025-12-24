@@ -342,10 +342,14 @@ export class ThematicMapManager {
   }
   
   /**
-   * Récupérer les couleurs d'une palette (v3.4.2 - utilise THEMATIC_PALETTE_MAP)
+   * Récupérer les couleurs d'une palette (v3.5.0 - corrigé)
+   * @param palette Nom de la palette (ex: 'YlOrRd', 'Blues', 'Viridis')
+   * @param n Nombre de couleurs à retourner
    */
   private async getColors(palette: string, n: number): Promise<string[]> {
-    // Palettes complètes pour interpolation (v3.4.2 enrichi)
+    console.log(`[ThematicMap] getColors appelé avec palette="${palette}", n=${n}`)
+    
+    // Palettes complètes pour interpolation (v3.5.0 enrichi)
     const palettes: Record<string, string[]> = {
       // Séquentielles monochrome
       'Blues': ['#f7fbff', '#deebf7', '#c6dbef', '#9ecae1', '#6baed6', '#4292c6', '#2171b5', '#08519c', '#08306b'],

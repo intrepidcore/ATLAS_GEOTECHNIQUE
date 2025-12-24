@@ -33,14 +33,56 @@ export interface ThematicChartSet {
   }>
 }
 
-// Palettes de couleurs par thématique
+// Palettes de couleurs par thématique (v3.5.0 - cohérentes avec cartes)
 const CHART_PALETTES = {
-  couverture: ['#3b82f6', '#60a5fa', '#93c5fd', '#bfdbfe', '#dbeafe'],
-  argilosite: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#06b6d4'],
-  gonflement: ['#dc2626', '#ea580c', '#ca8a04', '#16a34a', '#0891b2'],
-  proctor: ['#7c3aed', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'],
-  granulo: ['#0d9488', '#14b8a6', '#2dd4bf', '#5eead4', '#99f6e4'],
+  couverture: ['#22c55e', '#4ade80', '#86efac', '#bbf7d0', '#dcfce7'],  // Greens
+  argilosite: ['#b91c1c', '#dc2626', '#f97316', '#facc15', '#fef08a'],  // YlOrRd inversé
+  gonflement: ['#1e40af', '#3b82f6', '#60a5fa', '#93c5fd', '#dbeafe'],  // Blues
+  proctor: ['#166534', '#22c55e', '#4ade80', '#86efac', '#bbf7d0'],     // BuGn
+  granulo: ['#c2410c', '#ea580c', '#f97316', '#fb923c', '#fdba74'],     // Oranges
   default: ['#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#ec4899']
+}
+
+// Unités par thématique (v3.5.0)
+const THEMATIC_UNITS: Record<string, string> = {
+  n_sondages: 'sondages',
+  n_echantillons: 'échantillons',
+  n_essais_total: 'essais',
+  vbs_avg: 'g/100g',
+  vbs_max: 'g/100g',
+  vbs_min: 'g/100g',
+  ip_avg: '%',
+  ip_max: '%',
+  wl_avg: '%',
+  wp_avg: '%',
+  eg_avg: '%',
+  eg_max: '%',
+  gamma_d_max_avg: 't/m³',
+  w_opt_avg: '%',
+  passant_80um_avg: '%',
+  passant_2mm_avg: '%',
+  passant_20mm_avg: '%'
+}
+
+// Labels lisibles par thématique (v3.5.0)
+const THEMATIC_LABELS: Record<string, string> = {
+  n_sondages: 'Nombre de sondages',
+  n_echantillons: 'Nombre d\'échantillons',
+  n_essais_total: 'Nombre d\'essais',
+  vbs_avg: 'VBS moyen',
+  vbs_max: 'VBS maximum',
+  vbs_min: 'VBS minimum',
+  ip_avg: 'IP moyen',
+  ip_max: 'IP maximum',
+  wl_avg: 'Limite de liquidité WL',
+  wp_avg: 'Limite de plasticité WP',
+  eg_avg: 'Gonflement Eg moyen',
+  eg_max: 'Gonflement Eg maximum',
+  gamma_d_max_avg: 'Densité sèche max γd,max',
+  w_opt_avg: 'Teneur en eau optimale wopt',
+  passant_80um_avg: '% passant 80µm (fines)',
+  passant_2mm_avg: '% passant 2mm',
+  passant_20mm_avg: '% passant 20mm'
 }
 
 // Configuration des graphes par thématique
@@ -218,13 +260,17 @@ export class ChartGenerator {
     const values = this.extractValues(features, 'value')
     const adm2Groups = this.groupByAdm2(features)
     
+    // Récupérer l'unité et le label pour cette thématique (v3.5.0)
+    const unit = THEMATIC_UNITS[thematicId] || ''
+    const label = THEMATIC_LABELS[thematicId] || thematicId
+    
     for (const chartConfig of config.charts) {
       try {
         let blob: Blob | null = null
         
         switch (chartConfig.type) {
           case 'histogram':
-            blob = await this.generateHistogram(values, chartConfig.title, palette[0])
+            blob = await this.generateHistogram(values, chartConfig.title, palette[0], thematicId)
             break
             
           case 'pie':
@@ -232,11 +278,11 @@ export class ChartGenerator {
             break
             
           case 'bar':
-            blob = await this.generateBarChart(adm2Groups, chartConfig.title, palette[0])
+            blob = await this.generateBarChart(adm2Groups, chartConfig.title, palette[0], thematicId)
             break
             
           case 'boxplot':
-            blob = await this.generateBoxplot(adm2Groups, chartConfig.title, palette)
+            blob = await this.generateBoxplot(adm2Groups, chartConfig.title, palette, thematicId)
             break
             
           case 'scatter':
@@ -292,25 +338,30 @@ export class ChartGenerator {
   // ============================================================================
   
   /**
-   * Histogramme de distribution
+   * Histogramme de distribution (v3.5.0 - avec unités et statistiques enrichies)
    */
   async generateHistogram(
     values: number[],
     title: string,
-    color: string
+    color: string,
+    thematicId?: string
   ): Promise<Blob> {
     this.clearCanvas()
     const ctx = this.ctx
     const validValues = values.filter(v => v != null && Number.isFinite(v))
     
+    // Récupérer unité et label (v3.5.0)
+    const unit = thematicId ? (THEMATIC_UNITS[thematicId] || '') : ''
+    const label = thematicId ? (THEMATIC_LABELS[thematicId] || thematicId) : 'Valeur'
+    
     if (validValues.length === 0) {
       return this.generateEmptyChart(title, 'Pas de données disponibles')
     }
     
-    // Calculer les bins
+    // Calculer les bins (règle de Sturges)
     const min = Math.min(...validValues)
     const max = Math.max(...validValues)
-    const numBins = Math.min(20, Math.ceil(Math.sqrt(validValues.length)))
+    const numBins = Math.min(20, Math.max(5, Math.ceil(1 + 3.322 * Math.log10(validValues.length))))
     const binWidth = (max - min) / numBins || 1
     
     const bins: number[] = new Array(numBins).fill(0)
@@ -319,39 +370,74 @@ export class ChartGenerator {
       bins[binIndex]++
     }
     
+    // Calculer statistiques (v3.5.0)
+    const sortedValues = [...validValues].sort((a, b) => a - b)
+    const mean = validValues.reduce((a, b) => a + b, 0) / validValues.length
+    const median = sortedValues[Math.floor(sortedValues.length / 2)]
+    const q1 = sortedValues[Math.floor(sortedValues.length * 0.25)]
+    const q3 = sortedValues[Math.floor(sortedValues.length * 0.75)]
+    
     // Dimensions du graphe
-    const margin = { top: 60, right: 40, bottom: 80, left: 70 }
+    const margin = { top: 60, right: 40, bottom: 90, left: 70 }
     const chartWidth = this.width - margin.left - margin.right
     const chartHeight = this.height - margin.top - margin.bottom
     
-    // Fond
-    ctx.fillStyle = '#ffffff'
+    // Fond gris très clair (v3.5.0)
+    ctx.fillStyle = '#fafafa'
     ctx.fillRect(0, 0, this.width, this.height)
+    
+    // Zone graphe en blanc
+    ctx.fillStyle = '#ffffff'
+    ctx.fillRect(margin.left, margin.top, chartWidth, chartHeight)
     
     // Titre
     ctx.fillStyle = '#1f2937'
-    ctx.font = 'bold 18px Arial'
+    ctx.font = 'bold 16px Arial'
     ctx.textAlign = 'center'
-    ctx.fillText(title, this.width / 2, 35)
+    ctx.fillText(title, this.width / 2, 30)
     
     // Axes
     const maxBin = Math.max(...bins)
     const barWidth = chartWidth / numBins - 2
     
-    // Barres
-    ctx.fillStyle = color
+    // Grille horizontale d'abord (v3.5.0)
+    ctx.strokeStyle = '#e5e7eb'
+    ctx.lineWidth = 1
+    for (let i = 1; i <= 5; i++) {
+      const y = margin.top + chartHeight - (i / 5) * chartHeight
+      ctx.beginPath()
+      ctx.moveTo(margin.left, y)
+      ctx.lineTo(margin.left + chartWidth, y)
+      ctx.stroke()
+    }
+    
+    // Barres avec couleur plus claire et bordure foncée (v3.5.0)
+    const barColor = this.lightenColor(color, 0.3)
+    const borderColor = this.darkenColor(color, 0.2)
+    
     for (let i = 0; i < numBins; i++) {
       const barHeight = (bins[i] / maxBin) * chartHeight
       const x = margin.left + i * (chartWidth / numBins) + 1
       const y = margin.top + chartHeight - barHeight
       
+      ctx.fillStyle = barColor
       ctx.fillRect(x, y, barWidth, barHeight)
       
-      // Bordure
-      ctx.strokeStyle = '#1e40af'
+      ctx.strokeStyle = borderColor
       ctx.lineWidth = 1
       ctx.strokeRect(x, y, barWidth, barHeight)
     }
+    
+    // Ligne médiane verticale (v3.5.1 - NOIR pour lisibilité)
+    const medianX = margin.left + ((median - min) / (max - min)) * chartWidth
+    ctx.strokeStyle = '#000000'
+    ctx.lineWidth = 2
+    ctx.setLineDash([5, 3])
+    ctx.beginPath()
+    ctx.moveTo(medianX, margin.top)
+    ctx.lineTo(medianX, margin.top + chartHeight)
+    ctx.stroke()
+    ctx.setLineDash([])
     
     // Axe X
     ctx.strokeStyle = '#374151'
@@ -393,11 +479,12 @@ export class ChartGenerator {
       ctx.stroke()
     }
     
-    // Label axes
+    // Label axes avec unité (v3.5.0)
     ctx.fillStyle = '#374151'
     ctx.font = '14px Arial'
     ctx.textAlign = 'center'
-    ctx.fillText('Valeur', this.width / 2, this.height - 20)
+    const xAxisLabel = unit ? `${label} (${unit})` : label
+    ctx.fillText(xAxisLabel, this.width / 2, this.height - 35)
     
     ctx.save()
     ctx.translate(20, this.height / 2)
@@ -405,19 +492,54 @@ export class ChartGenerator {
     ctx.fillText('Nombre de mailles', 0, 0)
     ctx.restore()
     
-    // Stats
-    const mean = validValues.reduce((a, b) => a + b, 0) / validValues.length
-    const statsText = `n=${validValues.length} | moy=${mean.toFixed(2)} | min=${min.toFixed(2)} | max=${max.toFixed(2)}`
+    // Légende médiane (v3.5.1 - NOIR)
+    ctx.fillStyle = '#000000'
+    ctx.font = '11px Arial'
+    ctx.textAlign = 'left'
+    ctx.fillText(`── Médiane: ${median.toFixed(2)}${unit ? ' ' + unit : ''}`, margin.left + 10, margin.top + 15)
+    
+    // Stats enrichies (v3.5.0)
+    const statsText = `n=${validValues.length} | moy=${mean.toFixed(2)} | médiane=${median.toFixed(2)} | Q1-Q3=${q1.toFixed(2)}-${q3.toFixed(2)} | min=${min.toFixed(2)} | max=${max.toFixed(2)}`
     ctx.fillStyle = '#6b7280'
     ctx.font = '11px Arial'
     ctx.textAlign = 'center'
-    ctx.fillText(statsText, this.width / 2, this.height - 5)
+    ctx.fillText(statsText, this.width / 2, this.height - 10)
     
     return this.canvasToBlob()
   }
   
   /**
-   * Camembert (couverture spatiale)
+   * Éclaircit une couleur hex (v3.5.0)
+   */
+  private lightenColor(hex: string, factor: number): string {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    
+    const newR = Math.min(255, Math.round(r + (255 - r) * factor))
+    const newG = Math.min(255, Math.round(g + (255 - g) * factor))
+    const newB = Math.min(255, Math.round(b + (255 - b) * factor))
+    
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+  }
+  
+  /**
+   * Assombrit une couleur hex (v3.5.0)
+   */
+  private darkenColor(hex: string, factor: number): string {
+    const r = parseInt(hex.slice(1, 3), 16)
+    const g = parseInt(hex.slice(3, 5), 16)
+    const b = parseInt(hex.slice(5, 7), 16)
+    
+    const newR = Math.max(0, Math.round(r * (1 - factor)))
+    const newG = Math.max(0, Math.round(g * (1 - factor)))
+    const newB = Math.max(0, Math.round(b * (1 - factor)))
+    
+    return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+  }
+  
+  /**
+   * Camembert (couverture spatiale) - v3.5.1 corrigé
    */
   async generatePieChart(
     features: any[],
@@ -427,10 +549,25 @@ export class ChartGenerator {
     this.clearCanvas()
     const ctx = this.ctx
     
-    // Compter mailles avec/sans données
-    const withData = features.filter(f => f.properties?.value != null || f.properties?.n_sondages > 0).length
+    // Compter mailles avec/sans données (v3.5.1 - logique corrigée)
+    // Une maille "avec données" doit avoir:
+    // - soit n_sondages > 0
+    // - soit value != null ET value > 0 (pour les thématiques non-comptage)
+    const withData = features.filter(f => {
+      const props = f.properties
+      if (!props) return false
+      // Si n_sondages est défini, l'utiliser comme critère principal
+      if (props.n_sondages !== undefined) {
+        return props.n_sondages > 0
+      }
+      // Sinon, vérifier value (doit être non-null et positif ou zéro valide)
+      return props.value != null && props.has_data !== false
+    }).length
     const withoutData = features.length - withData
     const total = features.length
+    
+    // Log de debug pour vérifier les proportions
+    console.log(`[PieChart] ${title}: ${withData} avec données, ${withoutData} sans données, total=${total}`)
     
     if (total === 0) {
       return this.generateEmptyChart(title, 'Pas de données disponibles')
@@ -510,12 +647,13 @@ export class ChartGenerator {
   }
   
   /**
-   * Barres par ADM2
+   * Barres par ADM2 (v3.5.0 - avec unités)
    */
   async generateBarChart(
     adm2Groups: Record<string, number[]>,
     title: string,
-    color: string
+    color: string,
+    thematicId?: string
   ): Promise<Blob> {
     this.clearCanvas()
     const ctx = this.ctx
@@ -604,12 +742,13 @@ export class ChartGenerator {
   }
   
   /**
-   * Boxplot par ADM2
+   * Boxplot par ADM2 (v3.5.0 - avec unités et outliers)
    */
   async generateBoxplot(
     adm2Groups: Record<string, number[]>,
     title: string,
-    colors: string[]
+    colors: string[],
+    thematicId?: string
   ): Promise<Blob> {
     this.clearCanvas()
     const ctx = this.ctx
