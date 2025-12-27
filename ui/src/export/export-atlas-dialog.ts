@@ -19,6 +19,9 @@ import { ExportQuickDialog, type ExportQuickDialogConfig } from './export-quick-
 import { generateAnalysisExcel, type ExportExcelOptions } from './export-excel';
 import { getExportProgressModal, type ExportProgressModal } from './export-progress-modal';
 import { PALETTE_OPTIONS, getRecommendedPalette } from '../thematic/thematic-types';
+import { API_BASE_URL } from '../services/api';
+import { tokenStorage } from '../services/auth-api';
+import { getExportLogger, destroyExportLogger, type LogEntry } from './export-logger';
 
 // ============================================================================
 // Types
@@ -45,6 +48,8 @@ export interface AtlasExportConfig {
   showEmptyCells: boolean;
   onlyAdmCells: boolean;
   showAdmBoundary: boolean; // Toujours afficher la délimitation ADM
+  // MODE DEBUG RAPIDE - pour itérer vite sur les corrections
+  debugMode: boolean; // Limite à 1 zone + 1-3 thématiques
   // Nouveau: délimitation hiérarchique (frontières du niveau parent)
   boundaryLevel: 'none' | 'adm1' | 'adm2'; // Niveau des frontières à afficher
   // Export données pour analyse
@@ -62,12 +67,16 @@ export interface AtlasExportConfig {
   exportExcel: boolean;
   // Palettes par thématique (v3.5.0)
   thematicPalettes: Record<string, string>;
+  // Options grille et cadre (v3.5.3)
+  gridType: 'none' | 'cross' | 'continuous' | 'labels-only';
+  frameStyle: 'none' | 'simple' | 'double' | 'zebra';
 }
 
 export interface AtlasExportCallbacks {
   getAdmList: (level: 'adm1' | 'adm2' | 'adm3') => Promise<Array<{ code: string; name: string }>>;
   exportSingleMap?: (admLevel: string, admName: string, thematicId: string, config: AtlasExportConfig) => Promise<Blob | null>;
-  setThematicAndAdm: (thematicId: string, admLevel: string, admName: string) => Promise<void>;
+  /** Change la thématique et l'ADM sur la carte. palette optionnelle pour forcer une palette spécifique (v3.5.2) */
+  setThematicAndAdm: (thematicId: string, admLevel: string, admName: string, palette?: string) => Promise<void>;
   /** Configuration pour ExportQuickDialog - utilisé pour l'export via le moteur Pro */
   getExportProConfig: () => ExportQuickDialogConfig;
 }
@@ -582,6 +591,7 @@ export class ExportAtlasDialog {
       showEmptyCells: true,
       onlyAdmCells: true,
       showAdmBoundary: true,
+      debugMode: false, // Mode debug rapide désactivé par défaut
       boundaryLevel: 'adm2',
       exportData: false,
       dataOptions: {
@@ -593,6 +603,8 @@ export class ExportAtlasDialog {
       },
       exportCharts: false,
       exportExcel: false,
+      gridType: 'cross',
+      frameStyle: 'double',
       thematicPalettes: {}
     };
     this.progress = {
@@ -644,10 +656,10 @@ export class ExportAtlasDialog {
     try {
       // Charger les listes ADM
       const [adm1Res, adm2Res, adm3Res, maillesRes] = await Promise.all([
-        fetch('http://localhost:8000/adm1'),
-        fetch('http://localhost:8000/adm2'),
-        fetch('http://localhost:8000/adm3'),
-        fetch('http://localhost:8000/coverage/mailles')
+        fetch(`${API_BASE_URL}/adm1`),
+        fetch(`${API_BASE_URL}/adm2`),
+        fetch(`${API_BASE_URL}/adm3`),
+        fetch(`${API_BASE_URL}/coverage/mailles`)
       ]);
       
       if (adm1Res.ok) this.admCache.adm1 = await adm1Res.json();
@@ -777,9 +789,19 @@ export class ExportAtlasDialog {
                 <div class="atlas-field">
                   <label>🔲 Type de grille</label>
                   <select id="atlas-grid-type">
-                    <option value="square" selected>Carrée (1km)</option>
-                    <option value="hex">Hexagonale</option>
-                    <option value="none">Sans grille</option>
+                    <option value="cross" selected>Croix</option>
+                    <option value="continuous">Continue</option>
+                    <option value="labels-only">Labels uniquement</option>
+                    <option value="none">Aucune</option>
+                  </select>
+                </div>
+                <div class="atlas-field">
+                  <label>🖼️ Style cadre</label>
+                  <select id="atlas-frame-style">
+                    <option value="simple" selected>Simple</option>
+                    <option value="double">Double</option>
+                    <option value="zebra">Zébré (QGIS)</option>
+                    <option value="none">Aucun</option>
                   </select>
                 </div>
                 <div class="atlas-field">
@@ -1137,7 +1159,7 @@ export class ExportAtlasDialog {
     if (selectedAdm1.length > 0) {
       // Charger les ADM2 pour chaque ADM1 sélectionné
       const promises = selectedAdm1.map(adm1 => 
-        fetch(`http://localhost:8000/adm2?adm1=${encodeURIComponent(adm1)}`)
+        fetch(`${API_BASE_URL}/adm2?adm1=${encodeURIComponent(adm1)}`)
           .then(r => r.ok ? r.json() : [])
           .catch(() => [])
       );
@@ -1186,7 +1208,7 @@ export class ExportAtlasDialog {
     if (selectedAdm2.length > 0) {
       // Charger les ADM3 pour chaque ADM2 sélectionné
       const promises = selectedAdm2.map(adm2 => 
-        fetch(`http://localhost:8000/adm3?adm2=${encodeURIComponent(adm2)}`)
+        fetch(`${API_BASE_URL}/adm3?adm2=${encodeURIComponent(adm2)}`)
           .then(r => r.ok ? r.json() : [])
           .catch(() => [])
       );
@@ -1312,7 +1334,12 @@ export class ExportAtlasDialog {
       dataOptions,
       exportCharts: (this.overlay.querySelector('#atlas-export-charts') as HTMLInputElement)?.checked || false,
       exportExcel: (this.overlay.querySelector('#atlas-export-excel') as HTMLInputElement)?.checked || false,
-      thematicPalettes
+      thematicPalettes,
+      // Options grille et cadre (v3.5.3)
+      gridType: ((this.overlay.querySelector('#atlas-grid-type') as HTMLSelectElement)?.value || 'cross') as 'none' | 'cross' | 'continuous' | 'labels-only',
+      frameStyle: ((this.overlay.querySelector('#atlas-frame-style') as HTMLSelectElement)?.value || 'simple') as 'none' | 'simple' | 'double' | 'zebra',
+      // Mode debug rapide
+      debugMode: (this.overlay.querySelector('#atlas-debug-mode') as HTMLInputElement)?.checked || false
     };
   }
   
@@ -1351,6 +1378,14 @@ export class ExportAtlasDialog {
       closeBtn.onclick = () => { this.abortRequested = true; };
     }
     
+    // Connecter le callback d'annulation du modal de progression (v3.5.2)
+    if (this.progressModal) {
+      this.progressModal.setOnCancel(() => {
+        this.abortRequested = true;
+        this.progressModal?.log('warning', 'CANCEL', 'Signal d\'annulation reçu');
+      });
+    }
+    
     // Appeler le callback
     if (this.onExportStart) {
       this.onExportStart(config);
@@ -1379,6 +1414,34 @@ export class ExportAtlasDialog {
    * Exécute l'export batch séquentiel
    */
   private async runBatchExport(config: AtlasExportConfig): Promise<void> {
+    // v3.5.2: Attacher le bridge console pour capturer tous les logs F12
+    const exportLogger = getExportLogger({
+      exportId: `atlas-${Date.now()}`,
+      captureConsole: true,
+      onLog: (entry: LogEntry) => {
+        // Bridge vers le modal de progression si disponible
+        if (this.progressModal) {
+          const level = entry.level === 'warning' ? 'warning' :
+                        entry.level === 'error' ? 'error' :
+                        entry.level === 'success' ? 'success' : 'info';
+          this.progressModal.log(level, entry.category, entry.message);
+        }
+      }
+    });
+    exportLogger.attach();
+    
+    try {
+      await this.runBatchExportInternal(config, exportLogger);
+    } finally {
+      // Toujours détacher le logger à la fin
+      exportLogger.detach();
+    }
+  }
+  
+  /**
+   * Implémentation interne de l'export batch
+   */
+  private async runBatchExportInternal(config: AtlasExportConfig, exportLogger: ReturnType<typeof getExportLogger>): Promise<void> {
     // Log de configuration (v3.5.1 - debug)
     console.log('[Atlas][CONFIG] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('[Atlas][CONFIG] Qualité:', config.quality);
@@ -1489,9 +1552,10 @@ export class ExportAtlasDialog {
           
           if (this.callbacks?.setThematicAndAdm && this.callbacks?.getExportProConfig) {
             try {
-              // 1. Changer la thématique et l'ADM sur la carte
+              // 1. Changer la thématique et l'ADM sur la carte (v3.5.2: avec palette)
               this.progressModal?.logStep('Chargement thématique et ADM...');
-              await this.callbacks.setThematicAndAdm(thematicId, level, adm.name);
+              const palette = config.thematicPalettes?.[thematicId];
+              await this.callbacks.setThematicAndAdm(thematicId, level, adm.name, palette);
               
               // 2. Attendre le rendu complet (tuiles + thématique)
               this.progressModal?.logStep('Attente rendu carte (1s)...');
@@ -1512,6 +1576,9 @@ export class ExportAtlasDialog {
                 includeStats: config.includeStats,
                 includeNeighbors: config.includeNeighbors,
                 boundaryLevel: config.boundaryLevel,
+                // v3.5.3: Options grille et cadre
+                gridType: config.gridType,
+                frameStyle: config.frameStyle,
                 onProgress: (msg) => {
                   this.progressModal?.logStep(msg);
                   this.updateProgress(`${current}/${totalExports} - ${adm.name} - ${msg}`, percent);
@@ -1641,7 +1708,7 @@ export class ExportAtlasDialog {
             
             for (const thematicId of config.thematics) {
               try {
-                const url = `http://localhost:8000/thematic/data?parameter=${thematicId}&include_geometry=true`;
+                const url = `${API_BASE_URL}/thematic/data?parameter=${thematicId}&include_geometry=true`;
                 const response = await fetch(url);
                 if (response.ok) {
                   const data = await response.json();
@@ -1691,7 +1758,7 @@ export class ExportAtlasDialog {
             // Récupérer les grilles thématiques
             for (const thematicId of config.thematics) {
               try {
-                const url = `http://localhost:8000/thematic/data?parameter=${thematicId}&include_geometry=false`;
+                const url = `${API_BASE_URL}/thematic/data?parameter=${thematicId}&include_geometry=false`;
                 const response = await fetch(url);
                 if (response.ok) {
                   const data = await response.json();
@@ -1702,26 +1769,52 @@ export class ExportAtlasDialog {
               }
             }
             
-            // Récupérer les données brutes CSV
-            const csvEndpoints = [
-              { name: 'sondages', url: 'http://localhost:8000/export/sondages?format=csv' },
-              { name: 'essais_atterberg', url: 'http://localhost:8000/export/essais/atterberg?format=csv' },
-              { name: 'essais_vbs', url: 'http://localhost:8000/export/essais/vbs?format=csv' },
-              { name: 'essais_granulo', url: 'http://localhost:8000/export/essais/granulo?format=csv' },
-              { name: 'essais_proctor', url: 'http://localhost:8000/export/essais/proctor?format=csv' }
-            ];
+            // v3.5.3: Les endpoints /export/sondages et /export/essais/* n'existent pas dans le backend
+            // Utiliser les données thématiques déjà chargées pour générer un résumé CSV
+            console.log('[Atlas][EXCEL] Génération CSV à partir des données thématiques disponibles...');
             
-            for (const endpoint of csvEndpoints) {
-              try {
-                const response = await fetch(endpoint.url);
-                if (response.ok) {
-                  const csvContent = await response.text();
-                  csvFiles.set(endpoint.name, csvContent);
+            // Créer un CSV résumé à partir des données geojson thématiques
+            if (geojsonFiles.size > 0) {
+              // Générer un CSV de synthèse par maille
+              const syntheseRows: string[] = ['code,n_sondages,vbs_avg,ip_avg,wl_avg,eg_avg,gamma_d_max_avg'];
+              const mailleData = new Map<string, Record<string, number>>();
+              
+              for (const [thematicId, geojson] of geojsonFiles) {
+                if (geojson?.features) {
+                  for (const feature of geojson.features) {
+                    const code = feature.properties?.code || 'unknown';
+                    if (!mailleData.has(code)) {
+                      mailleData.set(code, {});
+                    }
+                    const data = mailleData.get(code)!;
+                    const value = feature.properties?.value;
+                    if (value != null && Number.isFinite(value)) {
+                      data[thematicId] = value;
+                    }
+                  }
                 }
-              } catch (e) {
-                console.warn(`[Atlas] Erreur chargement ${endpoint.name} pour Excel:`, e);
+              }
+              
+              // Convertir en CSV
+              for (const [code, data] of mailleData) {
+                syntheseRows.push([
+                  code,
+                  data.n_sondages ?? '',
+                  data.vbs_avg ?? '',
+                  data.ip_avg ?? '',
+                  data.wl_avg ?? '',
+                  data.eg_avg ?? '',
+                  data.gamma_d_max_avg ?? ''
+                ].join(','));
+              }
+              
+              if (syntheseRows.length > 1) {
+                csvFiles.set('synthese_mailles', syntheseRows.join('\n'));
+                console.log(`[Atlas][EXCEL] CSV synthèse généré: ${mailleData.size} mailles, ${syntheseRows.length - 1} lignes`);
               }
             }
+            
+            console.log(`[Atlas][EXCEL] ${geojsonFiles.size} fichiers GeoJSON, ${csvFiles.size} fichiers CSV`);
             
             // Générer le fichier Excel
             const excelBlob = await generateAnalysisExcel({
@@ -1823,6 +1916,35 @@ export class ExportAtlasDialog {
         
         // Marquer l'export comme terminé dans le modal
         this.progressModal?.complete(zipSizeMB);
+        
+        // POST-TRAITEMENT: Si export ADM1, lancer SQL + Python automatiquement
+        if (config?.levels?.adm1) {
+          console.log('[Atlas] 🔄 Lancement post-traitement ADM1 (SQL + Python)...');
+          this.progressModal?.log('info', 'POST-PROCESS', 'Lancement enrichissement préfectures...');
+          
+          try {
+            const token = tokenStorage.getAccessToken();
+            const response = await fetch(`${API_BASE_URL}/export/post-process/adm1`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+              }
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              console.log('[Atlas] ✅ Post-traitement terminé:', result);
+              this.progressModal?.log('success', 'POST-PROCESS', 'Enrichissement préfectures terminé');
+            } else {
+              console.warn('[Atlas] ⚠️ Post-traitement échoué:', response.status);
+              this.progressModal?.log('warning', 'POST-PROCESS', `Erreur ${response.status} - stats préfectures non générées`);
+            }
+          } catch (e) {
+            console.warn('[Atlas] ⚠️ Post-traitement non disponible:', e);
+            this.progressModal?.log('warning', 'POST-PROCESS', 'Service post-traitement non disponible');
+          }
+        }
         
         this.showResults(results, completed, total, true);
         return;
@@ -2157,7 +2279,7 @@ export class ExportAtlasDialog {
     admName: string
   ): Promise<boolean> {
     try {
-      const url = `http://localhost:8000/thematic/data?parameter=${thematicId}&${admLevel}=${encodeURIComponent(admName)}&limit=1`;
+      const url = `${API_BASE_URL}/thematic/data?parameter=${thematicId}&${admLevel}=${encodeURIComponent(admName)}&limit=1`;
       const response = await fetch(url);
       
       if (!response.ok) return false;

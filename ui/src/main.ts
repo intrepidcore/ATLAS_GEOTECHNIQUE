@@ -60,6 +60,7 @@ import {
 } from './filters-state'
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
+import { makeResizable } from './components/resizable-panel'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -3919,6 +3920,136 @@ async function showSondagesPage() {
   }
 }
 
+// ============================================================================
+// CORRECTION RESIZABLE: Modifier grid-template-columns au lieu de width
+// ============================================================================
+function initResizablePanels() {
+  console.log('[Resizable] Initialisation des panneaux redimensionnables...')
+  
+  const container = document.getElementById('container')
+  if (!container) {
+    console.warn('[Resizable] Container non trouvé')
+    return
+  }
+  
+  // Callback pour invalider la taille de la carte Leaflet après resize
+  const invalidateMapSize = () => {
+    const mapInstance = (window as any).map || (window as any).leafletMap
+    if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
+      setTimeout(() => {
+        mapInstance.invalidateSize({ animate: false })
+        console.log('[Resizable] ✅ map.invalidateSize() appelé')
+      }, 50)
+    }
+  }
+  
+  // Panneau gauche (dashboard) - handle à DROITE
+  const dashboard = document.getElementById('dashboard')
+  if (dashboard) {
+    const savedWidth = localStorage.getItem('atlas-home-left-panel-width')
+    const initialWidth = savedWidth ? parseInt(savedWidth) : 380
+    
+    makeResizable('#dashboard', {
+      direction: 'horizontal',
+      minSize: 200,
+      maxSize: 500,
+      defaultSize: initialWidth,
+      storageKey: 'atlas-home-left-panel-width',
+      handlePosition: 'end',
+      onResize: (newWidth) => {
+        // Modifier grid-template-columns du container
+        container.style.gridTemplateColumns = `${newWidth}px 1fr 380px`
+        console.log(`[Resizable] Dashboard resize: ${newWidth}px`)
+      },
+      onResizeEnd: (newWidth) => {
+        container.style.gridTemplateColumns = `${newWidth}px 1fr 380px`
+        invalidateMapSize()
+        console.log(`[Resizable] Dashboard final: ${newWidth}px`)
+      }
+    })
+    // Appliquer la largeur initiale
+    container.style.gridTemplateColumns = `${initialWidth}px 1fr 380px`
+    console.log('[Resizable] ✅ Panneau gauche (dashboard) activé')
+  }
+  
+  // Panneau droit (sidebar) - handle à GAUCHE
+  const sidebar = document.getElementById('sidebar')
+  if (sidebar) {
+    const savedWidth = localStorage.getItem('atlas-home-right-panel-width')
+    const initialWidth = savedWidth ? parseInt(savedWidth) : 380
+    const dashboardWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
+    
+    makeResizable('#sidebar', {
+      direction: 'horizontal',
+      minSize: 250,
+      maxSize: 600,
+      defaultSize: initialWidth,
+      storageKey: 'atlas-home-right-panel-width',
+      handlePosition: 'start',
+      onResize: (newWidth) => {
+        // Modifier grid-template-columns du container
+        const leftWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
+        container.style.gridTemplateColumns = `${leftWidth}px 1fr ${newWidth}px`
+        console.log(`[Resizable] Sidebar resize: ${newWidth}px`)
+      },
+      onResizeEnd: (newWidth) => {
+        const leftWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
+        container.style.gridTemplateColumns = `${leftWidth}px 1fr ${newWidth}px`
+        invalidateMapSize()
+        console.log(`[Resizable] Sidebar final: ${newWidth}px`)
+      }
+    })
+    // Appliquer la largeur initiale
+    const leftWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
+    container.style.gridTemplateColumns = `${leftWidth}px 1fr ${initialWidth}px`
+    console.log('[Resizable] ✅ Panneau droit (sidebar) activé')
+  }
+  
+  // Panneau thématique (apparaît dynamiquement) - Observer pour l'activer quand il devient visible
+  const thematicPanel = document.getElementById('thematicPanel')
+  if (thematicPanel) {
+    let thematicResizableInitialized = false
+    
+    const initThematicResizable = () => {
+      makeResizable('#thematicPanel', {
+        direction: 'horizontal',
+        minSize: 280,
+        maxSize: 450,
+        defaultSize: 320,
+        storageKey: 'atlas-thematic-panel-width',
+        handlePosition: 'start',
+        onResize: invalidateMapSize,
+        onResizeEnd: (size) => {
+          invalidateMapSize()
+          console.log(`[Resizable] ThematicPanel width: ${size}px`)
+        }
+      })
+      thematicResizableInitialized = true
+      console.log('[Resizable] ✅ Panneau thématique activé')
+    }
+    
+    const observer = new MutationObserver(() => {
+      if (!thematicResizableInitialized && thematicPanel.style.display !== 'none') {
+        initThematicResizable()
+        observer.disconnect()
+      }
+    })
+    
+    observer.observe(thematicPanel, {
+      attributes: true,
+      attributeFilter: ['style']
+    })
+    
+    // Tenter l'activation immédiate si déjà visible
+    if (thematicPanel.style.display !== 'none') {
+      initThematicResizable()
+      observer.disconnect()
+    }
+  }
+  
+  console.log('[Resizable] Initialisation terminée')
+}
+
 // Garantit l'ordre : d'abord boot, ensuite listeners
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
@@ -3937,6 +4068,8 @@ if (document.readyState === 'loading') {
     initRouting()
     // v3.0.0: Menu profil utilisateur
     initUserMenu()
+    // v3.5.2: Panneaux redimensionnables
+    initResizablePanels()
   }, { once: true })
 } else {
   updateAppVersion()
@@ -3954,4 +4087,6 @@ if (document.readyState === 'loading') {
   initRouting()
   // v3.0.0: Menu profil utilisateur
   initUserMenu()
+  // v3.5.2: Panneaux redimensionnables
+  initResizablePanels()
 }

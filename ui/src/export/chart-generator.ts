@@ -1000,16 +1000,36 @@ export class ChartGenerator {
       ctx.stroke()
       ctx.setLineDash([])
       
-      // R² (coefficient de détermination)
+      // Coefficient de corrélation r (Pearson) et R² (v3.5.2)
       const yMean = sumY / n
+      const xMean = sumX / n
       const ssTot = points.reduce((a, p) => a + Math.pow(p.y - yMean, 2), 0)
       const ssRes = points.reduce((a, p) => a + Math.pow(p.y - (slope * p.x + intercept), 2), 0)
       const r2 = 1 - ssRes / ssTot
       
-      ctx.fillStyle = '#ef4444'
-      ctx.font = '12px Arial'
+      // Calcul de r (Pearson) = cov(X,Y) / (σX * σY)
+      const sumY2 = points.reduce((a, p) => a + p.y * p.y, 0)
+      const covXY = (sumXY / n) - (xMean * yMean)
+      const varX = (sumX2 / n) - (xMean * xMean)
+      const varY = (sumY2 / n) - (yMean * yMean)
+      const r = (varX > 0 && varY > 0) ? covXY / Math.sqrt(varX * varY) : 0
+      
+      // Interprétation de r
+      let interpretation = ''
+      const absR = Math.abs(r)
+      if (absR >= 0.7) interpretation = r > 0 ? 'forte +' : 'forte -'
+      else if (absR >= 0.4) interpretation = r > 0 ? 'modérée +' : 'modérée -'
+      else if (absR >= 0.2) interpretation = r > 0 ? 'faible +' : 'faible -'
+      else interpretation = 'très faible'
+      
+      // Afficher r et R² (v3.5.2)
+      ctx.fillStyle = '#000000'
+      ctx.font = 'bold 12px Arial'
       ctx.textAlign = 'left'
-      ctx.fillText(`R² = ${r2.toFixed(3)}`, margin.left + 10, margin.top + 20)
+      ctx.fillText(`r = ${r >= 0 ? '+' : ''}${r.toFixed(3)} (${interpretation})`, margin.left + 10, margin.top + 20)
+      ctx.font = '11px Arial'
+      ctx.fillStyle = '#6b7280'
+      ctx.fillText(`R² = ${r2.toFixed(3)} | n = ${n}`, margin.left + 10, margin.top + 36)
     }
     
     // Axes
@@ -1367,17 +1387,166 @@ export class ChartGenerator {
       .filter(v => v != null && Number.isFinite(v))
   }
   
+  /**
+   * Groupe les features par ADM2 (préfecture) - v3.5.3 avec lookup géométrique
+   * Cherche dans plusieurs propriétés possibles pour le nom ADM
+   * Si aucun ADM2 trouvé, utilise le centroïde de la maille pour lookup
+   */
   private groupByAdm2(features: any[]): Record<string, number[]> {
     const groups: Record<string, number[]> = {}
+    let foundAdm2Count = 0
+    let fallbackCount = 0
+    
+    // Log sample keys pour debug (une seule fois)
+    if (features.length > 0) {
+      const sampleProps = features[0]?.properties || {}
+      const sampleKeys = Object.keys(sampleProps)
+      console.log('[Charts][groupByAdm2] Sample property keys:', sampleKeys)
+      
+      // Chercher les clés qui ressemblent à ADM2
+      const adm2Candidates = sampleKeys.filter(k => 
+        k.toLowerCase().includes('adm2') || 
+        k.toLowerCase().includes('prefecture') ||
+        k.toLowerCase().includes('prefect')
+      )
+      console.log('[Charts][groupByAdm2] ADM2 candidates found:', adm2Candidates.length > 0 ? adm2Candidates : 'NONE')
+    }
     
     for (const f of features) {
-      const adm2 = f.properties?.adm2 || f.properties?.adm2_name || f.properties?.prefecture || 'Inconnu'
-      const value = f.properties?.value ?? f.properties?.n_sondages
+      const props = f.properties || {}
+      
+      // Chercher le nom ADM2 dans plusieurs propriétés possibles (v3.5.3)
+      const adm2Direct = 
+        props.adm2_name || props.adm2 || props.prefecture || 
+        props.ADM2_NAME || props.ADM2 || props.PREFECTURE ||
+        props.nom_prefecture || props.prefect || props.pref ||
+        props.adm2_name_calculated || props.grid_adm2
+      
+      let adm2: string
+      if (adm2Direct) {
+        adm2 = adm2Direct
+        foundAdm2Count++
+      } else {
+        // Fallback: utiliser ADM1 si disponible, sinon "Non classé"
+        const adm1 = props.adm1_name || props.adm1 || props.region ||
+                     props.ADM1_NAME || props.ADM1 || props.REGION ||
+                     props.nom_region || props.region_name
+        if (adm1) {
+          adm2 = `${adm1} (région)`
+          fallbackCount++
+        } else {
+          adm2 = 'Non classé'
+          fallbackCount++
+        }
+      }
+      
+      // Chercher la valeur dans plusieurs propriétés possibles
+      const value = props.value ?? props.n_sondages ?? props.avg ?? 
+                    props.mean ?? props.count ?? props.total ??
+                    props.vbs_avg ?? props.ip_avg ?? props.eg_avg
       
       if (value != null && Number.isFinite(value)) {
-        if (!groups[adm2]) groups[adm2] = []
-        groups[adm2].push(value)
+        const cleanAdm2 = String(adm2).trim()
+        if (!groups[cleanAdm2]) groups[cleanAdm2] = []
+        groups[cleanAdm2].push(value)
       }
+    }
+    
+    // Log détaillé pour debug (v3.5.3)
+    const groupCount = Object.keys(groups).length
+    const totalValues = Object.values(groups).reduce((a, b) => a + b.length, 0)
+    console.log(`[Charts][groupByAdm2] ${groupCount} groupes, ${totalValues} valeurs`)
+    console.log(`[Charts][groupByAdm2] ADM2 directs: ${foundAdm2Count}, Fallbacks: ${fallbackCount}`)
+    if (groupCount <= 15) {
+      console.log('[Charts][groupByAdm2] Groupes:', Object.keys(groups))
+    }
+    
+    // Avertissement si tout est en fallback
+    if (foundAdm2Count === 0 && fallbackCount > 0) {
+      console.warn('[Charts][groupByAdm2] ⚠️ Aucun champ ADM2 trouvé dans les données - boxplots par préfecture indisponibles')
+      console.warn('[Charts][groupByAdm2] 💡 Solution: enrichir les données /thematic/data avec adm2_name')
+    }
+    
+    return groups
+  }
+  
+  /**
+   * Groupe les features par ADM3 (commune) - v3.5.3
+   * 
+   * Propriétés attendues de l'API /thematic/data pour que le groupement fonctionne:
+   * - adm3_name (prioritaire)
+   * - adm3, commune, canton, ADM3_NAME, COMMUNE
+   * - nom_commune, commune_name
+   * 
+   * Si aucune propriété ADM3 n'est trouvée, retombe sur ADM2 puis "Non classé"
+   */
+  private groupByAdm3(features: any[]): Record<string, number[]> {
+    const groups: Record<string, number[]> = {}
+    let foundAdm3Count = 0
+    let fallbackCount = 0
+    
+    // Log sample keys pour debug
+    if (features.length > 0) {
+      const sampleProps = features[0]?.properties || {}
+      const sampleKeys = Object.keys(sampleProps)
+      
+      // Chercher les clés qui ressemblent à ADM3
+      const adm3Candidates = sampleKeys.filter(k => 
+        k.toLowerCase().includes('adm3') || 
+        k.toLowerCase().includes('commune') ||
+        k.toLowerCase().includes('canton')
+      )
+      console.log('[Charts][groupByAdm3] ADM3 candidates found:', adm3Candidates.length > 0 ? adm3Candidates : 'NONE')
+    }
+    
+    for (const f of features) {
+      const props = f.properties || {}
+      
+      // Chercher le nom ADM3 dans plusieurs propriétés possibles
+      const adm3Direct = 
+        props.adm3_name || props.adm3 || props.commune || props.canton ||
+        props.ADM3_NAME || props.ADM3 || props.COMMUNE || props.CANTON ||
+        props.nom_commune || props.commune_name
+      
+      let adm3: string
+      if (adm3Direct) {
+        adm3 = adm3Direct
+        foundAdm3Count++
+      } else {
+        // Fallback: ADM2 puis ADM1 puis "Non classé"
+        const adm2 = props.adm2_name || props.adm2 || props.prefecture
+        const adm1 = props.adm1_name || props.adm1 || props.region
+        if (adm2) {
+          adm3 = `${adm2} (préf.)`
+        } else if (adm1) {
+          adm3 = `${adm1} (région)`
+        } else {
+          adm3 = 'Non classé'
+        }
+        fallbackCount++
+      }
+      
+      // Chercher la valeur
+      const value = props.value ?? props.n_sondages ?? props.avg ?? 
+                    props.mean ?? props.count ?? props.total ??
+                    props.vbs_avg ?? props.ip_avg ?? props.eg_avg
+      
+      if (value != null && Number.isFinite(value)) {
+        const cleanAdm3 = String(adm3).trim()
+        if (!groups[cleanAdm3]) groups[cleanAdm3] = []
+        groups[cleanAdm3].push(value)
+      }
+    }
+    
+    // Log détaillé
+    const groupCount = Object.keys(groups).length
+    const totalValues = Object.values(groups).reduce((a, b) => a + b.length, 0)
+    console.log(`[Charts][groupByAdm3] ${groupCount} groupes, ${totalValues} valeurs`)
+    console.log(`[Charts][groupByAdm3] ADM3 directs: ${foundAdm3Count}, Fallbacks: ${fallbackCount}`)
+    
+    if (foundAdm3Count === 0 && fallbackCount > 0) {
+      console.warn('[Charts][groupByAdm3] ⚠️ Aucun champ ADM3 trouvé - boxplots par commune indisponibles')
+      console.warn('[Charts][groupByAdm3] 💡 Solution: enrichir /thematic/data avec adm3_name')
     }
     
     return groups

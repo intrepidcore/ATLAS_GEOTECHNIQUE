@@ -20,6 +20,7 @@ import {
   QUALITY_SETTINGS
 } from './export-types';
 import { ExportFrame, computeScaleText, getA4Layout } from './export-frame';
+import { BoundsOptimizer, type ADMGeometry, type BoundsRect } from './bounds-optimizer';
 import {
   captureLeafletMap,
   generatePdf,
@@ -35,6 +36,7 @@ import {
 } from './capture-utils';
 import { buildExportStats, ExportStats } from './export-stats';
 import { createExportTelemetry, ExportTelemetry } from './export-telemetry';
+import { API_BASE_URL } from '../services/api';
 
 // ============================================================================
 // Styles CSS du dialogue
@@ -404,6 +406,8 @@ export interface ExportQuickDialogConfig {
   getAdmBounds?: () => { north: number; south: number; east: number; west: number } | null;
   /** Récupère les coordonnées du polygone ADM pour le masque */
   getAdmPolygon?: () => number[][] | null;
+  /** Récupère la géométrie GeoJSON complète de l'ADM pour calcul clearance */
+  getAdmGeometry?: () => ADMGeometry | null;
   /** 
    * Récupère les features thématiques actuellement affichées à l'écran
    * C'est la SOURCE DE VÉRITÉ pour l'export (mêmes valeurs que l'écran)
@@ -419,6 +423,7 @@ export class ExportQuickDialog {
   private options: ExportOptions;
   private overlay: HTMLElement | null = null;
   private isExporting: boolean = false;
+  private neighborsAuthWarningShown: boolean = false; // ÉTAPE 2: Flag pour log unique 401
   
   constructor(config: ExportQuickDialogConfig) {
     this.config = config;
@@ -542,13 +547,15 @@ export class ExportQuickDialog {
     includeLegend?: boolean;
     includeNeighbors?: boolean;
     boundaryLevel?: 'none' | 'adm1' | 'adm2';
+    gridType?: GridType;
+    frameStyle?: FrameStyle;
     onProgress?: (message: string) => void;
   } = {}): Promise<Blob | null> {
     // Fusionner avec les options par défaut
     const opts = { ...ExportQuickDialog.SingleExportOptionsDefaults, ...options };
     const onProgress = opts.onProgress || (() => {});
     
-    // Configurer les options internes
+    // Configurer les options internes (v3.5.3: grille et cadre)
     this.options = {
       ...this.options,
       quality: opts.quality,
@@ -557,7 +564,12 @@ export class ExportQuickDialog {
       onlyAdmCells: opts.onlyAdmCells,
       maskMode: opts.maskMode,
       includeStats: opts.includeStats,
-      includeLegend: opts.includeLegend
+      includeLegend: opts.includeLegend,
+      grid: {
+        ...this.options.grid,
+        type: opts.gridType || this.options.grid.type
+      },
+      frameStyle: opts.frameStyle || this.options.frameStyle
     };
     
     try {
@@ -582,15 +594,19 @@ export class ExportQuickDialog {
       const admBounds = this.config.getAdmBounds?.();
       let bounds: { north: number; south: number; east: number; west: number };
       
+      // Construire le nom ADM pour les logs (v3.5.2)
+      const admNameRaw = admFilters?.adm3 || admFilters?.adm2 || admFilters?.adm1;
+      const admName: string = typeof admNameRaw === 'object' && admNameRaw !== null ? (admNameRaw as any).name || 'Inconnu' : (admNameRaw as string) || 'National';
+      
       if (admBounds) {
-        bounds = this.computeOptimalBoundsForSheet(admBounds, opts.quality);
+        bounds = await this.computeOptimalBoundsForSheet(admBounds, opts.quality, admName);
         
         // Calculer l'AR cible de la zone carte A4
         const dpi = QUALITY_SETTINGS[opts.quality].dpi;
         const a4Layout = getA4Layout(dpi, 'portrait');
         const targetMapAreaAR = a4Layout.targetAspectRatio;
         
-        // Sauvegarder et redimensionner le container
+        // PHASE 2 FIX: Forcer taille container AVANT fitBounds
         const container = this.config.mapContainer;
         if (container) {
           originalBounds = map.getBounds();
@@ -599,11 +615,26 @@ export class ExportQuickDialog {
             height: container.style.height
           };
           
-          const containerWidth = container.clientWidth;
+          // Log taille AVANT
+          console.log(`[PHASE2][${admName}] Container AVANT: ${container.clientWidth}x${container.clientHeight}px`);
+          console.log(`[PHASE2][${admName}] Map size AVANT: ${map.getSize().x}x${map.getSize().y}px`);
+          console.log(`[PHASE2][${admName}] Map zoom AVANT: ${map.getZoom()}`);
+          
+          // Forcer dimensions entières
+          const containerWidth = Math.round(container.clientWidth);
           const newContainerHeight = Math.round(containerWidth / targetMapAreaAR);
+          
+          container.style.width = `${containerWidth}px`;
           container.style.height = `${newContainerHeight}px`;
+          container.style.transition = 'none';
+          
+          // invalidateSize + attendre 2 frames
           map.invalidateSize({ animate: false });
-          await new Promise(resolve => setTimeout(resolve, 100));
+          await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+          
+          // Log taille APRÈS
+          console.log(`[PHASE2][${admName}] Container APRÈS: ${container.clientWidth}x${container.clientHeight}px`);
+          console.log(`[PHASE2][${admName}] Map size APRÈS: ${map.getSize().x}x${map.getSize().y}px`);
         }
         
         // Zoomer sur le bbox ADM
@@ -614,14 +645,40 @@ export class ExportQuickDialog {
           [bounds.north, bounds.east]
         );
         
-        map.fitBounds(targetBounds, { animate: false, padding: [0, 0], maxZoom: 18 });
+        // PHASE 2 FIX: fitBounds avec maxZoom élevé + logs
+        console.log(`[PHASE2][${admName}] fitBounds: [${bounds.south.toFixed(4)}, ${bounds.west.toFixed(4)}] → [${bounds.north.toFixed(4)}, ${bounds.east.toFixed(4)}]`);
         
-        // Attendre la fin du déplacement
-        await new Promise<void>(resolve => {
-          const handler = () => { map.off('moveend', handler); resolve(); };
-          map.on('moveend', handler);
-          setTimeout(() => { map.off('moveend', handler); resolve(); }, 2000);
+        map.fitBounds(targetBounds, { 
+          animate: false, 
+          padding: [0, 0], 
+          maxZoom: 18,
+          duration: 0
         });
+        
+        // Attendre moveend
+        const moveendStart = performance.now();
+        await new Promise<void>(resolve => {
+          const handler = () => { 
+            map.off('moveend', handler); 
+            console.log(`[PHASE2][${admName}] moveend après ${(performance.now() - moveendStart).toFixed(0)}ms`);
+            resolve(); 
+          };
+          map.on('moveend', handler);
+          setTimeout(() => { 
+            map.off('moveend', handler); 
+            console.warn(`[PHASE2][${admName}] moveend TIMEOUT après 2000ms`);
+            resolve(); 
+          }, 2000);
+        });
+        
+        // Log zoom/bounds APRÈS fitBounds
+        console.log(`[PHASE2][${admName}] Map zoom APRÈS fitBounds: ${map.getZoom()}`);
+        const afterBounds = map.getBounds();
+        console.log(`[PHASE2][${admName}] Map bounds APRÈS: [${afterBounds.getSouth().toFixed(4)}, ${afterBounds.getWest().toFixed(4)}] → [${afterBounds.getNorth().toFixed(4)}, ${afterBounds.getEast().toFixed(4)}]`);
+        
+        // PHASE 3 FIX: Pan bias pour Maritime (réduire vide océan)
+        await this.applyPanBiasIfNeeded(map, bounds, admBounds, admName);
+        
         await waitForFrames(2);
         
         // Récupérer les bounds effectifs
@@ -636,9 +693,13 @@ export class ExportQuickDialog {
         bounds = this.config.getMapBounds();
       }
       
-      // Attendre le chargement des tuiles
+      // PHASE 2 FIX: Attendre tiles avec logs
       onProgress('Chargement des tuiles...');
-      await waitForTilesLoaded(this.config.mapContainer, 5000);
+      const tilesStart = performance.now();
+      const tilesReady = await waitForTilesLoaded(this.config.mapContainer, 5000);
+      const tilesDuration = performance.now() - tilesStart;
+      console.log(`[TILES][${admName}] ${tilesReady ? '✅ Loaded' : '⚠️ Timeout'} après ${tilesDuration.toFixed(0)}ms`);
+      
       await waitForFrames(2);
       await new Promise(resolve => setTimeout(resolve, 300));
       
@@ -1220,8 +1281,13 @@ export class ExportQuickDialog {
         // Zone filtrée : utiliser le bbox du polygone ADM optimisé pour la feuille
         const admBounds = this.config.getAdmBounds();
         if (admBounds) {
+          // Construire le nom ADM pour les logs (v3.5.2)
+          const admFilters = this.config.getActiveAdmFilters?.();
+          const admNameRaw = admFilters?.adm3 || admFilters?.adm2 || admFilters?.adm1;
+          const admName: string = typeof admNameRaw === 'object' && admNameRaw !== null ? (admNameRaw as any).name || 'Inconnu' : (admNameRaw as string) || 'National';
+          
           // Calculer l'emprise "pro serrée" adaptée au ratio de la zone carte
-          bounds = this.computeOptimalBoundsForSheet(admBounds, this.options.quality);
+          bounds = await this.computeOptimalBoundsForSheet(admBounds, this.options.quality, admName);
           console.log('[Export] Zone filtrée ADM optimisée pour feuille:', bounds);
           
           // IMPORTANT: Zoomer la carte sur le bbox ADM AVANT la capture
@@ -1998,10 +2064,11 @@ export class ExportQuickDialog {
       name = admFilters.adm1.name;
     }
     
+    // ÉTAPE 2: Fix 401 /api/adm-neighbors avec fallback propre
     if (level && name) {
       try {
         const response = await fetch(
-          `http://localhost:8000/adm-neighbors?level=${level}&name=${encodeURIComponent(name)}`,
+          `${API_BASE_URL}/adm-neighbors?level=${level}&name=${encodeURIComponent(name)}`,
           withAuth()
         );
         
@@ -2016,9 +2083,18 @@ export class ExportQuickDialog {
               }
             }
           }
+        } else if (response.status === 401) {
+          // 401: Auth requise mais pas critique pour l'export
+          // Log unique (pas de spam) et fallback sur voisins statiques
+          if (!this.neighborsAuthWarningShown) {
+            console.warn('[Export] ⚠️ /api/adm-neighbors nécessite authentification - utilisation voisins statiques uniquement');
+            this.neighborsAuthWarningShown = true;
+          }
+        } else {
+          console.warn(`[Export] API adm-neighbors erreur ${response.status} - utilisation voisins statiques`);
         }
       } catch (e) {
-        console.warn('[Export] API adm-neighbors indisponible, utilisation des voisins statiques');
+        console.warn('[Export] API adm-neighbors indisponible - utilisation voisins statiques');
       }
     }
     
@@ -2208,7 +2284,7 @@ export class ExportQuickDialog {
       // Ajouter l'authentification pour éviter l'erreur 401
       const token = localStorage.getItem('atlas_token') || localStorage.getItem('atlas_access_token');
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await fetch(`http://localhost:8000/export/cells/adm?${params.toString()}`, { headers });
+      const response = await fetch(`${API_BASE_URL}/export/cells/adm?${params.toString()}`, { headers });
       
       if (response.ok) {
         const data = await response.json();
@@ -2244,7 +2320,7 @@ export class ExportQuickDialog {
   ): Promise<Array<{ cell_id?: string; geometry: any; has_data: boolean; n_sondages?: number }>> {
     try {
       console.log('[Export] Fallback sur /coverage/mailles pour la grille');
-      const response = await fetch('http://localhost:8000/coverage/mailles');
+      const response = await fetch(`${API_BASE_URL}/coverage/mailles`);
       
       if (!response.ok) {
         console.warn('[Export] Erreur API coverage/mailles:', response.status);
@@ -2285,164 +2361,330 @@ export class ExportQuickDialog {
    * 4. Ajustement au ratio de la zone carte A4
    * 5. Clamp anti-rognage
    * 
-   * @param admBounds Bbox brut de l'ADM en WGS84
-   * @param quality Qualité d'export pour déterminer le DPI
-   * @param admName Nom de l'ADM pour le log (optionnel)
+   * @param admBounds Bbox brut de l'ADM en  /**
+   * v3.5.2: Calcule les bounds optimaux pour une orientation donnée
+   * Retourne les bounds et le taux d'occupation
    */
-  private computeOptimalBoundsForSheet(
+  private computeBoundsForOrientation(
     admBounds: { north: number; south: number; east: number; west: number },
-    quality: ExportQuality = 'hd',
-    admName?: string
-  ): { north: number; south: number; east: number; west: number } {
-    
-    // ========================================================================
-    // ÉTAPE 1 : Bbox ADM brut et conversion en mètres
-    // ========================================================================
+    quality: ExportQuality,
+    orientation: 'portrait' | 'landscape'
+  ): { bounds: { north: number; south: number; east: number; west: number }; occ_area: number; occ_x: number; occ_y: number } {
     const admWidthDeg = admBounds.east - admBounds.west;
     const admHeightDeg = admBounds.north - admBounds.south;
-    
-    // Centre de l'ADM (pour correction Mercator et centrage final)
     const centerLat = (admBounds.north + admBounds.south) / 2;
     const centerLng = (admBounds.east + admBounds.west) / 2;
-    
-    // Correction Mercator : 1° lng ≈ 111km * cos(lat)
     const cosLat = Math.cos(centerLat * Math.PI / 180);
-    
-    // Dimensions en km (approximation locale)
     const W0_km = admWidthDeg * 111 * cosLat;
     const H0_km = admHeightDeg * 111;
     
-    // ========================================================================
-    // ÉTAPE 2 : Calcul des indicateurs de forme
-    // ========================================================================
+    // v3.5.3: Marges ultra-réduites pour maximiser l'occupation (basé sur golden sample Plateaux)
+    // 1% de marge de sécurité = quasi bord-à-bord tout en évitant le rognage
+    const µ = 0.01;
+    const W1 = admWidthDeg * (1 + 2 * µ);
+    const H1 = admHeightDeg * (1 + 2 * µ);
     
-    // Slenderness S = max/min (1 = carré, >1 = étiré)
-    const S = Math.max(W0_km, H0_km) / Math.min(W0_km, H0_km);
-    
-    // Direction longue/courte
-    const isHorizontal = W0_km >= H0_km;
-    
-    // Aspect ratio ADM (largeur/hauteur en km)
-    const AR_adm = W0_km / H0_km;
-    
-    // ========================================================================
-    // ÉTAPE 3 : Calcul des marges anisotropes (v3.5.1 - RÉDUITES)
-    // ========================================================================
-    // Objectif: occupation ≥ 0.70 sur chaque axe
-    // Paramètres ajustés pour des marges plus serrées
-    const µ0 = 0.02;      // Marge de base 2% (était 3%)
-    const µ_min = 0.01;   // Marge min 1% (était 1.5%)
-    const µ_max = 0.05;   // Marge max 5% (était 8%)
-    const S0 = 2.0;       // Seuil de slenderness (était 1.8)
-    
-    // Facteur de forme f_S : 0 si S≈1, tend vers 1 si S≥S0
-    const f_S = Math.min(1, Math.max(0, (S - 1) / (S0 - 1)));
-    
-    // Coefficients de déformation des marges
-    const alpha = 0.6 * µ0;  // Réduction max sur direction courte (était 0.5)
-    const beta = 0.2 * µ0;   // Augmentation max sur direction longue (était 0.3)
-    
-    // Marges brutes - TRÈS réduites sur direction courte pour formes étirées
-    let µ_short = µ0 - alpha * f_S;  // Direction courte : marge réduite
-    let µ_long = µ0 + beta * f_S;    // Direction longue : marge légèrement augmentée
-    
-    // Borner les marges
-    µ_short = Math.max(µ_min, Math.min(µ0, µ_short));
-    µ_long = Math.max(µ0, Math.min(µ_max, µ_long));
-    
-    // Assigner selon direction
-    let µx: number, µy: number;
-    if (isHorizontal) {
-      µx = µ_long;   // Largeur = direction longue
-      µy = µ_short;  // Hauteur = direction courte
-    } else {
-      µx = µ_short;  // Largeur = direction courte
-      µy = µ_long;   // Hauteur = direction longue
-    }
-    
-    // ========================================================================
-    // ÉTAPE 4 : Boîte élargie avec marges (en degrés)
-    // ========================================================================
-    const W1 = admWidthDeg * (1 + 2 * µx);
-    const H1 = admHeightDeg * (1 + 2 * µy);
-    
-    // ========================================================================
-    // ÉTAPE 5 : Ajustement au ratio de la zone carte A4
-    // ========================================================================
+    // Layout A4 pour l'orientation choisie
     const dpi = QUALITY_SETTINGS[quality]?.dpi || 300;
-    const layout = getA4Layout(dpi, 'portrait');
-    const AR_frame = layout.targetAspectRatio; // Ratio largeur/hauteur de la zone carte
+    const layout = getA4Layout(dpi, orientation);
+    const AR_frame = layout.targetAspectRatio;
     
-    // Ratio actuel de la boîte avec marges (en km pour comparaison correcte)
     const W1_km = W1 * 111 * cosLat;
     const H1_km = H1 * 111;
     const AR_1 = W1_km / H1_km;
     
-    let W2 = W1;
-    let H2 = H1;
-    
+    let W2 = W1, H2 = H1;
     if (AR_1 > AR_frame) {
-      // Boîte plus "large" que le cadre → augmenter la hauteur
-      const H2_km = W1_km / AR_frame;
-      H2 = H2_km / 111;
+      H2 = (W1_km / AR_frame) / 111;
     } else if (AR_1 < AR_frame) {
-      // Boîte plus "haute" que le cadre → augmenter la largeur
-      const W2_km = H1_km * AR_frame;
-      W2 = W2_km / (111 * cosLat);
+      W2 = (H1_km * AR_frame) / (111 * cosLat);
     }
     
-    // ========================================================================
-    // ÉTAPE 6 : Clamp anti-rognage (marge de sécurité minimale)
-    // ========================================================================
-    // S'assurer que l'ADM original est entièrement contenu avec marge de sécurité
-    const securityMargin = 0.005; // 0.5% de marge de sécurité anti-rognage
+    const securityMargin = 0.005;
     const halfW2 = W2 / 2;
     const halfH2 = H2 / 2;
+    const finalHalfW = Math.max(halfW2, Math.abs(admBounds.west - centerLng) * (1 + securityMargin), Math.abs(admBounds.east - centerLng) * (1 + securityMargin));
+    const finalHalfH = Math.max(halfH2, Math.abs(admBounds.south - centerLat) * (1 + securityMargin), Math.abs(admBounds.north - centerLat) * (1 + securityMargin));
     
-    // Vérifier que les bounds originaux sont contenus
-    const minWestNeeded = Math.abs(admBounds.west - centerLng) * (1 + securityMargin);
-    const maxEastNeeded = Math.abs(admBounds.east - centerLng) * (1 + securityMargin);
-    const minSouthNeeded = Math.abs(admBounds.south - centerLat) * (1 + securityMargin);
-    const maxNorthNeeded = Math.abs(admBounds.north - centerLat) * (1 + securityMargin);
+    const finalWidthKm = finalHalfW * 2 * 111 * cosLat;
+    const finalHeightKm = finalHalfH * 2 * 111;
     
-    // Ajuster si nécessaire
-    const finalHalfW = Math.max(halfW2, minWestNeeded, maxEastNeeded);
-    const finalHalfH = Math.max(halfH2, minSouthNeeded, maxNorthNeeded);
-    
-    // ========================================================================
-    // ÉTAPE 7 : Construire le bbox final centré sur l'ADM
-    // ========================================================================
-    const newBounds = {
-      west: centerLng - finalHalfW,
-      east: centerLng + finalHalfW,
-      south: centerLat - finalHalfH,
-      north: centerLat + finalHalfH
+    return {
+      bounds: {
+        west: centerLng - finalHalfW,
+        east: centerLng + finalHalfW,
+        south: centerLat - finalHalfH,
+        north: centerLat + finalHalfH
+      },
+      occ_x: W0_km / finalWidthKm,
+      occ_y: H0_km / finalHeightKm,
+      occ_area: (W0_km * H0_km) / (finalWidthKm * finalHeightKm)
     };
+  }
+
+  /**
+   * CORRECTION: Utiliser BoundsOptimizer avec géométrie ADM pour calcul précis clearance
+   * @param quality Qualité d'export pour déterminer le DPI
+   * @param admName Nom de l'ADM pour le log (optionnel)
+   * @param geometry Géométrie GeoJSON de l'ADM (optionnel mais recommandé)
+   */
+  private async computeOptimalBoundsForSheet(
+    admBounds: { north: number; south: number; east: number; west: number },
+    quality: ExportQuality = 'hd',
+    admName?: string,
+    geometry?: ADMGeometry
+  ): Promise<{ north: number; south: number; east: number; west: number }> {
     
-    // ========================================================================
-    // ÉTAPE 8 : Calcul des taux d'occupation (v3.5.1)
-    // ========================================================================
-    const finalWidthDeg = finalHalfW * 2;
-    const finalHeightDeg = finalHalfH * 2;
-    const finalWidthKm = finalWidthDeg * 111 * cosLat;
-    const finalHeightKm = finalHeightDeg * 111;
+    // CORRECTION ÉTAPE 3: Récupérer géométrie ADM de manière robuste
+    let admGeometry = geometry
+    if (!admGeometry) {
+      const admFilters = this.config.getActiveAdmFilters?.()
+      if (admFilters) {
+        admGeometry = await this.extractAdmGeometryRobust(admFilters)
+      }
+    }
     
-    const occ_x = W0_km / finalWidthKm;
-    const occ_y = H0_km / finalHeightKm;
-    const occ_area = (W0_km * H0_km) / (finalWidthKm * finalHeightKm);
+    // CORRECTION: Utiliser BoundsOptimizer pour calcul itératif avec clearance réelle
+    const optimizer = new BoundsOptimizer(quality, {
+      safePx: 16,
+      maxIterations: 15,
+      muStart: 0.01,
+      searchStrategy: 'binary',
+      logPrefix: 'Export',
+      admName
+    })
     
-    // Log structuré pour diagnostic (v3.5.1)
-    console.log(`[Export][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-    console.log(`[Export][Bounds] ADM: ${admName || 'inconnu'}`);
-    console.log(`[Export][Bounds] Dimensions ADM: ${W0_km.toFixed(1)}km × ${H0_km.toFixed(1)}km`);
-    console.log(`[Export][Bounds] Slenderness: ${S.toFixed(2)} | Direction: ${isHorizontal ? 'horizontal' : 'vertical'}`);
-    console.log(`[Export][Bounds] AR_adm: ${AR_adm.toFixed(3)} | AR_frame: ${AR_frame.toFixed(3)}`);
-    console.log(`[Export][Bounds] Marges: µx=${(µx * 100).toFixed(1)}% µy=${(µy * 100).toFixed(1)}% (f_S=${f_S.toFixed(2)})`);
-    console.log(`[Export][Bounds] Dimensions finales: ${finalWidthKm.toFixed(1)}km × ${finalHeightKm.toFixed(1)}km`);
-    console.log(`[Export][Bounds] 📊 OCCUPATION: occ_x=${(occ_x * 100).toFixed(1)}% occ_y=${(occ_y * 100).toFixed(1)}% occ_area=${(occ_area * 100).toFixed(1)}%`);
-    console.log(`[Export][Bounds] ${occ_x >= 0.70 && occ_y >= 0.70 ? '✅ Occupation OK (≥70%)' : '⚠️ Occupation faible (<70%)'}`);
+    const boundsRect: BoundsRect = {
+      north: admBounds.north,
+      south: admBounds.south,
+      east: admBounds.east,
+      west: admBounds.west
+    }
     
-    return newBounds;
+    const metrics = await optimizer.computeOptimalBounds(boundsRect, admGeometry)
+    
+    return metrics.bounds
+  }
+  
+  /**
+   * ÉTAPE 3: Extrait la géométrie ADM depuis Leaflet de manière robuste
+   * Gère Polygon ET MultiPolygon + structures nested
+   * Fallback API si Leaflet échoue
+   */
+  private async extractAdmGeometryRobust(admFilters: ActiveAdmFilters): Promise<ADMGeometry | null> {
+    console.log('[ExportBoundsGeometry] Extraction géométrie ADM...')
+    
+    // TENTATIVE 1: Extraction depuis Leaflet
+    const leafletGeom = this.extractAdmGeometryFromLeaflet()
+    if (leafletGeom) {
+      const bbox = this.computeGeometryBbox(leafletGeom)
+      const totalPoints = this.countGeometryPoints(leafletGeom)
+      console.log(`[ExportBoundsGeometry] ✅ Source: leaflet | Type: ${leafletGeom.type} | Points: ${totalPoints} | BBox: [${bbox.west.toFixed(3)}, ${bbox.south.toFixed(3)}, ${bbox.east.toFixed(3)}, ${bbox.north.toFixed(3)}]`)
+      return leafletGeom
+    }
+    
+    // TENTATIVE 2: Fallback API
+    console.warn('[ExportBoundsGeometry] ⚠️ Leaflet failed, trying API fallback...')
+    const apiGeom = await this.fetchAdmGeometryFromAPI(admFilters)
+    if (apiGeom) {
+      const bbox = this.computeGeometryBbox(apiGeom)
+      const totalPoints = this.countGeometryPoints(apiGeom)
+      console.log(`[ExportBoundsGeometry] ✅ Source: api | Type: ${apiGeom.type} | Points: ${totalPoints} | BBox: [${bbox.west.toFixed(3)}, ${bbox.south.toFixed(3)}, ${bbox.east.toFixed(3)}, ${bbox.north.toFixed(3)}]`)
+      return apiGeom
+    }
+    
+    // ÉCHEC: Pas de géométrie disponible
+    console.error('[ExportBoundsGeometry] ❌ Source: none | Clearance sera approximée à 50px')
+    return null
+  }
+  
+  /**
+   * Extrait géométrie depuis polygon Leaflet (méthode originale améliorée)
+   */
+  private extractAdmGeometryFromLeaflet(): ADMGeometry | null {
+    const polygon = this.config.getAdmPolygon?.()
+    if (!polygon || polygon.length < 3) {
+      return null
+    }
+    
+    // getAdmPolygonCoords() retourne [[lng, lat], [lng, lat], ...]
+    const coordinates: [number, number][] = polygon.map(p => {
+      // Vérifier si c'est un objet {lat, lng}
+      if (typeof p === 'object' && 'lat' in p && 'lng' in p) {
+        return [(p as any).lng, (p as any).lat]
+      }
+      // Sinon c'est un tableau [lng, lat] (format GeoJSON standard)
+      return [p[0], p[1]] as [number, number]
+    })
+    
+    // Fermer le polygon si nécessaire
+    const first = coordinates[0]
+    const last = coordinates[coordinates.length - 1]
+    if (first[0] !== last[0] || first[1] !== last[1]) {
+      coordinates.push([first[0], first[1]])
+    }
+    
+    return {
+      type: 'Polygon',
+      coordinates: [coordinates]
+    }
+  }
+  
+  /**
+   * Fetch géométrie ADM depuis API (fallback)
+   */
+  private async fetchAdmGeometryFromAPI(admFilters: ActiveAdmFilters): Promise<ADMGeometry | null> {
+    let level = ''
+    let name = ''
+    
+    if (admFilters.adm3) {
+      level = 'adm3'
+      name = admFilters.adm3.name
+    } else if (admFilters.adm2) {
+      level = 'adm2'
+      name = admFilters.adm2.name
+    } else if (admFilters.adm1) {
+      level = 'adm1'
+      name = admFilters.adm1.name
+    }
+    
+    if (!level || !name) return null
+    
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/adm-geojson?level=${level}&name=${encodeURIComponent(name)}`
+      )
+      
+      if (response.ok) {
+        const geojson = await response.json()
+        if (geojson.features && geojson.features[0]) {
+          return geojson.features[0].geometry
+        }
+      }
+    } catch (e) {
+      console.warn('[ExportBoundsGeometry] API fetch failed:', e)
+    }
+    
+    return null
+  }
+  
+  /**
+   * Calcule bbox d'une géométrie
+   */
+  private computeGeometryBbox(geometry: ADMGeometry): { north: number; south: number; east: number; west: number } {
+    const coords = geometry.type === 'Polygon' 
+      ? geometry.coordinates[0] 
+      : geometry.coordinates[0][0]
+    
+    const lngs = coords.map(c => c[0])
+    const lats = coords.map(c => c[1])
+    
+    return {
+      north: Math.max(...lats),
+      south: Math.min(...lats),
+      east: Math.max(...lngs),
+      west: Math.min(...lngs)
+    }
+  }
+  
+  /**
+   * Compte le nombre total de points d'une géométrie
+   */
+  private countGeometryPoints(geometry: ADMGeometry): number {
+    if (geometry.type === 'Polygon') {
+      return geometry.coordinates[0].length
+    } else {
+      return geometry.coordinates.reduce((sum, poly) => sum + poly[0].length, 0)
+    }
+  }
+  
+  /**
+   * PHASE 3: Applique un pan bias si pad_bottom >> pad_top (Maritime avec océan)
+   */
+  private async applyPanBiasIfNeeded(
+    map: any,
+    frameBounds: { north: number; south: number; east: number; west: number },
+    admBounds: { north: number; south: number; east: number; west: number },
+    admName: string
+  ): Promise<void> {
+    
+    // Calculer padding en degrés
+    const pad_top = frameBounds.north - admBounds.north
+    const pad_bottom = admBounds.south - frameBounds.south
+    const pad_left = admBounds.west - frameBounds.west
+    const pad_right = frameBounds.east - admBounds.east
+    
+    const frameHeight = frameBounds.north - frameBounds.south
+    const pad_top_pct = (pad_top / frameHeight) * 100
+    const pad_bottom_pct = (pad_bottom / frameHeight) * 100
+    
+    console.log(`[PHASE3][${admName}] Padding: top=${pad_top_pct.toFixed(1)}% bottom=${pad_bottom_pct.toFixed(1)}%`)
+    
+    // Seuil: si pad_bottom > pad_top + 10%, appliquer pan bias
+    const THRESHOLD = 10
+    if (pad_bottom_pct > pad_top_pct + THRESHOLD) {
+      const imbalance = pad_bottom_pct - pad_top_pct
+      console.log(`[PHASE3][${admName}] ⚠️ Déséquilibre vertical: ${imbalance.toFixed(1)}% (bottom > top)`)
+      
+      // Calculer delta en pixels pour recentrer
+      const mapSize = map.getSize()
+      const deltaY = Math.round((imbalance / 100) * frameHeight * (mapSize.y / frameHeight) / 2)
+      
+      console.log(`[PHASE3][${admName}] Applying panBy: [0, ${-deltaY}]px`)
+      map.panBy([0, -deltaY], { animate: false, duration: 0 })
+      
+      // Attendre moveend
+      await new Promise<void>(resolve => {
+        const handler = () => { map.off('moveend', handler); resolve(); }
+        map.on('moveend', handler)
+        setTimeout(() => { map.off('moveend', handler); resolve(); }, 1000)
+      })
+      
+      // Log bounds après pan
+      const newBounds = map.getBounds()
+      console.log(`[PHASE3][${admName}] Bounds APRÈS pan: [${newBounds.getSouth().toFixed(4)}, ${newBounds.getWest().toFixed(4)}] → [${newBounds.getNorth().toFixed(4)}, ${newBounds.getEast().toFixed(4)}]`)
+    } else {
+      console.log(`[PHASE3][${admName}] ✅ Padding équilibré, pas de pan bias nécessaire`)
+    }
+  }
+  
+  /**
+   * CORRECTION: Fonction générique utilisant BoundsOptimizer pour tous les niveaux ADM
+   * 
+   * @param level Niveau ADM ('adm1', 'adm2', 'adm3')
+   * @param admBounds Bbox de l'ADM
+   * @param quality Qualité d'export
+   * @param admName Nom de l'ADM pour les logs
+   * @param geometry Géométrie GeoJSON de l'ADM (optionnel)
+   */
+  public async computeOptimalBoundsForAdm(
+    level: 'adm1' | 'adm2' | 'adm3',
+    admBounds: { north: number; south: number; east: number; west: number },
+    quality: ExportQuality = 'hd',
+    admName?: string,
+    geometry?: ADMGeometry
+  ): Promise<{ north: number; south: number; east: number; west: number }> {
+    const levelLabel = level === 'adm1' ? 'Région' : level === 'adm2' ? 'Préfecture' : 'Commune'
+    
+    const optimizer = new BoundsOptimizer(quality, {
+      safePx: 16,
+      maxIterations: 15,
+      muStart: 0.01,
+      searchStrategy: 'binary',
+      logPrefix: level.toUpperCase(),
+      admName: `${levelLabel} ${admName || 'inconnu'}`
+    })
+    
+    const boundsRect: BoundsRect = {
+      north: admBounds.north,
+      south: admBounds.south,
+      east: admBounds.east,
+      west: admBounds.west
+    }
+    
+    const metrics = await optimizer.computeOptimalBounds(boundsRect, geometry)
+    
+    return metrics.bounds
   }
   
   // NOTE: computeTargetMapAreaAspectRatio supprimée - utiliser getA4Layout() à la place

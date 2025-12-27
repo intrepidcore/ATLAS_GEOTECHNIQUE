@@ -829,12 +829,20 @@ export class ThematicPanel {
       this.updatePaletteFromParameter()
     })
     
-    // Palette change -> RECHARGER LA CARTE (v3.5.1 - fix bug "toujours bleu")
-    this.elements.paletteSelect?.addEventListener('change', () => {
-      const palette = this.elements.paletteSelect?.value || 'Blues'
-      console.log(`[ThematicUI] Palette sélectionnée: ${palette}`)
-      // Recharger la carte avec la nouvelle palette
-      this.applyThematic()
+    // Palette change -> STOCKER ET LOGGER
+    this.elements.paletteSelect?.addEventListener('change', (e) => {
+      const selectEl = e.target as HTMLSelectElement
+      const palette = selectEl.value || 'Blues'
+      
+      console.log(`[ThematicUI][Palette] Change event: DOM value="${palette}"`)
+      
+      // Stocker la palette dans la config sans recharger
+      if (this.currentConfig) {
+        this.currentConfig.style.palette = palette
+        console.log(`[ThematicUI][Palette] Config updated: palette="${palette}"`)
+      }
+      
+      // NE PAS recharger la carte ici - attendre le clic sur "Appliquer"
     })
     
     // Map type change -> update classification controls
@@ -964,6 +972,7 @@ export class ThematicPanel {
   
   /**
    * Update palette based on selected parameter
+   * CORRECTION: Ne suggère la palette que si aucune n'est déjà sélectionnée
    */
   private updatePaletteFromParameter(): void {
     const select = this.elements.parameterSelect
@@ -971,8 +980,53 @@ export class ThematicPanel {
     if (!select || !paletteSelect) return
     
     const option = select.options[select.selectedIndex]
-    if (option?.dataset.palette) {
+    // CORRECTION: Ne changer la palette que si elle est encore à la valeur par défaut
+    // Cela évite d'écraser une sélection explicite de l'utilisateur
+    if (option?.dataset.palette && paletteSelect.value === 'Blues') {
+      console.log(`[ThematicUI][Palette] Suggestion auto: ${option.dataset.palette} (paramètre: ${option.value})`)
       paletteSelect.value = option.dataset.palette
+      // Mettre à jour l'affichage custom select
+      this.updateCustomPaletteDisplay(option.dataset.palette)
+    } else {
+      console.log(`[ThematicUI][Palette] Palette utilisateur conservée: ${paletteSelect.value}`)
+    }
+  }
+  
+  /**
+   * Met à jour l'affichage du custom select palette
+   */
+  private updateCustomPaletteDisplay(paletteValue: string): void {
+    const customContainer = document.querySelector('.palette-custom-select') as HTMLElement
+    if (!customContainer) return
+    
+    const palette = PALETTE_OPTIONS.find(p => p.value === paletteValue)
+    if (!palette) return
+    
+    const selectedEl = customContainer.querySelector('.palette-selected') as HTMLElement
+    if (!selectedEl) return
+    
+    const gradientEl = selectedEl.querySelector('.palette-gradient') as HTMLElement
+    const nameEl = selectedEl.querySelector('.palette-name') as HTMLElement
+    
+    if (gradientEl) {
+      const gradient = this.createGradientStyle(palette.colors)
+      gradientEl.style.background = gradient
+    }
+    if (nameEl) {
+      nameEl.textContent = palette.label
+    }
+    
+    // Mettre à jour la sélection visuelle dans le dropdown
+    const dropdownEl = customContainer.querySelector('.palette-dropdown') as HTMLElement
+    if (dropdownEl) {
+      dropdownEl.querySelectorAll('.palette-option').forEach(opt => {
+        const optValue = (opt as HTMLElement).dataset.value
+        if (optValue === paletteValue) {
+          opt.classList.add('selected')
+        } else {
+          opt.classList.remove('selected')
+        }
+      })
     }
   }
   
@@ -1037,6 +1091,8 @@ export class ThematicPanel {
     const palette = this.elements.paletteSelect?.value || 'Blues'
     const opacity = parseFloat(this.elements.opacityInput?.value || '0.7')
     
+    console.log(`[ThematicUI][buildConfig] palette from DOM="${palette}"`)
+    
     // Parse manual breaks if method is manual
     let manualBreaks: number[] | undefined
     if (method === 'manual' && this.elements.manualBreaksInput?.value) {
@@ -1094,6 +1150,7 @@ export class ThematicPanel {
       const config = this.buildConfigFromUI()
       this.currentConfig = config
       
+      console.log(`[ThematicUI][Apply] ✅ Palette finale="${config.style.palette}"`)
       console.log('[ThematicPanel] Applying config:', config)
       
       // Show loading
@@ -1351,9 +1408,9 @@ export class ThematicPanel {
     const mapContainer = document.getElementById('map')
     
     const callbacks = {
-      // Changer la thématique et le filtre ADM - VERSION ROBUSTE
-      setThematicAndAdm: async (thematicId: string, admLevel: string, admName: string): Promise<void> => {
-        console.log(`[Atlas] setThematicAndAdm: ${thematicId} / ${admLevel} / ${admName}`)
+      // Changer la thématique et le filtre ADM - VERSION ROBUSTE (v3.5.2: palette optionnelle)
+      setThematicAndAdm: async (thematicId: string, admLevel: string, admName: string, palette?: string): Promise<void> => {
+        console.log(`[Atlas] setThematicAndAdm: ${thematicId} / ${admLevel} / ${admName} / palette=${palette || 'default'}`)
         
         // 1. Construire l'état thématique (source unique de vérité)
         const admFilters: ThematicState['admFilters'] = {}
@@ -1383,6 +1440,8 @@ export class ThematicPanel {
         }
         
         // 3. Construire la config directement (pas via UI)
+        // v3.5.2: Utiliser la palette passée en paramètre si disponible
+        const effectivePalette = palette || this.currentConfig.style.palette || 'Blues'
         const config: ThematicMapConfig = {
           ...this.currentConfig,
           parameter: thematicId,
@@ -1391,8 +1450,13 @@ export class ThematicPanel {
             adm1: admFilters.adm1,
             adm2: admFilters.adm2,
             adm3: admFilters.adm3
+          },
+          style: {
+            ...this.currentConfig.style,
+            palette: effectivePalette
           }
         }
+        console.log(`[Atlas] Palette effective: ${effectivePalette}`)
         
         // 4. Charger la carte thématique directement via le manager
         console.log(`[Atlas] Chargement carte: ${thematicId}`)

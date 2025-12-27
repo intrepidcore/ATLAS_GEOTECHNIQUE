@@ -386,10 +386,18 @@ export async function generateAnalysisExcel(options: ExportExcelOptions): Promis
           sheet.addRow(headers.map(h => row[h]));
         });
         
-        // Auto-fit colonnes
-        sheet.columns.forEach(col => {
-          col.width = Math.min(30, Math.max(10, (col.header?.toString().length || 10) + 2));
-        });
+        // Auto-fit colonnes (v3.5.2 - null safety)
+        if (sheet.columns && Array.isArray(sheet.columns)) {
+          sheet.columns.forEach(col => {
+            if (col) col.width = Math.min(30, Math.max(10, (col.header?.toString().length || 10) + 2));
+          });
+        } else {
+          // Fallback: définir la largeur par index
+          headers.forEach((h, idx) => {
+            const col = sheet.getColumn(idx + 1);
+            if (col) col.width = Math.min(30, Math.max(10, h.length + 2));
+          });
+        }
         
         // Stocker pour GRID_WIDE
         if (name.startsWith('grid_')) {
@@ -439,10 +447,18 @@ export async function generateAnalysisExcel(options: ExportExcelOptions): Promis
           sheet.addRow(headers.map(h => row[h]));
         });
         
-        // Auto-fit colonnes
-        sheet.columns.forEach(col => {
-          col.width = Math.min(30, Math.max(10, (col.header?.toString().length || 10) + 2));
-        });
+        // Auto-fit colonnes (v3.5.2 - null safety)
+        if (sheet.columns && Array.isArray(sheet.columns)) {
+          sheet.columns.forEach(col => {
+            if (col) col.width = Math.min(30, Math.max(10, (col.header?.toString().length || 10) + 2));
+          });
+        } else {
+          // Fallback: définir la largeur par index
+          headers.forEach((h, idx) => {
+            const col = sheet.getColumn(idx + 1);
+            if (col) col.width = Math.min(30, Math.max(10, h.length + 2));
+          });
+        }
         
         // Stocker pour QA
         if (name.includes('sondages')) csvData.sondages = rows;
@@ -481,10 +497,17 @@ export async function generateAnalysisExcel(options: ExportExcelOptions): Promis
         sheet.addRow(headers.map(h => (row as any)[h]));
       });
       
-      // Auto-fit colonnes
-      sheet.columns.forEach((col, idx) => {
-        col.width = Math.max(12, headers[idx].length + 2);
-      });
+      // Auto-fit colonnes (v3.5.2 - null safety)
+      if (sheet.columns && Array.isArray(sheet.columns)) {
+        sheet.columns.forEach((col, idx) => {
+          if (col) col.width = Math.max(12, headers[idx]?.length + 2 || 12);
+        });
+      } else {
+        headers.forEach((h, idx) => {
+          const col = sheet.getColumn(idx + 1);
+          if (col) col.width = Math.max(12, h.length + 2);
+        });
+      }
     }
   }
   

@@ -23,6 +23,8 @@
 // Utiliser JSZip depuis window (chargé globalement)
 declare const JSZip: any
 
+import { API_BASE_URL } from '../services/api';
+
 // ============================================================================
 // Types
 // ============================================================================
@@ -156,7 +158,7 @@ export interface ExportMetadata {
 // Fonctions d'export
 // ============================================================================
 
-const API_BASE = 'http://localhost:8000'
+// Utiliser API_BASE_URL importé depuis services/api (centralisé)
 
 /**
  * Exporte les données complètes selon la configuration
@@ -321,7 +323,7 @@ export async function exportData(
  * Récupère la grille nationale avec propriétés de base
  */
 async function fetchGridData(admFilters?: ExportDataConfig['admFilters']): Promise<any> {
-  const url = `${API_BASE}/coverage/mailles`
+  const url = `${API_BASE_URL}/coverage/mailles`
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Erreur fetch grille: ${response.status}`)
   
@@ -387,7 +389,7 @@ async function fetchGridData(admFilters?: ExportDataConfig['admFilters']): Promi
  */
 async function fetchAdmGeojson(level: 'adm1' | 'adm2' | 'adm3'): Promise<any> {
   // Récupérer la liste des ADM
-  const listUrl = `${API_BASE}/${level}`
+  const listUrl = `${API_BASE_URL}/${level}`
   const listResponse = await fetch(listUrl)
   if (!listResponse.ok) throw new Error(`Erreur fetch ${level}: ${listResponse.status}`)
   
@@ -397,7 +399,7 @@ async function fetchAdmGeojson(level: 'adm1' | 'adm2' | 'adm3'): Promise<any> {
   // Récupérer chaque géométrie
   for (const adm of admList) {
     try {
-      const geoUrl = `${API_BASE}/adm-geojson?level=${level}&name=${encodeURIComponent(adm.name)}`
+      const geoUrl = `${API_BASE_URL}/adm-geojson?level=${level}&name=${encodeURIComponent(adm.name)}`
       const geoResponse = await fetch(geoUrl)
       if (geoResponse.ok) {
         const geoJson = await geoResponse.json()
@@ -444,7 +446,7 @@ async function fetchThematicGridData(
     min_sondages: '1'
   })
   
-  const url = `${API_BASE}/thematic/data?${params}`
+  const url = `${API_BASE_URL}/thematic/data?${params}`
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Erreur fetch thematic ${parameter}: ${response.status}`)
   
@@ -566,7 +568,7 @@ async function fetchSondagesData(admFilters?: ExportDataConfig['admFilters']): P
   csv: string
   count: number
 }> {
-  const url = `${API_BASE}/surveys`
+  const url = `${API_BASE_URL}/surveys`
   const response = await fetch(url)
   if (!response.ok) throw new Error(`Erreur fetch sondages: ${response.status}`)
   
@@ -654,7 +656,7 @@ async function fetchEssaisData(
   }
   
   // Récupérer les données thématiques qui contiennent les essais
-  const url = `${API_BASE}/thematic/data?parameter=${paramMap[type]}&include_geometry=true`
+  const url = `${API_BASE_URL}/thematic/data?parameter=${paramMap[type]}&include_geometry=true`
   const response = await fetch(url)
   if (!response.ok) {
     console.warn(`Pas de données pour ${type}`)

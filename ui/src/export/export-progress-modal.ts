@@ -44,6 +44,8 @@ export class ExportProgressModal {
   };
   private autoScroll: boolean = true;
   private onClose?: () => void;
+  private onCancel?: () => void;
+  private _isCancelled: boolean = false;
 
   constructor() {
     this.injectStyles();
@@ -237,6 +239,8 @@ export class ExportProgressModal {
               <span>Auto-scroll</span>
             </label>
             <button class="btn-copy" title="Copier les logs">📋</button>
+            <button class="btn-download" title="Télécharger les logs">💾</button>
+            <button class="btn-cancel" title="Annuler l'export">🛑 Annuler</button>
             <button class="btn-close" title="Fermer" style="display: none;">✕</button>
           </div>
         </div>
@@ -286,6 +290,12 @@ export class ExportProgressModal {
 
     const copyBtn = this.overlay.querySelector('.btn-copy');
     copyBtn?.addEventListener('click', () => this.copyLogs());
+
+    const downloadBtn = this.overlay.querySelector('.btn-download');
+    downloadBtn?.addEventListener('click', () => this.downloadLogs());
+
+    const cancelBtn = this.overlay.querySelector('.btn-cancel');
+    cancelBtn?.addEventListener('click', () => this.requestCancel());
 
     const closeBtn = this.overlay.querySelector('.btn-close');
     closeBtn?.addEventListener('click', () => this.close());
@@ -410,6 +420,82 @@ export class ExportProgressModal {
     }).catch(err => {
       this.log('error', 'SYSTEM', `Erreur copie: ${err.message}`);
     });
+  }
+
+  /**
+   * Télécharge les logs en fichier .md (v3.5.2)
+   */
+  private downloadLogs(): void {
+    const lines: string[] = [
+      `# Atlas Export Log`,
+      '',
+      `- **Date**: ${new Date().toLocaleDateString('fr-FR')} ${new Date().toLocaleTimeString('fr-FR')}`,
+      `- **Cartes**: ${this.state.completedMaps}/${this.state.totalMaps}`,
+      `- **Erreurs**: ${this.state.errors.length}`,
+      `- **Avertissements**: ${this.state.warnings.length}`,
+      '',
+      '---',
+      ''
+    ];
+
+    for (const entry of this.logs) {
+      const time = entry.timestamp.toLocaleTimeString('fr-FR', { hour12: false });
+      lines.push(`\`${time}\` **[${entry.category}]** ${entry.message}`);
+    }
+
+    const content = lines.join('\n');
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    const filename = `atlas_export_log_${new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)}.md`;
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    this.log('success', 'SYSTEM', `💾 Logs téléchargés: ${filename}`);
+  }
+
+  /**
+   * Demande l'annulation de l'export (v3.5.2)
+   */
+  private requestCancel(): void {
+    if (this._isCancelled) return;
+    
+    if (confirm('Êtes-vous sûr de vouloir annuler l\'export en cours ?')) {
+      this._isCancelled = true;
+      this.log('warning', 'CANCEL', '🛑 Annulation demandée par l\'utilisateur');
+      
+      // Désactiver le bouton
+      const cancelBtn = this.overlay?.querySelector('.btn-cancel') as HTMLButtonElement;
+      if (cancelBtn) {
+        cancelBtn.disabled = true;
+        cancelBtn.textContent = '⏳ Annulation...';
+      }
+      
+      // Appeler le callback d'annulation
+      if (this.onCancel) {
+        this.onCancel();
+      }
+    }
+  }
+
+  /**
+   * Vérifie si l'export a été annulé (v3.5.2)
+   */
+  public get isCancelled(): boolean {
+    return this._isCancelled;
+  }
+
+  /**
+   * Définit le callback d'annulation (v3.5.2)
+   */
+  public setOnCancel(callback: () => void): void {
+    this.onCancel = callback;
   }
 
   private escapeHtml(text: string): string {

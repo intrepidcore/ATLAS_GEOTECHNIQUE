@@ -141,7 +141,8 @@ export function makeResizable(
     const currentPos = config.direction === 'horizontal' ? e.clientX : e.clientY;
     let delta = currentPos - state.startPos;
     
-    // Inverser le delta si le handle est au début
+    // v3.5.4 - Inverser le delta si le handle est au début (panneau droit)
+    // Pour un panneau droit avec handle à gauche: drag vers la gauche = agrandir
     if (config.handlePosition === 'start') {
       delta = -delta;
     }
@@ -150,6 +151,11 @@ export function makeResizable(
     
     // Appliquer les limites
     newSize = Math.max(config.minSize, Math.min(config.maxSize, newSize));
+    
+    // Audit v3.5.4 - logs détaillés
+    const side = config.handlePosition === 'start' ? 'left' : 'right';
+    const widthBefore = state.startSize;
+    const widthAfter = newSize;
     
     // Appliquer la nouvelle taille
     if (config.direction === 'horizontal') {
@@ -182,6 +188,12 @@ export function makeResizable(
     if (config.storageKey) {
       localStorage.setItem(config.storageKey, String(finalSize));
     }
+    
+    // Audit v3.5.4 - log fin de drag
+    const elementId = element.id || element.className.split(' ')[0];
+    const side = config.handlePosition === 'start' ? 'left' : 'right';
+    console.log(`[Resizable] id=${elementId} side=${side} dragEnd widthFinal=${finalSize}px`);
+    console.log(`[Resizable] id=${elementId} dragEnd -> invalidateSize()`);
     
     // Callback
     if (config.onResizeEnd) {
@@ -337,7 +349,7 @@ function injectStyles(): void {
       top: 0;
     }
     
-    /* État pendant le drag */
+    /* État pendant le drag - v3.5.4 fix fond noir */
     body.resizing {
       cursor: col-resize !important;
       user-select: none !important;
@@ -345,6 +357,12 @@ function injectStyles(): void {
     
     body.resizing * {
       cursor: inherit !important;
+      pointer-events: none;
+    }
+    
+    /* Empêcher fond noir pendant resize */
+    .resizable-panel {
+      background: transparent;
     }
     
     /* Layout resizable */
@@ -414,4 +432,29 @@ export function getSavedPanelSize(storageKey: string): number | null {
  */
 export function resetPanelSize(storageKey: string): void {
   localStorage.removeItem(storageKey);
+}
+
+/**
+ * Réinitialise tous les panneaux Atlas à leur taille par défaut (v3.5.3)
+ * Liste des clés connues pour les panneaux de l'application
+ */
+export function resetAllPanelSizes(): void {
+  const panelKeys = [
+    'atlas-home-left-panel-width',
+    'atlas-home-right-panel-width',
+    'atlas-thematic-panel-width',
+    'atlas-sondages-left-panel-width',
+    'atlas-sondages-right-panel-width',
+    'atlas-db-left-panel-width',
+    'atlas-db-right-panel-width'
+  ];
+  
+  panelKeys.forEach(key => {
+    localStorage.removeItem(key);
+  });
+  
+  console.log('[Resizable] Reset all panel widths to defaults');
+  
+  // Recharger la page pour appliquer les valeurs par défaut
+  window.location.reload();
 }

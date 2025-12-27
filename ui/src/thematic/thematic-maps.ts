@@ -81,6 +81,8 @@ export class ThematicMapManager {
     this.setReady(false)
     
     try {
+      // Audit v3.5.4 - palette reçue
+      console.log(`[ThematicMap][Interactive] palette received="${config.style.palette}"`)
       console.log('[ThematicMap] Chargement config:', config)
       
       // 1. Récupérer les données
@@ -256,8 +258,17 @@ export class ThematicMapManager {
       .map(f => f.properties?.value)
       .filter(v => v != null && !isNaN(v)) as number[]
     
+    // CORRECTION ÉTAPE 5: Gérer NO DATA proprement (pas une erreur)
     if (values.length === 0) {
-      throw new Error('Aucune valeur à classifier')
+      console.warn(`[ThematicMap] ⚠️ NO DATA pour ${config.parameter} - aucune valeur à classifier`)
+      // Retourner une classification NO DATA au lieu de throw
+      return {
+        breaks: [],
+        colors: ['#9CA3AF'], // Gris neutre pour NO DATA
+        labels: ['NO DATA'],
+        method: 'no_data',
+        n_classes: 1
+      }
     }
     
     // Carte binaire : classification spéciale à 2 classes
@@ -347,7 +358,8 @@ export class ThematicMapManager {
    * @param n Nombre de couleurs à retourner
    */
   private async getColors(palette: string, n: number): Promise<string[]> {
-    console.log(`[ThematicMap] getColors appelé avec palette="${palette}", n=${n}`)
+    // Audit v3.5.4 - tracer appel getColors
+    console.log(`[ThematicMap][Interactive] getColors(palette="${palette}", n=${n})`)
     
     // Palettes complètes pour interpolation (v3.5.0 enrichi)
     const palettes: Record<string, string[]> = {
@@ -516,6 +528,10 @@ export class ThematicMapManager {
   private renderChoropleth(data: ThematicData, classification: Classification, config: ThematicMapConfig): void {
     this.ensureThematicPane()
     this.hideGridLayer()
+    
+    // v3.5.3: Log explicite des couleurs utilisées pour debug
+    console.log(`[ThematicMap][Choropleth] Palette: ${config.style.palette}`)
+    console.log(`[ThematicMap][Choropleth] Colors: ${JSON.stringify(classification.colors)}`)
     
     this.polygonLayer = L.geoJSON(data.features as any, {
       pane: 'thematicPane',

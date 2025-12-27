@@ -151,12 +151,48 @@ Le composant ajoute automatiquement `flex-shrink: 0` aux panneaux resizables. As
 
 ## Prochaines étapes
 
-1. [ ] Tester le composant sur la page d'accueil
-2. [ ] Identifier les IDs exacts des panneaux existants
-3. [ ] Intégrer dans `main.ts`
-4. [ ] Répéter pour les autres pages
+1. [x] Tester le composant sur la page d'accueil
+2. [x] Identifier les IDs exacts des panneaux existants
+3. [x] Intégrer dans `main.ts`
+4. [ ] Répéter pour les autres pages (Gestionnaire sondages, BDD)
 5. [ ] Ajouter un bouton "Réinitialiser les panneaux" dans les préférences
 
 ## Fichiers créés
 
 - `c:\PROJET_ATLAS_MASTER\atlas\ui\src\components\resizable-panel.ts`
+- `c:\PROJET_ATLAS_MASTER\atlas\ui\src\components\ResizablePanelReact.tsx` (wrapper React)
+
+## Implémentation v3.5.2 (02/01/2025)
+
+### Page d'accueil (index.html)
+
+✅ **Panneaux activés:**
+
+| Panneau | ID | Min | Max | Default | Storage Key |
+|---------|-----|-----|-----|---------|-------------|
+| Gauche (stats) | `#dashboard` | 200px | 500px | 380px | `atlas-home-left-panel-width` |
+| Droite (filtres) | `#sidebar` | 250px | 600px | 380px | `atlas-home-right-panel-width` |
+| Thématique | `#thematicPanel` | 280px | 450px | 320px | `atlas-thematic-panel-width` |
+
+**Fichier modifié:** `ui/src/main.ts`
+- Import de `makeResizable` depuis `./components/resizable-panel`
+- Fonction `initResizablePanels()` appelée au boot
+- MutationObserver pour le panneau thématique (apparaît dynamiquement)
+
+### Fonctionnalités
+
+- ✅ Redimensionnement horizontal avec handle visible au survol
+- ✅ Persistance dans localStorage (taille conservée après refresh)
+- ✅ Limites min/max configurables
+- ✅ Support panneau dynamique (thématique)
+- ✅ Logs console pour debug
+
+### Tests recommandés
+
+```bash
+# 1. Ouvrir la page d'accueil
+# 2. Survoler le bord droit du panneau gauche → handle bleu visible
+# 3. Glisser pour redimensionner → panneau change de largeur
+# 4. Rafraîchir la page → taille conservée
+# 5. Ouvrir le panneau thématique → vérifier qu'il est redimensionnable
+```

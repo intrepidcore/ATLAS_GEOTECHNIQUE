@@ -4,6 +4,7 @@
  */
 
 import { tokenStorage } from './services/auth-api';
+import { resetAllPanelSizes } from './components/resizable-panel';
 
 interface UserInfo {
   username?: string;
@@ -219,6 +220,7 @@ const ICONS = {
   database: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>',
   help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
   logout: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>',
+  reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>',
   chevron: '▼'
 };
 
@@ -399,6 +401,10 @@ class UserMenu {
             ${ICONS.help}
             <span>Aide & Documentation</span>
           </button>
+          <button class="user-menu-item" data-action="resetPanels">
+            ${ICONS.reset}
+            <span>Réinitialiser panneaux</span>
+          </button>
           <div class="user-menu-divider"></div>
           <button class="user-menu-item danger" data-action="logout">
             ${ICONS.logout}
@@ -435,6 +441,9 @@ class UserMenu {
             break;
           case 'help':
             window.open('https://docs.atlas-geotechnique.com', '_blank');
+            break;
+          case 'resetPanels':
+            resetAllPanelSizes();
             break;
           case 'logout':
             this.logout();
