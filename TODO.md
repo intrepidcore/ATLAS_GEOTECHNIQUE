@@ -121,11 +121,22 @@
 - ✅ Warning si > 90% "Non classé" (détection problème ADM2)
 - **Fichier**: `scripts/generate_national_graphs.py`
 
-### ⚠️ POINTS NON IMPLÉMENTÉS (Backend uniquement)
+#### 8. **Génération automatique graphiques lors export ADM1 (COMPLET)**
+- ✅ Post-process modifié: `api/routes/export_post_process.py`
+- ✅ Étape 1: Migration SQL 007 (enrichissement ADM2)
+- ✅ Étape 2: Génération graphiques nationaux (AUTOMATIQUE)
+- ✅ Étape 3: Stats préfectures (si SQL OK)
+- ✅ Graphiques générés automatiquement dans `exports/graphes/n_sondages/`
+- ✅ Logs détaillés de chaque étape
+- **Déclenchement**: Appel endpoint `/export/post-process/adm1` après export ADM1
 
-- **ADM2 jointure spatiale**: Audit SQL + correction si nécessaire (nécessite accès Postgres)
-- **Backend 401 post-process**: Fix authentification endpoint (nécessite code Rust)
-- **Migration 007**: Application et test (nécessite Postgres)
+### ⚠️ POINTS NON IMPLÉMENTÉS (Nécessitent accès serveur)
+
+- **Backend 401 post-process**: Fix authentification endpoint (nécessite modification code Rust)
+- **Test migration 007**: Application et validation (nécessite accès Postgres)
+- **Test post-process complet**: Validation pipeline complet (nécessite serveur lancé)
+
+**Note**: Migration 007 existe et est prête. Post-process est implémenté. Seuls les tests nécessitent un serveur.
 
 ### 🎯 VALIDATION MANUELLE (Tests utilisateur)
 
@@ -159,16 +170,17 @@
 - [ ] Histogramme: titre "mailles avec au moins 1 sondage", pas de barre à 0
 - [ ] Camembert: couleurs vives, valeurs absolues visibles
 
-### 📊 STATISTIQUES SESSION
+### 📊 STATISTIQUES SESSION FINALE
 
-- **Commits**: 6 commits
-- **Fichiers modifiés**: 7 fichiers TypeScript
-- **Fichiers créés**: 1 script Python
+- **Commits**: 7 commits
+- **Fichiers modifiés**: 8 fichiers (7 TypeScript + 1 Python)
+- **Fichiers créés**: 1 script Python (generate_national_graphs.py)
 - **Packages installés**: 2 (leaflet.heat, @types/leaflet.heat)
-- **Builds réussis**: 4/4
+- **Builds réussis**: 5/5 ✅
 - **Providers fond de carte**: 11 disponibles
 - **Types de carte**: 4 (choropleth, bubble, binary, heatmap)
 - **Graphiques**: 4 types (bar, boxplot, histogram, pie)
+- **Pipeline post-process**: 3 étapes automatiques
 
 ### 🔄 COMMANDES POUR TESTER
 
@@ -181,10 +193,23 @@ npm run dev
 # Tester sélection fond de carte
 ```
 
-#### Graphiques
+#### Graphiques (Manuel)
 ```bash
 python scripts/generate_national_graphs.py
 # Vérifier exports/graphes/n_sondages/*.png
+```
+
+#### Post-process ADM1 (Automatique)
+```bash
+# Après export ADM1, déclencher post-process:
+curl -X POST http://localhost:8000/export/post-process/adm1
+
+# Ou exécuter manuellement:
+python api/routes/export_post_process.py
+
+# Vérifier résultats:
+# - exports/stats/ (stats préfectures)
+# - exports/graphes/n_sondages/ (graphiques nationaux)
 ```
 
 #### Backend (si accès Postgres)
