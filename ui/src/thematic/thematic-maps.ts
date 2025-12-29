@@ -600,14 +600,14 @@ export class ThematicMapManager {
     this.ensureThematicPane()
     this.hideGridLayer()
     
-    // 1. Couche de fond : mailles en gris clair
+    // 1. Couche de fond : mailles en gris très clair (discret)
     this.polygonLayer = L.geoJSON(data.features as any, {
       pane: 'thematicPane',
       style: () => ({
-        fillColor: '#E5E7EB',
-        fillOpacity: 0.3,
-        color: '#9CA3AF',
-        weight: 0.5
+        fillColor: '#F9FAFB',  // Gris quasi-blanc
+        fillOpacity: 0.2,      // Très transparent
+        color: '#E5E7EB',      // Gris très clair pour les contours
+        weight: 0.3            // Traits très fins
       }),
       onEachFeature: (feature, layer) => {
         this.bindFeatureTooltip(feature, layer, data)
@@ -707,10 +707,10 @@ export class ThematicMapManager {
           color: '#14532d',
           weight: 1
         } : {
-          fillColor: absentColor,
-          fillOpacity: 0.3,
-          color: '#9CA3AF',
-          weight: 0.5
+          fillColor: '#F9FAFB',  // Gris quasi-blanc pour mailles vides
+          fillOpacity: 0.2,      // Très transparent
+          color: '#E5E7EB',      // Gris très clair pour contours
+          weight: 0.3            // Traits très fins
         }
       },
       onEachFeature: (feature, layer) => {
