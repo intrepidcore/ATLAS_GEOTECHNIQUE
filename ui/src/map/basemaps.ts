@@ -13,7 +13,7 @@
 import L from 'leaflet';
 
 // Types
-export type BasemapId = 'osm' | 'esri_imagery' | 'esri_topo' | 'mapbox_sat' | 'azure_sat';
+export type BasemapId = 'osm' | 'esri_imagery' | 'esri_topo' | 'mapbox_sat' | 'azure_sat' | 'cartodb_voyager' | 'cartodb_positron' | 'cartodb_dark' | 'stamen_terrain' | 'opentopo';
 
 export interface BasemapConfig {
   id: BasemapId;
@@ -29,6 +29,60 @@ export function createOsmBasemap(): L.TileLayer {
   return L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors',
+  });
+}
+
+// ============================================
+// CartoDB Voyager (gratuit, excellent pour atlas)
+// ============================================
+export function createCartoDBVoyagerBasemap(): L.TileLayer {
+  return L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  });
+}
+
+// ============================================
+// CartoDB Positron (gratuit, clair)
+// ============================================
+export function createCartoDBPositronBasemap(): L.TileLayer {
+  return L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  });
+}
+
+// ============================================
+// CartoDB Dark Matter (gratuit, sombre)
+// ============================================
+export function createCartoDBDarkBasemap(): L.TileLayer {
+  return L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 19,
+    subdomains: 'abcd',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  });
+}
+
+// ============================================
+// Stamen Terrain (gratuit, relief)
+// ============================================
+export function createStamenTerrainBasemap(): L.TileLayer {
+  return L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg', {
+    maxZoom: 18,
+    subdomains: 'abcd',
+    attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  });
+}
+
+// ============================================
+// OpenTopoMap (gratuit, topographique)
+// ============================================
+export function createOpenTopoMapBasemap(): L.TileLayer {
+  return L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+    maxZoom: 17,
+    attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (<a href="https://creativecommons.org/licenses/by-sa/3.0/">CC-BY-SA</a>)',
   });
 }
 
@@ -149,6 +203,11 @@ export function createAllBasemaps(): Record<string, L.TileLayer> {
 
   // Fonds toujours disponibles
   basemaps['OSM Standard'] = createOsmBasemap();
+  basemaps['CartoDB Voyager'] = createCartoDBVoyagerBasemap();
+  basemaps['CartoDB Positron'] = createCartoDBPositronBasemap();
+  basemaps['CartoDB Dark'] = createCartoDBDarkBasemap();
+  basemaps['Stamen Terrain'] = createStamenTerrainBasemap();
+  basemaps['OpenTopoMap'] = createOpenTopoMapBasemap();
   basemaps['ESRI Satellite'] = createEsriImageryBasemap();
   basemaps['ESRI Topo'] = createEsriTopoBasemap();
 
@@ -209,6 +268,11 @@ export function createBasemapControl(
 
 export default {
   createOsmBasemap,
+  createCartoDBVoyagerBasemap,
+  createCartoDBPositronBasemap,
+  createCartoDBDarkBasemap,
+  createStamenTerrainBasemap,
+  createOpenTopoMapBasemap,
   createEsriImageryBasemap,
   createEsriTopoBasemap,
   createMapboxSatelliteBasemap,
