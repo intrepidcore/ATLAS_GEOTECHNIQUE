@@ -14,6 +14,7 @@ import logging
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DB_MIGRATION_PATH = PROJECT_ROOT / 'db' / 'migrations' / '007_enrichir_mailles_adm2_prefectures.sql'
 PYTHON_STATS_SCRIPT = PROJECT_ROOT / 'scripts' / 'generate_stats_prefecture.py'
+PYTHON_GRAPHS_SCRIPT = PROJECT_ROOT / 'scripts' / 'generate_national_graphs.py'
 
 # Logging
 logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
@@ -76,10 +77,54 @@ def run_sql_migration():
         return False
 
 
-def run_python_stats():
-    """Exécute le script Python de génération stats"""
+def run_python_graphs():
+    """Exécute le script Python de génération graphiques nationaux"""
     logger.info("\n" + "═" * 70)
-    logger.info("ÉTAPE 2: Python Stats - Boxplots + Choroplèthes par préfecture")
+    logger.info("ÉTAPE 2: Python Graphs - Graphiques nationaux (bar, histogram, pie)")
+    logger.info("═" * 70)
+    
+    if not PYTHON_GRAPHS_SCRIPT.exists():
+        logger.warning(f"⚠️ Script Python non trouvé: {PYTHON_GRAPHS_SCRIPT}")
+        return False
+    
+    try:
+        cmd = [sys.executable, str(PYTHON_GRAPHS_SCRIPT)]
+        
+        logger.info(f"Exécution: python {PYTHON_GRAPHS_SCRIPT.name}")
+        
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=300,  # 5 minutes max
+            cwd=str(PROJECT_ROOT)
+        )
+        
+        if result.returncode == 0:
+            logger.info("✅ Graphiques nationaux générés avec succès")
+            # Afficher résumé
+            if "TERMINÉ" in result.stdout:
+                logger.info(result.stdout[result.stdout.rindex("═"):])
+            return True
+        else:
+            logger.error(f"❌ Graphiques nationaux échoués: {result.stderr}")
+            return False
+            
+    except FileNotFoundError:
+        logger.error("❌ Python non trouvé")
+        return False
+    except subprocess.TimeoutExpired:
+        logger.error("❌ Graphiques nationaux timeout (> 5 min)")
+        return False
+    except Exception as e:
+        logger.error(f"❌ Erreur graphiques nationaux: {e}")
+        return False
+
+
+def run_python_stats():
+    """Exécute le script Python de génération stats préfectures"""
+    logger.info("\n" + "═" * 70)
+    logger.info("ÉTAPE 3: Python Stats - Boxplots + Choroplèthes par préfecture")
     logger.info("═" * 70)
     
     if not PYTHON_STATS_SCRIPT.exists():
@@ -137,10 +182,15 @@ def post_process_export_adm1():
         logger.warning("⚠️ Migration SQL échouée - stats préfectures non disponibles")
         success = False
     
-    # Étape 2: Stats Python (seulement si SQL OK)
+    # Étape 2: Graphiques nationaux (TOUJOURS exécuté, indépendant de SQL)
+    if not run_python_graphs():
+        logger.warning("⚠️ Graphiques nationaux échoués")
+        # Ne pas bloquer le reste
+    
+    # Étape 3: Stats Python préfectures (seulement si SQL OK)
     if success:
         if not run_python_stats():
-            logger.warning("⚠️ Stats Python échouées - visualisations non disponibles")
+            logger.warning("⚠️ Stats Python échouées - visualisations préfectures non disponibles")
             success = False
     
     # Résumé final
