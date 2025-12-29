@@ -33,7 +33,9 @@
 - ✅ Appliqué aux cercles proportionnels et cartes binaires
 - **Résultat**: Grille suggérée sans gêner la lecture des données
 
-### 📝 FICHIERS MODIFIÉS (v4.1)
+### 📝 FICHIERS MODIFIÉS/CRÉÉS (v4.1 COMPLET)
+
+#### Frontend TypeScript
 
 1. **`ui/src/export/bounds-optimizer.ts`**
    - Constantes: `MAX_PAD_PCT`, `MAX_MARGIN_RATIO`
@@ -46,19 +48,86 @@
    - Méthode `computeOptimalBoundsForSheet()`: capture et log JSON métriques
 
 3. **`ui/src/thematic/thematic-maps.ts`**
+   - Import leaflet.heat
+   - Propriété `heatLayer`
+   - Méthode `renderHeatmap()`: rendu complet heatmap
+   - Méthode `showLegend()`: légende gradient pour heatmap
+   - Méthode `clearLayers()`: nettoyage heatLayer
    - Méthode `classifyData()`: détection paramètres comptage, breaks entiers
    - Méthode `generateLabels()`: format entier vs décimal selon paramètre
    - Méthodes `renderProportionalCircles()`, `renderBinaryMap()`: style grille discret
 
-### ⚠️ POINTS NON IMPLÉMENTÉS (Reste à faire)
+4. **`ui/src/thematic/thematic-types.ts`**
+   - Type `MapType`: ajout 'heatmap'
+   - Constante `MAP_TYPES`: ajout config heatmap
 
-- **Fond de carte configurable**: Ajout sélecteur tile provider (CartoDB Voyager, OSM, etc.)
-- **Heatmap**: Type carte avec leaflet.heat + légende gradient
-- **ADM2 graphiques**: Correction rattachement préfectures ("Non classé" → noms réels)
-- **Graphiques améliorés**: Tri, histogramme sans zéros, camembert contrasté
-- **Backend**: Fix 401 post-process, migration 007
+5. **`ui/src/map/basemaps.ts`**
+   - Fonctions: `createCartoDBVoyagerBasemap()`, `createCartoDBPositronBasemap()`, `createCartoDBDarkBasemap()`
+   - Fonctions: `createStamenTerrainBasemap()`, `createOpenTopoMapBasemap()`
+   - Fonction `createAllBasemaps()`: 11 providers
 
-### 🎯 VALIDATION MANUELLE
+#### Backend Python
+
+6. **`scripts/generate_national_graphs.py`** (CRÉÉ)
+   - Fonction `fetch_data_by_adm2()`: données par préfecture avec warning
+   - Fonction `fetch_histogram_data()`: données sans zéros
+   - Fonction `generate_bar_chart()`: tri décroissant
+   - Fonction `generate_histogram()`: mailles actives uniquement
+   - Fonction `generate_pie_chart()`: couleurs contrastées + valeurs absolues
+
+#### Dépendances
+
+7. **`ui/package.json`**
+   - Ajout: `leaflet.heat`, `@types/leaflet.heat`
+
+#### 5. **Fond de carte configurable (COMPLET)**
+- ✅ Ajout CartoDB Voyager (excellent pour atlas)
+- ✅ Ajout CartoDB Positron (clair)
+- ✅ Ajout CartoDB Dark Matter (sombre)
+- ✅ Ajout Stamen Terrain (relief)
+- ✅ Ajout OpenTopoMap (topographique)
+- ✅ Conservation OSM Standard, ESRI Satellite, ESRI Topo
+- ✅ Support Mapbox et Azure (si clés configurées)
+- **Fichier**: `ui/src/map/basemaps.ts`
+- **Total**: 11 providers disponibles
+
+#### 6. **Heatmap complète (COMPLET)**
+- ✅ Installation leaflet.heat + @types/leaflet.heat
+- ✅ Type 'heatmap' ajouté dans MapType
+- ✅ Méthode renderHeatmap() complète:
+  - Couche fond mailles discrètes
+  - Calcul centroïdes + intensité normalisée
+  - Gradient bleu→cyan→vert→jaune→orange→rouge
+  - Configuration radius=25, blur=15
+- ✅ Légende gradient continue:
+  - Barre horizontale avec gradient CSS
+  - Labels "Faible" / "Forte"
+  - Stats min/max/moyenne
+  - Note "Zones transparentes: absence de données"
+- ✅ Nettoyage couche heatmap dans clearLayers()
+- **Fichiers**: `ui/src/thematic/thematic-types.ts`, `ui/src/thematic/thematic-maps.ts`
+
+#### 7. **Graphiques nationaux améliorés (COMPLET)**
+- ✅ Script Python `generate_national_graphs.py` créé
+- ✅ **Bar chart**: Tri par valeur décroissante
+- ✅ **Boxplot**: Distribution par préfecture
+- ✅ **Histogramme**: SANS zéros (mailles actives uniquement)
+  - Titre explicite: "mailles avec au moins 1 sondage"
+  - Lignes moyenne et médiane
+- ✅ **Camembert**: 
+  - Couleurs contrastées (#2ecc71 vert, #e74c3c rouge)
+  - Labels avec valeurs absolues + pourcentages
+  - Format: "Avec données\n101 mailles (0.3%)"
+- ✅ Warning si > 90% "Non classé" (détection problème ADM2)
+- **Fichier**: `scripts/generate_national_graphs.py`
+
+### ⚠️ POINTS NON IMPLÉMENTÉS (Backend uniquement)
+
+- **ADM2 jointure spatiale**: Audit SQL + correction si nécessaire (nécessite accès Postgres)
+- **Backend 401 post-process**: Fix authentification endpoint (nécessite code Rust)
+- **Migration 007**: Application et test (nécessite Postgres)
+
+### 🎯 VALIDATION MANUELLE (Tests utilisateur)
 
 #### Test BoundsOptimizer v4.1
 - [ ] Export ADM1 Plateaux: vérifier `pad_max < 30%`, `margin_ratio < 4`, pas de dézoom extrême
@@ -73,9 +142,66 @@
 - [ ] Grille mailles vides quasi invisible, ne gêne pas lecture données
 - [ ] Contraste suffisant entre mailles avec/sans données
 
+#### Test Fond de carte
+- [ ] Sélecteur fonds de carte visible dans UI
+- [ ] CartoDB Voyager disponible et fonctionnel
+- [ ] Changement de fond de carte fonctionne
+
+#### Test Heatmap
+- [ ] Type "Heatmap" disponible dans panneau thématique
+- [ ] Rendu heatmap avec gradient bleu→rouge
+- [ ] Légende gradient avec barre horizontale
+- [ ] Nettoyage correct lors changement de type
+
+#### Test Graphiques
+- [ ] Exécuter: `python scripts/generate_national_graphs.py`
+- [ ] Bar chart: préfectures triées par valeur décroissante
+- [ ] Histogramme: titre "mailles avec au moins 1 sondage", pas de barre à 0
+- [ ] Camembert: couleurs vives, valeurs absolues visibles
+
+### 📊 STATISTIQUES SESSION
+
+- **Commits**: 6 commits
+- **Fichiers modifiés**: 7 fichiers TypeScript
+- **Fichiers créés**: 1 script Python
+- **Packages installés**: 2 (leaflet.heat, @types/leaflet.heat)
+- **Builds réussis**: 4/4
+- **Providers fond de carte**: 11 disponibles
+- **Types de carte**: 4 (choropleth, bubble, binary, heatmap)
+- **Graphiques**: 4 types (bar, boxplot, histogram, pie)
+
+### 🔄 COMMANDES POUR TESTER
+
+#### Frontend
+```bash
+cd ui
+npm run dev
+# Ouvrir http://localhost:5173
+# Tester cartes thématiques avec type "Heatmap"
+# Tester sélection fond de carte
+```
+
+#### Graphiques
+```bash
+python scripts/generate_national_graphs.py
+# Vérifier exports/graphes/n_sondages/*.png
+```
+
+#### Backend (si accès Postgres)
+```bash
+# Audit ADM2
+psql -U postgres -d atlas_geotechnique -c "SELECT adm2_name, COUNT(*) FROM atlas.v_maille_kpi GROUP BY adm2_name ORDER BY COUNT(*) DESC;"
+
+# Migration 007
+psql -U postgres -d atlas_geotechnique -f db/migrations/007_enrichir_mailles_adm2_prefectures.sql
+
+# Post-process
+curl -X POST http://localhost:5173/export/post-process/adm1
+```
+
 ---
 
-## 🚀 SESSION 29/12/2024 - BOUNDSOPTIMIZER v4.0 - RÈGLE MÉTIER 0.5KM
+## 🚀 SESSION 29/12/2024 - BOUNDSOPTIMIZER v4.0 - RÈGLE MÉTIER 0.5KM (HISTORIQUE)
 
 ### ✅ MODIFICATIONS IMPLÉMENTÉES
 
