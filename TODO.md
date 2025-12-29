@@ -1,5 +1,80 @@
 # 📋 TODO - Atlas Géotechnique - Gestionnaire de Sondages v2
 
+## 🚀 SESSION 29/12/2024 - BOUNDSOPTIMIZER v4.1 - RAFFINEMENTS & CORRECTIONS
+
+### ✅ MODIFICATIONS IMPLÉMENTÉES (v4.1)
+
+#### 1. **BoundsOptimizer v4.1: Contraintes multi-objectifs**
+- ✅ Ajout contrainte `MAX_PAD_PCT = 0.30` (évite marges énormes > 30%)
+- ✅ Ajout contrainte `MAX_MARGIN_RATIO = 4.0` (évite asymétrie extrême)
+- ✅ Score multi-objectif `quality_score = occ_area - pad_penalty - asymmetry_penalty`
+- ✅ Binary search amélioré: accepte si `margin_min_km >= 0.5 AND pad_max <= 30% AND margin_ratio <= 4`
+- ✅ Comparaison orientations basée sur `quality_score` (plus juste que `occ_area` seul)
+- ✅ Logs détaillés: score, pad_max, margin_ratio pour chaque itération
+- **Fichier**: `ui/src/export/bounds-optimizer.ts`
+
+#### 2. **Export JSON métriques BoundsOptimizer**
+- ✅ Capture et log JSON complet après `computeOptimalBounds()`
+- ✅ Format: `console.log('[Export][BoundsJSON] ADM:', JSON.stringify(jsonMetrics, null, 2))`
+- ✅ Inclut: densification, itérations portrait/paysage, choix final, warnings
+- **Fichier**: `ui/src/export/export-quick-dialog.ts`
+
+#### 3. **Légendes entières pour cartes de comptage**
+- ✅ Détection automatique paramètres de comptage (`n_sondages`, `n_*`, `count`)
+- ✅ Génération labels entiers: "1", "2-3", "4-5", "> 5" (au lieu de "1.0 - 2.0")
+- ✅ Classification adaptée: breaks arrondis aux entiers pour comptages
+- ✅ Format décimal conservé pour paramètres physiques (VBS, IP, etc.)
+- **Fichier**: `ui/src/thematic/thematic-maps.ts`
+
+#### 4. **Style grille mailles vides: discrétion maximale**
+- ✅ Traits très fins: `weight: 0.3` (au lieu de 0.5)
+- ✅ Couleur très claire: `color: '#E5E7EB'` (gris quasi-blanc)
+- ✅ Remplissage transparent: `fillColor: '#F9FAFB'`, `fillOpacity: 0.2`
+- ✅ Appliqué aux cercles proportionnels et cartes binaires
+- **Résultat**: Grille suggérée sans gêner la lecture des données
+
+### 📝 FICHIERS MODIFIÉS (v4.1)
+
+1. **`ui/src/export/bounds-optimizer.ts`**
+   - Constantes: `MAX_PAD_PCT`, `MAX_MARGIN_RATIO`
+   - Interface `BoundsMetrics`: ajout `quality_score`
+   - Méthode `computeMetricsForShrink()`: calcul quality_score avec pénalités
+   - Méthode `optimizeForOrientation()`: critères acceptation multi-contraintes
+   - Méthode `computeOptimalBounds()`: comparaison orientations par quality_score
+
+2. **`ui/src/export/export-quick-dialog.ts`**
+   - Méthode `computeOptimalBoundsForSheet()`: capture et log JSON métriques
+
+3. **`ui/src/thematic/thematic-maps.ts`**
+   - Méthode `classifyData()`: détection paramètres comptage, breaks entiers
+   - Méthode `generateLabels()`: format entier vs décimal selon paramètre
+   - Méthodes `renderProportionalCircles()`, `renderBinaryMap()`: style grille discret
+
+### ⚠️ POINTS NON IMPLÉMENTÉS (Reste à faire)
+
+- **Fond de carte configurable**: Ajout sélecteur tile provider (CartoDB Voyager, OSM, etc.)
+- **Heatmap**: Type carte avec leaflet.heat + légende gradient
+- **ADM2 graphiques**: Correction rattachement préfectures ("Non classé" → noms réels)
+- **Graphiques améliorés**: Tri, histogramme sans zéros, camembert contrasté
+- **Backend**: Fix 401 post-process, migration 007
+
+### 🎯 VALIDATION MANUELLE
+
+#### Test BoundsOptimizer v4.1
+- [ ] Export ADM1 Plateaux: vérifier `pad_max < 30%`, `margin_ratio < 4`, pas de dézoom extrême
+- [ ] Console: logs `quality_score`, décisions ACCEPT/REJECT avec raisons claires
+- [ ] JSON: structure complète avec itérations, warnings, choix justifié
+
+#### Test Légendes
+- [ ] Carte "Nombre de sondages": légende "1", "2-3", "4-5", "> 5" (pas de décimales)
+- [ ] Carte "IP moyen": légende décimale conservée ("0.0 - 5.0", etc.)
+
+#### Test Grille
+- [ ] Grille mailles vides quasi invisible, ne gêne pas lecture données
+- [ ] Contraste suffisant entre mailles avec/sans données
+
+---
+
 ## 🚀 SESSION 29/12/2024 - BOUNDSOPTIMIZER v4.0 - RÈGLE MÉTIER 0.5KM
 
 ### ✅ MODIFICATIONS IMPLÉMENTÉES
