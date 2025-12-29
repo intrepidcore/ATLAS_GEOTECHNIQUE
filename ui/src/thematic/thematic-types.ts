@@ -269,7 +269,7 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
 // TYPES DE CARTE - Bloc B
 // ============================================================================
 
-export type MapType = 'choropleth' | 'proportional' | 'binary'
+export type MapType = 'choropleth' | 'bubble' | 'binary' | 'heatmap'
 
 export interface MapTypeConfig {
   id: MapType
@@ -286,7 +286,7 @@ export const MAP_TYPES: MapTypeConfig[] = [
     icon: '🗺️'
   },
   {
-    id: 'proportional',
+    id: 'bubble',
     label: 'Cercles proportionnels',
     description: 'Taille des cercles proportionnelle à la valeur',
     icon: '⭕'
@@ -296,6 +296,12 @@ export const MAP_TYPES: MapTypeConfig[] = [
     label: 'Binaire (présence/absence)',
     description: 'Zones couvertes vs non couvertes',
     icon: '✓✗'
+  },
+  {
+    id: 'heatmap',
+    label: 'Carte de chaleur (heatmap)',
+    description: 'Densité de chaleur continue',
+    icon: '🔥'
   }
 ]
 

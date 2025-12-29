@@ -1,4 +1,5 @@
 import L from 'leaflet'
+import 'leaflet.heat'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import type {
@@ -16,6 +17,7 @@ export class ThematicMapManager {
   private apiUrl: string
   private polygonLayer: L.GeoJSON | null = null  // Couche des polygones (mailles)
   private circleLayer: L.LayerGroup | null = null // Couche des cercles proportionnels
+  private heatLayer: any = null // Couche heatmap (leaflet.heat)
   public admOverlayLayer: L.LayerGroup  // Couche des contours ADM (public pour accès externe)
   private currentConfig: ThematicMapConfig | null = null
   private legendControl: L.Control | null = null
@@ -98,10 +100,12 @@ export class ThematicMapManager {
       
       if (config.type === 'choropleth') {
         this.renderChoropleth(data, classification, config)
-      } else if (config.type === 'proportional') {
+      } else if (config.type === 'bubble') {
         this.renderProportionalCircles(data, classification, config)
       } else if (config.type === 'binary') {
         this.renderBinaryMap(data, config)
+      } else if (config.type === 'heatmap') {
+        this.renderHeatmap(data, classification, config)
       }
       
       // 4. Afficher la légende
@@ -495,6 +499,10 @@ export class ThematicMapManager {
       this.map.removeLayer(this.circleLayer)
       this.circleLayer = null
     }
+    if (this.heatLayer) {
+      this.map.removeLayer(this.heatLayer)
+      this.heatLayer = null
+    }
     // Nettoyer aussi le contour ADM
     this.admOverlayLayer.clearLayers()
   }
@@ -736,6 +744,92 @@ export class ThematicMapManager {
   }
   
   /**
+   * Afficher carte de chaleur (heatmap)
+   */
+  private renderHeatmap(data: ThematicData, classification: Classification, config: ThematicMapConfig): void {
+    this.ensureThematicPane()
+    this.hideGridLayer()
+    
+    // 1. Couche de fond: mailles en gris très clair (discret)
+    this.polygonLayer = L.geoJSON(data.features as any, {
+      pane: 'thematicPane',
+      style: () => ({
+        fillColor: '#F9FAFB',
+        fillOpacity: 0.2,
+        color: '#E5E7EB',
+        weight: 0.3
+      }),
+      interactive: false
+    })
+    this.polygonLayer.addTo(this.map)
+    
+    // 2. Préparer les données pour heatmap: [lat, lng, intensity]
+    const heatData: [number, number, number][] = []
+    const values = data.features
+      .map(f => f.properties?.value)
+      .filter(v => v != null && !isNaN(v)) as number[]
+    
+    if (values.length === 0) {
+      console.warn('[ThematicMap][Heatmap] Aucune donnée pour heatmap')
+      return
+    }
+    
+    const minVal = Math.min(...values)
+    const maxVal = Math.max(...values)
+    const range = maxVal - minVal || 1
+    
+    // Construire points avec intensité normalisée
+    for (const feature of data.features) {
+      const value = feature.properties?.value
+      if (value == null || isNaN(value)) continue
+      
+      // Centroïde de la maille
+      const geom = feature.geometry
+      let lat = 0, lng = 0
+      
+      if (geom.type === 'Polygon' && geom.coordinates[0]) {
+        const coords = geom.coordinates[0]
+        lat = coords.reduce((sum: number, c: number[]) => sum + c[1], 0) / coords.length
+        lng = coords.reduce((sum: number, c: number[]) => sum + c[0], 0) / coords.length
+      } else if (geom.type === 'MultiPolygon' && geom.coordinates[0]?.[0]) {
+        const coords = geom.coordinates[0][0]
+        lat = coords.reduce((sum: number, c: number[]) => sum + c[1], 0) / coords.length
+        lng = coords.reduce((sum: number, c: number[]) => sum + c[0], 0) / coords.length
+      }
+      
+      // Normaliser intensité entre 0 et 1
+      const intensity = (value - minVal) / range
+      heatData.push([lat, lng, intensity])
+    }
+    
+    console.log(`[ThematicMap][Heatmap] ${heatData.length} points, range: ${minVal.toFixed(2)} - ${maxVal.toFixed(2)}`)
+    
+    // 3. Créer la couche heatmap
+    this.heatLayer = (L as any).heatLayer(heatData, {
+      radius: 25,
+      blur: 15,
+      maxZoom: 17,
+      max: 1.0,
+      gradient: {
+        0.0: '#0000ff',
+        0.2: '#00ffff',
+        0.4: '#00ff00',
+        0.6: '#ffff00',
+        0.8: '#ff8000',
+        1.0: '#ff0000'
+      }
+    })
+    
+    this.heatLayer.addTo(this.map)
+    
+    if (data.features.length > 0) {
+      this.map.fitBounds(this.polygonLayer.getBounds(), { padding: [50, 50] })
+    }
+    
+    console.log('[ThematicMap][Heatmap] Heatmap affichée')
+  }
+  
+  /**
    * Bind tooltip to a feature layer
    */
   private bindFeatureTooltip(feature: any, layer: L.Layer, data: ThematicData): void {
@@ -816,33 +910,66 @@ export class ThematicMapManager {
     legend.onAdd = () => {
       const div = L.DomUtil.create('div', 'thematic-legend')
       
-      // Déterminer si on a besoin de texte clair ou foncé selon la palette
-      const isDarkPalette = ['Viridis', 'Blues', 'Greens'].includes(config.style.palette)
-      
-      div.innerHTML = `
-        <div class="legend-header">
-          <h4>${paramLabel}</h4>
-          <button class="legend-close" title="Fermer">×</button>
-        </div>
-        <div class="legend-body">
-          ${classification.labels.map((label, i) => {
-            const bgColor = classification.colors[i] || '#cccccc'
-            return `
-              <div class="legend-item" data-class="${i}">
-                <span class="legend-color" style="background:${bgColor}"></span>
-                <span class="legend-label">${label}</span>
-              </div>
-            `
-          }).join('')}
-        </div>
-        <div class="legend-stats">
-          <div class="stat-row"><span>Min:</span><b>${stats.min.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
-          <div class="stat-row"><span>Max:</span><b>${stats.max.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
-          <div class="stat-row"><span>Moyenne:</span><b>${stats.mean.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
-          <div class="stat-row"><span>Médiane:</span><b>${stats.median.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
-          <div class="stat-row"><span>Mailles:</span><b>${stats.count}</b></div>
-        </div>
-      `
+      // Légende spécifique pour Heatmap: barre gradient
+      if (config.type === 'heatmap') {
+        div.innerHTML = `
+          <div class="legend-header">
+            <h4>${paramLabel}</h4>
+            <button class="legend-close" title="Fermer">×</button>
+          </div>
+          <div class="legend-body legend-heatmap">
+            <div class="heatmap-gradient" style="
+              background: linear-gradient(to right, 
+                #0000ff 0%, 
+                #00ffff 20%, 
+                #00ff00 40%, 
+                #ffff00 60%, 
+                #ff8000 80%, 
+                #ff0000 100%);
+              height: 20px;
+              width: 100%;
+              border-radius: 3px;
+            "></div>
+            <div class="heatmap-labels" style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 11px;">
+              <span>Faible</span>
+              <span>Forte</span>
+            </div>
+          </div>
+          <div class="legend-stats">
+            <div class="stat-row"><span>Min:</span><b>${stats.min.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+            <div class="stat-row"><span>Max:</span><b>${stats.max.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+            <div class="stat-row"><span>Moyenne:</span><b>${stats.mean.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+            <div class="stat-row"><span>Mailles:</span><b>${stats.count}</b></div>
+            <div class="stat-row" style="font-size: 10px; color: #666; margin-top: 5px;">Zones transparentes: absence de données</div>
+          </div>
+        `
+      } else {
+        // Légende classique pour choropleth/bubble/binary
+        div.innerHTML = `
+          <div class="legend-header">
+            <h4>${paramLabel}</h4>
+            <button class="legend-close" title="Fermer">×</button>
+          </div>
+          <div class="legend-body">
+            ${classification.labels.map((label, i) => {
+              const bgColor = classification.colors[i] || '#cccccc'
+              return `
+                <div class="legend-item" data-class="${i}">
+                  <span class="legend-color" style="background:${bgColor}"></span>
+                  <span class="legend-label">${label}</span>
+                </div>
+              `
+            }).join('')}
+          </div>
+          <div class="legend-stats">
+            <div class="stat-row"><span>Min:</span><b>${stats.min.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+            <div class="stat-row"><span>Max:</span><b>${stats.max.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+            <div class="stat-row"><span>Moyenne:</span><b>${stats.mean.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+            <div class="stat-row"><span>Médiane:</span><b>${stats.median.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
+            <div class="stat-row"><span>Mailles:</span><b>${stats.count}</b></div>
+          </div>
+        `
+      }
       
       // Event listeners
       const closeBtn = div.querySelector('.legend-close') as HTMLElement
