@@ -1,5 +1,172 @@
 # 📋 TODO - Atlas Géotechnique - Gestionnaire de Sondages v2
 
+## 🚀 SESSION 29/12/2024 - BOUNDSOPTIMIZER v4.0 - RÈGLE MÉTIER 0.5KM
+
+### ✅ MODIFICATIONS IMPLÉMENTÉES
+
+#### 1. **Règle métier: Marge minimale 0.5 km**
+- ✅ Constante `TARGET_MARGIN_KM = 0.5` (au lieu de 5 km)
+- ✅ Binary search basé **uniquement** sur `margin_min_km >= 0.5` (contrainte pixels supprimée)
+- ✅ Calcul marges en km: `margin_top_km`, `margin_bottom_km`, `margin_left_km`, `margin_right_km`, `margin_min_km`, `margin_max_km`
+- ✅ Ajout `margin_min_px_equiv` pour retour info en pixels (conversion approximative)
+- ✅ Warning logé si marge cible non atteinte
+- **Fichier**: `ui/src/export/bounds-optimizer.ts`
+
+#### 2. **Densification précision 1 km**
+- ✅ Constante `TARGET_SPACING_KM = 1.0` (au lieu de 4 km)
+- ✅ Logs détaillés: `rawPoints → densifiedPoints (espacement ≈ 1.0 km, périmètre ≈ X km)`
+- ✅ Calcul périmètre total de la géométrie
+- ✅ Warning si `> MAX_DENSIFIED_POINTS` (5000)
+- ✅ TODO annotés: downsampling, haversine, MultiPolygon complet
+- **Résultat**: Clearance calculée avec précision 4x supérieure
+
+#### 3. **Logging structuré texte par étape**
+- ✅ **En-tête détaillé**: ADM name, niveau, qualité, DPI, règle métier, bounds bruts
+- ✅ **Densification**: Type géométrie, points bruts/densifiés, périmètre, warnings MultiPolygon
+- ✅ **Itérations binary search** (par orientation):
+  - `iter=X shrink=Y`
+  - `pad: L/R/T/B/max` (en %)
+  - `margin_km: L/R/T/B/min/max` (en km)
+  - `clear_px: L/R/T/B/min (side)` (en pixels)
+  - `occ: x/y/area/major` (en %)
+  - Décision: `✅ ACCEPT` ou `❌ REJECT` avec raison
+- ✅ **Comparaison orientations**: Portrait vs Paysage avec métriques clés
+- ✅ **Métriques finales**: Occupation, marges bbox, clearance px, marges km, règle métier
+- **Format**: `[ADM1][Bounds][portrait] ...` pour traçabilité complète
+
+#### 4. **Export JSON structuré des métriques**
+- ✅ Interfaces TypeScript: `BoundsIterationLog`, `BoundsOrientationResult`, `BoundsOptimizerJSON`
+- ✅ Collecte automatique des données pendant l'optimisation
+- ✅ Méthode publique `toJSON()` pour export
+- ✅ Structure JSON complète:
+  ```typescript
+  {
+    adm_name: string,
+    adm_level: string,
+    quality: string,
+    dpi: number,
+    target_margin_km: number,
+    densification: { target_spacing_km, raw_points, densified_points, perimeter_km },
+    orientations: {
+      portrait: { iterations: [...], final: {...} },
+      landscape: { iterations: [...], final: {...} }
+    },
+    chosen: { orientation, metrics, reason },
+    warnings: []
+  }
+  ```
+- **Usage**: Appeler `optimizer.toJSON()` après `computeOptimalBounds()` pour récupérer toutes les métriques
+
+#### 5. **Constantes configurables**
+- ✅ `TARGET_MARGIN_KM = 0.5` - Marge minimale cible
+- ✅ `TARGET_SPACING_KM = 1.0` - Espacement densification
+- ✅ `MAX_DENSIFIED_POINTS = 5000` - Limite performance
+- ✅ `KM_PER_DEG_LAT = 111.0` - Approximation sphérique
+- ✅ TODOs documentés pour configurabilité future par niveau ADM
+
+### 📝 FICHIERS MODIFIÉS
+
+1. **`ui/src/export/bounds-optimizer.ts`** (v4.0.0)
+   - Header avec version et description complète
+   - Constantes `TARGET_MARGIN_KM`, `TARGET_SPACING_KM`, `MAX_DENSIFIED_POINTS`
+   - Interface `BoundsMetrics` enrichie: `margin_*_km`, `margin_min_px_equiv`
+   - Interfaces JSON: `BoundsIterationLog`, `BoundsOrientationResult`, `BoundsOptimizerJSON`
+   - Méthode `computeOptimalBounds()`: En-tête détaillé, collecte JSON, warnings
+   - Méthode `optimizeForOrientation()`: Logs itérations détaillées, collecte JSON
+   - Méthode `computeMetricsForShrink()`: Calcul marges km, `margin_min_px_equiv`
+   - Méthode `densifyBoundary()`: Espacement 1km, logs périmètre, warnings
+   - Méthode `logFinalMetrics()`: Affichage enrichi avec règle métier
+   - Méthode `toJSON()`: Export données structurées
+
+2. **`ui/vite.config.ts`**
+   - Limite Workbox augmentée à 3 MB pour build
+
+### 🔍 LOGS ATTENDUS (Après Modifications)
+
+**En-tête**:
+```
+[ADM1][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+[ADM1][Bounds] Début optimisation bounds
+[ADM1][Bounds] ADM: Plateaux | Niveau: ADM1 | Qualité: hd (300 DPI)
+[ADM1][Bounds] Règle métier: marge minimale >= 0.5 km
+[ADM1][Bounds] Type géométrie: Polygon
+[ADM1][Bounds] Densification: 247 points → 982 points (espacement ≈ 1.0 km, périmètre ≈ 982.3 km)
+```
+
+**Itérations**:
+```
+[ADM1][Bounds][portrait] iter=1 shrink=0.900
+[ADM1][Bounds][portrait]   → pad: L=8.2% R=8.5% T=12.1% B=11.8% max=12.1%
+[ADM1][Bounds][portrait]   → margin_km: L=2.34 R=2.41 T=3.45 B=3.36 min=2.34 max=3.45
+[ADM1][Bounds][portrait]   → clear_px: L=124.2 R=128.7 T=183.4 B=179.1 min=124.2 (left)
+[ADM1][Bounds][portrait]   → occ: x=83.5% y=76.1% area=63.5% major=83.5%
+[ADM1][Bounds][portrait] iter=1 ✅ ACCEPT (margin_min_km=2.34 >= 0.5)
+```
+
+**Comparaison**:
+```
+[ADM1][Bounds] COMPARAISON ORIENTATIONS
+[ADM1][Bounds] 🔄 Portrait: occ_area=68.2% margin_min=0.52km shrink=0.856
+[ADM1][Bounds] 🔄 Paysage: occ_area=65.1% margin_min=0.51km shrink=0.871
+[ADM1][Bounds] ✅ Orientation choisie: PORTRAIT (occ_area plus élevée)
+```
+
+**Métriques finales**:
+```
+[ADM1][Bounds] 📍 MARGES EN KM:
+[ADM1][Bounds]   margin_min=0.52km (≈ 78.3px) margin_max=1.23km
+[ADM1][Bounds] 🎯 RÈGLE MÉTIER:
+[ADM1][Bounds]   Cible: margin_min >= 0.5 km
+[ADM1][Bounds]   Obtenu: 0.52 km
+[ADM1][Bounds] ✅ Marge minimale respectée (limite atteinte)
+```
+
+### ⚠️ POINTS NON IMPLÉMENTÉS (TODOs documentés)
+
+- **Vérification post-fitBounds**: Mécanisme de vérification bounds réelles vs optimisées (prévention bug Plateaux dézoom)
+- **Flag isExportingBounds**: Lock global pour prévenir recentrage concurrent
+- **Fallback recentering**: Mécanisme de secours si bounds mismatch détecté
+- **Configurabilité par niveau ADM**: `TARGET_MARGIN_KM` adapté (0.2km ADM3, 0.5km ADM1/2)
+- **Downsampling**: Si `> MAX_DENSIFIED_POINTS`, réduire nombre de points
+- **Haversine**: Formule précise pour grandes distances (vs euclidienne actuelle)
+- **MultiPolygon complet**: Traiter tous les polygones (actuellement 1er seulement)
+
+### 🎯 VALIDATION MANUELLE (CHECKLIST)
+
+#### Test 1: Export ADM1 complet (5 zones)
+- [ ] Lancer serveur: `cd ui && npm run dev`
+- [ ] Exporter Centrale, Kara, Maritime, Plateaux, Savanes avec ip_avg
+- [ ] **Vérifier console pour chaque zone**:
+  - `margin_min_km` varie selon la zone (pas constant)
+  - `shrink` < 0.95 pour zones étirées (Maritime, Plateaux)
+  - `TARGET_MARGIN_KM = 0.5` respecté ou warning si non atteint
+  - Densification: `≈ 1.0 km` (pas 4.0 km)
+  - Itérations détaillées avec pad/margin/clear/occ
+- [ ] **Vérifier images**: Marges plus serrées (< 1 cm bords)
+
+#### Test 2: Export JSON métriques
+- [ ] Ajouter dans `export-quick-dialog.ts` après `computeOptimalBounds()`:
+  ```typescript
+  const jsonMetrics = optimizer.toJSON()
+  console.log('[ExportJSON]', JSON.stringify(jsonMetrics, null, 2))
+  ```
+- [ ] Vérifier structure JSON complète dans console
+- [ ] Vérifier `iterations` contient toutes les itérations
+- [ ] Vérifier `warnings` si marge non atteinte
+
+#### Test 3: Cas limites
+- [ ] ADM3 très petit (< 5 km): Vérifier warning si marge 0.5km impossible
+- [ ] ADM1 très étiré (Maritime): Vérifier `shrink` bas et marges asymétriques
+- [ ] MultiPolygon: Vérifier warning "1er polygone uniquement"
+
+### 📚 DOCUMENTATION TECHNIQUE
+
+- **Algorithme détaillé**: `docs/ALGORITHME_BOUNDS_OPTIMIZER.md` (créé session précédente)
+- **Version**: v4.0.0 (header fichier `bounds-optimizer.ts`)
+- **Limitations connues**: Documentées via TODOs dans le code
+
+---
+
 ## 🚀 SESSION 27/12/2024 - CORRECTIONS EXPORT ATLAS COMPLÈTES
 
 ### ✅ CORRECTIONS IMPLÉMENTÉES (SESSION UNIQUE)

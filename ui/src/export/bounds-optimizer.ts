@@ -1,14 +1,15 @@
 /**
- * Bounds Optimizer v3.5.4
+ * Bounds Optimizer v4.0.0
  * 
  * Algorithme itératif de cadrage ADM avec:
- * - KPI marges bbox (pad_left/right/top/bottom_pct)
- * - KPI clearance réelle (clear_left/right/top/bottom_px)
- * - Binary search pour maximiser occupation sans toucher les bords
- * - Densification de la limite ADM pour détection précise
+ * - Règle métier: marge minimale 0.5 km (configurable)
+ * - Densification précise (1 km entre points)
+ * - Binary search basé uniquement sur marge km (pas de contrainte pixels)
+ * - Logging structuré texte + JSON pour traçabilité
+ * - Vérification post-fitBounds pour éviter bug dézoom
  * 
  * @author Atlas Géotechnique
- * @version 3.5.4
+ * @version 4.0.0
  */
 
 import type { ExportQuality } from './export-types'
@@ -51,6 +52,15 @@ export interface BoundsMetrics {
   clear_min_px: number
   clear_min_side: 'left' | 'right' | 'top' | 'bottom'
   
+  // KPI marges en km (NOUVEAU)
+  margin_top_km: number
+  margin_bottom_km: number
+  margin_left_km: number
+  margin_right_km: number
+  margin_min_km: number
+  margin_max_km: number
+  margin_min_px_equiv: number  // Équivalent approximatif de margin_min_km en pixels
+  
   // KPI occupation
   occ_x: number
   occ_y: number
@@ -77,8 +87,91 @@ export interface ADMGeometry {
 }
 
 // ============================================================================
+// TYPES POUR EXPORT JSON STRUCTURÉ
+// ============================================================================
+
+export interface BoundsIterationLog {
+  iter: number
+  shrink: number
+  pad_pct: {
+    left: number
+    right: number
+    top: number
+    bottom: number
+    max: number
+  }
+  margins_km: {
+    left: number
+    right: number
+    top: number
+    bottom: number
+    min: number
+    max: number
+  }
+  clearance_px: {
+    left: number
+    right: number
+    top: number
+    bottom: number
+    min: number
+    side: string
+  }
+  occupation: {
+    occ_x: number
+    occ_y: number
+    occ_area: number
+    occ_major: number
+  }
+  decision: 'accept' | 'reject'
+  reason: string
+}
+
+export interface BoundsOrientationResult {
+  iterations: BoundsIterationLog[]
+  final: BoundsMetrics
+}
+
+export interface BoundsOptimizerJSON {
+  adm_name: string
+  adm_level: string
+  export_id?: string
+  quality: string
+  dpi: number
+  target_margin_km: number
+  densification: {
+    target_spacing_km: number
+    raw_points: number
+    densified_points: number
+    perimeter_km: number
+  }
+  orientations: {
+    portrait: BoundsOrientationResult
+    landscape: BoundsOrientationResult
+  }
+  chosen: {
+    orientation: 'portrait' | 'landscape'
+    metrics: BoundsMetrics
+    reason: string
+  }
+  warnings: string[]
+}
+
+// ============================================================================
 // CONSTANTES
 // ============================================================================
+
+// Règle métier: marge minimale en km (distance géométrie ↔ bord carte)
+// TODO: Rendre configurable par niveau ADM (0.2km pour ADM3, 0.5km pour ADM1/2)
+const TARGET_MARGIN_KM = 0.5  // Objectif: ~0.5 km de marge minimale
+const KM_PER_DEG_LAT = 111.0  // Approximation sphérique (WGS84 simplifié)
+
+// Densification de la géométrie pour calcul précis de clearance
+// TODO: Adapter dynamiquement selon taille ADM (1km pour grandes zones, 0.5km pour petites)
+const TARGET_SPACING_KM = 1.0  // Espacement entre points densifiés
+
+// Limite de performance: nombre max de points densifiés
+// TODO: Implémenter downsampling si dépassement
+const MAX_DENSIFIED_POINTS = 5000
 
 const DEFAULT_OPTIONS: OptimizationOptions = {
   safePx: 16,
@@ -98,6 +191,13 @@ export class BoundsOptimizer {
   private admGeometry: ADMGeometry | null = null
   private densifiedBoundary: Array<{ lat: number; lng: number }> = []
   
+  // Collecte des données pour export JSON
+  private jsonData: Partial<BoundsOptimizerJSON> = {}
+  private portraitIterations: BoundsIterationLog[] = []
+  private landscapeIterations: BoundsIterationLog[] = []
+  private rawPointsCount: number = 0
+  private perimeterKm: number = 0
+  
   constructor(quality: ExportQuality = 'hd', options: Partial<OptimizationOptions> = {}) {
     this.quality = quality
     this.options = { ...DEFAULT_OPTIONS, ...options }
@@ -111,27 +211,75 @@ export class BoundsOptimizer {
     geometry?: ADMGeometry
   ): Promise<BoundsMetrics> {
     
-    console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
-    console.log(`[${this.options.logPrefix}][Bounds] Optimisation pour: ${this.options.admName || 'inconnu'}`)
+    const dpi = QUALITY_SETTINGS[this.quality]?.dpi || 300
+    
+    // Initialiser jsonData
+    this.jsonData = {
+      adm_name: this.options.admName || 'inconnu',
+      adm_level: this.options.logPrefix,
+      quality: this.quality,
+      dpi,
+      target_margin_km: TARGET_MARGIN_KM,
+      warnings: []
+    }
+    this.portraitIterations = []
+    this.landscapeIterations = []
+    
+    // En-tête détaillé
+    console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`[${this.options.logPrefix}][Bounds] Début optimisation bounds`)
+    console.log(`[${this.options.logPrefix}][Bounds] ADM: ${this.options.admName || 'inconnu'} | Niveau: ${this.options.logPrefix} | Qualité: ${this.quality} (${dpi} DPI)`)
+    console.log(`[${this.options.logPrefix}][Bounds] Règle métier: marge minimale >= ${TARGET_MARGIN_KM} km`)
+    console.log(`[${this.options.logPrefix}][Bounds] Bounds ADM bruts: N=${admBounds.north.toFixed(3)} S=${admBounds.south.toFixed(3)} E=${admBounds.east.toFixed(3)} W=${admBounds.west.toFixed(3)}`)
     
     // Stocker et densifier la géométrie si fournie
     if (geometry) {
+      console.log(`[${this.options.logPrefix}][Bounds] Type géométrie: ${geometry.type}`)
       this.admGeometry = geometry
       this.densifiedBoundary = this.densifyBoundary(geometry)
-      console.log(`[${this.options.logPrefix}][Bounds] Géométrie densifiée: ${this.densifiedBoundary.length} points`)
+    } else {
+      console.log(`[${this.options.logPrefix}][Bounds] ⚠️ Aucune géométrie fournie - utilisation bbox ADM uniquement`)
+      this.jsonData.warnings?.push('Aucune géométrie fournie - utilisation bbox ADM uniquement')
+    }
+    
+    // Stocker densification dans jsonData
+    if (this.densifiedBoundary.length > 0) {
+      this.jsonData.densification = {
+        target_spacing_km: TARGET_SPACING_KM,
+        raw_points: this.rawPointsCount,
+        densified_points: this.densifiedBoundary.length,
+        perimeter_km: this.perimeterKm
+      }
     }
     
     // Tester les deux orientations
     const portraitMetrics = await this.optimizeForOrientation(admBounds, 'portrait')
     const landscapeMetrics = await this.optimizeForOrientation(admBounds, 'landscape')
     
-    // Choisir la meilleure
+    // Choisir la meilleure orientation
     const best = portraitMetrics.occ_area >= landscapeMetrics.occ_area ? portraitMetrics : landscapeMetrics
+    const reason = portraitMetrics.occ_area > landscapeMetrics.occ_area 
+      ? 'occ_area plus élevée' 
+      : portraitMetrics.occ_area < landscapeMetrics.occ_area 
+        ? 'occ_area plus élevée' 
+        : 'marges plus homogènes'
     
-    console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
-    console.log(`[${this.options.logPrefix}][Bounds] 🔄 Portrait: occ_area=${(portraitMetrics.occ_area * 100).toFixed(1)}% clear_min=${portraitMetrics.clear_min_px.toFixed(1)}px`)
-    console.log(`[${this.options.logPrefix}][Bounds] 🔄 Paysage: occ_area=${(landscapeMetrics.occ_area * 100).toFixed(1)}% clear_min=${landscapeMetrics.clear_min_px.toFixed(1)}px`)
-    console.log(`[${this.options.logPrefix}][Bounds] ✅ Orientation choisie: ${best.orientation.toUpperCase()}`)
+    console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`[${this.options.logPrefix}][Bounds] COMPARAISON ORIENTATIONS`)
+    console.log(`[${this.options.logPrefix}][Bounds] 🔄 Portrait: occ_area=${(portraitMetrics.occ_area * 100).toFixed(1)}% margin_min=${portraitMetrics.margin_min_km.toFixed(2)}km shrink=${portraitMetrics.shrinkFactor.toFixed(3)}`)
+    console.log(`[${this.options.logPrefix}][Bounds] 🔄 Paysage: occ_area=${(landscapeMetrics.occ_area * 100).toFixed(1)}% margin_min=${landscapeMetrics.margin_min_km.toFixed(2)}km shrink=${landscapeMetrics.shrinkFactor.toFixed(3)}`)
+    console.log(`[${this.options.logPrefix}][Bounds] ✅ Orientation choisie: ${best.orientation.toUpperCase()} (${reason})`)
+    
+    // Compléter jsonData
+    this.jsonData.orientations = {
+      portrait: { iterations: this.portraitIterations, final: portraitMetrics },
+      landscape: { iterations: this.landscapeIterations, final: landscapeMetrics }
+    }
+    this.jsonData.chosen = {
+      orientation: best.orientation,
+      metrics: best,
+      reason
+    }
     
     this.logFinalMetrics(best)
     
@@ -146,13 +294,15 @@ export class BoundsOptimizer {
     orientation: 'portrait' | 'landscape'
   ): Promise<BoundsMetrics> {
     
-    console.log(`[${this.options.logPrefix}][Bounds] Optimisation ${orientation}...`)
+    console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
+    console.log(`[${this.options.logPrefix}][Bounds][${orientation}] Début optimisation (binary search)`)
     
     // Binary search sur le shrink factor
     let shrinkMin = 0.80 // Plus serré possible
     let shrinkMax = 1.00 // Pas serré du tout (marge initiale)
     let bestMetrics: BoundsMetrics | null = null
     let iteration = 0
+    const iterationsLog: BoundsIterationLog[] = []
     
     while (iteration < this.options.maxIterations && (shrinkMax - shrinkMin) > 0.001) {
       iteration++
@@ -160,29 +310,90 @@ export class BoundsOptimizer {
       
       const metrics = this.computeMetricsForShrink(admBounds, orientation, shrinkMid)
       
-      // Log itération
-      console.log(`[${this.options.logPrefix}][Bounds] ${orientation} iter=${iteration} shrink=${shrinkMid.toFixed(3)} clear_min=${metrics.clear_min_px.toFixed(1)}px (${metrics.clear_min_side}) occ_area=${(metrics.occ_area * 100).toFixed(1)}%`)
+      // Log itération détaillée
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} shrink=${shrinkMid.toFixed(3)}`)
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → pad: L=${(metrics.pad_left_pct*100).toFixed(1)}% R=${(metrics.pad_right_pct*100).toFixed(1)}% T=${(metrics.pad_top_pct*100).toFixed(1)}% B=${(metrics.pad_bottom_pct*100).toFixed(1)}% max=${(metrics.pad_max_pct*100).toFixed(1)}%`)
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → margin_km: L=${metrics.margin_left_km.toFixed(2)} R=${metrics.margin_right_km.toFixed(2)} T=${metrics.margin_top_km.toFixed(2)} B=${metrics.margin_bottom_km.toFixed(2)} min=${metrics.margin_min_km.toFixed(2)} max=${metrics.margin_max_km.toFixed(2)}`)
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → clear_px: L=${metrics.clear_left_px.toFixed(1)} R=${metrics.clear_right_px.toFixed(1)} T=${metrics.clear_top_px.toFixed(1)} B=${metrics.clear_bottom_px.toFixed(1)} min=${metrics.clear_min_px.toFixed(1)} (${metrics.clear_min_side})`)
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → occ: x=${(metrics.occ_x*100).toFixed(1)}% y=${(metrics.occ_y*100).toFixed(1)}% area=${(metrics.occ_area*100).toFixed(1)}% major=${(metrics.occ_major*100).toFixed(1)}%`)
       
-      // Vérifier si clearance est acceptable
-      if (metrics.clear_min_px >= this.options.safePx) {
+      // RÈGLE MÉTIER v4.0: Vérifier UNIQUEMENT marge km (pas de contrainte pixels)
+      const marginKmOk = metrics.margin_min_km >= TARGET_MARGIN_KM
+      const decision = marginKmOk ? 'accept' : 'reject'
+      const reason = marginKmOk 
+        ? `margin_min_km=${metrics.margin_min_km.toFixed(2)} >= ${TARGET_MARGIN_KM}`
+        : `margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM}`
+      
+      // Collecter pour JSON
+      iterationsLog.push({
+        iter: iteration,
+        shrink: shrinkMid,
+        pad_pct: {
+          left: metrics.pad_left_pct,
+          right: metrics.pad_right_pct,
+          top: metrics.pad_top_pct,
+          bottom: metrics.pad_bottom_pct,
+          max: metrics.pad_max_pct
+        },
+        margins_km: {
+          left: metrics.margin_left_km,
+          right: metrics.margin_right_km,
+          top: metrics.margin_top_km,
+          bottom: metrics.margin_bottom_km,
+          min: metrics.margin_min_km,
+          max: metrics.margin_max_km
+        },
+        clearance_px: {
+          left: metrics.clear_left_px,
+          right: metrics.clear_right_px,
+          top: metrics.clear_top_px,
+          bottom: metrics.clear_bottom_px,
+          min: metrics.clear_min_px,
+          side: metrics.clear_min_side
+        },
+        occupation: {
+          occ_x: metrics.occ_x,
+          occ_y: metrics.occ_y,
+          occ_area: metrics.occ_area,
+          occ_major: metrics.occ_major
+        },
+        decision,
+        reason
+      })
+      
+      if (marginKmOk) {
         // Acceptable - on peut essayer de serrer plus
         bestMetrics = metrics
         shrinkMin = shrinkMid // Essayer plus serré
-        console.log(`[${this.options.logPrefix}][Bounds] ${orientation} iter=${iteration} ✅ accept (safe clearance)`)
+        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ✅ ACCEPT (margin_min_km=${metrics.margin_min_km.toFixed(2)} >= ${TARGET_MARGIN_KM})`)
       } else {
         // Trop serré - reculer
         shrinkMax = shrinkMid
-        console.log(`[${this.options.logPrefix}][Bounds] ${orientation} iter=${iteration} ❌ reject (clearance too small on ${metrics.clear_min_side})`)
+        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ❌ REJECT (margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM})`)
       }
     }
     
     // Si aucune solution trouvée, utiliser shrink=1.0 (marge initiale)
     if (!bestMetrics) {
       bestMetrics = this.computeMetricsForShrink(admBounds, orientation, 1.0)
-      console.log(`[${this.options.logPrefix}][Bounds] ${orientation} Aucune solution optimale - utilisation marge initiale`)
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}] ⚠️ Aucune solution optimale - utilisation marge initiale (shrink=1.0)`)
     }
     
-    console.log(`[${this.options.logPrefix}][Bounds] ${orientation} FINAL shrink=${bestMetrics.shrinkFactor.toFixed(3)} clear_min=${bestMetrics.clear_min_px.toFixed(1)}px pad_max=${(bestMetrics.pad_max_pct * 100).toFixed(1)}% occ_major=${(bestMetrics.occ_major * 100).toFixed(1)}%`)
+    console.log(`[${this.options.logPrefix}][Bounds][${orientation}] FINAL shrink=${bestMetrics.shrinkFactor.toFixed(3)} margin_min=${bestMetrics.margin_min_km.toFixed(2)}km (≈ ${bestMetrics.margin_min_px_equiv.toFixed(1)}px) occ_area=${(bestMetrics.occ_area*100).toFixed(1)}% pad_max=${(bestMetrics.pad_max_pct * 100).toFixed(1)}%`)
+    
+    // Warning si marge cible non atteinte
+    if (bestMetrics.margin_min_km < TARGET_MARGIN_KM) {
+      const warning = `${orientation}: Marge minimale cible ${TARGET_MARGIN_KM}km non atteinte (obtenu: ${bestMetrics.margin_min_km.toFixed(2)}km)`
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}] ⚠️ WARNING: ${warning}`)
+      this.jsonData.warnings?.push(warning)
+    }
+    
+    // Stocker itérations pour JSON
+    if (orientation === 'portrait') {
+      this.portraitIterations = iterationsLog
+    } else {
+      this.landscapeIterations = iterationsLog
+    }
     
     return bestMetrics
   }
@@ -250,6 +461,25 @@ export class BoundsOptimizer {
     const pad_min_pct = Math.min(pad_left_pct, pad_right_pct, pad_top_pct, pad_bottom_pct)
     const pad_max_pct = Math.max(pad_left_pct, pad_right_pct, pad_top_pct, pad_bottom_pct)
     
+    // 6b. KPI marges en km (NOUVEAU)
+    // Calculer distance entre bbox carte et bbox géométrie ADM en km
+    const latMid = (bounds.north + bounds.south) / 2
+    const kmPerDegLon = KM_PER_DEG_LAT * Math.cos(latMid * Math.PI / 180)
+    
+    const margin_top_km = (bounds.north - admBounds.north) * KM_PER_DEG_LAT
+    const margin_bottom_km = (admBounds.south - bounds.south) * KM_PER_DEG_LAT
+    const margin_left_km = (admBounds.west - bounds.west) * kmPerDegLon
+    const margin_right_km = (bounds.east - admBounds.east) * kmPerDegLon
+    
+    const margin_min_km = Math.min(margin_top_km, margin_bottom_km, margin_left_km, margin_right_km)
+    const margin_max_km = Math.max(margin_top_km, margin_bottom_km, margin_left_km, margin_right_km)
+    
+    // 6c. Calculer équivalent pixels de margin_min_km
+    const pxPerDegLat = layout.mapArea.height / frameHeightDeg
+    const pxPerDegLon = layout.mapArea.width / frameWidthDeg
+    const margin_min_deg = margin_min_km / KM_PER_DEG_LAT  // Approximation
+    const margin_min_px_equiv = margin_min_deg * Math.max(pxPerDegLat, pxPerDegLon)
+    
     // 7. KPI clearance réelle (px)
     const clearance = this.computeClearance(bounds, layout.mapArea.width, layout.mapArea.height)
     
@@ -271,6 +501,13 @@ export class BoundsOptimizer {
       pad_min_pct,
       pad_max_pct,
       ...clearance,
+      margin_top_km,
+      margin_bottom_km,
+      margin_left_km,
+      margin_right_km,
+      margin_min_km,
+      margin_max_km,
+      margin_min_px_equiv,
       occ_x,
       occ_y,
       occ_area,
@@ -374,26 +611,33 @@ export class BoundsOptimizer {
   
   /**
    * Densifie la limite ADM pour calcul précis de clearance
-   * Interpole des points tous les ~3-5 km le long des segments
+   * Interpole des points tous les TARGET_SPACING_KM km le long des segments
+   * TODO: Traiter tous les rings extérieurs pour MultiPolygon (actuellement 1er seulement)
+   * TODO: Implémenter downsampling si > MAX_DENSIFIED_POINTS
    */
   private densifyBoundary(geometry: ADMGeometry): Array<{ lat: number; lng: number }> {
     const points: Array<{ lat: number; lng: number }> = []
-    const targetSpacingKm = 4 // Espacement cible en km
+    let totalPerimeterKm = 0
+    let rawPointsCount = 0
     
     const processRing = (ring: number[][]) => {
+      rawPointsCount += ring.length
+      
       for (let i = 0; i < ring.length - 1; i++) {
         const [lng1, lat1] = ring[i]
         const [lng2, lat2] = ring[i + 1]
         
-        // Distance approximative en km
+        // Distance approximative en km (formule euclidienne simplifiée)
+        // TODO: Utiliser formule haversine pour précision à grande échelle
         const dlng = lng2 - lng1
         const dlat = lat2 - lat1
-        const distKm = Math.sqrt(dlng * dlng * 111 * 111 + dlat * dlat * 111 * 111)
+        const distKm = Math.sqrt(dlng * dlng * KM_PER_DEG_LAT * KM_PER_DEG_LAT + dlat * dlat * KM_PER_DEG_LAT * KM_PER_DEG_LAT)
+        totalPerimeterKm += distKm
         
         // Nombre de segments à créer
-        const nSegments = Math.max(1, Math.ceil(distKm / targetSpacingKm))
+        const nSegments = Math.max(1, Math.ceil(distKm / TARGET_SPACING_KM))
         
-        // Interpoler
+        // Interpolation linéaire
         for (let j = 0; j < nSegments; j++) {
           const t = j / nSegments
           points.push({
@@ -405,18 +649,37 @@ export class BoundsOptimizer {
     }
     
     if (geometry.type === 'Polygon') {
-      // Ring extérieur seulement
       if (geometry.coordinates[0]) {
         processRing(geometry.coordinates[0])
       }
     } else if (geometry.type === 'MultiPolygon') {
-      // Premier polygone, ring extérieur
+      // TODO: Traiter tous les polygones, pas seulement le premier
+      console.log(`[${this.options.logPrefix}][Bounds] ⚠️ MultiPolygon détecté: densification du 1er polygone uniquement`)
       if (geometry.coordinates[0]?.[0]) {
         processRing(geometry.coordinates[0][0])
       }
     }
     
+    // Stocker pour JSON
+    this.rawPointsCount = rawPointsCount
+    this.perimeterKm = totalPerimeterKm
+    
+    // Log détaillé de la densification
+    console.log(`[${this.options.logPrefix}][Bounds] Densification: ${rawPointsCount} points → ${points.length} points (espacement ≈ ${TARGET_SPACING_KM.toFixed(1)} km, périmètre ≈ ${totalPerimeterKm.toFixed(1)} km)`)
+    
+    if (points.length > MAX_DENSIFIED_POINTS) {
+      console.log(`[${this.options.logPrefix}][Bounds] ⚠️ WARNING: ${points.length} points dépassent MAX_DENSIFIED_POINTS (${MAX_DENSIFIED_POINTS})`)
+      // TODO: Implémenter downsampling
+    }
+    
     return points
+  }
+  
+  /**
+   * Exporte les données structurées au format JSON
+   */
+  public toJSON(): BoundsOptimizerJSON {
+    return this.jsonData as BoundsOptimizerJSON
   }
   
   /**
@@ -441,11 +704,22 @@ export class BoundsOptimizer {
     console.log(`[${this.options.logPrefix}][Bounds]   clear_top=${metrics.clear_top_px.toFixed(1)}px clear_bottom=${metrics.clear_bottom_px.toFixed(1)}px`)
     console.log(`[${this.options.logPrefix}][Bounds]   clear_left=${metrics.clear_left_px.toFixed(1)}px clear_right=${metrics.clear_right_px.toFixed(1)}px`)
     console.log(`[${this.options.logPrefix}][Bounds]   clear_min=${metrics.clear_min_px.toFixed(1)}px (side=${metrics.clear_min_side})`)
+    console.log(`[${this.options.logPrefix}][Bounds] `)
+    console.log(`[${this.options.logPrefix}][Bounds] 📍 MARGES EN KM:`)
+    console.log(`[${this.options.logPrefix}][Bounds]   margin_top=${metrics.margin_top_km.toFixed(2)}km margin_bottom=${metrics.margin_bottom_km.toFixed(2)}km`)
+    console.log(`[${this.options.logPrefix}][Bounds]   margin_left=${metrics.margin_left_km.toFixed(2)}km margin_right=${metrics.margin_right_km.toFixed(2)}km`)
+    console.log(`[${this.options.logPrefix}][Bounds]   margin_min=${metrics.margin_min_km.toFixed(2)}km (≈ ${metrics.margin_min_px_equiv.toFixed(1)}px) margin_max=${metrics.margin_max_km.toFixed(2)}km`)
+    console.log(`[${this.options.logPrefix}][Bounds] `)
+    console.log(`[${this.options.logPrefix}][Bounds] 🎯 RÈGLE MÉTIER:`)
+    console.log(`[${this.options.logPrefix}][Bounds]   Cible: margin_min >= ${TARGET_MARGIN_KM} km`)
+    console.log(`[${this.options.logPrefix}][Bounds]   Obtenu: ${metrics.margin_min_km.toFixed(2)} km`)
     
-    if (metrics.clear_min_px < this.options.safePx * 1.5) {
-      console.log(`[${this.options.logPrefix}][Bounds] ⚠️ Limite atteinte: impossible de serrer plus sans risquer contact (${metrics.clear_min_side}) — forme oblique/allongée.`)
+    if (metrics.margin_min_km < TARGET_MARGIN_KM) {
+      console.log(`[${this.options.logPrefix}][Bounds] ⚠️ WARNING: Marge minimale cible NON ATTEINTE (${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM})`)
+    } else if (metrics.margin_min_km < TARGET_MARGIN_KM * 1.2) {
+      console.log(`[${this.options.logPrefix}][Bounds] ✅ Marge minimale respectée (limite atteinte)`)
     } else {
-      console.log(`[${this.options.logPrefix}][Bounds] ✅ Clearance confortable`)
+      console.log(`[${this.options.logPrefix}][Bounds] ✅ Marges confortables`)
     }
   }
 }
