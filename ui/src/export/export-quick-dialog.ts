@@ -2440,7 +2440,8 @@ export class ExportQuickDialog {
     if (!admGeometry) {
       const admFilters = this.config.getActiveAdmFilters?.()
       if (admFilters) {
-        admGeometry = await this.extractAdmGeometryRobust(admFilters)
+        const extracted = await this.extractAdmGeometryRobust(admFilters)
+        admGeometry = extracted || undefined
       }
     }
     
@@ -2462,6 +2463,12 @@ export class ExportQuickDialog {
     }
     
     const metrics = await optimizer.computeOptimalBounds(boundsRect, admGeometry)
+    
+    // Export JSON des métriques pour traçabilité
+    const jsonMetrics = optimizer.toJSON()
+    console.log(`[Export][BoundsJSON] ${admName || 'Zone'}:`, JSON.stringify(jsonMetrics, null, 2))
+    
+    // TODO: Sauvegarder jsonMetrics dans le log d'export ou fichier séparé
     
     return metrics.bounds
   }

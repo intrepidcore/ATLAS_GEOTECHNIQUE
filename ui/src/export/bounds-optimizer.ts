@@ -67,6 +67,9 @@ export interface BoundsMetrics {
   occ_area: number
   occ_major: number
   
+  // Score multi-objectif (v4.1)
+  quality_score: number  // Score combiné: occupation - pénalités marges
+  
   // Métadonnées
   orientation: 'portrait' | 'landscape'
   shrinkFactor: number
@@ -163,6 +166,8 @@ export interface BoundsOptimizerJSON {
 // Règle métier: marge minimale en km (distance géométrie ↔ bord carte)
 // TODO: Rendre configurable par niveau ADM (0.2km pour ADM3, 0.5km pour ADM1/2)
 const TARGET_MARGIN_KM = 0.5  // Objectif: ~0.5 km de marge minimale
+const MAX_PAD_PCT = 0.30  // Limite: pad_max ne doit pas dépasser 30% (évite marges énormes)
+const MAX_MARGIN_RATIO = 4.0  // Limite: margin_max / margin_min <= 4 (évite asymétrie extrême)
 const KM_PER_DEG_LAT = 111.0  // Approximation sphérique (WGS84 simplifié)
 
 // Densification de la géométrie pour calcul précis de clearance
@@ -256,18 +261,22 @@ export class BoundsOptimizer {
     const portraitMetrics = await this.optimizeForOrientation(admBounds, 'portrait')
     const landscapeMetrics = await this.optimizeForOrientation(admBounds, 'landscape')
     
-    // Choisir la meilleure orientation
-    const best = portraitMetrics.occ_area >= landscapeMetrics.occ_area ? portraitMetrics : landscapeMetrics
-    const reason = portraitMetrics.occ_area > landscapeMetrics.occ_area 
-      ? 'occ_area plus élevée' 
-      : portraitMetrics.occ_area < landscapeMetrics.occ_area 
-        ? 'occ_area plus élevée' 
-        : 'marges plus homogènes'
+    // Choisir la meilleure orientation basée sur quality_score
+    const best = portraitMetrics.quality_score >= landscapeMetrics.quality_score ? portraitMetrics : landscapeMetrics
+    const scoreDiff = Math.abs(portraitMetrics.quality_score - landscapeMetrics.quality_score)
+    let reason = ''
+    if (scoreDiff < 0.01) {
+      reason = 'scores équivalents, portrait par défaut'
+    } else if (portraitMetrics.quality_score > landscapeMetrics.quality_score) {
+      reason = `score portrait (${portraitMetrics.quality_score.toFixed(3)}) > paysage (${landscapeMetrics.quality_score.toFixed(3)})`
+    } else {
+      reason = `score paysage (${landscapeMetrics.quality_score.toFixed(3)}) > portrait (${portraitMetrics.quality_score.toFixed(3)})`
+    }
     
     console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
     console.log(`[${this.options.logPrefix}][Bounds] COMPARAISON ORIENTATIONS`)
-    console.log(`[${this.options.logPrefix}][Bounds] 🔄 Portrait: occ_area=${(portraitMetrics.occ_area * 100).toFixed(1)}% margin_min=${portraitMetrics.margin_min_km.toFixed(2)}km shrink=${portraitMetrics.shrinkFactor.toFixed(3)}`)
-    console.log(`[${this.options.logPrefix}][Bounds] 🔄 Paysage: occ_area=${(landscapeMetrics.occ_area * 100).toFixed(1)}% margin_min=${landscapeMetrics.margin_min_km.toFixed(2)}km shrink=${landscapeMetrics.shrinkFactor.toFixed(3)}`)
+    console.log(`[${this.options.logPrefix}][Bounds] 🔄 Portrait: score=${portraitMetrics.quality_score.toFixed(3)} occ=${(portraitMetrics.occ_area*100).toFixed(1)}% margin_min=${portraitMetrics.margin_min_km.toFixed(2)}km pad_max=${(portraitMetrics.pad_max_pct*100).toFixed(1)}% shrink=${portraitMetrics.shrinkFactor.toFixed(3)}`)
+    console.log(`[${this.options.logPrefix}][Bounds] 🔄 Paysage:  score=${landscapeMetrics.quality_score.toFixed(3)} occ=${(landscapeMetrics.occ_area*100).toFixed(1)}% margin_min=${landscapeMetrics.margin_min_km.toFixed(2)}km pad_max=${(landscapeMetrics.pad_max_pct*100).toFixed(1)}% shrink=${landscapeMetrics.shrinkFactor.toFixed(3)}`)
     console.log(`[${this.options.logPrefix}][Bounds] ✅ Orientation choisie: ${best.orientation.toUpperCase()} (${reason})`)
     
     // Compléter jsonData
@@ -317,12 +326,20 @@ export class BoundsOptimizer {
       console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → clear_px: L=${metrics.clear_left_px.toFixed(1)} R=${metrics.clear_right_px.toFixed(1)} T=${metrics.clear_top_px.toFixed(1)} B=${metrics.clear_bottom_px.toFixed(1)} min=${metrics.clear_min_px.toFixed(1)} (${metrics.clear_min_side})`)
       console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → occ: x=${(metrics.occ_x*100).toFixed(1)}% y=${(metrics.occ_y*100).toFixed(1)}% area=${(metrics.occ_area*100).toFixed(1)}% major=${(metrics.occ_major*100).toFixed(1)}%`)
       
-      // RÈGLE MÉTIER v4.0: Vérifier UNIQUEMENT marge km (pas de contrainte pixels)
+      // RÈGLE MÉTIER v4.1: Vérifier marge km + contraintes pad_max et margin_ratio
       const marginKmOk = metrics.margin_min_km >= TARGET_MARGIN_KM
-      const decision = marginKmOk ? 'accept' : 'reject'
-      const reason = marginKmOk 
-        ? `margin_min_km=${metrics.margin_min_km.toFixed(2)} >= ${TARGET_MARGIN_KM}`
-        : `margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM}`
+      const padMaxOk = metrics.pad_max_pct <= MAX_PAD_PCT
+      const marginRatio = metrics.margin_min_km > 0 ? metrics.margin_max_km / metrics.margin_min_km : 999
+      const marginRatioOk = marginRatio <= MAX_MARGIN_RATIO
+      
+      const isAcceptable = marginKmOk && padMaxOk && marginRatioOk
+      const decision = isAcceptable ? 'accept' : 'reject'
+      
+      let reason = ''
+      if (!marginKmOk) reason = `margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM}`
+      else if (!padMaxOk) reason = `pad_max=${(metrics.pad_max_pct*100).toFixed(1)}% > ${(MAX_PAD_PCT*100).toFixed(0)}%`
+      else if (!marginRatioOk) reason = `margin_ratio=${marginRatio.toFixed(2)} > ${MAX_MARGIN_RATIO}`
+      else reason = `all constraints OK`
       
       // Collecter pour JSON
       iterationsLog.push({
@@ -361,15 +378,18 @@ export class BoundsOptimizer {
         reason
       })
       
-      if (marginKmOk) {
+      if (isAcceptable) {
         // Acceptable - on peut essayer de serrer plus
-        bestMetrics = metrics
+        // Choisir le meilleur candidat basé sur quality_score
+        if (!bestMetrics || metrics.quality_score > bestMetrics.quality_score) {
+          bestMetrics = metrics
+        }
         shrinkMin = shrinkMid // Essayer plus serré
-        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ✅ ACCEPT (margin_min_km=${metrics.margin_min_km.toFixed(2)} >= ${TARGET_MARGIN_KM})`)
+        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ✅ ACCEPT (${reason}) score=${metrics.quality_score.toFixed(3)}`)
       } else {
         // Trop serré - reculer
         shrinkMax = shrinkMid
-        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ❌ REJECT (margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM})`)
+        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ❌ REJECT (${reason})`)
       }
     }
     
@@ -379,7 +399,7 @@ export class BoundsOptimizer {
       console.log(`[${this.options.logPrefix}][Bounds][${orientation}] ⚠️ Aucune solution optimale - utilisation marge initiale (shrink=1.0)`)
     }
     
-    console.log(`[${this.options.logPrefix}][Bounds][${orientation}] FINAL shrink=${bestMetrics.shrinkFactor.toFixed(3)} margin_min=${bestMetrics.margin_min_km.toFixed(2)}km (≈ ${bestMetrics.margin_min_px_equiv.toFixed(1)}px) occ_area=${(bestMetrics.occ_area*100).toFixed(1)}% pad_max=${(bestMetrics.pad_max_pct * 100).toFixed(1)}%`)
+    console.log(`[${this.options.logPrefix}][Bounds][${orientation}] FINAL shrink=${bestMetrics.shrinkFactor.toFixed(3)} score=${bestMetrics.quality_score.toFixed(3)} margin_min=${bestMetrics.margin_min_km.toFixed(2)}km (≈ ${bestMetrics.margin_min_px_equiv.toFixed(1)}px) occ=${(bestMetrics.occ_area*100).toFixed(1)}% pad_max=${(bestMetrics.pad_max_pct * 100).toFixed(1)}%`)
     
     // Warning si marge cible non atteinte
     if (bestMetrics.margin_min_km < TARGET_MARGIN_KM) {
@@ -492,6 +512,15 @@ export class BoundsOptimizer {
     const occ_area = (W0_km * H0_km) / (finalWidthKm * finalHeightKm)
     const occ_major = Math.max(occ_x, occ_y)
     
+    // 9. Score multi-objectif (v4.1)
+    // Priorité 1: occupation maximale
+    // Priorité 2: pénaliser pad_max excessif
+    // Priorité 3: pénaliser asymétrie margin_max/margin_min
+    const pad_penalty = Math.max(0, (pad_max_pct - 0.15) * 2)  // Pénalité si pad_max > 15%
+    const margin_ratio = margin_min_km > 0 ? margin_max_km / margin_min_km : 1
+    const asymmetry_penalty = Math.max(0, (margin_ratio - 2.0) * 0.05)  // Pénalité si ratio > 2
+    const quality_score = occ_area - pad_penalty - asymmetry_penalty
+    
     return {
       bounds,
       pad_left_pct,
@@ -512,6 +541,7 @@ export class BoundsOptimizer {
       occ_y,
       occ_area,
       occ_major,
+      quality_score,
       orientation,
       shrinkFactor
     }

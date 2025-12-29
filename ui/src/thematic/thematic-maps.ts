@@ -295,14 +295,17 @@ export class ThematicMapManager {
       }
     }
     
-    // Pour les paramètres de densité (n_sondages, etc.), utiliser des breaks fixes
+    // Détecter si le paramètre est un comptage (valeurs entières)
     const param = getParameterById(config.parameter)
+    const isCountParameter = param?.id.includes('n_') || param?.id.includes('count') || param?.unit === 'count'
+    
+    // Pour les paramètres de densité (n_sondages, etc.), utiliser des breaks fixes
     if (param?.defaultBreaks && config.classification?.method !== 'equal_interval') {
       const breaks = param.defaultBreaks
       return {
         breaks,
         colors: await this.getColors(config.style.palette, breaks.length + 1),
-        labels: this.generateLabels(breaks),
+        labels: this.generateLabels(breaks, isCountParameter),
         method: 'default_breaks',
         n_classes: breaks.length + 1
       }
@@ -321,6 +324,10 @@ export class ThematicMapManager {
         // Intervalles égaux
         const interval = (maxVal - minVal) / nClasses
         rawBreaks = Array.from({ length: nClasses - 1 }, (_, i) => minVal + (i + 1) * interval)
+        // Pour les comptages, arrondir aux entiers
+        if (isCountParameter) {
+          rawBreaks = rawBreaks.map(b => Math.round(b))
+        }
         break
       
       case 'quantiles':
@@ -331,11 +338,16 @@ export class ThematicMapManager {
           const idx = Math.floor((i / nClasses) * sortedValues.length)
           rawBreaks.push(sortedValues[idx])
         }
+        // Pour les comptages, arrondir aux entiers
+        if (isCountParameter) {
+          rawBreaks = rawBreaks.map(b => Math.round(b))
+        }
         break
     }
     
     // Nettoyer les breaks (supprimer doublons, arrondir)
-    const cleanedBreaks = this.sanitizeBreaks(rawBreaks)
+    const decimals = isCountParameter ? 0 : 1
+    const cleanedBreaks = this.sanitizeBreaks(rawBreaks, decimals)
     const effectiveClasses = cleanedBreaks.length + 1
     
     // Log si le nombre de classes a été réduit
@@ -346,7 +358,7 @@ export class ThematicMapManager {
     return {
       breaks: cleanedBreaks,
       colors: await this.getColors(config.style.palette, effectiveClasses),
-      labels: this.generateLabels(cleanedBreaks),
+      labels: this.generateLabels(cleanedBreaks, isCountParameter),
       method: config.classification?.method || 'quantiles',
       n_classes: effectiveClasses
     }
@@ -431,23 +443,42 @@ export class ThematicMapManager {
   
   /**
    * Générer les labels pour les classes (intervalles strictement croissants)
+   * Gère les valeurs entières pour les paramètres de comptage
    */
-  private generateLabels(breaks: number[]): string[] {
+  private generateLabels(breaks: number[], isInteger: boolean = false): string[] {
     if (breaks.length === 0) return ['Toutes valeurs']
-    if (breaks.length === 1) return [`≤ ${breaks[0].toFixed(1)}`, `> ${breaks[0].toFixed(1)}`]
+    
+    const format = (val: number) => isInteger ? Math.round(val).toString() : val.toFixed(1)
+    
+    if (breaks.length === 1) {
+      return isInteger 
+        ? [`${format(breaks[0])}`, `> ${format(breaks[0])}`]
+        : [`≤ ${format(breaks[0])}`, `> ${format(breaks[0])}`]
+    }
     
     const labels: string[] = []
     
-    // Première classe : ≤ premier break
-    labels.push(`≤ ${breaks[0].toFixed(1)}`)
-    
-    // Classes intermédiaires
-    for (let i = 0; i < breaks.length - 1; i++) {
-      labels.push(`${breaks[i].toFixed(1)} - ${breaks[i + 1].toFixed(1)}`)
+    if (isInteger) {
+      // Pour les entiers: "1", "2-3", "4-5", "> 5"
+      labels.push(format(breaks[0]))
+      for (let i = 0; i < breaks.length - 1; i++) {
+        const start = Math.round(breaks[i]) + 1
+        const end = Math.round(breaks[i + 1])
+        if (start === end) {
+          labels.push(format(end))
+        } else {
+          labels.push(`${start}-${end}`)
+        }
+      }
+      labels.push(`> ${format(breaks[breaks.length - 1])}`)
+    } else {
+      // Pour les décimales: format classique
+      labels.push(`≤ ${format(breaks[0])}`)
+      for (let i = 0; i < breaks.length - 1; i++) {
+        labels.push(`${format(breaks[i])} - ${format(breaks[i + 1])}`)
+      }
+      labels.push(`> ${format(breaks[breaks.length - 1])}`)
     }
-    
-    // Dernière classe : > dernier break
-    labels.push(`> ${breaks[breaks.length - 1].toFixed(1)}`)
     
     return labels
   }
