@@ -11,6 +11,7 @@ import type {
   ThematicClassBreak
 } from './thematic-types'
 import { getParameterById, getRecommendedPalette, PALETTE_OPTIONS } from './thematic-types'
+import { ContextLayersManager } from './context-layers'
 
 export class ThematicMapManager {
   private map: L.Map
@@ -25,6 +26,9 @@ export class ThematicMapManager {
   private currentData: ThematicData | null = null
   private currentExportState: ThematicExportState | null = null
   
+  // Gestionnaire des couches de contexte
+  private contextLayers: ContextLayersManager
+  
   // État de chargement pour waitUntilReady
   private _isReady: boolean = true
   private _readyCallbacks: Array<() => void> = []
@@ -33,6 +37,14 @@ export class ThematicMapManager {
     this.map = map
     this.apiUrl = apiUrl
     this.admOverlayLayer = L.layerGroup().addTo(map)
+    this.contextLayers = new ContextLayersManager(map)
+  }
+  
+  /**
+   * Toggle context layer (proxy to ContextLayersManager)
+   */
+  async toggleContextLayer(layerType: 'geologie' | 'pedologie' | 'risque-gonflement', show: boolean): Promise<void> {
+    await this.contextLayers.toggleLayer(layerType, show)
   }
   
   /**

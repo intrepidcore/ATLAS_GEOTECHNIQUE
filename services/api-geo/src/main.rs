@@ -17,6 +17,7 @@ mod cells_labs;
 mod config;
 mod db_manager;
 mod events;
+mod dsm;
 mod exports;
 mod geocode_manual;
 mod geocode_suggestions;
@@ -25,6 +26,7 @@ mod geotechnical;
 mod health;
 mod import_bulk;
 mod import_wizard;
+mod layers;
 mod metrics;
 mod metrics_handler;
 mod neighbors;
@@ -137,8 +139,13 @@ async fn main() -> anyhow::Result<()> {
         // Routes publiques pour export cartographique
         .route("/export/cells/adm", get(thematic::get_adm_cells))
         .route("/coverage/mailles", get(routes::get_coverage_mailles))
+        .route("/coverage/mailles-dsm", get(dsm::get_coverage_mailles_dsm))
         .route("/adm-neighbors", get(routes::get_adm_neighbors))
         .nest("/grid", routes::grid_router())
+        // Context layers endpoints (public - read-only)
+        .route("/layers/geologie", get(layers::get_geologie))
+        .route("/layers/pedologie", get(layers::get_pedologie))
+        .route("/layers/risque-gonflement", get(layers::get_risque_gonflement))
         // Survey management endpoints
         .route("/grid/locate", get(surveys::locate_maille))
         // Unified surveys endpoints (AVANT /surveys/:id pour éviter conflit)

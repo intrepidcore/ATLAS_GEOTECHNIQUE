@@ -432,8 +432,8 @@ pub async fn list_configs(
             .unwrap_or(StyleConfig {
                 palette: "Blues".to_string(),
                 opacity: 0.7,
-                stroke_width: 1.0,
-                stroke_color: "#333".to_string(),
+                stroke_width: 0.1, // v4.5.1: Réduit pour export discret
+                stroke_color: "#F0F0F0".to_string(),
             });
 
         let filters: FilterConfig = config_json
@@ -512,8 +512,8 @@ pub async fn get_config(
         .unwrap_or(StyleConfig {
             palette: "Blues".to_string(),
             opacity: 0.7,
-            stroke_width: 1.0,
-            stroke_color: "#333".to_string(),
+            stroke_width: 0.1, // v4.5.1: Réduit pour export discret
+            stroke_color: "#F0F0F0".to_string(),
         });
 
     let filters: FilterConfig = config_json

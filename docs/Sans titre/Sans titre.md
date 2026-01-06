@@ -1,0 +1,1 @@
+« Le produit Copernicus DSM (30 m) a été retenu comme proxy topographique à l’échelle nationale. Les effets liés aux objets de surface sont considérés négligeables au regard de l’agrégation spatiale par mailles kilométriques, conformément aux pratiques usuelles en analyses environnementales régionales. »

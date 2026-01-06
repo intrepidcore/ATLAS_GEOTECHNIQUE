@@ -256,7 +256,7 @@ export interface ThematicLegendData {
   parameterId?: string;
   parameterLabel: string;
   unit: string;
-  mapType: 'choropleth' | 'proportional' | 'binary';
+  mapType: 'choropleth' | 'proportional' | 'binary' | 'heatmap';
   classes: LegendClass[];
   features?: any[];
   totalCellCount?: number;

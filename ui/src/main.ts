@@ -1572,9 +1572,10 @@ async function checkNearbyDuplicates(lon: number, lat: number, alertsEl: HTMLEle
 // --- Grid loading ---
 let isLoadingGrid = false
 let lastBounds: L.LatLngBounds | null = null
+let currentGridLevel: '2km' | '28km' = '2km'
 
 async function loadGrid(useBbox = false) {
-  console.log('[loadGrid] Début - API_GEO:', API_GEO, 'isLoadingGrid:', isLoadingGrid)
+  console.log('[loadGrid] Début - API_GEO:', API_GEO, 'isLoadingGrid:', isLoadingGrid, 'gridLevel:', currentGridLevel)
   if (!API_GEO || isLoadingGrid) {
     console.error('[loadGrid] ABORT - API_GEO vide ou déjà en cours de chargement')
     return
@@ -1583,8 +1584,8 @@ async function loadGrid(useBbox = false) {
 
   setStatus('Chargement de la grille…')
   try {
-    let url = `${API_GEO}/coverage/mailles`
-    console.log('[loadGrid] Fetching URL:', url)
+    const params = new URLSearchParams()
+    params.set('grid', currentGridLevel)
     
     // Chargement paresseux par bbox si demandé et carte déplacée
     if (useBbox && map) {
@@ -1595,8 +1596,11 @@ async function loadGrid(useBbox = false) {
         bounds.getEast(),
         bounds.getNorth()
       ]
-      url += `?bbox=${bbox.join(',')}`
+      params.set('bbox', bbox.join(','))
     }
+    
+    const url = `${API_GEO}/coverage/mailles?${params.toString()}`
+    console.log('[loadGrid] Fetching URL:', url)
     
     const res = await fetch(url)
     console.log('[loadGrid] Response status:', res.status, res.statusText)
@@ -1695,8 +1699,13 @@ async function loadGrid(useBbox = false) {
   console.log('[reloadSondages] Fonction désactivée - les sondages sont affichés via les mailles')
 }
 
-// Exposer loadGrid globalement pour le rechargement après géocodage
+// Exposer loadGrid et setGridLevel globalement
 ;(window as any).loadGrid = loadGrid
+;(window as any).setGridLevel = (level: '2km' | '28km') => {
+  console.log('[setGridLevel] Changement de niveau:', currentGridLevel, '->', level)
+  currentGridLevel = level
+  loadGrid()
+}
 
 // Charger la grille immédiatement au démarrage
 setTimeout(() => {

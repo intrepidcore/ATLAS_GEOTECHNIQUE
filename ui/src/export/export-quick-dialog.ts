@@ -573,33 +573,49 @@ export class ExportQuickDialog {
     };
     
     try {
-      // Récupérer les infos thématiques et ADM
-      const thematic = this.config.getActiveThematic() || {
-        name: 'Carte géotechnique',
-        parameter: 'n_sondages'
-      };
-      const admFilters = this.config.getActiveAdmFilters();
+      // 1. Récupérer les infos thématiques et ADM
       const map = this.config.getMap?.();
       
       if (!map) {
         console.error('[ExportSingle] Map non disponible');
         return null;
       }
+
+      const thematic = this.config.getActiveThematic() || {
+        name: 'Carte géotechnique',
+        parameter: 'n_sondages'
+      };
+      const admFilters = this.config.getActiveAdmFilters();
+
+      // 2. Construire le nom ADM pour les logs (v3.5.2)
+      const admFiltersResolved = admFilters || {};
+      const admNameRaw = admFiltersResolved.adm3 || admFiltersResolved.adm2 || admFiltersResolved.adm1;
+      // v4.5.1: Conversion de type plus sûre pour admName
+      const admName: string = (admNameRaw && typeof admNameRaw === 'object' && 'name' in admNameRaw) 
+        ? (admNameRaw as any).name 
+        : (typeof admNameRaw === 'string' ? admNameRaw : 'National');
+
+      // v4.5.1: Forcer le style discret pour l'export choroplèthe
+      const thematicAny = thematic as any;
+      if (thematicAny.style) {
+        thematicAny.style.stroke_width = 0.1;
+        thematicAny.style.stroke_color = '#F0F0F0';
+      }
+      console.log(`[Composer][${admName}] Export thematic style (FORCED v4.5.1): stroke_width=0.1, stroke_color=#F0F0F0`);
       
-      // Sauvegarder la vue actuelle pour la restaurer après
+      // 3. Sauvegarder la vue actuelle pour la restaurer après
       let originalBounds: any = null;
       let originalContainerStyle: { width: string; height: string } | null = null;
       
-      // Calculer le bbox optimal pour l'ADM
+      // 4. Calculer le bbox optimal pour l'ADM
       const admBounds = this.config.getAdmBounds?.();
-      let bounds: { north: number; south: number; east: number; west: number };
-      
-      // Construire le nom ADM pour les logs (v3.5.2)
-      const admNameRaw = admFilters?.adm3 || admFilters?.adm2 || admFilters?.adm1;
-      const admName: string = typeof admNameRaw === 'object' && admNameRaw !== null ? (admNameRaw as any).name || 'Inconnu' : (admNameRaw as string) || 'National';
+      // v4.5.1: Initialiser avec des valeurs par défaut pour éviter null
+      let bounds: { north: number; south: number; east: number; west: number } = this.config.getMapBounds();
       
       if (admBounds) {
+        // v4.5.1: Utiliser les bounds optimisées
         bounds = await this.computeOptimalBoundsForSheet(admBounds, opts.quality, admName);
+        console.log(`[Composer][${admName}] Using optimized bounds from BoundsOptimizer:`, bounds);
         
         // Calculer l'AR cible de la zone carte A4
         const dpi = QUALITY_SETTINGS[opts.quality].dpi;
@@ -608,7 +624,7 @@ export class ExportQuickDialog {
         
         // PHASE 2 FIX: Forcer taille container AVANT fitBounds
         const container = this.config.mapContainer;
-        if (container) {
+        if (container && map) {
           originalBounds = map.getBounds();
           originalContainerStyle = {
             width: container.style.width,
@@ -681,14 +697,10 @@ export class ExportQuickDialog {
         
         await waitForFrames(2);
         
-        // Récupérer les bounds effectifs
-        const effectiveBounds = map.getBounds();
-        bounds = {
-          north: effectiveBounds.getNorth(),
-          south: effectiveBounds.getSouth(),
-          east: effectiveBounds.getEast(),
-          west: effectiveBounds.getWest()
-        };
+        // v4.5.1: On NE réinitialise PLUS bounds avec effectiveBounds.
+        // On veut garder les bounds optimisées calculées par BoundsOptimizer
+        // pour que la projection sur le canvas soit exacte.
+        console.log(`[Composer][${admName}] Optimized bounds preserved:`, bounds);
       } else {
         bounds = this.config.getMapBounds();
       }
@@ -1284,7 +1296,7 @@ export class ExportQuickDialog {
           // Construire le nom ADM pour les logs (v3.5.2)
           const admFilters = this.config.getActiveAdmFilters?.();
           const admNameRaw = admFilters?.adm3 || admFilters?.adm2 || admFilters?.adm1;
-          const admName: string = typeof admNameRaw === 'object' && admNameRaw !== null ? (admNameRaw as any).name || 'Inconnu' : (admNameRaw as string) || 'National';
+          const admName: string = (typeof admNameRaw === 'object' && admNameRaw !== null ? (admNameRaw as any).name : (admNameRaw as unknown as string)) || 'National';
           
           // Calculer l'emprise "pro serrée" adaptée au ratio de la zone carte
           bounds = await this.computeOptimalBoundsForSheet(admBounds, this.options.quality, admName);
@@ -2583,8 +2595,8 @@ export class ExportQuickDialog {
       ? geometry.coordinates[0] 
       : geometry.coordinates[0][0]
     
-    const lngs = coords.map(c => c[0])
-    const lats = coords.map(c => c[1])
+    const lngs = coords.map((c: any) => c[0])
+    const lats = coords.map((c: any) => c[1])
     
     return {
       north: Math.max(...lats),
@@ -2601,7 +2613,7 @@ export class ExportQuickDialog {
     if (geometry.type === 'Polygon') {
       return geometry.coordinates[0].length
     } else {
-      return geometry.coordinates.reduce((sum, poly) => sum + poly[0].length, 0)
+      return (geometry.coordinates as any).reduce((sum: number, poly: any) => sum + poly[0].length, 0)
     }
   }
   

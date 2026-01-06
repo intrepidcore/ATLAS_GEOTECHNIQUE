@@ -1,15 +1,16 @@
 /**
- * Bounds Optimizer v4.0.0
+ * Bounds Optimizer v4.4.0
  * 
  * Algorithme itératif de cadrage ADM avec:
- * - Règle métier: marge minimale 0.5 km (configurable)
+ * - Règle métier: marge minimale 0.5 km (CIBLE, pas juste contrainte)
+ * - Pénalité margin_excess pour éviter marges > 0.7 km
+ * - Binary search inversée: chercher le shrink maximal qui garde margin >= 0.5km
+ * - Quality score avec pénalité forte sur margin_excess_km
  * - Densification précise (1 km entre points)
- * - Binary search basé uniquement sur marge km (pas de contrainte pixels)
  * - Logging structuré texte + JSON pour traçabilité
- * - Vérification post-fitBounds pour éviter bug dézoom
  * 
  * @author Atlas Géotechnique
- * @version 4.0.0
+ * @version 4.4.0
  */
 
 import type { ExportQuality } from './export-types'
@@ -67,8 +68,10 @@ export interface BoundsMetrics {
   occ_area: number
   occ_major: number
   
-  // Score multi-objectif (v4.1)
+  // Score multi-objectif (v4.4)
   quality_score: number  // Score combiné: occupation - pénalités marges
+  margin_excess_km: number  // Excès de marge au-delà de TARGET (pour pénalité)
+  margin_penalty: number  // Pénalité appliquée au quality_score
   
   // Métadonnées
   orientation: 'portrait' | 'landscape'
@@ -127,6 +130,9 @@ export interface BoundsIterationLog {
   }
   decision: 'accept' | 'reject'
   reason: string
+  margin_excess_km: number
+  margin_penalty: number
+  quality_score: number
 }
 
 export interface BoundsOrientationResult {
@@ -164,8 +170,9 @@ export interface BoundsOptimizerJSON {
 // ============================================================================
 
 // Règle métier: marge minimale en km (distance géométrie ↔ bord carte)
-// TODO: Rendre configurable par niveau ADM (0.2km pour ADM3, 0.5km pour ADM1/2)
-const TARGET_MARGIN_KM = 0.5  // Objectif: ~0.5 km de marge minimale
+const TARGET_MARGIN_KM = 0.5  // CIBLE: ~0.5 km de marge minimale (pas juste contrainte)
+const MARGIN_TOLERANCE_KM = 0.1  // Tolérance acceptable: 0.5-0.6 km OK, au-delà pénalisé FORT
+const MARGIN_PENALTY_WEIGHT = 20.0  // Poids de la pénalité margin_excess (TRÈS FORT - v4.5)
 const MAX_PAD_PCT = 0.30  // Limite: pad_max ne doit pas dépasser 30% (évite marges énormes)
 const MAX_MARGIN_RATIO = 4.0  // Limite: margin_max / margin_min <= 4 (évite asymétrie extrême)
 const KM_PER_DEG_LAT = 111.0  // Approximation sphérique (WGS84 simplifié)
@@ -261,16 +268,31 @@ export class BoundsOptimizer {
     const portraitMetrics = await this.optimizeForOrientation(admBounds, 'portrait')
     const landscapeMetrics = await this.optimizeForOrientation(admBounds, 'landscape')
     
-    // Choisir la meilleure orientation basée sur quality_score
-    const best = portraitMetrics.quality_score >= landscapeMetrics.quality_score ? portraitMetrics : landscapeMetrics
-    const scoreDiff = Math.abs(portraitMetrics.quality_score - landscapeMetrics.quality_score)
+    // Choisir la meilleure orientation basée sur occupation et respect de la marge cible
+    // Priorité 1: marge minimale >= TARGET_MARGIN_KM
+    // Priorité 2: occupation maximale
+    const portraitMarginOk = portraitMetrics.margin_min_km >= TARGET_MARGIN_KM
+    const landscapeMarginOk = landscapeMetrics.margin_min_km >= TARGET_MARGIN_KM
+    
+    let best: BoundsMetrics
     let reason = ''
-    if (scoreDiff < 0.01) {
-      reason = 'scores équivalents, portrait par défaut'
-    } else if (portraitMetrics.quality_score > landscapeMetrics.quality_score) {
-      reason = `score portrait (${portraitMetrics.quality_score.toFixed(3)}) > paysage (${landscapeMetrics.quality_score.toFixed(3)})`
+    
+    if (portraitMarginOk && !landscapeMarginOk) {
+      best = portraitMetrics
+      reason = `portrait respecte marge cible (${portraitMetrics.margin_min_km.toFixed(2)}km), paysage non (${landscapeMetrics.margin_min_km.toFixed(2)}km)`
+    } else if (!portraitMarginOk && landscapeMarginOk) {
+      best = landscapeMetrics
+      reason = `paysage respecte marge cible (${landscapeMetrics.margin_min_km.toFixed(2)}km), portrait non (${portraitMetrics.margin_min_km.toFixed(2)}km)`
     } else {
-      reason = `score paysage (${landscapeMetrics.quality_score.toFixed(3)}) > portrait (${portraitMetrics.quality_score.toFixed(3)})`
+      // Les deux respectent (ou ne respectent pas) la marge cible
+      // Choisir celui avec la meilleure occupation
+      if (portraitMetrics.occ_area >= landscapeMetrics.occ_area) {
+        best = portraitMetrics
+        reason = `occupation portrait (${(portraitMetrics.occ_area*100).toFixed(1)}%) >= paysage (${(landscapeMetrics.occ_area*100).toFixed(1)}%)`
+      } else {
+        best = landscapeMetrics
+        reason = `occupation paysage (${(landscapeMetrics.occ_area*100).toFixed(1)}%) > portrait (${(portraitMetrics.occ_area*100).toFixed(1)}%)`
+      }
     }
     
     console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
@@ -278,6 +300,20 @@ export class BoundsOptimizer {
     console.log(`[${this.options.logPrefix}][Bounds] 🔄 Portrait: score=${portraitMetrics.quality_score.toFixed(3)} occ=${(portraitMetrics.occ_area*100).toFixed(1)}% margin_min=${portraitMetrics.margin_min_km.toFixed(2)}km pad_max=${(portraitMetrics.pad_max_pct*100).toFixed(1)}% shrink=${portraitMetrics.shrinkFactor.toFixed(3)}`)
     console.log(`[${this.options.logPrefix}][Bounds] 🔄 Paysage:  score=${landscapeMetrics.quality_score.toFixed(3)} occ=${(landscapeMetrics.occ_area*100).toFixed(1)}% margin_min=${landscapeMetrics.margin_min_km.toFixed(2)}km pad_max=${(landscapeMetrics.pad_max_pct*100).toFixed(1)}% shrink=${landscapeMetrics.shrinkFactor.toFixed(3)}`)
     console.log(`[${this.options.logPrefix}][Bounds] ✅ Orientation choisie: ${best.orientation.toUpperCase()} (${reason})`)
+    
+    // WARNING v4.5: Détecter marges excessives (> 1km)
+    if (best.margin_min_km > 1.0) {
+      const warning = `⚠️ MARGE EXCESSIVE: margin_min=${best.margin_min_km.toFixed(2)}km (>1km) pour ${this.options.admName || 'ADM'} - cadrage non optimal`
+      console.warn(`[${this.options.logPrefix}][Bounds] ${warning}`)
+      this.jsonData.warnings?.push(warning)
+    }
+    
+    // WARNING v4.5: Détecter marges hors cible (> 0.6km)
+    if (best.margin_min_km > TARGET_MARGIN_KM + MARGIN_TOLERANCE_KM) {
+      const warning = `⚠️ MARGE HORS CIBLE: margin_min=${best.margin_min_km.toFixed(2)}km (cible: ${TARGET_MARGIN_KM}km ± ${MARGIN_TOLERANCE_KM}km) pour ${this.options.admName || 'ADM'}`
+      console.warn(`[${this.options.logPrefix}][Bounds] ${warning}`)
+      this.jsonData.warnings?.push(warning)
+    }
     
     // Compléter jsonData
     this.jsonData.orientations = {
@@ -306,27 +342,30 @@ export class BoundsOptimizer {
     console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
     console.log(`[${this.options.logPrefix}][Bounds][${orientation}] Début optimisation (binary search)`)
     
-    // Binary search sur le shrink factor
-    let shrinkMin = 0.80 // Plus serré possible
+    // Binary search INVERSÉE : chercher le shrink minimal qui VIOLE les contraintes
+    // Puis prendre celui juste avant (le plus zoomé qui respecte encore les contraintes)
+    let shrinkMin = 0.50 // Très serré (probablement trop)
     let shrinkMax = 1.00 // Pas serré du tout (marge initiale)
     let bestMetrics: BoundsMetrics | null = null
     let iteration = 0
     const iterationsLog: BoundsIterationLog[] = []
     
-    while (iteration < this.options.maxIterations && (shrinkMax - shrinkMin) > 0.001) {
+    // Convergence plus fine pour atteindre vraiment la limite
+    while (iteration < this.options.maxIterations && (shrinkMax - shrinkMin) > 0.0001) {
       iteration++
       const shrinkMid = (shrinkMin + shrinkMax) / 2
       
       const metrics = this.computeMetricsForShrink(admBounds, orientation, shrinkMid)
       
       // Log itération détaillée
-      console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} shrink=${shrinkMid.toFixed(3)}`)
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} shrink=${shrinkMid.toFixed(4)}`)
       console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → pad: L=${(metrics.pad_left_pct*100).toFixed(1)}% R=${(metrics.pad_right_pct*100).toFixed(1)}% T=${(metrics.pad_top_pct*100).toFixed(1)}% B=${(metrics.pad_bottom_pct*100).toFixed(1)}% max=${(metrics.pad_max_pct*100).toFixed(1)}%`)
       console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → margin_km: L=${metrics.margin_left_km.toFixed(2)} R=${metrics.margin_right_km.toFixed(2)} T=${metrics.margin_top_km.toFixed(2)} B=${metrics.margin_bottom_km.toFixed(2)} min=${metrics.margin_min_km.toFixed(2)} max=${metrics.margin_max_km.toFixed(2)}`)
+      console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → margin_excess=${metrics.margin_excess_km.toFixed(3)}km penalty=${metrics.margin_penalty.toFixed(3)} quality_score=${metrics.quality_score.toFixed(3)}`)
       console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → clear_px: L=${metrics.clear_left_px.toFixed(1)} R=${metrics.clear_right_px.toFixed(1)} T=${metrics.clear_top_px.toFixed(1)} B=${metrics.clear_bottom_px.toFixed(1)} min=${metrics.clear_min_px.toFixed(1)} (${metrics.clear_min_side})`)
       console.log(`[${this.options.logPrefix}][Bounds][${orientation}]   → occ: x=${(metrics.occ_x*100).toFixed(1)}% y=${(metrics.occ_y*100).toFixed(1)}% area=${(metrics.occ_area*100).toFixed(1)}% major=${(metrics.occ_major*100).toFixed(1)}%`)
       
-      // RÈGLE MÉTIER v4.1: Vérifier marge km + contraintes pad_max et margin_ratio
+      // RÈGLE MÉTIER v4.2: Vérifier marge km + contraintes pad_max et margin_ratio
       const marginKmOk = metrics.margin_min_km >= TARGET_MARGIN_KM
       const padMaxOk = metrics.pad_max_pct <= MAX_PAD_PCT
       const marginRatio = metrics.margin_min_km > 0 ? metrics.margin_max_km / metrics.margin_min_km : 999
@@ -336,10 +375,17 @@ export class BoundsOptimizer {
       const decision = isAcceptable ? 'accept' : 'reject'
       
       let reason = ''
-      if (!marginKmOk) reason = `margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM}`
+      if (!marginKmOk) reason = `margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM}km`
       else if (!padMaxOk) reason = `pad_max=${(metrics.pad_max_pct*100).toFixed(1)}% > ${(MAX_PAD_PCT*100).toFixed(0)}%`
       else if (!marginRatioOk) reason = `margin_ratio=${marginRatio.toFixed(2)} > ${MAX_MARGIN_RATIO}`
-      else reason = `all constraints OK`
+      else {
+        // Toutes contraintes OK - détailler la qualité
+        if (metrics.margin_excess_km > 0) {
+          reason = `margin=${metrics.margin_min_km.toFixed(2)}km (excess=${metrics.margin_excess_km.toFixed(2)}km) quality=${metrics.quality_score.toFixed(3)}`
+        } else {
+          reason = `margin=${metrics.margin_min_km.toFixed(2)}km (optimal) quality=${metrics.quality_score.toFixed(3)}`
+        }
+      }
       
       // Collecter pour JSON
       iterationsLog.push({
@@ -375,21 +421,21 @@ export class BoundsOptimizer {
           occ_major: metrics.occ_major
         },
         decision,
-        reason
+        reason,
+        margin_excess_km: metrics.margin_excess_km,
+        margin_penalty: metrics.margin_penalty,
+        quality_score: metrics.quality_score
       })
       
       if (isAcceptable) {
-        // Acceptable - on peut essayer de serrer plus
-        // Choisir le meilleur candidat basé sur quality_score
-        if (!bestMetrics || metrics.quality_score > bestMetrics.quality_score) {
-          bestMetrics = metrics
-        }
-        shrinkMin = shrinkMid // Essayer plus serré
-        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ✅ ACCEPT (${reason}) score=${metrics.quality_score.toFixed(3)}`)
+        // Acceptable - sauvegarder et essayer ENCORE PLUS serré
+        bestMetrics = metrics
+        shrinkMax = shrinkMid // Réduire la borne haute
+        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ✅ ACCEPT (${reason}) margin_min=${metrics.margin_min_km.toFixed(2)}km → essayer plus serré`)
       } else {
-        // Trop serré - reculer
-        shrinkMax = shrinkMid
-        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ❌ REJECT (${reason})`)
+        // Trop serré - augmenter la borne basse
+        shrinkMin = shrinkMid
+        console.log(`[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ❌ REJECT (${reason}) → relâcher`)
       }
     }
     
@@ -481,18 +527,27 @@ export class BoundsOptimizer {
     const pad_min_pct = Math.min(pad_left_pct, pad_right_pct, pad_top_pct, pad_bottom_pct)
     const pad_max_pct = Math.max(pad_left_pct, pad_right_pct, pad_top_pct, pad_bottom_pct)
     
-    // 6b. KPI marges en km (NOUVEAU)
+    // 6b. KPI marges en km (NOUVEAU v4.5 - corrigé bug géométrie)
     // Calculer distance entre bbox carte et bbox géométrie ADM en km
     const latMid = (bounds.north + bounds.south) / 2
     const kmPerDegLon = KM_PER_DEG_LAT * Math.cos(latMid * Math.PI / 180)
     
-    const margin_top_km = (bounds.north - admBounds.north) * KM_PER_DEG_LAT
-    const margin_bottom_km = (admBounds.south - bounds.south) * KM_PER_DEG_LAT
-    const margin_left_km = (admBounds.west - bounds.west) * kmPerDegLon
-    const margin_right_km = (bounds.east - admBounds.east) * kmPerDegLon
+    // CORRECTION v4.5: utiliser abs() pour éviter marges négatives absurdes
+    // bounds doit TOUJOURS englober admBounds, donc marges doivent être positives
+    const margin_top_km = Math.abs(bounds.north - admBounds.north) * KM_PER_DEG_LAT
+    const margin_bottom_km = Math.abs(admBounds.south - bounds.south) * KM_PER_DEG_LAT
+    const margin_left_km = Math.abs(admBounds.west - bounds.west) * kmPerDegLon
+    const margin_right_km = Math.abs(bounds.east - admBounds.east) * kmPerDegLon
     
     const margin_min_km = Math.min(margin_top_km, margin_bottom_km, margin_left_km, margin_right_km)
     const margin_max_km = Math.max(margin_top_km, margin_bottom_km, margin_left_km, margin_right_km)
+    
+    // VALIDATION v4.5: détecter géométrie bbox invalide (marges > 100km = bug)
+    if (margin_max_km > 100) {
+      console.warn(`[${this.options.logPrefix}][Bounds] ⚠️ BBOX INVALIDE: margin_max=${margin_max_km.toFixed(2)}km (>100km) - possible bug géométrie`)
+      console.warn(`[${this.options.logPrefix}][Bounds]   bounds: N=${bounds.north.toFixed(4)} S=${bounds.south.toFixed(4)} E=${bounds.east.toFixed(4)} W=${bounds.west.toFixed(4)}`)
+      console.warn(`[${this.options.logPrefix}][Bounds]   admBounds: N=${admBounds.north.toFixed(4)} S=${admBounds.south.toFixed(4)} E=${admBounds.east.toFixed(4)} W=${admBounds.west.toFixed(4)}`)
+    }
     
     // 6c. Calculer équivalent pixels de margin_min_km
     const pxPerDegLat = layout.mapArea.height / frameHeightDeg
@@ -512,14 +567,22 @@ export class BoundsOptimizer {
     const occ_area = (W0_km * H0_km) / (finalWidthKm * finalHeightKm)
     const occ_major = Math.max(occ_x, occ_y)
     
-    // 9. Score multi-objectif (v4.1)
+    // 9. Score multi-objectif (v4.4)
     // Priorité 1: occupation maximale
-    // Priorité 2: pénaliser pad_max excessif
-    // Priorité 3: pénaliser asymétrie margin_max/margin_min
+    // Priorité 2: PÉNALITÉ FORTE sur margin_excess (marges > TARGET + TOLERANCE)
+    // Priorité 3: pénaliser pad_max excessif
+    // Priorité 4: pénaliser asymétrie margin_max/margin_min
+    
+    // Calcul margin_excess: tout ce qui dépasse TARGET + TOLERANCE
+    const margin_excess_km = Math.max(0, margin_min_km - (TARGET_MARGIN_KM + MARGIN_TOLERANCE_KM))
+    const margin_penalty = margin_excess_km * MARGIN_PENALTY_WEIGHT
+    
     const pad_penalty = Math.max(0, (pad_max_pct - 0.15) * 2)  // Pénalité si pad_max > 15%
     const margin_ratio = margin_min_km > 0 ? margin_max_km / margin_min_km : 1
     const asymmetry_penalty = Math.max(0, (margin_ratio - 2.0) * 0.05)  // Pénalité si ratio > 2
-    const quality_score = occ_area - pad_penalty - asymmetry_penalty
+    
+    // Score final: occupation - pénalités (margin_penalty est le plus fort)
+    const quality_score = occ_area - margin_penalty - pad_penalty - asymmetry_penalty
     
     return {
       bounds,
@@ -542,6 +605,8 @@ export class BoundsOptimizer {
       occ_area,
       occ_major,
       quality_score,
+      margin_excess_km,
+      margin_penalty,
       orientation,
       shrinkFactor
     }

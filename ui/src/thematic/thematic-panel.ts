@@ -56,6 +56,9 @@ export class ThematicPanel {
     depthMaxInput?: HTMLInputElement
     summaryText?: HTMLElement
     toggleGridCheckbox?: HTMLInputElement
+    toggleGeologieCheckbox?: HTMLInputElement
+    togglePedologieCheckbox?: HTMLInputElement
+    toggleRisqueGonflementCheckbox?: HTMLInputElement
   } = {}
   
   constructor(manager: ThematicMapManager) {
@@ -241,6 +244,48 @@ export class ThematicPanel {
           </label>
         </div>
         
+        <div class="thematic-divider">
+          <span>Niveau de grille</span>
+        </div>
+        
+        <div class="thematic-section">
+          <div class="radio-group">
+            <label class="radio-label">
+              <input type="radio" name="gridLevel" value="2km" checked>
+              <span>Grille 2 km</span>
+            </label>
+            <label class="radio-label">
+              <input type="radio" name="gridLevel" value="28km">
+              <span>Grille 28 km (Profils)</span>
+            </label>
+          </div>
+        </div>
+        
+        <div class="thematic-divider">
+          <span>Couches de contexte</span>
+        </div>
+        
+        <div class="thematic-section checkbox-section">
+          <label class="checkbox-label">
+            <input type="checkbox" id="toggleGeologie">
+            <span>Géologie</span>
+          </label>
+        </div>
+        
+        <div class="thematic-section checkbox-section">
+          <label class="checkbox-label">
+            <input type="checkbox" id="togglePedologie">
+            <span>Pédologie</span>
+          </label>
+        </div>
+        
+        <div class="thematic-section checkbox-section">
+          <label class="checkbox-label">
+            <input type="checkbox" id="toggleRisqueGonflement">
+            <span>Risque de gonflement</span>
+          </label>
+        </div>
+        
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <!-- BLOC D : Résumé & Actions -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -323,7 +368,10 @@ export class ThematicPanel {
       depthMinInput: document.getElementById('depthMin') as HTMLInputElement,
       depthMaxInput: document.getElementById('depthMax') as HTMLInputElement,
       summaryText: document.getElementById('dataSummary') as HTMLElement,
-      toggleGridCheckbox: document.getElementById('toggleGridLayer') as HTMLInputElement
+      toggleGridCheckbox: document.getElementById('toggleGridLayer') as HTMLInputElement,
+      toggleGeologieCheckbox: document.getElementById('toggleGeologie') as HTMLInputElement,
+      togglePedologieCheckbox: document.getElementById('togglePedologie') as HTMLInputElement,
+      toggleRisqueGonflementCheckbox: document.getElementById('toggleRisqueGonflement') as HTMLInputElement
     }
   }
   
@@ -918,6 +966,33 @@ export class ThematicPanel {
     // Toggle grid layer
     this.elements.toggleGridCheckbox?.addEventListener('change', (e) => {
       this.toggleGridLayer((e.target as HTMLInputElement).checked)
+    })
+    
+    // Grid level radio buttons
+    document.querySelectorAll('input[name="gridLevel"]').forEach(radio => {
+      radio.addEventListener('change', (e) => {
+        const level = (e.target as HTMLInputElement).value as '2km' | '28km'
+        console.log('[ThematicPanel] Grid level changed to:', level)
+        if ((window as any).setGridLevel) {
+          (window as any).setGridLevel(level)
+        }
+      })
+    })
+    
+    // Toggle context layers
+    this.elements.toggleGeologieCheckbox?.addEventListener('change', (e) => {
+      const checked = (e.target as HTMLInputElement).checked
+      this.manager.toggleContextLayer('geologie', checked)
+    })
+    
+    this.elements.togglePedologieCheckbox?.addEventListener('change', (e) => {
+      const checked = (e.target as HTMLInputElement).checked
+      this.manager.toggleContextLayer('pedologie', checked)
+    })
+    
+    this.elements.toggleRisqueGonflementCheckbox?.addEventListener('change', (e) => {
+      const checked = (e.target as HTMLInputElement).checked
+      this.manager.toggleContextLayer('risque-gonflement', checked)
     })
     
     // Clear ADM filters button

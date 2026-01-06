@@ -239,6 +239,10 @@ export class ExportProgressModal {
               <span>Auto-scroll</span>
             </label>
             <button class="btn-copy" title="Copier les logs">📋</button>
+            <select id="download-format" title="Format de téléchargement">
+              <option value="md">💾 Markdown</option>
+              <option value="json">💾 JSON</option>
+            </select>
             <button class="btn-download" title="Télécharger les logs">💾</button>
             <button class="btn-cancel" title="Annuler l'export">🛑 Annuler</button>
             <button class="btn-close" title="Fermer" style="display: none;">✕</button>
@@ -292,7 +296,15 @@ export class ExportProgressModal {
     copyBtn?.addEventListener('click', () => this.copyLogs());
 
     const downloadBtn = this.overlay.querySelector('.btn-download');
-    downloadBtn?.addEventListener('click', () => this.downloadLogs());
+    downloadBtn?.addEventListener('click', () => {
+      const formatSelect = this.overlay?.querySelector('#download-format') as HTMLSelectElement;
+      const format = formatSelect?.value || 'md';
+      if (format === 'json') {
+        this.downloadLogsJSON();
+      } else {
+        this.downloadLogsMD();
+      }
+    });
 
     const cancelBtn = this.overlay.querySelector('.btn-cancel');
     cancelBtn?.addEventListener('click', () => this.requestCancel());
@@ -423,9 +435,9 @@ export class ExportProgressModal {
   }
 
   /**
-   * Télécharge les logs en fichier .md (v3.5.2)
+   * Télécharge les logs en fichier .md (v4.4)
    */
-  private downloadLogs(): void {
+  private downloadLogsMD(): void {
     const lines: string[] = [
       `# Atlas Export Log`,
       '',
@@ -458,6 +470,56 @@ export class ExportProgressModal {
     URL.revokeObjectURL(url);
     
     this.log('success', 'SYSTEM', `💾 Logs téléchargés: ${filename}`);
+  }
+
+  /**
+   * Télécharge les logs en fichier .json (v4.4)
+   */
+  private downloadLogsJSON(): void {
+    const exportData = {
+      metadata: {
+        export_date: new Date().toISOString(),
+        total_maps: this.state.totalMaps,
+        completed_maps: this.state.completedMaps,
+        errors_count: this.state.errors.length,
+        warnings_count: this.state.warnings.length,
+        duration_seconds: this.state.startTime 
+          ? Math.round((Date.now() - this.state.startTime.getTime()) / 1000)
+          : 0,
+        phase: this.state.phase
+      },
+      state: {
+        current_adm: this.state.currentAdm,
+        current_thematic: this.state.currentThematic,
+        current_step: this.state.currentStep,
+        start_time: this.state.startTime?.toISOString(),
+        errors: this.state.errors,
+        warnings: this.state.warnings
+      },
+      logs: this.logs.map(entry => ({
+        timestamp: entry.timestamp.toISOString(),
+        level: entry.level,
+        category: entry.category,
+        message: entry.message,
+        data: entry.data
+      }))
+    };
+
+    const content = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([content], { type: 'application/json;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    
+    const filename = `atlas_export_log_${new Date().toISOString().replace(/[:.]/g, '-').substring(0, 19)}.json`;
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    this.log('success', 'SYSTEM', `💾 Logs JSON téléchargés: ${filename}`);
   }
 
   /**

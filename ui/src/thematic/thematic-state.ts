@@ -205,8 +205,8 @@ export function stateToConfig(state: ThematicState): ThematicMapConfig {
     style: {
       palette: state.classification?.palette || 'Blues',
       opacity: 0.8,
-      stroke_width: 1,
-      stroke_color: '#333'
+      stroke_width: 0.1, // v4.5.1: Réduit pour export discret
+      stroke_color: '#F0F0F0' // v4.5.1: Gris clair
     },
     filters: {
       adm1: state.admFilters.adm1,

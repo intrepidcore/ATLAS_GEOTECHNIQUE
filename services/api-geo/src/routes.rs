@@ -250,10 +250,23 @@ pub async fn get_adm_neighbors(
     ).into_response()
 }
 
-async fn get_grid(State(state): State<AppState>, Path(code): Path<String>) -> impl IntoResponse {
+async fn get_grid(
+    State(state): State<AppState>,
+    Path(code): Path<String>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> impl IntoResponse {
     let pool = &state.pool;
+    let grid_type = params.get("grid").map(|s| s.as_str()).unwrap_or("2km");
+    
+    // Déterminer la table selon le type de grille
+    let table_name = if grid_type == "28km" {
+        "atlas.maille_28km"
+    } else {
+        "atlas.mailles"
+    };
+    
     // Maille bbox (4326) + stats
-    let row_opt = sqlx::query(
+    let query_str = format!(
         r#"
         SELECT id,
                stats,
@@ -263,13 +276,16 @@ async fn get_grid(State(state): State<AppState>, Path(code): Path<String>) -> im
                ST_YMax(g4326) AS ymax
         FROM (
             SELECT id, stats, ST_Transform(ST_Envelope(geom), 4326) AS g4326
-            FROM mailles WHERE code = $1
+            FROM {} WHERE code = $1
         ) q
         "#,
-    )
-    .bind(&code)
-    .fetch_optional(pool)
-    .await;
+        table_name
+    );
+    
+    let row_opt = sqlx::query(&query_str)
+        .bind(&code)
+        .fetch_optional(pool)
+        .await;
 
     let row = match row_opt {
         Ok(Some(r)) => r,
@@ -308,46 +324,55 @@ async fn get_grid(State(state): State<AppState>, Path(code): Path<String>) -> im
     let ymax: f64 = row.try_get("ymax").unwrap_or_default();
     let bbox = [xmin, ymin, xmax, ymax];
 
-    // Comptages
-    let n_sondages: i64 = sqlx::query_scalar(
+    // Comptages - adapter selon le type de grille
+    let count_query_sondages = format!(
         r#"
-        SELECT COUNT(*) FROM sondages s
-        JOIN mailles m ON m.id = $1
+        SELECT COUNT(*) FROM atlas.sondages s
+        JOIN {} m ON m.id = $1
         WHERE ST_Within(s.geom, m.geom)
         "#,
-    )
-    .bind(maille_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
+        table_name
+    );
+    
+    let n_sondages: i64 = sqlx::query_scalar(&count_query_sondages)
+        .bind(maille_id)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
 
-    let n_essais: i64 = sqlx::query_scalar(
+    let count_query_essais = format!(
         r#"
-        SELECT COUNT(*) FROM essais e
-        JOIN sondages s ON s.id = e.sondage_id
-        JOIN mailles m ON m.id = $1
+        SELECT COUNT(*) FROM atlas.essais e
+        JOIN atlas.sondages s ON s.id = e.sondage_id
+        JOIN {} m ON m.id = $1
         WHERE ST_Within(s.geom, m.geom)
         "#,
-    )
-    .bind(maille_id)
-    .fetch_one(pool)
-    .await
-    .unwrap_or(0);
+        table_name
+    );
+    
+    let n_essais: i64 = sqlx::query_scalar(&count_query_essais)
+        .bind(maille_id)
+        .fetch_one(pool)
+        .await
+        .unwrap_or(0);
 
-    let rows = sqlx::query(
+    let by_type_query = format!(
         r#"
         SELECT e.type_essai, COUNT(*)::bigint AS n
-        FROM essais e
-        JOIN sondages s ON s.id = e.sondage_id
-        JOIN mailles m ON m.id = $1
+        FROM atlas.essais e
+        JOIN atlas.sondages s ON s.id = e.sondage_id
+        JOIN {} m ON m.id = $1
         WHERE ST_Within(s.geom, m.geom)
         GROUP BY e.type_essai
         "#,
-    )
-    .bind(maille_id)
-    .fetch_all(pool)
-    .await
-    .unwrap_or_default();
+        table_name
+    );
+    
+    let rows = sqlx::query(&by_type_query)
+        .bind(maille_id)
+        .fetch_all(pool)
+        .await
+        .unwrap_or_default();
     let mut by_type = serde_json::Map::new();
     for r in rows {
         by_type.insert(
@@ -431,12 +456,17 @@ async fn get_grid_shape(
     Json(feature).into_response()
 }
 
-// GET /coverage/mailles?bbox=west,south,east,north -> FeatureCollection EPSG:4326 avec comptes
+// GET /coverage/mailles?bbox=west,south,east,north&grid=2km|28km -> FeatureCollection EPSG:4326 avec comptes
 pub async fn get_coverage_mailles(
     Query(params): Query<std::collections::HashMap<String, String>>,
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
+    let grid_type = params.get("grid").map(|s| s.as_str()).unwrap_or("2km");
+
+    if grid_type == "28km" {
+        return get_coverage_mailles_28km(params, state).await.into_response();
+    }
 
     // Construire la requête avec filtre bbox optionnel
     // Utilise mv_mailles_geotech qui inclut le spread ADM3 et les compteurs d'essais par type
@@ -531,6 +561,107 @@ pub async fn get_coverage_mailles(
             }));
         }
     }
+    Json(serde_json::json!({"type":"FeatureCollection","features": features})).into_response()
+}
+
+// Nouvelle fonction pour récupérer la couverture 28km
+async fn get_coverage_mailles_28km(
+    params: std::collections::HashMap<String, String>,
+    state: AppState,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    // Requête sur atlas.v_maille_28km_kpi
+    let mut query = r#"
+        SELECT code_m28,
+               profil_num,
+               pk_min_km,
+               pk_max_km,
+               ST_AsGeoJSON(ST_Transform(geom, 4326)) AS g,
+               area_km2,
+               COALESCE(n_sondages, 0)::bigint AS n_sondages,
+               COALESCE(n_ip, 0)::bigint AS n_ip,
+               COALESCE(n_vbs, 0)::bigint AS n_vbs,
+               COALESCE(n_eg, 0)::bigint AS n_eg,
+               ip_avg,
+               vbs_avg,
+               eg_avg,
+               pct_plastiques_ip17,
+               has_data
+        FROM atlas.v_maille_28km_kpi
+    "#
+    .to_string();
+
+    // Filtre bbox
+    if let Some(bbox_str) = params.get("bbox") {
+        let parts: Vec<f64> = bbox_str.split(',').filter_map(|s| s.parse().ok()).collect();
+        if parts.len() == 4 {
+            query.push_str(&format!(
+                " WHERE ST_Intersects(ST_Transform(geom, 4326), ST_MakeEnvelope({}, {}, {}, {}, 4326))",
+                parts[0], parts[1], parts[2], parts[3]
+            ));
+        }
+    }
+
+    let rows = match sqlx::query(&query).fetch_all(pool).await {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(?e, "coverage 28km query");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"type":"FeatureCollection","features":[]})),
+            )
+                .into_response();
+        }
+    };
+
+    let mut features = Vec::new();
+    for r in rows {
+        let code_m28: i32 = r.try_get("code_m28").unwrap_or(0);
+        let profil_num: i32 = r.try_get("profil_num").unwrap_or(0);
+        let pk_min_km: f64 = r.try_get("pk_min_km").unwrap_or(0.0);
+        let pk_max_km: f64 = r.try_get("pk_max_km").unwrap_or(0.0);
+        let g: String = r.get("g");
+        let area_km2: f64 = r.try_get("area_km2").unwrap_or(0.0);
+        let n_sondages: i64 = r.get("n_sondages");
+        let n_ip: i64 = r.try_get("n_ip").unwrap_or(0);
+        let n_vbs: i64 = r.try_get("n_vbs").unwrap_or(0);
+        let n_eg: i64 = r.try_get("n_eg").unwrap_or(0);
+        
+        // Optionals
+        let ip_avg: Option<f64> = r.try_get("ip_avg").ok();
+        let vbs_avg: Option<f64> = r.try_get("vbs_avg").ok();
+        let eg_avg: Option<f64> = r.try_get("eg_avg").ok();
+        let pct_plastiques_ip17: Option<f64> = r.try_get("pct_plastiques_ip17").ok();
+        let has_data: bool = r.try_get("has_data").unwrap_or(false);
+
+        if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
+            let props = serde_json::json!({
+                "code_m28": code_m28,
+                "code": format!("{}", code_m28), // Alias pour compatibilité UI
+                "profil_num": profil_num,
+                "pk_min_km": pk_min_km,
+                "pk_max_km": pk_max_km,
+                "area_km2": area_km2,
+                "n_sondages": n_sondages,
+                "n_ip": n_ip,
+                "n_vbs": n_vbs,
+                "n_eg": n_eg,
+                "ip_avg": ip_avg,
+                "vbs_avg": vbs_avg,
+                "eg_avg": eg_avg,
+                "pct_plastiques_ip17": pct_plastiques_ip17,
+                "has_data": has_data
+            });
+
+            features.push(serde_json::json!({
+                "type":"Feature",
+                "geometry": geom,
+                "properties": props
+            }));
+        }
+    }
+    
     Json(serde_json::json!({"type":"FeatureCollection","features": features})).into_response()
 }
 
@@ -884,20 +1015,32 @@ struct EssaiDetail {
 async fn get_grid_details(
     State(state): State<AppState>,
     Path(code): Path<String>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
+    let grid_type = params.get("grid").map(|s| s.as_str()).unwrap_or("2km");
+    
+    // Déterminer la table selon le type de grille
+    let table_name = if grid_type == "28km" {
+        "atlas.maille_28km"
+    } else {
+        "atlas.mailles"
+    };
 
     // 1. Récupérer les infos de la maille
-    let maille_row = match sqlx::query(
+    let query_str = format!(
         r#"
         SELECT id, adm1_name, adm2_name, adm3_name, stats, updated_at
-        FROM mailles
+        FROM {}
         WHERE code = $1
         "#,
-    )
-    .bind(&code)
-    .fetch_optional(pool)
-    .await
+        table_name
+    );
+    
+    let maille_row = match sqlx::query(&query_str)
+        .bind(&code)
+        .fetch_optional(pool)
+        .await
     {
         Ok(Some(r)) => r,
         Ok(None) => {
@@ -929,22 +1072,25 @@ async fn get_grid_details(
     let updated_at: Option<chrono::DateTime<chrono::Utc>> = maille_row.get("updated_at");
 
     // 2. Récupérer les KPIs
-    let kpi_row = match sqlx::query(
+    let kpi_query = format!(
         r#"
         SELECT 
             COUNT(DISTINCT s.id)::bigint AS n_sondages,
             COUNT(e.id)::bigint AS n_essais,
             MIN(e.depth_m) AS zmin,
             MAX(e.depth_m) AS zmax
-        FROM mailles m
-        LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
-        LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+        FROM {} m
+        LEFT JOIN atlas.sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+        LEFT JOIN atlas.essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
         WHERE m.id = $1
         "#,
-    )
-    .bind(maille_id)
-    .fetch_one(pool)
-    .await
+        table_name
+    );
+    
+    let kpi_row = match sqlx::query(&kpi_query)
+        .bind(maille_id)
+        .fetch_one(pool)
+        .await
     {
         Ok(r) => r,
         Err(e) => {
@@ -970,7 +1116,7 @@ async fn get_grid_details(
     };
 
     // 3. Récupérer les sondages avec leurs essais
-    let sondages_rows = match sqlx::query(
+    let sondages_query = format!(
         r#"
         SELECT
             s.id,
@@ -981,8 +1127,8 @@ async fn get_grid_details(
             s.date,
             s.location_accuracy,
             s.is_geocoded
-        FROM sondages s
-        JOIN mailles m ON m.id = $1
+        FROM atlas.sondages s
+        JOIN {} m ON m.id = $1
         WHERE (
             (s.geom IS NOT NULL AND ST_Within(s.geom, m.geom))
             OR (s.geom IS NULL AND s.maille_code = m.code)
@@ -990,10 +1136,13 @@ async fn get_grid_details(
         AND s.deleted_at IS NULL
         ORDER BY s.created_at DESC
         "#,
-    )
-    .bind(maille_id)
-    .fetch_all(pool)
-    .await
+        table_name
+    );
+    
+    let sondages_rows = match sqlx::query(&sondages_query)
+        .bind(maille_id)
+        .fetch_all(pool)
+        .await
     {
         Ok(rows) => rows,
         Err(e) => {
@@ -1017,7 +1166,7 @@ async fn get_grid_details(
         let essais_rows = match sqlx::query(
             r#"
             SELECT type_essai, valeur_numerique, unit, depth_m
-            FROM essais
+            FROM atlas.essais
             WHERE sondage_id = $1 AND deleted_at IS NULL AND valeur_numerique IS NOT NULL
             ORDER BY depth_m ASC
             "#,

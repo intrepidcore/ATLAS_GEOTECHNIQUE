@@ -387,6 +387,13 @@ export interface ThematicMapConfig {
     year_min?: number
     year_max?: number
   }
+  
+  // Couches de contexte
+  contextLayers?: {
+    showGeologie: boolean
+    showPedologie: boolean
+    showRisqueGonflement: boolean
+  }
 }
 
 // ============================================================================
@@ -746,6 +753,11 @@ export function getDefaultConfig(): ThematicMapConfig {
     filters: {
       min_sondages: 1,
       exclude_no_data: true
+    },
+    contextLayers: {
+      showGeologie: false,
+      showPedologie: false,
+      showRisqueGonflement: false
     }
   }
 }

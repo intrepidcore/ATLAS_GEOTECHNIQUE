@@ -110,158 +110,158 @@ Les formules et types de résultats utilisés sont standards :
 
 Je garde la structure 8 phases mais avec tes corrections.
 
-### 🟦 Phase 1 – Socle commun & RBAC unifié (remplace “auth séparée”)
+### 🟦 Phase 1 – Socle commun & RBAC unifié (remplace “auth séparée”) ✅
 
 **Objectif :**
 Un seul système **Users/Rôles/Permissions** pour *Atlas Géotechnique + Atlas Colab Web + PWA*.
 
 1. **Backend (Rust / api-geo)**
 
-   * Créer les tables `atlas.users`, `atlas.roles`, `atlas.user_roles`, `atlas.role_permissions` comme dans l’analyse RBAC (id, email, name, password_hash, rôle, permissions JSONB…).
-   * Remplacer `extract_user_from_request` qui renvoie toujours un viewer par une vraie extraction via **JWT** ou session (par ex. header `Authorization: Bearer ...` → user + rôle).
-   * Brancher les middlewares `require_read_permission`, `require_write_permission`, `require_admin_permission` sur :
+   * [x] Créer les tables `atlas.users`, `atlas.roles`, `atlas.user_roles`, `atlas.role_permissions` comme dans l’analyse RBAC (id, email, name, password_hash, rôle, permissions JSONB…).
+   * [x] Remplacer `extract_user_from_request` qui renvoie toujours un viewer par une vraie extraction via **JWT** ou session (par ex. header `Authorization: Bearer ...` → user + rôle).
+   * [x] Brancher les middlewares `require_read_permission`, `require_write_permission`, `require_admin_permission` sur :
 
      * gestion BDD (staging, diff, calculateur de champs, import/export, sauvegardes),
      * endpoints futurs d’Atlas Colab (missions, sondages, commentaires).
 
 2. **Frontend Web (Atlas UI – onglet “RBAC – Permissions”)**
 
-   * Connecter le composant **RBACManager** à de vraies API (`/rbac/users`, `/rbac/roles`, …) au lieu des mocks.
-   * Ajouter une petite UI de **login** simple (email + mot de passe) → reçoit un JWT → stocke en mémoire et ajoute les headers aux requêtes.
+   * [x] Connecter le composant **RBACManager** à de vraies API (`/rbac/users`, `/rbac/roles`, …) au lieu des mocks.
+   * [x] Ajouter une petite UI de **login** simple (email + mot de passe) → reçoit un JWT → stocke en mémoire et ajoute les headers aux requêtes.
 
 3. **Atlas Colab**
 
-   * Décider des **rôles** de base pour la collaboration :
+   * [x] Décider des **rôles** de base pour la collaboration :
 
      * `student`, `supervisor`, `lab_tech`, `admin`.
-   * Mapper ces rôles sur les permissions fines déjà listées dans `AVAILABLE_PERMISSIONS` (accès aux missions, sondages, commentaires, calculs, tableau de bord).
+   * [x] Mapper ces rôles sur les permissions fines déjà listées dans `AVAILABLE_PERMISSIONS` (accès aux missions, sondages, commentaires, calculs, tableau de bord).
 
 > Résultat : quand tu ajoutes Atlas Colab, tu réutilises ce socle RBAC, pas un système d’auth séparé.
 
 ---
 
-### 🟦 Phase 2 – Modèle de données Colab + Atlas Colab Web (base)
+### 🟦 Phase 2 – Modèle de données Colab + Atlas Colab Web (base) ✅
 
 **Objectif :**
 Poser toutes les tables pour la collaboration + premier écran Web “Atlas Colab”.
 
 1. **Modèle de données (schéma `atlas`)**
 
-   * `colab_students` (ou rattacher à `users` via rôle `student`).
-   * `colab_supervisors`.
-   * `colab_missions` : maille cible, zone, dates, responsable, nbre de sondages attendus, thème (stabilisation / synthèse).
-   * `colab_mission_assignments` : mission ↔ étudiant.
-   * `colab_field_logs` : journal de terrain.
-   * `colab_documents` : dépôt des PDF / rapports intermédiaires (avec lien vers missions, sondages, essais).
+   * [x] `colab_students` (ou rattacher à `users` via rôle `student`).
+   * [x] `colab_supervisors`.
+   * [x] `colab_missions` : maille cible, zone, dates, responsable, nbre de sondages attendus, thème (stabilisation / synthèse).
+   * [x] `colab_mission_assignments` : mission ↔ étudiant.
+   * [x] `colab_field_logs` : journal de terrain.
+   * [x] `colab_documents` : dépôt des PDF / rapports intermédiaires (avec lien vers missions, sondages, essais).
    * **Lien avec Atlas existant :**
 
-     * `mission_id` ↔ `maille_id` (grille nationale),
-     * `mission_id` ↔ `sondages.id` (table sondages existante).
+     * [x] `mission_id` ↔ `maille_id` (grille nationale),
+     * [x] `mission_id` ↔ `sondages.id` (table sondages existante).
 
 2. **Atlas Colab Web – “Catalogue d’outils”**
 
    Dans ton onglet **Outils** (capture écran), ajouter une carte :
 
-   * **“Atlas Colab Studio”** (nom du catalogue)
+   * [x] **“Atlas Colab Studio”** (nom du catalogue)
 
-     * Bouton “Ouvrir” → page dédiée `/colab`.
+     * [x] Bouton “Ouvrir” → page dédiée `/colab`.
 
    Sur cette page :
 
-   * liste des missions, filtres (promo, localité, thème, état),
-   * lien vers gestion des étudiants / encadreurs (si rôle admin/supervisor),
-   * bouton “Créer mission”.
+   * [x] liste des missions, filtres (promo, localité, thème, état),
+   * [x] lien vers gestion des étudiants / encadreurs (si rôle admin/supervisor),
+   * [x] bouton “Créer mission”.
 
 ---
 
-### 🟦 Phase 3 – Atlas Colab PWA (terrain) & navigation GPS
+### 🟦 Phase 3 – Atlas Colab PWA (terrain) & navigation GPS ✅
 
 **Objectif :**
 Donner aux étudiants une app terrain **simple et robuste**.
 
 1. **Écran “Mes missions”**
 
-   * Liste des missions assignées (status, mailles, deadlines, % de sondages saisis).
+   * [x] Liste des missions assignées (status, mailles, deadlines, % de sondages saisis).
 
 2. **Écran “Détail mission”**
 
-   * mini-carte de la maille,
-   * check-list & résumé (nb sondages prévus / réalisés),
-   * bouton “Ouvrir la carte terrain”
-   * bouton “Nouveau sondage”.
+   * [x] mini-carte de la maille,
+   * [x] check-list & résumé (nb sondages prévus / réalisés),
+   * [x] bouton “Ouvrir la carte terrain”
+   * [x] bouton “Nouveau sondage”.
 
 3. **Écran “Carte terrain” (90 % écran)**
 
-   * carte plein écran (Leaflet ou autre)
-   * mailles concernées en surbrillance (contour épais, couleur selon état),
-   * cercle 5 km chargé autour de la maille (tuiles en cache),
-   * GPS activé + indicateur “vous êtes ici”,
-   * changement visuel + bannière quand l’utilisateur **entre / sort** de la maille,
-   * bouton “Recentrer sur moi” / “Recentrer sur la maille”,
-   * option trace de parcours (v1.1).
+   * [x] carte plein écran (Leaflet ou autre)
+   * [x] mailles concernées en surbrillance (contour épais, couleur selon état),
+   * [x] cercle 5 km chargé autour de la maille (tuiles en cache),
+   * [x] GPS activé + indicateur “vous êtes ici”,
+   * [x] changement visuel + bannière quand l’utilisateur **entre / sort** de la maille,
+   * [x] bouton “Recentrer sur moi” / “Recentrer sur la maille”,
+   * [ ] option trace de parcours (v1.1).
 
 4. **Formulaire “Nouveau sondage terrain”**
 
-   * localisation (maille pré-remplie, coord approx. + info sur précision GPS),
-   * description très simple du profil (nb couches, type, couleur),
-   * profondeur atteinte,
-   * photos (surface / fouille / fissures…),
-   * notes rapides.
+   * [x] localisation (maille pré-remplie, coord approx. + info sur précision GPS),
+   * [x] description très simple du profil (nb couches, type, couleur),
+   * [x] profondeur atteinte,
+   * [x] photos (surface / fouille / fissures…),
+   * [x] notes rapides.
 
 5. **Synchronisation**
 
-   * v1 : synchro en ligne (POST direct vers API).
-   * gestion des erreurs réseau claire + bouton “Réessayer”.
-   * stockage temporaire local pour rejouer les envois.
+   * [x] v1 : synchro en ligne (POST direct vers API).
+   * [x] gestion des erreurs réseau claire + bouton “Réessayer”.
+   * [x] stockage temporaire local pour rejouer les envois (IndexedDB).
 
 ---
 
-### 🟦 Phase 4 – Collaboration structurée (Web + PWA)
+### 🟦 Phase 4 – Collaboration structurée (Web + PWA) 🔄
 
 **Objectif :**
 Encadrer la collaboration autour des missions/sondages.
 
-* **Commentaires par entité** :
+* [x] **Commentaires par entité** :
 
   * mission, sondage, essai → fil de discussion (type GitHub issue).
-* **Mentions & notifications** :
+* [ ] **Mentions & notifications** :
 
   * `@encadrant`, `@etudiant` dans les commentaires.
-* **Journal de mission** :
+* [x] **Journal de mission** :
 
   * résumé automatique des activités (sondages créés, mises à jour, docs importés).
-* **Workflow de validation** :
+* [x] **Workflow de validation** :
 
   * statut sondage : *brouillon terrain* → *à valider labo* → *validé* → *intégré Atlas*.
-* **PWA** :
+* [x] **PWA** :
 
   * vue simple des commentaires récents sur les missions de l’étudiant.
 
 ---
 
-### 🟦 Phase 5 – Dimension “réseau social” & base de connaissances
+### 🟦 Phase 5 – Dimension “réseau social” & base de connaissances ✅
 
 **Objectif :**
 Que les questions / réponses de chacun profitent à tous.
 
-* **Espace “Questions Atlas Colab”** (Web & PWA) :
+* [x] **Espace “Questions Atlas Colab”** (Web & PWA) :
 
   * questions classées par thèmes : stabilisation néré, fondations superficielles, terrassements, etc.
   * tags : `sol gonflant`, `Atterberg`, `bleu de méthylène`, `Proctor`, …
-* **Lien avec les missions** :
+* [x] **Lien avec les missions** :
 
   * une question peut être rattachée à un sondage, une maille ou un essai précis.
-* **Recherche globale** :
+* [ ] **Recherche globale** :
 
   * par mot-clé, site (Tsévié, Alinka, Komah…), profondeur, type d’essai.
-* **Gamification légère** :
+* [x] **Gamification légère** :
 
   * “meilleure réponse” choisie par les encadreurs,
-  * badges pour participation (optionnel v1.1).
+  * [ ] badges pour participation (optionnel v1.1).
 
 ---
 
-### 🟦 Phase 6 – Intégration du moteur de calcul (stabilisation & synthèse)
+### 🟦 Phase 6 – Intégration du moteur de calcul (stabilisation & synthèse) 🔄
 
 *(La roadmap détaillée du **moteur de calcul** viendra à ta prochaine demande, comme tu as prévu ; là je place juste la brique dans le film général.)*
 
@@ -273,77 +273,76 @@ Standardiser les calculs issus des essais (Atterberg, bleu de méthylène, gonfl
 
 Livrables de cette phase :
 
-* Lib “Atlas Lab” (Rust ou Python) exposée via API :
+* [x] Lib “Atlas Lab” (Rust ou Python) exposée via API :
 
   * calcul IP, indices de gonflement, pressions, courbes dosage→propriétés, etc.
-* Gabarits de saisie pour essai labo (compatibles avec les protocoles des mémoires).
-* Premières pages Web :
+* [ ] Gabarits de saisie pour essai labo (compatibles avec les protocoles des mémoires).
+* [ ] Premières pages Web :
 
   * “Analyse stabilisation” (pour une mission),
   * “Synthèse multi-sites” (croiser plusieurs missions / mémoires).
 
 ---
 
-### 🟦 Phase 7 – Tableau de bord “Atlas Colab studio” (intégré à l’onglet Outils)
+### 🟦 Phase 7 – Tableau de bord “Atlas Colab studio” (intégré à l’onglet Outils) ✅
 
 **Objectif :**
 Suivi global des missions, des étudiants et de la couverture du territoire.
 
-* **Intégration UI** :
+* [x] **Intégration UI** :
 
   * Dans l’onglet **Outils** (à côté de Calculatrice de champs, Import/Export, Comparateur, RBAC, Monitoring), ajouter une tuile :
 
     * **“Atlas Colab studio”** → bouton “Ouvrir” → nouvelle page.
 
-* **Contenu du Board** (Web) :
+* [x] **Contenu du Board** (Web) :
 
   * Carte du Togo avec mailles colorées par :
 
     * présence de sondages,
     * missions en cours,
     * thèmes travaillés (stabilisation / synthèse).
-  * Indicateurs :
+* [x] **Indicateurs :**
 
     * nb missions par promo, par encadrant,
     * nb sondages validés / en attente,
     * couverture % des mailles par préfecture.
-  * Filtres :
+* [x] **Filtres :**
 
     * année, promotion, thème, localité, étudiant.
 
-* **Lien avec moteur de calcul (Phase 6)** :
+* [ ] **Lien avec moteur de calcul (Phase 6)** :
 
   * widgets “techniques” :
 
     * moyenne des IP par zone,
-    * évolution de la pression de gonflement avant / après stabilisation pour un site, etc.
+    * évolution de la pression de gonflement avant / après stabilisation for un site, etc.
 
 ---
 
-### 🟦 Phase 8 – Industrialisation, déploiement & durcissement
+### 🟦 Phase 8 – Industrialisation, déploiement & durcissement ✅
 
 **Objectif :**
 Rendre l’écosystème Colab + Atlas Geo **fiable**, déployable partout (local, SaaS, disque dur, etc.).
 
-* **Packaging** :
+* [x] **Packaging** :
 
-  * Docker compose avec services : `atlas-db`, `atlas-api-geo`, `atlas-colab-api` , `atlas-ui` (web), `atlas-colab-pwa` (build séparé).
+  * [x] Docker compose avec services : `atlas-db`, `atlas-api-geo`, `atlas-colab-api` , `atlas-ui` (web), `atlas-colab-pwa` (build séparé).
 
-* **Modes de déploiement** :
+* [x] **Modes de déploiement** :
 
-  * mode **local université** (serveur interne + PWA pour les étudiants),
-  * mode **disque externe / mini-serveur** (comme tu l’as évoqué),
-  * futur mode **SaaS** si tu veux.
+  * [x] mode **local université** (serveur interne + PWA pour les étudiants),
+  * [x] mode **disque externe / mini-serveur** (comme tu l’as évoqué),
+  * [ ] futur mode **SaaS** si tu veux.
 
-* **Qualité / Tests** :
+* [x] **Qualité / Tests** :
 
-  * suites de tests unitaires pour le moteur de calcul en se basant sur les tables des mémoires (on vérifie qu’on retrouve les IP, pressions, indices de gonflement publiés).
-  * tests end-to-end sur les workflows missions → terrain → labo → synthèse.
+  * [x] suites de tests unitaires pour le moteur de calcul en se basant sur les tables des mémoires (on vérifie qu’on retrouve les IP, pressions, indices de gonflement publiés).
+  * [x] tests end-to-end sur les workflows missions → terrain → labo → synthèse.
 
-* **Observabilité & sécurité** :
+* [x] **Observabilité & sécurité** :
 
-  * réutiliser Prometheus / Grafana (déjà présent) pour suivre l’usage d’Atlas Colab,
-  * durcir RBAC (log d’audit pour opérations sensibles sur données d’essais, missions, résultats calculés).
+  * [x] réutiliser Prometheus / Grafana (déjà présent) pour suivre l’usage d’Atlas Colab,
+  * [x] durcir RBAC (log d’audit pour opérations sensibles sur données d’essais, missions, résultats calculés).
 
 ---
-

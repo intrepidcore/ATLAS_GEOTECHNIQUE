@@ -584,7 +584,7 @@ export interface LegendMetadata {
   parameterId: string;
   parameterLabel: string;
   unit: string;
-  mapType: 'choropleth' | 'proportional' | 'binary';
+  mapType: 'choropleth' | 'proportional' | 'binary' | 'heatmap';
   palette: string;
   paletteReversed?: boolean;
   classificationMethod: string;

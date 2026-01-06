@@ -38,14 +38,14 @@ def get_db_connection():
         sys.exit(1)
 
 def fetch_data_by_adm2(conn, parameter='n_sondages'):
-    """Récupère données par préfecture (ADM2)"""
+    """Récupère données par préfecture (ADM2) - v4.5 corrigé"""
     query = f"""
     SELECT 
         COALESCE(adm2_name, 'Non classé') as adm2_name,
         COUNT(DISTINCT maille_id) as n_mailles,
         SUM({parameter}) as total_value,
         AVG({parameter}) as avg_value
-    FROM atlas.v_maille_kpi
+    FROM atlas.v_maille_kpi_adm2
     WHERE {parameter} IS NOT NULL
     GROUP BY adm2_name
     ORDER BY total_value DESC
@@ -62,10 +62,10 @@ def fetch_data_by_adm2(conn, parameter='n_sondages'):
     return df
 
 def fetch_histogram_data(conn, parameter='n_sondages'):
-    """Récupère données pour histogramme (SANS zéros)"""
+    """Récupère données pour histogramme (SANS zéros) - v4.5 corrigé"""
     query = f"""
     SELECT {parameter} as value
-    FROM atlas.v_maille_kpi
+    FROM atlas.v_maille_kpi_adm2
     WHERE {parameter} IS NOT NULL AND {parameter} > 0
     ORDER BY {parameter}
     """
@@ -75,12 +75,12 @@ def fetch_histogram_data(conn, parameter='n_sondages'):
     return df
 
 def fetch_coverage_data(conn):
-    """Récupère données couverture (avec/sans données)"""
+    """Récupère données couverture (avec/sans données) - v4.5 corrigé"""
     query = """
     SELECT 
         CASE WHEN n_sondages > 0 THEN 'Avec données' ELSE 'Sans données' END as category,
         COUNT(*) as n_mailles
-    FROM atlas.v_maille_kpi
+    FROM atlas.v_maille_kpi_adm2
     GROUP BY category
     """
     
@@ -162,7 +162,7 @@ def generate_boxplot(df, parameter='n_sondages', output_dir=OUTPUT_DIR):
     print(f"  ✅ Boxplot: {output_path}")
 
 def generate_histogram(df, parameter='n_sondages', output_dir=OUTPUT_DIR):
-    """Histogramme SANS zéros (mailles actives uniquement)"""
+    """Histogramme SANS zéros (mailles actives uniquement) - v4.5 trié"""
     
     print(f"\n📊 Génération histogramme: {parameter}")
     
@@ -170,10 +170,13 @@ def generate_histogram(df, parameter='n_sondages', output_dir=OUTPUT_DIR):
         print(f"  ⚠️ Aucune donnée pour histogramme")
         return
     
+    # v4.5: Trier les données par valeur croissante pour meilleure lisibilité
+    df_sorted = df.sort_values('value')
+    
     fig, ax = plt.subplots(figsize=(10, 6))
     
     # Histogramme
-    n, bins, patches = ax.hist(df['value'], bins=20, color='lightcoral', edgecolor='darkred', alpha=0.7)
+    n, bins, patches = ax.hist(df_sorted['value'], bins=20, color='lightcoral', edgecolor='darkred', alpha=0.7)
     
     ax.set_xlabel(f'{parameter}', fontsize=12, fontweight='bold')
     ax.set_ylabel('Nombre de mailles', fontsize=12, fontweight='bold')

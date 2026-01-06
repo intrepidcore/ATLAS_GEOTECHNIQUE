@@ -456,7 +456,9 @@ export class ExportFrame {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     
-    const title = this.options.title || `Atlas Géotechnique – ${thematic.name}`;
+    // v4.5.1: Ajout tag de version pour validation visuelle
+    const versionTag = ' (v4.5.1)';
+    const title = (this.options.title || `Atlas Géotechnique – ${thematic.name}`) + versionTag;
     const titleY = titleArea.y + Math.round(5 * this.dpi / 72);
     ctx.fillText(title, titleArea.x + titleArea.width / 2, titleY);
     
@@ -974,10 +976,10 @@ export class ExportFrame {
     });
     
     ctx.save();
-    // Mailles vides : fond très léger + contour gris visible
-    ctx.fillStyle = 'rgba(220, 220, 220, 0.15)'; // Fond quasi-transparent
-    ctx.strokeStyle = 'rgba(180, 180, 180, 0.7)'; // Contour gris visible
-    ctx.lineWidth = 0.5 * scale;
+    // v4.5.1: Mailles vides ULTRA-DISCRÈTES
+    ctx.fillStyle = 'rgba(240, 240, 240, 0.05)'; // Presque invisible
+    ctx.strokeStyle = 'rgba(220, 220, 220, 0.2)'; // Gris très clair et transparent
+    ctx.lineWidth = 0.1 * scale; // Très fin
     
     for (const cell of emptyCells) {
       const geom = cell.geometry;
@@ -1130,9 +1132,9 @@ export class ExportFrame {
     });
     
     ctx.save();
-    // AMÉLIORATION VISIBILITÉ: stroke plus visible pour distinguer les mailles
-    ctx.lineWidth = 1.0 * scale; // Plus épais (était 0.3)
-    ctx.strokeStyle = 'rgba(50, 80, 120, 0.6)'; // Bleu-gris visible (était gris 0.3)
+    // v4.5.1: Stroke ULTRA-DISCRET pour les mailles thématiques
+    ctx.lineWidth = 0.1 * scale; // Très fin (était 1.0)
+    ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)'; // Gris clair discret (était bleu-gris 0.6)
     
     let drawnCount = 0;
     for (const cell of withDataCells) {

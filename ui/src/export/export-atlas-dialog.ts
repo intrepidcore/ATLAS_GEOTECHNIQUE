@@ -70,13 +70,16 @@ export interface AtlasExportConfig {
   // Options grille et cadre (v3.5.3)
   gridType: 'none' | 'cross' | 'continuous' | 'labels-only';
   frameStyle: 'none' | 'simple' | 'double' | 'zebra';
+  // Fond de carte et type de carte (v3.6.0)
+  basemap?: string;
+  mapType?: 'choropleth' | 'bubble' | 'heatmap';
 }
 
 export interface AtlasExportCallbacks {
   getAdmList: (level: 'adm1' | 'adm2' | 'adm3') => Promise<Array<{ code: string; name: string }>>;
   exportSingleMap?: (admLevel: string, admName: string, thematicId: string, config: AtlasExportConfig) => Promise<Blob | null>;
-  /** Change la thématique et l'ADM sur la carte. palette optionnelle pour forcer une palette spécifique (v3.5.2) */
-  setThematicAndAdm: (thematicId: string, admLevel: string, admName: string, palette?: string) => Promise<void>;
+  /** Change la thématique et l'ADM sur la carte. palette et mapType optionnels (v4.4) */
+  setThematicAndAdm: (thematicId: string, admLevel: string, admName: string, palette?: string, mapType?: 'choropleth' | 'bubble' | 'heatmap') => Promise<void>;
   /** Configuration pour ExportQuickDialog - utilisé pour l'export via le moteur Pro */
   getExportProConfig: () => ExportQuickDialogConfig;
 }
@@ -816,10 +819,23 @@ export class ExportAtlasDialog {
                   <label>🗺️ Style carte</label>
                   <select id="atlas-basemap">
                     <option value="osm" selected>OSM Standard</option>
+                    <option value="cartodb_voyager">CartoDB Voyager</option>
+                    <option value="cartodb_positron">CartoDB Positron (clair)</option>
+                    <option value="cartodb_dark">CartoDB Dark</option>
                     <option value="satellite">ESRI Satellite</option>
                     <option value="topo">ESRI Topo</option>
-                    <option value="offline">Offline Local</option>
+                    <option value="stamen_terrain">Stamen Terrain</option>
+                    <option value="opentopo">OpenTopoMap</option>
                   </select>
+                </div>
+                <div class="atlas-field">
+                  <label>🎨 Type de carte</label>
+                  <select id="atlas-map-type">
+                    <option value="choropleth" selected>Choroplèthe (aplats)</option>
+                    <option value="bubble">Cercles proportionnels</option>
+                    <option value="heatmap">Heatmap (densité)</option>
+                  </select>
+                  <small class="field-hint">Mode de représentation des données</small>
                 </div>
               </div>
             </details>
@@ -1338,6 +1354,9 @@ export class ExportAtlasDialog {
       // Options grille et cadre (v3.5.3)
       gridType: ((this.overlay.querySelector('#atlas-grid-type') as HTMLSelectElement)?.value || 'cross') as 'none' | 'cross' | 'continuous' | 'labels-only',
       frameStyle: ((this.overlay.querySelector('#atlas-frame-style') as HTMLSelectElement)?.value || 'simple') as 'none' | 'simple' | 'double' | 'zebra',
+      // Fond de carte et type de carte (v3.6.0)
+      basemap: (this.overlay.querySelector('#atlas-basemap') as HTMLSelectElement)?.value || 'osm',
+      mapType: ((this.overlay.querySelector('#atlas-map-type') as HTMLSelectElement)?.value || 'choropleth') as 'choropleth' | 'bubble' | 'heatmap',
       // Mode debug rapide
       debugMode: (this.overlay.querySelector('#atlas-debug-mode') as HTMLInputElement)?.checked || false
     };
@@ -1552,14 +1571,16 @@ export class ExportAtlasDialog {
           
           if (this.callbacks?.setThematicAndAdm && this.callbacks?.getExportProConfig) {
             try {
-              // 1. Changer la thématique et l'ADM sur la carte (v3.5.2: avec palette)
+              // 1. Changer la thématique et l'ADM sur la carte (v4.4: avec palette et mapType)
               this.progressModal?.logStep('Chargement thématique et ADM...');
               const palette = config.thematicPalettes?.[thematicId];
-              await this.callbacks.setThematicAndAdm(thematicId, level, adm.name, palette);
+              const mapType = config.mapType || 'choropleth';
+              await this.callbacks.setThematicAndAdm(thematicId, level, adm.name, palette, mapType);
               
               // 2. Attendre le rendu complet (tuiles + thématique)
-              this.progressModal?.logStep('Attente rendu carte (1s)...');
-              await new Promise(r => setTimeout(r, 1000));
+              // v4.5: Délai augmenté à 3s pour stabilisation heatmap/grille
+              this.progressModal?.logStep('Attente rendu carte (3s)...');
+              await new Promise(r => setTimeout(r, 3000));
               
               // 3. Créer une instance d'ExportQuickDialog avec la config actuelle
               this.progressModal?.logStep('Initialisation moteur export...');
