@@ -10,7 +10,7 @@ from typing import Dict, Any
 
 def get_database_url():
     """Récupère la DATABASE_URL avec fallback."""
-    db_url = os.getenv("DATABASE_URL", "postgresql://atlas:atlas@localhost:5432/atlas")
+    db_url = os.getenv("DATABASE_URL", "postgresql://atlas:atlas@localhost:5432/atlas_clean")
     
     if "@db:" in db_url:
         try:
@@ -132,7 +132,10 @@ def print_report(result: Dict[str, Any]):
     print(f"\n📈 PROFILS:")
     print(f"   Nombre de profils: {result['profils_count']}")
     print(f"   Range: profil {result['profil_min']} → {result['profil_max']}")
-    print(f"   PK: {result['pk_min']:.1f} km → {result['pk_max']:.1f} km")
+    if result['pk_min'] is not None and result['pk_max'] is not None:
+        print(f"   PK: {result['pk_min']:.1f} km → {result['pk_max']:.1f} km")
+    else:
+        print(f"   PK: N/A")
     
     print(f"\n🔗 LIAISONS:")
     print(f"   Mailles 2km rattachées: {result['mailles_2km_linked']} / {result['mailles_2km_total']}")

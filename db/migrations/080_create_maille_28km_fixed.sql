@@ -27,7 +27,11 @@ COMMENT ON TABLE atlas.maille_28km IS 'Maille 28x28km pour analyse régionale (A
 COMMENT ON COLUMN atlas.maille_28km.profil_num IS 'Numéro de profil Sud-Nord (1..21)';
 
 -- 2. Génération des mailles 28km
-TRUNCATE TABLE atlas.maille_28km CASCADE;
+-- Supprimer les contraintes FK temporairement pour éviter CASCADE
+ALTER TABLE atlas.mailles DROP CONSTRAINT IF EXISTS fk_mailles_maille28km;
+ALTER TABLE atlas.sondages DROP CONSTRAINT IF EXISTS fk_sondage_maille28km;
+
+TRUNCATE TABLE atlas.maille_28km;
 
 WITH bounds AS (
     SELECT

@@ -111,11 +111,13 @@ def print_diagnostic(result: Dict[str, Any]):
     print(f"✅ CONNECTÉ")
     print(f"   Database: {result['database_name']}")
     print(f"\n📊 TABLES:")
-    print(f"   atlas.mailles (2km):     {result['atlas_mailles_count']:>6} lignes")
-    print(f"   atlas.maille_28km:       {result['maille_28km_count']:>6} lignes (SRID: {result['maille_28km_srid']})")
+    print(f"   atlas.mailles (2km):     {result['atlas_mailles_count'] or 0:>6} lignes")
+    maille_28km_count = result['maille_28km_count'] or 0
+    maille_28km_srid = result['maille_28km_srid'] or 'N/A'
+    print(f"   atlas.maille_28km:       {maille_28km_count:>6} lignes (SRID: {maille_28km_srid})")
     print(f"   atlas.boundary_togo:     {'✅ existe' if result['boundary_togo_exists'] else '❌ manquante'}")
     print(f"   public.adm0_raw:         {'✅ existe' if result['adm0_raw_exists'] else '❌ manquante'}")
-    print(f"   atlas.colab_students:    {result['colab_students_count']:>6} lignes")
+    print(f"   atlas.colab_students:    {result['colab_students_count'] or 0:>6} lignes")
     
     if result["migrations_applied"]:
         print(f"\n🔧 MIGRATIONS 28km appliquées:")
