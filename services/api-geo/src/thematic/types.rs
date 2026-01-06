@@ -60,6 +60,10 @@ pub enum ThematicParameter {
     EgMin,
     #[serde(alias = "eg_max")]
     EgMax,
+
+    // Contexte géographique (DSM COP30)
+    #[serde(alias = "altitude_mean")]
+    AltitudeMean,
 }
 
 impl ThematicParameter {
@@ -89,6 +93,7 @@ impl ThematicParameter {
             Self::EgStddev => "eg_stddev",
             Self::EgMin => "eg_min",
             Self::EgMax => "eg_max",
+            Self::AltitudeMean => "altitude_mean",
         }
     }
 
@@ -118,6 +123,7 @@ impl ThematicParameter {
             Self::EgStddev => "Écart-type eg",
             Self::EgMin => "eg minimum",
             Self::EgMax => "eg maximum",
+            Self::AltitudeMean => "Altitude moyenne (DSM COP30)",
         }
     }
 
@@ -136,6 +142,7 @@ impl ThematicParameter {
             Self::GammaDMaxAvg | Self::GammaDMaxStddev => "kN/m³",
             Self::WOptAvg | Self::WOptStddev => "%",
             Self::EgAvg | Self::EgStddev | Self::EgMin | Self::EgMax => "%",
+            Self::AltitudeMean => "m",
         }
     }
 
@@ -155,6 +162,7 @@ impl ThematicParameter {
                 "proctor"
             }
             Self::EgAvg | Self::EgStddev | Self::EgMin | Self::EgMax => "gonflement",
+            Self::AltitudeMean => "contexte",
         }
     }
 }

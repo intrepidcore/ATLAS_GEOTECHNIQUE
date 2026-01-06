@@ -11,6 +11,7 @@ export type ObjectifMetier =
   | 'gonflement'      // Potentiel de gonflement
   | 'compacite'       // Compacité / portance (Proctor)
   | 'granulometrie'   // Granulométrie
+  | 'contexte'        // Contexte géographique
   | 'personnalise'    // Power user - tous les paramètres
 
 export interface ObjectifConfig {
@@ -70,6 +71,15 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     defaultPalette: 'BrBG'
   },
   {
+    id: 'contexte',
+    label: 'Contexte géographique',
+    description: 'Paramètres géographiques et topographiques',
+    icon: '🗺️',
+    parameters: ['altitude_mean'],
+    defaultParameter: 'altitude_mean',
+    defaultPalette: 'Terrain'
+  },
+  {
     id: 'personnalise',
     label: 'Personnalisé',
     description: 'Accès à tous les paramètres disponibles',
@@ -84,7 +94,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
 // PARAMÈTRES THÉMATIQUES
 // ============================================================================
 
-export type ParameterCategory = 'density' | 'granulo' | 'atterberg' | 'vbs' | 'proctor' | 'gonflement'
+export type ParameterCategory = 'density' | 'granulo' | 'atterberg' | 'vbs' | 'proctor' | 'gonflement' | 'contexte'
 
 export interface ThematicParameter {
   id: string
@@ -245,6 +255,19 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     defaultPalette: 'BrBG',
     minEssaisField: 'n_essais_granulo'
   },
+  // ─────────────────────────────────────────────────────────────────────────
+  // CONTEXTE GÉOGRAPHIQUE
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'altitude_mean',
+    label: 'Altitude moyenne (DSM COP30)',
+    unit: 'm',
+    category: 'contexte',
+    description: 'Altitude moyenne par maille issue du Modèle Numérique de Surface Copernicus DEM GLO-30',
+    defaultBreaks: [100, 200, 300, 400, 500],
+    defaultPalette: 'Terrain'
+  },
+
   {
     id: 'passant_2mm_avg',
     label: '% Passant 2mm',

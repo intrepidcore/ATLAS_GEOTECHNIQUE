@@ -140,7 +140,39 @@ pub async fn get_thematic_data(
     // Construire la requête avec paramètres sécurisés
     let mut param_index = 1;
 
-    let base_query = if req.include_geometry {
+    // Cas spécial pour altitude_mean : utiliser les vues DSM
+    let base_query = if column == "altitude_mean" {
+        if req.include_geometry {
+            format!(
+                "SELECT 
+                    m.code,
+                    ST_AsGeoJSON(ST_Transform(m.geom, 4326))::text as geom,
+                    CAST(d.altitude_mean AS DOUBLE PRECISION) as value,
+                    0 as n_sondages,
+                    0 as n_essais_geo,
+                    NULL::text as adm1_name,
+                    m.adm2_name,
+                    NULL::text as adm3_name
+                 FROM atlas.mailles m
+                 JOIN atlas.v_maille_dsm_2km_flat d ON d.code = m.code
+                 WHERE d.altitude_mean IS NOT NULL"
+            )
+        } else {
+            format!(
+                "SELECT 
+                    m.code,
+                    CAST(d.altitude_mean AS DOUBLE PRECISION) as value,
+                    0 as n_sondages,
+                    0 as n_essais_geo,
+                    NULL::text as adm1_name,
+                    m.adm2_name,
+                    NULL::text as adm3_name
+                 FROM atlas.mailles m
+                 JOIN atlas.v_maille_dsm_2km_flat d ON d.code = m.code
+                 WHERE d.altitude_mean IS NOT NULL"
+            )
+        }
+    } else if req.include_geometry {
         format!(
             "SELECT 
                 code,
