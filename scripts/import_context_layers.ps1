@@ -14,105 +14,64 @@
 # STRATÉGIE: Copie les fichiers dans le conteneur Docker puis utilise ogr2ogr depuis le conteneur
 # pour éviter les problèmes d'authentification PostgreSQL
 
-$CONTAINER_NAME = "atlas-db"
-$DB_NAME = "atlas_clean"
-$DB_USER = "atlas"
+# Charger la configuration centralisée
+. "$PSScriptRoot\config.ps1"
+
+$CONTAINER_NAME = $Global:ATLAS_DB_CONTAINER
+$DB_NAME = $Global:ATLAS_DB_NAME
+$DB_USER = $Global:ATLAS_DB_USER
 $TEMP_DIR = "/tmp/import_layers"
 
-Write-Host "=== Import des couches de contexte dans PostGIS ===" -ForegroundColor Cyan
-Write-Host "Conteneur: $CONTAINER_NAME" -ForegroundColor Gray
-Write-Host "Base de données: $DB_NAME" -ForegroundColor Gray
+Write-AtlasLog "=== Import des couches de contexte dans PostGIS ===" -Level 'Info'
+Write-AtlasLog "Conteneur: $CONTAINER_NAME" -Level 'Info'
+Write-AtlasLog "Base de données: $DB_NAME" -Level 'Info'
 
 # Créer le répertoire temporaire dans le conteneur
-Write-Host "`nCréation du répertoire temporaire dans le conteneur..." -ForegroundColor Gray
-docker exec $CONTAINER_NAME mkdir -p $TEMP_DIR
+Invoke-AtlasCommand "docker exec $CONTAINER_NAME mkdir -p $TEMP_DIR" -Description "Création répertoire temporaire"
 
 # 1. Géologie
-Write-Host "`n[1/3] Import de la géologie..." -ForegroundColor Yellow
-$geolFile = Join-Path $PSScriptRoot "..\ressource\GEOLOGIQUE\unites_geologique_V2.gpkg"
+Write-AtlasLog "[1/3] Import de la géologie..." -Level 'Info'
+$geolFile = Join-Path $Global:ATLAS_RESOURCE_PATH "GEOLOGIQUE\unites_geologique_V2.gpkg"
 if (Test-Path $geolFile) {
-    Write-Host "  Copie du fichier dans le conteneur..." -ForegroundColor Gray
-    docker cp $geolFile "${CONTAINER_NAME}:${TEMP_DIR}/geologie.gpkg"
+    Invoke-AtlasCommand "docker cp `"$geolFile`" `"${CONTAINER_NAME}:${TEMP_DIR}/geologie.gpkg`"" -Description "Copie fichier géologie"
     
-    Write-Host "  Import avec ogr2ogr..." -ForegroundColor Gray
-    docker exec $CONTAINER_NAME ogr2ogr `
-        -f PostgreSQL "PG:host=localhost port=5432 dbname=$DB_NAME user=$DB_USER password=$DB_USER" `
-        "${TEMP_DIR}/geologie.gpkg" `
-        -nln atlas.unites_geologiques `
-        -nlt MULTIPOLYGON `
-        -lco GEOMETRY_NAME=geom `
-        -lco FID=ogc_fid `
-        -t_srs EPSG:25231 `
-        -overwrite
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  ✓ Géologie importée" -ForegroundColor Green
-    } else {
-        Write-Host "  ✗ Erreur lors de l'import de la géologie" -ForegroundColor Red
-    }
+    $ogr2ogr_cmd = "docker exec $CONTAINER_NAME ogr2ogr -f PostgreSQL `"PG:host=localhost port=5432 dbname=$DB_NAME user=$DB_USER password=$DB_USER`" `"${TEMP_DIR}/geologie.gpkg`" -nln atlas.unites_geologiques -nlt MULTIPOLYGON -lco GEOMETRY_NAME=geom -lco FID=ogc_fid -t_srs EPSG:25231 -overwrite"
+    Invoke-AtlasCommand $ogr2ogr_cmd -Description "Import géologie avec ogr2ogr"
 } else {
-    Write-Host "  ✗ Fichier géologie introuvable: $geolFile" -ForegroundColor Red
+    Write-AtlasLog "Fichier géologie introuvable: $geolFile" -Level 'Error'
+    throw "Fichier géologie manquant"
 }
 
 # 2. Pédologie
-Write-Host "`n[2/3] Import de la pédologie..." -ForegroundColor Yellow
-$pedoFile = Join-Path $PSScriptRoot "..\ressource\PEDOLOGIE\unites_pedologique_V2.gpkg"
+Write-AtlasLog "[2/3] Import de la pédologie..." -Level 'Info'
+$pedoFile = Join-Path $Global:ATLAS_RESOURCE_PATH "PEDOLOGIE\unites_pedologique_V2.gpkg"
 if (Test-Path $pedoFile) {
-    Write-Host "  Copie du fichier dans le conteneur..." -ForegroundColor Gray
-    docker cp $pedoFile "${CONTAINER_NAME}:${TEMP_DIR}/pedologie.gpkg"
+    Invoke-AtlasCommand "docker cp `"$pedoFile`" `"${CONTAINER_NAME}:${TEMP_DIR}/pedologie.gpkg`"" -Description "Copie fichier pédologie"
     
-    Write-Host "  Import avec ogr2ogr..." -ForegroundColor Gray
-    docker exec $CONTAINER_NAME ogr2ogr `
-        -f PostgreSQL "PG:host=localhost port=5432 dbname=$DB_NAME user=$DB_USER password=$DB_USER" `
-        "${TEMP_DIR}/pedologie.gpkg" `
-        -nln atlas.unites_pedologiques `
-        -nlt MULTIPOLYGON `
-        -lco GEOMETRY_NAME=geom `
-        -lco FID=ogc_fid `
-        -t_srs EPSG:25231 `
-        -overwrite
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  ✓ Pédologie importée" -ForegroundColor Green
-    } else {
-        Write-Host "  ✗ Erreur lors de l'import de la pédologie" -ForegroundColor Red
-    }
+    $ogr2ogr_cmd = "docker exec $CONTAINER_NAME ogr2ogr -f PostgreSQL `"PG:host=localhost port=5432 dbname=$DB_NAME user=$DB_USER password=$DB_USER`" `"${TEMP_DIR}/pedologie.gpkg`" -nln atlas.unites_pedologiques -nlt MULTIPOLYGON -lco GEOMETRY_NAME=geom -lco FID=ogc_fid -t_srs EPSG:25231 -overwrite"
+    Invoke-AtlasCommand $ogr2ogr_cmd -Description "Import pédologie avec ogr2ogr"
 } else {
-    Write-Host "  ✗ Fichier pédologie introuvable: $pedoFile" -ForegroundColor Red
+    Write-AtlasLog "Fichier pédologie introuvable: $pedoFile" -Level 'Error'
+    throw "Fichier pédologie manquant"
 }
 
 # 3. Risque de gonflement
-Write-Host "`n[3/3] Import du risque de gonflement..." -ForegroundColor Yellow
-$risqueFile = Join-Path $PSScriptRoot "..\ressource\RISQUE_GONFLEMENT\carte_risque_gonflement.gpkg"
+Write-AtlasLog "[3/3] Import du risque de gonflement..." -Level 'Info'
+$risqueFile = Join-Path $Global:ATLAS_RESOURCE_PATH "RISQUE_GONFLEMENT\carte_risque_gonflement.gpkg"
 if (Test-Path $risqueFile) {
-    Write-Host "  Copie du fichier dans le conteneur..." -ForegroundColor Gray
-    docker cp $risqueFile "${CONTAINER_NAME}:${TEMP_DIR}/risque.gpkg"
+    Invoke-AtlasCommand "docker cp `"$risqueFile`" `"${CONTAINER_NAME}:${TEMP_DIR}/risque.gpkg`"" -Description "Copie fichier risque gonflement"
     
-    Write-Host "  Import avec ogr2ogr..." -ForegroundColor Gray
-    docker exec $CONTAINER_NAME ogr2ogr `
-        -f PostgreSQL "PG:host=localhost port=5432 dbname=$DB_NAME user=$DB_USER password=$DB_USER" `
-        "${TEMP_DIR}/risque.gpkg" `
-        -nln atlas.risque_gonflement `
-        -nlt MULTIPOLYGON `
-        -lco GEOMETRY_NAME=geom `
-        -lco FID=ogc_fid `
-        -t_srs EPSG:25231 `
-        -overwrite
-    
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "  ✓ Risque de gonflement importé" -ForegroundColor Green
-    } else {
-        Write-Host "  ✗ Erreur lors de l'import du risque" -ForegroundColor Red
-    }
+    $ogr2ogr_cmd = "docker exec $CONTAINER_NAME ogr2ogr -f PostgreSQL `"PG:host=localhost port=5432 dbname=$DB_NAME user=$DB_USER password=$DB_USER`" `"${TEMP_DIR}/risque.gpkg`" -nln atlas.risque_gonflement -nlt MULTIPOLYGON -lco GEOMETRY_NAME=geom -lco FID=ogc_fid -t_srs EPSG:25231 -overwrite"
+    Invoke-AtlasCommand $ogr2ogr_cmd -Description "Import risque gonflement avec ogr2ogr"
 } else {
-    Write-Host "  ✗ Fichier risque introuvable: $risqueFile" -ForegroundColor Red
+    Write-AtlasLog "Fichier risque gonflement introuvable: $risqueFile" -Level 'Error'
+    throw "Fichier risque gonflement manquant"
 }
 
 # Nettoyage du répertoire temporaire
-Write-Host "`nNettoyage..." -ForegroundColor Gray
-docker exec $CONTAINER_NAME rm -rf $TEMP_DIR
+Invoke-AtlasCommand "docker exec $CONTAINER_NAME rm -rf $TEMP_DIR" -Description "Nettoyage fichiers temporaires"
 
-Write-Host "`n=== Vérification des imports ===" -ForegroundColor Cyan
+Write-AtlasLog "=== Vérification des imports ===" -Level 'Info'
 $verifySQL = @"
 SELECT 'geologie' AS layer, ST_SRID(geom) AS srid, COUNT(*) AS count FROM atlas.unites_geologiques GROUP BY 1,2
 UNION ALL
@@ -123,5 +82,4 @@ SELECT 'risque_gonflement' AS layer, ST_SRID(geom) AS srid, COUNT(*) AS count FR
 
 docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "$verifySQL"
 
-Write-Host ""
-Write-Host "Import terminé !" -ForegroundColor Green
+Write-AtlasLog "Import terminé !" -Level 'Success'
