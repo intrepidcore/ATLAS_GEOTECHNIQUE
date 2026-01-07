@@ -309,6 +309,9 @@ pub struct ListSurveysQuery {
     pub bbox: Option<String>,
     pub location_accuracy: Option<String>,
     pub is_geocoded: Option<bool>,
+    pub q: Option<String>,
+    pub maille_code: Option<String>,
+    pub m28: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -556,6 +559,31 @@ pub async fn list_surveys(
 
     if let Some(geocoded) = q.is_geocoded {
         conditions.push(format!("is_geocoded = {}", geocoded));
+    }
+
+    // Recherche par texte (nom, localité, code maille)
+    if let Some(search_text) = &q.q {
+        let search_safe = search_text.replace("'", "''");
+        conditions.push(format!(
+            "(LOWER(code) LIKE LOWER('%{}%') OR LOWER(localite) LIKE LOWER('%{}%') OR LOWER(maille_code) LIKE LOWER('%{}%') OR LOWER(id_m28) LIKE LOWER('%{}%'))",
+            search_safe, search_safe, search_safe, search_safe
+        ));
+    }
+
+    // Filtre par code maille 2km
+    if let Some(maille) = &q.maille_code {
+        conditions.push(format!(
+            "maille_code = '{}'",
+            maille.replace("'", "''")
+        ));
+    }
+
+    // Filtre par code maille 28km
+    if let Some(m28) = &q.m28 {
+        conditions.push(format!(
+            "id_m28 = '{}'",
+            m28.replace("'", "''")
+        ));
     }
 
     if !conditions.is_empty() {

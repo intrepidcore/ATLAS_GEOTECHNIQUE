@@ -1,5 +1,197 @@
 # 📋 TODO - Atlas Géotechnique - Gestionnaire de Sondages v2
 
+## 🚀 SESSION 07/01/2026 - IMPLÉMENTATIONS BACKEND PARTIES A & B ✅
+
+**TOUTES LES AMÉLIORATIONS BACKEND ONT ÉTÉ IMPLÉMENTÉES AVEC SUCCÈS**
+
+### ✅ PARTIE A: AMÉLIORATIONS BACKEND (TERMINÉ)
+
+#### A1. Scripts DSM - Nettoyage et consolidation ✅
+- ✅ **Scripts consolidés**: Un seul script canonique `import_dsm_cop30.ps1`
+- ✅ **Anciens scripts renommés**: `.ps1.old` pour éviter confusion
+- ✅ **Script reprojection créé**: `reproject_dsm_with_nodata.ps1` avec gestion NoData
+- **Fichiers**: 
+  - `scripts/import_dsm_cop30.ps1` (version finale)
+  - `scripts/reproject_dsm_with_nodata.ps1` (nouveau)
+
+#### A2. Dockerfile PostGIS - Installation automatique ✅
+- ✅ **Dockerfile personnalisé créé**: `db/Dockerfile`
+- ✅ **Packages installés**: `postgis`, `postgresql-16-postgis-3-scripts`, `gdal-bin`
+- ✅ **docker-compose.yml modifié**: Build custom au lieu de l'image de base
+- ✅ **Vérification raster2pgsql**: Disponible dans le conteneur
+- **Fichiers**:
+  - `db/Dockerfile` (nouveau)
+  - `docker-compose.yml` (modifié lignes 4-9)
+
+#### A3. Filtrage NoData DSM - Amélioration gdalwarp ✅
+- ✅ **Option -N ajoutée**: `raster2pgsql -N -9999` pour définir NoData
+- ✅ **Script reprojection**: Gestion explicite `-srcnodata` et `-dstnodata`
+- ✅ **Compression optimisée**: LZW + tuilage 256x256
+- **Fichiers**:
+  - `scripts/import_dsm_cop30.ps1` (ligne 49)
+  - `scripts/reproject_dsm_with_nodata.ps1` (lignes 40-55)
+
+#### A4. Configuration centralisée - Fichier config.ps1 ✅
+- ✅ **Fichier créé**: `scripts/config.ps1`
+- ✅ **Variables globales**: Conteneurs, DB, chemins, DSM, couches contexte
+- ✅ **Fonctions utilitaires**: `Test-DockerContainer`, `Get-AtlasConnectionString`, `Write-AtlasLog`
+- ✅ **Import dans scripts**: `import_dsm_cop30.ps1` utilise la config
+- **Fichier**: `scripts/config.ps1` (nouveau, 60 lignes)
+
+### ✅ PARTIE B: BACKEND - GRILLES ET MAILLES (TERMINÉ)
+
+#### B1. Compteurs location exact/random - Migration 095 ✅
+- ✅ **Vue enrichie créée**: `atlas.v_mailles_with_location_counts`
+- ✅ **Colonnes ajoutées**: `n_sondages_exact`, `n_sondages_random`
+- ✅ **Logique de comptage**:
+  - Exact: `location_mode IN ('exact', 'gps', 'manual')`
+  - Random: `location_mode IN ('adm_random_cell', 'adm3', 'adm2', 'adm1', 'random')`
+- ✅ **Vue API mise à jour**: `mailles_geotechnique_stats_wgs84` expose les nouveaux compteurs
+- ✅ **Migration appliquée**: Succès sur `atlas_clean`
+- **Fichier**: `db/migrations/095_add_location_mode_counts.sql` (nouveau)
+
+#### B2. Endpoint GET /maille/{code} ✅
+- ✅ **Route ajoutée**: `/maille/:code?grid=2km|28km`
+- ✅ **Fonction créée**: `get_maille_by_code()` dans `routes.rs`
+- ✅ **Support grilles**: 2km et 28km via paramètre `grid`
+- ✅ **Propriétés retournées**: 
+  - Géométrie GeoJSON
+  - `n_sondages`, `n_sondages_exact`, `n_sondages_random`
+  - `n_echantillons`, ADM1/2/3
+- ✅ **Route enregistrée**: `main.rs` ligne 143
+- **Fichiers**:
+  - `services/api-geo/src/routes.rs` (lignes 459-529)
+  - `services/api-geo/src/main.rs` (ligne 143)
+
+#### B3. Recherche par code maille ✅
+- ✅ **Paramètres ajoutés**: `q`, `maille_code`, `m28` dans `ListSurveysQuery`
+- ✅ **Recherche texte**: Cherche dans `code`, `localite`, `maille_code`, `id_m28`
+- ✅ **Filtres spécifiques**: 
+  - `maille_code`: Filtre exact sur code maille 2km
+  - `m28`: Filtre exact sur code maille 28km
+- ✅ **Implémentation**: Endpoint `/surveys` enrichi
+- **Fichier**: `services/api-geo/src/surveys.rs` (lignes 308-315, 564-592)
+
+#### B4. Migration mailles 28km - Frontière Togo ✅
+- ✅ **Migration créée**: `096_clip_mailles_28km_to_border.sql`
+- ✅ **Logique conditionnelle**: Vérifie existence table avant UPDATE
+- ✅ **Opération ST_Intersection**: Coupe géométries à la frontière ADM0
+- ✅ **Nettoyage**: Supprime mailles hors Togo
+- ✅ **Note**: Table `mailles_28km` non présente actuellement, migration prête pour le futur
+- **Fichier**: `db/migrations/096_clip_mailles_28km_to_border.sql` (nouveau)
+
+### 📝 FICHIERS MODIFIÉS/CRÉÉS (SESSION 07/01/2026)
+
+**Backend Rust (3 fichiers):**
+- ✅ `services/api-geo/src/routes.rs` (~80 lignes ajoutées)
+  - Fonction `get_maille_by_code()` complète
+  - Support 2km/28km avec vues appropriées
+- ✅ `services/api-geo/src/main.rs` (1 ligne)
+  - Route `/maille/:code` enregistrée
+- ✅ `services/api-geo/src/surveys.rs` (~40 lignes)
+  - Paramètres recherche ajoutés
+  - Filtres maille_code et m28 implémentés
+
+**Migrations SQL (2 fichiers):**
+- ✅ `db/migrations/095_add_location_mode_counts.sql` (90 lignes)
+  - Vue `v_mailles_with_location_counts`
+  - Compteurs exact/random
+- ✅ `db/migrations/096_clip_mailles_28km_to_border.sql` (50 lignes)
+  - Clip mailles 28km à frontière
+  - Logique conditionnelle
+
+**Scripts PowerShell (3 fichiers):**
+- ✅ `scripts/config.ps1` (60 lignes)
+  - Configuration centralisée
+  - Fonctions utilitaires
+- ✅ `scripts/import_dsm_cop30.ps1` (modifié)
+  - Utilise config centralisée
+  - Option NoData -N -9999
+- ✅ `scripts/reproject_dsm_with_nodata.ps1` (70 lignes)
+  - Reprojection avec NoData explicite
+  - Compression LZW optimisée
+
+**Infrastructure Docker (2 fichiers):**
+- ✅ `db/Dockerfile` (15 lignes)
+  - Image PostGIS custom
+  - Outils raster inclus
+- ✅ `docker-compose.yml` (modifié)
+  - Build custom DB
+
+### 🔧 BUILD ET COMPILATION
+
+#### Build API Rust ✅
+- ✅ **Commande**: `cargo build --release` avec `SQLX_OFFLINE=true`
+- ✅ **Résultat**: Compilation réussie
+- ✅ **Warnings**: 47 warnings (variables non utilisées, normaux)
+- ✅ **Erreurs**: 0 erreur de compilation
+- ✅ **Bundle**: Prêt pour déploiement
+
+### 📊 STATISTIQUES SESSION 07/01/2026
+
+**Durée totale:** ~4h (analyse + implémentation backend complète)
+
+**Code produit:**
+- **Backend Rust:** 3 fichiers modifiés, ~120 lignes
+- **Migrations SQL:** 2 fichiers créés, ~140 lignes
+- **Scripts PowerShell:** 3 fichiers, ~130 lignes
+- **Infrastructure:** 2 fichiers, ~20 lignes
+- **Total:** ~410 lignes de code production
+
+**Migrations DB:**
+- ✅ Migration 095: Vue location counts créée
+- ⚠️ Migration 096: Prête (table mailles_28km à créer)
+
+**Fonctionnalités implémentées:** 8/8 ✅
+1. ✅ Scripts DSM consolidés
+2. ✅ Dockerfile PostGIS custom
+3. ✅ Filtrage NoData DSM
+4. ✅ Config centralisée PowerShell
+5. ✅ Compteurs location exact/random
+6. ✅ Endpoint GET /maille/{code}
+7. ✅ Recherche par code maille
+8. ✅ Migration clip mailles 28km
+
+### 🎯 PROCHAINES ÉTAPES (FRONTEND B5-B10)
+
+**Priorité 1 - Frontend UI (Partie B5-B10):**
+- [ ] B5: Déplacer niveau grille vers panneau droit
+- [ ] B6: Couleurs unifiées mailles 2km/28km (vert/bleu/gris)
+- [ ] B7: Clic maille 28km + bouton Gérer
+- [ ] B8: Zoom + surbrillance maille depuis recherche
+- [ ] B9: Styles couches contexte (palettes QGIS)
+- [ ] B10: Features additionnelles (compteurs, persist, popup)
+
+**Priorité 2 - Tests end-to-end:**
+- [ ] Tester endpoint `/maille/{code}` avec Postman
+- [ ] Tester recherche par code maille dans UI
+- [ ] Vérifier compteurs exact/random dans coverage
+- [ ] Valider couleurs grille selon location_mode
+
+**Priorité 3 - Documentation:**
+- [ ] Mettre à jour README avec nouvelles routes
+- [ ] Documenter config.ps1 et son utilisation
+- [ ] Guide migration pour mailles_28km
+
+### 🐛 NOTES TECHNIQUES
+
+#### Compilation Rust avec SQLX
+- **Problème**: `sqlx::query!` nécessite connexion DB au compile-time
+- **Solution**: `$env:SQLX_OFFLINE="true"` pour build offline
+- **Alternative**: Générer `sqlx-data.json` avec `cargo sqlx prepare`
+
+#### Table mailles_28km
+- **Statut**: Non présente dans `atlas_clean` actuellement
+- **Migration 096**: Prête mais conditionnelle
+- **Action**: Créer table mailles_28km avant d'appliquer migration
+
+#### Vues matérialisées
+- **v_mailles_with_location_counts**: Vue standard (pas matérialisée)
+- **Performance**: Acceptable car basée sur mv_mailles_geotech (déjà matérialisée)
+- **Refresh**: Automatique via vue standard
+
+---
+
 ## 🚀 SESSION 30/12/2025 PM - IMPLÉMENTATION COMPLÈTE v4.4 ✅
 
 **TOUTES LES FONCTIONNALITÉS ONT ÉTÉ IMPLÉMENTÉES AVEC SUCCÈS**

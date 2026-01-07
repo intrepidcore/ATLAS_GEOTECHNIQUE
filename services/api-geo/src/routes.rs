@@ -456,6 +456,78 @@ async fn get_grid_shape(
     Json(feature).into_response()
 }
 
+// GET /maille/{code}?grid=2km|28km -> GeoJSON Feature avec propriétés complètes
+pub async fn get_maille_by_code(
+    Path(code): Path<String>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    let grid_type = params.get("grid").map(|s| s.as_str()).unwrap_or("2km");
+
+    let (table, view) = if grid_type == "28km" {
+        ("mailles_28km", "mailles_28km_stats_wgs84")
+    } else {
+        ("mailles", "mailles_geotechnique_stats_wgs84")
+    };
+
+    let query = format!(
+        r#"
+        SELECT 
+            v.code,
+            ST_AsGeoJSON(v.geom) AS g,
+            v.n_sondages,
+            v.n_sondages_exact,
+            v.n_sondages_random,
+            v.n_echantillons,
+            v.adm1_name,
+            v.adm2_name,
+            v.adm3_name
+        FROM {} v
+        WHERE v.code = $1
+        LIMIT 1
+        "#,
+        view
+    );
+
+    let row = match sqlx::query(&query).bind(&code).fetch_optional(pool).await {
+        Ok(Some(r)) => r,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": "Maille introuvable"})),
+            ).into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "get_maille_by_code query error");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "Database error"})),
+            ).into_response();
+        }
+    };
+
+    let geojson_str: String = row.try_get("g").unwrap_or_default();
+    let geom: serde_json::Value = serde_json::from_str(&geojson_str).unwrap_or(serde_json::json!({}));
+    
+    let feature = serde_json::json!({
+        "type": "Feature",
+        "geometry": geom,
+        "properties": {
+            "code": row.try_get::<String, _>("code").unwrap_or_default(),
+            "n_sondages": row.try_get::<i64, _>("n_sondages").unwrap_or(0),
+            "n_sondages_exact": row.try_get::<i32, _>("n_sondages_exact").unwrap_or(0),
+            "n_sondages_random": row.try_get::<i32, _>("n_sondages_random").unwrap_or(0),
+            "n_echantillons": row.try_get::<i64, _>("n_echantillons").unwrap_or(0),
+            "adm1_name": row.try_get::<Option<String>, _>("adm1_name").unwrap_or(None),
+            "adm2_name": row.try_get::<Option<String>, _>("adm2_name").unwrap_or(None),
+            "adm3_name": row.try_get::<Option<String>, _>("adm3_name").unwrap_or(None),
+        }
+    });
+
+    Json(feature).into_response()
+}
+
 // GET /coverage/mailles?bbox=west,south,east,north&grid=2km|28km -> FeatureCollection EPSG:4326 avec comptes
 pub async fn get_coverage_mailles(
     Query(params): Query<std::collections::HashMap<String, String>>,
