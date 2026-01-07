@@ -842,19 +842,54 @@ export class ThematicMapManager {
   }
   
   /**
-   * Bind tooltip to a feature layer
+   * Bind tooltip to a feature layer with dynamic context enrichment
    */
   private bindFeatureTooltip(feature: any, layer: L.Layer, data: ThematicData): void {
     const props = feature.properties
-    const tooltipContent = `
-      <div class="thematic-tooltip">
-        <strong>${props?.code}</strong><br>
-        <span class="tooltip-label">${data.metadata.parameter_label}:</span> 
-        <strong>${props?.value?.toFixed(2) || 'N/A'} ${data.metadata.unit}</strong><br>
-        <span class="tooltip-label">Sondages:</span> ${props?.n_sondages || 0}<br>
-        <span class="tooltip-label">Essais:</span> ${props?.n_essais_geo || 0}
-      </div>
-    `
+    
+    // Build tooltip content dynamically
+    const lines: string[] = []
+    
+    // Always show: code, region, surveys
+    lines.push(`<strong>${props?.code}</strong>`)
+    if (props?.adm1_name) {
+      lines.push(`<span class="tooltip-label">Région:</span> ${props.adm1_name}`)
+    }
+    
+    // Parameter value if available
+    if (data.metadata.parameter_label && props?.value != null) {
+      lines.push(`<span class="tooltip-label">${data.metadata.parameter_label}:</span> <strong>${props.value.toFixed(2)} ${data.metadata.unit}</strong>`)
+    }
+    
+    // Surveys count
+    lines.push(`<span class="tooltip-label">Sondages:</span> ${props?.n_sondages || 0}`)
+    if (props?.n_sondages_exact || props?.n_sondages_random) {
+      lines.push(`<span class="tooltip-label-sm">(${props.n_sondages_exact || 0} exact, ${props.n_sondages_random || 0} random)</span>`)
+    }
+    
+    // Context enrichment: geology
+    if (this.contextLayers.isLayerActive('geologie') && props?.geol_unit) {
+      lines.push(`<hr style="margin: 4px 0; border-color: #e5e7eb;">`)
+      lines.push(`<span class="tooltip-label">Géologie:</span> <strong>${props.geol_unit}</strong>`)
+    }
+    
+    // Context enrichment: pedology
+    if (this.contextLayers.isLayerActive('pedologie') && props?.pedo_unit) {
+      if (!props?.geol_unit) lines.push(`<hr style="margin: 4px 0; border-color: #e5e7eb;">`)
+      lines.push(`<span class="tooltip-label">Pédologie:</span> <strong>${props.pedo_unit}</strong>`)
+    }
+    
+    // Context enrichment: swelling risk
+    if (this.contextLayers.isLayerActive('risque-gonflement') && props?.swelling_class) {
+      if (!props?.geol_unit && !props?.pedo_unit) lines.push(`<hr style="margin: 4px 0; border-color: #e5e7eb;">`)
+      lines.push(`<span class="tooltip-label">Risque gonflement:</span> <strong>${props.swelling_class}</strong>`)
+      // Bonus: show Eg average if available
+      if (props?.eg_avg != null) {
+        lines.push(`<span class="tooltip-label-sm">(Eg moy. = ${props.eg_avg.toFixed(1)} %)</span>`)
+      }
+    }
+    
+    const tooltipContent = `<div class="thematic-tooltip">${lines.join('<br>')}</div>`
     ;(layer as any).bindTooltip(tooltipContent, { sticky: true })
   }
   

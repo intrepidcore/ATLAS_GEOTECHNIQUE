@@ -87,6 +87,50 @@ export function createOpenTopoMapBasemap(): L.TileLayer {
 }
 
 // ============================================
+// Google Maps - Roadmap (gratuit, sans clé)
+// ============================================
+export function createGoogleRoadmapBasemap(): L.TileLayer {
+  return L.tileLayer('http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
+  });
+}
+
+// ============================================
+// Google Maps - Satellite (gratuit, sans clé)
+// ============================================
+export function createGoogleSatelliteBasemap(): L.TileLayer {
+  return L.tileLayer('http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
+  });
+}
+
+// ============================================
+// Google Maps - Hybrid (Satellite + Labels)
+// ============================================
+export function createGoogleHybridBasemap(): L.TileLayer {
+  return L.tileLayer('http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
+  });
+}
+
+// ============================================
+// Google Maps - Terrain
+// ============================================
+export function createGoogleTerrainBasemap(): L.TileLayer {
+  return L.tileLayer('http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+    maxZoom: 20,
+    subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+    attribution: '&copy; <a href="https://www.google.com/maps">Google Maps</a>',
+  });
+}
+
+// ============================================
 // ESRI World Imagery (gratuit pour dev/usage modéré)
 // ============================================
 export function createEsriImageryBasemap(): L.TileLayer {
@@ -203,6 +247,10 @@ export function createAllBasemaps(): Record<string, L.TileLayer> {
 
   // Fonds toujours disponibles
   basemaps['OSM Standard'] = createOsmBasemap();
+  basemaps['Google Roadmap'] = createGoogleRoadmapBasemap();
+  basemaps['Google Satellite'] = createGoogleSatelliteBasemap();
+  basemaps['Google Hybrid'] = createGoogleHybridBasemap();
+  basemaps['Google Terrain'] = createGoogleTerrainBasemap();
   basemaps['CartoDB Voyager'] = createCartoDBVoyagerBasemap();
   basemaps['CartoDB Positron'] = createCartoDBPositronBasemap();
   basemaps['CartoDB Dark'] = createCartoDBDarkBasemap();
@@ -268,6 +316,10 @@ export function createBasemapControl(
 
 export default {
   createOsmBasemap,
+  createGoogleRoadmapBasemap,
+  createGoogleSatelliteBasemap,
+  createGoogleHybridBasemap,
+  createGoogleTerrainBasemap,
   createCartoDBVoyagerBasemap,
   createCartoDBPositronBasemap,
   createCartoDBDarkBasemap,

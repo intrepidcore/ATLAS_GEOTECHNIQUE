@@ -134,6 +134,22 @@ export class ContextLayersManager {
   }
 
   /**
+   * Check if a context layer is currently active
+   */
+  isLayerActive(layerType: 'geologie' | 'pedologie' | 'risque-gonflement'): boolean {
+    switch (layerType) {
+      case 'geologie':
+        return this.geologieLayer !== null
+      case 'pedologie':
+        return this.pedologieLayer !== null
+      case 'risque-gonflement':
+        return this.risqueGonflementLayer !== null
+      default:
+        return false
+    }
+  }
+
+  /**
    * Clear all context layers
    */
   clearAll(): void {
