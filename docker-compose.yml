@@ -2,10 +2,7 @@ name: atlas
 
 services:
   db:
-    build:
-      context: ./db
-      dockerfile: Dockerfile
-    image: atlas-db:latest
+    image: postgis/postgis:16-3.4
     container_name: atlas-db
     restart: unless-stopped
     env_file:
