@@ -1,8 +1,10 @@
 import L from 'leaflet'
 import { apiUrl } from '../api'
+import { getGeologieColor, getPedologieColor, getRiskColor } from './context-layer-styles'
 
 /**
  * Gestionnaire des couches de contexte (géologie, pédologie, risque de gonflement)
+ * Avec styles QGIS identiques pour cohérence visuelle
  */
 export class ContextLayersManager {
   private map: L.Map
@@ -53,10 +55,8 @@ export class ContextLayersManager {
 
       const geojson = await response.json()
 
-      const style = this.getLayerStyle(layerType)
-
       const layer = L.geoJSON(geojson, {
-        style: () => style,
+        style: (feature) => this.getLayerStyle(layerType, feature),
         interactive: false
       })
 
@@ -99,37 +99,49 @@ export class ContextLayersManager {
   }
 
   /**
-   * Get style for context layers
+   * Get style for context layers with QGIS colors
    */
-  private getLayerStyle(layerType: string): L.PathOptions {
+  private getLayerStyle(layerType: string, feature?: any): L.PathOptions {
+    const props = feature?.properties || {};
+    
     switch (layerType) {
-      case 'geologie':
+      case 'geologie': {
+        const unite = props.libelle || props.unite_geo || props.code;
+        const fillColor = getGeologieColor(unite);
         return {
-          color: '#8B4513',
+          color: '#555555',
           weight: 1,
-          fillOpacity: 0.15,
-          fillColor: '#D2691E'
-        }
-      case 'pedologie':
+          fillOpacity: 0.35,
+          fillColor
+        };
+      }
+      case 'pedologie': {
+        const unite = props.libelle || props.unite_pedo || props.type_sol;
+        const fillColor = getPedologieColor(unite);
         return {
-          color: '#228B22',
+          color: '#555555',
           weight: 1,
-          fillOpacity: 0.15,
-          fillColor: '#90EE90'
-        }
-      case 'risque-gonflement':
+          fillOpacity: 0.35,
+          fillColor
+        };
+      }
+      case 'risque-gonflement': {
+        const classe = props.niveau_risque || props.risque_gonflement || props.classe;
+        const fillColor = getRiskColor(classe);
         return {
-          color: '#DC143C',
+          color: '#555555',
           weight: 1,
-          fillOpacity: 0.2,
-          fillColor: '#FFB6C1'
-        }
+          fillOpacity: 0.4,
+          fillColor
+        };
+      }
       default:
         return {
           color: '#666',
           weight: 1,
-          fillOpacity: 0.1
-        }
+          fillOpacity: 0.1,
+          fillColor: '#cccccc'
+        };
     }
   }
 

@@ -334,17 +334,10 @@ Scénarios à tester régulièrement (à formaliser plus tard) :
 
 * Toute décision majeure (migration désactivée, changement de SRID, choix d’index…) doit être :
 
-  * Notée dans `TODO.md` ou `atlas_guidelines.md`.
+  * Notée dans `TODO.md` 
   * Résumée dans le message de commit.
 
 **[DOC-02] Fichiers “charte” incrémentables**
 
 * Ce document (`atlas_guidelines.md`) est ton **référentiel de bonnes pratiques**.
 * Toute nouvelle règle importante doit être ajoutée ici avec un identifiant ([DB-22], [UI-06], etc.).
-
----
-
-Si tu veux, au prochain message je peux :
-
-* te proposer directement un **template de fichier Markdown** prêt à coller avec une table des matières,
-* ou détailler une section particulière (par exemple “Règles spécifiques pour les mailles 28 km” ou “Charte des couleurs UI Atlas”).

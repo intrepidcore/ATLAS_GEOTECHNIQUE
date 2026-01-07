@@ -150,39 +150,57 @@ export const ADM3_DEFAULT_STYLE: L.PathOptions = {
 
 /**
  * Calcule le style d'une maille en fonction de ses propriétés
+ * COULEURS UNIFIÉES pour grilles 2km ET 28km:
+ * - Gris: n_sondages = 0 (sans données)
+ * - Vert: n_sondages_exact > n_sondages_random (exact dominant)
+ * - Bleu: n_sondages_random > n_sondages_exact (random dominant)
+ * 
  * @param feature - Feature GeoJSON de la maille
  * @param zoom - Niveau de zoom actuel (optionnel, pour poids dynamique)
  */
 export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions {
   const props = feature?.properties || {};
-  const has = !!props.has_data;
-  const hasExact = !!props.has_exact_location;
-  const hasRandom = !!props.has_random_location;
+  
+  // Nouveaux compteurs depuis migration 100
+  const nSondages = props.n_sondages || 0;
+  const nExact = props.n_sondages_exact || 0;
+  const nRandom = props.n_sondages_random || 0;
+  
+  // Fallback pour compatibilité avec anciennes données
+  const hasData = nSondages > 0 || !!props.has_data;
   
   // Calcul du poids dynamique selon le zoom
-  const baseWeight = has ? WEIGHT.GRID_WITH_DATA : WEIGHT.GRID_NO_DATA;
+  const baseWeight = hasData ? WEIGHT.GRID_WITH_DATA : WEIGHT.GRID_NO_DATA;
   let weight = baseWeight;
   if (zoom !== undefined) {
     weight = zoom < 10 ? baseWeight : zoom < 12 ? baseWeight * 1.5 : baseWeight * 2;
   }
   
-  // Détermination de la couleur selon le type de localisation
+  // LOGIQUE COULEURS UNIFIÉES (2km ET 28km)
   let fillColor = COLORS.GRID_NO_DATA;
-  if (hasExact && hasRandom) {
-    fillColor = COLORS.GRID_EXACT; // Priorité au GPS
-  } else if (hasExact) {
+  
+  if (nSondages === 0) {
+    // Gris: sans données
+    fillColor = COLORS.GRID_NO_DATA;
+  } else if (nExact > nRandom) {
+    // Vert: exact dominant
     fillColor = COLORS.GRID_EXACT;
-  } else if (hasRandom) {
+  } else if (nRandom > nExact) {
+    // Bleu: random dominant
     fillColor = COLORS.GRID_RANDOM;
-  } else if (has) {
-    fillColor = COLORS.GRID_NO_GEOM;
+  } else if (nExact === nRandom && nExact > 0) {
+    // Égalité: priorité au vert (exact)
+    fillColor = COLORS.GRID_EXACT;
+  } else {
+    // Fallback: gris
+    fillColor = COLORS.GRID_NO_DATA;
   }
   
   return {
-    color: has ? fillColor : COLORS.GRID_BORDER_NO_DATA,
+    color: hasData ? fillColor : COLORS.GRID_BORDER_NO_DATA,
     weight,
     fillColor,
-    fillOpacity: has ? OPACITY.GRID_WITH_DATA : OPACITY.GRID_NO_DATA,
+    fillOpacity: hasData ? OPACITY.GRID_WITH_DATA : OPACITY.GRID_NO_DATA,
   };
 }
 

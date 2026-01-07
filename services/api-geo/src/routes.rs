@@ -465,44 +465,52 @@ pub async fn get_maille_by_code(
     let pool = &state.pool;
     let grid_type = params.get("grid").map(|s| s.as_str()).unwrap_or("2km");
 
-    let (table, view) = if grid_type == "28km" {
-        ("mailles_28km", "mailles_28km_stats_wgs84")
-    } else {
-        ("mailles", "mailles_geotechnique_stats_wgs84")
-    };
-
-    let query = format!(
+    // Utiliser les vues de couverture créées dans migration 100
+    let query = if grid_type == "28km" {
         r#"
         SELECT 
-            v.code,
-            ST_AsGeoJSON(v.geom) AS g,
-            v.n_sondages,
-            v.n_sondages_exact,
-            v.n_sondages_random,
-            v.n_echantillons,
-            v.adm1_name,
-            v.adm2_name,
-            v.adm3_name
-        FROM {} v
-        WHERE v.code = $1
+            code_m28::text AS code,
+            ST_AsGeoJSON(geom) AS g,
+            n_sondages,
+            n_sondages_exact,
+            n_sondages_random,
+            n_echantillons,
+            n_mailles_2km,
+            n_mailles_2km_with_data
+        FROM atlas.v_coverage_mailles_28km
+        WHERE code_m28::text = $1
         LIMIT 1
-        "#,
-        view
-    );
+        "#
+    } else {
+        r#"
+        SELECT 
+            code,
+            ST_AsGeoJSON(geom) AS g,
+            n_sondages,
+            n_sondages_exact,
+            n_sondages_random,
+            n_echantillons,
+            pref_name,
+            adm2_name
+        FROM atlas.v_coverage_mailles_2km
+        WHERE code = $1
+        LIMIT 1
+        "#
+    };
 
-    let row = match sqlx::query(&query).bind(&code).fetch_optional(pool).await {
+    let row = match sqlx::query(query).bind(&code).fetch_optional(pool).await {
         Ok(Some(r)) => r,
         Ok(None) => {
             return (
                 StatusCode::NOT_FOUND,
-                Json(serde_json::json!({"error": "Maille introuvable"})),
+                Json(serde_json::json!({"error": "Maille introuvable", "code": code, "grid": grid_type})),
             ).into_response();
         }
         Err(e) => {
-            tracing::error!(?e, "get_maille_by_code query error");
+            tracing::error!(?e, code, grid_type, "get_maille_by_code query error");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "Database error"})),
+                Json(serde_json::json!({"error": "Database error", "details": e.to_string()})),
             ).into_response();
         }
     };
@@ -510,19 +518,27 @@ pub async fn get_maille_by_code(
     let geojson_str: String = row.try_get("g").unwrap_or_default();
     let geom: serde_json::Value = serde_json::from_str(&geojson_str).unwrap_or(serde_json::json!({}));
     
+    let mut properties = serde_json::json!({
+        "code": row.try_get::<String, _>("code").unwrap_or_default(),
+        "n_sondages": row.try_get::<i64, _>("n_sondages").unwrap_or(0),
+        "n_sondages_exact": row.try_get::<i64, _>("n_sondages_exact").unwrap_or(0),
+        "n_sondages_random": row.try_get::<i64, _>("n_sondages_random").unwrap_or(0),
+        "n_echantillons": row.try_get::<i64, _>("n_echantillons").unwrap_or(0),
+    });
+
+    // Ajouter propriétés spécifiques selon le type de grille
+    if grid_type == "28km" {
+        properties["n_mailles_2km"] = serde_json::json!(row.try_get::<i64, _>("n_mailles_2km").unwrap_or(0));
+        properties["n_mailles_2km_with_data"] = serde_json::json!(row.try_get::<i64, _>("n_mailles_2km_with_data").unwrap_or(0));
+    } else {
+        properties["pref_name"] = serde_json::json!(row.try_get::<Option<String>, _>("pref_name").unwrap_or(None));
+        properties["adm2_name"] = serde_json::json!(row.try_get::<Option<String>, _>("adm2_name").unwrap_or(None));
+    }
+    
     let feature = serde_json::json!({
         "type": "Feature",
         "geometry": geom,
-        "properties": {
-            "code": row.try_get::<String, _>("code").unwrap_or_default(),
-            "n_sondages": row.try_get::<i64, _>("n_sondages").unwrap_or(0),
-            "n_sondages_exact": row.try_get::<i32, _>("n_sondages_exact").unwrap_or(0),
-            "n_sondages_random": row.try_get::<i32, _>("n_sondages_random").unwrap_or(0),
-            "n_echantillons": row.try_get::<i64, _>("n_echantillons").unwrap_or(0),
-            "adm1_name": row.try_get::<Option<String>, _>("adm1_name").unwrap_or(None),
-            "adm2_name": row.try_get::<Option<String>, _>("adm2_name").unwrap_or(None),
-            "adm3_name": row.try_get::<Option<String>, _>("adm3_name").unwrap_or(None),
-        }
+        "properties": properties
     });
 
     Json(feature).into_response()
