@@ -1,62 +1,48 @@
 # Script de reprojection DSM COP30 avec gestion NoData
 # Definit explicitement les valeurs NoData pour eviter les valeurs aberrantes
 
+# Charger la configuration centralisée
+. "$PSScriptRoot\config.ps1"
+
 param(
-    [string]$InputRaster = "..\ressource\DSM\rasters_COP30\output_hh.tif",
-    [string]$OutputRaster = "..\ressource\DSM\rasters_COP30\dsm_cop30_25231.tif",
-    [int]$NoDataValue = -9999
+    [string]$InputRaster = (Join-Path $Global:DSM_SOURCE_PATH $Global:DSM_INPUT_FILE),
+    [string]$OutputRaster = (Join-Path $Global:DSM_SOURCE_PATH $Global:DSM_REPROJECTED_FILE),
+    [int]$NoDataValue = $Global:DSM_NODATA_VALUE
 )
 
-Write-Host "=== Reprojection DSM COP30 avec gestion NoData ===" -ForegroundColor Cyan
+Write-AtlasLog "=== Reprojection DSM COP30 avec gestion NoData ===" -Level 'Info'
 
-$inputPath = Join-Path $PSScriptRoot $InputRaster
-$outputPath = Join-Path $PSScriptRoot $OutputRaster
+$inputPath = $InputRaster
+$outputPath = $OutputRaster
 
 if (-not (Test-Path $inputPath)) {
-    Write-Host "Erreur: Fichier source introuvable: $inputPath" -ForegroundColor Red
+    Write-AtlasLog "Fichier source introuvable: $inputPath" -Level 'Error'
     exit 1
 }
 
-Write-Host "Fichier source: $inputPath" -ForegroundColor Gray
-Write-Host "Fichier destination: $outputPath" -ForegroundColor Gray
-Write-Host "Valeur NoData: $NoDataValue" -ForegroundColor Gray
+Write-AtlasLog "Fichier source: $inputPath" -Level 'Info'
+Write-AtlasLog "Fichier destination: $outputPath" -Level 'Info'
+Write-AtlasLog "Valeur NoData: $NoDataValue" -Level 'Info'
 
 # Verifier que gdalwarp est disponible
 try {
     $null = gdalwarp --version
 } catch {
-    Write-Host "Erreur: gdalwarp n'est pas disponible. Installez GDAL." -ForegroundColor Red
+    Write-AtlasLog "gdalwarp n'est pas disponible. Installez GDAL." -Level 'Error'
     exit 1
 }
 
 # Reprojection avec options NoData
-Write-Host "`nReprojection en cours..." -ForegroundColor Yellow
-Write-Host "  EPSG:4326 (WGS84) -> EPSG:25231 (UTM 31N Togo)" -ForegroundColor Gray
-Write-Host "  Options: compression LZW, tuilage, NoData=$NoDataValue" -ForegroundColor Gray
+Write-AtlasLog "Reprojection en cours..." -Level 'Info'
+Write-AtlasLog "  EPSG:4326 (WGS84) -> EPSG:$($Global:DSM_TARGET_SRID) (UTM 31N Togo)" -Level 'Info'
+Write-AtlasLog "  Options: compression LZW, tuilage $($Global:DSM_TILE_SIZE)x$($Global:DSM_TILE_SIZE), NoData=$NoDataValue" -Level 'Info'
 
-gdalwarp `
-    -s_srs EPSG:4326 `
-    -t_srs EPSG:25231 `
-    -srcnodata $NoDataValue `
-    -dstnodata $NoDataValue `
-    -co "COMPRESS=LZW" `
-    -co "TILED=YES" `
-    -co "BLOCKXSIZE=256" `
-    -co "BLOCKYSIZE=256" `
-    -r bilinear `
-    $inputPath `
-    $outputPath
+$gdal_cmd = "gdalwarp -s_srs EPSG:4326 -t_srs EPSG:$($Global:DSM_TARGET_SRID) -srcnodata $NoDataValue -dstnodata $NoDataValue -co COMPRESS=LZW -co TILED=YES -co BLOCKXSIZE=$($Global:DSM_TILE_SIZE) -co BLOCKYSIZE=$($Global:DSM_TILE_SIZE) -r bilinear `"$inputPath`" `"$outputPath`""
 
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "`nReprojection terminee avec succes !" -ForegroundColor Green
-    
-    # Afficher les infos du raster
-    Write-Host "`n=== Informations du raster ===" -ForegroundColor Cyan
-    gdalinfo $outputPath | Select-String -Pattern "Size is|Pixel Size|NoData|EPSG"
-    
-} else {
-    Write-Host "`nErreur lors de la reprojection" -ForegroundColor Red
-    exit 1
-}
+Invoke-AtlasCommand -Command $gdal_cmd -Description "Reprojection DSM avec gdalwarp"
 
-Write-Host "`nProchaine etape: Importer avec import_dsm_cop30.ps1" -ForegroundColor Yellow
+# Afficher les infos du raster
+Write-AtlasLog "=== Informations du raster ===" -Level 'Info'
+gdalinfo $outputPath | Select-String -Pattern "Size is|Pixel Size|NoData|EPSG"
+
+Write-AtlasLog "Prochaine etape: Importer avec import_dsm_cop30.ps1" -Level 'Info'

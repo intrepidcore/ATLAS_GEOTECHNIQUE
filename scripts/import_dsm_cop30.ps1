@@ -13,62 +13,54 @@ $DB_NAME = $Global:ATLAS_DB_NAME
 $DB_USER = $Global:ATLAS_DB_USER
 $TEMP_DIR = "/tmp/import_dsm"
 
-Write-Host "=== Import DSM COP30 dans PostGIS ===" -ForegroundColor Cyan
-Write-Host "Conteneur: $CONTAINER_NAME" -ForegroundColor Gray
-Write-Host "Base de donnees: $DB_NAME" -ForegroundColor Gray
+Write-AtlasLog "=== Import DSM COP30 dans PostGIS ===" -Level 'Info'
+Write-AtlasLog "Conteneur: $CONTAINER_NAME" -Level 'Info'
+Write-AtlasLog "Base de donnees: $DB_NAME" -Level 'Info'
 
 # Verifier que le fichier existe
-$fullPath = Join-Path $PSScriptRoot $RasterPath
+$fullPath = $RasterPath
 if (-not (Test-Path $fullPath)) {
-    Write-Host "Erreur: Raster introuvable: $fullPath" -ForegroundColor Red
+    Write-AtlasLog "Raster introuvable: $fullPath" -Level 'Error'
     exit 1
 }
 
-Write-Host "Raster source: $fullPath" -ForegroundColor Gray
+Write-AtlasLog "Raster source: $fullPath" -Level 'Info'
 $fileSize = (Get-Item $fullPath).Length / 1MB
-Write-Host "Taille: $([math]::Round($fileSize, 2)) MB" -ForegroundColor Gray
+Write-AtlasLog "Taille: $([math]::Round($fileSize, 2)) MB" -Level 'Info'
 
 # Creer le repertoire temporaire dans le conteneur
-Write-Host "`nPreparation du conteneur..." -ForegroundColor Gray
-docker exec $CONTAINER_NAME mkdir -p $TEMP_DIR
+Write-AtlasLog "Preparation du conteneur..." -Level 'Info'
+Invoke-AtlasCommand "docker exec $CONTAINER_NAME mkdir -p $TEMP_DIR" -Description "Creation repertoire temporaire"
 
 # Copier le raster dans le conteneur
-Write-Host "Copie du raster dans le conteneur..." -ForegroundColor Gray
-docker cp $fullPath "${CONTAINER_NAME}:${TEMP_DIR}/dsm.tif"
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "Erreur lors de la copie du fichier" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host "Copie terminee" -ForegroundColor Green
+Invoke-AtlasCommand "docker cp `"$fullPath`" `"${CONTAINER_NAME}:${TEMP_DIR}/dsm.tif`"" -Description "Copie raster dans conteneur"
 
 # Generer et importer le raster directement dans le conteneur
-Write-Host "`nImport du raster dans PostgreSQL..." -ForegroundColor Gray
-Write-Host "  Options: tuilage 256x256, index spatial, contraintes, NoData" -ForegroundColor Gray
-Write-Host "  (Cela peut prendre plusieurs minutes)" -ForegroundColor Yellow
+Write-AtlasLog "Import du raster dans PostgreSQL..." -Level 'Info'
+Write-AtlasLog "  Options: tuilage $($Global:DSM_TILE_SIZE)x$($Global:DSM_TILE_SIZE), index spatial, contraintes, NoData=$($Global:DSM_NODATA_VALUE)" -Level 'Info'
+Write-AtlasLog "  (Cela peut prendre plusieurs minutes)" -Level 'Warning'
 
 # -N: Set NODATA value (important pour filtrer les valeurs invalides)
-docker exec $CONTAINER_NAME bash -c "raster2pgsql -s 25231 -I -C -M -N -9999 -t 256x256 -F ${TEMP_DIR}/dsm.tif atlas.dsm_cop30 | psql -U $DB_USER -d $DB_NAME"
+$import_cmd = "docker exec $CONTAINER_NAME bash -c `"raster2pgsql -s $($Global:DSM_TARGET_SRID) -I -C -M -N $($Global:DSM_NODATA_VALUE) -t $($Global:DSM_TILE_SIZE)x$($Global:DSM_TILE_SIZE) -F ${TEMP_DIR}/dsm.tif atlas.dsm_cop30 | psql -U $DB_USER -d $DB_NAME`""
 
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "`nDSM importe avec succes !" -ForegroundColor Green
-} else {
-    Write-Host "`nErreur lors de l'import" -ForegroundColor Red
+try {
+    Invoke-AtlasCommand $import_cmd -Description "Import DSM avec raster2pgsql"
+} catch {
+    Write-AtlasLog "Nettoyage apres erreur..." -Level 'Warning'
     docker exec $CONTAINER_NAME rm -rf $TEMP_DIR
-    exit 1
+    throw
 }
 
 # Nettoyage
-Write-Host "`nNettoyage..." -ForegroundColor Gray
-docker exec $CONTAINER_NAME rm -rf $TEMP_DIR
+Write-AtlasLog "Nettoyage..." -Level 'Info'
+Invoke-AtlasCommand "docker exec $CONTAINER_NAME rm -rf $TEMP_DIR" -Description "Suppression fichiers temporaires"
 
 # Verification
-Write-Host "`n=== Verification de l'import ===" -ForegroundColor Cyan
+Write-AtlasLog "=== Verification de l'import ===" -Level 'Info'
 docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT COUNT(*) as nb_tuiles, ST_SRID(rast) as srid FROM atlas.dsm_cop30 GROUP BY ST_SRID(rast);"
 
-Write-Host "`n=== Test des vues DSM ===" -ForegroundColor Cyan
+Write-AtlasLog "=== Test des vues DSM ===" -Level 'Info'
 docker exec $CONTAINER_NAME psql -U $DB_USER -d $DB_NAME -c "SELECT COUNT(*) as mailles_avec_dsm FROM atlas.v_maille_dsm_2km_flat WHERE altitude_mean IS NOT NULL;"
 
-Write-Host "`nImport DSM termine !" -ForegroundColor Green
-Write-Host "Prochaine etape: Tester l'endpoint API /coverage/mailles-dsm" -ForegroundColor Yellow
+Write-AtlasLog "Import DSM termine !" -Level 'Success'
+Write-AtlasLog "Prochaine etape: Tester l'endpoint API /coverage/mailles-dsm" -Level 'Info'

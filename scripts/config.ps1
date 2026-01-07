@@ -59,5 +59,57 @@ function Write-AtlasLog {
     Write-Host "[$timestamp] $Message" -ForegroundColor $colors[$Level]
 }
 
+function Invoke-AtlasCommand {
+    <#
+    .SYNOPSIS
+    Exécute une commande avec gestion d'erreur robuste
+    
+    .DESCRIPTION
+    Wrapper pour exécuter des commandes critiques (gdalwarp, raster2pgsql, etc.)
+    avec vérification du code de sortie et levée d'exception en cas d'échec.
+    
+    .PARAMETER Command
+    La commande à exécuter (string)
+    
+    .PARAMETER Description
+    Description de l'opération pour les logs (optionnel)
+    
+    .EXAMPLE
+    Invoke-AtlasCommand "gdalwarp -s_srs EPSG:4326 -t_srs EPSG:25231 input.tif output.tif" -Description "Reprojection DSM"
+    #>
+    param(
+        [Parameter(Mandatory=$true)]
+        [string]$Command,
+        
+        [Parameter(Mandatory=$false)]
+        [string]$Description = ""
+    )
+    
+    if ($Description) {
+        Write-AtlasLog ">> $Description" -Level 'Info'
+    }
+    
+    Write-Host "   $Command" -ForegroundColor Cyan
+    
+    # Exécuter la commande
+    Invoke-Expression $Command
+    
+    # Vérifier le code de sortie
+    if ($LASTEXITCODE -ne 0) {
+        $errorMsg = if ($Description) { 
+            "Échec: $Description (exitcode=$LASTEXITCODE)"
+        } else {
+            "Commande échouée: $Command (exitcode=$LASTEXITCODE)"
+        }
+        
+        Write-AtlasLog $errorMsg -Level 'Error'
+        throw $errorMsg
+    }
+    
+    if ($Description) {
+        Write-AtlasLog "✓ $Description terminé" -Level 'Success'
+    }
+}
+
 # Export des variables pour qu'elles soient disponibles globalement
 Export-ModuleMember -Variable * -Function *
