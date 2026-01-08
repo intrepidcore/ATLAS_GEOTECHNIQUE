@@ -11,6 +11,7 @@ export class ContextLayersManager {
   private geologieLayer: L.GeoJSON | null = null
   private pedologieLayer: L.GeoJSON | null = null
   private risqueGonflementLayer: L.GeoJSON | null = null
+  private dsmLayer: L.TileLayer | null = null
 
   constructor(map: L.Map) {
     this.map = map
@@ -19,7 +20,7 @@ export class ContextLayersManager {
   /**
    * Toggle context layer
    */
-  async toggleLayer(layerType: 'geologie' | 'pedologie' | 'risque-gonflement', show: boolean): Promise<void> {
+  async toggleLayer(layerType: 'geologie' | 'pedologie' | 'risque-gonflement' | 'dsm', show: boolean): Promise<void> {
     if (show) {
       await this.loadLayer(layerType)
     } else {
@@ -31,6 +32,12 @@ export class ContextLayersManager {
    * Load and display a context layer
    */
   private async loadLayer(layerType: string): Promise<void> {
+    // DSM est une couche raster (TileLayer), pas GeoJSON
+    if (layerType === 'dsm') {
+      this.loadDsmLayer()
+      return
+    }
+
     const bounds = this.map.getBounds()
     const bbox = `${bounds.getWest()},${bounds.getSouth()},${bounds.getEast()},${bounds.getNorth()}`
 
@@ -77,9 +84,40 @@ export class ContextLayersManager {
   }
 
   /**
+   * Load DSM raster layer from tileserver
+   */
+  private loadDsmLayer(): void {
+    if (this.dsmLayer) {
+      console.log('[ContextLayers] DSM already loaded')
+      return
+    }
+
+    // URL du tileserver pour DSM COP30
+    const dsmUrl = 'http://localhost:8081/styles/dsm-cop30/{z}/{x}/{y}.png'
+    
+    this.dsmLayer = L.tileLayer(dsmUrl, {
+      attribution: 'DSM Copernicus DEM GLO-30',
+      opacity: 0.5,
+      maxZoom: 18,
+      tileSize: 256
+    })
+
+    this.dsmLayer.addTo(this.map)
+    console.log('[ContextLayers] DSM layer loaded from tileserver')
+  }
+
+  /**
    * Remove a context layer
    */
   private removeLayer(layerType: string): void {
+    if (layerType === 'dsm') {
+      if (this.dsmLayer) {
+        this.map.removeLayer(this.dsmLayer)
+        this.dsmLayer = null
+      }
+      return
+    }
+
     let layer: L.GeoJSON | null = null
 
     if (layerType === 'geologie') {
@@ -148,7 +186,7 @@ export class ContextLayersManager {
   /**
    * Check if a context layer is currently active
    */
-  isLayerActive(layerType: 'geologie' | 'pedologie' | 'risque-gonflement'): boolean {
+  isLayerActive(layerType: 'geologie' | 'pedologie' | 'risque-gonflement' | 'dsm'): boolean {
     switch (layerType) {
       case 'geologie':
         return this.geologieLayer !== null
@@ -156,6 +194,8 @@ export class ContextLayersManager {
         return this.pedologieLayer !== null
       case 'risque-gonflement':
         return this.risqueGonflementLayer !== null
+      case 'dsm':
+        return this.dsmLayer !== null
       default:
         return false
     }
@@ -168,5 +208,6 @@ export class ContextLayersManager {
     this.removeLayer('geologie')
     this.removeLayer('pedologie')
     this.removeLayer('risque-gonflement')
+    this.removeLayer('dsm')
   }
 }

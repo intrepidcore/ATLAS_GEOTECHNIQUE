@@ -59,6 +59,7 @@ export class ThematicPanel {
     toggleGeologieCheckbox?: HTMLInputElement
     togglePedologieCheckbox?: HTMLInputElement
     toggleRisqueGonflementCheckbox?: HTMLInputElement
+    toggleDsmCheckbox?: HTMLInputElement
   } = {}
   
   constructor(manager: ThematicMapManager) {
@@ -286,6 +287,13 @@ export class ThematicPanel {
           </label>
         </div>
         
+        <div class="thematic-section checkbox-section">
+          <label class="checkbox-label">
+            <input type="checkbox" id="toggleDsm">
+            <span>DSM (Altitude)</span>
+          </label>
+        </div>
+        
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <!-- BLOC D : Résumé & Actions -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -371,7 +379,8 @@ export class ThematicPanel {
       toggleGridCheckbox: document.getElementById('toggleGridLayer') as HTMLInputElement,
       toggleGeologieCheckbox: document.getElementById('toggleGeologie') as HTMLInputElement,
       togglePedologieCheckbox: document.getElementById('togglePedologie') as HTMLInputElement,
-      toggleRisqueGonflementCheckbox: document.getElementById('toggleRisqueGonflement') as HTMLInputElement
+      toggleRisqueGonflementCheckbox: document.getElementById('toggleRisqueGonflement') as HTMLInputElement,
+      toggleDsmCheckbox: document.getElementById('toggleDsm') as HTMLInputElement
     }
   }
   
@@ -993,6 +1002,11 @@ export class ThematicPanel {
     this.elements.toggleRisqueGonflementCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('risque-gonflement', checked)
+    })
+    
+    this.elements.toggleDsmCheckbox?.addEventListener('change', (e) => {
+      const checked = (e.target as HTMLInputElement).checked
+      this.manager.toggleContextLayer('dsm', checked)
     })
     
     // Clear ADM filters button

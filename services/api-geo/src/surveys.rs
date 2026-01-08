@@ -1147,12 +1147,12 @@ pub async fn delete_test(
 pub async fn list_adm1(State(state): State<AppState>) -> impl IntoResponse {
     let pool = &state.pool;
 
-    let rows = sqlx::query(
+    let result = sqlx::query_as::<_, Adm1Row>(
         r#"
         SELECT name, code,
                ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
                ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-        FROM adm1_tg
+        FROM public.adm1
         ORDER BY name
         "#,
     )
@@ -1208,14 +1208,14 @@ pub async fn list_adm2(
             r#"SELECT name, code,
                ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
                ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-               FROM adm2_tg WHERE adm1_name = '{}' ORDER BY name"#,
+               FROM public.adm2 WHERE adm1_name = '{}' ORDER BY name"#,
             adm1.replace("'", "''")
         )
     } else {
         r#"SELECT name, code,
            ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
            ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-           FROM adm2_tg ORDER BY name"#
+           FROM public.adm2 ORDER BY name"#
             .to_string()
     };
 
@@ -1275,12 +1275,12 @@ pub async fn list_adm3(
     let query = if let Some(adm2) = q.get("adm2") {
         format!(
             r#"SELECT gid, adm3_fr as name, adm3_pcode as code
-               FROM adm3 WHERE adm2_fr = '{}' ORDER BY adm3_fr"#,
+               FROM atlas.adm3 WHERE adm2_fr = '{}' ORDER BY adm3_fr"#,
             adm2.replace("'", "''")
         )
     } else {
         r#"SELECT gid, adm3_fr as name, adm3_pcode as code
-           FROM adm3 WHERE adm3_fr IS NOT NULL ORDER BY adm3_fr"#
+           FROM atlas.adm3 WHERE adm3_fr IS NOT NULL ORDER BY adm3_fr"#
             .to_string()
     };
 

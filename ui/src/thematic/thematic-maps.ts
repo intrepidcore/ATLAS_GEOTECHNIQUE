@@ -43,7 +43,7 @@ export class ThematicMapManager {
   /**
    * Toggle context layer (proxy to ContextLayersManager)
    */
-  async toggleContextLayer(layerType: 'geologie' | 'pedologie' | 'risque-gonflement', show: boolean): Promise<void> {
+  async toggleContextLayer(layerType: 'geologie' | 'pedologie' | 'risque-gonflement' | 'dsm', show: boolean): Promise<void> {
     await this.contextLayers.toggleLayer(layerType, show)
   }
   
