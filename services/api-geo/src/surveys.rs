@@ -1147,7 +1147,7 @@ pub async fn delete_test(
 pub async fn list_adm1(State(state): State<AppState>) -> impl IntoResponse {
     let pool = &state.pool;
 
-    let result = sqlx::query_as::<_, Adm1Row>(
+    let rows = sqlx::query(
         r#"
         SELECT name, code,
                ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,

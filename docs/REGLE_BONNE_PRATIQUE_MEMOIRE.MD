@@ -1,7 +1,7 @@
 # Atlas Géotechnique – Règles & Bonnes Pratiques
 
 **Version : 0.1 – 07/01/2026**
-
+LIRE .ENV
 ---
 
 ## 0. Objectif du document

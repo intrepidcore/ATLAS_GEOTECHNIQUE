@@ -660,6 +660,8 @@ async fn get_coverage_mailles_28km(
     let pool = &state.pool;
     
     // Requête sur atlas.v_coverage_mailles_28km (avec compteurs exact/random et code lisible)
+    // NOTE: Utilise la vue de base, la vue clipée sera créée par migration 103
+    // Pour l'instant on garde la vue existante qui fonctionne
     let mut query = r#"
         SELECT code_m28,
                COALESCE(code_lisible, 'TG-28KM-' || LPAD(code_m28::text, 3, '0')) AS code_lisible,

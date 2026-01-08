@@ -324,29 +324,106 @@ function handleClick(layer: L.Path, feature: any, p: any) {
   layer.bringToFront()
 }
 
+// --- État des couches contextuelles actives ---
+const activeContextLayers: { geologie: boolean; pedologie: boolean; risque: boolean; dsm: boolean } = {
+  geologie: false,
+  pedologie: false,
+  risque: false,
+  dsm: false
+}
+
+// Fonction globale pour mettre à jour les couches actives
+;(window as any).setActiveContextLayer = (layer: string, active: boolean) => {
+  if (layer === 'geologie') activeContextLayers.geologie = active
+  if (layer === 'pedologie') activeContextLayers.pedologie = active
+  if (layer === 'risque-gonflement' || layer === 'risque') activeContextLayers.risque = active
+  if (layer === 'dsm') activeContextLayers.dsm = active
+  console.log('[ContextLayers] Active layers:', activeContextLayers)
+}
+
 // --- Feature interactions ---
+
+/**
+ * Génère le contenu du tooltip enrichi selon les couches contextuelles actives
+ */
+function buildEnrichedTooltip(p: any): string {
+  let content = `<div style="font-size:12px;line-height:1.6;min-width:180px">`
+  
+  // Code de la maille (toujours affiché)
+  const code = p.code || p.code_m28 || p.code_28km_lisible || '—'
+  content += `<div style="font-weight:700;color:#3b82f6;margin-bottom:4px;border-bottom:1px solid #334155;padding-bottom:4px">${code}</div>`
+  
+  // Localisation ADM (toujours affiché si disponible)
+  if (p.adm1_name || p.adm2_name || p.adm3_name) {
+    const loc = [p.adm1_name, p.adm2_name, p.adm3_name].filter(Boolean).join(' › ')
+    content += `<div style="font-size:11px;color:#94a3b8;margin-bottom:4px">${loc}</div>`
+  }
+  
+  // Statistiques de base (toujours affichées)
+  if (p.n_sondages != null) {
+    const exactIcon = p.has_exact_location ? '📍' : ''
+    const randomIcon = p.has_random_location ? '🎲' : ''
+    content += `<div><strong>Sondages:</strong> ${p.n_sondages} ${exactIcon}${randomIcon}</div>`
+  }
+  if (p.n_echantillons != null && p.n_echantillons > 0) {
+    content += `<div><strong>Échantillons:</strong> ${p.n_echantillons}</div>`
+  }
+  
+  // --- Données contextuelles (selon couches cochées) ---
+  let hasContextData = false
+  
+  // Géologie (si couche active)
+  if (activeContextLayers.geologie && p.geologie_unite) {
+    if (!hasContextData) {
+      content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
+      hasContextData = true
+    }
+    content += `<div><strong>🪨 Géologie:</strong> ${p.geologie_unite}</div>`
+  }
+  
+  // Pédologie (si couche active)
+  if (activeContextLayers.pedologie && p.pedologie_unite) {
+    if (!hasContextData) {
+      content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
+      hasContextData = true
+    }
+    content += `<div><strong>🌱 Pédologie:</strong> ${p.pedologie_unite}</div>`
+  }
+  
+  // Risque de gonflement (si couche active)
+  if (activeContextLayers.risque && p.risque_gonflement) {
+    if (!hasContextData) {
+      content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
+      hasContextData = true
+    }
+    const risqueColor = p.risque_gonflement === 'Faible' ? '#22c55e' : p.risque_gonflement === 'Moyen' ? '#f59e0b' : '#ef4444'
+    content += `<div><strong>⚠️ Risque:</strong> <span style="color:${risqueColor};font-weight:600">${p.risque_gonflement}</span></div>`
+  }
+  
+  // DSM / Altitude (si couche active)
+  if (activeContextLayers.dsm && p.altitude_mean != null) {
+    if (!hasContextData) {
+      content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
+      hasContextData = true
+    }
+    content += `<div><strong>🏔️ Altitude:</strong> ${p.altitude_mean.toFixed(0)} m</div>`
+  }
+  
+  // Eg moyen (données géotechniques)
+  if (p.eg_moyen != null) {
+    content += `<div><strong>Eg moy:</strong> ${p.eg_moyen.toFixed(2)} MPa</div>`
+  }
+  
+  content += `</div>`
+  return content
+}
 
 function onEachFeature(f: any, layer: any) {
   const p = f.properties || {}
   
   // Tooltip enrichi avec données contextuelles de la feature survolée
-  let tooltipContent = `<div style="font-size:12px;line-height:1.5">`
-  tooltipContent += `<strong>Code:</strong> ${p.code || p.code_m28 || '—'}<br>`
-  if (p.adm1_name) tooltipContent += `<strong>Région:</strong> ${p.adm1_name}<br>`
-  if (p.n_sondages != null) tooltipContent += `<strong>Sondages:</strong> ${p.n_sondages}<br>`
-  
-  // Ajouter données contextuelles si disponibles
-  if (p.geologie_unite) tooltipContent += `<strong>Géologie:</strong> ${p.geologie_unite}<br>`
-  if (p.pedologie_unite) tooltipContent += `<strong>Pédologie:</strong> ${p.pedologie_unite}<br>`
-  if (p.risque_gonflement) {
-    const risqueColor = p.risque_gonflement === 'Faible' ? '#22c55e' : p.risque_gonflement === 'Moyen' ? '#f59e0b' : '#ef4444'
-    tooltipContent += `<strong>Risque gonflement:</strong> <span style="color:${risqueColor}">${p.risque_gonflement}</span><br>`
-  }
-  if (p.eg_moyen != null) tooltipContent += `<strong>Eg moyen:</strong> ${p.eg_moyen.toFixed(2)} MPa<br>`
-  
-  tooltipContent += `</div>`
-  
-  layer.bindTooltip(tooltipContent, { sticky: true, opacity: 0.95 })
+  // Le contenu est généré dynamiquement lors du survol
+  layer.bindTooltip(() => buildEnrichedTooltip(p), { sticky: true, opacity: 0.95 })
   
   // Chantier A - Pattern robuste : survol et clic sur la même couche
   layer.on({
@@ -416,7 +493,7 @@ function onEachFeature(f: any, layer: any) {
   })
 }
 
-// Afficher actions pour maille 28km avec bouton Gérer
+// Afficher actions pour maille 28km - même workflow que 2km
 function showMaille28kmActions(props: any) {
   const mailleDetails = document.getElementById('mailleDetails')
   const mailleEmpty = document.getElementById('mailleEmpty')
@@ -435,30 +512,48 @@ function showMaille28kmActions(props: any) {
   const kpiEchantillons = document.getElementById('kpiEchantillons')
   const kpiEssais = document.getElementById('kpiEssais')
   
-  if (ficheCode) ficheCode.textContent = props.code || '—'
-  if (ficheAdm) ficheAdm.textContent = `Maille 28km (profil régional)`
+  // Afficher le code lisible 28km ou le code brut
+  const displayCode = props.code_28km_lisible || props.code || '—'
+  if (ficheCode) ficheCode.textContent = displayCode
+  if (ficheAdm) {
+    // Afficher les badges
+    const badges = []
+    if (props.n_sondages > 0) badges.push('<span class="badge-data">✅ avec données</span>')
+    if (props.has_random_location) badges.push('<span class="badge-adm">🎲 ADM random</span>')
+    ficheAdm.innerHTML = `Maille 28km (profil régional) ${badges.join(' ')}`
+  }
   if (kpiSondages) kpiSondages.textContent = props.n_sondages || '0'
   if (kpiEchantillons) kpiEchantillons.textContent = props.n_echantillons || '0'
   if (kpiEssais) kpiEssais.textContent = props.n_essais || '0'
   
-  // Ajouter bouton "Gérer" pour naviguer vers page Sondages avec filtre
-  const mailleHeader = document.querySelector('.maille-header')
-  if (mailleHeader) {
-    const existingBtn = mailleHeader.querySelector('.btn-gerer-28km')
-    if (existingBtn) existingBtn.remove()
+  // Mettre à jour la section "Sondages de la maille" avec bouton Détail
+  const sondagesList = document.getElementById('sondagesList')
+  if (sondagesList) {
+    const nSondages = props.n_sondages || 0
+    const nMailles2km = props.n_mailles_2km || 0
+    const nMaillesWithData = props.n_mailles_2km_with_data || 0
     
-    const gererBtn = document.createElement('button')
-    gererBtn.className = 'btn primary btn-block btn-gerer-28km'
-    gererBtn.style.marginTop = '12px'
-    gererBtn.innerHTML = '📋 Gérer les sondages'
-    gererBtn.onclick = () => {
-      // Naviguer vers page Sondages avec filtre maille 28km
-      window.location.hash = `#/sondages?m28=${encodeURIComponent(props.code)}`
-    }
-    mailleHeader.appendChild(gererBtn)
+    sondagesList.innerHTML = `
+      <div style="padding:12px;background:#0f172a;border-radius:6px;margin-bottom:8px">
+        <div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:8px">
+          📊 Profil régional (28km)
+        </div>
+        <div style="font-size:12px;color:#94a3b8;line-height:1.6">
+          <div>🗺️ Mailles 2km couvertes: <strong>${nMaillesWithData}</strong> / ${nMailles2km}</div>
+          <div>📍 Sondages totaux: <strong>${nSondages}</strong></div>
+        </div>
+        <button class="btn secondary btn-sm" style="margin-top:10px;width:100%" 
+                onclick="window.location.hash='#/sondages?m28=${encodeURIComponent(props.code)}'">
+          📋 Détail - Voir les sondages
+        </button>
+      </div>
+    `
   }
   
-  console.log('[showMaille28kmActions] Maille 28km sélectionnée:', props.code)
+  // Charger les mailles voisines pour 28km aussi
+  loadNeighbors(props.code)
+  
+  console.log('[showMaille28kmActions] Maille 28km sélectionnée:', displayCode)
 }
 
 // Charger les mailles voisines

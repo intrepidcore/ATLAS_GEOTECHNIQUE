@@ -988,25 +988,41 @@ export class ThematicPanel {
       })
     })
     
-    // Toggle context layers
+    // Toggle context layers - met à jour l'état global pour les tooltips enrichis
     this.elements.toggleGeologieCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('geologie', checked)
+      // Mettre à jour l'état global pour les tooltips
+      if ((window as any).setActiveContextLayer) {
+        (window as any).setActiveContextLayer('geologie', checked)
+      }
     })
     
     this.elements.togglePedologieCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('pedologie', checked)
+      // Mettre à jour l'état global pour les tooltips
+      if ((window as any).setActiveContextLayer) {
+        (window as any).setActiveContextLayer('pedologie', checked)
+      }
     })
     
     this.elements.toggleRisqueGonflementCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('risque-gonflement', checked)
+      // Mettre à jour l'état global pour les tooltips
+      if ((window as any).setActiveContextLayer) {
+        (window as any).setActiveContextLayer('risque-gonflement', checked)
+      }
     })
     
     this.elements.toggleDsmCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('dsm', checked)
+      // Mettre à jour l'état global pour les tooltips
+      if ((window as any).setActiveContextLayer) {
+        (window as any).setActiveContextLayer('dsm', checked)
+      }
     })
     
     // Clear ADM filters button

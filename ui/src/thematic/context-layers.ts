@@ -85,25 +85,52 @@ export class ContextLayersManager {
 
   /**
    * Load DSM raster layer from tileserver
+   * Le DSM s'affiche sous les mailles mais au-dessus du fond de carte
    */
   private loadDsmLayer(): void {
     if (this.dsmLayer) {
-      console.log('[ContextLayers] DSM already loaded')
-      return
+      console.log('[ContextLayers] DSM already loaded, removing and reloading')
+      this.map.removeLayer(this.dsmLayer)
+      this.dsmLayer = null
     }
 
     // URL du tileserver pour DSM COP30
-    const dsmUrl = 'http://localhost:8081/styles/dsm-cop30/{z}/{x}/{y}.png'
+    // Essayer plusieurs URLs possibles
+    const possibleUrls = [
+      'http://localhost:8081/styles/dsm-cop30/{z}/{x}/{y}.png',
+      'http://localhost:8081/data/dsm-cop30/{z}/{x}/{y}.png',
+      'http://localhost:8081/styles/dsm/{z}/{x}/{y}.png'
+    ]
+    
+    const dsmUrl = possibleUrls[0]
+    console.log('[ContextLayers] Loading DSM from:', dsmUrl)
     
     this.dsmLayer = L.tileLayer(dsmUrl, {
       attribution: 'DSM Copernicus DEM GLO-30',
-      opacity: 0.5,
+      opacity: 0.65,
       maxZoom: 18,
-      tileSize: 256
+      minZoom: 5,
+      tileSize: 256,
+      zIndex: 100, // Au-dessus du fond de carte, en dessous des mailles
+      errorTileUrl: '' // Pas de tuile d'erreur visible
     })
 
+    // Ajouter la couche à la carte
     this.dsmLayer.addTo(this.map)
-    console.log('[ContextLayers] DSM layer loaded from tileserver')
+    
+    // Mettre la couche derrière les autres
+    this.dsmLayer.bringToBack()
+    
+    // Vérifier si les tuiles se chargent
+    this.dsmLayer.on('tileerror', (e: any) => {
+      console.warn('[ContextLayers] DSM tile error:', e.coords, e.error)
+    })
+    
+    this.dsmLayer.on('load', () => {
+      console.log('[ContextLayers] ✅ DSM tiles loaded successfully')
+    })
+    
+    console.log('[ContextLayers] DSM layer added to map with opacity 0.65')
   }
 
   /**

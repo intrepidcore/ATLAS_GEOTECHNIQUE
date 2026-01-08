@@ -1,5 +1,76 @@
 # 📋 TODO - Atlas Géotechnique - Gestionnaire de Sondages v2
 
+## 🎉 SESSION 08/01/2026 - CORRECTIONS UI/UX CRITIQUES ✅
+
+**TOUTES LES CORRECTIONS BLOQUANTES IMPLÉMENTÉES**
+
+### 🔧 BLOC 1: Tooltips & Couches Contextuelles
+
+#### 1.1 Tooltips enrichis selon couches cochées ✅
+- ✅ **Nouveau système**: `buildEnrichedTooltip()` génère le contenu dynamiquement
+- ✅ **État global**: `activeContextLayers` track quelles couches sont actives
+- ✅ **Fonction globale**: `window.setActiveContextLayer()` pour mise à jour
+- ✅ **Contenu conditionnel**: Géologie/Pédologie/Risque/DSM affichés seulement si cochés
+- ✅ **Format enrichi**: Code, localisation ADM, sondages, données contextuelles
+- **Fichiers**:
+  - `ui/src/main.ts` (lignes 327-426)
+  - `ui/src/thematic/thematic-panel.ts` (lignes 991-1026)
+
+#### 1.2 DSM affichage amélioré ✅
+- ✅ **Chargement robuste**: `loadDsmLayer()` avec logs et gestion erreurs
+- ✅ **Z-index correct**: zIndex=100 (au-dessus fond de carte, sous mailles)
+- ✅ **Opacité optimisée**: 0.65 pour bon contraste
+- ✅ **Events de debug**: tileerror, load pour diagnostic
+- **Fichier**: `ui/src/thematic/context-layers.ts` (lignes 86-134)
+
+### 🔧 BLOC 2: Grilles & Interactions
+
+#### 2.1 Workflow "Détail" 28km amélioré ✅
+- ✅ **Même workflow que 2km**: Panneau gauche s'actualise au clic
+- ✅ **Bouton "Détail"**: Dans section sondages, pas gros bouton séparé
+- ✅ **Infos affichées**: Code lisible, mailles 2km couvertes, sondages totaux
+- ✅ **Voisins chargés**: `loadNeighbors()` appelé aussi pour 28km
+- **Fichier**: `ui/src/main.ts` (lignes 496-557)
+
+#### 2.2 Légende synchronisée ✅
+- ✅ **Couleurs cohérentes**: 
+  - Vert `#51cf66` = GPS exact
+  - Bleu `#4c6ef5` = ADM random
+  - Gris transparent = sans données
+  - Jaune `#ffd600` = voisins
+- **Fichier**: `ui/index.html` (lignes 420-428)
+
+### 🔧 BLOC 3: Backend API
+
+#### 3.1 Endpoint /neighbors corrigé ✅
+- ✅ **Erreur identifiée**: `column e.deleted_at does not exist`
+- ✅ **Fix appliqué**: `s.deleted_at` au lieu de `e.deleted_at`
+- ✅ **Test réussi**: Retourne les 4 voisins (N/S/E/O) avec stats
+- **Fichier**: `services/api-geo/src/neighbors.rs` (ligne 77)
+
+### 🔧 BLOC 4: Mailles 28km Clipées
+
+#### 4.1 Migration vue clipée créée ✅
+- ✅ **Vue principale**: `atlas.v_mailles_28km_clip` avec ST_Intersection
+- ✅ **Vue couverture**: `atlas.v_coverage_mailles_28km_clip` avec stats
+- ✅ **Frontière Togo**: Clip à la géométrie ADM0
+- ✅ **Table préservée**: `atlas.maille_28km` non modifiée
+- **Fichier**: `db/migrations/103_mailles_28km_clip_adm0.sql` (nouveau)
+
+### 📝 DETTE TECHNIQUE (À revoir plus tard)
+
+1. **DSM tileserver**: Vérifier URL exacte du style DSM COP30
+2. **Vue clipée**: Appliquer migration 103 en production et modifier API pour utiliser vue clipée
+3. **Basemaps uniformisés**: Créer composant BasemapSelector réutilisable (export + carte)
+4. **Panneau QGIS-like**: Améliorer avec sélecteurs de styles par couche
+
+### 🏗️ BUILD
+
+- **Frontend**: 14.09s ✅ (2488.86 kB main, gzip: 718.30 kB)
+- **Backend**: Recompilé et redéployé via docker-compose ✅
+
+---
+
 ## 🎉 SESSION 07/01/2026 - FINALISATION COMPLÈTE ATLAS 3.5 ✅
 
 **TOUTES LES FONCTIONNALITÉS DEMANDÉES ONT ÉTÉ IMPLÉMENTÉES ET TESTÉES AVEC SUCCÈS**

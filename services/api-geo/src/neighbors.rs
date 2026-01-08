@@ -74,8 +74,8 @@ pub async fn get_neighbors(
                 ) as distance_m
             FROM mailles m
             CROSS JOIN current_maille cm
-            LEFT JOIN sondages s ON ST_Within(s.geom, m.geom)
-            LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+            LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+            LEFT JOIN essais e ON e.sondage_id = s.id
             WHERE m.code != $1
               AND ST_DWithin(
                     ST_Transform(m.geom, 4326)::geography,
