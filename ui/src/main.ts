@@ -328,8 +328,25 @@ function handleClick(layer: L.Path, feature: any, p: any) {
 
 function onEachFeature(f: any, layer: any) {
   const p = f.properties || {}
-  const title = `Code: ${p.code || '—'}${p.adm1_name ? `\nRégion: ${p.adm1_name}` : ''}${p.n_sondages != null ? `\nSondages: ${p.n_sondages}` : ''}`
-  layer.bindTooltip(title, { sticky: true, opacity: 0.9 })
+  
+  // Tooltip enrichi avec contexte géologique/pédologique/gonflement
+  let tooltipContent = `<div style="font-size:12px;line-height:1.5">`
+  tooltipContent += `<strong>Code:</strong> ${p.code || '—'}<br>`
+  if (p.adm1_name) tooltipContent += `<strong>Région:</strong> ${p.adm1_name}<br>`
+  if (p.n_sondages != null) tooltipContent += `<strong>Sondages:</strong> ${p.n_sondages}<br>`
+  
+  // Ajouter données contextuelles si disponibles
+  if (p.geologie_unite) tooltipContent += `<strong>Géologie:</strong> ${p.geologie_unite}<br>`
+  if (p.pedologie_unite) tooltipContent += `<strong>Pédologie:</strong> ${p.pedologie_unite}<br>`
+  if (p.risque_gonflement) {
+    const risqueColor = p.risque_gonflement === 'Faible' ? '#22c55e' : p.risque_gonflement === 'Moyen' ? '#f59e0b' : '#ef4444'
+    tooltipContent += `<strong>Risque gonflement:</strong> <span style="color:${risqueColor}">${p.risque_gonflement}</span><br>`
+  }
+  if (p.eg_moyen != null) tooltipContent += `<strong>Eg moyen:</strong> ${p.eg_moyen.toFixed(2)} MPa<br>`
+  
+  tooltipContent += `</div>`
+  
+  layer.bindTooltip(tooltipContent, { sticky: true, opacity: 0.95 })
   
   // Chantier A - Pattern robuste : survol et clic sur la même couche
   layer.on({
@@ -385,14 +402,63 @@ function onEachFeature(f: any, layer: any) {
       
       // Toast de confirmation
       toast(`📍 Maille sélectionnée: ${p.code}`, 'ok')
-
-      // Charger les détails complets de la maille (fiche géotechnique) - UNE SEULE FOIS
-      await loadMailleDetails(p.code)
-
-      // Charger les mailles voisines
-      loadNeighbors(p.code)
+      
+      // Si c'est une maille 28km, afficher bouton "Gérer" pour filtrer sondages
+      if (currentGridLevel === '28km') {
+        showMaille28kmActions(p)
+      } else {
+        // Charger les détails complets de la maille (fiche géotechnique) - UNE SEULE FOIS
+        await loadMailleDetails(p.code)
+        // Charger les mailles voisines
+        loadNeighbors(p.code)
+      }
     }
   })
+}
+
+// Afficher actions pour maille 28km avec bouton Gérer
+function showMaille28kmActions(props: any) {
+  const mailleDetails = document.getElementById('mailleDetails')
+  const mailleEmpty = document.getElementById('mailleEmpty')
+  const mailleContent = document.getElementById('mailleContent')
+  
+  if (!mailleDetails || !mailleEmpty || !mailleContent) return
+  
+  mailleDetails.classList.add('active')
+  mailleEmpty.style.display = 'none'
+  mailleContent.style.display = 'block'
+  
+  // Remplir les infos de base
+  const ficheCode = document.getElementById('ficheCode')
+  const ficheAdm = document.getElementById('ficheAdm')
+  const kpiSondages = document.getElementById('kpiSondages')
+  const kpiEchantillons = document.getElementById('kpiEchantillons')
+  const kpiEssais = document.getElementById('kpiEssais')
+  
+  if (ficheCode) ficheCode.textContent = props.code || '—'
+  if (ficheAdm) ficheAdm.textContent = `Maille 28km (profil régional)`
+  if (kpiSondages) kpiSondages.textContent = props.n_sondages || '0'
+  if (kpiEchantillons) kpiEchantillons.textContent = props.n_echantillons || '0'
+  if (kpiEssais) kpiEssais.textContent = props.n_essais || '0'
+  
+  // Ajouter bouton "Gérer" pour naviguer vers page Sondages avec filtre
+  const mailleHeader = document.querySelector('.maille-header')
+  if (mailleHeader) {
+    const existingBtn = mailleHeader.querySelector('.btn-gerer-28km')
+    if (existingBtn) existingBtn.remove()
+    
+    const gererBtn = document.createElement('button')
+    gererBtn.className = 'btn primary btn-block btn-gerer-28km'
+    gererBtn.style.marginTop = '12px'
+    gererBtn.innerHTML = '📋 Gérer les sondages'
+    gererBtn.onclick = () => {
+      // Naviguer vers page Sondages avec filtre maille 28km
+      window.location.hash = `#/sondages?m28=${encodeURIComponent(props.code)}`
+    }
+    mailleHeader.appendChild(gererBtn)
+  }
+  
+  console.log('[showMaille28kmActions] Maille 28km sélectionnée:', props.code)
 }
 
 // Charger les mailles voisines
@@ -1621,6 +1687,12 @@ async function loadGrid(useBbox = false) {
     setKpis(gj.features.length, withData)
     console.log('[loadGrid] KPIs mis à jour -', gj.features.length, 'mailles,', withData, 'avec données')
     setStatus(`Grille chargée: ${gj.features.length.toLocaleString()} mailles (${withData} avec données)`)
+    
+    // Mettre à jour les stats de grille dans le panneau droit
+    const gridTotal = document.getElementById('gridTotal')
+    const gridWithData = document.getElementById('gridWithData')
+    if (gridTotal) gridTotal.textContent = gj.features.length.toLocaleString()
+    if (gridWithData) gridWithData.textContent = withData.toLocaleString()
 
     if (gridLayer) {
       map.removeLayer(gridLayer)
@@ -1705,6 +1777,17 @@ async function loadGrid(useBbox = false) {
   console.log('[setGridLevel] Changement de niveau:', currentGridLevel, '->', level)
   currentGridLevel = level
   loadGrid()
+}
+
+// Connecter le sélecteur de grille
+const gridLevelSelect = document.getElementById('gridLevelSelect') as HTMLSelectElement
+if (gridLevelSelect) {
+  gridLevelSelect.addEventListener('change', (e) => {
+    const level = (e.target as HTMLSelectElement).value as '2km' | '28km'
+    ;(window as any).setGridLevel(level)
+    toast(`Grille ${level} chargée`, 'ok')
+  })
+  console.log('[INIT] Sélecteur grille connecté')
 }
 
 // Charger la grille immédiatement au démarrage

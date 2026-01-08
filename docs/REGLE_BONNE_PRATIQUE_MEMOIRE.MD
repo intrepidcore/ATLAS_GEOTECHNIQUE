@@ -341,3 +341,191 @@ Scénarios à tester régulièrement (à formaliser plus tard) :
 
 * Ce document (`atlas_guidelines.md`) est ton **référentiel de bonnes pratiques**.
 * Toute nouvelle règle importante doit être ajoutée ici avec un identifiant ([DB-22], [UI-06], etc.).
+
+---
+
+## 10. Workflows & Non-régression
+
+**[WORK-01] Ne jamais casser un workflow fonctionnel sans tests**
+
+* Avant de modifier un workflow existant (ex: clic maille → détails → sondages):
+  * Documenter le flux actuel (événements, paramètres URL, filtres).
+  * Tester le workflow **avant** modification.
+  * Après modification: re-tester **exactement** le même scénario.
+* Si un workflow casse, c'est une régression critique à corriger immédiatement.
+
+**[WORK-02] Contrats stables entre composants**
+
+* Les contrats entre carte et gestionnaire de sondages doivent rester stables:
+  * Paramètres URL: `?grid=2km&maille=TG-...` ou `?m28=30`.
+  * Événements custom: garder les mêmes noms et structures.
+  * Champs de données: `grid_code`, `maille_code`, `id_m28` cohérents.
+* Ne pas inventer de nouveaux paramètres si les anciens fonctionnent.
+
+**[WORK-03] Tests de non-régression sur workflows critiques**
+
+Workflows à tester systématiquement après chaque refonte:
+
+1. **Clic maille 2km → Détail → Liste sondages filtrée**
+2. **Recherche par code maille → Résultats + zoom carte**
+3. **Changement niveau grille 2km ↔ 28km → Mise à jour carte + stats**
+4. **Export thématique → Respect niveau grille + légende correcte**
+5. **Activation couches contexte → Tooltips enrichis**
+
+**[WORK-04] Source de vérité unique pour l'état global**
+
+* Le niveau de grille (2km/28km) doit avoir **une seule source de vérité**:
+  * Typiquement: state global dans le panneau droit.
+  * Tous les autres composants (carte, exports, panneaux) **lisent** cette valeur.
+  * Pas de sélecteurs multiples désynchronisés.
+
+---
+
+## 11. Méthodologie de développement
+
+**[METH-01] Découper les refontes en petites étapes indépendantes**
+
+* Plutôt que de tout changer en une fois:
+  * **Étape 1**: Backend seul (migrations, vues, API) avec tests.
+  * **Étape 2**: Frontend minimal (affichage basique) avec validation.
+  * **Étape 3**: Interactions avancées (clics, filtres) avec tests workflows.
+  * **Étape 4**: Polish UI (tooltips, légendes, styles) avec validation visuelle.
+
+**[METH-02] Feature flags pour grosses modifications**
+
+* Pour des changements majeurs (nouveau style couleurs, nouvelle grille):
+  * Utiliser un flag temporaire: `window.ATLAS_FLAGS.useNewGridColors = true`.
+  * Permet de tester en parallèle sans casser l'existant.
+  * Retirer le flag une fois la migration validée.
+
+**[METH-03] Validation incrémentale**
+
+Après chaque étape:
+
+1. **Compiler** (frontend + backend si modifié).
+2. **Tester manuellement** le scénario principal.
+3. **Vérifier** qu'aucune régression n'est apparue.
+4. **Commiter** si tout fonctionne.
+5. Passer à l'étape suivante.
+
+**[METH-04] Rollback rapide en cas de blocage**
+
+* Si après 2-3 tentatives une approche ne fonctionne pas:
+  * Noter le SHA du commit stable.
+  * Créer une branche de correction: `fix/probleme-specifique`.
+  * Si échec: revenir au commit stable et replanifier.
+* Ne pas s'enfoncer dans une impasse pendant des heures.
+
+---
+
+## 12. Cohérence des données
+
+**[DATA-01] Alignement champs API ↔ Style UI**
+
+* Les propriétés GeoJSON retournées par l'API doivent correspondre **exactement** aux champs utilisés par le style:
+  * Si le style utilise `n_sondages_exact`, l'API doit le fournir.
+  * Si le style utilise `has_exact_location`, l'API doit le fournir.
+* Avant de changer l'un, vérifier l'autre.
+
+**[DATA-02] Codes mailles cohérents et stables**
+
+* **2km**: Format technique `TG-XXXX-YYYY-ZZ` (ex: `TG-0755-0191-01`).
+* **28km**: Format lisible à définir (ex: `TG-PROFIL-01-28` ou `TG-28KM-001`).
+* Ne pas utiliser des IDs numériques bruts (ex: `30`) comme codes publics.
+* Les codes doivent être:
+  * **Uniques** (clé primaire ou unique constraint).
+  * **Stables** (ne changent pas entre versions).
+  * **Lisibles** (compréhensibles par un humain).
+
+**[DATA-03] Champs de liaison sondages ↔ mailles**
+
+* Champs canoniques pour lier sondages aux mailles:
+  * `grid_code` (ou `maille_code`): code maille 2km.
+  * `id_m28`: ID maille 28km (entier).
+  * `code_m28`: code maille 28km (texte lisible, à ajouter).
+* Toujours indexer ces champs pour les recherches.
+
+---
+
+## 13. UI/UX - Règles d'ergonomie
+
+**[UX-01] Tooltips conditionnels selon couches actives**
+
+* Le tooltip d'une maille doit afficher:
+  * **Toujours**: Code, région, nombre de sondages.
+  * **Si géologie active**: Unité géologique dominante.
+  * **Si pédologie active**: Type de sol dominant.
+  * **Si gonflement actif**: Risque + Eg moyen.
+* Ne pas surcharger le tooltip avec des infos non pertinentes.
+
+**[UX-02] Opacité et lisibilité des couches**
+
+* Grilles 2km/28km:
+  * Opacité suffisante pour être visible (~0.5-0.7).
+  * Contour distinct (weight 1-2, couleur contrastée).
+* Couches contexte:
+  * Opacité réduite (~0.3-0.5) pour ne pas masquer les grilles.
+  * Styles catégoriels clairs (pas de dégradés flous).
+
+**[UX-03] Légendes synchronisées avec l'affichage**
+
+* La légende doit **toujours** correspondre à ce qui est affiché:
+  * Si le style utilise vert/bleu/gris, la légende doit montrer ces 3 couleurs.
+  * Si une couche est désactivée, sa légende doit être masquée ou grisée.
+* Légendes dépliables pour économiser l'espace écran.
+
+**[UX-04] Feedback visuel immédiat**
+
+* Toute action utilisateur doit avoir un feedback:
+  * Clic maille → surbrillance immédiate.
+  * Changement niveau grille → loader + toast "Grille 28km chargée".
+  * Recherche → indicateur de chargement + nombre de résultats.
+  * Erreur → message clair + suggestion d'action.
+
+---
+
+## 14. Performance & Optimisation
+
+**[PERF-01] Chargement paresseux des couches lourdes**
+
+* DSM, couches contexte haute résolution:
+  * Ne charger que la bbox visible.
+  * Utiliser des tuiles vectorielles ou raster optimisées.
+  * Limiter le nombre de features affichées (simplification géométrique).
+
+**[PERF-02] Agrégations côté backend**
+
+* Ne jamais faire d'agrégations lourdes côté frontend:
+  * Comptages, moyennes, stats → vues matérialisées ou API.
+  * Frontend = affichage uniquement.
+
+**[PERF-03] Debounce sur recherche et filtres**
+
+* Recherche texte, filtres dynamiques:
+  * Debounce 300-500ms pour éviter requêtes excessives.
+  * Indicateur de chargement pendant la requête.
+
+---
+
+## 15. Sécurité & Validation
+
+**[SEC-01] Validation paramètres API**
+
+* Tous les paramètres d'URL doivent être validés:
+  * `grid`: enum strict `2km|28km`.
+  * `code`: format regex `TG-\d{4}-\d{4}-\d{2}`.
+  * `bbox`: 4 nombres valides.
+* Rejeter avec 400 Bad Request si invalide.
+
+**[SEC-02] Injection SQL impossible**
+
+* Utiliser **uniquement** des requêtes paramétrées:
+  * `sqlx::query!("SELECT ... WHERE code = $1", code)`.
+  * Jamais de concaténation de strings.
+
+**[SEC-03] Limites de résultats**
+
+* Toutes les requêtes liste doivent avoir une limite:
+  * Par défaut: 500 résultats max.
+  * Paramètre `limit` optionnel (max 1000).
+  * Pagination si besoin de plus.

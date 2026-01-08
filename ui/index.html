@@ -690,6 +690,19 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           </div>
         </div>
 
+        <!-- SÉLECTEUR GRILLE 2km/28km -->
+        <div class="section" style="margin-bottom:12px">
+          <h4>🗺️ Niveau de grille</h4>
+          <select id="gridLevelSelect" class="input">
+            <option value="2km" selected>Grille 2 km (détaillée)</option>
+            <option value="28km">Grille 28 km (profils régionaux)</option>
+          </select>
+          <div id="gridStats" style="font-size:11px;color:var(--muted);margin-top:6px;padding:8px;background:#0f172a;border-radius:6px">
+            <div><strong>Total:</strong> <span id="gridTotal">0</span> mailles</div>
+            <div><strong>Avec données:</strong> <span id="gridWithData">0</span> mailles</div>
+          </div>
+        </div>
+
         <!-- BOUTON SONDAGES v2.5.0 -->
         <button id="openSondagesModalBtn" class="btn primary btn-block" style="margin-bottom: 12px;">
           📋 Sondages

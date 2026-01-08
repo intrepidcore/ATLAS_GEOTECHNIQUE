@@ -659,24 +659,21 @@ async fn get_coverage_mailles_28km(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     
-    // Requête sur atlas.v_maille_28km_kpi
+    // Requête sur atlas.v_coverage_mailles_28km (avec compteurs exact/random et code lisible)
     let mut query = r#"
         SELECT code_m28,
+               COALESCE(code_lisible, 'TG-28KM-' || LPAD(code_m28::text, 3, '0')) AS code_lisible,
                profil_num,
-               pk_min_km,
-               pk_max_km,
                ST_AsGeoJSON(ST_Transform(geom, 4326)) AS g,
-               area_km2,
                COALESCE(n_sondages, 0)::bigint AS n_sondages,
-               COALESCE(n_ip, 0)::bigint AS n_ip,
-               COALESCE(n_vbs, 0)::bigint AS n_vbs,
-               COALESCE(n_eg, 0)::bigint AS n_eg,
-               ip_avg,
-               vbs_avg,
-               eg_avg,
-               pct_plastiques_ip17,
-               has_data
-        FROM atlas.v_maille_28km_kpi
+               COALESCE(n_sondages_exact, 0)::bigint AS n_sondages_exact,
+               COALESCE(n_sondages_random, 0)::bigint AS n_sondages_random,
+               COALESCE(n_echantillons, 0)::bigint AS n_echantillons,
+               COALESCE(n_essais, 0)::bigint AS n_essais,
+               COALESCE(n_mailles_2km, 0)::bigint AS n_mailles_2km,
+               COALESCE(n_mailles_2km_with_data, 0)::bigint AS n_mailles_2km_with_data,
+               (n_sondages > 0) AS has_data
+        FROM atlas.v_coverage_mailles_28km
     "#
     .to_string();
 
@@ -706,39 +703,36 @@ async fn get_coverage_mailles_28km(
     let mut features = Vec::new();
     for r in rows {
         let code_m28: i32 = r.try_get("code_m28").unwrap_or(0);
+        let code_lisible: String = r.try_get("code_lisible").unwrap_or_else(|_| format!("TG-28KM-{:03}", code_m28));
         let profil_num: i32 = r.try_get("profil_num").unwrap_or(0);
-        let pk_min_km: f64 = r.try_get("pk_min_km").unwrap_or(0.0);
-        let pk_max_km: f64 = r.try_get("pk_max_km").unwrap_or(0.0);
         let g: String = r.get("g");
-        let area_km2: f64 = r.try_get("area_km2").unwrap_or(0.0);
         let n_sondages: i64 = r.get("n_sondages");
-        let n_ip: i64 = r.try_get("n_ip").unwrap_or(0);
-        let n_vbs: i64 = r.try_get("n_vbs").unwrap_or(0);
-        let n_eg: i64 = r.try_get("n_eg").unwrap_or(0);
-        
-        // Optionals
-        let ip_avg: Option<f64> = r.try_get("ip_avg").ok();
-        let vbs_avg: Option<f64> = r.try_get("vbs_avg").ok();
-        let eg_avg: Option<f64> = r.try_get("eg_avg").ok();
-        let pct_plastiques_ip17: Option<f64> = r.try_get("pct_plastiques_ip17").ok();
+        let n_sondages_exact: i64 = r.try_get("n_sondages_exact").unwrap_or(0);
+        let n_sondages_random: i64 = r.try_get("n_sondages_random").unwrap_or(0);
+        let n_echantillons: i64 = r.try_get("n_echantillons").unwrap_or(0);
+        let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
+        let n_mailles_2km: i64 = r.try_get("n_mailles_2km").unwrap_or(0);
+        let n_mailles_2km_with_data: i64 = r.try_get("n_mailles_2km_with_data").unwrap_or(0);
         let has_data: bool = r.try_get("has_data").unwrap_or(false);
+        
+        // Calculer has_exact_location et has_random_location pour compatibilité avec style UI
+        let has_exact_location = n_sondages_exact > 0;
+        let has_random_location = n_sondages_random > 0;
 
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
             let props = serde_json::json!({
                 "code_m28": code_m28,
-                "code": format!("{}", code_m28), // Alias pour compatibilité UI
+                "code": code_lisible.clone(), // Code lisible (ex: TG-28KM-030)
                 "profil_num": profil_num,
-                "pk_min_km": pk_min_km,
-                "pk_max_km": pk_max_km,
-                "area_km2": area_km2,
                 "n_sondages": n_sondages,
-                "n_ip": n_ip,
-                "n_vbs": n_vbs,
-                "n_eg": n_eg,
-                "ip_avg": ip_avg,
-                "vbs_avg": vbs_avg,
-                "eg_avg": eg_avg,
-                "pct_plastiques_ip17": pct_plastiques_ip17,
+                "n_sondages_exact": n_sondages_exact,
+                "n_sondages_random": n_sondages_random,
+                "has_exact_location": has_exact_location,
+                "has_random_location": has_random_location,
+                "n_echantillons": n_echantillons,
+                "n_essais": n_essais,
+                "n_mailles_2km": n_mailles_2km,
+                "n_mailles_2km_with_data": n_mailles_2km_with_data,
                 "has_data": has_data
             });
 

@@ -942,7 +942,7 @@ export class ThematicMapManager {
   }
   
   /**
-   * Afficher la légende
+   * Afficher la légende avec support dépliable pour couches contexte
    */
   private showLegend(classification: Classification, stats: Statistics, config: ThematicMapConfig): void {
     if (this.legendControl) {

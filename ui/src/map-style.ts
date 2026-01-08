@@ -37,9 +37,9 @@ export const COLORS: Record<string, string> = {
 // =============================================================================
 
 export const OPACITY: Record<string, number> = {
-  // Remplissage mailles
-  GRID_WITH_DATA: 0.35,
-  GRID_NO_DATA: 0.06,                // Très transparent
+  // Remplissage mailles (augmenté pour meilleure lisibilité)
+  GRID_WITH_DATA: 0.55,              // Augmenté de 0.35 à 0.55
+  GRID_NO_DATA: 0.08,                // Légèrement augmenté
   
   // Sélection
   SELECTED_ADM3: 0.15,
@@ -54,11 +54,19 @@ export const OPACITY: Record<string, number> = {
 // =============================================================================
 
 export const WEIGHT: Record<string, number> = {
-  GRID_WITH_DATA: 1.2,
-  GRID_NO_DATA: 0.5,
+  // Contours mailles (augmenté pour meilleure visibilité)
+  GRID_WITH_DATA: 1.5,               // Augmenté de 1 à 1.5
+  GRID_NO_DATA: 0.8,                 // Augmenté de 0.5 à 0.8
+  
+  // Sélection
+  SELECTED_ADM3: 2,
+  SELECTED_CELL: 3,
+  
+  // Survol
   HOVER: 2,
-  SELECTED: 3,
-  ADM3: 1,
+  
+  // ADM3
+  ADM3_DEFAULT: 1.5,
 };
 
 // =============================================================================
@@ -161,13 +169,11 @@ export const ADM3_DEFAULT_STYLE: L.PathOptions = {
 export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions {
   const props = feature?.properties || {};
   
-  // Nouveaux compteurs depuis migration 100
+  // Propriétés disponibles dans l'API
   const nSondages = props.n_sondages || 0;
-  const nExact = props.n_sondages_exact || 0;
-  const nRandom = props.n_sondages_random || 0;
-  
-  // Fallback pour compatibilité avec anciennes données
   const hasData = nSondages > 0 || !!props.has_data;
+  const hasExact = !!props.has_exact_location;
+  const hasRandom = !!props.has_random_location;
   
   // Calcul du poids dynamique selon le zoom
   const baseWeight = hasData ? WEIGHT.GRID_WITH_DATA : WEIGHT.GRID_NO_DATA;
@@ -177,22 +183,23 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   }
   
   // LOGIQUE COULEURS UNIFIÉES (2km ET 28km)
+  // Règle: Vert si exact, Bleu si random, Gris si vide
   let fillColor = COLORS.GRID_NO_DATA;
   
-  if (nSondages === 0) {
+  if (!hasData) {
     // Gris: sans données
     fillColor = COLORS.GRID_NO_DATA;
-  } else if (nExact > nRandom) {
-    // Vert: exact dominant
+  } else if (hasExact && !hasRandom) {
+    // Vert: seulement exact
     fillColor = COLORS.GRID_EXACT;
-  } else if (nRandom > nExact) {
-    // Bleu: random dominant
+  } else if (hasRandom && !hasExact) {
+    // Bleu: seulement random
     fillColor = COLORS.GRID_RANDOM;
-  } else if (nExact === nRandom && nExact > 0) {
-    // Égalité: priorité au vert (exact)
+  } else if (hasExact && hasRandom) {
+    // Mix: priorité au vert (exact dominant)
     fillColor = COLORS.GRID_EXACT;
   } else {
-    // Fallback: gris
+    // Fallback: gris (ne devrait pas arriver si has_data est correct)
     fillColor = COLORS.GRID_NO_DATA;
   }
   
