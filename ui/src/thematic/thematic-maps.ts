@@ -48,6 +48,13 @@ export class ThematicMapManager {
   }
   
   /**
+   * Set opacity for a context layer
+   */
+  setContextLayerOpacity(layerType: 'geologie' | 'pedologie' | 'risque-gonflement' | 'dsm', opacity: number): void {
+    this.contextLayers.setLayerOpacity(layerType, opacity)
+  }
+  
+  /**
    * Indique si le manager est prêt (carte chargée)
    */
   get isReady(): boolean {

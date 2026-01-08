@@ -84,30 +84,25 @@ export class ContextLayersManager {
   }
 
   /**
-   * Load DSM raster layer from tileserver
-   * Le DSM s'affiche sous les mailles mais au-dessus du fond de carte
+   * Load DSM/Relief raster layer from tileserver
+   * Utilise la couche togo_map disponible sur le tileserver
+   * Le relief s'affiche sous les mailles mais au-dessus du fond de carte
    */
   private loadDsmLayer(): void {
     if (this.dsmLayer) {
-      console.log('[ContextLayers] DSM already loaded, removing and reloading')
+      console.log('[ContextLayers] DSM/Relief already loaded, removing and reloading')
       this.map.removeLayer(this.dsmLayer)
       this.dsmLayer = null
     }
 
-    // URL du tileserver pour DSM COP30
-    // Essayer plusieurs URLs possibles
-    const possibleUrls = [
-      'http://localhost:8081/styles/dsm-cop30/{z}/{x}/{y}.png',
-      'http://localhost:8081/data/dsm-cop30/{z}/{x}/{y}.png',
-      'http://localhost:8081/styles/dsm/{z}/{x}/{y}.png'
-    ]
-    
-    const dsmUrl = possibleUrls[0]
-    console.log('[ContextLayers] Loading DSM from:', dsmUrl)
+    // URL du tileserver - utiliser togo_map qui est disponible
+    // Note: dsm-cop30 n'est pas configuré sur le tileserver, utiliser togo_map comme alternative
+    const dsmUrl = 'http://localhost:8081/data/togo_map/{z}/{x}/{y}.png'
+    console.log('[ContextLayers] Loading relief layer from:', dsmUrl)
     
     this.dsmLayer = L.tileLayer(dsmUrl, {
-      attribution: 'DSM Copernicus DEM GLO-30',
-      opacity: 0.65,
+      attribution: 'Relief - Togo Map',
+      opacity: 0.6,
       maxZoom: 18,
       minZoom: 5,
       tileSize: 256,
@@ -118,19 +113,19 @@ export class ContextLayersManager {
     // Ajouter la couche à la carte
     this.dsmLayer.addTo(this.map)
     
-    // Mettre la couche derrière les autres
+    // Mettre la couche derrière les autres couches vecteur
     this.dsmLayer.bringToBack()
     
-    // Vérifier si les tuiles se chargent
+    // Log pour debug
     this.dsmLayer.on('tileerror', (e: any) => {
-      console.warn('[ContextLayers] DSM tile error:', e.coords, e.error)
+      console.warn('[ContextLayers] Relief tile error:', e.coords)
     })
     
     this.dsmLayer.on('load', () => {
-      console.log('[ContextLayers] ✅ DSM tiles loaded successfully')
+      console.log('[ContextLayers] ✅ Relief tiles loaded successfully')
     })
     
-    console.log('[ContextLayers] DSM layer added to map with opacity 0.65')
+    console.log('[ContextLayers] Relief layer added to map with opacity 0.6')
   }
 
   /**
@@ -225,6 +220,34 @@ export class ContextLayersManager {
         return this.dsmLayer !== null
       default:
         return false
+    }
+  }
+  
+  /**
+   * Set opacity for a context layer
+   */
+  setLayerOpacity(layerType: 'geologie' | 'pedologie' | 'risque-gonflement' | 'dsm', opacity: number): void {
+    switch (layerType) {
+      case 'geologie':
+        if (this.geologieLayer) {
+          this.geologieLayer.setStyle({ fillOpacity: opacity })
+        }
+        break
+      case 'pedologie':
+        if (this.pedologieLayer) {
+          this.pedologieLayer.setStyle({ fillOpacity: opacity })
+        }
+        break
+      case 'risque-gonflement':
+        if (this.risqueGonflementLayer) {
+          this.risqueGonflementLayer.setStyle({ fillOpacity: opacity })
+        }
+        break
+      case 'dsm':
+        if (this.dsmLayer) {
+          this.dsmLayer.setOpacity(opacity)
+        }
+        break
     }
   }
 

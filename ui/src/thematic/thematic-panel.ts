@@ -263,35 +263,87 @@ export class ThematicPanel {
         </div>
         
         <div class="thematic-divider">
-          <span>Couches de contexte</span>
+          <span>🗺️ Couches de contexte (QGIS)</span>
         </div>
         
-        <div class="thematic-section checkbox-section">
-          <label class="checkbox-label">
-            <input type="checkbox" id="toggleGeologie">
-            <span>Géologie</span>
-          </label>
-        </div>
-        
-        <div class="thematic-section checkbox-section">
-          <label class="checkbox-label">
-            <input type="checkbox" id="togglePedologie">
-            <span>Pédologie</span>
-          </label>
-        </div>
-        
-        <div class="thematic-section checkbox-section">
-          <label class="checkbox-label">
-            <input type="checkbox" id="toggleRisqueGonflement">
-            <span>Risque de gonflement</span>
-          </label>
-        </div>
-        
-        <div class="thematic-section checkbox-section">
-          <label class="checkbox-label">
-            <input type="checkbox" id="toggleDsm">
-            <span>DSM (Altitude)</span>
-          </label>
+        <!-- Panneau QGIS-like pour couches contextuelles -->
+        <div class="context-layers-panel" style="background:#0a1018;border-radius:8px;padding:10px;margin-bottom:10px">
+          
+          <!-- Géologie -->
+          <div class="context-layer-item" style="margin-bottom:8px;padding:8px;background:#0f172a;border-radius:6px;border-left:3px solid #8B4513">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label class="checkbox-label" style="margin:0">
+                <input type="checkbox" id="toggleGeologie">
+                <span style="font-weight:600">🪨 Géologie</span>
+              </label>
+              <span class="layer-badge" style="font-size:10px;background:#8B451333;color:#D2691E;padding:2px 6px;border-radius:4px">vecteur</span>
+            </div>
+            <div class="layer-controls" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #1c2843">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8">
+                <span>Opacité:</span>
+                <input type="range" id="geologieOpacity" min="10" max="80" value="35" style="flex:1;height:4px">
+                <span id="geologieOpacityValue">35%</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Pédologie -->
+          <div class="context-layer-item" style="margin-bottom:8px;padding:8px;background:#0f172a;border-radius:6px;border-left:3px solid #FFB6C1">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label class="checkbox-label" style="margin:0">
+                <input type="checkbox" id="togglePedologie">
+                <span style="font-weight:600">🌱 Pédologie</span>
+              </label>
+              <span class="layer-badge" style="font-size:10px;background:#FFB6C133;color:#FF69B4;padding:2px 6px;border-radius:4px">vecteur</span>
+            </div>
+            <div class="layer-controls" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #1c2843">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8">
+                <span>Opacité:</span>
+                <input type="range" id="pedologieOpacity" min="10" max="80" value="35" style="flex:1;height:4px">
+                <span id="pedologieOpacityValue">35%</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Risque de gonflement -->
+          <div class="context-layer-item" style="margin-bottom:8px;padding:8px;background:#0f172a;border-radius:6px;border-left:3px solid #ff9933">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label class="checkbox-label" style="margin:0">
+                <input type="checkbox" id="toggleRisqueGonflement">
+                <span style="font-weight:600">⚠️ Risque gonflement</span>
+              </label>
+              <span class="layer-badge" style="font-size:10px;background:#ff993333;color:#ff9933;padding:2px 6px;border-radius:4px">vecteur</span>
+            </div>
+            <div class="layer-controls" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #1c2843">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8">
+                <span>Opacité:</span>
+                <input type="range" id="risqueOpacity" min="10" max="80" value="40" style="flex:1;height:4px">
+                <span id="risqueOpacityValue">40%</span>
+              </div>
+            </div>
+          </div>
+          
+          <!-- DSM/Relief -->
+          <div class="context-layer-item" style="padding:8px;background:#0f172a;border-radius:6px;border-left:3px solid #4682B4">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <label class="checkbox-label" style="margin:0">
+                <input type="checkbox" id="toggleDsm">
+                <span style="font-weight:600">🏔️ Relief (Altitude)</span>
+              </label>
+              <span class="layer-badge" style="font-size:10px;background:#4682B433;color:#87CEEB;padding:2px 6px;border-radius:4px">raster</span>
+            </div>
+            <div class="layer-controls" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #1c2843">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8">
+                <span>Opacité:</span>
+                <input type="range" id="dsmOpacity" min="20" max="90" value="60" style="flex:1;height:4px">
+                <span id="dsmOpacityValue">60%</span>
+              </div>
+            </div>
+          </div>
+          
+          <div style="font-size:10px;color:#64748b;margin-top:8px;text-align:center">
+            ℹ️ Cochez pour afficher • Les infos apparaîtront dans les tooltips
+          </div>
         </div>
         
         <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -989,40 +1041,68 @@ export class ThematicPanel {
     })
     
     // Toggle context layers - met à jour l'état global pour les tooltips enrichis
+    // + affiche/masque les contrôles d'opacité
     this.elements.toggleGeologieCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('geologie', checked)
-      // Mettre à jour l'état global pour les tooltips
       if ((window as any).setActiveContextLayer) {
         (window as any).setActiveContextLayer('geologie', checked)
       }
+      // Afficher/masquer les contrôles
+      const controls = (e.target as HTMLInputElement).closest('.context-layer-item')?.querySelector('.layer-controls') as HTMLElement
+      if (controls) controls.style.display = checked ? 'block' : 'none'
     })
     
     this.elements.togglePedologieCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('pedologie', checked)
-      // Mettre à jour l'état global pour les tooltips
       if ((window as any).setActiveContextLayer) {
         (window as any).setActiveContextLayer('pedologie', checked)
       }
+      const controls = (e.target as HTMLInputElement).closest('.context-layer-item')?.querySelector('.layer-controls') as HTMLElement
+      if (controls) controls.style.display = checked ? 'block' : 'none'
     })
     
     this.elements.toggleRisqueGonflementCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('risque-gonflement', checked)
-      // Mettre à jour l'état global pour les tooltips
       if ((window as any).setActiveContextLayer) {
         (window as any).setActiveContextLayer('risque-gonflement', checked)
       }
+      const controls = (e.target as HTMLInputElement).closest('.context-layer-item')?.querySelector('.layer-controls') as HTMLElement
+      if (controls) controls.style.display = checked ? 'block' : 'none'
     })
     
     this.elements.toggleDsmCheckbox?.addEventListener('change', (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('dsm', checked)
-      // Mettre à jour l'état global pour les tooltips
       if ((window as any).setActiveContextLayer) {
         (window as any).setActiveContextLayer('dsm', checked)
       }
+      const controls = (e.target as HTMLInputElement).closest('.context-layer-item')?.querySelector('.layer-controls') as HTMLElement
+      if (controls) controls.style.display = checked ? 'block' : 'none'
+    })
+    
+    // Sliders d'opacité pour les couches contextuelles
+    document.getElementById('geologieOpacity')?.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value
+      document.getElementById('geologieOpacityValue')!.textContent = `${val}%`
+      this.manager.setContextLayerOpacity('geologie', parseInt(val) / 100)
+    })
+    document.getElementById('pedologieOpacity')?.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value
+      document.getElementById('pedologieOpacityValue')!.textContent = `${val}%`
+      this.manager.setContextLayerOpacity('pedologie', parseInt(val) / 100)
+    })
+    document.getElementById('risqueOpacity')?.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value
+      document.getElementById('risqueOpacityValue')!.textContent = `${val}%`
+      this.manager.setContextLayerOpacity('risque-gonflement', parseInt(val) / 100)
+    })
+    document.getElementById('dsmOpacity')?.addEventListener('input', (e) => {
+      const val = (e.target as HTMLInputElement).value
+      document.getElementById('dsmOpacityValue')!.textContent = `${val}%`
+      this.manager.setContextLayerOpacity('dsm', parseInt(val) / 100)
     })
     
     // Clear ADM filters button

@@ -305,23 +305,55 @@ function handleMouseOut(layer: L.Path, feature: any) {
   }
 }
 
+// Timer pour le retour au style normal après sélection
+let selectionTimer: ReturnType<typeof setTimeout> | null = null
+
+// Style de sélection temporaire (jaune)
+const CELL_SELECTED_TEMP_STYLE: L.PathOptions = {
+  color: '#ffd600',
+  weight: 3,
+  fillColor: '#ffd600',
+  fillOpacity: 0.4
+}
+
 /**
  * Gère le clic sur une maille
+ * Applique un style jaune pendant 5s puis retour au style bleu/vert
  */
 function handleClick(layer: L.Path, feature: any, p: any) {
   console.log('[handleClick] Clic sur maille:', p.code)
+  
+  // Annuler le timer précédent si existant
+  if (selectionTimer) {
+    clearTimeout(selectionTimer)
+    selectionTimer = null
+  }
   
   // Réinitialiser l'ancienne sélection
   if (selectedCell && selectedCell !== layer) {
     selectedCell.setStyle(getDefaultStyle((selectedCell as any).feature))
   }
   
-  // Appliquer le style de sélection
+  // Appliquer le style de sélection temporaire (jaune)
   selectedCell = layer
   selectedMailleCode = p.code
   selectedMailleProps = p
-  layer.setStyle(CELL_SELECTED_STYLE)
+  layer.setStyle(CELL_SELECTED_TEMP_STYLE)
   layer.bringToFront()
+  
+  // Après 5s, retourner au style normal (bleu/vert)
+  selectionTimer = setTimeout(() => {
+    if (selectedCell === layer) {
+      // Garder la bordure de sélection mais retourner à la couleur de fond normale
+      const baseStyle = getDefaultStyle(feature)
+      layer.setStyle({
+        ...baseStyle,
+        weight: 2.5,
+        color: '#3b82f6' // Bordure bleue pour indiquer la sélection
+      })
+    }
+    selectionTimer = null
+  }, 5000)
 }
 
 // --- État des couches contextuelles actives ---
