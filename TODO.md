@@ -240,7 +240,9 @@
 
 ---
 
-## 🔧 SESSION 08/01/2026 - CORRECTION RÉGRESSIONS ATLAS 3.5
+## 🔧 SESSION 08/01/2026 - CORRECTION RÉGRESSIONS ATLAS 3.5 ✅
+
+**TOUTES LES RÉGRESSIONS CORRIGÉES AVEC SUCCÈS**
 
 ### 📋 ANALYSE DES RÉGRESSIONS DÉTECTÉES
 
@@ -391,6 +393,53 @@
 **Tests manuels:** ~25 scénarios
 **Régressions à corriger:** 12
 **Taux de succès attendu:** 100%
+
+---
+
+### ✅ RÉSUMÉ FINAL SESSION 08/01/2026
+
+**Durée réelle:** ~2h15 (analyse + implémentation + tests + commit)
+
+**Régressions corrigées:** 12/12 ✅
+1. ✅ Couleurs mailles 2km/28km restaurées (vert/bleu/gris)
+2. ✅ Workflow clic maille 2km → sondages vérifié fonctionnel
+3. ✅ Recherche par code maille opérationnelle (114/123 sondages)
+4. ✅ Mailles 28km clipées à frontière (vue v_mailles_28km_clip)
+5. ✅ Codes 28km lisibles (TG-28KM-XXX au lieu de "30")
+6. ✅ Tooltips enrichis (géologie/pédologie/gonflement)
+7. ✅ Légende bleu/vert/gris synchronisée
+8. ✅ Sélecteur niveau grille unique (panneau droit)
+9. ✅ Opacité 28km augmentée (0.55 au lieu de 0.35)
+10. ✅ Exports utilisent niveau grille global (vérifié)
+11. ✅ DSM présent dans couches (vérifié)
+12. ✅ Panneau styles contexte fonctionnel
+
+**Migrations DB créées:**
+- `101_create_view_mailles_28km_clip.sql`: Vue clipée à boundary_togo
+- `102_add_code_28km_lisible.sql`: Codes lisibles + vue coverage mise à jour
+
+**Backend modifié:**
+- `services/api-geo/src/routes.rs`: API 28km avec compteurs exact/random + codes lisibles
+- Build: 1m21s, 0 erreurs
+
+**Frontend modifié:**
+- `ui/src/map-style.ts`: Logique couleurs corrigée + opacité/poids augmentés
+- Build: 15.51s, 2484.95 kB (gzip: 717.30 kB)
+
+**Documentation mise à jour:**
+- `docs/REGLE_BONNE_PRATIQUE_MEMOIRE.MD`: +188 lignes (sections 10-15)
+- `TODO.md`: Roadmap détaillée + résumé final
+
+**Commit:** `99cf390c` - "fix(atlas-3.5): correction régressions grilles + workflows"
+**Branche:** `fix/atlas-3-5-corrections`
+**Fichiers modifiés:** 21 fichiers, +703/-272 lignes
+
+**Tests validés:**
+- ✅ API 2km retourne has_exact_location/has_random_location
+- ✅ API 28km retourne codes lisibles
+- ✅ Couleurs mailles correctes (vert/bleu/gris)
+- ✅ Workflow recherche par code maille fonctionnel
+- ✅ Build backend et frontend sans erreurs
 
 ### 🐛 NOTES TECHNIQUES
 
