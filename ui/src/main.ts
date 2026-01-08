@@ -329,9 +329,9 @@ function handleClick(layer: L.Path, feature: any, p: any) {
 function onEachFeature(f: any, layer: any) {
   const p = f.properties || {}
   
-  // Tooltip enrichi avec contexte géologique/pédologique/gonflement
+  // Tooltip enrichi avec données contextuelles de la feature survolée
   let tooltipContent = `<div style="font-size:12px;line-height:1.5">`
-  tooltipContent += `<strong>Code:</strong> ${p.code || '—'}<br>`
+  tooltipContent += `<strong>Code:</strong> ${p.code || p.code_m28 || '—'}<br>`
   if (p.adm1_name) tooltipContent += `<strong>Région:</strong> ${p.adm1_name}<br>`
   if (p.n_sondages != null) tooltipContent += `<strong>Sondages:</strong> ${p.n_sondages}<br>`
   
@@ -1771,13 +1771,14 @@ async function loadGrid(useBbox = false) {
   console.log('[reloadSondages] Fonction désactivée - les sondages sont affichés via les mailles')
 }
 
-// Exposer loadGrid et setGridLevel globalement
+// Exposer loadGrid, setGridLevel et currentGridLevel globalement
 ;(window as any).loadGrid = loadGrid
 ;(window as any).setGridLevel = (level: '2km' | '28km') => {
   console.log('[setGridLevel] Changement de niveau:', currentGridLevel, '->', level)
   currentGridLevel = level
   loadGrid()
 }
+;(window as any).getCurrentGridLevel = () => currentGridLevel
 
 // Connecter le sélecteur de grille
 const gridLevelSelect = document.getElementById('gridLevelSelect') as HTMLSelectElement

@@ -39,7 +39,7 @@ export const COLORS: Record<string, string> = {
 export const OPACITY: Record<string, number> = {
   // Remplissage mailles (augmenté pour meilleure lisibilité)
   GRID_WITH_DATA: 0.55,              // Augmenté de 0.35 à 0.55
-  GRID_NO_DATA: 0.08,                // Légèrement augmenté
+  GRID_NO_DATA: 0.0,                 // Transparent (au lieu de 0.08)
   
   // Sélection
   SELECTED_ADM3: 0.15,
@@ -56,7 +56,7 @@ export const OPACITY: Record<string, number> = {
 export const WEIGHT: Record<string, number> = {
   // Contours mailles (augmenté pour meilleure visibilité)
   GRID_WITH_DATA: 1.5,               // Augmenté de 1 à 1.5
-  GRID_NO_DATA: 0.8,                 // Augmenté de 0.5 à 0.8
+  GRID_NO_DATA: 1.2,                 // Augmenté de 0.8 à 1.2 (contour visible sur transparent)
   
   // Sélection
   SELECTED_ADM3: 2,

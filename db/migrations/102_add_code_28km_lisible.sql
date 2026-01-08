@@ -28,6 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_maille_28km_code_lisible
 ON atlas.maille_28km(code_lisible);
 
 -- Mettre à jour la vue de couverture pour exposer le code lisible
+-- Agrégation via mailles 2km car sondages.id_m28 n'est pas rempli
 CREATE OR REPLACE VIEW atlas.v_coverage_mailles_28km AS
 SELECT 
   m28.id_m28,
@@ -35,18 +36,27 @@ SELECT
   m28.code_lisible,
   m28.profil_num,
   m28.geom,
-  COALESCE(COUNT(DISTINCT s.id), 0) AS n_sondages,
-  COALESCE(COUNT(DISTINCT s.id) FILTER (WHERE s.location_mode IN ('exact', 'gps', 'manual')), 0) AS n_sondages_exact,
-  COALESCE(COUNT(DISTINCT s.id) FILTER (WHERE s.location_mode IN ('adm_random_cell', 'adm3', 'adm2', 'adm1', 'random')), 0) AS n_sondages_random,
-  COALESCE(COUNT(DISTINCT e.id), 0) AS n_echantillons,
+  COALESCE(stats.n_sondages, 0) AS n_sondages,
+  COALESCE(stats.n_sondages_exact, 0) AS n_sondages_exact,
+  COALESCE(stats.n_sondages_random, 0) AS n_sondages_random,
+  COALESCE(stats.n_echantillons, 0) AS n_echantillons,
   0 AS n_essais,
-  COALESCE(COUNT(DISTINCT m2.code), 0) AS n_mailles_2km,
-  COALESCE(COUNT(DISTINCT m2.code) FILTER (WHERE EXISTS (SELECT 1 FROM atlas.sondages s2 WHERE s2.grid_code = m2.code)), 0) AS n_mailles_2km_with_data
+  COALESCE(stats.n_mailles_2km, 0) AS n_mailles_2km,
+  COALESCE(stats.n_mailles_2km_with_data, 0) AS n_mailles_2km_with_data
 FROM atlas.maille_28km m28
-LEFT JOIN atlas.sondages s ON s.id_m28 = m28.id_m28
-LEFT JOIN atlas.echantillons e ON e.sondage_id = s.id
-LEFT JOIN atlas.mailles m2 ON m2.id_m28 = m28.id_m28
-GROUP BY m28.id_m28, m28.code_m28, m28.code_lisible, m28.profil_num, m28.geom;
+LEFT JOIN LATERAL (
+  SELECT 
+    COUNT(DISTINCT s.id) AS n_sondages,
+    COUNT(DISTINCT s.id) FILTER (WHERE s.location_mode IN ('exact', 'gps', 'manual')) AS n_sondages_exact,
+    COUNT(DISTINCT s.id) FILTER (WHERE s.location_mode IN ('adm_random_cell', 'adm3', 'adm2', 'adm1', 'random')) AS n_sondages_random,
+    COUNT(DISTINCT e.id) AS n_echantillons,
+    COUNT(DISTINCT m2.code) AS n_mailles_2km,
+    COUNT(DISTINCT m2.code) FILTER (WHERE s.grid_code = m2.code) AS n_mailles_2km_with_data
+  FROM atlas.mailles m2
+  LEFT JOIN atlas.sondages s ON s.grid_code = m2.code
+  LEFT JOIN atlas.echantillons e ON e.sondage_id = s.id
+  WHERE m2.id_m28 = m28.id_m28
+) stats ON true;
 
 COMMENT ON VIEW atlas.v_coverage_mailles_28km IS 
   'Vue de couverture mailles 28km avec compteurs exact/random et code lisible. '

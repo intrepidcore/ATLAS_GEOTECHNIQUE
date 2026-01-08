@@ -706,14 +706,14 @@ async fn get_coverage_mailles_28km(
         let code_lisible: String = r.try_get("code_lisible").unwrap_or_else(|_| format!("TG-28KM-{:03}", code_m28));
         let profil_num: i32 = r.try_get("profil_num").unwrap_or(0);
         let g: String = r.get("g");
-        let n_sondages: i64 = r.get("n_sondages");
+        let n_sondages: i64 = r.try_get("n_sondages").unwrap_or(0);
         let n_sondages_exact: i64 = r.try_get("n_sondages_exact").unwrap_or(0);
         let n_sondages_random: i64 = r.try_get("n_sondages_random").unwrap_or(0);
         let n_echantillons: i64 = r.try_get("n_echantillons").unwrap_or(0);
         let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
         let n_mailles_2km: i64 = r.try_get("n_mailles_2km").unwrap_or(0);
         let n_mailles_2km_with_data: i64 = r.try_get("n_mailles_2km_with_data").unwrap_or(0);
-        let has_data: bool = r.try_get("has_data").unwrap_or(false);
+        let has_data: bool = n_sondages > 0;
         
         // Calculer has_exact_location et has_random_location pour compatibilité avec style UI
         let has_exact_location = n_sondages_exact > 0;
