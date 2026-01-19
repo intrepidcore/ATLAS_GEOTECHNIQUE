@@ -112,6 +112,29 @@ function safeAddEventListener(id: string, event: string, handler: EventListener)
 
 const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7)
 
+// Créer les panes Leaflet pour gérer le z-order des couches
+// contextPane: couches géologie/pédologie/risque (z-index 440, en dessous)
+// gridPane: mailles 2km/28km (z-index 450, au-dessus pour permettre les clics)
+const contextPane = map.createPane('contextPane')
+contextPane.style.zIndex = '440'
+
+const gridPane = map.createPane('gridPane')
+gridPane.style.zIndex = '450'
+
+const gridOverlayPane = map.createPane('gridOverlayPane')
+gridOverlayPane.style.zIndex = '455'
+gridOverlayPane.style.pointerEvents = 'none'
+
+// dsmPane: relief raster (au-dessus visuellement) mais ne doit pas bloquer les clics
+const dsmPane = map.createPane('dsmPane')
+dsmPane.style.zIndex = '460'
+dsmPane.style.pointerEvents = 'none'
+
+// Exposer les panes globalement pour les autres modules
+;(window as any).atlasMapPanes = { gridPane, contextPane, gridOverlayPane, dsmPane }
+
+console.log('[INIT] Leaflet panes created: contextPane(440), gridPane(450), gridOverlayPane(455), dsmPane(460)')
+
 // Initialiser les tuiles avec gestion online/offline automatique
 // 1) D'abord configurer le tileserver (async), puis initialiser les layers
 initOfflineTiles().then(() => {
@@ -453,6 +476,9 @@ function buildEnrichedTooltip(p: any): string {
 function onEachFeature(f: any, layer: any) {
   const p = f.properties || {}
   
+  // Log de debug pour vérifier l'attachement des handlers (Correction C)
+  console.log('[Grid] Click handler bound to', p.code || 'unknown')
+  
   // Tooltip enrichi avec données contextuelles de la feature survolée
   // Le contenu est généré dynamiquement lors du survol
   layer.bindTooltip(() => buildEnrichedTooltip(p), { sticky: true, opacity: 0.95 })
@@ -515,10 +541,14 @@ function onEachFeature(f: any, layer: any) {
       // Si c'est une maille 28km, afficher bouton "Gérer" pour filtrer sondages
       if (currentGridLevel === '28km') {
         showMaille28kmActions(p)
-      } else {
-        // Charger les détails complets de la maille (fiche géotechnique) - UNE SEULE FOIS
-        await loadMailleDetails(p.code)
-        // Charger les mailles voisines
+      }
+      
+      // Charger les détails complets de la maille (fiche géotechnique) - POUR TOUS LES TYPES
+      // Cela permet d'afficher les coordonnées UTM31 pour 2km ET 28km
+      await loadMailleDetails(p.code)
+      
+      // Charger les mailles voisines (seulement pour 2km pour l'instant)
+      if (currentGridLevel !== '28km') {
         loadNeighbors(p.code)
       }
     }
@@ -722,51 +752,78 @@ function renderSondagesList(sondages: any[]) {
 async function loadMailleDetails(code: string) {
   console.log('[loadMailleDetails] Chargement des détails pour:', code)
   try {
-    // Appel au nouvel endpoint /cells/{code}/complete
-    const res = await fetch(`${API_GEO}/cells/${code}/complete`)
-    if (!res.ok) {
-      toast('Erreur chargement détails maille', 'err')
-      return
+    // Appels parallèles: données géotech + coordonnées spatiales
+    const [kpiRes, spatialRes] = await Promise.allSettled([
+      fetch(`${API_GEO}/cells/${code}/complete`),
+      fetch(`${API_GEO}/grid/${code}/details`)
+    ])
+    
+    // Traiter les données géotechniques
+    let hasData = false
+    let data: any = null
+    let metrics: any = null
+    
+    if (kpiRes.status === 'fulfilled' && kpiRes.value.ok) {
+      data = await kpiRes.value.json()
+      console.log('[loadMailleDetails] Données géotech reçues:', data)
+      hasData = true
+      
+      // Calculer les métriques
+      metrics = computeCellMetrics({
+        ...data,
+        code,
+        adm1_name: selectedMailleProps?.adm1_name,
+        adm2_name: selectedMailleProps?.adm2_name,
+        adm3_name: selectedMailleProps?.adm3_name,
+      })
+      console.log('[loadMailleDetails] Métriques calculées:', metrics)
     }
     
-    const data = await res.json()
-    console.log('[loadMailleDetails] Données reçues:', data)
+    // Traiter les coordonnées spatiales
+    let spatial: any = null
+    if (spatialRes.status === 'fulfilled' && spatialRes.value.ok) {
+      const spatialData = await spatialRes.value.json()
+      spatial = spatialData.spatial
+      console.log('[loadMailleDetails] Coordonnées UTM31 reçues:', spatial)
+    }
     
-    // Chantier C - Calculer toutes les métriques une seule fois
-    const metrics = computeCellMetrics({
-      ...data,
-      code,
-      adm1_name: selectedMailleProps?.adm1_name,
-      adm2_name: selectedMailleProps?.adm2_name,
-      adm3_name: selectedMailleProps?.adm3_name,
-    })
-    console.log('[loadMailleDetails] Métriques calculées:', metrics)
-    
-    // Afficher le contenu de la fiche et masquer le message vide
+    // Afficher le panneau
     const mailleEmpty = document.getElementById('mailleEmpty')
     const mailleContent = document.getElementById('mailleContent')
     if (mailleEmpty) mailleEmpty.style.display = 'none'
     if (mailleContent) mailleContent.style.display = 'block'
     
-    // Scroller vers la fiche
     const ficheDiv = document.getElementById('mailleDetails')
     if (ficheDiv) {
       ficheDiv.classList.add('active')
       setTimeout(() => ficheDiv.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100)
     }
     
-    // === RENDU DU PANNEAU MAILLE (Chantier C) ===
-    renderMailleHeader(code, metrics, data)
-    renderMailleKpis(metrics)
-    renderMailleDepth(metrics)
-    renderMailleEssaisParType(metrics)
-    renderMailleArgilosite(metrics)
-    renderMailleSynthese(metrics)
-    renderMailleSondages(data, code)
-    renderMailleEchantillons(data)
+    // Rendu du panneau
+    if (hasData && metrics) {
+      renderMailleHeader(code, metrics, data)
+      renderMailleKpis(metrics)
+      renderMailleDepth(metrics)
+      renderMailleEssaisParType(metrics)
+      renderMailleArgilosite(metrics)
+      renderMailleSynthese(metrics)
+      renderMailleSondages(data, code)
+      renderMailleEchantillons(data)
+    } else {
+      // Maille sans données: afficher infos minimales
+      renderMailleHeaderMinimal(code)
+      renderMailleKpisEmpty()
+    }
     
-    // Charger les mailles voisines
+    // Toujours afficher les coordonnées UTM31 si disponibles
+    renderMailleSpatial(spatial)
+    
+    // Charger les voisins
     loadNeighbors(code)
+    
+    if (!hasData) {
+      toast('Aucune donnée géotechnique pour cette maille')
+    }
     
   } catch (e: any) {
     console.error('[loadMailleDetails] Erreur:', e)
@@ -774,7 +831,147 @@ async function loadMailleDetails(code: string) {
   }
 }
 
+// Charger les informations de base d'une maille (code, ADM, coordonnées UTM31)
+// Utilisé pour les mailles sans données géotechniques
+async function loadMailleBasicInfo(code: string) {
+  console.log('[loadMailleBasicInfo] Chargement infos de base pour:', code)
+  try {
+    const res = await fetch(`${API_GEO}/grid/${code}/details`)
+    if (!res.ok) {
+      console.error('[loadMailleBasicInfo] Erreur:', res.status)
+      return
+    }
+    
+    const data = await res.json()
+    console.log('[loadMailleBasicInfo] Données reçues:', data)
+    
+    // Afficher le panneau avec infos minimales
+    const mailleEmpty = document.getElementById('mailleEmpty')
+    const mailleContent = document.getElementById('mailleContent')
+    const mailleDetails = document.getElementById('mailleDetails')
+    
+    if (mailleEmpty) mailleEmpty.style.display = 'none'
+    if (mailleContent) mailleContent.style.display = 'block'
+    if (mailleDetails) mailleDetails.classList.add('active')
+    
+    // Afficher le code
+    const ficheCode = document.getElementById('ficheCode')
+    if (ficheCode) ficheCode.textContent = code
+    
+    // Afficher ADM
+    const ficheAdm = document.getElementById('ficheAdm')
+    if (ficheAdm && data.adm) {
+      const admPath = [data.adm.adm1, data.adm.adm2, data.adm.adm3]
+        .filter(Boolean).join(' > ')
+      ficheAdm.textContent = admPath || '—'
+    }
+    
+    // Afficher badge "sans données"
+    const ficheDataBadge = document.getElementById('ficheDataBadge') as HTMLElement
+    if (ficheDataBadge) {
+      ficheDataBadge.textContent = '— sans données'
+      ficheDataBadge.style.display = 'inline-block'
+      ficheDataBadge.style.background = '#64748b22'
+      ficheDataBadge.style.color = '#64748b'
+      ficheDataBadge.style.padding = '2px 6px'
+      ficheDataBadge.style.borderRadius = '4px'
+      ficheDataBadge.style.fontSize = '10px'
+    }
+    
+    // Masquer badge localisation
+    const ficheLocBadge = document.getElementById('ficheLocBadge') as HTMLElement
+    if (ficheLocBadge) ficheLocBadge.style.display = 'none'
+    
+    // Afficher les coordonnées UTM31 si disponibles
+    const ficheUtm31 = document.getElementById('ficheUtm31')
+    const utmXRange = document.getElementById('utmXRange')
+    const utmYRange = document.getElementById('utmYRange')
+    const utmCenter = document.getElementById('utmCenter')
+    
+    if (ficheUtm31 && data.spatial) {
+      const s = data.spatial
+      const fmt = (n: number) => Math.round(n).toLocaleString('fr-FR')
+      
+      if (utmXRange) utmXRange.textContent = `${fmt(s.xmin)}–${fmt(s.xmax)}`
+      if (utmYRange) utmYRange.textContent = `${fmt(s.ymin)}–${fmt(s.ymax)}`
+      if (utmCenter) utmCenter.textContent = `X=${fmt(s.xc)} ; Y=${fmt(s.yc)}`
+      
+      ficheUtm31.style.display = 'block'
+    } else if (ficheUtm31) {
+      ficheUtm31.style.display = 'none'
+    }
+    
+    // Réinitialiser les KPIs à 0
+    const kpiSondages = document.getElementById('kpiSondages')
+    const kpiEchantillons = document.getElementById('kpiEchantillons')
+    const kpiEssais = document.getElementById('kpiEssais')
+    if (kpiSondages) kpiSondages.textContent = '0'
+    if (kpiEchantillons) kpiEchantillons.textContent = '0'
+    if (kpiEssais) kpiEssais.textContent = '0'
+    
+    // Charger les voisins
+    loadNeighbors(code)
+    
+  } catch (e: any) {
+    console.error('[loadMailleBasicInfo] Erreur:', e)
+  }
+}
+
 // === FONCTIONS DE RENDU PANNEAU MAILLE (Chantier C) ===
+
+function renderMailleSpatial(spatial: any) {
+  const ficheUtm31 = document.getElementById('ficheUtm31')
+  const utmXRange = document.getElementById('utmXRange')
+  const utmYRange = document.getElementById('utmYRange')
+  const utmCenter = document.getElementById('utmCenter')
+  
+  if (!ficheUtm31) return
+  
+  if (!spatial) {
+    ficheUtm31.style.display = 'none'
+    return
+  }
+  
+  const fmt = (n: number) => Math.round(n).toLocaleString('fr-FR')
+  
+  if (utmXRange) utmXRange.textContent = `${fmt(spatial.xmin)}–${fmt(spatial.xmax)}`
+  if (utmYRange) utmYRange.textContent = `${fmt(spatial.ymin)}–${fmt(spatial.ymax)}`
+  if (utmCenter) utmCenter.textContent = `X=${fmt(spatial.xc)} ; Y=${fmt(spatial.yc)}`
+  
+  ficheUtm31.style.display = 'block'
+}
+
+function renderMailleHeaderMinimal(code: string) {
+  const ficheCode = document.getElementById('ficheCode')
+  const ficheAdm = document.getElementById('ficheAdm')
+  const ficheDataBadge = document.getElementById('ficheDataBadge') as HTMLElement
+  const ficheLocBadge = document.getElementById('ficheLocBadge') as HTMLElement
+  
+  if (ficheCode) ficheCode.textContent = code
+  if (ficheAdm) ficheAdm.textContent = selectedMailleProps?.adm2_name || '—'
+  
+  if (ficheDataBadge) {
+    ficheDataBadge.textContent = '— sans données'
+    ficheDataBadge.style.display = 'inline-block'
+    ficheDataBadge.style.background = '#64748b22'
+    ficheDataBadge.style.color = '#64748b'
+    ficheDataBadge.style.padding = '2px 6px'
+    ficheDataBadge.style.borderRadius = '4px'
+    ficheDataBadge.style.fontSize = '10px'
+  }
+  
+  if (ficheLocBadge) ficheLocBadge.style.display = 'none'
+}
+
+function renderMailleKpisEmpty() {
+  const kpiSondages = document.getElementById('kpiSondages')
+  const kpiEchantillons = document.getElementById('kpiEchantillons')
+  const kpiEssais = document.getElementById('kpiEssais')
+  
+  if (kpiSondages) kpiSondages.textContent = '0'
+  if (kpiEchantillons) kpiEchantillons.textContent = '0'
+  if (kpiEssais) kpiEssais.textContent = '0'
+}
 
 function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
   const ficheCode = document.getElementById('ficheCode')
@@ -823,6 +1020,25 @@ function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
     ficheLocBadge.style.padding = '2px 6px'
     ficheLocBadge.style.borderRadius = '4px'
     ficheLocBadge.style.fontSize = '10px'
+  }
+  
+  // Coordonnées UTM31 (nouveau)
+  const ficheUtm31 = document.getElementById('ficheUtm31')
+  const utmXRange = document.getElementById('utmXRange')
+  const utmYRange = document.getElementById('utmYRange')
+  const utmCenter = document.getElementById('utmCenter')
+  
+  if (ficheUtm31 && data.spatial) {
+    const s = data.spatial
+    const fmt = (n: number) => Math.round(n).toLocaleString('fr-FR')
+    
+    if (utmXRange) utmXRange.textContent = `${fmt(s.xmin)}–${fmt(s.xmax)}`
+    if (utmYRange) utmYRange.textContent = `${fmt(s.ymin)}–${fmt(s.ymax)}`
+    if (utmCenter) utmCenter.textContent = `X=${fmt(s.xc)} ; Y=${fmt(s.yc)}`
+    
+    ficheUtm31.style.display = 'block'
+  } else if (ficheUtm31) {
+    ficheUtm31.style.display = 'none'
   }
 }
 
@@ -1765,7 +1981,111 @@ async function checkNearbyDuplicates(lon: number, lat: number, alertsEl: HTMLEle
 // --- Grid loading ---
 let isLoadingGrid = false
 let lastBounds: L.LatLngBounds | null = null
-let currentGridLevel: '2km' | '28km' = '2km'
+let currentGridLevel: '2km' | '28km' | 'combined' = '2km'
+let gridOverlay28Layer: L.GeoJSON<any> | null = null
+
+async function loadGridOverlay28(useBbox = false) {
+  try {
+    const params = new URLSearchParams()
+    params.set('grid', '28km')
+
+    if (useBbox && map) {
+      const bounds = map.getBounds()
+      const bbox = [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()]
+      params.set('bbox', bbox.join(','))
+    }
+
+    const url = `${API_GEO}/coverage/mailles?${params.toString()}`
+    console.log('[loadGridOverlay28] Fetching URL:', url)
+
+    const res = await fetch(url)
+    if (!res.ok) {
+      console.warn('[loadGridOverlay28] HTTP', res.status, res.statusText)
+      return
+    }
+
+    const gj = await res.json()
+
+    // Dédupliquer les segments des polygones 28km pour éviter l'effet de traits doublés
+    // (frontières communes dessinées 2 fois quand on stroke des polygones adjacents)
+    const snap = (n: number) => parseFloat(n.toFixed(3))
+    const format = (n: number) => n.toFixed(3)
+    const segKey = (a: [number, number], b: [number, number]) => {
+      const ax = format(snap(a[0]))
+      const ay = format(snap(a[1]))
+      const bx = format(snap(b[0]))
+      const by = format(snap(b[1]))
+      const k1 = `${ax},${ay}|${bx},${by}`
+      const k2 = `${bx},${by}|${ax},${ay}`
+      return k1 < k2 ? k1 : k2
+    }
+    const addRing = (ring: any[], segs: Map<string, [[number, number], [number, number]]>) => {
+      if (!Array.isArray(ring) || ring.length < 2) return
+      for (let i = 0; i < ring.length - 1; i++) {
+        const a = ring[i]
+        const b = ring[i + 1]
+        if (!Array.isArray(a) || !Array.isArray(b) || a.length < 2 || b.length < 2) continue
+        const p1: [number, number] = [snap(a[0]), snap(a[1])]
+        const p2: [number, number] = [snap(b[0]), snap(b[1])]
+        const s1 = `${format(p1[0])},${format(p1[1])}`
+        const s2 = `${format(p2[0])},${format(p2[1])}`
+        if (p1[0] > 0.45 && p1[0] < 0.5 && p1[1] > 10.3 && p1[1] < 10.4) {
+          console.log(`[overlay28-debug] SEGMENT: ${s1} -> ${s2} (raw: ${a[0]}, ${a[1]})`)
+        }
+        const key = segKey(p1, p2)
+        if (!segs.has(key)) segs.set(key, [p1, p2])
+      }
+    }
+
+    const uniqueSegs = new Map<string, [[number, number], [number, number]]>()
+    if (gj?.type === 'FeatureCollection' && Array.isArray(gj.features)) {
+      for (const f of gj.features) {
+        const g = f?.geometry
+        if (!g) continue
+        if (g.type === 'Polygon') {
+          for (const ring of g.coordinates || []) addRing(ring, uniqueSegs)
+        } else if (g.type === 'MultiPolygon') {
+          for (const poly of g.coordinates || []) {
+            for (const ring of poly || []) addRing(ring, uniqueSegs)
+          }
+        }
+      }
+    }
+
+    const overlayLines = {
+      type: 'FeatureCollection',
+      features: [
+        {
+          type: 'Feature',
+          properties: { source: 'overlay28km' },
+          geometry: {
+            type: 'MultiLineString',
+            coordinates: Array.from(uniqueSegs.values()).map(([a, b]) => [a, b])
+          }
+        }
+      ]
+    }
+
+    if (gridOverlay28Layer) {
+      map.removeLayer(gridOverlay28Layer)
+      gridOverlay28Layer = null
+    }
+
+    gridOverlay28Layer = L.geoJSON(overlayLines as any, {
+      pane: 'gridOverlayPane',
+      interactive: false,
+      style: () => ({
+        color: '#0b1020',
+        weight: 2.0,
+        opacity: 0.7
+      })
+    }).addTo(map)
+
+    console.log('[loadGridOverlay28] ✅ overlay 28km added (unique segments):', uniqueSegs.size)
+  } catch (e) {
+    console.error('[loadGridOverlay28] Error:', e)
+  }
+}
 
 async function loadGrid(useBbox = false) {
   console.log('[loadGrid] Début - API_GEO:', API_GEO, 'isLoadingGrid:', isLoadingGrid, 'gridLevel:', currentGridLevel)
@@ -1778,7 +2098,10 @@ async function loadGrid(useBbox = false) {
   setStatus('Chargement de la grille…')
   try {
     const params = new URLSearchParams()
-    params.set('grid', currentGridLevel)
+    const gridForRequest = currentGridLevel === 'combined' ? '2km' : currentGridLevel
+    params.set('grid', gridForRequest)
+
+    console.log('[loadGrid] Mode:', currentGridLevel, '=> API grid:', gridForRequest)
     
     // Chargement paresseux par bbox si demandé et carte déplacée
     if (useBbox && map) {
@@ -1824,6 +2147,10 @@ async function loadGrid(useBbox = false) {
     if (gridLayer) {
       map.removeLayer(gridLayer)
     }
+    if (gridOverlay28Layer) {
+      map.removeLayer(gridOverlay28Layer)
+      gridOverlay28Layer = null
+    }
     
     // Chantier A - Réinitialiser les états de survol et sélection
     if (selectedCell) {
@@ -1834,12 +2161,22 @@ async function loadGrid(useBbox = false) {
     hoveredCell = null
     
     gridLayer = L.geoJSON(gj, {
+      pane: 'gridPane', // Utiliser le pane dédié pour contrôler le z-order
       style: styleFeature,
       onEachFeature
     }).addTo(map)
     
+    // Log de debug pour vérifier la création de la couche (Correction C)
+    console.log('[Grid] New gridLayer created with', gj.features.length, 'features, Leaflet ID:', (gridLayer as any)._leaflet_id)
+    
     // Mettre à jour la référence globale
     ;(window as any).gridLayer = gridLayer
+    ;(window as any).gridOverlay28Layer = gridOverlay28Layer
+    ;(window as any).currentGridLevel = currentGridLevel
+
+    if (currentGridLevel === 'combined') {
+      await loadGridOverlay28(useBbox)
+    }
 
     const bounds = gridLayer.getBounds()
     if (bounds.isValid() && !useBbox) map.fitBounds(bounds, { padding: [12, 12] })
@@ -1900,18 +2237,55 @@ async function loadGrid(useBbox = false) {
 
 // Exposer loadGrid, setGridLevel et currentGridLevel globalement
 ;(window as any).loadGrid = loadGrid
-;(window as any).setGridLevel = (level: '2km' | '28km') => {
-  console.log('[setGridLevel] Changement de niveau:', currentGridLevel, '->', level)
+
+let isSyncingGridLevel = false
+
+;(window as any).syncGridLevelUI = (level: '2km' | '28km' | 'combined') => {
+  if (isSyncingGridLevel) return
+  isSyncingGridLevel = true
+  try {
+    const select = document.getElementById('gridLevelSelect') as HTMLSelectElement | null
+    if (select && select.value !== level) select.value = level
+
+    const radio = document.querySelector(`input[name="gridLevel"][value="${level}"]`) as HTMLInputElement | null
+    if (radio && !radio.checked) radio.checked = true
+  } finally {
+    isSyncingGridLevel = false
+  }
+}
+
+;(window as any).setGridLevel = (level: '2km' | '28km' | 'combined') => {
+  const oldLevel = currentGridLevel
+  console.log('[setGridLevel] Changement de niveau:', oldLevel, '->', level)
   currentGridLevel = level
+  ;(window as any).syncGridLevelUI(level)
+
+  if (oldLevel === '2km' && level === 'combined') {
+    console.log('[Grid] Transition rapide: 2km -> Combined (Ajout Overlay)')
+    void loadGridOverlay28()
+    return
+  }
+
+  if (oldLevel === 'combined' && level === '2km') {
+    console.log('[Grid] Transition rapide: Combined -> 2km (Retrait Overlay)')
+    if (gridOverlay28Layer) {
+      map.removeLayer(gridOverlay28Layer)
+      gridOverlay28Layer = null
+    }
+    return
+  }
+
+  console.log(`[Grid] Chargement complet pour niveau: ${level}`)
   loadGrid()
 }
+
 ;(window as any).getCurrentGridLevel = () => currentGridLevel
 
 // Connecter le sélecteur de grille
 const gridLevelSelect = document.getElementById('gridLevelSelect') as HTMLSelectElement
 if (gridLevelSelect) {
   gridLevelSelect.addEventListener('change', (e) => {
-    const level = (e.target as HTMLSelectElement).value as '2km' | '28km'
+    const level = (e.target as HTMLSelectElement).value as '2km' | '28km' | 'combined'
     ;(window as any).setGridLevel(level)
     toast(`Grille ${level} chargée`, 'ok')
   })
@@ -2117,6 +2491,31 @@ safeAddEventListener('getBtn', 'click', async () => {
     const res = await fetch(`${API_GEO}/grid/${encodeURIComponent(code)}`)
     const out = document.getElementById('json')
     if (!res.ok) {
+      if (res.status === 404) {
+        try {
+          const legacyRes = await fetch(`${API_GEO}/search/legacy/${encodeURIComponent(code)}`)
+          if (legacyRes.ok) {
+            const suggestions = await legacyRes.json()
+            const best = Array.isArray(suggestions) && suggestions.length > 0 ? suggestions[0] : null
+            if (best?.new_code) {
+              const pct = typeof best.coverage_pct === 'number' ? best.coverage_pct : null
+              const pctStr = pct === null ? '' : ` (${pct.toFixed(1)}%)`
+              const msg = `Code obsolète: ${code} → ${best.new_code}${pctStr}`
+              if (out) out.textContent = JSON.stringify({ status: 404, error: 'maille introuvable', legacy: { code, suggestions } }, null, 2)
+              toast(msg, 'err')
+              setStatus('Code obsolète')
+              const go = window.confirm(`${msg}\n\nAller à la nouvelle maille ?`)
+              if (go) {
+                codeInput.value = best.new_code
+                document.getElementById('getBtn')!.click()
+              }
+              return
+            }
+          }
+        } catch (e) {
+          console.warn('[LegacyLookup] error', e)
+        }
+      }
       if (out) out.textContent = JSON.stringify({ status: res.status, error: await res.text() }, null, 2)
       toast('Erreur GET', 'err')
       setStatus('Erreur')

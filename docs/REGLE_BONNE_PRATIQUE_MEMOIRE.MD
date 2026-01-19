@@ -1,7 +1,7 @@
 # Atlas Géotechnique – Règles & Bonnes Pratiques
 
 **Version : 0.1 – 07/01/2026**
-LIRE .ENV
+
 ---
 
 ## 0. Objectif du document
@@ -72,6 +72,7 @@ Avant d’écrire une migration SQL, toujours :
 * Vérifier les colonnes, SRID, contraintes, FK :
   `\d atlas.table`, `\d+ atlas.table`.
 * Noter les noms exacts (`maille_28km` et pas `mailles_28km`, `adm0_raw`, etc.).
+* Toujours lire .env et faire un dumps pour chaque migration numérotée
 
 **[DB-11] Migration = script autonome et idempotent**
 
@@ -118,6 +119,21 @@ Avant d’écrire une migration SQL, toujours :
   * Les compteurs sont cohérents : `n_sondages = n_sondages_exact + n_sondages_random`.
   * Les `FILTER` fonctionnent (exact vs random).
   * Les `JOIN` n’explosent pas le nombre de lignes (éviter les doublons non groupés).
+
+**[DB-22] Migration**
+
+- Avant de lancer une migration (ou série de migration) faire un dump .dump et .sql. le .sql dans /backup et l'autre dans la base de donner elle même
+
+**[DB-23] ST_Intersection et dérive numérique (frontières partagées)**
+
+* Problème : `ST_Intersection` peut introduire des micro-décalages entre frontières voisines (dérive flottante).
+  * Exemple : maille A → `1.12345678901` vs maille B → `1.12345678902`.
+  * Même avec `toFixed(6)` côté UI, l'arrondi peut diverger → double tracé à l'écran.
+* Conséquence : les déduplications frontend échouent, les limites partagées sont dessinées deux fois.
+* Solution : utiliser `ST_SnapToGrid` **juste après** l'intersection dans les vues cartographiques.
+  * `ST_SnapToGrid(ST_Intersection(...), tol)` garantit que les sommets proches convergent vers la même grille.
+  * Tolérance recommandée : **0.00001 (~1 m)** en WGS84 (ou l'équivalent en mètres en SRID projeté).
+  * Éviter `0.001` (trop grossier) et `0.000001` (parfois trop fin si la source est bruitée).
 
 ---
 
@@ -529,3 +545,78 @@ Après chaque étape:
   * Par défaut: 500 résultats max.
   * Paramètre `limit` optionnel (max 1000).
   * Pagination si besoin de plus.
+
+---
+
+## 16. Gestion des contraintes et suppressions en cascade
+
+**[CASCADE-01] La Règle d'Or (Le Principe de "Composition")**
+
+> **N'utilise `ON DELETE CASCADE` que si l'enfant n'a aucun sens d'exister sans son parent.**
+
+C'est la différence entre une relation de **Composition** (partie d'un tout) et une relation d'**Association** (lien entre deux entités).
+
+### ✅ FEU VERT : Utilise CASCADE ici
+Quand l'enfant est une **partie physique** du parent.
+*   **Exemple :** Une `Facture` et ses `Lignes_Facture`.
+    *   *Logique :* Une ligne de facture "3 stylos" qui se balade toute seule sans facture associée n'a aucun sens. Si on supprime la facture, les lignes **doivent** disparaître.
+*   **Exemple :** Un `Sondage` et ses `Mesures_Brutes`.
+
+### ⛔ FEU ROUGE : Interdit ici (Utilise RESTRICT)
+Quand l'enfant est une entité qui a sa **propre vie**, mais qui est juste "liée" au parent.
+*   **Exemple :** Un `Département` et ses `Employés`.
+    *   *Logique :* Si on supprime le département "Marketing" par erreur, on ne veut SURTOUT PAS licencier (supprimer) tous les employés du marketing ! La base doit bloquer (`RESTRICT`) et dire : "Videz le département d'abord".
+*   **Exemple :** Un `Pays` et des `Villes`.
+
+---
+
+**[CASCADE-02] Les Alternatives Efficaces (Le "Soft Delete")**
+
+Au lieu de supprimer physiquement (ce qui est irréversible), la norme en entreprise est le **Soft Delete** (Suppression Logique).
+
+### L'Alternative N°1 : `deleted_at` 
+Ajoute une colonne `deleted_at (timestamp nullable)` dans tes tables.
+*   **Action :** Au lieu de faire `DELETE FROM users WHERE id=1`, tu fais `UPDATE users SET deleted_at = NOW() WHERE id=1`.
+*   **Avantage :**
+    1.  Tu ne perds jamais de données (audit, restauration possible).
+    2.  Tu n'as pas besoin de CASCADE. Les enfants restent liés, mais on sait que le parent est "archivé".
+    3.  Tes requêtes deviennent : `SELECT * FROM users WHERE deleted_at IS NULL`.
+
+### L'Alternative N°2 : `ON DELETE SET NULL` 
+Si la suppression du parent est autorisée, mais que tu veux garder l'enfant.
+*   **Exemple :** Un `Commercial` gère des `Clients`.
+*   **Action :** Si le commercial part (est supprimé), on ne supprime pas les clients ! On met la colonne `client.commercial_id` à `NULL` (ou on réassigne à un compte "Commercial par défaut").
+
+---
+
+**[CASCADE-03] Points de Vigilance (Checklist avant d'utiliser CASCADE)**
+
+Si tu décides quand même d'utiliser `CASCADE`, vérifie ces 3 points :
+
+1.  **La profondeur de la chaîne :**
+    *   Attention à l'effet papillon : A supprime B, qui supprime C, qui supprime D...
+    *   **Règle :** Évite les cascades sur plus de **2 niveaux** de profondeur.
+
+2.  **Les Triggers (`ON DELETE`) :**
+    *   Si la table enfant a un Trigger qui se lance à la suppression (ex: envoyer un mail, écrire un fichier), une suppression massive du parent peut déclencher 10 000 envois de mails ou planter le serveur.
+
+3.  **Le verrouillage (Locking) :**
+    *   Rappelle-toi que supprimer un parent avec CASCADE verrouille toutes les tables enfants. Sur une base très fréquentée, cela peut causer un "Déni de Service" temporaire.
+
+### 🧱 Résumé pour ta Doc Technique
+
+| Cas d'usage | Action recommandée | Pourquoi ? |
+| :--- | :--- | :--- |
+| **Maintenance / Script Migration** | `TRUNCATE ... CASCADE` | On veut faire place nette rapidement. C'est ponctuel. |
+| **Parent & Composants (Facture/Lignes)** | `ON DELETE CASCADE` | Cohérence des données. L'orphelin n'a pas de sens. |
+| **Entités liées (User/Comments)** | `ON DELETE RESTRICT` | Sécurité. Évite la perte massive accidentelle. |
+| **Historique / Audit** | **SOFT DELETE** (`deleted_at`) | La meilleure pratique. On ne supprime rien, on archive. |
+
+---
+
+**[DB-24] ON_ERROR_STOP=1 pour les scripts d'application**
+
+Pour tout script d'application sur la base de données (migrations, imports, ETL), utiliser systématiquement `ON_ERROR_STOP=1`.
+*   **Action :** `psql -v ON_ERROR_STOP=1 -f script.sql`
+*   **Comportement :** À la moindre erreur (rouge), arrête tout immédiatement.
+*   **Pourquoi :** Évite les exécutions partielles qui laissent la base dans un état incohérent.

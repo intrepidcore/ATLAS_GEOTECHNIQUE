@@ -42,5 +42,19 @@ yarn-error.log*
 *.temp
 data/db
 
+# ===========================================
+# ARTEFACTS LOURDS / LOCAUX (ne pas versionner)
+# ===========================================
+data/tiles/*.mbtiles
+db/dumps/
+
+# QGIS (projets/GeoPackages locaux)
+QGIS/*.gpkg
+QGIS/*.gpkg-*
+QGIS/*.qgz
+
+# Analyses locales (brutes)
+atlas_geotechnique_2025-12-29/donnees_analyse/donnees_brutes/
+
 # Local Netlify folder
 .netlify

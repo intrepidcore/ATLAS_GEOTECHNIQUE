@@ -397,6 +397,7 @@ export interface ThematicMapConfig {
     adm2?: string
     adm3?: string
     bbox?: [number, number, number, number]
+    grid?: '2km' | '28km' | 'combined'  // Niveau de grille (ajouté pour support 28km + mode combiné UI)
     
     // Instrumentation
     min_sondages: number

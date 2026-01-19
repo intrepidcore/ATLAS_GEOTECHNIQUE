@@ -2,7 +2,7 @@
  * Panel Liste complète des sondages avec recherche et filtres
  */
 
-import { listSondages, getSondagesStats, Sondage, SondagesStats } from './api/sondages';
+import { getMailleFeature, listSondages, getSondagesStats, legacyLookupGridCode, MailleFeature, Sondage, SondagesStats } from './api/sondages';
 import { toast } from './ui/toast';
 import { computeGeocodeBadgeFromSurvey, GeocodeBadgeType } from './types/survey-details';
 
@@ -11,11 +11,20 @@ export class SondagesListPanel {
   private stats: SondagesStats | null = null;
   private loading = false;
   private searchQuery = '';
+  private emptyStateContext: null | {
+    kind: 'maille';
+    maille: MailleFeature;
+    isLegacyRedirect: boolean;
+    oldCode?: string;
+    best?: any;
+  } = null;
   private filterGeocoded: 'all' | 'geocoded' | 'not_geocoded' = 'all';
   private filterSource: 'all' | string = 'all';
   private filterAdm3: 'all' | string = 'all';
   private filterGeocodingMode: 'all' | 'auto' | 'manual' = 'all';
   private gridCodeFilter: string | null = null; // Filtre par code maille
+  private legacyLookupTriedForGridCode: string | null = null;
+  private legacyLookupTriedForSearchQuery: string | null = null;
   private sortBy: 'created_at' | 'code' | 'localite' | 'is_geocoded' = 'created_at';
   private sortOrder: 'asc' | 'desc' = 'desc';
   private currentContainerId?: string;
@@ -31,6 +40,131 @@ export class SondagesListPanel {
    */
   setGridCodeFilter(gridCode: string | null) {
     this.gridCodeFilter = gridCode;
+  }
+
+  private renderEmptyStateMailleHtml(): string {
+    const ctx = this.emptyStateContext;
+    if (!ctx || ctx.kind !== 'maille') return '';
+
+    const props = ctx.maille?.properties || {};
+    const code = props.code || '—';
+    const adm1 = props.adm1_name || '—';
+    const adm2 = props.adm2_name || '—';
+    const adm3 = props.adm3_name || props.pref_name || '—';
+
+    const center = this.computeCenterLonLat(ctx.maille);
+    const coordsHtml = center
+      ? `<div style="grid-column: span 2; border-top: 1px solid #334155; margin-top: 8px; padding-top: 8px; font-family: monospace; color: #64748b;">
+           🎯 WGS84: ${center.lat.toFixed(6)} / ${center.lon.toFixed(6)}
+         </div>`
+      : '';
+
+    const legacyAlert = ctx.isLegacyRedirect
+      ? `<div style="background: #451a03; border: 1px solid #f59e0b; color: #fbbf24; padding: 10px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; display: flex; align-items: center; gap: 8px; text-align:left; max-width: 520px; margin-left: auto; margin-right: auto;">
+           <span>⚠️</span>
+           <div>
+             <strong>Redirection :</strong> Vous avez cherché <span style="text-decoration: line-through; opacity: 0.8">${this.escapeHtml(ctx.oldCode || '')}</span>.<br>
+             Voici la nouvelle maille standard correspondante.
+           </div>
+         </div>`
+      : '';
+
+    const pct = ctx.best && typeof ctx.best.coverage_pct === 'number' ? ctx.best.coverage_pct : null;
+    const pctStr = pct === null ? '' : ` (${pct.toFixed(1)}%)`;
+    const legacyHint = ctx.isLegacyRedirect
+      ? `<div style="font-size: 12px; color:#94a3b8; margin-top: 6px;">Match: ${this.escapeHtml(ctx.best?.match_type || '')}${pctStr}</div>`
+      : '';
+
+    // Stocker center dans data-* pour le listener
+    const centerAttrs = center
+      ? `data-center-lon="${center.lon}" data-center-lat="${center.lat}"`
+      : '';
+
+    return `
+      <div style="text-align: center; padding: 40px; color: #94a3b8;" id="empty-maille" data-code="${this.escapeHtml(code)}" ${centerAttrs}>
+        ${legacyAlert}
+        <div style="font-size: 48px; margin-bottom: 16px;">📍</div>
+        <div style="font-size: 16px; font-weight: 600; color: #ecf2f8; margin-bottom: 8px;">
+          Maille active : ${this.escapeHtml(code)}
+        </div>
+        <div style="font-size: 14px; margin-bottom: 24px; color: #94a3b8;">
+          Cette zone est vide. Soyez le premier à ajouter des données !
+          ${legacyHint}
+        </div>
+
+        <div style="background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 16px; text-align: left; max-width: 520px; margin: 0 auto; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);">
+          <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; margin-bottom: 12px; font-weight: 700;">
+            Localisation Administrative
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #e2e8f0;">
+            <div><span style="color:#64748b">Région:</span><br>${this.escapeHtml(adm1)}</div>
+            <div><span style="color:#64748b">Préfecture:</span><br>${this.escapeHtml(adm2)}</div>
+            <div style="grid-column: span 2"><span style="color:#64748b">Commune:</span> <strong>${this.escapeHtml(adm3)}</strong></div>
+            ${coordsHtml}
+          </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; justify-content: center; margin-top: 32px;">
+          <button id="btn-create-prefilled" style="padding: 10px 24px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.5); transition: all 0.2s;">
+            ✨ Créer un sondage ici
+          </button>
+          ${ctx.isLegacyRedirect ? `<button id="btn-apply-legacy" style="padding: 10px 24px; background: transparent; color: #fbbf24; border: 1px solid #f59e0b; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s;">Basculer le filtre</button>` : ''}
+          <button id="btn-clear-search" style="padding: 10px 24px; background: transparent; color: #94a3b8; border: 1px solid #475569; border-radius: 6px; cursor: pointer; font-size: 14px; transition: all 0.2s;">
+            Annuler
+          </button>
+        </div>
+      </div>
+    `;
+  }
+
+  private attachEmptyStateActionListeners() {
+    if (!this.emptyStateContext || this.emptyStateContext.kind !== 'maille') return;
+
+    const root = document.getElementById('empty-maille');
+    if (!root) return;
+
+    const code = root.getAttribute('data-code') || '';
+    const lonAttr = root.getAttribute('data-center-lon');
+    const latAttr = root.getAttribute('data-center-lat');
+    const center = lonAttr && latAttr ? { lon: Number(lonAttr), lat: Number(latAttr) } : null;
+
+    const createBtn = root.querySelector('#btn-create-prefilled');
+    if (createBtn) {
+      createBtn.addEventListener('click', () => {
+        window.dispatchEvent(
+          new CustomEvent('navigate:create-sondage', {
+            detail: {
+              gridCode: code,
+              center,
+            },
+          })
+        );
+      });
+    }
+
+    const applyLegacyBtn = root.querySelector('#btn-apply-legacy');
+    if (applyLegacyBtn && this.emptyStateContext.isLegacyRedirect) {
+      applyLegacyBtn.addEventListener('click', async () => {
+        this.gridCodeFilter = code;
+        window.location.hash = `#/sondages?grid=${encodeURIComponent(code)}`;
+        await this.refresh();
+        if (this.currentContainerId && this.onSuccessCallback && this.onErrorCallback) {
+          this.renderUI(this.currentContainerId, this.onSuccessCallback, this.onErrorCallback);
+        }
+      });
+    }
+
+    const clearBtn = root.querySelector('#btn-clear-search');
+    if (clearBtn) {
+      clearBtn.addEventListener('click', async () => {
+        this.searchQuery = '';
+        this.emptyStateContext = null;
+        const input = document.getElementById('list-search-input') as HTMLInputElement;
+        if (input) input.value = '';
+        await this.refresh();
+        this.rerenderList();
+      });
+    }
   }
   
   /**
@@ -87,11 +221,178 @@ export class SondagesListPanel {
       // TODO: Implémenter côté serveur pour de meilleures performances
 
       this.sondages = await listSondages(params);
+
+      // Reset empty-state context on refresh; it will be recomputed if needed
+      this.emptyStateContext = null;
+
+      const queryNormalized = this.normalizeSearchQuery(this.searchQuery);
+      if (queryNormalized !== this.searchQuery) {
+        this.searchQuery = queryNormalized;
+      }
+
+      const queryTrim = (this.searchQuery || '').trim();
+      const looksLikeGridCode = this.isProbablyGridCode(queryTrim);
+      const filteredForDisplay = this.getFilteredSondages();
+
+      // Déclencher le fallback basé sur le résultat affiché (après filtres), pas seulement la réponse API brute
+      if (!this.gridCodeFilter && looksLikeGridCode && filteredForDisplay.length === 0) {
+        await this.tryFillEmptyStateForGridSearch(queryTrim);
+      }
+
+      if (this.gridCodeFilter && this.sondages.length === 0 && this.legacyLookupTriedForGridCode !== this.gridCodeFilter) {
+        const legacyCode = this.gridCodeFilter;
+        this.legacyLookupTriedForGridCode = legacyCode;
+        try {
+          const suggestions = await legacyLookupGridCode(legacyCode);
+          const best = Array.isArray(suggestions) && suggestions.length > 0 ? suggestions[0] : null;
+          if (best?.new_code) {
+            const pct = typeof best.coverage_pct === 'number' ? best.coverage_pct : null;
+            const pctStr = pct === null ? '' : ` (${pct.toFixed(1)}%)`;
+            const msg = `Code obsolète: ${legacyCode} → ${best.new_code}${pctStr}`;
+            const go = window.confirm(`${msg}\n\nBasculer le filtre maille vers le nouveau code ?`);
+            if (go) {
+              this.gridCodeFilter = best.new_code;
+              window.location.hash = `#/sondages?grid=${encodeURIComponent(best.new_code)}`;
+              await this.refresh();
+            }
+          }
+        } catch (e: any) {
+          console.warn('[SONDAGES LIST] Legacy lookup failed:', e);
+        }
+      }
     } catch (e: any) {
       console.error('[SONDAGES LIST] Error refreshing:', e);
       throw e;
     } finally {
       this.loading = false;
+    }
+  }
+
+  private normalizeSearchQuery(value: string): string {
+    const raw = (value || '').trim();
+    if (!raw) return '';
+
+    // Normalize separators (spaces/underscores) to dashes
+    const compact = raw.replace(/[\s_]+/g, '-');
+    const upper = compact.toUpperCase();
+
+    // If user typed TG 0857 0162 01 -> TG-0857-0162-01
+    const m = upper.match(/^TG-?(\d{4})-?(\d{4})-?(\d{2})(?:-?(\d{2}))?$/);
+    if (!m) return compact; // keep user formatting for non-grid queries
+
+    const part4 = m[4] ? `-${m[4]}` : '';
+    return `TG-${m[1]}-${m[2]}-${m[3]}${part4}`;
+  }
+
+  private isProbablyGridCode(value: string): boolean {
+    if (!value) return false;
+    return /^TG-\d{4}-\d{4}-\d{2}$/i.test(value) || /^TG-\d{4}-\d{4}-\d{2}-\d{2}$/i.test(value);
+  }
+
+  private getFilteredSondages(): Sondage[] {
+    let filteredSondages = this.sondages.slice();
+
+    if (this.filterSource !== 'all') {
+      filteredSondages = filteredSondages.filter(s => s.source === this.filterSource);
+    }
+
+    if (this.filterAdm3 !== 'all') {
+      filteredSondages = filteredSondages.filter(s => s.adm3_name === this.filterAdm3);
+    }
+
+    if (this.filterGeocodingMode !== 'all') {
+      filteredSondages = filteredSondages.filter(s => {
+        const badgeType = computeGeocodeBadgeFromSurvey(s);
+        return badgeType === this.filterGeocodingMode;
+      });
+    }
+
+    filteredSondages.sort((a, b) => {
+      let aVal: any, bVal: any;
+      switch (this.sortBy) {
+        case 'code':
+          aVal = a.code || '';
+          bVal = b.code || '';
+          break;
+        case 'localite':
+          aVal = a.localite || '';
+          bVal = b.localite || '';
+          break;
+        case 'is_geocoded':
+          aVal = a.is_geocoded ? 1 : 0;
+          bVal = b.is_geocoded ? 1 : 0;
+          break;
+        case 'created_at':
+        default:
+          aVal = new Date(a.created_at || 0);
+          bVal = new Date(b.created_at || 0);
+          break;
+      }
+
+      if (aVal < bVal) return this.sortOrder === 'asc' ? -1 : 1;
+      if (aVal > bVal) return this.sortOrder === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return filteredSondages;
+  }
+
+  private computeCenterLonLat(feature: MailleFeature): { lon: number; lat: number } | null {
+    try {
+      const coords = feature?.geometry?.coordinates;
+      if (!coords) return null;
+      const ring = coords?.[0];
+      if (!Array.isArray(ring) || ring.length === 0) return null;
+
+      let sumLon = 0;
+      let sumLat = 0;
+      let n = 0;
+      for (const pt of ring) {
+        if (!Array.isArray(pt) || pt.length < 2) continue;
+        sumLon += Number(pt[0]);
+        sumLat += Number(pt[1]);
+        n += 1;
+      }
+      if (n === 0) return null;
+      return { lon: sumLon / n, lat: sumLat / n };
+    } catch {
+      return null;
+    }
+  }
+
+  private async tryFillEmptyStateForGridSearch(gridCode: string) {
+    try {
+      const maille = await getMailleFeature(gridCode);
+      this.emptyStateContext = {
+        kind: 'maille',
+        maille,
+        isLegacyRedirect: false,
+      };
+    } catch (e: any) {
+      const msg = String(e?.message || '');
+      const is404 = msg.includes('HTTP 404');
+
+      if (!is404) return;
+
+      if (this.legacyLookupTriedForSearchQuery === gridCode) return;
+      this.legacyLookupTriedForSearchQuery = gridCode;
+
+      try {
+        const suggestions = await legacyLookupGridCode(gridCode);
+        const best = Array.isArray(suggestions) && suggestions.length > 0 ? suggestions[0] : null;
+        if (!best?.new_code) return;
+
+        const newMaille = await getMailleFeature(best.new_code);
+        this.emptyStateContext = {
+          kind: 'maille',
+          maille: newMaille,
+          isLegacyRedirect: true,
+          oldCode: gridCode,
+          best,
+        };
+      } catch (e2: any) {
+        console.warn('[SONDAGES LIST] EmptyState grid lookup failed:', e2);
+      }
     }
   }
 
@@ -241,6 +542,7 @@ export class SondagesListPanel {
     if (listContainer) {
       listContainer.innerHTML = this.renderSondagesList();
       this.attachItemListeners(); // Re-attach only item listeners (not filter/sort)
+      this.attachEmptyStateActionListeners();
     }
   }
 
@@ -250,6 +552,9 @@ export class SondagesListPanel {
     }
 
     if (this.sondages.length === 0) {
+      if (this.emptyStateContext?.kind === 'maille') {
+        return this.renderEmptyStateMailleHtml();
+      }
       return `
         <div style="text-align: center; padding: 40px; color: #94a3b8;">
           <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
@@ -263,55 +568,26 @@ export class SondagesListPanel {
       `;
     }
 
-    // Appliquer les filtres et le tri
-    let filteredSondages = this.sondages.slice();
+    const filteredSondages = this.getFilteredSondages();
 
-    // Filtrage par source
-    if (this.filterSource !== 'all') {
-      filteredSondages = filteredSondages.filter(s => s.source === this.filterSource);
+    // Résultat vide après filtres => si un contexte maille existe, afficher l'empty-state enrichi
+    if (filteredSondages.length === 0 && this.emptyStateContext?.kind === 'maille') {
+      return this.renderEmptyStateMailleHtml();
     }
 
-    // Filtrage par ADM3
-    if (this.filterAdm3 !== 'all') {
-      filteredSondages = filteredSondages.filter(s => s.adm3_name === this.filterAdm3);
+    if (filteredSondages.length === 0) {
+      return `
+        <div style="text-align: center; padding: 40px; color: #94a3b8;">
+          <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+          <div style="font-size: 16px; font-weight: 600; color: #ecf2f8; margin-bottom: 8px;">
+            Aucun sondage trouvé
+          </div>
+          <div style="font-size: 14px;">
+            ${this.searchQuery ? 'Essayez une autre recherche' : 'Aucun sondage dans la base de données'}
+          </div>
+        </div>
+      `;
     }
-
-    // Filtrage par mode de géocodage
-    if (this.filterGeocodingMode !== 'all') {
-      filteredSondages = filteredSondages.filter(s => {
-        const badgeType = computeGeocodeBadgeFromSurvey(s);
-        return badgeType === this.filterGeocodingMode;
-      });
-    }
-
-    // Tri
-    filteredSondages.sort((a, b) => {
-      let aVal: any, bVal: any;
-      
-      switch (this.sortBy) {
-        case 'code':
-          aVal = a.code || '';
-          bVal = b.code || '';
-          break;
-        case 'localite':
-          aVal = a.localite || '';
-          bVal = b.localite || '';
-          break;
-        case 'is_geocoded':
-          aVal = a.is_geocoded ? 1 : 0;
-          bVal = b.is_geocoded ? 1 : 0;
-          break;
-        case 'created_at':
-        default:
-          aVal = new Date(a.created_at || 0);
-          bVal = new Date(b.created_at || 0);
-          break;
-      }
-
-      if (aVal < bVal) return this.sortOrder === 'asc' ? -1 : 1;
-      if (aVal > bVal) return this.sortOrder === 'asc' ? 1 : -1;
-      return 0;
-    });
 
     return filteredSondages
       .map((s) => {
@@ -408,7 +684,12 @@ export class SondagesListPanel {
     const searchInput = document.getElementById('list-search-input') as HTMLInputElement;
     if (searchInput) {
       searchInput.addEventListener('input', async (e) => {
-        this.searchQuery = (e.target as HTMLInputElement).value;
+        const raw = (e.target as HTMLInputElement).value;
+        const normalized = this.normalizeSearchQuery(raw);
+        this.searchQuery = normalized;
+        if (normalized !== raw) {
+          (e.target as HTMLInputElement).value = normalized;
+        }
         console.log('[LIST] Search query:', this.searchQuery);
         await this.refresh();
         // Ne pas recréer tout le HTML, juste la liste

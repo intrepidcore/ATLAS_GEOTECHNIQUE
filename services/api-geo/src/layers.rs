@@ -1,15 +1,120 @@
 use crate::state::AppState;
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
 use axum::Json;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use std::collections::HashMap;
 
 #[derive(Deserialize)]
 pub struct LayerQuery {
     pub bbox: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct LayerStyleItem {
+    pub unit_code: String,
+    pub unit_label: String,
+    pub color_hex: String,
+    pub sort_order: i32,
+}
+
+/// GET /api/layers/{layer_type}/styles
+/// Récupère les styles (couleurs, labels) pour une couche contextuelle
+/// layer_type: geologie | pedologie | risque
+pub async fn get_layer_styles(
+    State(state): State<AppState>,
+    Path(layer_type): Path<String>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    // Valider le type de couche
+    let valid_types = ["geologie", "pedologie", "risque"];
+    if !valid_types.contains(&layer_type.as_str()) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Invalid layer type",
+                "valid_types": valid_types
+            })),
+        ).into_response();
+    }
+    
+    let query = r#"
+        SELECT unit_code, unit_label, color_hex, sort_order
+        FROM atlas.layer_style
+        WHERE layer_id = $1
+        ORDER BY sort_order
+    "#;
+    
+    match sqlx::query(query)
+        .bind(&layer_type)
+        .fetch_all(pool)
+        .await
+    {
+        Ok(rows) => {
+            let styles: Vec<LayerStyleItem> = rows
+                .iter()
+                .map(|row| LayerStyleItem {
+                    unit_code: row.get("unit_code"),
+                    unit_label: row.get("unit_label"),
+                    color_hex: row.get("color_hex"),
+                    sort_order: row.get("sort_order"),
+                })
+                .collect();
+            
+            Json(styles).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "get_layer_styles error for {}", layer_type);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "database error"})),
+            ).into_response()
+        }
+    }
+}
+
+/// GET /api/layers/styles
+/// Récupère tous les styles pour toutes les couches contextuelles
+pub async fn get_all_layer_styles(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    
+    let query = r#"
+        SELECT layer_id, unit_code, unit_label, color_hex, sort_order
+        FROM atlas.layer_style
+        ORDER BY layer_id, sort_order
+    "#;
+    
+    match sqlx::query(query).fetch_all(pool).await {
+        Ok(rows) => {
+            let mut result: HashMap<String, Vec<LayerStyleItem>> = HashMap::new();
+            
+            for row in rows {
+                let layer_id: String = row.get("layer_id");
+                let item = LayerStyleItem {
+                    unit_code: row.get("unit_code"),
+                    unit_label: row.get("unit_label"),
+                    color_hex: row.get("color_hex"),
+                    sort_order: row.get("sort_order"),
+                };
+                
+                result.entry(layer_id).or_insert_with(Vec::new).push(item);
+            }
+            
+            Json(result).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "get_all_layer_styles error");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "database error"})),
+            ).into_response()
+        }
+    }
 }
 
 /// GET /api/layers/geologie?bbox=xmin,ymin,xmax,ymax

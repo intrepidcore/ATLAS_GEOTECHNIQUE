@@ -298,6 +298,16 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .thematic-toast-success{border-color:#0bb07b;background:#0bb07b22}
 .thematic-toast-error{border-color:#ef476f;background:#ef476f22}
 .thematic-toast-info{border-color:#3aa6ff;background:#3aa6ff22}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* LEGEND LIST (QGIS-style) */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.legend-list{display:flex;flex-direction:column;gap:4px;padding:4px 0}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:0.8rem;line-height:1.2;cursor:pointer;padding:2px 0}
+.legend-item:hover{background:rgba(59,130,246,0.1);border-radius:3px}
+.legend-item__checkbox{flex-shrink:0;cursor:pointer}
+.legend-item__swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(255,255,255,0.3);flex-shrink:0}
+.legend-item__label{flex:1;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;color:#cbd5e1}
     </style>
   </head>
   <body>
@@ -444,6 +454,15 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
               <div class="maille-badges" style="display:flex;gap:6px;margin-top:4px">
                 <span id="ficheDataBadge" class="badge-sm" style="display:none">avec données</span>
                 <span id="ficheLocBadge" class="badge-sm" style="display:none">exact</span>
+              </div>
+              <!-- Coordonnées UTM31 -->
+              <div id="ficheUtm31" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:4px;border-left:3px solid #3b82f6">
+                <div style="font-size:10px;font-weight:600;color:#94a3b8;margin-bottom:4px">📐 UTM 31N (m)</div>
+                <div style="font-size:11px;color:#cbd5e1;line-height:1.5">
+                  <div><strong>X:</strong> <span id="utmXRange">—</span></div>
+                  <div><strong>Y:</strong> <span id="utmYRange">—</span></div>
+                  <div style="font-size:10px;color:#94a3b8;margin-top:2px">Centre: <span id="utmCenter">—</span></div>
+                </div>
               </div>
             </div>
 
@@ -697,6 +716,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           <h4>🗺️ Niveau de grille</h4>
           <select id="gridLevelSelect" class="input">
             <option value="2km" selected>Grille 2 km (détaillée)</option>
+            <option value="combined">Grille combinée (2 km + 28 km)</option>
             <option value="28km">Grille 28 km (profils régionaux)</option>
           </select>
           <div id="gridStats" style="font-size:11px;color:var(--muted);margin-top:6px;padding:8px;background:#0f172a;border-radius:6px">

@@ -2,6 +2,7 @@ import { ThematicMapManager } from './thematic-maps'
 import type { ThematicMapConfig, ObjectifMetier, MapType, ClassificationMethod } from './thematic-types'
 import { createExportQuickDialog, type ExportQuickDialogConfig } from '../export'
 import { createExportAtlasDialog } from '../export/export-atlas-dialog'
+import { apiUrl } from '../api'
 import { 
   OBJECTIFS_METIER, 
   THEMATIC_PARAMETERS, 
@@ -101,6 +102,13 @@ export class ThematicPanel {
     
     // Initialize with default values
     this.applyConfigToUI(this.currentConfig)
+
+    // Synchroniser visuellement le niveau de grille avec le panneau droit (source de vérité: main.ts)
+    const getLevel = (window as any).getCurrentGridLevel
+    const currentLevel = typeof getLevel === 'function' ? getLevel() : '2km'
+    if ((window as any).syncGridLevelUI) {
+      ;(window as any).syncGridLevelUI(currentLevel)
+    }
     
     console.log('[ThematicPanel] ✅ Initialisation terminée')
   }
@@ -256,6 +264,10 @@ export class ThematicPanel {
               <span>Grille 2 km</span>
             </label>
             <label class="radio-label">
+              <input type="radio" name="gridLevel" value="combined">
+              <span>Grille combinée (2 km + 28 km)</span>
+            </label>
+            <label class="radio-label">
               <input type="radio" name="gridLevel" value="28km">
               <span>Grille 28 km (Profils)</span>
             </label>
@@ -266,83 +278,107 @@ export class ThematicPanel {
           <span>🗺️ Couches de contexte (QGIS)</span>
         </div>
         
-        <!-- Panneau QGIS-like pour couches contextuelles -->
+        <!-- Panneau QGIS-like pour couches contextuelles avec légendes dépliables -->
         <div class="context-layers-panel" style="background:#0a1018;border-radius:8px;padding:10px;margin-bottom:10px">
           
-          <!-- Géologie -->
-          <div class="context-layer-item" style="margin-bottom:8px;padding:8px;background:#0f172a;border-radius:6px;border-left:3px solid #8B4513">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <label class="checkbox-label" style="margin:0">
+          <!-- Géologie - Accordéon -->
+          <details class="context-layer-accordion" style="margin-bottom:8px;background:#0f172a;border-radius:6px;border-left:3px solid #8B4513">
+            <summary style="padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none">
+              <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="toggleGeologie">
                 <span style="font-weight:600">🪨 Géologie</span>
               </label>
-              <span class="layer-badge" style="font-size:10px;background:#8B451333;color:#D2691E;padding:2px 6px;border-radius:4px">vecteur</span>
-            </div>
-            <div class="layer-controls" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #1c2843">
-              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="layer-badge" style="font-size:10px;background:#8B451333;color:#D2691E;padding:2px 6px;border-radius:4px">vecteur</span>
+                <span style="font-size:12px;color:#64748b">▼</span>
+              </div>
+            </summary>
+            <div class="layer-content" style="padding:8px;border-top:1px solid #1c2843">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8;margin-bottom:8px">
                 <span>Opacité:</span>
-                <input type="range" id="geologieOpacity" min="10" max="80" value="35" style="flex:1;height:4px">
-                <span id="geologieOpacityValue">35%</span>
+                <input type="range" id="geologieOpacity" min="10" max="80" value="45" style="flex:1;height:4px">
+                <span id="geologieOpacityValue">45%</span>
+              </div>
+              <div id="geologieLegend" class="layer-legend" style="max-height:150px;overflow-y:auto;font-size:10px">
+                <div style="color:#64748b;font-style:italic">Cochez pour charger la légende...</div>
               </div>
             </div>
-          </div>
+          </details>
           
-          <!-- Pédologie -->
-          <div class="context-layer-item" style="margin-bottom:8px;padding:8px;background:#0f172a;border-radius:6px;border-left:3px solid #FFB6C1">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <label class="checkbox-label" style="margin:0">
+          <!-- Pédologie - Accordéon -->
+          <details class="context-layer-accordion" style="margin-bottom:8px;background:#0f172a;border-radius:6px;border-left:3px solid #FFB6C1">
+            <summary style="padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none">
+              <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="togglePedologie">
                 <span style="font-weight:600">🌱 Pédologie</span>
               </label>
-              <span class="layer-badge" style="font-size:10px;background:#FFB6C133;color:#FF69B4;padding:2px 6px;border-radius:4px">vecteur</span>
-            </div>
-            <div class="layer-controls" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #1c2843">
-              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="layer-badge" style="font-size:10px;background:#FFB6C133;color:#FF69B4;padding:2px 6px;border-radius:4px">vecteur</span>
+                <span style="font-size:12px;color:#64748b">▼</span>
+              </div>
+            </summary>
+            <div class="layer-content" style="padding:8px;border-top:1px solid #1c2843">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8;margin-bottom:8px">
                 <span>Opacité:</span>
-                <input type="range" id="pedologieOpacity" min="10" max="80" value="35" style="flex:1;height:4px">
-                <span id="pedologieOpacityValue">35%</span>
+                <input type="range" id="pedologieOpacity" min="10" max="80" value="45" style="flex:1;height:4px">
+                <span id="pedologieOpacityValue">45%</span>
+              </div>
+              <div id="pedologieLegend" class="layer-legend" style="max-height:150px;overflow-y:auto;font-size:10px">
+                <div style="color:#64748b;font-style:italic">Cochez pour charger la légende...</div>
               </div>
             </div>
-          </div>
+          </details>
           
-          <!-- Risque de gonflement -->
-          <div class="context-layer-item" style="margin-bottom:8px;padding:8px;background:#0f172a;border-radius:6px;border-left:3px solid #ff9933">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <label class="checkbox-label" style="margin:0">
+          <!-- Risque de gonflement - Accordéon -->
+          <details class="context-layer-accordion" style="margin-bottom:8px;background:#0f172a;border-radius:6px;border-left:3px solid #ff9933">
+            <summary style="padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none">
+              <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="toggleRisqueGonflement">
                 <span style="font-weight:600">⚠️ Risque gonflement</span>
               </label>
-              <span class="layer-badge" style="font-size:10px;background:#ff993333;color:#ff9933;padding:2px 6px;border-radius:4px">vecteur</span>
-            </div>
-            <div class="layer-controls" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #1c2843">
-              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="layer-badge" style="font-size:10px;background:#ff993333;color:#ff9933;padding:2px 6px;border-radius:4px">vecteur</span>
+                <span style="font-size:12px;color:#64748b">▼</span>
+              </div>
+            </summary>
+            <div class="layer-content" style="padding:8px;border-top:1px solid #1c2843">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8;margin-bottom:8px">
                 <span>Opacité:</span>
-                <input type="range" id="risqueOpacity" min="10" max="80" value="40" style="flex:1;height:4px">
-                <span id="risqueOpacityValue">40%</span>
+                <input type="range" id="risqueOpacity" min="10" max="80" value="50" style="flex:1;height:4px">
+                <span id="risqueOpacityValue">50%</span>
+              </div>
+              <div id="risqueLegend" class="layer-legend" style="max-height:120px;overflow-y:auto;font-size:10px">
+                <div style="color:#64748b;font-style:italic">Cochez pour charger la légende...</div>
               </div>
             </div>
-          </div>
+          </details>
           
-          <!-- DSM/Relief -->
-          <div class="context-layer-item" style="padding:8px;background:#0f172a;border-radius:6px;border-left:3px solid #4682B4">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-              <label class="checkbox-label" style="margin:0">
+          <!-- DSM/Relief - Accordéon -->
+          <details class="context-layer-accordion" style="background:#0f172a;border-radius:6px;border-left:3px solid #4682B4">
+            <summary style="padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none">
+              <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="toggleDsm">
                 <span style="font-weight:600">🏔️ Relief (Altitude)</span>
               </label>
-              <span class="layer-badge" style="font-size:10px;background:#4682B433;color:#87CEEB;padding:2px 6px;border-radius:4px">raster</span>
-            </div>
-            <div class="layer-controls" style="display:none;margin-top:6px;padding-top:6px;border-top:1px solid #1c2843">
-              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span class="layer-badge" style="font-size:10px;background:#4682B433;color:#87CEEB;padding:2px 6px;border-radius:4px">raster</span>
+                <span style="font-size:12px;color:#64748b">▼</span>
+              </div>
+            </summary>
+            <div class="layer-content" style="padding:8px;border-top:1px solid #1c2843">
+              <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:#94a3b8;margin-bottom:8px">
                 <span>Opacité:</span>
                 <input type="range" id="dsmOpacity" min="20" max="90" value="60" style="flex:1;height:4px">
                 <span id="dsmOpacityValue">60%</span>
               </div>
+              <div style="font-size:10px;color:#64748b;padding:4px;background:#1e293b;border-radius:4px">
+                ⓘ Utilise <strong>togo_map</strong> comme fond relief (dsm-cop30 non configuré sur tileserver)
+              </div>
             </div>
-          </div>
+          </details>
           
           <div style="font-size:10px;color:#64748b;margin-top:8px;text-align:center">
-            ℹ️ Cochez pour afficher • Les infos apparaîtront dans les tooltips
+            ℹ️ Cliquez sur ▼ pour voir la légende • Les données apparaissent dans les tooltips
           </div>
         </div>
         
@@ -533,6 +569,19 @@ export class ThematicPanel {
     const select = this.elements.paletteSelect
     if (!select) return
     
+    // IMPORTANT: D'abord peupler le select natif avec toutes les options
+    // Cela garantit que select.value peut être défini correctement
+    select.innerHTML = ''
+    PALETTE_OPTIONS.forEach(palette => {
+      const option = document.createElement('option')
+      option.value = palette.value
+      option.textContent = palette.label
+      select.appendChild(option)
+    })
+    
+    // Définir la valeur par défaut (Blues)
+    select.value = 'Blues'
+    
     // Créer le conteneur pour le sélecteur personnalisé avec gradient
     const parent = select.parentElement
     if (!parent) return
@@ -595,10 +644,16 @@ export class ThematicPanel {
     dropdownEl?.querySelectorAll('.palette-option').forEach(opt => {
       opt.addEventListener('click', () => {
         const value = (opt as HTMLElement).dataset.value || ''
-        select.value = value
-        select.dispatchEvent(new Event('change'))
         
-        // Mettre à jour l'affichage
+        // IMPORTANT: Mettre à jour le select natif AVANT de déclencher l'événement
+        select.value = value
+        console.log(`[ThematicPanel][Palette] Option clicked: value="${value}", select.value="${select.value}"`)
+        
+        // Déclencher l'événement change pour que les listeners soient notifiés
+        const changeEvent = new Event('change', { bubbles: true })
+        select.dispatchEvent(changeEvent)
+        
+        // Mettre à jour l'affichage visuel
         const palette = PALETTE_OPTIONS.find(p => p.value === value)
         if (palette) {
           const gradientEl = selectedEl.querySelector('.palette-gradient') as HTMLElement
@@ -607,10 +662,11 @@ export class ThematicPanel {
           if (nameEl) nameEl.textContent = palette.label
         }
         
-        // Mettre à jour la sélection visuelle
+        // Mettre à jour la sélection visuelle dans le dropdown
         dropdownEl.querySelectorAll('.palette-option').forEach(o => o.classList.remove('selected'))
         opt.classList.add('selected')
         
+        // Fermer le dropdown
         customContainer.classList.remove('open')
       })
     })
@@ -1032,45 +1088,51 @@ export class ThematicPanel {
     // Grid level radio buttons
     document.querySelectorAll('input[name="gridLevel"]').forEach(radio => {
       radio.addEventListener('change', (e) => {
-        const level = (e.target as HTMLInputElement).value as '2km' | '28km'
+        const level = (e.target as HTMLInputElement).value as '2km' | '28km' | 'combined'
         console.log('[ThematicPanel] Grid level changed to:', level)
         if ((window as any).setGridLevel) {
           (window as any).setGridLevel(level)
+        }
+        if ((window as any).syncGridLevelUI) {
+          ;(window as any).syncGridLevelUI(level)
         }
       })
     })
     
     // Toggle context layers - met à jour l'état global pour les tooltips enrichis
-    // + affiche/masque les contrôles d'opacité
-    this.elements.toggleGeologieCheckbox?.addEventListener('change', (e) => {
+    // + charge la légende dynamiquement depuis l'API
+    this.elements.toggleGeologieCheckbox?.addEventListener('change', async (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('geologie', checked)
       if ((window as any).setActiveContextLayer) {
         (window as any).setActiveContextLayer('geologie', checked)
       }
-      // Afficher/masquer les contrôles
-      const controls = (e.target as HTMLInputElement).closest('.context-layer-item')?.querySelector('.layer-controls') as HTMLElement
-      if (controls) controls.style.display = checked ? 'block' : 'none'
+      // Charger la légende si activée
+      if (checked) {
+        await this.loadLegend('geologie', 'geologieLegend')
+      }
     })
     
-    this.elements.togglePedologieCheckbox?.addEventListener('change', (e) => {
+    this.elements.togglePedologieCheckbox?.addEventListener('change', async (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('pedologie', checked)
       if ((window as any).setActiveContextLayer) {
         (window as any).setActiveContextLayer('pedologie', checked)
       }
-      const controls = (e.target as HTMLInputElement).closest('.context-layer-item')?.querySelector('.layer-controls') as HTMLElement
-      if (controls) controls.style.display = checked ? 'block' : 'none'
+      if (checked) {
+        await this.loadLegend('pedologie', 'pedologieLegend')
+      }
     })
     
-    this.elements.toggleRisqueGonflementCheckbox?.addEventListener('change', (e) => {
+    this.elements.toggleRisqueGonflementCheckbox?.addEventListener('change', async (e) => {
       const checked = (e.target as HTMLInputElement).checked
       this.manager.toggleContextLayer('risque-gonflement', checked)
       if ((window as any).setActiveContextLayer) {
         (window as any).setActiveContextLayer('risque-gonflement', checked)
       }
-      const controls = (e.target as HTMLInputElement).closest('.context-layer-item')?.querySelector('.layer-controls') as HTMLElement
-      if (controls) controls.style.display = checked ? 'block' : 'none'
+      if (checked) {
+        await this.loadLegend('risque', 'risqueLegend')
+      }
     })
     
     this.elements.toggleDsmCheckbox?.addEventListener('change', (e) => {
@@ -1079,8 +1141,6 @@ export class ThematicPanel {
       if ((window as any).setActiveContextLayer) {
         (window as any).setActiveContextLayer('dsm', checked)
       }
-      const controls = (e.target as HTMLInputElement).closest('.context-layer-item')?.querySelector('.layer-controls') as HTMLElement
-      if (controls) controls.style.display = checked ? 'block' : 'none'
     })
     
     // Sliders d'opacité pour les couches contextuelles
@@ -1109,6 +1169,80 @@ export class ThematicPanel {
     document.getElementById('clearAdmFilters')?.addEventListener('click', () => {
       this.clearAdmFilters()
     })
+  }
+  
+  /**
+   * Charge et affiche la légende d'une couche contextuelle depuis l'API
+   */
+  private async loadLegend(layerId: 'geologie' | 'pedologie' | 'risque', containerId: string): Promise<void> {
+    const container = document.getElementById(containerId)
+    if (!container) return
+    
+    container.innerHTML = '<div style="color:#64748b;font-style:italic;font-size:0.8rem">Chargement...</div>'
+    
+    try {
+      const res = await fetch(apiUrl(`/layers/${layerId}/styles`))
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      
+      const styles: Array<{ unit_code: string; unit_label: string; color_hex: string; sort_order: number }> = await res.json()
+      
+      if (styles.length === 0) {
+        container.innerHTML = '<div style="color:#64748b;font-style:italic;font-size:0.8rem">Aucun style disponible</div>'
+        return
+      }
+      
+      // Trier par sort_order
+      styles.sort((a, b) => a.sort_order - b.sort_order)
+      
+      // Construire la légende HTML avec checkboxes
+      container.innerHTML = ''
+      container.className = 'legend-list'
+      
+      for (const s of styles) {
+        const label = document.createElement('label')
+        label.className = 'legend-item'
+        
+        const checkbox = document.createElement('input')
+        checkbox.type = 'checkbox'
+        checkbox.checked = true
+        checkbox.className = 'legend-item__checkbox'
+        checkbox.dataset.layerId = layerId
+        checkbox.dataset.unitCode = s.unit_code
+        
+        const swatch = document.createElement('span')
+        swatch.className = 'legend-item__swatch'
+        swatch.style.backgroundColor = s.color_hex
+        
+        const text = document.createElement('span')
+        text.className = 'legend-item__label'
+        text.textContent = s.unit_label
+        text.title = s.unit_label
+        
+        // Event listener pour filtrer les unités
+        checkbox.addEventListener('change', () => {
+          this.toggleLegendUnit(layerId, s.unit_code, checkbox.checked)
+        })
+        
+        label.appendChild(checkbox)
+        label.appendChild(swatch)
+        label.appendChild(text)
+        container.appendChild(label)
+      }
+      
+      console.log(`[ThematicPanel] Loaded ${styles.length} legend items for ${layerId}`)
+    } catch (e) {
+      console.error(`[ThematicPanel] Failed to load legend for ${layerId}:`, e)
+      container.innerHTML = '<div style="color:#f87171;font-size:0.8rem">Erreur de chargement</div>'
+    }
+  }
+  
+  /**
+   * Active/désactive l'affichage d'une unité dans une couche contextuelle
+   */
+  private toggleLegendUnit(layerId: string, unitCode: string, visible: boolean): void {
+    console.log(`[ThematicPanel] Toggle unit ${unitCode} for ${layerId}: ${visible}`)
+    // TODO: Implémenter le filtrage des features dans la couche GeoJSON
+    // Pour l'instant, juste logger l'action
   }
   
   /**
@@ -1298,6 +1432,14 @@ export class ThematicPanel {
     const depthMin = this.elements.depthMinInput?.value ? parseFloat(this.elements.depthMinInput.value) : undefined
     const depthMax = this.elements.depthMaxInput?.value ? parseFloat(this.elements.depthMaxInput.value) : undefined
     
+    // Source de vérité: main.ts (panneau droit). Fallback sur radio si non disponible.
+    const getLevel = (window as any).getCurrentGridLevel
+    const levelFromGlobal = typeof getLevel === 'function' ? getLevel() : undefined
+    const gridLevelRadio = document.querySelector('input[name="gridLevel"]:checked') as HTMLInputElement
+    const levelFromRadio = (gridLevelRadio?.value || '2km') as '2km' | '28km' | 'combined'
+    const gridLevel = (levelFromGlobal || levelFromRadio) as '2km' | '28km' | 'combined'
+    console.log('[ThematicPanel] Grid level (global):', levelFromGlobal, 'radio:', levelFromRadio, '=>', gridLevel)
+    
     return {
       name: 'Carte temporaire',
       objectif,
@@ -1318,6 +1460,7 @@ export class ThematicPanel {
         adm1,
         adm2,
         adm3,
+        grid: gridLevel,
         min_sondages: minSondages,
         exclude_no_data: excludeNoData,
         exclude_outside_adm: excludeOutsideAdm,

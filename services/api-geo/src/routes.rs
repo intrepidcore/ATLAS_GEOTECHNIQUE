@@ -9,6 +9,13 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
+#[derive(Serialize)]
+pub struct LegacyLookupItem {
+    pub new_code: String,
+    pub coverage_pct: f64,
+    pub match_type: String,
+}
+
 // ============================================================================
 // ADM Neighbors Types
 // ============================================================================
@@ -52,6 +59,51 @@ pub fn grid_router() -> Router<AppState> {
         .route("/:code/details", get(get_grid_details))
         .route("/:code/neighbors", get(crate::neighbors::get_neighbors))
         .route("/recompute/:code", post(recompute_grid))
+}
+
+pub async fn legacy_lookup(
+    State(state): State<AppState>,
+    Path(code): Path<String>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    let rows = sqlx::query(
+        r#"
+        SELECT new_code, coverage_pct::float8 AS coverage_pct, match_type
+        FROM atlas.v_api_legacy_lookup
+        WHERE legacy_code = $1
+        ORDER BY rank ASC
+        LIMIT 5
+        "#,
+    )
+    .bind(&code)
+    .fetch_all(pool)
+    .await;
+
+    match rows {
+        Ok(rows) => {
+            if rows.is_empty() {
+                return (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "legacy code introuvable"})))
+                    .into_response();
+            }
+
+            let mut out: Vec<LegacyLookupItem> = Vec::with_capacity(rows.len());
+            for row in rows {
+                out.push(LegacyLookupItem {
+                    new_code: row.try_get("new_code").unwrap_or_default(),
+                    coverage_pct: row.try_get("coverage_pct").unwrap_or(0.0),
+                    match_type: row.try_get("match_type").unwrap_or_else(|_| "".to_string()),
+                });
+            }
+
+            (StatusCode::OK, Json(out)).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "legacy_lookup db error");
+            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "db error"})))
+                .into_response()
+        }
+    }
 }
 
 /// GET /adm/neighbors?level=adm1&name=Maritime
@@ -659,9 +711,7 @@ async fn get_coverage_mailles_28km(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     
-    // Requête sur atlas.v_coverage_mailles_28km (avec compteurs exact/random et code lisible)
-    // NOTE: Utilise la vue de base, la vue clipée sera créée par migration 103
-    // Pour l'instant on garde la vue existante qui fonctionne
+    // Requête sur atlas.v_coverage_mailles_28km_clip (geom clipée ADM0 + colonnes compatibles)
     let mut query = r#"
         SELECT code_m28,
                COALESCE(code_lisible, 'TG-28KM-' || LPAD(code_m28::text, 3, '0')) AS code_lisible,
@@ -675,7 +725,7 @@ async fn get_coverage_mailles_28km(
                COALESCE(n_mailles_2km, 0)::bigint AS n_mailles_2km,
                COALESCE(n_mailles_2km_with_data, 0)::bigint AS n_mailles_2km_with_data,
                (n_sondages > 0) AS has_data
-        FROM atlas.v_coverage_mailles_28km
+        FROM atlas.v_coverage_mailles_28km_clip
     "#
     .to_string();
 
@@ -1054,6 +1104,7 @@ struct GridDetails {
     code: String,
     adm: AdmInfo,
     kpi: KpiInfo,
+    spatial: Option<SpatialInfo>,
     sondages: Vec<SondageDetail>,
 }
 
@@ -1072,6 +1123,17 @@ struct KpiInfo {
     zmin: Option<f64>,
     zmax: Option<f64>,
     updated_at: Option<String>,
+}
+
+#[derive(Serialize)]
+struct SpatialInfo {
+    srid: i32,
+    xmin: f64,
+    xmax: f64,
+    ymin: f64,
+    ymax: f64,
+    xc: f64,
+    yc: f64,
 }
 
 #[derive(Serialize)]
@@ -1111,15 +1173,39 @@ async fn get_grid_details(
         "atlas.mailles"
     };
 
-    // 1. Récupérer les infos de la maille
-    let query_str = format!(
-        r#"
-        SELECT id, adm1_name, adm2_name, adm3_name, stats, updated_at
-        FROM {}
-        WHERE code = $1
-        "#,
-        table_name
-    );
+    // 1. Récupérer les infos de la maille avec coordonnées UTM31
+    let query_str = if grid_type == "28km" {
+        // Mailles 28km n'ont pas encore les colonnes UTM31
+        format!(
+            r#"
+            SELECT id, adm1_name, adm2_name, adm3_name, stats, updated_at,
+                   NULL::double precision as xmin_utm31,
+                   NULL::double precision as xmax_utm31,
+                   NULL::double precision as ymin_utm31,
+                   NULL::double precision as ymax_utm31,
+                   NULL::double precision as xc_utm31,
+                   NULL::double precision as yc_utm31
+            FROM {}
+            WHERE code = $1
+            "#,
+            table_name
+        )
+    } else {
+        // Mailles 2km ont les colonnes UTM31 mais seulement adm2_name
+        format!(
+            r#"
+            SELECT id, 
+                   NULL::text as adm1_name,
+                   adm2_name, 
+                   NULL::text as adm3_name,
+                   stats, updated_at,
+                   xmin_utm31, xmax_utm31, ymin_utm31, ymax_utm31, xc_utm31, yc_utm31
+            FROM {}
+            WHERE code = $1
+            "#,
+            table_name
+        )
+    };
     
     let maille_row = match sqlx::query(&query_str)
         .bind(&code)
@@ -1151,6 +1237,28 @@ async fn get_grid_details(
         adm3: maille_row.get("adm3_name"),
     };
 
+    // Construire SpatialInfo si les coordonnées UTM31 sont disponibles
+    let spatial = if let (Some(xmin), Some(xmax), Some(ymin), Some(ymax), Some(xc), Some(yc)) = (
+        maille_row.get::<Option<f64>, _>("xmin_utm31"),
+        maille_row.get::<Option<f64>, _>("xmax_utm31"),
+        maille_row.get::<Option<f64>, _>("ymin_utm31"),
+        maille_row.get::<Option<f64>, _>("ymax_utm31"),
+        maille_row.get::<Option<f64>, _>("xc_utm31"),
+        maille_row.get::<Option<f64>, _>("yc_utm31"),
+    ) {
+        Some(SpatialInfo {
+            srid: 32631,
+            xmin,
+            xmax,
+            ymin,
+            ymax,
+            xc,
+            yc,
+        })
+    } else {
+        None
+    };
+
     let stats: serde_json::Value = maille_row.try_get("stats").unwrap_or(serde_json::json!({}));
     let idw_spt_n = stats.get("idw_spt_n").and_then(|v| v.as_f64());
     let updated_at: Option<chrono::DateTime<chrono::Utc>> = maille_row.get("updated_at");
@@ -1165,7 +1273,7 @@ async fn get_grid_details(
             MAX(e.depth_m) AS zmax
         FROM {} m
         LEFT JOIN atlas.sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
-        LEFT JOIN atlas.essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+        LEFT JOIN atlas.essais e ON e.sondage_id = s.id
         WHERE m.id = $1
         "#,
         table_name
@@ -1308,6 +1416,7 @@ async fn get_grid_details(
         code,
         adm,
         kpi,
+        spatial,
         sondages,
     })
     .into_response()

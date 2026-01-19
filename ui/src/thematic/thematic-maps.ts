@@ -164,6 +164,13 @@ export class ThematicMapManager {
       zoom: this.map.getZoom().toString()
     })
     
+    // Niveau de grille (2km par défaut pour compatibilité)
+    if (config.filters.grid) {
+      // Mode combiné = thématique sur 2km (la 28km est juste une surcouche structurelle côté UI)
+      const grid = config.filters.grid === 'combined' ? '2km' : config.filters.grid
+      params.append('grid', grid)
+    }
+    
     // Filtres ADM - envoyer seulement si exclude_outside_adm est activé ou si un ADM est sélectionné
     if (config.filters.exclude_outside_adm) {
       if (config.filters.adm1) params.append('adm1', config.filters.adm1)
@@ -524,6 +531,9 @@ export class ThematicMapManager {
     }
     // Nettoyer aussi le contour ADM
     this.admOverlayLayer.clearLayers()
+
+    // Important: si plus aucune couche thématique n'est présente, ne pas bloquer les clics sur la grille.
+    this.updateThematicPanePointerEvents(false)
   }
   
   /**
@@ -533,13 +543,29 @@ export class ThematicMapManager {
     if (!this.map.getPane('thematicPane')) {
       this.map.createPane('thematicPane')
       const pane = this.map.getPane('thematicPane')
-      if (pane) pane.style.zIndex = '650'
+      if (pane) {
+        pane.style.zIndex = '650'
+        pane.style.pointerEvents = 'none'
+      }
     }
     if (!this.map.getPane('thematicCirclesPane')) {
       this.map.createPane('thematicCirclesPane')
       const pane = this.map.getPane('thematicCirclesPane')
-      if (pane) pane.style.zIndex = '660' // Au-dessus des polygones
+      if (pane) {
+        pane.style.zIndex = '660' // Au-dessus des polygones
+        pane.style.pointerEvents = 'none'
+      }
     }
+  }
+
+  private updateThematicPanePointerEvents(enabled: boolean): void {
+    const thematicPane = this.map.getPane('thematicPane')
+    const thematicCirclesPane = this.map.getPane('thematicCirclesPane')
+
+    if (thematicPane) thematicPane.style.pointerEvents = enabled ? 'auto' : 'none'
+    if (thematicCirclesPane) thematicCirclesPane.style.pointerEvents = enabled ? 'auto' : 'none'
+
+    console.log('[ThematicMap] Pane pointer-events:', enabled ? 'auto' : 'none')
   }
   
   /**
@@ -550,6 +576,12 @@ export class ThematicMapManager {
     if (gridLayer && this.map.hasLayer(gridLayer)) {
       console.log('[ThematicMap] Masquage de la couche de couverture')
       this.map.removeLayer(gridLayer)
+    }
+
+    const gridOverlay28Layer = (window as any).gridOverlay28Layer
+    if (gridOverlay28Layer && this.map.hasLayer(gridOverlay28Layer)) {
+      console.log('[ThematicMap] Masquage de la surcouche 28km')
+      this.map.removeLayer(gridOverlay28Layer)
     }
   }
   
@@ -585,6 +617,7 @@ export class ThematicMapManager {
    */
   private renderChoropleth(data: ThematicData, classification: Classification, config: ThematicMapConfig): void {
     this.ensureThematicPane()
+    this.updateThematicPanePointerEvents(true)
     this.hideGridLayer()
     
     // v3.5.3: Log explicite des couleurs utilisées pour debug
@@ -625,6 +658,7 @@ export class ThematicMapManager {
    */
   private renderProportionalCircles(data: ThematicData, classification: Classification, config: ThematicMapConfig): void {
     this.ensureThematicPane()
+    this.updateThematicPanePointerEvents(true)
     this.hideGridLayer()
     
     // 1. Couche de fond : mailles en gris très clair (discret)
@@ -713,6 +747,7 @@ export class ThematicMapManager {
    */
   private renderBinaryMap(data: ThematicData, config: ThematicMapConfig): void {
     this.ensureThematicPane()
+    this.updateThematicPanePointerEvents(true)
     this.hideGridLayer()
     
     // Seuil binaire : par défaut = 1 pour les comptages, médiane pour les valeurs continues
@@ -767,6 +802,7 @@ export class ThematicMapManager {
    */
   private renderHeatmap(data: ThematicData, classification: Classification, config: ThematicMapConfig): void {
     this.ensureThematicPane()
+    this.updateThematicPanePointerEvents(true)
     this.hideGridLayer()
     
     // 1. Couche de fond: mailles en gris très clair (discret)

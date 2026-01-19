@@ -253,6 +253,36 @@ export class SondagesManagerPage {
         this.launchTestWizard(wizard!);
       });
     });
+
+    // Navigation depuis la liste : créer un sondage pré-rempli depuis une maille
+    window.addEventListener('navigate:create-sondage', async (e: any) => {
+      try {
+        const detail = e?.detail || {};
+        const gridCode = detail.gridCode as string | undefined;
+        const center = detail.center as { lon: number; lat: number } | null | undefined;
+        if (!gridCode) return;
+
+        await this.switchTab('nouveau');
+
+        // Pré-remplir (après initForm)
+        setTimeout(() => {
+          const gtMailleCode = document.getElementById('gt-maille-code');
+          const gtSelectedMaille = document.getElementById('gt-selected-maille');
+          if (gtMailleCode) gtMailleCode.textContent = gridCode;
+          if (gtSelectedMaille) gtSelectedMaille.style.display = 'block';
+
+          if (center) {
+            const gtLon = document.getElementById('gt-lon') as HTMLInputElement;
+            const gtLat = document.getElementById('gt-lat') as HTMLInputElement;
+            if (gtLon) gtLon.value = Number(center.lon).toFixed(6);
+            if (gtLat) gtLat.value = Number(center.lat).toFixed(6);
+          }
+        }, 50);
+      } catch (err) {
+        console.error('[SONDAGES PAGE] navigate:create-sondage error:', err);
+        toast.error('Erreur ouverture formulaire');
+      }
+    });
   }
 
   private launchTestWizard(wizard: string) {

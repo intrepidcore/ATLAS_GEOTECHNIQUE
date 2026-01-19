@@ -39,6 +39,21 @@ export interface UpdateGeometryPayload {
   adm3_id?: number;
 }
 
+export interface LegacyLookupItem {
+  new_code: string;
+  coverage_pct: number;
+  match_type: string;
+}
+
+export interface MailleFeature {
+  type: 'Feature';
+  geometry: {
+    type: string;
+    coordinates: any;
+  };
+  properties: Record<string, any>;
+}
+
 // ============================================================================
 // API FUNCTIONS
 // ============================================================================
@@ -87,6 +102,20 @@ export async function updateSondageGeometry(
   console.log('[SONDAGES] updateSondageGeometry - ID:', id);
   console.log('[SONDAGES] updateSondageGeometry - Payload:', JSON.stringify(payload, null, 2));
   return apiPatch<Sondage>(`/sondages/${id}/geometry`, payload);
+}
+
+/**
+ * Recherche legacy : ancien code maille -> nouveau code (Grille V2)
+ */
+export async function legacyLookupGridCode(code: string): Promise<LegacyLookupItem[]> {
+  return apiGet<LegacyLookupItem[]>(`/search/legacy/${encodeURIComponent(code)}`);
+}
+
+/**
+ * Récupère une maille GeoJSON par son code
+ */
+export async function getMailleFeature(code: string): Promise<MailleFeature> {
+  return apiGet<MailleFeature>(`/maille/${encodeURIComponent(code)}`);
 }
 
 // ============================================================================
