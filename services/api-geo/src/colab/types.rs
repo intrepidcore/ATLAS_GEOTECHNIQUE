@@ -145,6 +145,7 @@ pub struct SupervisorSummary {
     pub full_name: String,
     pub specialite: Option<String>,
     pub institution: Option<String>,
+    pub is_active: bool,
 }
 
 /// Résumé utilisateur
@@ -180,6 +181,31 @@ pub struct LinkedSondage {
     pub linked_at: DateTime<Utc>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ColabDocument {
+    pub id: Uuid,
+    pub mission_id: Uuid,
+    pub uploaded_by: Uuid,
+    pub title: String,
+    pub document_type: String,
+    pub description: Option<String>,
+    pub file_path: String,
+    pub file_name: String,
+    pub file_size_bytes: Option<i64>,
+    pub mime_type: Option<String>,
+    pub sondage_id: Option<Uuid>,
+    pub version: i32,
+    pub is_current: bool,
+    pub uploaded_at: DateTime<Utc>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ColabDocumentsListResponse {
+    pub documents: Vec<ColabDocument>,
+    pub total: usize,
+}
+
 // ============================================================================
 // Requêtes de création/modification
 // ============================================================================
@@ -209,6 +235,109 @@ pub struct CreateMissionRequest {
     pub description: Option<String>,
     pub objectifs: Option<String>,
     pub notes_internal: Option<String>,
+
+    /// Liste d'étudiants à assigner à la mission (création transactionnelle)
+    #[serde(default)]
+    pub assigned_student_ids: Vec<Uuid>,
+}
+
+// ============================================================================
+// Suggest DTOs
+// ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MailleSuggestItem {
+    pub id: Uuid,
+    pub code: String,
+    pub adm1_name: Option<String>,
+    pub adm2_name: Option<String>,
+    pub adm3_name: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UserSuggestItem {
+    pub id: Uuid,
+    pub label: String,
+}
+
+// ============================================================================
+// CRUD Étudiants / Superviseurs
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize, Validate)]
+pub struct CreateStudentRequest {
+    #[validate(email(message = "Email invalide"))]
+    pub email: String,
+    #[validate(length(min = 1, max = 100))]
+    pub first_name: String,
+    #[validate(length(min = 1, max = 100))]
+    pub last_name: String,
+
+    pub telephone: Option<String>,
+
+    pub matricule: Option<String>,
+    #[validate(length(min = 4, max = 20))]
+    pub promotion: String,
+    pub filiere: Option<String>,
+    pub etablissement: Option<String>,
+    pub niveau: Option<String>,
+    pub age: Option<i32>,
+}
+
+#[derive(Debug, Clone, Deserialize, Validate)]
+pub struct CreateSupervisorRequest {
+    #[validate(email(message = "Email invalide"))]
+    pub email: String,
+    #[validate(length(min = 1, max = 100))]
+    pub first_name: String,
+    #[validate(length(min = 1, max = 100))]
+    pub last_name: String,
+
+    pub titre: Option<String>,
+    pub institution: Option<String>,
+    pub departement: Option<String>,
+    pub specialite: Option<String>,
+    pub telephone: Option<String>,
+    pub notes: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Validate)]
+pub struct UpdateStudentRequest {
+    #[validate(email(message = "Email invalide"))]
+    pub email: Option<String>,
+    #[validate(length(min = 1, max = 100))]
+    pub first_name: Option<String>,
+    #[validate(length(min = 1, max = 100))]
+    pub last_name: Option<String>,
+
+    pub telephone: Option<String>,
+
+    pub matricule: Option<String>,
+    #[validate(length(min = 4, max = 20))]
+    pub promotion: Option<String>,
+    pub filiere: Option<String>,
+    pub etablissement: Option<String>,
+    pub niveau: Option<String>,
+    pub age: Option<i32>,
+    pub is_active: Option<bool>,
+}
+
+#[derive(Debug, Clone, Deserialize, Validate)]
+pub struct UpdateSupervisorRequest {
+    #[validate(email(message = "Email invalide"))]
+    pub email: Option<String>,
+    #[validate(length(min = 1, max = 100))]
+    pub first_name: Option<String>,
+    #[validate(length(min = 1, max = 100))]
+    pub last_name: Option<String>,
+
+    pub titre: Option<String>,
+    pub institution: Option<String>,
+    pub departement: Option<String>,
+    pub specialite: Option<String>,
+    pub telephone: Option<String>,
+    pub notes: Option<String>,
+    pub is_active: Option<bool>,
 }
 
 /// Mise à jour d'une mission

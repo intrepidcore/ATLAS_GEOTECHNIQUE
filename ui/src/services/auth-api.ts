@@ -306,15 +306,18 @@ async function fetchWithAuth(
   if (token) {
     headers.set('Authorization', `Bearer ${token}`)
   }
-  headers.set('Content-Type', 'application/json')
+
+  const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData
+  if (!isFormData && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json')
+  }
 
   const response = await fetch(url, { ...options, headers })
 
-  // Si 401, essayer de refresh le token
-  if (response.status === 401 && tokenStorage.getRefreshToken()) {
+  // Si 401, essayer de refresh le token (une seule fois)
+  if (response.status === 401) {
     const refreshed = await authApi.refresh()
     if (refreshed) {
-      // Réessayer la requête avec le nouveau token
       headers.set('Authorization', `Bearer ${tokenStorage.getAccessToken()}`)
       return fetch(url, { ...options, headers })
     }
@@ -371,28 +374,45 @@ export const authApi = {
   },
 
   async refresh(): Promise<boolean> {
-    const refreshToken = tokenStorage.getRefreshToken()
+    const refreshToken = (tokenStorage.getRefreshToken() || '').trim()
     if (!refreshToken) return false
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh_token: refreshToken }),
-      })
+    // Empêcher les refresh concurrents/boucles
+    if ((authApi as any)._refreshInFlight) {
+      return (authApi as any)._refreshInFlight
+    }
 
-      if (!response.ok) {
+    const p = (async (): Promise<boolean> => {
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        })
+
+        if (!response.ok) {
+          tokenStorage.clear()
+          return false
+        }
+
+        const data = await response.json()
+        if (!data?.access_token || typeof data.access_token !== 'string') {
+          tokenStorage.clear()
+          return false
+        }
+
+        tokenStorage.setAccessToken(data.access_token)
+        return true
+      } catch {
         tokenStorage.clear()
         return false
+      } finally {
+        ;(authApi as any)._refreshInFlight = null
       }
+    })()
 
-      const data = await response.json()
-      tokenStorage.setAccessToken(data.access_token)
-      return true
-    } catch {
-      tokenStorage.clear()
-      return false
-    }
+    ;(authApi as any)._refreshInFlight = p
+    return p
   },
 
   async getCurrentUser(): Promise<UserInfo> {

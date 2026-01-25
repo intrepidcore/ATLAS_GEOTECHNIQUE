@@ -9,6 +9,7 @@ export interface FiltersState {
   adm3: string | null;
   hasData: boolean;
   noData: boolean;
+  assignedOnly: boolean;
   minSondages: number;
   minEssais: number;
 }
@@ -20,6 +21,7 @@ export const currentFilters: FiltersState = {
   adm3: null,
   hasData: true,
   noData: true,
+  assignedOnly: false,
   minSondages: 0,
   minEssais: 0,
 };
@@ -28,6 +30,7 @@ export const currentFilters: FiltersState = {
 export interface FilteredStats {
   visibleCount: number;
   withDataCount: number;
+  assignedCount: number;
   sondagesCount: number;
   echantillonsCount: number;
   essaisCount: number;
@@ -41,6 +44,7 @@ export interface FilteredStats {
 export const filteredStats: FilteredStats = {
   visibleCount: 0,
   withDataCount: 0,
+  assignedCount: 0,
   sondagesCount: 0,
   echantillonsCount: 0,
   essaisCount: 0,
@@ -59,6 +63,7 @@ export function syncFiltersFromDOM(): void {
   const adm3El = document.getElementById('filterAdm3') as HTMLSelectElement;
   const hasDataEl = document.getElementById('filterHasData') as HTMLInputElement;
   const noDataEl = document.getElementById('filterNoData') as HTMLInputElement;
+  const assignedOnlyEl = document.getElementById('filterAssignedOnly') as HTMLInputElement;
   const minSondagesEl = document.getElementById('filterMinSondages') as HTMLInputElement;
   const minEssaisEl = document.getElementById('filterMinEssais') as HTMLInputElement;
 
@@ -67,6 +72,7 @@ export function syncFiltersFromDOM(): void {
   currentFilters.adm3 = adm3El?.value || null;
   currentFilters.hasData = hasDataEl?.checked ?? true;
   currentFilters.noData = noDataEl?.checked ?? true;
+  currentFilters.assignedOnly = assignedOnlyEl?.checked ?? false;
   currentFilters.minSondages = parseInt(minSondagesEl?.value) || 0;
   currentFilters.minEssais = parseInt(minEssaisEl?.value) || 0;
 }
@@ -80,6 +86,7 @@ export function resetFilters(): void {
   currentFilters.adm3 = null;
   currentFilters.hasData = true;
   currentFilters.noData = true;
+  currentFilters.assignedOnly = false;
   currentFilters.minSondages = 0;
   currentFilters.minEssais = 0;
 }
@@ -101,11 +108,14 @@ export function featureMatchesFilters(feature: any, filters: FiltersState = curr
     (hasData && filters.hasData) ||
     (!hasData && filters.noData);
 
+  const isAssigned = !!p.is_assigned;
+  const matchAssignedOnly = !filters.assignedOnly || isAssigned;
+
   // Filtre min sondages/essais
   const matchMinSondages = (p.n_sondages || 0) >= filters.minSondages;
   const matchMinEssais = (p.n_essais || 0) >= filters.minEssais;
 
-  return matchAdm1 && matchAdm2 && matchAdm3 && matchDataFlag && matchMinSondages && matchMinEssais;
+  return matchAdm1 && matchAdm2 && matchAdm3 && matchDataFlag && matchAssignedOnly && matchMinSondages && matchMinEssais;
 }
 
 /**
@@ -125,6 +135,7 @@ export function computeFilteredStats(features: any[]): FilteredStats {
   const stats: FilteredStats = {
     visibleCount: 0,
     withDataCount: 0,
+    assignedCount: 0,
     sondagesCount: 0,
     echantillonsCount: 0,
     essaisCount: 0,
@@ -138,6 +149,7 @@ export function computeFilteredStats(features: any[]): FilteredStats {
     const p = f.properties ?? {};
     stats.visibleCount++;
     if (p.has_data) stats.withDataCount++;
+    if (p.is_assigned) stats.assignedCount++;
     stats.sondagesCount += p.n_sondages || 0;
     stats.echantillonsCount += p.n_echantillons || 0;
     stats.essaisCount += p.n_essais || 0;
@@ -161,11 +173,13 @@ export function updateStatsDOM(stats: FilteredStats = filteredStats): void {
   // Stats principales
   const statVisible = document.getElementById('statVisible');
   const statWithData = document.getElementById('statWithData');
+  const statAssigned = document.getElementById('gridAssigned');
   const statSondages = document.getElementById('statSondages');
   const statEssais = document.getElementById('statEssais');
 
   if (statVisible) statVisible.textContent = stats.visibleCount.toLocaleString();
   if (statWithData) statWithData.textContent = stats.withDataCount.toLocaleString();
+  if (statAssigned) statAssigned.textContent = stats.assignedCount.toLocaleString();
   if (statSondages) statSondages.textContent = stats.sondagesCount.toLocaleString();
   if (statEssais) statEssais.textContent = stats.essaisCount.toLocaleString();
 

@@ -122,6 +122,10 @@ export function updateFilterBadges() {
   // Min essais
   const minEssais = parseInt((document.getElementById('filterMinEssais') as HTMLInputElement)?.value || '0')
   if (minEssais > 0) activeFilters.push({ id: 'minEssais', label: `Min ${minEssais} essais` })
+
+  // Uniquement attribuées
+  const assignedOnly = (document.getElementById('filterAssignedOnly') as HTMLInputElement)?.checked
+  if (assignedOnly) activeFilters.push({ id: 'assignedOnly', label: `Attribuées uniquement` })
   
   // Profondeur
   const depthMin = (document.getElementById('filterDepthMin') as HTMLInputElement)?.value
@@ -173,6 +177,9 @@ export function updateFilterBadges() {
       break
     case 'minEssais':
       (document.getElementById('filterMinEssais') as HTMLInputElement).value = '0'
+      break
+    case 'assignedOnly':
+      ;(document.getElementById('filterAssignedOnly') as HTMLInputElement).checked = false
       break
     case 'depth':
       (document.getElementById('filterDepthMin') as HTMLInputElement).value = ''
@@ -229,6 +236,7 @@ export function initKeyboardShortcuts() {
 export function initFilterListeners() {
   const filterIds = [
     'filterAdm1', 'filterAdm2', 'filterAdm3',
+    'filterAssignedOnly',
     'filterMinSondages', 'filterMinEssais',
     'filterDepthMin', 'filterDepthMax',
     'filterWLMin', 'filterWLMax',

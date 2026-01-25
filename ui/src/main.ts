@@ -259,16 +259,59 @@ function setStatus(text: string) {
   if (el) el.textContent = text
 }
 
-function setKpis(total: number, withData: number) {
+function setKpis(total: number, withData: number, assigned: number) {
   const k = document.getElementById('kpis')
   if (!k) return
   k.innerHTML = `
     <div class="kpi"><span>Mailles</span><b>${total.toLocaleString()}</b></div>
     <div class="kpi"><span>Avec données</span><b>${withData.toLocaleString()}</b></div>
     <div class="kpi"><span>Sans données</span><b>${(total - withData).toLocaleString()}</b></div>
+    <div class="kpi"><span>Attribuées</span><b>${assigned.toLocaleString()}</b></div>
   `
   const b = document.getElementById('gridBadge')
   if (b) b.innerHTML = `<span class="dot" style="background:${withData > 0 ? 'var(--ok)' : 'var(--warn)'}"></span> Grille`
+}
+
+function renderMailleAssignmentInfo() {
+  const container = document.getElementById('ficheAssignment')
+  if (!container) return
+
+  const p = selectedMailleProps || {}
+  if (!p.is_assigned) {
+    container.style.display = 'none'
+    container.innerHTML = ''
+    return
+  }
+
+  const name = p.assigned_student_name || '—'
+  const id = p.assigned_student_id || '—'
+  const at = p.assigned_at || '—'
+
+  container.style.display = 'block'
+  container.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div style="font-size:11px;color:#cbd5e1;line-height:1.4">
+        <div><strong style="color:#a855f7">👤 Opérateur:</strong> ${name} <span style="color:#94a3b8">(${id})</span></div>
+        <div><strong style="color:#a855f7">🕒 Attribution:</strong> ${at}</div>
+      </div>
+      <button id="copyAssignment" class="btn" style="font-size:11px;padding:6px 10px;white-space:nowrap">Copier</button>
+    </div>
+  `
+
+  const copyBtn = document.getElementById('copyAssignment')
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      const text = `Maille ${p.code || ''}\nOpérateur: ${name} (${id})\nAttribution: ${at}`
+      try {
+        await navigator.clipboard.writeText(text)
+        toast('Copié', 'ok')
+      } catch {
+        toast('Copie impossible', 'err')
+      }
+    })
+  }
 }
 
 // --- Leaflet styles (centralisés dans map-style.ts) ---
@@ -364,6 +407,8 @@ function handleClick(layer: L.Path, feature: any, p: any) {
   layer.setStyle(CELL_SELECTED_TEMP_STYLE)
   layer.bringToFront()
   
+  renderMailleAssignmentInfo()
+  
   // Après 5s, retourner au style normal (bleu/vert)
   selectionTimer = setTimeout(() => {
     if (selectedCell === layer) {
@@ -422,6 +467,14 @@ function buildEnrichedTooltip(p: any): string {
   }
   if (p.n_echantillons != null && p.n_echantillons > 0) {
     content += `<div><strong>Échantillons:</strong> ${p.n_echantillons}</div>`
+  }
+
+  // Attribution Colab (si présente)
+  if (p.is_assigned) {
+    content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
+    const name = p.assigned_student_name || '—'
+    const sid = p.assigned_student_id ? ` (${p.assigned_student_id})` : ''
+    content += `<div><strong>👤 Opérateur:</strong> ${name}${sid}</div>`
   }
   
   // --- Données contextuelles (selon couches cochées) ---
@@ -1988,6 +2041,7 @@ async function loadGridOverlay28(useBbox = false) {
   try {
     const params = new URLSearchParams()
     params.set('grid', '28km')
+    params.set('limit', '50000')
 
     if (useBbox && map) {
       const bounds = map.getBounds()
@@ -2100,6 +2154,7 @@ async function loadGrid(useBbox = false) {
     const params = new URLSearchParams()
     const gridForRequest = currentGridLevel === 'combined' ? '2km' : currentGridLevel
     params.set('grid', gridForRequest)
+    params.set('limit', gridForRequest === '2km' ? '20000' : '5000')
 
     console.log('[loadGrid] Mode:', currentGridLevel, '=> API grid:', gridForRequest)
     
@@ -2130,19 +2185,23 @@ async function loadGrid(useBbox = false) {
     console.log('[loadGrid] GeoJSON reçu, features:', gj.features?.length)
 
     let withData = 0
+    let assigned = 0
     gj.features.forEach((f: any) => {
       if (f.properties?.has_data) withData++
+      if (f.properties?.is_assigned) assigned++
     })
 
-    setKpis(gj.features.length, withData)
+    setKpis(gj.features.length, withData, assigned)
     console.log('[loadGrid] KPIs mis à jour -', gj.features.length, 'mailles,', withData, 'avec données')
     setStatus(`Grille chargée: ${gj.features.length.toLocaleString()} mailles (${withData} avec données)`)
     
     // Mettre à jour les stats de grille dans le panneau droit
     const gridTotal = document.getElementById('gridTotal')
     const gridWithData = document.getElementById('gridWithData')
+    const gridAssigned = document.getElementById('gridAssigned')
     if (gridTotal) gridTotal.textContent = gj.features.length.toLocaleString()
     if (gridWithData) gridWithData.textContent = withData.toLocaleString()
+    if (gridAssigned) gridAssigned.textContent = assigned.toLocaleString()
 
     if (gridLayer) {
       map.removeLayer(gridLayer)
@@ -2442,7 +2501,9 @@ function buildAdmFilters(gj: any) {
   // Attach data filter handlers
   safeAddEventListener('filterHasData', 'change', () => applyFilters())
   safeAddEventListener('filterNoData', 'change', () => applyFilters())
+  safeAddEventListener('filterAssignedOnly', 'change', () => applyFilters())
   safeAddEventListener('filterMinSondages', 'input', () => applyFilters())
+  safeAddEventListener('filterMinEssais', 'input', () => applyFilters())
 
   // Reset button
   safeAddEventListener('resetFilters', 'click', () => {
@@ -4000,7 +4061,9 @@ document.getElementById('resetFilters')?.addEventListener('click', () => {
   // Réinitialiser tous les filtres
   (document.getElementById('filterHasData') as HTMLInputElement).checked = true;
   (document.getElementById('filterNoData') as HTMLInputElement).checked = true;
+  ;(document.getElementById('filterAssignedOnly') as HTMLInputElement).checked = false;
   (document.getElementById('filterMinSondages') as HTMLInputElement).value = '0';
+  ;(document.getElementById('filterMinEssais') as HTMLInputElement).value = '0';
   (document.getElementById('filterAdm1') as HTMLSelectElement).value = '';
   (document.getElementById('filterAdm2') as HTMLSelectElement).value = '';
   (document.getElementById('filterAdm3') as HTMLSelectElement).value = '';

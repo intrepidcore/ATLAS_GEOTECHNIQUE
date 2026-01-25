@@ -5,8 +5,141 @@ use axum::{
     response::IntoResponse,
     Json,
 };
+use axum::extract::Path;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
+use uuid::Uuid;
+
+#[derive(Deserialize)]
+pub struct ExportRequest {
+    pub mode: String,
+    pub payload: Option<serde_json::Value>,
+}
+
+#[derive(Serialize)]
+pub struct ExportJobCreatedResponse {
+    pub id: Uuid,
+    pub status: String,
+}
+
+#[derive(Serialize)]
+pub struct ExportJobStatusResponse {
+    pub id: Uuid,
+    pub status: String,
+    pub result_path: Option<String>,
+    pub error_log: Option<String>,
+}
+
+pub async fn create_export(State(state): State<AppState>, Json(req): Json<ExportRequest>) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    let mode = req.mode.to_lowercase();
+    if mode != "web" && mode != "hq" {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "invalid_mode", "expected": ["web", "hq"]})),
+        )
+            .into_response();
+    }
+
+    if mode == "web" {
+        return (
+            StatusCode::NOT_IMPLEMENTED,
+            Json(serde_json::json!({"error": "web_mode_not_implemented"})),
+        )
+            .into_response();
+    }
+
+    let payload = req.payload.unwrap_or_else(|| serde_json::json!({}));
+
+    let row = sqlx::query(
+        r#"
+        INSERT INTO atlas.export_jobs (payload)
+        VALUES ($1::jsonb)
+        RETURNING id, status
+        "#,
+    )
+    .bind(payload)
+    .fetch_one(pool)
+    .await;
+
+    match row {
+        Ok(r) => {
+            let id: Uuid = r.try_get("id").unwrap_or_else(|_| Uuid::nil());
+            let status: String = r.try_get("status").unwrap_or_else(|_| "PENDING".to_string());
+            (StatusCode::OK, Json(ExportJobCreatedResponse { id, status })).into_response()
+        }
+        Err(e) => {
+            tracing::error!(?e, "create_export db error");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "db_error"})),
+            )
+                .into_response()
+        }
+    }
+}
+
+pub async fn get_export_job(
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    let job_id = match Uuid::parse_str(&id) {
+        Ok(v) => v,
+        Err(_) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "invalid_job_id"})),
+            )
+                .into_response();
+        }
+    };
+
+    let row = sqlx::query(
+        r#"
+        SELECT id, status, result_path, error_log
+        FROM atlas.export_jobs
+        WHERE id = $1
+        "#,
+    )
+    .bind(job_id)
+    .fetch_optional(pool)
+    .await;
+
+    match row {
+        Ok(Some(r)) => {
+            let id: Uuid = r.try_get("id").unwrap_or(job_id);
+            let status: String = r.try_get("status").unwrap_or_else(|_| "UNKNOWN".to_string());
+            let result_path: Option<String> = r.try_get("result_path").ok();
+            let error_log: Option<String> = r.try_get("error_log").ok();
+            (
+                StatusCode::OK,
+                Json(ExportJobStatusResponse {
+                    id,
+                    status,
+                    result_path,
+                    error_log,
+                }),
+            )
+                .into_response()
+        }
+        Ok(None) => (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "job_not_found"})),
+        )
+            .into_response(),
+        Err(e) => {
+            tracing::error!(?e, "get_export_job db error");
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "db_error"})),
+            )
+                .into_response()
+        }
+    }
+}
 
 #[derive(Deserialize)]
 pub struct ExportQuery {

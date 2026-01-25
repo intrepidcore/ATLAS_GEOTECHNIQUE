@@ -395,3 +395,160 @@ Dans `ui/src/sondages-list-panel.ts` :
 
 - On privilégie l'affichage **in-page** (pas de toast éphémère) pour les cas legacy.
 - Le flux `gridCodeFilter` (via `#/sondages?grid=...`) conserve une confirmation simple pour bascule legacy → nouveau code.
+
+---
+
+## Atlas Auth / JWT — Compte admin par défaut (pour tests API)
+
+### Où sont les identifiants admin ?
+
+Ils sont seedés dans la migration :
+
+- `atlas/db/migrations/050_rbac_complete.sql`
+
+Ligne “Créer l'utilisateur admin par défaut”:
+
+- Email : `admin@atlas.local`
+- Username : `admin`
+- Mot de passe (dev) : `Atlas2024!`
+
+### Obtenir un JWT (access_token)
+
+L'API expose :
+
+- `POST http://localhost:8000/auth/login`
+
+Body attendu :
+
+```json
+{
+  "email": "admin@atlas.local",
+  "password": "Atlas2024!"
+}
+```
+
+La réponse contient `access_token` (Bearer) à utiliser dans :
+
+- `Authorization: Bearer <access_token>`
+
+Ensuite, on peut tester les endpoints Colab protégés :
+
+- `GET /colab/mailles/suggest?q=...`
+- `GET /colab/students/suggest?q=...`
+- `GET /colab/supervisors/suggest?q=...`
+
+### Dump SQL avant tests d'écriture
+
+Dump **plain SQL** réalisé avant les tests Colab :
+
+- `atlas/backups/pre_colab_tests_20260119_125705.sql`
+
+### Tests Colab (API) + correctif durable
+
+1) **Bug détecté**
+
+- `POST /colab/supervisors` échouait avec :
+  - `violates check constraint "username_format"`
+- Cause : génération de `username` depuis le préfixe email sans sanitization (ex: présence de `.`).
+
+2) **Fix durable appliqué (backend Rust)**
+
+- Fichier : `atlas/services/api-geo/src/colab/routes.rs`
+- Ajout d'un helper `ensure_unique_username()` + sanitization (caractères autorisés : `[a-zA-Z0-9_-]`, longueur 3-50)
+- Application dans :
+  - `create_student` ✅
+  - `create_supervisor` ✅
+
+3) **Résultats tests après fix**
+
+- `POST /colab/supervisors` ✅ (création ok, retour `temp_password`)
+- `POST /colab/missions` ✅ avec :
+  - `supervisor_id` non-null
+  - `assigned_student_ids` (2 étudiants)
+- Vérification via `GET /colab/missions?search=...` ✅
+
+---
+
+## Session 2026-01-19 partie 2 — Refonte Colab Studio UI & API (Phase 3 UX + Phase 4 Documents)
+
+### Objectif du jour
+
+Refactoriser l'interface Colab Studio pour utiliser des onglets (Missions, Étudiants, Superviseurs, Documents) avec un bouton global '+' pour créer des éléments. Implémenter les améliorations UX demandées et la gestion complète des documents.
+
+### Phase 3 UX Corrections (terminées ✅)
+
+#### 1) Simplification CreateMissionModal
+- **Suppression champ Code**: Le champ `code*` a été retiré de l'UI côté utilisateur
+- **Suppression superviseur**: Le dropdown superviseur a été retiré du modal de création
+- **Auto-génération code**: Le code est maintenant généré automatiquement côté backend lors de la soumission
+- **Validation bouton**: Le bouton "Créer" ne dépend plus de `form.code` mais seulement du titre
+
+#### 2) MissionDetailModal implémenté
+- **Composant complet**: Modal détaillé pour afficher les informations complètes d'une mission
+- **Trigger au clic**: Cliquer sur une mission ouvre maintenant ce modal au lieu de naviguer
+- **Actions incluses**: 
+  - Mise à jour du statut de mission
+  - Bouton "Documents" pour basculer vers l'onglet Documents avec filtre mission pré-rempli
+- **Intégration**: Le modal est branché dans `ColabPage.tsx` avec états `selectedMissionId` et `showMissionDetailModal`
+
+#### 3) UX Étudiants/Superviseurs
+- **UpdateStudentModal/UpdateSupervisorModal**: Modification des champs email/prénom/nom possible
+- **Reset password**: Intégration avec `usersApi.resetPassword()` dans les modales de modification
+- **Badges Actif/Inactif**: Affichage visuel de l'état avec couleurs appropriées
+- **Toggle Désactiver/Réactiver**: Boutons dynamiques selon l'état actuel
+- **Backend alignment**: `UpdateStudentRequest` et `UpdateSupervisorRequest` alignés avec le backend
+
+#### 4) UX Création comptes
+- **Mot de passe temporaire**: Affichage après création avec bouton "Copier"
+- **Actions post-création**: 
+  - "Fermer" (reset + close)
+  - "Ajouter un autre" (reset sans fermer)
+- **Auto-refresh**: La liste se rafraîchit automatiquement après création
+
+#### 5) Backend fixes critiques
+- **SupervisorSummary**: Ajout du champ `is_active` pour supporter la réactivation
+- **list_supervisors**: Modifié pour inclure les superviseurs inactifs et retourner `is_active`
+- **get_mission**: Correction pour inclure `is_active` dans la construction du superviseur
+
+### Phase 4 Documents (terminée ✅)
+
+#### Backend Rust
+- **Nouveaux handlers**:
+  - `list_documents`: GET /colab/documents avec filtres mission_id, sondage_id, document_type
+  - `upload_document`: POST /colab/documents (multipart) avec stockage fichiers
+  - `download_document`: GET /colab/documents/:id/download
+  - `delete_document`: DELETE /colab/documents/:id (soft delete)
+- **Stockage fichiers**: `./data/colab_documents` avec UUID préfixé
+- **Types ajoutés**: `ColabDocument` et `ColabDocumentsListResponse`
+- **Routes enregistrées**: Dans `colab_routes()` avec les 4 endpoints
+
+#### Frontend React
+- **documentsApi**: Client API complet dans `colab-api.ts` (lignes 418-492)
+  - `list(params)` avec filtres
+  - `upload(input)` multipart FormData
+  - `download(documentId)` retourne Blob
+  - `delete(documentId)` soft delete
+- **UploadDocumentModal**: Modal complet pour l'upload (lignes 218-353)
+- **Onglet Documents**: Interface complète (lignes 2250-2381)
+  - Liste avec tableau (titre, type, fichier, date, actions)
+  - Filtres mission_id (texte UUID) et type (dropdown)
+  - Actions Télécharger/Supprimer pour chaque document
+  - Intégration avec MissionDetailModal via `onGoToDocuments`
+
+#### Intégrations UX
+- **Navigation**: Bouton "Documents" dans MissionDetailModal bascule vers onglet Documents
+- **Filtre automatique**: `setDocumentsMissionId(missionId)` pré-remplit le filtre mission
+- **Refresh automatique**: `loadData()` appelé après upload/delete
+
+### Fichiers modifiés
+- `atlas/ui/src/services/colab-api.ts`: Ajout documentsApi + types (+75 lignes)
+- `atlas/ui/src/pages/ColabPage.tsx`: Ajout MissionDetailModal, UploadDocumentModal, onglet Documents (+400 lignes)
+- `atlas/services/api-geo/src/colab/routes.rs`: Ajout handlers documents (+280 lignes)
+- `atlas/services/api-geo/src/colab/types.rs`: Ajout types documents (+25 lignes)
+
+### Build status
+- ✅ Frontend: `npm run build` (warnings chunk size mais OK)
+- ✅ Backend: `cargo build` (warnings unused functions mais OK)
+
+### Prochaine étape
+- **Smoke test manuel** de toutes les fonctionnalités (missions, étudiants, superviseurs, documents)

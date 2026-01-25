@@ -4,16 +4,20 @@ use axum::{
     routing::{delete, get, patch, post},
     Json, Router,
 };
+use axum::http::header;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tower_http::set_header::SetResponseHeaderLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod audit;
 pub mod auth;
-mod cells_kpi;
-pub mod colab;
+mod routes;
+mod colab;
+mod export;
 mod cells_labs;
+mod cells_kpi;
 mod config;
 mod db_manager;
 mod events;
@@ -33,7 +37,6 @@ mod neighbors;
 mod observability;
 mod rbac;
 pub mod roles;
-mod routes;
 mod sondages;
 mod sondages_geocode;
 mod sql_sanitizer;
@@ -217,6 +220,9 @@ async fn main() -> anyhow::Result<()> {
         // Audit log endpoints
         .route("/audit", get(audit::list_audit_logs))
         .route("/audit/export/csv", get(audit::export_audit_csv))
+        // Orchestrateur export (web|hq)
+        .route("/export", post(exports::create_export))
+        .route("/export/jobs/:id", get(exports::get_export_job))
         // Export endpoints
         .route("/exports/geopackage", get(exports::export_geopackage))
         .route("/exports/pdf", get(exports::export_pdf))
@@ -432,7 +438,8 @@ async fn main() -> anyhow::Result<()> {
         // ============================================================================
         .merge(
             colab::routes::colab_routes()
-                .layer(middleware::from_fn_with_state(
+                .merge(export::export_routes()) // <-- Ajout des routes export
+                .route_layer(middleware::from_fn_with_state(
                     state.clone(),
                     auth::middleware::auth_middleware,
                 )),
@@ -460,6 +467,10 @@ async fn main() -> anyhow::Result<()> {
                 }))
             )
         })
+        .layer(SetResponseHeaderLayer::overriding(
+            header::CONTENT_TYPE,
+            header::HeaderValue::from_static("application/json; charset=utf-8"),
+        ))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

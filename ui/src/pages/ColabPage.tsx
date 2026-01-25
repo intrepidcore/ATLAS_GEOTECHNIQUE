@@ -3,7 +3,7 @@
  * Liste des missions terrain avec filtres et création
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
   Plus,
@@ -23,13 +23,22 @@ import {
   Pause,
   XCircle,
   BarChart3,
-  MessageCircleQuestion,
   ClipboardList,
+  Trash2,
 } from 'lucide-react';
-import ColabQAPage from './ColabQAPage';
 import {
   missionsApi,
+  studentsApi,
+  maillesApi,
   supervisorsApi,
+  communesApi,
+  regionsApi,
+  documentsApi,
+  exportsApi,
+  templatesApi,
+  notifyApi,
+  schedulesApi,
+  attributionsApi,
   MissionListItem,
   MissionFilters,
   SupervisorSummary,
@@ -41,8 +50,32 @@ import {
   getThemeLabel,
   formatDate,
   CreateMissionRequest,
+  Student,
+  CreateStudentRequest,
+  UpdateStudentRequest,
+  CreateSupervisorRequest,
+  UpdateSupervisorRequest,
+  CreateStudentResponse,
+  CreateSupervisorResponse,
+  UserSuggestItem,
+  MailleSuggestItem,
+  MissionDetail,
+  ColabDocument,
+  ExportDataSource,
+  ExportFormat,
+  ExportJobResponse,
+  ExportRequest,
+  NotifyJob,
+  ExportTemplate,
+  CreateExportTemplateRequest,
+  ExportSchedule,
+  CreateExportScheduleRequest,
+  AttributionsSummary,
+  AttributionItem,
+  AttributionNotificationHistoryItem,
 } from '../services/colab-api';
 import { tokenStorage } from '../services/auth-api';
+import { usersApi } from '../services/auth-api';
 
 // ============================================================================
 // Composants UI
@@ -53,6 +86,644 @@ const Badge: React.FC<{ className?: string; children: React.ReactNode }> = ({ cl
     {children}
   </span>
 );
+
+const CollapsibleCard: React.FC<{
+  title: string;
+  subtitle?: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+}> = ({ title, subtitle, defaultOpen = true, children }) => (
+  <details className="bg-white rounded-xl border overflow-hidden" open={defaultOpen}>
+    <summary className="cursor-pointer list-none select-none">
+      <div className="p-4 border-b flex items-center justify-between">
+        <div>
+          <h2 className="font-semibold text-gray-900">{title}</h2>
+          {subtitle && <div className="text-sm text-gray-500">{subtitle}</div>}
+        </div>
+        <div className="text-sm text-gray-500">Afficher / masquer</div>
+      </div>
+    </summary>
+    <div className="p-0">{children}</div>
+  </details>
+);
+
+function generateMissionCode(): string {
+  const now = new Date();
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const suffix = Math.random().toString(36).slice(2, 6).toUpperCase();
+  return `M-${ts}-${suffix}`;
+}
+
+const MissionDetailModal: React.FC<{
+  isOpen: boolean;
+  missionId: string | null;
+  onClose: () => void;
+  onChanged: () => void;
+  onGoToDocuments: (missionId: string) => void;
+}> = ({ isOpen, missionId, onClose, onChanged, onGoToDocuments }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mission, setMission] = useState<MissionDetail | null>(null);
+  const [status, setStatus] = useState('');
+
+  useEffect(() => {
+    if (!isOpen || !missionId) return;
+    setLoading(true);
+    setError(null);
+    setMission(null);
+    missionsApi
+      .get(missionId)
+      .then(m => {
+        setMission(m);
+        setStatus(m.status);
+      })
+      .catch(err => setError(err instanceof Error ? err.message : 'Erreur chargement mission'))
+      .finally(() => setLoading(false));
+  }, [isOpen, missionId]);
+
+  if (!isOpen || !missionId) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Détail mission</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          {mission && (
+            <>
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xs text-gray-500 font-mono">{mission.code}</div>
+                  <div className="text-xl font-semibold text-gray-900">{mission.title}</div>
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    <Badge className={getStatusColor(mission.status)}>{getStatusLabel(mission.status)}</Badge>
+                    <Badge className="bg-purple-50 text-purple-700">{getThemeLabel(mission.theme)}</Badge>
+                  </div>
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    onGoToDocuments(mission.id);
+                    onClose();
+                  }}
+                >
+                  Documents ({mission.documents_count})
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="border rounded-lg p-3">
+                  <div className="text-xs text-gray-500">Commune</div>
+                  <div className="text-sm text-gray-900">{mission.commune || '-'}</div>
+                </div>
+                <div className="border rounded-lg p-3">
+                  <div className="text-xs text-gray-500">Région</div>
+                  <div className="text-sm text-gray-900">{mission.region || '-'}</div>
+                </div>
+                <div className="border rounded-lg p-3">
+                  <div className="text-xs text-gray-500">Début</div>
+                  <div className="text-sm text-gray-900">{formatDate(mission.start_date)}</div>
+                </div>
+                <div className="border rounded-lg p-3">
+                  <div className="text-xs text-gray-500">Fin</div>
+                  <div className="text-sm text-gray-900">{formatDate(mission.end_date)}</div>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-3">
+                <div className="text-sm font-medium text-gray-900">Statut</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <div className="flex-1">
+                    <Select value={status} onChange={e => setStatus(e.target.value)} options={MISSION_STATUSES} />
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        await missionsApi.update(mission.id, { status });
+                        onChanged();
+                        const refreshed = await missionsApi.get(mission.id);
+                        setMission(refreshed);
+                      } catch (err) {
+                        setError(err instanceof Error ? err.message : 'Erreur mise à jour');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
+                    disabled={loading}
+                  >
+                    Mettre à jour
+                  </Button>
+                </div>
+              </div>
+
+              <div className="border rounded-lg p-3">
+                <div className="text-sm font-medium text-gray-900">Étudiants assignés ({mission.assigned_students.length})</div>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {mission.assigned_students.map(s => (
+                    <Badge key={s.student_id} className="bg-blue-50 text-blue-700">{s.full_name}</Badge>
+                  ))}
+                  {mission.assigned_students.length === 0 && <div className="text-sm text-gray-500">Aucun</div>}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const StudentDetailModal: React.FC<{
+  isOpen: boolean;
+  studentId: string | null;
+  onClose: () => void;
+}> = ({ isOpen, studentId, onClose }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [student, setStudent] = useState<Student | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !studentId) return;
+    setLoading(true);
+    setError(null);
+    setStudent(null);
+    studentsApi
+      .get(studentId)
+      .then(s => setStudent(s))
+      .catch(err => setError(err instanceof Error ? err.message : 'Erreur chargement étudiant'))
+      .finally(() => setLoading(false));
+  }, [isOpen, studentId]);
+
+  if (!isOpen || !studentId) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Détail étudiant</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          {student && (
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-xl font-semibold text-gray-900">{student.full_name}</div>
+                  <div className="text-sm text-gray-600 mt-1">{student.email}</div>
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    <Badge className={student.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                      {student.is_active ? 'Actif' : 'Inactif'}
+                    </Badge>
+                    <Badge className="bg-blue-50 text-blue-700">Promo: {student.promotion}</Badge>
+                    <Badge className="bg-purple-50 text-purple-700">Missions actives: {student.active_missions}</Badge>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Téléphone</div>
+                  <div className="text-sm text-gray-900">{student.telephone || '-'}</div>
+                </div>
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Âge</div>
+                  <div className="text-sm text-gray-900">{student.age ?? '-'}</div>
+                </div>
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Matricule</div>
+                  <div className="text-sm text-gray-900">{student.matricule || '-'}</div>
+                </div>
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Établissement</div>
+                  <div className="text-sm text-gray-900">{student.etablissement || '-'}</div>
+                </div>
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Filière</div>
+                  <div className="text-sm text-gray-900">{student.filiere || '-'}</div>
+                </div>
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Niveau</div>
+                  <div className="text-sm text-gray-900">{student.niveau || '-'}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const SupervisorDetailModal: React.FC<{
+  isOpen: boolean;
+  supervisorId: string | null;
+  onClose: () => void;
+}> = ({ isOpen, supervisorId, onClose }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [supervisor, setSupervisor] = useState<{
+    id: string;
+    user_id: string;
+    username: string;
+    email: string;
+    full_name: string;
+    telephone?: string | null;
+    is_active: boolean;
+    specialite?: string | null;
+    institution?: string | null;
+    titre?: string | null;
+    departement?: string | null;
+    notes?: string | null;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!isOpen || !supervisorId) return;
+    setLoading(true);
+    setError(null);
+    setSupervisor(null);
+    supervisorsApi
+      .get(supervisorId)
+      .then(s => setSupervisor(s))
+      .catch(err => setError(err instanceof Error ? err.message : 'Erreur chargement superviseur'))
+      .finally(() => setLoading(false));
+  }, [isOpen, supervisorId]);
+
+  if (!isOpen || !supervisorId) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Détail superviseur</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          {supervisor && (
+            <div className="space-y-4">
+              <div>
+                <div className="text-xl font-semibold text-gray-900">{supervisor.full_name}</div>
+                <div className="text-sm text-gray-600 mt-1">{supervisor.email}</div>
+                <div className="mt-2 flex gap-2 flex-wrap">
+                  <Badge className={supervisor.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                    {supervisor.is_active ? 'Actif' : 'Inactif'}
+                  </Badge>
+                  {supervisor.institution && <Badge className="bg-blue-50 text-blue-700">{supervisor.institution}</Badge>}
+                  {supervisor.specialite && <Badge className="bg-purple-50 text-purple-700">{supervisor.specialite}</Badge>}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Téléphone</div>
+                  <div className="text-sm text-gray-900">{supervisor.telephone || '-'}</div>
+                </div>
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Titre</div>
+                  <div className="text-sm text-gray-900">{supervisor.titre || '-'}</div>
+                </div>
+                <div className="p-3 rounded-lg border bg-gray-50">
+                  <div className="text-xs text-gray-500">Département</div>
+                  <div className="text-sm text-gray-900">{supervisor.departement || '-'}</div>
+                </div>
+                <div className="p-3 rounded-lg border bg-gray-50 md:col-span-2">
+                  <div className="text-xs text-gray-500">Notes</div>
+                  <div className="text-sm text-gray-900 whitespace-pre-wrap">{supervisor.notes || '-'}</div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const UploadDocumentModal: React.FC<{
+  isOpen: boolean;
+  missionId: string | null;
+  onClose: () => void;
+  onUploaded: () => void;
+}> = ({ isOpen, missionId, onClose, onUploaded }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [title, setTitle] = useState('');
+  const [documentType, setDocumentType] = useState('autre');
+  const [description, setDescription] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [missionIdInput, setMissionIdInput] = useState('');
+
+  const [missionQuery, setMissionQuery] = useState('');
+  const [missionSuggestions, setMissionSuggestions] = useState<MissionListItem[]>([]);
+  const [missionLoading, setMissionLoading] = useState(false);
+  const [selectedMission, setSelectedMission] = useState<MissionListItem | null>(null);
+
+  const [showInlineCreateMissionModal, setShowInlineCreateMissionModal] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setError(null);
+    setTitle('');
+    setDescription('');
+    setDocumentType('autre');
+    setFile(null);
+    setMissionIdInput(missionId || '');
+
+    setSelectedMission(null);
+    setMissionQuery('');
+    setMissionSuggestions([]);
+    setShowInlineCreateMissionModal(false);
+  }, [isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = missionQuery.trim();
+    if (!isOpen) return;
+    if (missionId) return;
+    if (q.length < 2) {
+      setMissionSuggestions([]);
+      return;
+    }
+    setMissionLoading(true);
+    missionsApi
+      .list({ search: q, per_page: 10 })
+      .then(res => {
+        if (!cancelled) setMissionSuggestions(res.missions || []);
+      })
+      .catch(() => {
+        if (!cancelled) setMissionSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMissionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [missionQuery, isOpen, missionId]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Uploader un document</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form
+          className="p-4 space-y-4"
+          onSubmit={async e => {
+            e.preventDefault();
+            const effectiveMissionId = (missionId || missionIdInput || '').trim();
+            if (!effectiveMissionId) {
+              setError('Mission requise');
+              return;
+            }
+            if (!file) {
+              setError('Fichier requis');
+              return;
+            }
+            if (!title.trim()) {
+              setError('Titre requis');
+              return;
+            }
+            setError(null);
+            setLoading(true);
+            try {
+              await documentsApi.upload({
+                mission_id: effectiveMissionId,
+                title: title.trim(),
+                document_type: documentType,
+                description: description.trim() ? description.trim() : undefined,
+                file,
+              });
+              onUploaded();
+              onClose();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : "Erreur lors de l'upload");
+            } finally {
+              setLoading(false);
+            }
+          }}
+        >
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Mission *</label>
+
+            {missionId ? (
+              <Input value={missionId} onChange={() => {}} placeholder="mission_id" className="opacity-60" />
+            ) : (
+              <div className="relative">
+                {selectedMission ? (
+                  <div className="flex items-center justify-between bg-blue-50 text-blue-700 rounded-lg px-3 py-2 text-sm">
+                    <div className="truncate">{selectedMission.title}</div>
+                    <button
+                      type="button"
+                      className="hover:text-blue-900"
+                      onClick={() => {
+                        setSelectedMission(null);
+                        setMissionIdInput('');
+                        setMissionQuery('');
+                      }}
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <Input
+                      value={missionQuery}
+                      onChange={e => setMissionQuery(e.target.value)}
+                      placeholder="Rechercher une mission..."
+                    />
+
+                    {(missionLoading || missionSuggestions.length > 0) && (
+                      <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-56 overflow-auto">
+                        {missionLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                        {!missionLoading &&
+                          missionSuggestions.map(m => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                              onClick={() => {
+                                setSelectedMission(m);
+                                setMissionIdInput(m.id);
+                                setMissionQuery('');
+                                setMissionSuggestions([]);
+                              }}
+                            >
+                              <div className="font-medium text-gray-900">{m.title}</div>
+                              <div className="text-xs text-gray-500">{m.code}</div>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+
+                    {!missionLoading && missionQuery.trim().length >= 2 && missionSuggestions.length === 0 && (
+                      <div className="mt-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            setShowInlineCreateMissionModal(true);
+                          }}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          Créer une mission: {missionQuery.trim()}
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {!selectedMission && missionIdInput && (
+                  <div className="mt-1 text-xs text-gray-500">Sélectionné: <span className="font-mono">{missionIdInput}</span></div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
+            <Input value={title} onChange={e => setTitle(e.target.value)} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+            <Select
+              value={documentType}
+              onChange={e => setDocumentType(e.target.value)}
+              options={[
+                { value: 'autre', label: 'Autre' },
+                { value: 'rapport_intermediaire', label: 'Rapport intermédiaire' },
+                { value: 'rapport_final', label: 'Rapport final' },
+                { value: 'fiche_terrain', label: 'Fiche terrain' },
+                { value: 'annexe', label: 'Annexe' },
+                { value: 'photo', label: 'Photo' },
+                { value: 'plan', label: 'Plan' },
+                { value: 'resultats_essais', label: 'Résultats essais' },
+              ]}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={e => setDescription(e.target.value)}
+              rows={3}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Fichier *</label>
+            <input
+              type="file"
+              onChange={e => setFile(e.target.files?.[0] || null)}
+              className="block w-full text-sm"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} disabled={loading}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Upload...
+                </>
+              ) : (
+                'Uploader'
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      <CreateMissionModal
+        isOpen={showInlineCreateMissionModal}
+        onClose={() => setShowInlineCreateMissionModal(false)}
+        onCreated={() => {}}
+        onCreatedMission={m => {
+          setSelectedMission(m);
+          setMissionIdInput(m.id);
+          setMissionQuery('');
+          setMissionSuggestions([]);
+          setShowInlineCreateMissionModal(false);
+        }}
+      />
+    </div>
+  );
+};
 
 const Button: React.FC<{
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
@@ -123,6 +794,417 @@ const Select: React.FC<{
   </select>
 );
 
+const UpdateStudentModal: React.FC<{
+  isOpen: boolean;
+  student: Student | null;
+  onClose: () => void;
+  onUpdated: () => void;
+}> = ({ isOpen, student, onClose, onUpdated }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<UpdateStudentRequest>({});
+  const [newPassword, setNewPassword] = useState('');
+
+  useEffect(() => {
+    if (!student) return;
+    setNewPassword('');
+    let cancelled = false;
+    (async () => {
+      try {
+        const u = await usersApi.get(student.user_id);
+        if (cancelled) return;
+        setForm({
+          email: u.email,
+          first_name: u.first_name || undefined,
+          last_name: u.last_name || undefined,
+          telephone: (u as any).telephone || undefined,
+          matricule: student.matricule || undefined,
+          promotion: student.promotion || undefined,
+          filiere: student.filiere || undefined,
+          etablissement: student.etablissement || undefined,
+          niveau: student.niveau || undefined,
+          age: (student as any).age || undefined,
+          is_active: student.is_active,
+        });
+      } catch {
+        if (cancelled) return;
+        setForm({
+          matricule: student.matricule || undefined,
+          promotion: student.promotion || undefined,
+          filiere: student.filiere || undefined,
+          etablissement: student.etablissement || undefined,
+          niveau: student.niveau || undefined,
+          age: (student as any).age || undefined,
+          is_active: student.is_active,
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [student]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!student) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      await studentsApi.update(student.id, form);
+      onUpdated();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!student) return;
+    if (!newPassword.trim()) {
+      setError('Veuillez saisir un nouveau mot de passe');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      await usersApi.resetPassword(student.user_id, newPassword.trim());
+      setNewPassword('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la réinitialisation');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen || !student) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Modifier Étudiant</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          <div className="text-sm text-gray-700">
+            <div className="font-medium">{student.full_name}</div>
+            <div className="text-gray-500">{student.email}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+              <Input value={form.first_name || ''} onChange={e => setForm({ ...form, first_name: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+              <Input value={form.last_name || ''} onChange={e => setForm({ ...form, last_name: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <Input value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value || undefined })} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <Input value={form.telephone || ''} onChange={e => setForm({ ...form, telephone: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Âge</label>
+              <Input
+                type="number"
+                value={typeof form.age === 'number' ? String(form.age) : ''}
+                onChange={e => {
+                  const v = e.target.value.trim();
+                  setForm({ ...form, age: v ? Number(v) : undefined });
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Promotion</label>
+              <Input value={form.promotion || ''} onChange={e => setForm({ ...form, promotion: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Matricule</label>
+              <Input value={form.matricule || ''} onChange={e => setForm({ ...form, matricule: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filière</label>
+              <Input value={form.filiere || ''} onChange={e => setForm({ ...form, filiere: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Établissement</label>
+              <Input value={form.etablissement || ''} onChange={e => setForm({ ...form, etablissement: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
+            <Input value={form.niveau || ''} onChange={e => setForm({ ...form, niveau: e.target.value || undefined })} />
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={!!form.is_active}
+              onChange={e => setForm({ ...form, is_active: e.target.checked })}
+            />
+            Actif
+          </label>
+
+          <div className="border rounded-lg p-3">
+            <div className="text-sm font-medium text-gray-900">Réinitialiser le mot de passe</div>
+            <div className="mt-2 flex gap-2">
+              <div className="flex-1">
+                <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" />
+              </div>
+              <Button variant="outline" onClick={handleResetPassword} disabled={loading}>
+                Reset
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} disabled={loading}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                'Enregistrer'
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const UpdateSupervisorModal: React.FC<{
+  isOpen: boolean;
+  supervisor: SupervisorSummary | null;
+  onClose: () => void;
+  onUpdated: () => void;
+}> = ({ isOpen, supervisor, onClose, onUpdated }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [form, setForm] = useState<UpdateSupervisorRequest>({});
+
+  const [newPassword, setNewPassword] = useState('');
+
+  useEffect(() => {
+    if (!supervisor) return;
+    setNewPassword('');
+    setForm({
+      email: (supervisor as any).email || undefined,
+      first_name: (supervisor as any).first_name || undefined,
+      last_name: (supervisor as any).last_name || undefined,
+      specialite: supervisor.specialite || undefined,
+      institution: supervisor.institution || undefined,
+      is_active: (supervisor as any).is_active ?? true,
+    });
+  }, [supervisor]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!supervisor) return;
+    setError(null);
+    setLoading(true);
+
+    try {
+      await supervisorsApi.update(supervisor.id, form);
+      onUpdated();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la mise à jour');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (!supervisor) return;
+    if (!newPassword.trim()) {
+      setError('Veuillez saisir un nouveau mot de passe');
+      return;
+    }
+    setError(null);
+    setLoading(true);
+    try {
+      await usersApi.resetPassword(supervisor.user_id, newPassword.trim());
+      setNewPassword('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la réinitialisation');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen || !supervisor) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Modifier Superviseur</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          <div className="text-sm text-gray-700">
+            <div className="font-medium">{supervisor.full_name}</div>
+            <div className="text-gray-500">{supervisor.username}</div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom</label>
+              <Input value={form.first_name || ''} onChange={e => setForm({ ...form, first_name: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom</label>
+              <Input value={form.last_name || ''} onChange={e => setForm({ ...form, last_name: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+            <Input value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value || undefined })} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Spécialité</label>
+              <Input value={form.specialite || ''} onChange={e => setForm({ ...form, specialite: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Institution</label>
+              <Input value={form.institution || ''} onChange={e => setForm({ ...form, institution: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={!!form.is_active}
+              onChange={e => setForm({ ...form, is_active: e.target.checked })}
+            />
+            Actif
+          </label>
+
+          <div className="border rounded-lg p-3">
+            <div className="text-sm font-medium text-gray-900">Réinitialiser le mot de passe</div>
+            <div className="mt-2 flex gap-2">
+              <div className="flex-1">
+                <Input value={newPassword} onChange={e => setNewPassword(e.target.value)} placeholder="Nouveau mot de passe" />
+              </div>
+              <Button variant="outline" onClick={handleResetPassword} disabled={loading}>
+                Reset
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} disabled={loading}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                'Enregistrer'
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const ConfirmDeactivateModal: React.FC<{
+  isOpen: boolean;
+  title: string;
+  description: string;
+  confirmLabel?: string;
+  loading?: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}> = ({ isOpen, title, description, confirmLabel = 'Désactiver', loading = false, onClose, onConfirm }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">{title}</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="p-4 text-sm text-gray-700">{description}</div>
+        <div className="p-4 pt-0 flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose} disabled={loading}>
+            Annuler
+          </Button>
+          <Button onClick={onConfirm} disabled={loading}>
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Traitement...
+              </>
+            ) : (
+              confirmLabel
+            )}
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // ============================================================================
 // Composant Stats Card
 // ============================================================================
@@ -151,7 +1233,8 @@ const StatsCard: React.FC<{
 const MissionCard: React.FC<{
   mission: MissionListItem;
   onClick: () => void;
-}> = ({ mission, onClick }) => {
+  onDelete?: () => void;
+}> = ({ mission, onClick, onDelete }) => {
   const statusIcon = {
     draft: <FileText className="w-4 h-4" />,
     planned: <Clock className="w-4 h-4" />,
@@ -171,10 +1254,25 @@ const MissionCard: React.FC<{
           <p className="text-xs font-mono text-gray-500">{mission.code}</p>
           <h3 className="font-semibold text-gray-900 mt-1 line-clamp-1">{mission.title}</h3>
         </div>
-        <Badge className={getStatusColor(mission.status)}>
-          {statusIcon}
-          <span className="ml-1">{getStatusLabel(mission.status)}</span>
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge className={getStatusColor(mission.status)}>
+            {statusIcon}
+            <span className="ml-1">{getStatusLabel(mission.status)}</span>
+          </Badge>
+          {onDelete && (
+            <button
+              type="button"
+              className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-red-600"
+              onClick={e => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              title="Supprimer"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2 text-sm text-gray-600">
@@ -219,18 +1317,175 @@ const MissionCard: React.FC<{
   );
 };
 
+const InlineCreateStudentModal: React.FC<{
+  isOpen: boolean;
+  initialQuery: string;
+  onClose: () => void;
+  onCreated: (student: UserSuggestItem) => void;
+}> = ({ isOpen, initialQuery, onClose, onCreated }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<CreateStudentResponse | null>(null);
+  const [form, setForm] = useState<CreateStudentRequest>({
+    email: '',
+    first_name: '',
+    last_name: '',
+    telephone: '',
+    promotion: '',
+    age: undefined,
+  });
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setError(null);
+    setCreated(null);
+    setForm({
+      email: '',
+      first_name: '',
+      last_name: '',
+      telephone: '',
+      promotion: '',
+      age: undefined,
+    });
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Créer un étudiant</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form
+          onSubmit={async e => {
+            e.preventDefault();
+            setError(null);
+            setCreated(null);
+            setLoading(true);
+            try {
+              const res = await studentsApi.create(form);
+              setCreated(res);
+              const label = `${form.first_name} ${form.last_name} (${form.promotion})`;
+              onCreated({ id: res.student_id, label });
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Erreur lors de la création');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          className="p-4 space-y-4"
+        >
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          {created && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+              <div className="font-medium">Compte créé</div>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <div>
+                  Mot de passe temporaire: <span className="font-mono">{created.temp_password}</span>
+                </div>
+                <Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(created.temp_password)}>
+                  Copier
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="text-xs text-gray-500">
+            Recherche initiale: <span className="font-mono">{initialQuery}</span>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <Input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+              <Input value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+              <Input value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Promotion *</label>
+            <Input value={form.promotion} onChange={e => setForm({ ...form, promotion: e.target.value })} />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} disabled={loading}>
+              Fermer
+            </Button>
+            <Button type="submit" disabled={loading || !form.email || !form.first_name || !form.last_name || !form.promotion}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Création...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Créer
+                </>
+              )}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ============================================================================
 // Modal Création Mission
 // ============================================================================
-
 const CreateMissionModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onCreated: () => void;
-  supervisors: SupervisorSummary[];
-}> = ({ isOpen, onClose, onCreated, supervisors }) => {
+  onCreatedMission?: (mission: MissionListItem) => void;
+}> = ({ isOpen, onClose, onCreated, onCreatedMission }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mailleQuery, setMailleQuery] = useState('');
+  const [mailleSuggestions, setMailleSuggestions] = useState<MailleSuggestItem[]>([]);
+  const [mailleLoading, setMailleLoading] = useState(false);
+
+  const [communeQuery, setCommuneQuery] = useState('');
+  const [communeSuggestions, setCommuneSuggestions] = useState<string[]>([]);
+  const [communeLoading, setCommuneLoading] = useState(false);
+
+  const [regionQuery, setRegionQuery] = useState('');
+  const [regionSuggestions, setRegionSuggestions] = useState<string[]>([]);
+  const [regionLoading, setRegionLoading] = useState(false);
+
+  const [studentQuery, setStudentQuery] = useState('');
+  const [studentSuggestions, setStudentSuggestions] = useState<UserSuggestItem[]>([]);
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [selectedStudents, setSelectedStudents] = useState<UserSuggestItem[]>([]);
+
+  const [showInlineCreateStudentModal, setShowInlineCreateStudentModal] = useState(false);
+
+  const [supervisorQuery, setSupervisorQuery] = useState('');
+  const [supervisorSuggestions, setSupervisorSuggestions] = useState<UserSuggestItem[]>([]);
+  const [supervisorLoading, setSupervisorLoading] = useState(false);
+  const [selectedSupervisor, setSelectedSupervisor] = useState<UserSuggestItem | null>(null);
+
   const [form, setForm] = useState<CreateMissionRequest>({
     code: '',
     title: '',
@@ -240,13 +1495,161 @@ const CreateMissionModal: React.FC<{
     description: '',
   });
 
+  useEffect(() => {
+    if (!isOpen) return;
+    setMailleQuery('');
+    setMailleSuggestions([]);
+    setCommuneQuery('');
+    setCommuneSuggestions([]);
+    setRegionQuery('');
+    setRegionSuggestions([]);
+    setStudentQuery('');
+    setStudentSuggestions([]);
+    setSelectedStudents([]);
+    setSupervisorQuery('');
+    setSupervisorSuggestions([]);
+    setSelectedSupervisor(null);
+  }, [isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = mailleQuery.trim();
+    if (!isOpen) return;
+    if (q.length < 2) {
+      setMailleSuggestions([]);
+      return;
+    }
+    setMailleLoading(true);
+    maillesApi
+      .suggest(q)
+      .then(res => {
+        if (!cancelled) setMailleSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setMailleSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setMailleLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mailleQuery, isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = studentQuery.trim();
+    if (!isOpen) return;
+    if (q.length < 2) {
+      setStudentSuggestions([]);
+      return;
+    }
+    setStudentLoading(true);
+    studentsApi
+      .suggest(q)
+      .then(res => {
+        if (!cancelled) setStudentSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setStudentSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setStudentLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [studentQuery, isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = supervisorQuery.trim();
+    if (!isOpen) return;
+    if (q.length < 2) {
+      setSupervisorSuggestions([]);
+      return;
+    }
+    setSupervisorLoading(true);
+    supervisorsApi
+      .suggest(q)
+      .then(res => {
+        if (!cancelled) setSupervisorSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setSupervisorSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setSupervisorLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [supervisorQuery, isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = communeQuery.trim();
+    if (!isOpen) return;
+    if (q.length < 2) {
+      setCommuneSuggestions([]);
+      return;
+    }
+    setCommuneLoading(true);
+    communesApi
+      .suggest(q)
+      .then(res => {
+        if (!cancelled) setCommuneSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setCommuneSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setCommuneLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [communeQuery, isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = regionQuery.trim();
+    if (!isOpen) return;
+    if (q.length < 2) {
+      setRegionSuggestions([]);
+      return;
+    }
+    setRegionLoading(true);
+    regionsApi
+      .suggest(q)
+      .then(res => {
+        if (!cancelled) setRegionSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setRegionSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setRegionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [regionQuery, isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      await missionsApi.create(form);
+      const payload: CreateMissionRequest = {
+        ...form,
+        code: generateMissionCode(),
+        supervisor_id: selectedSupervisor?.id,
+        assigned_student_ids: selectedStudents.map(s => s.id),
+      };
+      const created = await missionsApi.create(payload);
+      onCreatedMission?.(created);
       onCreated();
       onClose();
       setForm({ code: '', title: '', theme: 'reconnaissance', commune: '', region: '', description: '' });
@@ -279,12 +1682,42 @@ const CreateMissionModal: React.FC<{
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Code *</label>
-            <Input
-              placeholder="M-2025-LOME-001"
-              value={form.code}
-              onChange={e => setForm({ ...form, code: e.target.value })}
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Maille (autocomplétion)</label>
+            <div className="relative">
+              <Input
+                placeholder="TG-0..."
+                value={mailleQuery}
+                onChange={e => setMailleQuery(e.target.value)}
+              />
+              {(mailleLoading || mailleSuggestions.length > 0) && (
+                <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                  {mailleLoading && (
+                    <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>
+                  )}
+                  {!mailleLoading &&
+                    mailleSuggestions.map(m => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        onClick={() => {
+                          setForm({ ...form, maille_id: m.id, zone_label: m.code });
+                          setMailleQuery(m.code);
+                          setMailleSuggestions([]);
+                        }}
+                      >
+                        <div className="font-medium text-gray-900">{m.code}</div>
+                        <div className="text-xs text-gray-500">
+                          {[m.adm1_name, m.adm2_name, m.adm3_name].filter(Boolean).join(' / ') || '—'}
+                        </div>
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            {form.maille_id && (
+              <div className="mt-1 text-xs text-gray-500">Sélectionné: <span className="font-mono">{form.zone_label || form.maille_id}</span></div>
+            )}
           </div>
 
           <div>
@@ -305,33 +1738,182 @@ const CreateMissionModal: React.FC<{
             />
           </div>
 
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Superviseur (autocomplétion)</label>
+            {selectedSupervisor && (
+              <div className="mb-2 flex items-center justify-between bg-blue-50 text-blue-700 rounded-lg px-3 py-2 text-sm">
+                <div>{selectedSupervisor.label}</div>
+                <button
+                  type="button"
+                  className="hover:text-blue-900"
+                  onClick={() => {
+                    setSelectedSupervisor(null);
+                    setSupervisorQuery('');
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+            {!selectedSupervisor && (
+              <div className="relative">
+                <Input
+                  placeholder="Rechercher un superviseur..."
+                  value={supervisorQuery}
+                  onChange={e => setSupervisorQuery(e.target.value)}
+                />
+                {(supervisorLoading || supervisorSuggestions.length > 0) && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                    {supervisorLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                    {!supervisorLoading &&
+                      supervisorSuggestions.map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          onClick={() => {
+                            setSelectedSupervisor(s);
+                            setSupervisorQuery('');
+                            setSupervisorSuggestions([]);
+                          }}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Commune</label>
-              <Input
-                placeholder="Lomé"
-                value={form.commune || ''}
-                onChange={e => setForm({ ...form, commune: e.target.value })}
-              />
+              <div className="relative">
+                <Input
+                  placeholder="Lomé"
+                  value={communeQuery}
+                  onChange={e => {
+                    setCommuneQuery(e.target.value);
+                    setForm({ ...form, commune: e.target.value });
+                  }}
+                />
+                {(communeLoading || communeSuggestions.length > 0) && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                    {communeLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                    {!communeLoading &&
+                      communeSuggestions.map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          onClick={() => {
+                            setForm({ ...form, commune: c });
+                            setCommuneQuery(c);
+                            setCommuneSuggestions([]);
+                          }}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Région</label>
-              <Input
-                placeholder="Maritime"
-                value={form.region || ''}
-                onChange={e => setForm({ ...form, region: e.target.value })}
-              />
+              <div className="relative">
+                <Input
+                  placeholder="Maritime"
+                  value={regionQuery}
+                  onChange={e => {
+                    setRegionQuery(e.target.value);
+                    setForm({ ...form, region: e.target.value });
+                  }}
+                />
+                {(regionLoading || regionSuggestions.length > 0) && (
+                  <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                    {regionLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                    {!regionLoading &&
+                      regionSuggestions.map(r => (
+                        <button
+                          key={r}
+                          type="button"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          onClick={() => {
+                            setForm({ ...form, region: r });
+                            setRegionQuery(r);
+                            setRegionSuggestions([]);
+                          }}
+                        >
+                          {r}
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Superviseur</label>
-            <Select
-              value={form.supervisor_id || ''}
-              onChange={e => setForm({ ...form, supervisor_id: e.target.value || undefined })}
-              options={supervisors.map(s => ({ value: s.id, label: `${s.full_name} - ${s.specialite || 'N/A'}` }))}
-              placeholder="Sélectionner un superviseur"
-            />
+            <label className="block text-sm font-medium text-gray-700 mb-1">Étudiants assignés (multi-select)</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {selectedStudents.map(s => (
+                <span key={s.id} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
+                  {s.label}
+                  <button
+                    type="button"
+                    className="hover:text-blue-900"
+                    onClick={() => setSelectedStudents(prev => prev.filter(x => x.id !== s.id))}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="relative">
+              <Input
+                placeholder="Rechercher un étudiant..."
+                value={studentQuery}
+                onChange={e => setStudentQuery(e.target.value)}
+              />
+              {(studentLoading || studentSuggestions.length > 0) && (
+                <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                  {studentLoading && (
+                    <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>
+                  )}
+                  {!studentLoading &&
+                    studentSuggestions.map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        onClick={() => {
+                          setSelectedStudents(prev => (prev.some(x => x.id === s.id) ? prev : [...prev, s]));
+                          setStudentQuery('');
+                          setStudentSuggestions([]);
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+            {!studentLoading && studentQuery.trim().length >= 2 && studentSuggestions.length === 0 && (
+              <div className="mt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setShowInlineCreateStudentModal(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Créer un étudiant: {studentQuery.trim()}
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -368,7 +1950,7 @@ const CreateMissionModal: React.FC<{
             <Button variant="outline" onClick={onClose} disabled={loading}>
               Annuler
             </Button>
-            <Button type="submit" disabled={loading || !form.code || !form.title}>
+            <Button type="submit" disabled={loading || !form.title}>
               {loading ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -384,11 +1966,394 @@ const CreateMissionModal: React.FC<{
           </div>
         </form>
       </div>
+
+      <InlineCreateStudentModal
+        isOpen={showInlineCreateStudentModal}
+        initialQuery={studentQuery.trim()}
+        onClose={() => setShowInlineCreateStudentModal(false)}
+        onCreated={student => {
+          setSelectedStudents(prev => (prev.some(x => x.id === student.id) ? prev : [...prev, student]));
+          setStudentQuery('');
+          setStudentSuggestions([]);
+          setShowInlineCreateStudentModal(false);
+        }}
+      />
     </div>
   );
 };
 
 // ============================================================================
+// Modal Création Étudiant
+// ============================================================================
+
+const CreateStudentModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+  initialForm?: Partial<CreateStudentRequest>;
+  onCreatedStudent?: (student: UserSuggestItem) => void;
+}> = ({ isOpen, onClose, onCreated }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<CreateStudentResponse | null>(null);
+  const [form, setForm] = useState<CreateStudentRequest>({
+    email: '',
+    first_name: '',
+    last_name: '',
+    promotion: '',
+  });
+
+  const resetAll = () => {
+    setError(null);
+    setCreated(null);
+    setForm({
+      email: '',
+      first_name: '',
+      last_name: '',
+      promotion: '',
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setCreated(null);
+    setLoading(true);
+
+    try {
+      const res = await studentsApi.create(form);
+      setCreated(res);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la création');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Nouvel Étudiant</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          {created && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+              <div className="font-medium">Compte créé</div>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <div>
+                  Mot de passe temporaire: <span className="font-mono">{created.temp_password}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigator.clipboard.writeText(created.temp_password)}
+                >
+                  Copier
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <Input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+              <Input value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+              <Input value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Promotion *</label>
+              <Input value={form.promotion} onChange={e => setForm({ ...form, promotion: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Matricule</label>
+              <Input value={form.matricule || ''} onChange={e => setForm({ ...form, matricule: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <Input value={form.telephone || ''} onChange={e => setForm({ ...form, telephone: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Âge</label>
+              <Input
+                type="number"
+                value={typeof form.age === 'number' ? String(form.age) : ''}
+                onChange={e => {
+                  const v = e.target.value.trim();
+                  setForm({ ...form, age: v ? Number(v) : undefined });
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Filière</label>
+              <Input value={form.filiere || ''} onChange={e => setForm({ ...form, filiere: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Établissement</label>
+              <Input value={form.etablissement || ''} onChange={e => setForm({ ...form, etablissement: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
+            <Input value={form.niveau || ''} onChange={e => setForm({ ...form, niveau: e.target.value || undefined })} />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            {created ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    resetAll();
+                    onClose();
+                  }}
+                >
+                  Fermer
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    resetAll();
+                  }}
+                >
+                  Ajouter un autre
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={onClose} disabled={loading}>
+                  Fermer
+                </Button>
+                <Button type="submit" disabled={loading || !form.email || !form.first_name || !form.last_name || !form.promotion}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Créer
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+const CreateSupervisorModal: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onCreated: () => void;
+}> = ({ isOpen, onClose, onCreated }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [created, setCreated] = useState<CreateSupervisorResponse | null>(null);
+  const [form, setForm] = useState<CreateSupervisorRequest>({
+    email: '',
+    first_name: '',
+    last_name: '',
+  });
+
+  const resetAll = () => {
+    setError(null);
+    setCreated(null);
+    setForm({
+      email: '',
+      first_name: '',
+      last_name: '',
+    });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setCreated(null);
+    setLoading(true);
+
+    try {
+      const res = await supervisorsApi.create(form);
+      setCreated(res);
+      onCreated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la création');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Nouveau Superviseur</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          {created && (
+            <div className="p-3 bg-green-50 border border-green-200 rounded-lg text-green-800 text-sm">
+              <div className="font-medium">Compte créé</div>
+              <div className="mt-1 flex items-center justify-between gap-2">
+                <div>
+                  Mot de passe temporaire: <span className="font-mono">{created.temp_password}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigator.clipboard.writeText(created.temp_password)}
+                >
+                  Copier
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+            <Input value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Prénom *</label>
+              <Input value={form.first_name} onChange={e => setForm({ ...form, first_name: e.target.value })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nom *</label>
+              <Input value={form.last_name} onChange={e => setForm({ ...form, last_name: e.target.value })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Spécialité</label>
+              <Input value={form.specialite || ''} onChange={e => setForm({ ...form, specialite: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Institution</label>
+              <Input value={form.institution || ''} onChange={e => setForm({ ...form, institution: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Département</label>
+              <Input value={form.departement || ''} onChange={e => setForm({ ...form, departement: e.target.value || undefined })} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+              <Input value={form.telephone || ''} onChange={e => setForm({ ...form, telephone: e.target.value || undefined })} />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+            <textarea
+              value={form.notes || ''}
+              onChange={e => setForm({ ...form, notes: e.target.value || undefined })}
+              rows={3}
+              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            {created ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    resetAll();
+                    onClose();
+                  }}
+                >
+                  Fermer
+                </Button>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    resetAll();
+                  }}
+                >
+                  Ajouter un autre
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button variant="outline" onClick={onClose} disabled={loading}>
+                  Fermer
+                </Button>
+                <Button type="submit" disabled={loading || !form.email || !form.first_name || !form.last_name}>
+                  {loading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Création...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Créer
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 // Page Principale
 // ============================================================================
 
@@ -396,6 +2361,7 @@ const ColabPage: React.FC = () => {
   const [missions, setMissions] = useState<MissionListItem[]>([]);
   const [stats, setStats] = useState<ColabStats | null>(null);
   const [supervisors, setSupervisors] = useState<SupervisorSummary[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
@@ -409,7 +2375,108 @@ const ColabPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'missions' | 'qa'>('missions');
+  const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
+  const [showCreateSupervisorModal, setShowCreateSupervisorModal] = useState(false);
+  const [showActionMenu, setShowActionMenu] = useState(false);
+  const [activeTab, setActiveTab] = useState<'missions' | 'students' | 'supervisors' | 'documents' | 'exports' | 'attributions'>('missions');
+
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [selectedSupervisor, setSelectedSupervisor] = useState<SupervisorSummary | null>(null);
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [selectedSupervisorId, setSelectedSupervisorId] = useState<string | null>(null);
+  const [showStudentDetailModal, setShowStudentDetailModal] = useState(false);
+  const [showSupervisorDetailModal, setShowSupervisorDetailModal] = useState(false);
+  const [showUpdateStudentModal, setShowUpdateStudentModal] = useState(false);
+  const [showUpdateSupervisorModal, setShowUpdateSupervisorModal] = useState(false);
+  const [showDeactivateStudentModal, setShowDeactivateStudentModal] = useState(false);
+  const [showDeactivateSupervisorModal, setShowDeactivateSupervisorModal] = useState(false);
+  const [showDeleteStudentModal, setShowDeleteStudentModal] = useState(false);
+  const [showDeleteSupervisorModal, setShowDeleteSupervisorModal] = useState(false);
+  const [showDeleteMissionModal, setShowDeleteMissionModal] = useState(false);
+  const [selectedMissionToDelete, setSelectedMissionToDelete] = useState<MissionListItem | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
+  const [showMissionDetailModal, setShowMissionDetailModal] = useState(false);
+
+  const [documents, setDocuments] = useState<ColabDocument[]>([]);
+  const [documentsLoading, setDocumentsLoading] = useState(false);
+  const [documentsError, setDocumentsError] = useState<string | null>(null);
+  const [documentsMissionId, setDocumentsMissionId] = useState<string | null>(null);
+  const [documentsType, setDocumentsType] = useState<string>('');
+  const [showUploadDocumentModal, setShowUploadDocumentModal] = useState(false);
+
+  const [studentsSearch, setStudentsSearch] = useState('');
+  const [studentsActiveFilter, setStudentsActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [studentsSort, setStudentsSort] = useState<'promotion_desc' | 'name_asc' | 'name_desc' | 'missions_desc'>('promotion_desc');
+
+  const [supervisorsSearch, setSupervisorsSearch] = useState('');
+  const [supervisorsActiveFilter, setSupervisorsActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
+  const [supervisorsSort, setSupervisorsSort] = useState<'name_asc' | 'name_desc' | 'institution_asc'>('name_asc');
+
+  const [documentsSearch, setDocumentsSearch] = useState('');
+  const [documentsSort, setDocumentsSort] = useState<'date_desc' | 'date_asc' | 'title_asc'>('date_desc');
+
+  const [exportSource, setExportSource] = useState<ExportDataSource>('missions');
+  const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
+  const [exportTemplateId, setExportTemplateId] = useState<string | null>(null);
+  const [exportRunningJobId, setExportRunningJobId] = useState<string | null>(null);
+  const [exportJobs, setExportJobs] = useState<ExportJobResponse[]>([]);
+  const [exportJobsLoading, setExportJobsLoading] = useState(false);
+  const [exportJobsError, setExportJobsError] = useState<string | null>(null);
+
+  const [notifyJobs, setNotifyJobs] = useState<NotifyJob[]>([]);
+  const [notifyJobsLoading, setNotifyJobsLoading] = useState(false);
+  const [notifyJobsError, setNotifyJobsError] = useState<string | null>(null);
+
+  const [exportTemplates, setExportTemplates] = useState<ExportTemplate[]>([]);
+  const [exportTemplatesLoading, setExportTemplatesLoading] = useState(false);
+  const [exportTemplatesError, setExportTemplatesError] = useState<string | null>(null);
+  const [createTemplateLoading, setCreateTemplateLoading] = useState(false);
+  const [createTemplateError, setCreateTemplateError] = useState<string | null>(null);
+  const [newTemplate, setNewTemplate] = useState<CreateExportTemplateRequest>({
+    name: '',
+    description: '',
+    source: 'missions',
+    format: 'csv',
+    template_sql: '',
+    template_handlebars: '',
+  });
+
+  const [exportSchedules, setExportSchedules] = useState<ExportSchedule[]>([]);
+  const [exportSchedulesLoading, setExportSchedulesLoading] = useState(false);
+  const [exportSchedulesError, setExportSchedulesError] = useState<string | null>(null);
+  const [createScheduleLoading, setCreateScheduleLoading] = useState(false);
+  const [createScheduleError, setCreateScheduleError] = useState<string | null>(null);
+  const [newSchedule, setNewSchedule] = useState<CreateExportScheduleRequest>({
+    name: '',
+    description: '',
+    source: 'missions',
+    format: 'csv',
+    template_id: null,
+    cron: '0 8 * * *',
+    timezone: 'UTC',
+    destinations: [],
+    filters: {},
+  });
+
+  const [attrSummary, setAttrSummary] = useState<AttributionsSummary | null>(null);
+  const [attrItems, setAttrItems] = useState<AttributionItem[]>([]);
+  const [attrLoading, setAttrLoading] = useState(false);
+  const [attrError, setAttrError] = useState<string | null>(null);
+  const [attrStudentFilter, setAttrStudentFilter] = useState('');
+  const [attrNotifStatusFilter, setAttrNotifStatusFilter] = useState<string>('');
+  const [attrSelected, setAttrSelected] = useState<Record<string, boolean>>({});
+  const [attrConfirmOpen, setAttrConfirmOpen] = useState(false);
+  const [attrIncludeBbox, setAttrIncludeBbox] = useState(true);
+  const [attrIncludeInstructions, setAttrIncludeInstructions] = useState(true);
+  const [attrEnqueueLoading, setAttrEnqueueLoading] = useState(false);
+  const [attrEnqueueError, setAttrEnqueueError] = useState<string | null>(null);
+  const [attrHistory, setAttrHistory] = useState<AttributionNotificationHistoryItem[]>([]);
+  const [attrHistoryLoading, setAttrHistoryLoading] = useState(false);
+  const [attrHistoryError, setAttrHistoryError] = useState<string | null>(null);
+
+  const effectiveTotal = total || (activeTab === 'documents' ? documents.length : 0);
 
   // Vérifier l'authentification
   const isAuthenticated = !!tokenStorage.getAccessToken();
@@ -425,23 +2492,127 @@ const ColabPage: React.FC = () => {
     setError(null);
 
     try {
-      const [missionsRes, statsRes, supervisorsRes] = await Promise.all([
-        missionsApi.list(filters),
-        missionsApi.getStats(),
-        supervisorsApi.list(),
-      ]);
+      if (activeTab === 'missions') {
+        const [missionsRes, statsRes, supervisorsRes] = await Promise.all([
+          missionsApi.list(filters),
+          missionsApi.getStats(),
+          supervisorsApi.list(),
+        ]);
 
-      setMissions(missionsRes.missions);
-      setTotalPages(missionsRes.total_pages);
-      setTotal(missionsRes.total);
-      setStats(statsRes);
-      setSupervisors(supervisorsRes);
+        setMissions(missionsRes.missions);
+        setTotalPages(missionsRes.total_pages);
+        setTotal(missionsRes.total);
+        setStats(statsRes);
+        setSupervisors(supervisorsRes);
+      } else if (activeTab === 'students') {
+        const [studentsRes, statsRes] = await Promise.all([
+          studentsApi.list(),
+          missionsApi.getStats(),
+        ]);
+        setStudents(studentsRes.students);
+        setTotal(studentsRes.total);
+        setStats(statsRes);
+      } else if (activeTab === 'supervisors') {
+        const [supervisorsRes, statsRes] = await Promise.all([
+          supervisorsApi.list(),
+          missionsApi.getStats(),
+        ]);
+        setSupervisors(supervisorsRes);
+        setTotal(supervisorsRes.length);
+        setStats(statsRes);
+      } else if (activeTab === 'documents') {
+        const [statsRes, docsRes] = await Promise.all([
+          missionsApi.getStats(),
+          documentsApi.list({
+            mission_id: documentsMissionId || undefined,
+            document_type: documentsType || undefined,
+          }),
+        ]);
+        setStats(statsRes);
+        setDocuments(docsRes.documents);
+        setTotal(docsRes.total);
+      } else if (activeTab === 'exports') {
+        const [statsRes, historyRes, schedulesRes] = await Promise.all([
+          missionsApi.getStats(),
+          exportsApi.history(),
+          schedulesApi.list({ include_inactive: true, limit: 200 }).catch(() => ({ schedules: [], total: 0 })),
+        ]);
+        setStats(statsRes);
+        setExportJobs(historyRes);
+        setExportSchedules(schedulesRes.schedules || []);
+
+        try {
+          setExportTemplatesError(null);
+          const templatesRes = await templatesApi.list({ include_inactive: true });
+          setExportTemplates(templatesRes.templates);
+        } catch (e) {
+          setExportTemplatesError(e instanceof Error ? e.message : 'Erreur chargement templates');
+        }
+      } else if (activeTab === 'attributions') {
+        setAttrLoading(true);
+        setAttrError(null);
+        try {
+          const [summaryRes, listRes, historyRes, notifyRes] = await Promise.all([
+            attributionsApi.summary(),
+            attributionsApi.list({
+              student: attrStudentFilter.trim() || undefined,
+              notif_status: attrNotifStatusFilter || undefined,
+              limit: 500,
+            }),
+            attributionsApi.history().catch(() => ({ items: [], total: 0 })),
+            notifyApi.list(50).catch(() => ({ jobs: [] })),
+          ]);
+          setAttrSummary(summaryRes);
+          setAttrItems(listRes.items);
+          setAttrHistory(historyRes.items || []);
+          setNotifyJobs(notifyRes.jobs || []);
+        } catch (e) {
+          setAttrError(e instanceof Error ? e.message : 'Erreur chargement');
+        } finally {
+          setAttrLoading(false);
+        }
+      } else {
+        const statsRes = await missionsApi.getStats();
+        setStats(statsRes);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors du chargement');
     } finally {
       setLoading(false);
     }
-  }, [filters, isAuthenticated]);
+  }, [filters, isAuthenticated, activeTab, documentsMissionId, documentsType, attrStudentFilter, attrNotifStatusFilter]);
+
+  useEffect(() => {
+    if (activeTab !== 'exports' || !exportRunningJobId) return;
+    let cancelled = false;
+
+    const tick = async () => {
+      try {
+        const job = await exportsApi.getJob(exportRunningJobId);
+        if (cancelled) return;
+        setExportJobs(prev => {
+          const next = [...prev];
+          const idx = next.findIndex(j => j.job_id === job.job_id);
+          if (idx >= 0) next[idx] = job;
+          else next.unshift(job);
+          return next;
+        });
+
+        if (job.status === 'completed' || job.status === 'failed') {
+          setExportRunningJobId(null);
+        }
+      } catch {
+        if (cancelled) return;
+      }
+    };
+
+    tick();
+    const id = window.setInterval(tick, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, [activeTab, exportRunningJobId]);
 
   useEffect(() => {
     loadData();
@@ -459,6 +2630,80 @@ const ColabPage: React.FC = () => {
     setFilters({ page: 1, per_page: 12 });
     setSearchInput('');
   };
+
+  const filteredStudents = useMemo(() => {
+    const q = studentsSearch.trim().toLowerCase();
+    let items = students;
+
+    if (studentsActiveFilter !== 'all') {
+      items = items.filter(s => (studentsActiveFilter === 'active' ? s.is_active : !s.is_active));
+    }
+    if (q) {
+      items = items.filter(s => {
+        const name = (s.full_name || '').toLowerCase();
+        const email = (s.email || '').toLowerCase();
+        const tel = (s.telephone || '').toLowerCase();
+        const promo = (s.promotion || '').toLowerCase();
+        return name.includes(q) || email.includes(q) || tel.includes(q) || promo.includes(q);
+      });
+    }
+
+    const sorted = [...items];
+    sorted.sort((a, b) => {
+      if (studentsSort === 'name_asc') return (a.full_name || '').localeCompare(b.full_name || '');
+      if (studentsSort === 'name_desc') return (b.full_name || '').localeCompare(a.full_name || '');
+      if (studentsSort === 'missions_desc') return (b.active_missions || 0) - (a.active_missions || 0);
+      return (b.promotion || '').localeCompare(a.promotion || '');
+    });
+    return sorted;
+  }, [students, studentsSearch, studentsActiveFilter, studentsSort]);
+
+  const filteredSupervisors = useMemo(() => {
+    const q = supervisorsSearch.trim().toLowerCase();
+    let items = supervisors;
+
+    if (supervisorsActiveFilter !== 'all') {
+      items = items.filter(s => (supervisorsActiveFilter === 'active' ? s.is_active : !s.is_active));
+    }
+    if (q) {
+      items = items.filter(s => {
+        const name = (s.full_name || '').toLowerCase();
+        const institution = (s.institution || '').toLowerCase();
+        const spec = (s.specialite || '').toLowerCase();
+        return name.includes(q) || institution.includes(q) || spec.includes(q);
+      });
+    }
+
+    const sorted = [...items];
+    sorted.sort((a, b) => {
+      if (supervisorsSort === 'name_desc') return (b.full_name || '').localeCompare(a.full_name || '');
+      if (supervisorsSort === 'institution_asc') return (a.institution || '').localeCompare(b.institution || '');
+      return (a.full_name || '').localeCompare(b.full_name || '');
+    });
+    return sorted;
+  }, [supervisors, supervisorsSearch, supervisorsActiveFilter, supervisorsSort]);
+
+  const filteredDocuments = useMemo(() => {
+    const q = documentsSearch.trim().toLowerCase();
+    let items = documents;
+
+    if (q) {
+      items = items.filter(d => {
+        const title = (d.title || '').toLowerCase();
+        const file = (d.file_name || '').toLowerCase();
+        const type = (d.document_type || '').toLowerCase();
+        return title.includes(q) || file.includes(q) || type.includes(q);
+      });
+    }
+
+    const sorted = [...items];
+    sorted.sort((a, b) => {
+      if (documentsSort === 'title_asc') return (a.title || '').localeCompare(b.title || '');
+      if (documentsSort === 'date_asc') return String(a.uploaded_at || '').localeCompare(String(b.uploaded_at || ''));
+      return String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || ''));
+    });
+    return sorted;
+  }, [documents, documentsSearch, documentsSort]);
 
   if (!isAuthenticated) {
     return (
@@ -483,18 +2728,65 @@ const ColabPage: React.FC = () => {
               <p className="text-sm text-gray-500 mt-1">Gestion des missions terrain & partage de connaissances</p>
             </div>
             <div className="flex items-center gap-3">
-              {activeTab === 'missions' && (
-                <>
-                  <Button variant="outline" onClick={loadData} disabled={loading}>
-                    <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                    Actualiser
-                  </Button>
-                  <Button onClick={() => setShowCreateModal(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Nouvelle mission
-                  </Button>
-                </>
-              )}
+              <Button variant="outline" onClick={loadData} disabled={loading}>
+                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+                Actualiser
+              </Button>
+
+              <div className="relative">
+                <Button onClick={() => setShowActionMenu(v => !v)}>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Nouveau
+                </Button>
+
+                {showActionMenu && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white border rounded-xl shadow-lg overflow-hidden z-20">
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => {
+                        setShowActionMenu(false);
+                        setShowCreateModal(true);
+                      }}
+                    >
+                      Nouvelle mission
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => {
+                        setShowActionMenu(false);
+                        setShowCreateStudentModal(true);
+                      }}
+                    >
+                      Nouvel étudiant
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => {
+                        setShowActionMenu(false);
+                        setShowCreateSupervisorModal(true);
+                      }}
+                    >
+                      Nouveau superviseur
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => {
+                        setShowActionMenu(false);
+                        setActiveTab('documents');
+                        setShowUploadDocumentModal(true);
+                      }}
+                    >
+                      Uploader un document
+                    </button>
+                    <button
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 text-gray-400 cursor-not-allowed"
+                      disabled
+                    >
+                      Nouveau document (bientôt)
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           
@@ -512,15 +2804,59 @@ const ColabPage: React.FC = () => {
               Missions
             </button>
             <button
-              onClick={() => setActiveTab('qa')}
+              onClick={() => setActiveTab('students')}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
-                activeTab === 'qa'
+                activeTab === 'students'
                   ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
                   : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
               }`}
             >
-              <MessageCircleQuestion className="w-4 h-4" />
-              Questions & Réponses
+              <Users className="w-4 h-4" />
+              Étudiants
+            </button>
+            <button
+              onClick={() => setActiveTab('supervisors')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                activeTab === 'supervisors'
+                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Superviseurs
+            </button>
+            <button
+              onClick={() => setActiveTab('documents')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                activeTab === 'documents'
+                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Documents
+            </button>
+            <button
+              onClick={() => setActiveTab('exports')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                activeTab === 'exports'
+                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <FileText className="w-4 h-4" />
+              Exports
+            </button>
+            <button
+              onClick={() => setActiveTab('attributions')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                activeTab === 'attributions'
+                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              Attributions & Notifications
             </button>
           </div>
         </div>
@@ -528,9 +2864,7 @@ const ColabPage: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Contenu selon l'onglet actif */}
-        {activeTab === 'qa' ? (
-          <ColabQAPage />
-        ) : (
+        {activeTab === 'missions' && (
           <>
             {/* Stats */}
             {stats && (
@@ -660,8 +2994,12 @@ const ColabPage: React.FC = () => {
                       key={mission.id}
                       mission={mission}
                       onClick={() => {
-                        // TODO: Ouvrir le détail de la mission
-                        console.log('Mission clicked:', mission.id);
+                        setSelectedMissionId(mission.id);
+                        setShowMissionDetailModal(true);
+                      }}
+                      onDelete={() => {
+                        setSelectedMissionToDelete(mission);
+                        setShowDeleteMissionModal(true);
                       }}
                     />
                   ))}
@@ -715,6 +3053,1608 @@ const ColabPage: React.FC = () => {
             )}
           </>
         )}
+
+        {activeTab === 'exports' && (
+          <>
+            {stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatsCard
+                  title="Missions"
+                  value={stats.total_missions}
+                  icon={<BarChart3 className="w-6 h-6" />}
+                  color="bg-blue-50 text-blue-900"
+                />
+                <StatsCard
+                  title="Étudiants"
+                  value={stats.total_students}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-green-50 text-green-900"
+                />
+                <StatsCard
+                  title="Superviseurs"
+                  value={stats.total_supervisors}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-purple-50 text-purple-900"
+                />
+                <StatsCard
+                  title="Documents"
+                  value={stats.total_documents}
+                  icon={<FileText className="w-6 h-6" />}
+                  color="bg-orange-50 text-orange-900"
+                />
+              </div>
+            )}
+
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
+                  <select
+                    value={exportSource}
+                    onChange={e => setExportSource(e.target.value as ExportDataSource)}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  >
+                    <option value="missions">Missions</option>
+                    <option value="students">Étudiants</option>
+                    <option value="supervisors">Superviseurs</option>
+                    <option value="documents">Documents</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
+                  <select
+                    value={exportFormat}
+                    onChange={e => setExportFormat(e.target.value as ExportFormat)}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  >
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                    <option value="xlsx">XLSX</option>
+                  </select>
+                </div>
+
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Template (optionnel)</div>
+                  <select
+                    value={exportTemplateId || ''}
+                    onChange={e => setExportTemplateId(e.target.value || null)}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  >
+                    <option value="">Aucun</option>
+                    {exportTemplates
+                      .filter(t => t.is_active)
+                      .map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="flex items-end">
+                  <Button
+                    onClick={async () => {
+                      setExportJobsError(null);
+                      try {
+                        const req: ExportRequest = {
+                          source: exportSource,
+                          format: exportFormat,
+                          filters: {},
+                          template_id: exportTemplateId,
+                        };
+                        const res = await exportsApi.create(req);
+                        setExportRunningJobId(res.job_id);
+                        setExportJobs(prev => [res, ...prev]);
+                      } catch (e) {
+                        setExportJobsError(e instanceof Error ? e.message : 'Erreur lors de la création');
+                      }
+                    }}
+                    disabled={!!exportRunningJobId}
+                  >
+                    {exportRunningJobId ? 'Export en cours…' : 'Lancer export'}
+                  </Button>
+                </div>
+              </div>
+
+              {exportJobsError && (
+                <div className="mt-4 text-sm text-red-600">{exportJobsError}</div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-xl border overflow-hidden">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="font-semibold text-gray-900">Historique des exports</div>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    setExportJobsLoading(true);
+                    setExportJobsError(null);
+                    try {
+                      const history = await exportsApi.history();
+                      setExportJobs(history);
+                    } catch (e) {
+                      setExportJobsError(e instanceof Error ? e.message : "Erreur lors du chargement");
+                    } finally {
+                      setExportJobsLoading(false);
+                    }
+                  }}
+                  disabled={exportJobsLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${exportJobsLoading ? 'animate-spin' : ''}`} />
+                  Rafraîchir
+                </Button>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="text-left px-4 py-3">Job</th>
+                      <th className="text-left px-4 py-3">Statut</th>
+                      <th className="text-left px-4 py-3">Créé</th>
+                      <th className="text-right px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {exportJobs.map(j => (
+                      <tr key={j.job_id} className="border-t hover:bg-gray-50">
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{j.job_id}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            className={
+                              j.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : j.status === 'failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : j.status === 'running'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }
+                          >
+                            {j.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{new Date(j.created_at).toLocaleString('fr-FR')}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={j.status !== 'completed'}
+                            onClick={async () => {
+                              try {
+                                const blob = await exportsApi.download(j.job_id);
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                const filename = j.file_path
+                                  ? (j.file_path.split('/').pop() || j.file_path.split('\\').pop() || `export_${j.job_id}`)
+                                  : `export_${j.job_id}`;
+                                a.download = filename;
+                                document.body.appendChild(a);
+                                a.click();
+                                a.remove();
+                                URL.revokeObjectURL(url);
+                              } catch (e) {
+                                setExportJobsError(e instanceof Error ? e.message : 'Erreur téléchargement');
+                              }
+                            }}
+                          >
+                            Télécharger
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {exportJobs.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-6 text-center text-gray-500" colSpan={4}>
+                          Aucun export
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border overflow-hidden mt-6">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="font-semibold text-gray-900">Templates d’export</div>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    setExportTemplatesLoading(true);
+                    setExportTemplatesError(null);
+                    try {
+                      const res = await templatesApi.list({ include_inactive: true });
+                      setExportTemplates(res.templates);
+                    } catch (e) {
+                      setExportTemplatesError(e instanceof Error ? e.message : 'Erreur lors du chargement');
+                    } finally {
+                      setExportTemplatesLoading(false);
+                    }
+                  }}
+                  disabled={exportTemplatesLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${exportTemplatesLoading ? 'animate-spin' : ''}`} />
+                  Rafraîchir
+                </Button>
+              </div>
+
+              {exportTemplatesError && (
+                <div className="px-4 py-3 text-sm text-red-600">{exportTemplatesError}</div>
+              )}
+
+              <div className="px-4 py-4 border-b">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                  <div className="md:col-span-2">
+                    <div className="text-sm font-medium text-gray-700 mb-1">Nom</div>
+                    <input
+                      value={newTemplate.name}
+                      onChange={e => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-sm font-medium text-gray-700 mb-1">Description</div>
+                    <input
+                      value={newTemplate.description || ''}
+                      onChange={e => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
+                    <select
+                      value={newTemplate.source}
+                      onChange={e => setNewTemplate(prev => ({ ...prev, source: e.target.value as any }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    >
+                      <option value="missions">Missions</option>
+                      <option value="students">Étudiants</option>
+                      <option value="supervisors">Superviseurs</option>
+                      <option value="documents">Documents</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
+                    <select
+                      value={newTemplate.format}
+                      onChange={e => setNewTemplate(prev => ({ ...prev, format: e.target.value as any }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    >
+                      <option value="csv">CSV</option>
+                      <option value="json">JSON</option>
+                      <option value="xlsx">XLSX</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">template_sql</div>
+                    <textarea
+                      value={newTemplate.template_sql || ''}
+                      onChange={e => setNewTemplate(prev => ({ ...prev, template_sql: e.target.value }))}
+                      rows={4}
+                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">template_handlebars</div>
+                    <textarea
+                      value={newTemplate.template_handlebars || ''}
+                      onChange={e => setNewTemplate(prev => ({ ...prev, template_handlebars: e.target.value }))}
+                      rows={4}
+                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                    />
+                  </div>
+                </div>
+
+                {createTemplateError && (
+                  <div className="mt-3 text-sm text-red-600">{createTemplateError}</div>
+                )}
+
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    onClick={async () => {
+                      setCreateTemplateError(null);
+                      setCreateTemplateLoading(true);
+                      try {
+                        const created = await templatesApi.create({
+                          name: newTemplate.name,
+                          description: newTemplate.description || null,
+                          source: newTemplate.source,
+                          format: newTemplate.format,
+                          template_sql: newTemplate.template_sql || null,
+                          template_handlebars: newTemplate.template_handlebars || null,
+                        });
+                        setExportTemplates(prev => [created, ...prev]);
+                        setNewTemplate({
+                          name: '',
+                          description: '',
+                          source: 'missions',
+                          format: 'csv',
+                          template_sql: '',
+                          template_handlebars: '',
+                        });
+                      } catch (e) {
+                        setCreateTemplateError(e instanceof Error ? e.message : 'Erreur création template');
+                      } finally {
+                        setCreateTemplateLoading(false);
+                      }
+                    }}
+                    disabled={createTemplateLoading || !newTemplate.name}
+                  >
+                    {createTemplateLoading ? 'Création…' : 'Créer template'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="text-left px-4 py-3">Nom</th>
+                      <th className="text-left px-4 py-3">Source</th>
+                      <th className="text-left px-4 py-3">Format</th>
+                      <th className="text-left px-4 py-3">Actif</th>
+                      <th className="text-right px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {exportTemplates.map(t => (
+                      <tr key={t.id} className="border-t hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-900">{t.name}</td>
+                        <td className="px-4 py-3 text-gray-700">{t.source}</td>
+                        <td className="px-4 py-3 text-gray-700">{t.format}</td>
+                        <td className="px-4 py-3">
+                          <Badge className={t.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                            {t.is_active ? 'oui' : 'non'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!t.is_active}
+                            onClick={async () => {
+                              try {
+                                await templatesApi.deactivate(t.id);
+                                setExportTemplates(prev => prev.map(x => (x.id === t.id ? { ...x, is_active: false } : x)));
+                                if (exportTemplateId === t.id) setExportTemplateId(null);
+                              } catch (e) {
+                                setExportTemplatesError(e instanceof Error ? e.message : 'Erreur désactivation');
+                              }
+                            }}
+                          >
+                            Désactiver
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {exportTemplates.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
+                          Aucun template
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border overflow-hidden mt-6">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="font-semibold text-gray-900">Schedules (Phase 3)</div>
+                <Button
+                  variant="outline"
+                  onClick={async () => {
+                    setExportSchedulesLoading(true);
+                    setExportSchedulesError(null);
+                    try {
+                      const res = await schedulesApi.list({ include_inactive: true, limit: 200 });
+                      setExportSchedules(res.schedules);
+                    } catch (e) {
+                      setExportSchedulesError(e instanceof Error ? e.message : 'Erreur chargement schedules');
+                    } finally {
+                      setExportSchedulesLoading(false);
+                    }
+                  }}
+                  disabled={exportSchedulesLoading}
+                >
+                  <RefreshCw className={`w-4 h-4 mr-2 ${exportSchedulesLoading ? 'animate-spin' : ''}`} />
+                  Rafraîchir
+                </Button>
+              </div>
+
+              {exportSchedulesError && (
+                <div className="px-4 py-3 text-sm text-red-600">{exportSchedulesError}</div>
+              )}
+
+              <div className="px-4 py-4 border-b">
+                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
+                  <div className="md:col-span-2">
+                    <div className="text-sm font-medium text-gray-700 mb-1">Nom</div>
+                    <input
+                      value={newSchedule.name}
+                      onChange={e => setNewSchedule(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <div className="text-sm font-medium text-gray-700 mb-1">Description</div>
+                    <input
+                      value={newSchedule.description || ''}
+                      onChange={e => setNewSchedule(prev => ({ ...prev, description: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">Cron</div>
+                    <input
+                      value={newSchedule.cron}
+                      onChange={e => setNewSchedule(prev => ({ ...prev, cron: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">Timezone</div>
+                    <input
+                      value={newSchedule.timezone || 'UTC'}
+                      onChange={e => setNewSchedule(prev => ({ ...prev, timezone: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
+                    <select
+                      value={newSchedule.source}
+                      onChange={e => setNewSchedule(prev => ({ ...prev, source: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    >
+                      <option value="missions">Missions</option>
+                      <option value="students">Étudiants</option>
+                      <option value="supervisors">Superviseurs</option>
+                      <option value="documents">Documents</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
+                    <select
+                      value={newSchedule.format}
+                      onChange={e => setNewSchedule(prev => ({ ...prev, format: e.target.value }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    >
+                      <option value="csv">CSV</option>
+                      <option value="json">JSON</option>
+                      <option value="xlsx">XLSX</option>
+                    </select>
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">Template</div>
+                    <select
+                      value={newSchedule.template_id || ''}
+                      onChange={e => setNewSchedule(prev => ({ ...prev, template_id: e.target.value || null }))}
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                    >
+                      <option value="">Aucun</option>
+                      {exportTemplates.filter(t => t.is_active).map(t => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">filters (JSON)</div>
+                    <textarea
+                      value={JSON.stringify(newSchedule.filters || {}, null, 2)}
+                      onChange={e => {
+                        try {
+                          const v = JSON.parse(e.target.value);
+                          setNewSchedule(prev => ({ ...prev, filters: v }));
+                        } catch {
+                          setNewSchedule(prev => ({ ...prev, filters: e.target.value } as any));
+                        }
+                      }}
+                      rows={4}
+                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                    />
+                  </div>
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">destinations (JSON)</div>
+                    <textarea
+                      value={JSON.stringify(newSchedule.destinations || [], null, 2)}
+                      onChange={e => {
+                        try {
+                          const v = JSON.parse(e.target.value);
+                          setNewSchedule(prev => ({ ...prev, destinations: v }));
+                        } catch {
+                          setNewSchedule(prev => ({ ...prev, destinations: e.target.value } as any));
+                        }
+                      }}
+                      rows={4}
+                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
+                    />
+                  </div>
+                </div>
+
+                {createScheduleError && (
+                  <div className="mt-3 text-sm text-red-600">{createScheduleError}</div>
+                )}
+
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    onClick={async () => {
+                      setCreateScheduleError(null);
+                      setCreateScheduleLoading(true);
+                      try {
+                        const created = await schedulesApi.create({
+                          name: newSchedule.name,
+                          description: newSchedule.description || null,
+                          source: newSchedule.source,
+                          format: newSchedule.format,
+                          cron: newSchedule.cron,
+                          timezone: newSchedule.timezone || 'UTC',
+                          template_id: newSchedule.template_id || null,
+                          filters: typeof newSchedule.filters === 'string' ? {} : (newSchedule.filters || {}),
+                          destinations: typeof newSchedule.destinations === 'string' ? [] : (newSchedule.destinations || []),
+                        });
+                        setExportSchedules(prev => [created, ...prev]);
+                        setNewSchedule(prev => ({ ...prev, name: '', description: '' }));
+                      } catch (e) {
+                        setCreateScheduleError(e instanceof Error ? e.message : 'Erreur création schedule');
+                      } finally {
+                        setCreateScheduleLoading(false);
+                      }
+                    }}
+                    disabled={createScheduleLoading || !newSchedule.name || !newSchedule.cron}
+                  >
+                    {createScheduleLoading ? 'Création…' : 'Créer schedule'}
+                  </Button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="text-left px-4 py-3">Nom</th>
+                      <th className="text-left px-4 py-3">Source</th>
+                      <th className="text-left px-4 py-3">Format</th>
+                      <th className="text-left px-4 py-3">Cron</th>
+                      <th className="text-left px-4 py-3">Actif</th>
+                      <th className="text-right px-4 py-3">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {exportSchedules.map(s => (
+                      <tr key={s.id} className="border-t hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-900">{s.name}</td>
+                        <td className="px-4 py-3 text-gray-700">{s.source}</td>
+                        <td className="px-4 py-3 text-gray-700">{s.format}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{s.cron}</td>
+                        <td className="px-4 py-3">
+                          <Badge className={s.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
+                            {s.is_active ? 'oui' : 'non'}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!s.is_active}
+                            onClick={async () => {
+                              try {
+                                await schedulesApi.deactivate(s.id);
+                                setExportSchedules(prev => prev.map(x => (x.id === s.id ? { ...x, is_active: false } : x)));
+                              } catch (e) {
+                                setExportSchedulesError(e instanceof Error ? e.message : 'Erreur désactivation');
+                              }
+                            }}
+                          >
+                            Désactiver
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {exportSchedules.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-6 text-center text-gray-500" colSpan={6}>
+                          Aucun schedule
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {activeTab === 'attributions' && (
+          <>
+            {attrError && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5" />
+                <span>{attrError}</span>
+              </div>
+            )}
+
+            {attrSummary && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatsCard
+                  title="Mailles attribuées"
+                  value={attrSummary.total_assignments}
+                  icon={<BarChart3 className="w-6 h-6" />}
+                  color="bg-blue-50 text-blue-900"
+                />
+                <StatsCard
+                  title="Étudiants"
+                  value={attrSummary.total_students}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-green-50 text-green-900"
+                />
+                <StatsCard
+                  title="Notifications en attente"
+                  value={attrSummary.pending_notifications}
+                  icon={<FileText className="w-6 h-6" />}
+                  color="bg-orange-50 text-orange-900"
+                />
+                <StatsCard
+                  title="Sélection"
+                  value={Object.values(attrSelected).filter(Boolean).length}
+                  icon={<ClipboardList className="w-6 h-6" />}
+                  color="bg-purple-50 text-purple-900"
+                />
+              </div>
+            )}
+
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="md:col-span-2">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Filtrer (étudiant/email/matricule)</div>
+                  <input
+                    value={attrStudentFilter}
+                    onChange={e => setAttrStudentFilter(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    placeholder="ex: Diallo / email@..."
+                  />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Statut notification</div>
+                  <select
+                    value={attrNotifStatusFilter}
+                    onChange={e => setAttrNotifStatusFilter(e.target.value)}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  >
+                    <option value="">Tous</option>
+                    <option value="unassigned">Non attribuée (mission sans prefs)</option>
+                    <option value="never">Jamais envoyée</option>
+                    <option value="pending">En attente</option>
+                    <option value="sent">Envoyée</option>
+                    <option value="failed">Échec</option>
+                  </select>
+                </div>
+                <div className="flex items-end justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      setAttrHistoryLoading(true);
+                      setAttrHistoryError(null);
+                      try {
+                        const h = await attributionsApi.history();
+                        setAttrHistory(h.items);
+                      } catch (e) {
+                        setAttrHistoryError(e instanceof Error ? e.message : 'Erreur historique');
+                      } finally {
+                        setAttrHistoryLoading(false);
+                      }
+                    }}
+                    disabled={attrHistoryLoading}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${attrHistoryLoading ? 'animate-spin' : ''}`} />
+                    Historique
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setAttrEnqueueError(null);
+                      setAttrConfirmOpen(true);
+                    }}
+                    disabled={Object.values(attrSelected).filter(Boolean).length === 0}
+                  >
+                    Notifier la sélection
+                  </Button>
+                </div>
+              </div>
+
+              {attrHistoryError && <div className="mt-3 text-sm text-red-600">{attrHistoryError}</div>}
+              {attrEnqueueError && <div className="mt-3 text-sm text-red-600">{attrEnqueueError}</div>}
+            </div>
+
+            <div className="bg-white rounded-xl border overflow-hidden">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="font-semibold text-gray-900">Mailles attribuées</div>
+                <div className="text-sm text-gray-600">{attrItems.length} lignes</div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="text-left px-4 py-3">
+                        <input
+                          type="checkbox"
+                          checked={
+                            attrItems.filter(i => !!i.assignment_id).length > 0 &&
+                            attrItems.filter(i => !!i.assignment_id).every(i => !!attrSelected[i.assignment_id as string])
+                          }
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            setAttrSelected(prev => {
+                              const next = { ...prev };
+                              for (const i of attrItems) {
+                                if (!i.assignment_id) continue;
+                                next[i.assignment_id] = checked;
+                              }
+                              return next;
+                            });
+                          }}
+                        />
+                      </th>
+                      <th className="text-left px-4 py-3">Mission</th>
+                      <th className="text-left px-4 py-3">Maille</th>
+                      <th className="text-left px-4 py-3">Étudiant</th>
+                      <th className="text-left px-4 py-3">Email</th>
+                      <th className="text-left px-4 py-3">Notification</th>
+                      <th className="text-left px-4 py-3">Dernier envoi</th>
+                      <th className="text-right px-4 py-3">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attrItems.map(i => (
+                      <tr key={i.mission_id} className="border-t hover:bg-gray-50">
+                        <td className="px-4 py-3">
+                          <input
+                            type="checkbox"
+                            disabled={!i.assignment_id}
+                            checked={!!(i.assignment_id && attrSelected[i.assignment_id])}
+                            onChange={e => {
+                              if (!i.assignment_id) return;
+                              setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: e.target.checked }));
+                            }}
+                          />
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.mission_code}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.maille_code}</td>
+                        <td className="px-4 py-3 text-gray-900">{i.full_name || '-'}</td>
+                        <td className="px-4 py-3 text-gray-700">{i.email || '-'}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            className={
+                              i.notification_status === 'sent'
+                                ? 'bg-green-100 text-green-800'
+                                : i.notification_status === 'pending'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : i.notification_status === 'failed'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }
+                          >
+                            {i.notification_status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">
+                          {i.notification_sent_at ? new Date(i.notification_sent_at).toLocaleString('fr-FR') : '-'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!i.assignment_id}
+                            onClick={() => {
+                              if (!i.assignment_id) return;
+                              setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: true }));
+                              setAttrConfirmOpen(true);
+                            }}
+                          >
+                            Notifier
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                    {attrItems.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-6 text-center text-gray-500" colSpan={8}>
+                          Aucune attribution
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border overflow-hidden mt-6">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="font-semibold text-gray-900">Jobs email (worker local)</div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={async () => {
+                      setNotifyJobsLoading(true);
+                      setNotifyJobsError(null);
+                      try {
+                        const res = await notifyApi.list(50);
+                        setNotifyJobs(res.jobs);
+                      } catch (e) {
+                        setNotifyJobsError(e instanceof Error ? e.message : 'Erreur lors du chargement');
+                      } finally {
+                        setNotifyJobsLoading(false);
+                      }
+                    }}
+                    disabled={notifyJobsLoading}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${notifyJobsLoading ? 'animate-spin' : ''}`} />
+                    Rafraîchir
+                  </Button>
+                </div>
+              </div>
+
+              {notifyJobsError && <div className="px-4 py-3 text-sm text-red-600">{notifyJobsError}</div>}
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="text-left px-4 py-3">Job</th>
+                      <th className="text-left px-4 py-3">Type</th>
+                      <th className="text-left px-4 py-3">Statut</th>
+                      <th className="text-left px-4 py-3">Créé</th>
+                      <th className="text-left px-4 py-3">Erreur</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {notifyJobs.map(j => (
+                      <tr key={j.id} className="border-t hover:bg-gray-50">
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{j.id}</td>
+                        <td className="px-4 py-3 text-gray-700">{j.job_type}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            className={
+                              j.status === 'completed'
+                                ? 'bg-green-100 text-green-800'
+                                : j.status === 'failed'
+                                  ? 'bg-red-100 text-red-800'
+                                  : j.status === 'running'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }
+                          >
+                            {j.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600">{new Date(j.created_at).toLocaleString('fr-FR')}</td>
+                        <td className="px-4 py-3 text-gray-600">{j.error || '-'}</td>
+                      </tr>
+                    ))}
+                    {notifyJobs.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
+                          Aucun job
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border overflow-hidden mt-6">
+              <div className="px-4 py-3 border-b flex items-center justify-between">
+                <div className="font-semibold text-gray-900">Historique & Logs</div>
+                <div className="text-sm text-gray-600">{attrHistory.length} entrées</div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th className="text-left px-4 py-3">Date</th>
+                      <th className="text-left px-4 py-3">Étudiant</th>
+                      <th className="text-left px-4 py-3">Maille</th>
+                      <th className="text-left px-4 py-3">Statut</th>
+                      <th className="text-left px-4 py-3">Job</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attrHistory.map(h => (
+                      <tr key={h.id} className="border-t hover:bg-gray-50">
+                        <td className="px-4 py-3 text-gray-600">{new Date(h.requested_at).toLocaleString('fr-FR')}</td>
+                        <td className="px-4 py-3 text-gray-900">{h.full_name}</td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{h.maille_code}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            className={
+                              h.status === 'sent'
+                                ? 'bg-green-100 text-green-800'
+                                : h.status === 'pending'
+                                  ? 'bg-orange-100 text-orange-800'
+                                  : h.status === 'failed'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }
+                          >
+                            {h.status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{h.email_job_id || '-'}</td>
+                      </tr>
+                    ))}
+                    {attrHistory.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
+                          Aucun historique
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {attrConfirmOpen && (
+              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+                <div className="bg-white w-full max-w-lg rounded-xl shadow-lg border overflow-hidden">
+                  <div className="px-5 py-4 border-b">
+                    <div className="text-lg font-semibold text-gray-900">Confirmer l’envoi des notifications</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Vous êtes sur le point de notifier <span className="font-semibold">{Object.values(attrSelected).filter(Boolean).length}</span> attribution(s).
+                    </div>
+                  </div>
+
+                  <div className="px-5 py-4 space-y-3">
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input type="checkbox" checked={attrIncludeBbox} onChange={e => setAttrIncludeBbox(e.target.checked)} />
+                      Inclure la BBox des mailles
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={attrIncludeInstructions}
+                        onChange={e => setAttrIncludeInstructions(e.target.checked)}
+                      />
+                      Inclure les instructions standard
+                    </label>
+                    <div className="text-xs text-gray-500">
+                      Les emails seront envoyés automatiquement via le worker local. Cette action écrit uniquement en base.
+                    </div>
+                  </div>
+
+                  <div className="px-5 py-4 border-t flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setAttrConfirmOpen(false)} disabled={attrEnqueueLoading}>
+                      Annuler
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        setAttrEnqueueError(null);
+                        setAttrEnqueueLoading(true);
+                        try {
+                          const ids = Object.entries(attrSelected)
+                            .filter(([, v]) => v)
+                            .map(([k]) => k);
+                          await attributionsApi.enqueueNotifications({
+                            assignment_ids: ids,
+                            include_bbox: attrIncludeBbox,
+                            include_instructions: attrIncludeInstructions,
+                          });
+
+                          // refresh list + summary + history
+                          const [summaryRes, listRes, historyRes] = await Promise.all([
+                            attributionsApi.summary(),
+                            attributionsApi.list({
+                              student: attrStudentFilter.trim() || undefined,
+                              notif_status: attrNotifStatusFilter || undefined,
+                              limit: 500,
+                            }),
+                            attributionsApi.history().catch(() => ({ items: [], total: 0 })),
+                          ]);
+                          setAttrSummary(summaryRes);
+                          setAttrItems(listRes.items);
+                          setAttrHistory(historyRes.items || []);
+                          setAttrConfirmOpen(false);
+                        } catch (e) {
+                          setAttrEnqueueError(e instanceof Error ? e.message : 'Erreur enregistrement');
+                        } finally {
+                          setAttrEnqueueLoading(false);
+                        }
+                      }}
+                      disabled={attrEnqueueLoading}
+                    >
+                      {attrEnqueueLoading ? 'Enregistrement…' : 'Confirmer'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {activeTab === 'students' && (
+          <>
+            {stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatsCard
+                  title="Total Missions"
+                  value={stats.total_missions}
+                  icon={<BarChart3 className="w-6 h-6" />}
+                  color="bg-blue-50 text-blue-900"
+                />
+                <StatsCard
+                  title="Étudiants"
+                  value={stats.total_students}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-green-50 text-green-900"
+                />
+                <StatsCard
+                  title="Superviseurs"
+                  value={stats.total_supervisors}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-purple-50 text-purple-900"
+                />
+                <StatsCard
+                  title="Documents"
+                  value={stats.total_documents}
+                  icon={<FileText className="w-6 h-6" />}
+                  color="bg-orange-50 text-orange-900"
+                />
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="flex flex-col lg:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher (nom, email, tel, promo)..."
+                    value={studentsSearch}
+                    onChange={e => setStudentsSearch(e.target.value)}
+                    className="w-full h-10 pl-10 pr-4 border rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Select
+                    value={studentsActiveFilter}
+                    onChange={e => setStudentsActiveFilter(e.target.value as any)}
+                    options={[
+                      { value: 'all', label: 'Tous' },
+                      { value: 'active', label: 'Actifs' },
+                      { value: 'inactive', label: 'Inactifs' },
+                    ]}
+                  />
+                  <Select
+                    value={studentsSort}
+                    onChange={e => setStudentsSort(e.target.value as any)}
+                    options={[
+                      { value: 'promotion_desc', label: 'Tri: Promotion (desc)' },
+                      { value: 'name_asc', label: 'Tri: Nom (A→Z)' },
+                      { value: 'name_desc', label: 'Tri: Nom (Z→A)' },
+                      { value: 'missions_desc', label: 'Tri: Missions actives (desc)' },
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : (
+              <CollapsibleCard title="Étudiants" subtitle={`${filteredStudents.length} affichés / ${total} au total`}>
+                <div className="max-h-[65vh] overflow-auto">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                        <tr>
+                          <th className="text-left font-medium px-4 py-3">Nom</th>
+                          <th className="text-left font-medium px-4 py-3">Email</th>
+                          <th className="text-left font-medium px-4 py-3">Téléphone</th>
+                          <th className="text-left font-medium px-4 py-3">Promotion</th>
+                          <th className="text-left font-medium px-4 py-3">Âge</th>
+                          <th className="text-left font-medium px-4 py-3">Missions actives</th>
+                          <th className="text-left font-medium px-4 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredStudents.map(s => (
+                          <tr
+                            key={s.id}
+                            className="border-t cursor-pointer hover:bg-gray-50"
+                            onClick={() => {
+                              setSelectedStudentId(s.id);
+                              setShowStudentDetailModal(true);
+                            }}
+                          >
+                            <td className="px-4 py-3 text-gray-900">{s.full_name}</td>
+                            <td className="px-4 py-3 text-gray-600">{s.email}</td>
+                            <td className="px-4 py-3 text-gray-600">{s.telephone || '-'}</td>
+                            <td className="px-4 py-3 text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <span>{s.promotion}</span>
+                                <Badge className={s.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                                  {s.is_active ? 'Actif' : 'Inactif'}
+                                </Badge>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-600">{s.age ?? '-'}</td>
+                            <td className="px-4 py-3 text-gray-600">{s.active_missions}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedStudent(s);
+                                      setShowUpdateStudentModal(true);
+                                    }}
+                                  >
+                                    Modifier
+                                  </Button>
+                                </span>
+                                <span
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedStudent(s);
+                                      if (s.is_active) {
+                                        setShowDeactivateStudentModal(true);
+                                      } else {
+                                        setActionLoading(true);
+                                        studentsApi
+                                          .update(s.id, { is_active: true })
+                                          .then(() => loadData())
+                                          .finally(() => setActionLoading(false));
+                                      }
+                                    }}
+                                    disabled={actionLoading}
+                                  >
+                                    {s.is_active ? 'Désactiver' : 'Réactiver'}
+                                  </Button>
+                                </span>
+
+                                <span
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedStudent(s);
+                                      setShowDeleteStudentModal(true);
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {!loading && filteredStudents.length === 0 && (
+                    <div className="p-8 text-center text-gray-500">Aucun étudiant</div>
+                  )}
+                </div>
+              </CollapsibleCard>
+            )}
+          </>
+        )}
+
+        {activeTab === 'supervisors' && (
+          <>
+            {stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatsCard
+                  title="Total Missions"
+                  value={stats.total_missions}
+                  icon={<BarChart3 className="w-6 h-6" />}
+                  color="bg-blue-50 text-blue-900"
+                />
+                <StatsCard
+                  title="Étudiants"
+                  value={stats.total_students}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-green-50 text-green-900"
+                />
+                <StatsCard
+                  title="Superviseurs"
+                  value={stats.total_supervisors}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-purple-50 text-purple-900"
+                />
+                <StatsCard
+                  title="Documents"
+                  value={stats.total_documents}
+                  icon={<FileText className="w-6 h-6" />}
+                  color="bg-orange-50 text-orange-900"
+                />
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="flex flex-col lg:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher (nom, institution, spécialité)..."
+                    value={supervisorsSearch}
+                    onChange={e => setSupervisorsSearch(e.target.value)}
+                    className="w-full h-10 pl-10 pr-4 border rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Select
+                    value={supervisorsActiveFilter}
+                    onChange={e => setSupervisorsActiveFilter(e.target.value as any)}
+                    options={[
+                      { value: 'all', label: 'Tous' },
+                      { value: 'active', label: 'Actifs' },
+                      { value: 'inactive', label: 'Inactifs' },
+                    ]}
+                  />
+                  <Select
+                    value={supervisorsSort}
+                    onChange={e => setSupervisorsSort(e.target.value as any)}
+                    options={[
+                      { value: 'name_asc', label: 'Tri: Nom (A→Z)' },
+                      { value: 'name_desc', label: 'Tri: Nom (Z→A)' },
+                      { value: 'institution_asc', label: 'Tri: Institution (A→Z)' },
+                    ]}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              </div>
+            ) : (
+              <CollapsibleCard title="Superviseurs" subtitle={`${filteredSupervisors.length} affichés / ${total} au total`}>
+                <div className="max-h-[65vh] overflow-auto">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                        <tr>
+                          <th className="text-left font-medium px-4 py-3">Nom</th>
+                          <th className="text-left font-medium px-4 py-3">Spécialité</th>
+                          <th className="text-left font-medium px-4 py-3">Institution</th>
+                          <th className="text-left font-medium px-4 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredSupervisors.map(s => (
+                          <tr
+                            key={s.id}
+                            className="border-t cursor-pointer hover:bg-gray-50"
+                            onClick={() => {
+                              setSelectedSupervisorId(s.id);
+                              setShowSupervisorDetailModal(true);
+                            }}
+                          >
+                            <td className="px-4 py-3 text-gray-900">{s.full_name}</td>
+                            <td className="px-4 py-3 text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <span>{s.specialite || '-'}</span>
+                                <Badge className={s.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}>
+                                  {s.is_active ? 'Actif' : 'Inactif'}
+                                </Badge>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-gray-600">{s.institution || '-'}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                <span
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSupervisor(s);
+                                      setShowUpdateSupervisorModal(true);
+                                    }}
+                                  >
+                                    Modifier
+                                  </Button>
+                                </span>
+                                <span
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSupervisor(s);
+                                      if (s.is_active) {
+                                        setShowDeactivateSupervisorModal(true);
+                                      } else {
+                                        setActionLoading(true);
+                                        supervisorsApi
+                                          .update(s.id, { is_active: true })
+                                          .then(() => loadData())
+                                          .finally(() => setActionLoading(false));
+                                      }
+                                    }}
+                                    disabled={actionLoading}
+                                  >
+                                    {s.is_active ? 'Désactiver' : 'Réactiver'}
+                                  </Button>
+                                </span>
+
+                                <span
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                  }}
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setSelectedSupervisor(s);
+                                      setShowDeleteSupervisorModal(true);
+                                    }}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {!loading && filteredSupervisors.length === 0 && (
+                    <div className="p-8 text-center text-gray-500">Aucun superviseur</div>
+                  )}
+                </div>
+              </CollapsibleCard>
+            )}
+          </>
+        )}
+
+        {activeTab === 'documents' && (
+          <>
+            {stats && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <StatsCard
+                  title="Total Missions"
+                  value={stats.total_missions}
+                  icon={<BarChart3 className="w-6 h-6" />}
+                  color="bg-blue-50 text-blue-900"
+                />
+                <StatsCard
+                  title="Étudiants"
+                  value={stats.total_students}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-green-50 text-green-900"
+                />
+                <StatsCard
+                  title="Superviseurs"
+                  value={stats.total_supervisors}
+                  icon={<Users className="w-6 h-6" />}
+                  color="bg-purple-50 text-purple-900"
+                />
+                <StatsCard
+                  title="Documents"
+                  value={stats.total_documents}
+                  icon={<FileText className="w-6 h-6" />}
+                  color="bg-orange-50 text-orange-900"
+                />
+              </div>
+            )}
+
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="flex flex-col lg:flex-row gap-3">
+                <div className="flex-1 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher (titre, fichier, type)..."
+                    value={documentsSearch}
+                    onChange={e => setDocumentsSearch(e.target.value)}
+                    className="w-full h-10 pl-10 pr-4 border rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Select
+                    value={documentsSort}
+                    onChange={e => setDocumentsSort(e.target.value as any)}
+                    options={[
+                      { value: 'date_desc', label: 'Tri: Date (récent)' },
+                      { value: 'date_asc', label: 'Tri: Date (ancien)' },
+                      { value: 'title_asc', label: 'Tri: Titre (A→Z)' },
+                    ]}
+                  />
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowUploadDocumentModal(true);
+                    }}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Uploader
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <CollapsibleCard title="Documents" subtitle={`${filteredDocuments.length} affichés / ${effectiveTotal} au total`}>
+              <div className="p-4 border-b grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Filtrer par mission</label>
+                  <Input
+                    placeholder="ID mission (uuid)"
+                    value={documentsMissionId || ''}
+                    onChange={e => setDocumentsMissionId(e.target.value || null)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Type</label>
+                  <Select
+                    value={documentsType}
+                    onChange={e => setDocumentsType(e.target.value)}
+                    options={[
+                      { value: '', label: 'Tous' },
+                      { value: 'autre', label: 'Autre' },
+                      { value: 'rapport_intermediaire', label: 'Rapport intermédiaire' },
+                      { value: 'rapport_final', label: 'Rapport final' },
+                      { value: 'fiche_terrain', label: 'Fiche terrain' },
+                      { value: 'annexe', label: 'Annexe' },
+                      { value: 'photo', label: 'Photo' },
+                      { value: 'plan', label: 'Plan' },
+                      { value: 'resultats_essais', label: 'Résultats essais' },
+                    ]}
+                  />
+                </div>
+                <div className="md:col-span-2 flex justify-end">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      loadData();
+                    }}
+                  >
+                    Filtrer
+                  </Button>
+                </div>
+              </div>
+
+              <div className="p-4">
+                {documentsError && (
+                  <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    {documentsError}
+                  </div>
+                )}
+
+                <div className="max-h-[65vh] overflow-auto">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full text-sm">
+                      <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                        <tr>
+                          <th className="text-left font-medium px-4 py-3">Titre</th>
+                          <th className="text-left font-medium px-4 py-3">Type</th>
+                          <th className="text-left font-medium px-4 py-3">Fichier</th>
+                          <th className="text-left font-medium px-4 py-3">Date</th>
+                          <th className="text-left font-medium px-4 py-3">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredDocuments.map(d => (
+                          <tr key={d.id} className="border-t">
+                            <td className="px-4 py-3 text-gray-900">{d.title}</td>
+                            <td className="px-4 py-3 text-gray-600">{d.document_type}</td>
+                            <td className="px-4 py-3 text-gray-600">{d.file_name}</td>
+                            <td className="px-4 py-3 text-gray-600">{formatDate(d.uploaded_at)}</td>
+                            <td className="px-4 py-3 text-gray-600">
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      const blob = await documentsApi.download(d.id);
+                                      const url = URL.createObjectURL(blob);
+                                      const a = document.createElement('a');
+                                      a.href = url;
+                                      a.download = d.file_name;
+                                      document.body.appendChild(a);
+                                      a.click();
+                                      a.remove();
+                                      URL.revokeObjectURL(url);
+                                    } catch (err) {
+                                      setDocumentsError(err instanceof Error ? err.message : 'Erreur téléchargement');
+                                    }
+                                  }}
+                                >
+                                  Télécharger
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={async () => {
+                                    try {
+                                      await documentsApi.delete(d.id);
+                                      await loadData();
+                                    } catch (err) {
+                                      setDocumentsError(err instanceof Error ? err.message : 'Erreur suppression');
+                                    }
+                                  }}
+                                >
+                                  Supprimer
+                                </Button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                {!documentsLoading && filteredDocuments.length === 0 && (
+                  <div className="p-8 text-center text-gray-500">Aucun document</div>
+                )}
+              </div>
+            </CollapsibleCard>
+          </>
+        )}
       </div>
 
       {/* Create Modal */}
@@ -722,7 +4662,160 @@ const ColabPage: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreated={loadData}
-        supervisors={supervisors}
+      />
+
+      <ConfirmDeactivateModal
+        isOpen={showDeleteMissionModal}
+        title="Supprimer la mission"
+        description={selectedMissionToDelete ? `Confirmer la suppression de ${selectedMissionToDelete.title} ?` : 'Confirmer la suppression ?'}
+        confirmLabel="Supprimer"
+        loading={actionLoading}
+        onClose={() => setShowDeleteMissionModal(false)}
+        onConfirm={async () => {
+          if (!selectedMissionToDelete) return;
+          setActionLoading(true);
+          try {
+            await missionsApi.delete(selectedMissionToDelete.id);
+            await loadData();
+            setShowDeleteMissionModal(false);
+          } finally {
+            setActionLoading(false);
+          }
+        }}
+      />
+
+      <CreateStudentModal
+        isOpen={showCreateStudentModal}
+        onClose={() => setShowCreateStudentModal(false)}
+        onCreated={loadData}
+      />
+
+      <CreateSupervisorModal
+        isOpen={showCreateSupervisorModal}
+        onClose={() => setShowCreateSupervisorModal(false)}
+        onCreated={loadData}
+      />
+
+      <UpdateStudentModal
+        isOpen={showUpdateStudentModal}
+        student={selectedStudent}
+        onClose={() => setShowUpdateStudentModal(false)}
+        onUpdated={loadData}
+      />
+
+      <UpdateSupervisorModal
+        isOpen={showUpdateSupervisorModal}
+        supervisor={selectedSupervisor}
+        onClose={() => setShowUpdateSupervisorModal(false)}
+        onUpdated={loadData}
+      />
+
+      <ConfirmDeactivateModal
+        isOpen={showDeactivateStudentModal}
+        title="Désactiver l'étudiant"
+        description={selectedStudent ? `Confirmer la désactivation de ${selectedStudent.full_name} ?` : 'Confirmer la désactivation ?'}
+        loading={actionLoading}
+        onClose={() => setShowDeactivateStudentModal(false)}
+        onConfirm={async () => {
+          if (!selectedStudent) return;
+          setActionLoading(true);
+          try {
+            await studentsApi.update(selectedStudent.id, { is_active: false });
+            await loadData();
+            setShowDeactivateStudentModal(false);
+          } finally {
+            setActionLoading(false);
+          }
+        }}
+      />
+
+      <ConfirmDeactivateModal
+        isOpen={showDeleteStudentModal}
+        title="Supprimer l'étudiant"
+        description={selectedStudent ? `Confirmer la suppression de ${selectedStudent.full_name} ?` : 'Confirmer la suppression ?'}
+        confirmLabel="Supprimer"
+        loading={actionLoading}
+        onClose={() => setShowDeleteStudentModal(false)}
+        onConfirm={async () => {
+          if (!selectedStudent) return;
+          setActionLoading(true);
+          try {
+            await studentsApi.delete(selectedStudent.id);
+            await loadData();
+            setShowDeleteStudentModal(false);
+          } finally {
+            setActionLoading(false);
+          }
+        }}
+      />
+
+      <ConfirmDeactivateModal
+        isOpen={showDeactivateSupervisorModal}
+        title="Désactiver le superviseur"
+        description={selectedSupervisor ? `Confirmer la désactivation de ${selectedSupervisor.full_name} ?` : 'Confirmer la désactivation ?'}
+        loading={actionLoading}
+        onClose={() => setShowDeactivateSupervisorModal(false)}
+        onConfirm={async () => {
+          if (!selectedSupervisor) return;
+          setActionLoading(true);
+          try {
+            await supervisorsApi.update(selectedSupervisor.id, { is_active: false });
+            await loadData();
+            setShowDeactivateSupervisorModal(false);
+          } finally {
+            setActionLoading(false);
+          }
+        }}
+      />
+
+      <ConfirmDeactivateModal
+        isOpen={showDeleteSupervisorModal}
+        title="Supprimer le superviseur"
+        description={selectedSupervisor ? `Confirmer la suppression de ${selectedSupervisor.full_name} ?` : 'Confirmer la suppression ?'}
+        confirmLabel="Supprimer"
+        loading={actionLoading}
+        onClose={() => setShowDeleteSupervisorModal(false)}
+        onConfirm={async () => {
+          if (!selectedSupervisor) return;
+          setActionLoading(true);
+          try {
+            await supervisorsApi.delete(selectedSupervisor.id);
+            await loadData();
+            setShowDeleteSupervisorModal(false);
+          } finally {
+            setActionLoading(false);
+          }
+        }}
+      />
+
+      <MissionDetailModal
+        isOpen={showMissionDetailModal}
+        missionId={selectedMissionId}
+        onClose={() => setShowMissionDetailModal(false)}
+        onChanged={loadData}
+        onGoToDocuments={(missionId) => {
+          setActiveTab('documents');
+          setDocumentsMissionId(missionId);
+        }}
+      />
+
+      <StudentDetailModal
+        isOpen={showStudentDetailModal}
+        studentId={selectedStudentId}
+        onClose={() => setShowStudentDetailModal(false)}
+      />
+
+      <SupervisorDetailModal
+        isOpen={showSupervisorDetailModal}
+        supervisorId={selectedSupervisorId}
+        onClose={() => setShowSupervisorDetailModal(false)}
+      />
+
+      <UploadDocumentModal
+        isOpen={showUploadDocumentModal}
+        missionId={documentsMissionId}
+        onClose={() => setShowUploadDocumentModal(false)}
+        onUploaded={loadData}
       />
     </div>
   );

@@ -432,6 +432,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
             <div class="row"><span class="swatch" style="background:#51cf66"></span> mailles avec sondages (localisation exacte)</div>
             <div class="row"><span class="swatch" style="background:#4c6ef5"></span> mailles avec sondages (ADM / random cell)</div>
             <div class="row"><span class="swatch" style="background:#cfd8e3;opacity:0.3;border:1px solid #6b778c"></span> mailles sans sondages</div>
+            <div class="row"><span class="swatch" style="background:#a855f7"></span> mailles attribuées (Colab)</div>
             <div class="row"><span class="swatch" style="background:#ffd600"></span> Mailles voisines</div>
           </div>
           <div style="font-size:10px;color:var(--muted);margin-top:6px">Sélectionnez une maille</div>
@@ -455,6 +456,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
                 <span id="ficheDataBadge" class="badge-sm" style="display:none">avec données</span>
                 <span id="ficheLocBadge" class="badge-sm" style="display:none">exact</span>
               </div>
+              <div id="ficheAssignment" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:6px;border-left:3px solid #a855f7"></div>
               <!-- Coordonnées UTM31 -->
               <div id="ficheUtm31" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:4px;border-left:3px solid #3b82f6">
                 <div style="font-size:10px;font-weight:600;color:#94a3b8;margin-bottom:4px">📐 UTM 31N (m)</div>
@@ -661,6 +663,10 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
                 <input type="checkbox" id="filterNoData" checked />
                 <span>Mailles sans données</span>
               </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="filterAssignedOnly" />
+                <span>Uniquement mailles attribuées</span>
+              </label>
               <div class="form-field">
                 <label>Min. sondages</label>
                 <input type="number" id="filterMinSondages" class="input" value="0" min="0" />
@@ -722,6 +728,7 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
           <div id="gridStats" style="font-size:11px;color:var(--muted);margin-top:6px;padding:8px;background:#0f172a;border-radius:6px">
             <div><strong>Total:</strong> <span id="gridTotal">0</span> mailles</div>
             <div><strong>Avec données:</strong> <span id="gridWithData">0</span> mailles</div>
+            <div><strong>Attribuées:</strong> <span id="gridAssigned">0</span> mailles</div>
           </div>
         </div>
 

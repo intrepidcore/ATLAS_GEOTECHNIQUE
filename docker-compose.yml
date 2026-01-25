@@ -37,12 +37,15 @@ services:
       RUST_LOG: ${RUST_LOG:-info}
       API_BIND: 0.0.0.0:8000
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      EXPORT_DIR: /data/exports
     depends_on:
       db:
         condition: service_healthy
     # Ports exposés pour accès direct (dev/debug)
     ports:
       - "8000:8000"  # Exposé pour accès direct depuis l'UI
+    volumes:
+      - ./exports:/data/exports
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
       interval: 30s
@@ -140,6 +143,34 @@ services:
     volumes:
       - ./migrations:/migrations:ro
       - ./data:/data:ro
+
+  qgis-worker:
+    build: ./qgis_worker
+    container_name: atlas-qgis-worker
+    restart: unless-stopped
+    env_file:
+      - ./.env
+      - ./.env.example
+    environment:
+      API_GEO_BASE: http://api-geo:8000
+      QGIS_TEMPLATE: /app/templates/atlas_base_skeleton.qpt
+      QGIS_LAYOUT: atlas_base_skeleton
+      OUTPUT_PDF: /data/exports/test_docker.pdf
+      DATABASE_URL: postgres://atlas:atlas@db:5432/atlas_clean
+      QT_QPA_PLATFORM: offscreen
+      XDG_RUNTIME_DIR: /tmp/runtime-qgis
+    depends_on:
+      db:
+        condition: service_healthy
+      api-geo:
+        condition: service_healthy
+    volumes:
+      - ./qgis_worker/src:/app/src
+      - ./qgis_worker/project:/app/project
+      - ./QGIS/atlas_base_skeleton.qpt:/app/templates/atlas_base_skeleton.qpt:ro
+      - ./exports:/data/exports
+    networks:
+      - atlas-net
 
   tileserver:
     image: maptiler/tileserver-gl-light:latest

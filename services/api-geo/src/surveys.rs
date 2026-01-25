@@ -1152,7 +1152,7 @@ pub async fn list_adm1(State(state): State<AppState>) -> impl IntoResponse {
         SELECT name, code,
                ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
                ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-        FROM public.adm1
+        FROM public.adm1_tg
         ORDER BY name
         "#,
     )
@@ -1189,7 +1189,7 @@ pub async fn list_adm1(State(state): State<AppState>) -> impl IntoResponse {
             tracing::error!(?e, "list_adm1 error");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "Database error"})),
+                Json(serde_json::json!({"error": "Database error", "details": e.to_string()})),
             )
                 .into_response()
         }
@@ -1203,23 +1203,20 @@ pub async fn list_adm2(
 ) -> impl IntoResponse {
     let pool = &state.pool;
 
-    let query = if let Some(adm1) = q.get("adm1") {
-        format!(
-            r#"SELECT name, code,
+    let adm1 = q.get("adm1").cloned();
+    let rows = sqlx::query(
+        r#"
+        SELECT name, code,
                ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
                ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-               FROM public.adm2 WHERE adm1_name = '{}' ORDER BY name"#,
-            adm1.replace("'", "''")
-        )
-    } else {
-        r#"SELECT name, code,
-           ST_XMin(geom) as xmin, ST_YMin(geom) as ymin,
-           ST_XMax(geom) as xmax, ST_YMax(geom) as ymax
-           FROM public.adm2 ORDER BY name"#
-            .to_string()
-    };
-
-    let rows = sqlx::query(&query).fetch_all(pool).await;
+        FROM public.adm2_tg
+        WHERE ($1::text IS NULL OR adm1_name = $1)
+        ORDER BY name
+        "#,
+    )
+    .bind(adm1)
+    .fetch_all(pool)
+    .await;
 
     match rows {
         Ok(rows) => {
@@ -1251,7 +1248,7 @@ pub async fn list_adm2(
             tracing::error!(?e, "list_adm2 error");
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "Database error"})),
+                Json(serde_json::json!({"error": "Database error", "details": e.to_string()})),
             )
                 .into_response()
         }

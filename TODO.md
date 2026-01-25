@@ -1,5 +1,86 @@
 # 📋 TODO - Atlas Géotechnique - Gestionnaire de Sondages v2
 
+## ✅ SESSION 20/01/2026 - COLAB STUDIO UI/BACKEND FIXES (CHTIER TERMINÉ)
+
+### 🎯 Objectif
+Corriger 3 symptômes critiques dans Colab Studio après refonte:
+- **405** sur GET `/colab/students/:id` et `/colab/supervisors/:id` (routes backend non déployées).
+- **Loupe** mal positionnée dans les champs de recherche (étudiants/superviseurs/documents).
+- **Documents** KPI > 0 mais liste vide (soft delete non filtré dans stats).
+- **Modal détail** qui s’ouvre par-dessus les modales d’action (Modifier/Désactiver/Supprimer).
+
+### 📄 Référence
+- UI: `atlas/ui/src/pages/ColabPage.tsx`
+- API: `atlas/ui/src/services/colab-api.ts`
+- Backend: `atlas/services/api-geo/src/colab/routes.rs`
+
+### ✅ Checklist exécution
+- **Backend routes**: Ajout GET handlers pour `students/:id` et `supervisors/:id` + fix Axum Router typing (`Router<AppState>` + `route_layer`).
+- **Backend stats**: Aligner tous les KPI sur `deleted_at IS NULL` (missions, students, supervisors, documents déjà OK).
+- **Backend rebuild**: `docker compose build api-geo && up -d api-geo` (container `atlas-api-geo` recréé).
+- **UI Loupe**: Remplacer `inset-y-0 my-auto` par `top-1/2 -translate-y-1/2` sur les 3 champs.
+- **UI Actions**: Wrapper `<span onClickCapture={e => e.stopPropagation()}>` autour de chaque bouton pour empêcher le `onClick` du `<tr>` (modal détail).
+
+### ✅ Recette (tests)
+- **405**: Cliquer sur une ligne étudiant/superviseur → modal détail s’ouvre (pas 405).
+- **Loupe**: Icône centrée verticalement dans les 3 champs de recherche.
+- **Documents KPI vs liste**: KPI = 0 si tout supprimé (soft delete filtré).
+- **Actions**: Modifier/Désactiver/Supprimer n’ouvrent plus le modal détail.
+
+### 📋 Notes techniques
+- Le `Button` local dans `ColabPage.tsx` a `onClick?: () => void` → pas d’event → wrapper obligatoire pour `stopPropagation`.
+- `colab_routes()` retourne `Router<AppState>`; `route_layer` utilisé pour auth middleware sans changer le type.
+- `deleted_at IS NULL` est la règle durable pour tous les KPI (sauf `field_logs` non confirmé).
+
+### 🧠 Analyse & Résolution des erreurs (journal développeur)
+
+#### 1️⃣ 405 sur GET `/colab/students/:id` et `/colab/supervisors/:id`
+- **Symptôme**: Clic sur une ligne étudiant/superviseur → modal détail ne s’ouvre pas, console affiche 405 Method Not Allowed.
+- **Hypothèse**: Routes GET non déclarées ou container backend non rebuild depuis l’ajout.
+- **Investigation**:
+  - `grep_search` dans `routes.rs` → les handlers `get_student`/`get_supervisor` existent.
+  - `docker compose ps` → `atlas-api-geo` up depuis 2h (ancien binaire).
+  - `docker compose build api-geo` → erreur Axum `Router<()>` vs `Router<AppState>`.
+- **Solution**:
+  - Corriger `colab_routes()` pour retourner `Router<AppState>`.
+  - Utiliser `route_layer` au lieu de `layer` pour l’auth middleware (évite changement de type).
+  - Rebuild + restart du container.
+- **Résultat**: ✅ GET 200, modal détail s’ouvre.
+
+#### 2️⃣ Loupe mal positionnée (hors champ)
+- **Symptôme**: Icône loupe sous l’input au lieu d’être centrée verticalement.
+- **Hypothèse**: `inset-y-0 my-auto` mal interprété ou conflit avec `h-10`/`pl-10`.
+- **Investigation**:
+  - `grep_search` dans `ColabPage.tsx` → 3 occurrences du pattern.
+  - Comparaison avec autres composants UI → usage courant de `top-1/2 -translate-y-1/2`.
+- **Solution**:
+  - Remplacer `inset-y-0 my-auto` par `top-1/2 -translate-y-1/2` sur les 3 champs.
+- **Résultat**: ✅ Loupe centrée verticalement.
+
+#### 3️⃣ Documents KPI > 0 mais liste vide
+- **Symptôme**: KPI “2 documents” mais tableau vide.
+- **Hypothèse**: KPI compte les documents soft-deleted (`deleted_at NOT NULL`) alors que la liste filtre `deleted_at IS NULL`.
+- **Investigation**:
+  - `grep_search` dans `routes.rs` → `total_documents` déjà filtré (`deleted_at IS NULL`).
+  - Vérification des autres KPI → `total_missions`, `total_students`, `total_supervisors` **non filtrés**.
+- **Solution**:
+  - Ajouter `WHERE deleted_at IS NULL` sur tous les `COUNT(*)` dans `get_stats`.
+  - Rebuild + restart backend.
+- **Résultat**: ✅ KPI = 0 si tout supprimé.
+
+#### 4️⃣ Modal détail s’ouvre par-dessus les actions (Modifier/Désactiver/Supprimer)
+- **Symptôme**: Clic sur un bouton d’action → ouvre modal détail + modal action (nécessite 2 fermetures).
+- **Hypothèse**: `onClick` du `<tr>` se déclenche même si clic sur bouton → `stopPropagation` absent ou mal implémenté.
+- **Investigation**:
+  - `grep_search` → `event?.stopPropagation?.()` utilisé, mais `event` non défini dans le handler (`onClick={() => ...}`).
+  - `Button` local typé `onClick?: () => void` → impossible de passer l’event.
+- **Solution**:
+  - Wrapper chaque `Button` dans un `<span onClickCapture={e => e.stopPropagation()}>`.
+  - Garder `onClick={() => ...}` sur le `Button` (pas d’event).
+- **Résultat**: ✅ Actions seules, pas de modal détail.
+
+---
+
 ## ✅ SESSION 17/01/2026 - ADR_001 REFONTE GRILLE (2KM/28KM) - TOPOLOGIE PARFAITE + ISO-CODE
 
 ### 🎯 Objectif

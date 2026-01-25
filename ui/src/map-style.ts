@@ -19,6 +19,7 @@ export const COLORS: Record<string, string> = {
   GRID_EXACT: '#51cf66',             // Vert - sondages GPS exact
   GRID_RANDOM: '#4c6ef5',            // Bleu - sondages position aléatoire
   GRID_NO_GEOM: '#e85d68',           // Rouge - données sans géométrie
+  GRID_ASSIGNED: '#a855f7',          // Violet - maille attribuée à un étudiant (Colab)
   
   // Contours
   GRID_BORDER_NO_DATA: '#6b778c55',  // Gris transparent pour sans données
@@ -174,6 +175,8 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   const hasData = nSondages > 0 || !!props.has_data;
   const hasExact = !!props.has_exact_location;
   const hasRandom = !!props.has_random_location;
+  const isAssigned = !!props.is_assigned;
+  const isVisibleAsData = hasData || isAssigned;
   
   // Calcul du poids dynamique selon le zoom
   const baseWeight = hasData ? WEIGHT.GRID_WITH_DATA : WEIGHT.GRID_NO_DATA;
@@ -183,10 +186,12 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   }
   
   // LOGIQUE COULEURS UNIFIÉES (2km ET 28km)
-  // Règle: Vert si exact, Bleu si random, Gris si vide
+  // Règle: Violet si attribuée (Colab), sinon Vert si exact, Bleu si random, Gris si vide
   let fillColor = COLORS.GRID_NO_DATA;
   
-  if (!hasData) {
+  if (isAssigned) {
+    fillColor = COLORS.GRID_ASSIGNED;
+  } else if (!hasData) {
     // Gris: sans données
     fillColor = COLORS.GRID_NO_DATA;
   } else if (hasExact && !hasRandom) {
@@ -204,10 +209,10 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   }
   
   return {
-    color: hasData ? fillColor : COLORS.GRID_BORDER_NO_DATA,
+    color: isVisibleAsData ? fillColor : COLORS.GRID_BORDER_NO_DATA,
     weight,
     fillColor,
-    fillOpacity: hasData ? OPACITY.GRID_WITH_DATA : OPACITY.GRID_NO_DATA,
+    fillOpacity: isVisibleAsData ? OPACITY.GRID_WITH_DATA : OPACITY.GRID_NO_DATA,
   };
 }
 
@@ -234,6 +239,7 @@ export interface LegendItem {
 }
 
 export const GRID_LEGEND: LegendItem[] = [
+  { label: 'Attribuée (Colab)', color: COLORS.GRID_ASSIGNED, description: 'Maille attribuée à un étudiant/opérateur' },
   { label: 'GPS exact', color: COLORS.GRID_EXACT, description: 'Sondages avec coordonnées GPS précises' },
   { label: 'Position aléatoire', color: COLORS.GRID_RANDOM, description: 'Sondages positionnés aléatoirement dans ADM3' },
   { label: 'Sans géométrie', color: COLORS.GRID_NO_GEOM, description: 'Données sans position géographique' },

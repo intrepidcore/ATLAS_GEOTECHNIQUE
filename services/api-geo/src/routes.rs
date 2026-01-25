@@ -592,11 +592,10 @@ pub async fn get_maille_by_code(
         "geometry": geom,
         "properties": properties
     });
-
+ 
     Json(feature).into_response()
 }
 
-// GET /coverage/mailles?bbox=west,south,east,north&grid=2km|28km -> FeatureCollection EPSG:4326 avec comptes
 pub async fn get_coverage_mailles(
     Query(params): Query<std::collections::HashMap<String, String>>,
     State(state): State<AppState>,
@@ -611,22 +610,60 @@ pub async fn get_coverage_mailles(
     // Construire la requête avec filtre bbox optionnel
     // Utilise mv_mailles_geotech qui inclut le spread ADM3 et les compteurs d'essais par type
     let mut query = r#"
-        SELECT code,
-               ST_AsGeoJSON(ST_Transform(geom,4326)) AS g,
-               adm1_name,
-               adm2_name,
-               adm3_name,
-               COALESCE(n_sondages, 0)::bigint AS n_sondages,
-               COALESCE(n_echantillons, 0)::bigint AS n_echantillons,
-               COALESCE(n_essais_total, 0)::bigint AS n_essais,
-               COALESCE(n_essais_atterberg, 0)::bigint AS n_atterberg,
-               COALESCE(n_essais_vbs, 0)::bigint AS n_vbs,
-               COALESCE(n_essais_proctor, 0)::bigint AS n_physiques,
-               COALESCE(n_essais_classif, 0)::bigint AS n_classif,
-               has_data,
-               has_exact_location,
-               has_random_location
-        FROM atlas.mv_mailles_geotech
+        SELECT
+            mv.code,
+            ST_AsGeoJSON(ST_Transform(mv.geom,4326)) AS g,
+            COALESCE(mv.adm1_name, m.adm1_name, a2.adm1_name) AS adm1_name,
+            COALESCE(mv.adm2_name, m.adm2_name) AS adm2_name,
+            COALESCE(mv.adm3_name, m.adm3_name) AS adm3_name,
+            COALESCE(mv.n_sondages, 0)::bigint AS n_sondages,
+            COALESCE(mv.n_echantillons, 0)::bigint AS n_echantillons,
+            COALESCE(mv.n_essais_total, 0)::bigint AS n_essais,
+            COALESCE(mv.n_essais_atterberg, 0)::bigint AS n_atterberg,
+            COALESCE(mv.n_essais_vbs, 0)::bigint AS n_vbs,
+            COALESCE(mv.n_essais_proctor, 0)::bigint AS n_physiques,
+            COALESCE(mv.n_essais_classif, 0)::bigint AS n_classif,
+            mv.has_data,
+            mv.has_exact_location,
+            mv.has_random_location,
+            COALESCE(ma.student_id::text, ca.student_id::text) AS assigned_student_id,
+            COALESCE(ma.full_name, ca_user.full_name) AS assigned_student_name,
+            COALESCE(ma.assigned_at::text, ca.assigned_at::text) AS assigned_at
+        FROM atlas.mv_mailles_geotech mv
+        LEFT JOIN atlas.mailles m ON m.code = mv.code
+        LEFT JOIN public.adm2_tg a2 ON a2.name = COALESCE(mv.adm2_name, m.adm2_name)
+        LEFT JOIN atlas.colab_maille_assignments ca ON ca.maille_id = m.id
+        LEFT JOIN LATERAL (
+            SELECT
+                COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), u.username) AS full_name
+            FROM atlas.colab_students cs
+            JOIN atlas.users u
+                ON u.id = cs.user_id
+                AND u.deleted_at IS NULL
+            WHERE cs.id = ca.student_id
+                AND cs.deleted_at IS NULL
+            LIMIT 1
+        ) ca_user ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT
+                cma.student_id,
+                cma.assigned_at,
+                COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), u.username) AS full_name
+            FROM atlas.colab_missions cm
+            JOIN atlas.colab_mission_assignments cma
+                ON cma.mission_id = cm.id
+                AND cma.unassigned_at IS NULL
+            JOIN atlas.colab_students cs
+                ON cs.id = cma.student_id
+                AND cs.deleted_at IS NULL
+            JOIN atlas.users u
+                ON u.id = cs.user_id
+                AND u.deleted_at IS NULL
+            WHERE cm.maille_id = m.id
+                AND cm.deleted_at IS NULL
+            ORDER BY cma.assigned_at DESC
+            LIMIT 1
+        ) ma ON TRUE
     "#
     .to_string();
 
@@ -635,7 +672,7 @@ pub async fn get_coverage_mailles(
         let parts: Vec<f64> = bbox_str.split(',').filter_map(|s| s.parse().ok()).collect();
         if parts.len() == 4 {
             query.push_str(&format!(
-                " WHERE ST_Intersects(ST_Transform(geom, 4326), ST_MakeEnvelope({}, {}, {}, {}, 4326))",
+                " WHERE ST_Intersects(ST_Transform(mv.geom, 4326), ST_MakeEnvelope({}, {}, {}, {}, 4326))",
                 parts[0], parts[1], parts[2], parts[3]
             ));
         }
@@ -671,6 +708,10 @@ pub async fn get_coverage_mailles(
         let has_data = n_sondages > 0;
         let has_exact_location: bool = r.try_get("has_exact_location").unwrap_or(false);
         let has_random_location: bool = r.try_get("has_random_location").unwrap_or(false);
+        let assigned_student_id: Option<String> = r.try_get("assigned_student_id").ok();
+        let assigned_student_name: Option<String> = r.try_get("assigned_student_name").ok();
+        let assigned_at: Option<String> = r.try_get("assigned_at").ok();
+        let is_assigned = assigned_student_id.is_some();
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
             let mut props = serde_json::json!({
                 "code": code,
@@ -683,7 +724,11 @@ pub async fn get_coverage_mailles(
                 "n_atterberg": n_atterberg,
                 "n_vbs": n_vbs,
                 "n_physiques": n_physiques,
-                "n_classif": n_classif
+                "n_classif": n_classif,
+                "is_assigned": is_assigned,
+                "assigned_student_id": assigned_student_id,
+                "assigned_student_name": assigned_student_name,
+                "assigned_at": assigned_at
             });
             if let Some(adm1) = adm1_name {
                 props["adm1_name"] = serde_json::Value::String(adm1);
