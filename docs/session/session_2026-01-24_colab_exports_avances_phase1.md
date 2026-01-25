@@ -237,6 +237,14 @@ SELECT action, actor, timestamp FROM atlas.colab_export_logs ORDER BY timestamp 
     - `include_instructions`
   - Historique & logs
 
+### Fermeture produit (cohérence + explicabilité)
+
+- L’API `/colab/attributions` renvoie désormais un statut métier explicite par ligne :
+  - `attribution_status`: `unassigned | assigned_not_notifiable | notifiable | notified | error`
+  - `status_reason`: texte court expliquant le blocage ou l’état
+- L’UI n’essaie plus de déduire l’état à partir de champs implicites.
+- La table affiche un badge de statut + la raison, et active/désactive les actions selon `attribution_status`.
+
 ### Worker
 
 - Le job `colab_email_jobs.params` supporte:

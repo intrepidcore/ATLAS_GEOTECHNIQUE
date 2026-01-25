@@ -252,6 +252,33 @@ async fn list_attributions(
     let items: Vec<serde_json::Value> = rows
         .iter()
         .map(|r| {
+            let assignment_id: Option<Uuid> = r.try_get::<Uuid, _>("assignment_id").ok();
+            let email: Option<String> = r.try_get::<String, _>("email").ok();
+            let notification_status: String = r.get::<String, _>("notification_status");
+            let notification_error: Option<String> = r.try_get::<String, _>("notification_error").ok();
+
+            let (attribution_status, status_reason) = if assignment_id.is_none() {
+                (
+                    "unassigned",
+                    Some("Aucune affectation notifiable (mission sans attribution maille→étudiant)"),
+                )
+            } else if email.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
+                (
+                    "assigned_not_notifiable",
+                    Some("Étudiant affecté mais email manquant"),
+                )
+            } else if notification_status == "sent" {
+                ("notified", Some("Notification déjà envoyée"))
+            } else if notification_status == "failed" {
+                ("error", Some("Dernier envoi en échec"))
+            } else if notification_status == "pending" {
+                ("notifiable", Some("Notification en attente (job en cours)"))
+            } else if notification_error.is_some() {
+                ("error", Some("Erreur notification"))
+            } else {
+                ("notifiable", Some("Prêt à notifier"))
+            };
+
             json!({
                 "mission_id": r.get::<Uuid, _>("mission_id"),
                 "mission_code": r.get::<String, _>("mission_code"),
@@ -262,15 +289,18 @@ async fn list_attributions(
                 "student_uuid": r.try_get::<Uuid, _>("student_uuid").ok(),
                 "student_id": r.try_get::<String, _>("student_id").ok(),
                 "full_name": r.try_get::<String, _>("full_name").ok(),
-                "email": r.try_get::<String, _>("email").ok(),
-                "assignment_id": r.try_get::<Uuid, _>("assignment_id").ok(),
+                "email": email,
+                "assignment_id": assignment_id,
                 "adm_code_used": r.try_get::<String, _>("adm_code_used").ok(),
                 "pref_rank_used": r.try_get::<i32, _>("pref_rank_used").ok(),
                 "assigned_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("assigned_at").ok(),
-                "notification_status": r.get::<String, _>("notification_status"),
+                "notification_status": notification_status,
                 "notification_requested_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("notification_requested_at").ok(),
                 "notification_sent_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("notification_sent_at").ok(),
-                "notification_error": r.try_get::<String, _>("notification_error").ok(),
+                "notification_error": notification_error,
+
+                "attribution_status": attribution_status,
+                "status_reason": status_reason,
             })
         })
         .collect();

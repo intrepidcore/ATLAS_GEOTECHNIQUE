@@ -375,6 +375,8 @@ export interface AttributionsSummary {
 
 export type AttributionNotificationStatus = 'sent' | 'pending' | 'failed' | 'never' | 'skipped' | 'unassigned';
 
+export type AttributionStatus = 'unassigned' | 'assigned_not_notifiable' | 'notifiable' | 'notified' | 'error';
+
 export interface AttributionItem {
   mission_id: string;
   mission_code: string;
@@ -395,6 +397,9 @@ export interface AttributionItem {
   notification_requested_at: string | null;
   notification_sent_at: string | null;
   notification_error: string | null;
+
+  attribution_status: AttributionStatus;
+  status_reason: string | null;
 }
 
 export interface ListAttributionsResponse {

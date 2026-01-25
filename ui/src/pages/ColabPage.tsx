@@ -3794,15 +3794,17 @@ const ColabPage: React.FC = () => {
                         <input
                           type="checkbox"
                           checked={
-                            attrItems.filter(i => !!i.assignment_id).length > 0 &&
-                            attrItems.filter(i => !!i.assignment_id).every(i => !!attrSelected[i.assignment_id as string])
+                            attrItems.filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id).length > 0 &&
+                            attrItems
+                              .filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id)
+                              .every(i => !!attrSelected[i.assignment_id as string])
                           }
                           onChange={e => {
                             const checked = e.target.checked;
                             setAttrSelected(prev => {
                               const next = { ...prev };
                               for (const i of attrItems) {
-                                if (!i.assignment_id) continue;
+                                if (i.attribution_status !== 'notifiable' || !i.assignment_id) continue;
                                 next[i.assignment_id] = checked;
                               }
                               return next;
@@ -3814,6 +3816,8 @@ const ColabPage: React.FC = () => {
                       <th className="text-left px-4 py-3">Maille</th>
                       <th className="text-left px-4 py-3">Étudiant</th>
                       <th className="text-left px-4 py-3">Email</th>
+                      <th className="text-left px-4 py-3">Statut</th>
+                      <th className="text-left px-4 py-3">Raison</th>
                       <th className="text-left px-4 py-3">Notification</th>
                       <th className="text-left px-4 py-3">Dernier envoi</th>
                       <th className="text-right px-4 py-3">Action</th>
@@ -3825,7 +3829,7 @@ const ColabPage: React.FC = () => {
                         <td className="px-4 py-3">
                           <input
                             type="checkbox"
-                            disabled={!i.assignment_id}
+                            disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
                             checked={!!(i.assignment_id && attrSelected[i.assignment_id])}
                             onChange={e => {
                               if (!i.assignment_id) return;
@@ -3837,6 +3841,24 @@ const ColabPage: React.FC = () => {
                         <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.maille_code}</td>
                         <td className="px-4 py-3 text-gray-900">{i.full_name || '-'}</td>
                         <td className="px-4 py-3 text-gray-700">{i.email || '-'}</td>
+                        <td className="px-4 py-3">
+                          <Badge
+                            className={
+                              i.attribution_status === 'notifiable'
+                                ? 'bg-green-100 text-green-800'
+                                : i.attribution_status === 'notified'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : i.attribution_status === 'error'
+                                    ? 'bg-red-100 text-red-800'
+                                    : 'bg-gray-100 text-gray-800'
+                            }
+                          >
+                            {i.attribution_status}
+                          </Badge>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600" title={i.status_reason || ''}>
+                          {i.status_reason || '-'}
+                        </td>
                         <td className="px-4 py-3">
                           <Badge
                             className={
@@ -3859,7 +3881,7 @@ const ColabPage: React.FC = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            disabled={!i.assignment_id}
+                            disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
                             onClick={() => {
                               if (!i.assignment_id) return;
                               setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: true }));
@@ -3873,7 +3895,7 @@ const ColabPage: React.FC = () => {
                     ))}
                     {attrItems.length === 0 && (
                       <tr>
-                        <td className="px-4 py-6 text-center text-gray-500" colSpan={8}>
+                        <td className="px-4 py-6 text-center text-gray-500" colSpan={10}>
                           Aucune attribution
                         </td>
                       </tr>
