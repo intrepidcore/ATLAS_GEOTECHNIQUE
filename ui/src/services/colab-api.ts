@@ -29,8 +29,32 @@ export interface MissionListItem {
   linked_sondages_count: number;
   field_logs_count: number;
   documents_count: number;
+  // Mission-driven operational status (computed by backend)
+  operational_status: string;
+  operational_reason: string | null;
+  operational_issues?: OperationalIssue[];
+  conflict_holder_email: string | null;
+  conflict_holder_name: string | null;
+  conflict_mission_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type OperationalIssueSeverity = 'warning' | 'blocked';
+export type OperationalIssueScope = 'mission' | 'student' | 'maille' | 'assignment';
+
+export interface OperationalAction {
+  code: string;
+  label: string;
+  payload?: any;
+}
+
+export interface OperationalIssue {
+  code: string;
+  severity: OperationalIssueSeverity;
+  scope: OperationalIssueScope;
+  message: string;
+  actions: OperationalAction[];
 }
 
 export interface MissionListResponse {
@@ -208,6 +232,7 @@ export interface UpdateMissionRequest {
   title?: string;
   theme?: string;
   status?: string;
+  maille_id?: string;
   zone_label?: string;
   commune?: string;
   region?: string;
@@ -230,6 +255,11 @@ export interface MissionFilters {
   search?: string;
   page?: number;
   per_page?: number;
+}
+
+export interface ResolveConflictRequest {
+  action: string;
+  payload?: any;
 }
 
 export interface ColabStats {
@@ -266,7 +296,7 @@ export interface ExportFilters {
   theme?: string[];
   region_id?: number;
   commune_id?: number;
-  maille_id?: number;
+  maille_id?: string;
   student_id?: string;
   supervisor_id?: string;
 }
@@ -276,6 +306,11 @@ export interface ExportRequest {
   filters: ExportFilters;
   format: ExportFormat;
   template_id?: string | null;
+  columns?: string[] | null;
+  pdf_options?: {
+    title?: string | null;
+    orientation?: string | null;
+  } | null;
 }
 
 export interface ExportTemplate {
@@ -419,6 +454,16 @@ export interface EnqueueAttributionsNotificationsResponse {
   count: number;
 }
 
+export interface AssignAttributionRequest {
+  mission_id: string;
+  student_id: string;
+}
+
+export interface AssignAttributionResponse {
+  success: boolean;
+  assignment_id: string;
+}
+
 export interface AttributionNotificationHistoryItem {
   id: string;
   assignment_id: string;
@@ -454,7 +499,7 @@ export interface ExportJobResponse {
   error: string | null;
 }
 
-export type NotifyJobStatus = 'pending' | 'running' | 'completed' | 'failed';
+export type NotifyJobStatus = 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 export interface NotifyJob {
   id: string;
@@ -541,6 +586,15 @@ export interface UpdateStudentRequest {
   niveau?: string;
   age?: number;
   is_active?: boolean;
+}
+
+export interface StudentPrefs {
+  student_id: string;
+  adm_code_pref_1: string | null;
+}
+
+export interface UpdateStudentPrefsRequest {
+  adm_code_pref_1?: string;
 }
 
 // ============================================================================
@@ -683,6 +737,20 @@ export const missionsApi = {
       throw new Error(error.error || 'Erreur lors de la suppression de la mission');
     }
     
+    return response.json();
+  },
+
+  async resolveConflict(id: string, input: ResolveConflictRequest): Promise<any> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/missions/${id}/resolve-conflict`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la résolution');
+    }
+
     return response.json();
   },
 
@@ -955,6 +1023,31 @@ export const studentsApi = {
     return response.json();
   },
 
+  async getPrefs(studentId: string): Promise<StudentPrefs> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/students/${studentId}/prefs`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la récupération des préférences');
+    }
+
+    return response.json();
+  },
+
+  async updatePrefs(studentId: string, data: UpdateStudentPrefsRequest): Promise<{ success: boolean; student_id: string }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/students/${studentId}/prefs`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la mise à jour des préférences');
+    }
+
+    return response.json();
+  },
+
   async delete(id: string): Promise<{ success: boolean; student_id: string; deactivated: boolean }> {
     const response = await fetchWithAuth(`${API_BASE_URL}/colab/students/${id}`, {
       method: 'DELETE',
@@ -978,6 +1071,20 @@ export const maillesApi = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
       throw new Error(error.error || 'Erreur lors de la suggestion mailles');
+    }
+
+    return response.json();
+  },
+
+  async resolve(input: { lat: number; lon: number }): Promise<MailleSuggestItem> {
+    const params = new URLSearchParams();
+    params.append('lat', String(input.lat));
+    params.append('lon', String(input.lon));
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/mailles/resolve?${params.toString()}`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la résolution de la maille');
     }
 
     return response.json();
@@ -1143,6 +1250,19 @@ export const notifyApi = {
 
     return response.json();
   },
+
+  async cancel(id: string): Promise<{ success: boolean; job_id: string }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/notify/jobs/${id}/cancel`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de l’annulation du job');
+    }
+
+    return response.json();
+  },
 };
 
 export const schedulesApi = {
@@ -1240,6 +1360,33 @@ export const attributionsApi = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
       throw new Error(error.error || 'Erreur lors de l’enregistrement des notifications');
+    }
+
+    return response.json();
+  },
+
+  async assign(input: AssignAttributionRequest): Promise<AssignAttributionResponse> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/assign`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de l’attribution');
+    }
+
+    return response.json();
+  },
+
+  async unassign(assignmentId: string): Promise<{ success: boolean; assignment_id: string }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/assign/${assignmentId}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || "Erreur lors de la désattribution");
     }
 
     return response.json();

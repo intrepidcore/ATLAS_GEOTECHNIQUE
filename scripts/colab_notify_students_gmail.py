@@ -7,8 +7,17 @@ import time
 from email.message import EmailMessage
 from typing import Any, Dict, List, Optional, Tuple
 
-import psycopg2
-from psycopg2.extras import RealDictCursor
+try:
+    import psycopg2  # type: ignore
+    from psycopg2.extras import RealDictCursor  # type: ignore
+    _DB_DRIVER = "psycopg2"
+except Exception:  # pragma: no cover
+    psycopg2 = None  # type: ignore
+    RealDictCursor = None  # type: ignore
+    _DB_DRIVER = "psycopg"
+
+    import psycopg  # type: ignore
+    from psycopg.rows import dict_row  # type: ignore
 
 
 def get_env(name: str, default: Optional[str] = None) -> str:
@@ -21,7 +30,18 @@ def get_env(name: str, default: Optional[str] = None) -> str:
 
 
 def connect_db():
-    return psycopg2.connect(get_env("DATABASE_URL"))
+    dsn = get_env("DATABASE_URL")
+    if _DB_DRIVER == "psycopg2":
+        return psycopg2.connect(dsn)  # type: ignore
+    conn = psycopg.connect(dsn)  # type: ignore
+    conn.autocommit = False
+    return conn
+
+
+def _dict_cursor(conn):
+    if _DB_DRIVER == "psycopg2":
+        return conn.cursor(cursor_factory=RealDictCursor)  # type: ignore
+    return conn.cursor(row_factory=dict_row)  # type: ignore
 
 
 def db_log(cursor, job_id: str, level: str, message: str, details: Optional[Dict[str, Any]] = None):
@@ -35,7 +55,7 @@ def db_log(cursor, job_id: str, level: str, message: str, details: Optional[Dict
 
 
 def claim_next_job(conn) -> Optional[Dict[str, Any]]:
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+    with _dict_cursor(conn) as cur:
         cur.execute("BEGIN")
         cur.execute(
             """
@@ -66,7 +86,7 @@ def claim_next_job(conn) -> Optional[Dict[str, Any]]:
 
 
 def fetch_recipients(conn, params: Dict[str, Any]) -> List[Dict[str, Any]]:
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+    with _dict_cursor(conn) as cur:
         assignment_ids = params.get("assignment_ids") or []
         if isinstance(assignment_ids, list) and len(assignment_ids) > 0:
             cur.execute(
@@ -77,11 +97,16 @@ def fetch_recipients(conn, params: Dict[str, Any]) -> List[Dict[str, Any]]:
                     d.full_name,
                     d.email,
                     d.maille_code,
-                    d.bbox_xmin,
-                    d.bbox_ymin,
-                    d.bbox_xmax,
-                    d.bbox_ymax
+                    m.adm3_name AS commune,
+                    m.adm1_name AS region,
+                    ST_YMin(ST_Transform(m.geom, 4326)::box3d) AS bbox_sud,
+                    ST_YMax(ST_Transform(m.geom, 4326)::box3d) AS bbox_nord,
+                    ST_XMin(ST_Transform(m.geom, 4326)::box3d) AS bbox_ouest,
+                    ST_XMax(ST_Transform(m.geom, 4326)::box3d) AS bbox_est,
+                    ST_Y(ST_Centroid(ST_Transform(m.geom, 4326))) AS centroid_lat,
+                    ST_X(ST_Centroid(ST_Transform(m.geom, 4326))) AS centroid_lon
                 FROM atlas.v_colab_maille_assignment_details d
+                JOIN atlas.mailles m ON m.id = d.maille_id
                 WHERE d.assignment_id = ANY(%s)
                   AND d.email IS NOT NULL AND d.email <> ''
                 ORDER BY d.student_id
@@ -97,11 +122,16 @@ def fetch_recipients(conn, params: Dict[str, Any]) -> List[Dict[str, Any]]:
                     d.full_name,
                     d.email,
                     d.maille_code,
-                    d.bbox_xmin,
-                    d.bbox_ymin,
-                    d.bbox_xmax,
-                    d.bbox_ymax
+                    m.adm3_name AS commune,
+                    m.adm1_name AS region,
+                    ST_YMin(ST_Transform(m.geom, 4326)::box3d) AS bbox_sud,
+                    ST_YMax(ST_Transform(m.geom, 4326)::box3d) AS bbox_nord,
+                    ST_XMin(ST_Transform(m.geom, 4326)::box3d) AS bbox_ouest,
+                    ST_XMax(ST_Transform(m.geom, 4326)::box3d) AS bbox_est,
+                    ST_Y(ST_Centroid(ST_Transform(m.geom, 4326))) AS centroid_lat,
+                    ST_X(ST_Centroid(ST_Transform(m.geom, 4326))) AS centroid_lon
                 FROM atlas.v_colab_maille_assignment_details d
+                JOIN atlas.mailles m ON m.id = d.maille_id
                 WHERE d.email IS NOT NULL AND d.email <> ''
                 ORDER BY d.student_id
                 """
@@ -140,42 +170,97 @@ def send_gmail_smtp(messages: List[Tuple[str, EmailMessage]]):
 
 
 def render_subject() -> str:
-    return os.getenv("COLAB_NOTIFY_SUBJECT", "Atlas Colab - Votre maille attribuée")
+    return os.getenv("COLAB_NOTIFY_SUBJECT", "Affectation mission terrain – Atlas Géotechnique")
+
+
+def compute_centroid_from_bbox(xmin: Any, ymin: Any, xmax: Any, ymax: Any) -> Optional[Tuple[float, float]]:
+    try:
+        if xmin is None or ymin is None or xmax is None or ymax is None:
+            return None
+        fxmin = float(xmin)
+        fymin = float(ymin)
+        fxmax = float(xmax)
+        fymax = float(ymax)
+        lat = (fymin + fymax) / 2.0
+        lon = (fxmin + fxmax) / 2.0
+        return (lat, lon)
+    except Exception:
+        return None
+
+
+def build_google_maps_link(lat: float, lon: float) -> str:
+    # Simple and robust: open Google Maps centered on coordinates
+    return f"https://www.google.com/maps?q={lat},{lon}"
 
 
 def render_body(recipient: Dict[str, Any], options: Dict[str, Any]) -> str:
     full_name = (recipient.get("full_name") or "").strip() or recipient.get("student_id")
     maille_code = recipient.get("maille_code")
-    xmin = recipient.get("bbox_xmin")
-    ymin = recipient.get("bbox_ymin")
-    xmax = recipient.get("bbox_xmax")
-    ymax = recipient.get("bbox_ymax")
+    commune = recipient.get("commune")
+    region = recipient.get("region")
 
-    include_bbox = bool(options.get("include_bbox", True))
-    include_instructions = bool(options.get("include_instructions", True))
-    instructions = os.getenv("COLAB_NOTIFY_INSTRUCTIONS", "")
+    bbox_nord = recipient.get("bbox_nord")
+    bbox_sud = recipient.get("bbox_sud")
+    bbox_est = recipient.get("bbox_est")
+    bbox_ouest = recipient.get("bbox_ouest")
 
-    lines: List[str] = [
-        f"Bonjour {full_name},",
-        "",
-        "Une maille vous a été attribuée.",
-        f"Maille: {maille_code}",
-    ]
-    if include_bbox:
-        lines.extend(
-            [
-                "",
-                "BBox (WGS84):",
-                f"xmin={xmin}",
-                f"ymin={ymin}",
-                f"xmax={xmax}",
-                f"ymax={ymax}",
-            ]
-        )
-    if include_instructions and instructions.strip():
-        lines.extend(["", instructions.strip()])
-    lines.extend(["", "Cordialement,", "Atlas Colab"])
-    return "\n".join(lines)
+    centroid_lat = recipient.get("centroid_lat")
+    centroid_lon = recipient.get("centroid_lon")
+
+    try:
+        centroid_lat_f = float(centroid_lat) if centroid_lat is not None else None
+        centroid_lon_f = float(centroid_lon) if centroid_lon is not None else None
+    except Exception:
+        centroid_lat_f = None
+        centroid_lon_f = None
+
+    maps_link = (
+        build_google_maps_link(centroid_lat_f, centroid_lon_f)
+        if centroid_lat_f is not None and centroid_lon_f is not None
+        else ""
+    )
+
+    def fmt(v: Any) -> str:
+        if v is None:
+            return ""
+        try:
+            return f"{float(v):.6f}"
+        except Exception:
+            return str(v)
+
+    return "\n".join(
+        [
+            f"Bonjour {full_name},",
+            "",
+            "Vous avez été affecté(e) à une mission de reconnaissance terrain dans le cadre du projet Atlas Géotechnique.",
+            "",
+            "📌 Détails de la mission",
+            "- Type de mission : Reconnaissance géotechnique",
+            f"- Maille assignée : {maille_code}",
+            f"- Commune : {commune}",
+            f"- Région : {region}",
+            "",
+            "🗺️ Zone de travail (emprise de la maille)",
+            f"- Nord : {fmt(bbox_nord)}",
+            f"- Sud : {fmt(bbox_sud)}",
+            f"- Est : {fmt(bbox_est)}",
+            f"- Ouest : {fmt(bbox_ouest)}",
+            "",
+            "📍 Accès rapide à la zone sur Google Maps",
+            maps_link,
+            "",
+            "(Le lien vous positionne automatiquement au centre de la maille.)",
+            "",
+            "Merci de confirmer la bonne réception de cette mission et de procéder aux travaux terrain conformément aux consignes du projet.",
+            "",
+            "En cas de difficulté ou d’ambiguïté sur la zone, merci de contacter l’équipe de coordination.",
+            "",
+            "Bonne mission et bon travail sur le terrain.",
+            "",
+            "Cordialement,",
+            "L’équipe Atlas Géotechnique",
+        ]
+    )
 
 
 def mark_assignment_log(conn, job_id: str, assignment_id: str, status: str, error: Optional[str] = None):
@@ -212,7 +297,7 @@ def process_job(conn, job: Dict[str, Any]) -> None:
 
     options = params.get("options") or {}
 
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+    with _dict_cursor(conn) as cur:
         db_log(cur, job_id, "info", "Récupération des destinataires", {})
         conn.commit()
 
@@ -234,13 +319,13 @@ def process_job(conn, job: Dict[str, Any]) -> None:
         msg = build_email(from_addr, to_addr, subject, body)
         messages.append((to_addr, msg))
 
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+    with _dict_cursor(conn) as cur:
         db_log(cur, job_id, "info", "Emails préparés", {"count": len(messages), "dry_run": dry_run})
         conn.commit()
 
     if dry_run:
         for to_addr, _msg in messages:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with _dict_cursor(conn) as cur:
                 db_log(cur, job_id, "info", "DRY_RUN: email non envoyé", {"to": to_addr})
                 conn.commit()
         for r in recipients:
@@ -259,7 +344,7 @@ def process_job(conn, job: Dict[str, Any]) -> None:
                 mark_assignment_log(conn, job_id, str(assignment_id), "failed", str(e))
         raise
 
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+    with _dict_cursor(conn) as cur:
         for r in recipients:
             to_addr = r.get("email")
             if not to_addr:
@@ -286,7 +371,7 @@ def run_once() -> int:
             process_job(conn, job)
             return 1
         except Exception as e:
-            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            with _dict_cursor(conn) as cur:
                 db_log(cur, str(job["id"]), "error", "Job failed", {"error": str(e)})
                 conn.commit()
             complete_job(conn, str(job["id"]), "failed", str(e))

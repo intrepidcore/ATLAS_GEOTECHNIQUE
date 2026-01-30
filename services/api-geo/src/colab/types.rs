@@ -49,6 +49,7 @@ pub enum MissionStatus {
     Planned,
     InProgress,
     Completed,
+    Archived,
     Cancelled,
     Suspended,
 }
@@ -60,6 +61,7 @@ impl MissionStatus {
             Self::Planned => "planned",
             Self::InProgress => "in_progress",
             Self::Completed => "completed",
+            Self::Archived => "archived",
             Self::Cancelled => "cancelled",
             Self::Suspended => "suspended",
         }
@@ -71,6 +73,7 @@ impl MissionStatus {
             "planned" => Some(Self::Planned),
             "in_progress" => Some(Self::InProgress),
             "completed" => Some(Self::Completed),
+            "archived" => Some(Self::Archived),
             "cancelled" => Some(Self::Cancelled),
             "suspended" => Some(Self::Suspended),
             _ => None,
@@ -81,6 +84,40 @@ impl MissionStatus {
 // ============================================================================
 // Mission DTOs
 // ============================================================================
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OperationalAction {
+    pub code: String,
+    pub label: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub payload: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum OperationalIssueSeverity {
+    Warning,
+    Blocked,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum OperationalIssueScope {
+    Mission,
+    Student,
+    Maille,
+    Assignment,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OperationalIssue {
+    pub code: String,
+    pub severity: OperationalIssueSeverity,
+    pub scope: OperationalIssueScope,
+    pub message: String,
+    #[serde(default)]
+    pub actions: Vec<OperationalAction>,
+}
 
 /// Mission résumée pour liste
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,6 +140,14 @@ pub struct MissionListItem {
     pub linked_sondages_count: i64,
     pub field_logs_count: i64,
     pub documents_count: i64,
+    // Mission-driven operational status (computed)
+    pub operational_status: String,
+    pub operational_reason: Option<String>,
+    #[serde(default)]
+    pub operational_issues: Vec<OperationalIssue>,
+    pub conflict_holder_email: Option<String>,
+    pub conflict_holder_name: Option<String>,
+    pub conflict_mission_id: Option<Uuid>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -131,9 +176,25 @@ pub struct MissionDetail {
     pub created_by: Option<UserSummary>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+    // Mission-driven operational status (computed)
+    pub operational_status: String,
+    pub operational_reason: Option<String>,
+    #[serde(default)]
+    pub operational_issues: Vec<OperationalIssue>,
+    pub conflict_holder_email: Option<String>,
+    pub conflict_holder_name: Option<String>,
+    pub conflict_mission_id: Option<Uuid>,
     // Relations
     pub assigned_students: Vec<AssignedStudent>,
     pub linked_sondages: Vec<LinkedSondage>,
+}
+
+#[derive(Debug, Clone, Deserialize, Validate)]
+pub struct ResolveConflictRequest {
+    #[validate(length(min = 1, max = 50))]
+    pub action: String,
+    #[serde(default)]
+    pub payload: serde_json::Value,
 }
 
 /// Résumé superviseur
@@ -322,6 +383,18 @@ pub struct UpdateStudentRequest {
     pub is_active: Option<bool>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct StudentPrefs {
+    pub student_id: Uuid,
+    pub adm_code_pref_1: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, Validate)]
+pub struct UpdateStudentPrefsRequest {
+    #[validate(length(min = 0, max = 100))]
+    pub adm_code_pref_1: Option<String>,
+}
+
 #[derive(Debug, Clone, Deserialize, Validate)]
 pub struct UpdateSupervisorRequest {
     #[validate(email(message = "Email invalide"))]
@@ -378,7 +451,8 @@ pub struct MissionFilters {
     pub region: Option<String>,
     pub promotion: Option<String>,
     pub supervisor_id: Option<Uuid>,
-    pub search: Option<String>, // recherche texte libre (code, titre)
+    #[serde(alias = "q")]
+    pub search: Option<String>, // recherche texte libre (code, titre, maille, zone, opérateur...)
     pub page: Option<i64>,
     pub per_page: Option<i64>,
 }

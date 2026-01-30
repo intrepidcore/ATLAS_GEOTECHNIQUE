@@ -21,6 +21,268 @@ use crate::auth::password::PasswordHasher;
 
 use super::types::*;
 
+fn build_operational_issues(
+    operational_status: &str,
+    operational_reason: Option<&str>,
+    mission_status: &str,
+    maille_id: Option<Uuid>,
+    assigned_students_count: i64,
+    primary_student_uuid: Option<Uuid>,
+    primary_student_matricule: Option<&str>,
+    primary_student_adm_code_pref_1: Option<&str>,
+    conflict_holder_name: Option<&str>,
+    conflict_holder_email: Option<&str>,
+    conflict_holder_student_uuid: Option<Uuid>,
+    conflict_mission_id: Option<Uuid>,
+) -> Vec<OperationalIssue> {
+    let mut issues: Vec<OperationalIssue> = vec![];
+
+    let is_active = matches!(mission_status, "planned" | "in_progress");
+    let is_draft = mission_status == "draft";
+    let is_not_assignable = matches!(mission_status, "completed" | "archived" | "cancelled" | "suspended");
+
+    if is_not_assignable {
+        issues.push(OperationalIssue {
+            code: "mission_not_assignable_status".to_string(),
+            severity: OperationalIssueSeverity::Blocked,
+            scope: OperationalIssueScope::Mission,
+            message: format!("Mission non assignable (statut: {})", mission_status),
+            actions: vec![OperationalAction {
+                code: "open_mission".to_string(),
+                label: "Ouvrir la mission".to_string(),
+                payload: Some(json!({ "action": "open_mission" })),
+            }],
+        });
+    }
+
+    if assigned_students_count > 0 && primary_student_uuid.is_none() {
+        issues.push(OperationalIssue {
+            code: "missing_primary_student".to_string(),
+            severity: if is_active {
+                OperationalIssueSeverity::Blocked
+            } else {
+                OperationalIssueSeverity::Warning
+            },
+            scope: OperationalIssueScope::Assignment,
+            message: "Étudiant principal introuvable".to_string(),
+            actions: vec![OperationalAction {
+                code: "change_student".to_string(),
+                label: "Choisir un étudiant".to_string(),
+                payload: Some(json!({ "action": "change_student" })),
+            }],
+        });
+    }
+
+    if maille_id.is_none() {
+        issues.push(OperationalIssue {
+            code: "missing_mission_maille".to_string(),
+            severity: if is_active {
+                OperationalIssueSeverity::Blocked
+            } else {
+                OperationalIssueSeverity::Warning
+            },
+            scope: OperationalIssueScope::Mission,
+            message: "Maille manquante".to_string(),
+            actions: vec![OperationalAction {
+                code: "edit_mission_maille".to_string(),
+                label: "Associer une maille".to_string(),
+                payload: Some(json!({ "action": "edit_mission_maille" })),
+            }],
+        });
+    }
+
+    if assigned_students_count == 0 {
+        issues.push(OperationalIssue {
+            code: "no_assigned_student".to_string(),
+            severity: if is_active {
+                OperationalIssueSeverity::Blocked
+            } else {
+                OperationalIssueSeverity::Warning
+            },
+            scope: OperationalIssueScope::Assignment,
+            message: "Aucun étudiant affecté".to_string(),
+            actions: vec![OperationalAction {
+                code: "assign_student".to_string(),
+                label: "Assigner un étudiant".to_string(),
+                payload: Some(json!({ "action": "assign_student" })),
+            }],
+        });
+    }
+
+    if let Some(student_id) = primary_student_uuid {
+        if primary_student_matricule
+            .map(|m| m.trim().is_empty())
+            .unwrap_or(true)
+        {
+            issues.push(OperationalIssue {
+                code: "missing_student_matricule".to_string(),
+                severity: if is_active {
+                    OperationalIssueSeverity::Blocked
+                } else {
+                    OperationalIssueSeverity::Warning
+                },
+                scope: OperationalIssueScope::Student,
+                message: "Matricule étudiant manquant".to_string(),
+                actions: vec![
+                    OperationalAction {
+                        code: "edit_student".to_string(),
+                        label: "Compléter matricule".to_string(),
+                        payload: Some(json!({ "action": "edit_student_matricule", "student_id": student_id })),
+                    },
+                    OperationalAction {
+                        code: "change_student".to_string(),
+                        label: "Changer l’étudiant".to_string(),
+                        payload: Some(json!({ "action": "change_student" })),
+                    },
+                ],
+            });
+        }
+
+        if primary_student_adm_code_pref_1
+            .map(|m| m.trim().is_empty())
+            .unwrap_or(true)
+        {
+            issues.push(OperationalIssue {
+                code: "missing_student_adm_code".to_string(),
+                severity: if is_active {
+                    OperationalIssueSeverity::Blocked
+                } else {
+                    OperationalIssueSeverity::Warning
+                },
+                scope: OperationalIssueScope::Student,
+                message: "ADM code manquant".to_string(),
+                actions: vec![
+                    OperationalAction {
+                        code: "edit_student".to_string(),
+                        label: "Compléter ADM".to_string(),
+                        payload: Some(json!({ "action": "edit_student_adm", "student_id": student_id })),
+                    },
+                    OperationalAction {
+                        code: "change_student".to_string(),
+                        label: "Changer l’étudiant".to_string(),
+                        payload: Some(json!({ "action": "change_student" })),
+                    },
+                ],
+            });
+        }
+    }
+
+    if conflict_holder_student_uuid.is_some() && primary_student_uuid.is_some() {
+        let who = conflict_holder_name
+            .or(conflict_holder_email)
+            .unwrap_or("un autre étudiant");
+        issues.push(OperationalIssue {
+            code: "maille_held_by_other_student".to_string(),
+            severity: if is_active {
+                OperationalIssueSeverity::Blocked
+            } else {
+                OperationalIssueSeverity::Warning
+            },
+            scope: OperationalIssueScope::Maille,
+            message: format!("Maille déjà tenue par {}", who),
+            actions: {
+                let mut a = vec![];
+                if !is_draft {
+                    a.push(OperationalAction {
+                        code: "resolve_takeover".to_string(),
+                        label: "Reprendre la maille".to_string(),
+                        payload: Some(json!({
+                            "action": "takeover",
+                            "conflict_mission_id": conflict_mission_id,
+                            "holder_student_id": conflict_holder_student_uuid
+                        })),
+                    });
+                }
+                a.push(OperationalAction {
+                    code: "resolve_change_maille".to_string(),
+                    label: "Changer la maille".to_string(),
+                    payload: Some(json!({ "action": "change_maille" })),
+                });
+                if let Some(holder_student_id) = conflict_holder_student_uuid {
+                    a.push(OperationalAction {
+                        code: "resolve_assign_holder".to_string(),
+                        label: "Assigner le détenteur".to_string(),
+                        payload: Some(json!({ "action": "assign_holder", "student_id": holder_student_id })),
+                    });
+                } else {
+                    a.push(OperationalAction {
+                        code: "resolve_change_student".to_string(),
+                        label: "Changer l’étudiant".to_string(),
+                        payload: Some(json!({ "action": "change_student" })),
+                    });
+                }
+                a
+            },
+        });
+    }
+
+    if issues.is_empty()
+        && matches!(operational_status, "action_required" | "blocked_conflict" | "blocked")
+    {
+        if let Some(reason) = operational_reason {
+            let reason = reason.trim();
+            if !reason.is_empty() {
+                issues.push(OperationalIssue {
+                    code: "operational_reason".to_string(),
+                    severity: OperationalIssueSeverity::Warning,
+                    scope: OperationalIssueScope::Mission,
+                    message: reason.to_string(),
+                    actions: vec![OperationalAction {
+                        code: "open_mission".to_string(),
+                        label: "Ouvrir la mission".to_string(),
+                        payload: Some(json!({ "action": "open_mission" })),
+                    }],
+                });
+            }
+        }
+    }
+
+    issues
+}
+
+fn map_db_creation_error(context: &str, e: &sqlx::Error) -> serde_json::Value {
+    let mut user_message = context.to_string();
+
+    if let Some(db) = e.as_database_error() {
+        if let Some(code) = db.code() {
+            // 23505 = unique_violation
+            if code == "23505" {
+                if let Some(constraint) = db.constraint() {
+                    let c = constraint.to_lowercase();
+                    if c.contains("email") {
+                        user_message = "Email déjà utilisé".to_string();
+                    } else if c.contains("username") {
+                        user_message = "Nom d’utilisateur déjà utilisé".to_string();
+                    } else if c.contains("matricule") {
+                        user_message = "Matricule déjà utilisé".to_string();
+                    } else if c.contains("mission") && c.contains("code") {
+                        user_message = "Une mission avec ce code existe déjà".to_string();
+                    }
+                } else {
+                    user_message = "Valeur déjà existante".to_string();
+                }
+            }
+
+            // 23503 = foreign_key_violation
+            if code == "23503" {
+                user_message = "Référence invalide (objet lié introuvable)".to_string();
+            }
+
+            // 23502 = not_null_violation
+            if code == "23502" {
+                user_message = "Champ requis manquant".to_string();
+            }
+
+            // 23514 = check_violation
+            if code == "23514" {
+                user_message = "Valeur invalide (contrainte)".to_string();
+            }
+        }
+    }
+
+    json!({ "error": user_message, "details": e.to_string() })
+}
+
 fn sanitize_username_base(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     for c in input.chars() {
@@ -72,6 +334,7 @@ pub fn colab_routes() -> Router<AppState> {
         // Missions
         .route("/colab/missions", get(list_missions).post(create_mission))
         .route("/colab/missions/:id", get(get_mission).put(update_mission).delete(delete_mission))
+        .route("/colab/missions/:id/resolve-conflict", post(resolve_conflict))
         .route("/colab/missions/stats", get(get_stats))
         // Documents
         .route("/colab/documents", get(list_documents).post(upload_document))
@@ -79,6 +342,7 @@ pub fn colab_routes() -> Router<AppState> {
         .route("/colab/documents/:id/download", get(download_document))
         // Suggest (autocomplétion)
         .route("/colab/mailles/suggest", get(suggest_mailles))
+        .route("/colab/mailles/resolve", get(resolve_maille))
         .route("/colab/communes/suggest", get(suggest_communes))
         .route("/colab/regions/suggest", get(suggest_regions))
         .route("/colab/students/suggest", get(suggest_students))
@@ -95,14 +359,73 @@ pub fn colab_routes() -> Router<AppState> {
             "/colab/students/:id",
             get(get_student).put(update_student).delete(delete_student),
         )
+        .route(
+            "/colab/students/:id/prefs",
+            get(get_student_prefs).put(update_student_prefs),
+        )
         // Notifications email (orchestrées par script local)
         .route("/colab/notify/jobs", get(list_notify_jobs).post(create_notify_job))
         .route("/colab/notify/jobs/:id", get(get_notify_job))
+        .route("/colab/notify/jobs/:id/cancel", post(cancel_notify_job))
         // Attributions & Notifications (mailles ↔ étudiants)
         .route("/colab/attributions/summary", get(get_attributions_summary))
         .route("/colab/attributions", get(list_attributions))
+        .route("/colab/attributions/assign", post(assign_attribution))
+        // Alias API "stable" (Phase B2): assign/unassign
+        .route("/colab/assign", post(assign_attribution))
+        .route("/colab/assign/:id", delete(unassign_assignment))
         .route("/colab/attributions/notify", post(enqueue_attributions_notifications))
         .route("/colab/attributions/notifications/history", get(list_attributions_notification_history))
+}
+
+// ============================================================================
+// Handlers Resolve Maille
+// ============================================================================
+
+/// GET /colab/mailles/resolve?lat=..&lon=..
+async fn resolve_maille(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Query(params): Query<std::collections::HashMap<String, String>>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.create") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let lat: f64 = params
+        .get("lat")
+        .and_then(|s| s.parse::<f64>().ok())
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "lat requis" }))))?;
+    let lon: f64 = params
+        .get("lon")
+        .and_then(|s| s.parse::<f64>().ok())
+        .ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "lon requis" }))))?;
+
+    let row = sqlx::query(
+        r#"
+        SELECT id, code, adm1_name, adm2_name, adm3_name
+        FROM atlas.mailles
+        WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326))
+        LIMIT 1
+        "#,
+    )
+    .bind(lon)
+    .bind(lat)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let Some(row) = row else {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Aucune maille trouvée" }))));
+    };
+
+    Ok(Json(json!({
+        "id": row.get::<Uuid, _>("id"),
+        "code": row.get::<String, _>("code"),
+        "adm1_name": row.try_get::<String, _>("adm1_name").ok(),
+        "adm2_name": row.try_get::<String, _>("adm2_name").ok(),
+        "adm3_name": row.try_get::<String, _>("adm3_name").ok(),
+    })))
 }
 
 // ============================================================================
@@ -205,10 +528,11 @@ async fn list_attributions(
     if let Some(notif_status) = query.notif_status {
         let st = notif_status.replace('\'', "''");
         // Statut dérivé:
-        // - unassigned: pas de assignment_id => non notifiable
+        // - unassigned: pas d'étudiant affecté à la mission
+        // - skipped: étudiant affecté mais non notifiable (attribution maille manquante / prefs incomplètes)
         // - never: assignment_id présent mais jamais notifié
         conditions.push(format!(
-            "(CASE WHEN v.assignment_id IS NULL THEN 'unassigned' ELSE COALESCE(v.notification_status, 'never') END) = '{}'",
+            "(CASE WHEN v.assignment_id IS NULL AND v.student_uuid IS NULL THEN 'unassigned' WHEN v.assignment_id IS NULL THEN 'skipped' ELSE COALESCE(v.notification_status, 'never') END) = '{}'",
             st
         ));
     }
@@ -231,7 +555,11 @@ async fn list_attributions(
             v.adm_code_used,
             v.pref_rank_used,
             v.assigned_at,
-            CASE WHEN v.assignment_id IS NULL THEN 'unassigned' ELSE COALESCE(v.notification_status, 'never') END AS notification_status,
+            CASE
+              WHEN v.assignment_id IS NULL AND v.student_uuid IS NULL THEN 'unassigned'
+              WHEN v.assignment_id IS NULL THEN 'skipped'
+              ELSE COALESCE(v.notification_status, 'never')
+            END AS notification_status,
             v.notification_requested_at,
             v.notification_sent_at,
             v.notification_error
@@ -253,15 +581,23 @@ async fn list_attributions(
         .iter()
         .map(|r| {
             let assignment_id: Option<Uuid> = r.try_get::<Uuid, _>("assignment_id").ok();
+            let student_uuid: Option<Uuid> = r.try_get::<Uuid, _>("student_uuid").ok();
             let email: Option<String> = r.try_get::<String, _>("email").ok();
             let notification_status: String = r.get::<String, _>("notification_status");
             let notification_error: Option<String> = r.try_get::<String, _>("notification_error").ok();
 
             let (attribution_status, status_reason) = if assignment_id.is_none() {
-                (
-                    "unassigned",
-                    Some("Aucune affectation notifiable (mission sans attribution maille→étudiant)"),
-                )
+                if student_uuid.is_some() {
+                    (
+                        "assigned_not_notifiable",
+                        Some("Étudiant affecté mais non notifiable (attribution maille manquante / prefs incomplètes)"),
+                    )
+                } else {
+                    (
+                        "unassigned",
+                        Some("Aucun étudiant affecté à la mission"),
+                    )
+                }
             } else if email.as_ref().map(|s| s.trim().is_empty()).unwrap_or(true) {
                 (
                     "assigned_not_notifiable",
@@ -286,7 +622,7 @@ async fn list_attributions(
                 "mission_status": r.get::<String, _>("mission_status"),
                 "maille_id": r.get::<Uuid, _>("maille_id"),
                 "maille_code": r.get::<String, _>("maille_code"),
-                "student_uuid": r.try_get::<Uuid, _>("student_uuid").ok(),
+                "student_uuid": student_uuid,
                 "student_id": r.try_get::<String, _>("student_id").ok(),
                 "full_name": r.try_get::<String, _>("full_name").ok(),
                 "email": email,
@@ -370,11 +706,11 @@ async fn enqueue_attributions_notifications(
         "#,
     )
     .bind(job_id)
-    .bind(json!({ "assignment_count": req.assignment_ids.len(), "requested_by": auth.id }))
+    .bind(&params)
     .execute(&state.pool)
     .await;
 
-    Ok(Json(json!({ "success": true, "job_id": job_id, "count": req.assignment_ids.len() })))
+    Ok(Json(json!({ "success": true, "job_id": job_id })))
 }
 
 async fn list_attributions_notification_history(
@@ -401,7 +737,7 @@ async fn list_attributions_notification_history(
             d.email,
             d.maille_code
         FROM atlas.colab_maille_notification_logs l
-        JOIN atlas.v_colab_maille_assignment_details d ON d.assignment_id = l.assignment_id
+        JOIN atlas.v_colab_mission_attributions d ON d.assignment_id = l.assignment_id
         ORDER BY l.requested_at DESC
         LIMIT 500
         "#,
@@ -446,6 +782,241 @@ struct NotifyJobsQuery {
 struct CreateNotifyJobRequest {
     job_type: Option<String>,
     params: Option<serde_json::Value>,
+}
+
+async fn cancel_notify_job(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(job_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.notify.create") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let res = sqlx::query(
+        r#"
+        UPDATE atlas.colab_email_jobs
+        SET status = 'cancelled', finished_at = NOW(), error = NULL
+        WHERE id = $1 AND status = 'pending'
+        "#,
+    )
+    .bind(job_id)
+    .execute(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    if res.rows_affected() == 0 {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Job non annulable (statut non pending ou introuvable)" }))));
+    }
+
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO atlas.colab_email_job_logs (job_id, level, message, details)
+        VALUES ($1, 'info', 'Job annulé', $2)
+        "#,
+    )
+    .bind(job_id)
+    .bind(json!({ "cancelled_by": auth.id }))
+    .execute(&state.pool)
+    .await;
+
+    Ok(Json(json!({ "success": true, "job_id": job_id })))
+}
+
+// ============================================================================
+// Handlers Attribution inline (unassigned -> assign)
+// ============================================================================
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct AssignAttributionRequest {
+    mission_id: Uuid,
+    student_id: Uuid,
+}
+
+async fn assign_attribution(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(req): Json<AssignAttributionRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.update") && !auth.has_permission("colab.missions.create") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    // B1: verrouillage métier
+    // - mission doit avoir une maille
+    // - mission doit être assignable (pas clôturée)
+    // - une maille ne peut pas être occupée par 2 missions actives
+    let mission_row = sqlx::query(
+        r#"
+        SELECT
+            maille_id,
+            status::text AS status
+        FROM atlas.colab_missions
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(req.mission_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let mission_row = mission_row.ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" })))
+    })?;
+
+    let mission_status: String = mission_row
+        .try_get("status")
+        .unwrap_or_else(|_| "draft".to_string());
+    let maille_id: Option<Uuid> = mission_row.try_get("maille_id").ok();
+
+    if maille_id.is_none() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Attribution impossible: la mission n'a pas de maille" })),
+        ));
+    }
+
+    if matches!(mission_status.as_str(), "completed" | "archived" | "cancelled" | "suspended") {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": format!("Attribution impossible: mission '{}'", mission_status) })),
+        ));
+    }
+
+    let maille_id = maille_id.unwrap();
+    let conflict: Option<Uuid> = sqlx::query_scalar(
+        r#"
+        SELECT cm.id
+        FROM atlas.colab_missions cm
+        JOIN atlas.colab_mission_assignments a
+          ON a.mission_id = cm.id
+         AND a.unassigned_at IS NULL
+        WHERE cm.deleted_at IS NULL
+          AND cm.maille_id = $1
+          AND cm.id <> $2
+          AND cm.status IN ('planned'::atlas.mission_status, 'in_progress'::atlas.mission_status)
+        LIMIT 1
+        "#,
+    )
+    .bind(maille_id)
+    .bind(req.mission_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    if let Some(conflict_mission_id) = conflict {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Conflit maille: une autre mission active occupe déjà cette maille",
+                "conflict_mission_id": conflict_mission_id
+            })),
+        ));
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    // Close existing active assignment(s) for this mission (only one maille per mission anyway)
+    let _ = sqlx::query(
+        r#"
+        UPDATE atlas.colab_mission_assignments
+        SET unassigned_at = NOW()
+        WHERE mission_id = $1 AND unassigned_at IS NULL
+        "#,
+    )
+    .bind(req.mission_id)
+    .execute(&mut *tx)
+    .await;
+
+    // Insert new assignment
+    let assignment_id: Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO atlas.colab_mission_assignments (mission_id, student_id, role)
+        VALUES ($1, $2, 'membre')
+        RETURNING id
+        "#,
+    )
+    .bind(req.mission_id)
+    .bind(req.student_id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Attribution impossible", &e))))?;
+
+    // Sync derived table colab_maille_assignments from missions
+    let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
+        .bind(req.mission_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur sync attribution: {}", e) }))))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    Ok(Json(json!({ "success": true, "assignment_id": assignment_id })))
+}
+
+async fn unassign_assignment(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(assignment_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.update") && !auth.has_permission("colab.missions.create") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let mission_id: Option<Uuid> = sqlx::query_scalar(
+        r#"SELECT mission_id FROM atlas.colab_mission_assignments WHERE id = $1"#,
+    )
+    .bind(assignment_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let mission_id = mission_id.ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(json!({ "error": "Affectation introuvable" })))
+    })?;
+
+    let res = sqlx::query(
+        r#"
+        UPDATE atlas.colab_mission_assignments
+        SET unassigned_at = NOW()
+        WHERE id = $1 AND unassigned_at IS NULL
+        "#,
+    )
+    .bind(assignment_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    if res.rows_affected() == 0 {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Affectation déjà clôturée" })),
+        ));
+    }
+
+    let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
+        .bind(mission_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur sync attribution: {}", e) }))))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    Ok(Json(json!({ "success": true, "assignment_id": assignment_id })))
 }
 
 async fn create_notify_job(
@@ -868,6 +1439,79 @@ async fn get_student(
     })))
 }
 
+/// GET /colab/students/:id/prefs - Préférences étudiant (ADM, etc.)
+async fn get_student_prefs(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(student_id): Path<Uuid>,
+) -> Result<Json<StudentPrefs>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.students.read") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let prefs = sqlx::query_as::<_, StudentPrefs>(
+        r#"
+        SELECT
+          $1::uuid as student_id,
+          sp.adm_code_pref_1
+        FROM atlas.colab_student_prefs sp
+        WHERE sp.student_id = ($1::uuid)::text
+        LIMIT 1
+        "#,
+    )
+    .bind(student_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
+    Ok(Json(prefs.unwrap_or(StudentPrefs {
+        student_id,
+        adm_code_pref_1: None,
+    })))
+}
+
+/// PUT /colab/students/:id/prefs - Mettre à jour préférences étudiant
+async fn update_student_prefs(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(student_id): Path<Uuid>,
+    Json(payload): Json<UpdateStudentPrefsRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.students.update") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+    payload
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": format!("Validation échouée: {}", e) }))))?;
+
+    // Upsert en utilisant student_id stocké en TEXT dans la table prefs
+    sqlx::query(
+        r#"
+        INSERT INTO atlas.colab_student_prefs (student_id, adm_code_pref_1)
+        VALUES (($1::uuid)::text, $2)
+        ON CONFLICT (student_id)
+        DO UPDATE SET adm_code_pref_1 = EXCLUDED.adm_code_pref_1
+        "#,
+    )
+    .bind(student_id)
+    .bind(&payload.adm_code_pref_1)
+    .execute(&state.pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Mise à jour préférences impossible", "details": e.to_string() })),
+        )
+    })?;
+
+    Ok(Json(json!({ "success": true, "student_id": student_id })))
+}
+
 // ... (rest of the code remains the same)
 
 /// GET /colab/missions - Liste des missions avec filtres
@@ -919,10 +1563,53 @@ async fn list_missions(
         ));
     }
     if let Some(ref search) = filters.search {
-        let search_escaped = search.replace('\'', "''");
+        let q = search.replace('\'', "''");
         conditions.push(format!(
-            "(m.code ILIKE '%{}%' OR m.title ILIKE '%{}%')",
-            search_escaped, search_escaped
+            r#"(
+                m.code ILIKE '%{q}%'
+                OR m.title ILIKE '%{q}%'
+                OR COALESCE(m.zone_label, '') ILIKE '%{q}%'
+                OR COALESCE(m.commune, '') ILIKE '%{q}%'
+                OR COALESCE(m.region, '') ILIKE '%{q}%'
+                OR EXISTS (
+                    SELECT 1
+                    FROM atlas.mailles ma
+                    WHERE ma.id = m.maille_id
+                      AND (
+                        COALESCE(ma.code, '') ILIKE '%{q}%'
+                        OR COALESCE(ma.pref_name, '') ILIKE '%{q}%'
+                        OR COALESCE(ma.adm3_name, '') ILIKE '%{q}%'
+                      )
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM atlas.colab_supervisors s2
+                    JOIN atlas.users u2 ON u2.id = s2.user_id
+                    WHERE s2.id = m.supervisor_id
+                      AND (
+                        COALESCE(u2.first_name, '') ILIKE '%{q}%'
+                        OR COALESCE(u2.last_name, '') ILIKE '%{q}%'
+                        OR COALESCE(u2.username, '') ILIKE '%{q}%'
+                        OR COALESCE(u2.email, '') ILIKE '%{q}%'
+                      )
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM atlas.colab_mission_assignments a
+                    JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+                    JOIN atlas.users u3 ON u3.id = cs.user_id AND u3.deleted_at IS NULL
+                    WHERE a.mission_id = m.id
+                      AND a.unassigned_at IS NULL
+                      AND (
+                        COALESCE(cs.matricule, '') ILIKE '%{q}%'
+                        OR COALESCE(u3.first_name, '') ILIKE '%{q}%'
+                        OR COALESCE(u3.last_name, '') ILIKE '%{q}%'
+                        OR COALESCE(u3.username, '') ILIKE '%{q}%'
+                        OR COALESCE(u3.email, '') ILIKE '%{q}%'
+                      )
+                )
+            )"#,
+            q = q
         ));
     }
     if let Some(supervisor_id) = filters.supervisor_id {
@@ -968,13 +1655,127 @@ async fn list_missions(
             m.updated_at,
             s.id as supervisor_id,
             COALESCE(u.first_name || ' ' || u.last_name, u.username) as supervisor_name,
-            (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.mission_id = m.id AND a.unassigned_at IS NULL) as assigned_students_count,
+            (
+              SELECT COUNT(*)
+              FROM atlas.colab_mission_assignments a
+              JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+              WHERE a.mission_id = m.id AND a.unassigned_at IS NULL
+            ) as assigned_students_count,
             (SELECT COUNT(*) FROM atlas.colab_mission_sondages ms WHERE ms.mission_id = m.id) as linked_sondages_count,
             (SELECT COUNT(*) FROM atlas.colab_field_logs fl WHERE fl.mission_id = m.id) as field_logs_count,
-            (SELECT COUNT(*) FROM atlas.colab_documents d WHERE d.mission_id = m.id AND d.is_current = TRUE) as documents_count
+            (SELECT COUNT(*) FROM atlas.colab_documents d WHERE d.mission_id = m.id AND d.is_current = TRUE) as documents_count,
+
+            ms.student_uuid as primary_student_uuid,
+            ms.matricule as primary_student_matricule,
+            sp.adm_code_pref_1 as primary_student_adm_code_pref_1,
+
+            CASE
+              WHEN ma.holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND ma.holder_student_uuid <> ms.student_uuid THEN ma.holder_student_uuid
+              ELSE NULL
+            END as conflict_holder_student_uuid,
+            CASE
+              WHEN ma.holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND ma.holder_student_uuid <> ms.student_uuid THEN ma.holder_email
+              ELSE NULL
+            END as conflict_holder_email,
+            CASE
+              WHEN ma.holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND ma.holder_student_uuid <> ms.student_uuid THEN ma.holder_name
+              ELSE NULL
+            END as conflict_holder_name,
+            CASE
+              WHEN ma.holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND ma.holder_student_uuid <> ms.student_uuid THEN cm_conf.id
+              ELSE NULL
+            END as conflict_mission_id,
+
+            notif.status as latest_notification_status,
+
+            CASE
+              WHEN (
+                SELECT COUNT(*)
+                FROM atlas.colab_mission_assignments a
+                JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+                WHERE a.mission_id = m.id AND a.unassigned_at IS NULL
+              ) = 0 THEN 'action_required'
+              WHEN m.maille_id IS NULL THEN 'action_required'
+              WHEN ma.holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND ma.holder_student_uuid <> ms.student_uuid THEN 'blocked_conflict'
+              WHEN ms.student_uuid IS NOT NULL AND (ms.matricule IS NULL OR BTRIM(ms.matricule) = '') THEN 'action_required'
+              WHEN ms.student_uuid IS NOT NULL AND (sp.adm_code_pref_1 IS NULL OR BTRIM(sp.adm_code_pref_1) = '') THEN 'action_required'
+              WHEN COALESCE(notif.status, '') = 'sent' THEN 'notified'
+              WHEN ms.student_uuid IS NOT NULL THEN 'ready_notifiable'
+              ELSE 'action_required'
+            END as operational_status,
+
+            CASE
+              WHEN (
+                SELECT COUNT(*)
+                FROM atlas.colab_mission_assignments a
+                JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+                WHERE a.mission_id = m.id AND a.unassigned_at IS NULL
+              ) = 0 THEN 'Aucun étudiant affecté'
+              WHEN m.maille_id IS NULL THEN 'Maille manquante'
+              WHEN ma.holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND ma.holder_student_uuid <> ms.student_uuid THEN 'Maille déjà attribuée à un autre étudiant'
+              WHEN ms.student_uuid IS NOT NULL AND (ms.matricule IS NULL OR BTRIM(ms.matricule) = '') THEN 'Matricule étudiant manquant'
+              WHEN ms.student_uuid IS NOT NULL AND (sp.adm_code_pref_1 IS NULL OR BTRIM(sp.adm_code_pref_1) = '') THEN 'Préférences étudiant incomplètes'
+              WHEN COALESCE(notif.status, '') = 'sent' THEN 'Notification déjà envoyée'
+              WHEN ms.student_uuid IS NOT NULL THEN 'Prête à notifier'
+              ELSE NULL
+            END as operational_reason
         FROM atlas.colab_missions m
         LEFT JOIN atlas.colab_supervisors s ON m.supervisor_id = s.id
         LEFT JOIN atlas.users u ON s.user_id = u.id
+        LEFT JOIN LATERAL (
+            SELECT
+                a.student_id as student_uuid,
+                cs.matricule as matricule
+            FROM atlas.colab_mission_assignments a
+            JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+            WHERE a.mission_id = m.id
+              AND a.unassigned_at IS NULL
+            ORDER BY a.assigned_at DESC
+            LIMIT 1
+        ) ms ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT sp.adm_code_pref_1
+            FROM atlas.colab_student_prefs sp
+            WHERE sp.student_id = (ms.student_uuid::TEXT)
+            LIMIT 1
+        ) sp ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT
+                a.student_id as holder_student_uuid,
+                u2.email as holder_email,
+                COALESCE(NULLIF(BTRIM(u2.first_name || ' ' || u2.last_name), ''), u2.username, u2.email) as holder_name
+            FROM atlas.colab_maille_assignments a
+            JOIN atlas.colab_students cs2 ON cs2.id = a.student_id AND cs2.deleted_at IS NULL
+            JOIN atlas.users u2 ON u2.id = cs2.user_id
+            WHERE a.maille_id = m.maille_id
+            ORDER BY a.assigned_at DESC
+            LIMIT 1
+        ) ma ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT cm.id
+            FROM atlas.colab_missions cm
+            JOIN atlas.colab_mission_assignments a ON a.mission_id = cm.id AND a.unassigned_at IS NULL
+            WHERE cm.deleted_at IS NULL
+              AND cm.maille_id = m.maille_id
+              AND ma.holder_student_uuid IS NOT NULL
+              AND a.student_id = ma.holder_student_uuid
+              AND cm.id <> m.id
+            ORDER BY a.assigned_at DESC
+            LIMIT 1
+        ) cm_conf ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT n.status
+            FROM atlas.v_colab_maille_notification_latest n
+            WHERE n.assignment_id = (
+                SELECT a2.assignment_id
+                FROM atlas.colab_maille_assignments a2
+                WHERE a2.maille_id = m.maille_id
+                  AND ms.student_uuid IS NOT NULL
+                  AND a2.student_id = ms.student_uuid
+                LIMIT 1
+            )
+            LIMIT 1
+        ) notif ON TRUE
         WHERE {}
         ORDER BY m.created_at DESC
         LIMIT {} OFFSET {}
@@ -995,27 +1796,63 @@ async fn list_missions(
 
     let missions: Vec<MissionListItem> = rows
         .iter()
-        .map(|row| MissionListItem {
-            id: row.get("id"),
-            code: row.get("code"),
-            title: row.get("title"),
-            theme: row.get("theme"),
-            status: row.get("status"),
-            maille_id: row.get("maille_id"),
-            zone_label: row.get("zone_label"),
-            commune: row.get("commune"),
-            region: row.get("region"),
-            start_date: row.get("start_date"),
-            end_date: row.get("end_date"),
-            expected_sondages: row.get("expected_sondages"),
-            supervisor_id: row.get("supervisor_id"),
-            supervisor_name: row.get("supervisor_name"),
-            assigned_students_count: row.get("assigned_students_count"),
-            linked_sondages_count: row.get("linked_sondages_count"),
-            field_logs_count: row.get("field_logs_count"),
-            documents_count: row.get("documents_count"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
+        .map(|row| {
+            let operational_status: String = row.get("operational_status");
+            let operational_reason: Option<String> = row.try_get("operational_reason").ok();
+            let conflict_holder_email: Option<String> = row.try_get("conflict_holder_email").ok();
+            let conflict_holder_name: Option<String> = row.try_get("conflict_holder_name").ok();
+            let conflict_holder_student_uuid: Option<Uuid> = row.try_get("conflict_holder_student_uuid").ok();
+            let conflict_mission_id: Option<Uuid> = row.try_get("conflict_mission_id").ok();
+
+            let operational_issues = build_operational_issues(
+                operational_status.as_str(),
+                operational_reason.as_deref(),
+                row.get::<String, _>("status").as_str(),
+                row.try_get::<Option<Uuid>, _>("maille_id").unwrap_or(None),
+                row.get::<i64, _>("assigned_students_count"),
+                row.try_get::<Option<Uuid>, _>("primary_student_uuid").unwrap_or(None),
+                row.try_get::<Option<String>, _>("primary_student_matricule")
+                    .ok()
+                    .flatten()
+                    .as_deref(),
+                row.try_get::<Option<String>, _>("primary_student_adm_code_pref_1")
+                    .ok()
+                    .flatten()
+                    .as_deref(),
+                conflict_holder_name.as_deref(),
+                conflict_holder_email.as_deref(),
+                conflict_holder_student_uuid,
+                conflict_mission_id,
+            );
+
+            MissionListItem {
+                id: row.get("id"),
+                code: row.get("code"),
+                title: row.get("title"),
+                theme: row.get("theme"),
+                status: row.get("status"),
+                maille_id: row.get("maille_id"),
+                zone_label: row.get("zone_label"),
+                commune: row.get("commune"),
+                region: row.get("region"),
+                start_date: row.get("start_date"),
+                end_date: row.get("end_date"),
+                expected_sondages: row.get("expected_sondages"),
+                supervisor_id: row.get("supervisor_id"),
+                supervisor_name: row.get("supervisor_name"),
+                assigned_students_count: row.get("assigned_students_count"),
+                linked_sondages_count: row.get("linked_sondages_count"),
+                field_logs_count: row.get("field_logs_count"),
+                documents_count: row.get("documents_count"),
+                operational_status,
+                operational_reason,
+                operational_issues,
+                conflict_holder_email,
+                conflict_holder_name,
+                conflict_mission_id,
+                created_at: row.get("created_at"),
+                updated_at: row.get("updated_at"),
+            }
         })
         .collect();
 
@@ -1050,6 +1887,16 @@ async fn create_mission(
             StatusCode::BAD_REQUEST,
             Json(json!({ "error": format!("Validation échouée: {}", e) })),
         ));
+    }
+
+    // B1: validité temporelle
+    if let (Some(sd), Some(ed)) = (payload.start_date, payload.end_date) {
+        if sd > ed {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Validation échouée: start_date doit être <= end_date" })),
+            ));
+        }
     }
 
     // Valider le thème
@@ -1106,15 +1953,7 @@ async fn create_mission(
     .await
     .map_err(|e| {
         tracing::error!("Erreur création mission: {}", e);
-        let error_msg = if e.to_string().contains("duplicate key") {
-            "Une mission avec ce code existe déjà"
-        } else {
-            "Erreur lors de la création de la mission"
-        };
-        (
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": error_msg, "details": e.to_string() })),
-        )
+        (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Erreur lors de la création de la mission", &e)))
     })?;
 
     // Assignations (si fournies)
@@ -1131,10 +1970,7 @@ async fn create_mission(
         .execute(&mut *tx)
         .await
         .map_err(|e| {
-            (
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "Erreur assignation étudiant", "details": e.to_string() })),
-            )
+            (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Erreur assignation étudiant", &e)))
         })?;
     }
 
@@ -1158,10 +1994,16 @@ async fn create_mission(
         expected_sondages: payload.expected_sondages.unwrap_or(0),
         supervisor_id: payload.supervisor_id,
         supervisor_name: None,
-        assigned_students_count: 0,
+        assigned_students_count: payload.assigned_student_ids.len() as i64,
         linked_sondages_count: 0,
         field_logs_count: 0,
         documents_count: 0,
+        operational_status: "action_required".to_string(),
+        operational_reason: Some("Mission créée".to_string()),
+        operational_issues: vec![],
+        conflict_holder_email: None,
+        conflict_holder_name: None,
+        conflict_mission_id: None,
         created_at: now,
         updated_at: now,
     };
@@ -1220,7 +2062,7 @@ async fn create_student(
     .bind(auth.id)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": "Création user impossible", "details": e.to_string() }))))?;
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création user impossible", &e))))?;
 
     // Role student
     sqlx::query(
@@ -1252,7 +2094,7 @@ async fn create_student(
     .bind(&payload.age)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": "Création étudiant impossible", "details": e.to_string() }))))?;
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création étudiant impossible", &e))))?;
 
     tx.commit()
         .await
@@ -1309,7 +2151,7 @@ async fn create_supervisor(
     .bind(auth.id)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": "Création user impossible", "details": e.to_string() }))))?;
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création user impossible", &e))))?;
 
     sqlx::query(
         r#"
@@ -1340,7 +2182,7 @@ async fn create_supervisor(
     .bind(&payload.notes)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": "Création superviseur impossible", "details": e.to_string() }))))?;
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création superviseur impossible", &e))))?;
 
     tx.commit()
         .await
@@ -1759,6 +2601,110 @@ async fn get_mission(
         None
     };
 
+    let operational_row = sqlx::query(
+        r#"
+        SELECT
+            ms.student_uuid as primary_student_uuid,
+            ms.matricule as primary_student_matricule,
+            sp.adm_code_pref_1 as primary_student_adm_code_pref_1,
+            ma.holder_student_uuid as conflict_holder_student_uuid,
+            ma.holder_email as conflict_holder_email,
+            ma.holder_name as conflict_holder_name,
+            cm_conf.id as conflict_mission_id,
+            notif.status as latest_notification_status,
+            CASE
+              WHEN (
+                SELECT COUNT(*)
+                FROM atlas.colab_mission_assignments a
+                JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+                WHERE a.mission_id = m.id AND a.unassigned_at IS NULL
+              ) = 0 THEN 'action_required'
+              WHEN m.maille_id IS NULL THEN 'action_required'
+              WHEN ma.holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND ma.holder_student_uuid <> ms.student_uuid THEN 'blocked_conflict'
+              WHEN ms.student_uuid IS NOT NULL AND (ms.matricule IS NULL OR BTRIM(ms.matricule) = '') THEN 'action_required'
+              WHEN ms.student_uuid IS NOT NULL AND (sp.adm_code_pref_1 IS NULL OR BTRIM(sp.adm_code_pref_1) = '') THEN 'action_required'
+              WHEN COALESCE(notif.status, '') = 'sent' THEN 'notified'
+              WHEN ms.student_uuid IS NOT NULL THEN 'ready_notifiable'
+              ELSE 'action_required'
+            END as operational_status,
+            CASE
+              WHEN (
+                SELECT COUNT(*)
+                FROM atlas.colab_mission_assignments a
+                JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+                WHERE a.mission_id = m.id AND a.unassigned_at IS NULL
+              ) = 0 THEN 'Aucun étudiant affecté'
+              WHEN m.maille_id IS NULL THEN 'Maille manquante'
+              WHEN ma.holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND ma.holder_student_uuid <> ms.student_uuid THEN 'Maille déjà attribuée à un autre étudiant'
+              WHEN ms.student_uuid IS NOT NULL AND (ms.matricule IS NULL OR BTRIM(ms.matricule) = '') THEN 'Matricule étudiant manquant'
+              WHEN ms.student_uuid IS NOT NULL AND (sp.adm_code_pref_1 IS NULL OR BTRIM(sp.adm_code_pref_1) = '') THEN 'Préférences étudiant incomplètes'
+              WHEN COALESCE(notif.status, '') = 'sent' THEN 'Notification déjà envoyée'
+              WHEN ms.student_uuid IS NOT NULL THEN 'Prête à notifier'
+              ELSE NULL
+            END as operational_reason
+        FROM atlas.colab_missions m
+        LEFT JOIN LATERAL (
+            SELECT
+                a.student_id as student_uuid,
+                cs.matricule as matricule
+            FROM atlas.colab_mission_assignments a
+            JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+            WHERE a.mission_id = m.id
+              AND a.unassigned_at IS NULL
+            ORDER BY a.assigned_at DESC
+            LIMIT 1
+        ) ms ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT sp.adm_code_pref_1
+            FROM atlas.colab_student_prefs sp
+            WHERE sp.student_id = ms.student_uuid
+            LIMIT 1
+        ) sp ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT
+                a.student_id as holder_student_uuid,
+                u2.email as holder_email,
+                COALESCE(NULLIF(BTRIM(u2.first_name || ' ' || u2.last_name), ''), u2.username, u2.email) as holder_name
+            FROM atlas.colab_maille_assignments a
+            JOIN atlas.colab_students cs2 ON cs2.id = a.student_id AND cs2.deleted_at IS NULL
+            JOIN atlas.users u2 ON u2.id = cs2.user_id
+            WHERE a.maille_id = m.maille_id
+            ORDER BY a.assigned_at DESC
+            LIMIT 1
+        ) ma ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT cm.id
+            FROM atlas.colab_missions cm
+            JOIN atlas.colab_mission_assignments a ON a.mission_id = cm.id AND a.unassigned_at IS NULL
+            WHERE cm.deleted_at IS NULL
+              AND cm.maille_id = m.maille_id
+              AND ma.holder_student_uuid IS NOT NULL
+              AND a.student_id = ma.holder_student_uuid
+              AND cm.id <> m.id
+            ORDER BY a.assigned_at DESC
+            LIMIT 1
+        ) cm_conf ON TRUE
+        LEFT JOIN LATERAL (
+            SELECT n.status
+            FROM atlas.v_colab_maille_notification_latest n
+            WHERE n.assignment_id = (
+                SELECT a2.assignment_id
+                FROM atlas.colab_maille_assignments a2
+                WHERE a2.maille_id = m.maille_id
+                  AND ms.student_uuid IS NOT NULL
+                  AND a2.student_id = ms.student_uuid
+                LIMIT 1
+            )
+            LIMIT 1
+        ) notif ON TRUE
+        WHERE m.id = $1
+        "#,
+    )
+    .bind(id)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
     let mission = MissionDetail {
         id: row.get("id"),
         code: row.get("code"),
@@ -1779,6 +2725,45 @@ async fn get_mission(
         created_by,
         created_at: row.get("created_at"),
         updated_at: row.get("updated_at"),
+        operational_status: {
+            let s: String = operational_row.get("operational_status");
+            s
+        },
+        operational_reason: operational_row.try_get("operational_reason").ok(),
+        operational_issues: {
+            let mission_status: String = row.get("status_str");
+            let operational_status: String = operational_row.get("operational_status");
+            let operational_reason: Option<String> = operational_row.try_get("operational_reason").ok();
+            let holder_name: Option<String> = operational_row.try_get("conflict_holder_name").ok();
+            let holder_email: Option<String> = operational_row.try_get("conflict_holder_email").ok();
+            let holder_student_uuid: Option<Uuid> = operational_row.try_get("conflict_holder_student_uuid").ok();
+            let conflict_mission_id: Option<Uuid> = operational_row.try_get("conflict_mission_id").ok();
+            build_operational_issues(
+                operational_status.as_str(),
+                operational_reason.as_deref(),
+                &mission_status,
+                row.try_get::<Option<Uuid>, _>("maille_id").ok().flatten(),
+                assigned_students.len() as i64,
+                operational_row.try_get::<Option<Uuid>, _>("primary_student_uuid").ok().flatten(),
+                operational_row
+                    .try_get::<Option<String>, _>("primary_student_matricule")
+                    .ok()
+                    .flatten()
+                    .as_deref(),
+                operational_row
+                    .try_get::<Option<String>, _>("primary_student_adm_code_pref_1")
+                    .ok()
+                    .flatten()
+                    .as_deref(),
+                holder_name.as_deref(),
+                holder_email.as_deref(),
+                holder_student_uuid,
+                conflict_mission_id,
+            )
+        },
+        conflict_holder_email: operational_row.try_get("conflict_holder_email").ok(),
+        conflict_holder_name: operational_row.try_get("conflict_holder_name").ok(),
+        conflict_mission_id: operational_row.try_get("conflict_mission_id").ok(),
         assigned_students,
         linked_sondages,
     };
@@ -1801,23 +2786,80 @@ async fn update_mission(
         ));
     }
 
-    // Vérifier que la mission existe
-    let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM atlas.colab_missions WHERE id = $1)")
-        .bind(id)
-        .fetch_one(&state.pool)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("Erreur base de données: {}", e) })),
-            )
-        })?;
-
-    if !exists {
+    // Valider le payload
+    if let Err(e) = payload.validate() {
         return Err((
-            StatusCode::NOT_FOUND,
-            Json(json!({ "error": "Mission non trouvée" })),
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": format!("Validation échouée: {}", e) })),
         ));
+    }
+
+    // Charger état actuel pour validations B1
+    let current = sqlx::query(
+        r#"
+        SELECT
+            status::text AS status,
+            start_date,
+            end_date
+        FROM atlas.colab_missions
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur base de données: {}", e) })),
+        )
+    })?;
+
+    let current = current.ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" })))
+    })?;
+
+    let current_status: String = current
+        .try_get("status")
+        .unwrap_or_else(|_| "draft".to_string());
+    let current_start_date: Option<chrono::NaiveDate> = current.try_get("start_date").ok();
+    let current_end_date: Option<chrono::NaiveDate> = current.try_get("end_date").ok();
+
+    // Validation des dates après COALESCE
+    let new_start_date = payload.start_date.or(current_start_date);
+    let new_end_date = payload.end_date.or(current_end_date);
+    if let (Some(sd), Some(ed)) = (new_start_date, new_end_date) {
+        if sd > ed {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Validation échouée: start_date doit être <= end_date" })),
+            ));
+        }
+    }
+
+    // Missions clôturées: immutables (sauf completed -> archived)
+    let is_locked = matches!(current_status.as_str(), "completed" | "archived");
+    if is_locked {
+        let wants_other_change = payload.title.is_some()
+            || payload.theme.is_some()
+            || payload.maille_id.is_some()
+            || payload.zone_label.is_some()
+            || payload.commune.is_some()
+            || payload.region.is_some()
+            || payload.supervisor_id.is_some()
+            || payload.expected_sondages.is_some()
+            || payload.start_date.is_some()
+            || payload.end_date.is_some()
+            || payload.description.is_some()
+            || payload.objectifs.is_some()
+            || payload.notes_internal.is_some();
+
+        if wants_other_change {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": format!("Mission non modifiable: statut '{}'", current_status) })),
+            ));
+        }
     }
 
     // Construire la requête de mise à jour dynamique
@@ -1845,6 +2887,42 @@ async fn update_mission(
                 Json(json!({ "error": "Statut invalide" })),
             ));
         }
+
+        // B1: transitions strictes
+        let allowed = match (current_status.as_str(), status.as_str()) {
+            ("draft", "planned") => true,
+            ("planned", "in_progress") => true,
+            ("in_progress", "completed") => true,
+            ("completed", "archived") => true,
+            // transitions de sortie acceptées
+            (_, "cancelled") => true,
+            // idempotent
+            (a, b) if a == b => true,
+            _ => false,
+        };
+
+        if !allowed {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": "Transition de statut interdite",
+                    "from": current_status.clone(),
+                    "to": status
+                })),
+            ));
+        }
+
+        // completed/archived: seul completed->archived ou idempotent est autorisé
+        if is_locked {
+            let ok_locked = (current_status.as_str() == "completed" && status == "archived")
+                || current_status.as_str() == status;
+            if !ok_locked {
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": format!("Mission non modifiable: statut '{}'", current_status.clone()) })),
+                ));
+            }
+        }
         updates.push(format!("status = ${}::atlas.mission_status", param_idx));
         param_idx += 1;
     }
@@ -1856,16 +2934,17 @@ async fn update_mission(
             title = COALESCE($2, title),
             theme = COALESCE($3::atlas.mission_theme, theme),
             status = COALESCE($4::atlas.mission_status, status),
-            zone_label = COALESCE($5, zone_label),
-            commune = COALESCE($6, commune),
-            region = COALESCE($7, region),
-            supervisor_id = COALESCE($8, supervisor_id),
-            expected_sondages = COALESCE($9, expected_sondages),
-            start_date = COALESCE($10, start_date),
-            end_date = COALESCE($11, end_date),
-            description = COALESCE($12, description),
-            objectifs = COALESCE($13, objectifs),
-            notes_internal = COALESCE($14, notes_internal),
+            maille_id = COALESCE($5, maille_id),
+            zone_label = COALESCE($6, zone_label),
+            commune = COALESCE($7, commune),
+            region = COALESCE($8, region),
+            supervisor_id = COALESCE($9, supervisor_id),
+            expected_sondages = COALESCE($10, expected_sondages),
+            start_date = COALESCE($11, start_date),
+            end_date = COALESCE($12, end_date),
+            description = COALESCE($13, description),
+            objectifs = COALESCE($14, objectifs),
+            notes_internal = COALESCE($15, notes_internal),
             updated_at = NOW()
         WHERE id = $1
         "#,
@@ -1874,6 +2953,7 @@ async fn update_mission(
     .bind(&payload.title)
     .bind(&payload.theme)
     .bind(&payload.status)
+    .bind(payload.maille_id)
     .bind(&payload.zone_label)
     .bind(&payload.commune)
     .bind(&payload.region)
@@ -1898,6 +2978,185 @@ async fn update_mission(
     Ok(Json(json!({ "success": true, "id": id })))
 }
 
+async fn resolve_conflict(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(id): Path<Uuid>,
+    Json(req): Json<ResolveConflictRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.update") && !auth.has_permission("colab.missions.create") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    if let Err(e) = req.validate() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": format!("Validation échouée: {}", e) })),
+        ));
+    }
+
+    if req.action != "takeover" {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Action inconnue" }))));
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let mission_row = sqlx::query(
+        r#"
+        SELECT maille_id, status::text AS status
+        FROM atlas.colab_missions
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let Some(mission_row) = mission_row else {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))));
+    };
+
+    let maille_id: Option<Uuid> = mission_row.try_get("maille_id").ok();
+    let mission_status: String = mission_row
+        .try_get("status")
+        .unwrap_or_else(|_| "draft".to_string());
+
+    if mission_status == "draft" {
+        tx.rollback().await.ok();
+        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Takeover interdit en brouillon" }))));
+    }
+
+    let Some(maille_id) = maille_id else {
+        tx.rollback().await.ok();
+        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Résolution impossible: mission sans maille" }))));
+    };
+
+    let _ = sqlx::query(
+        r#"
+        SELECT id
+        FROM atlas.colab_missions
+        WHERE deleted_at IS NULL AND maille_id = $1
+        FOR UPDATE
+        "#,
+    )
+    .bind(maille_id)
+    .fetch_all(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let my_student: Option<Uuid> = sqlx::query_scalar(
+        r#"
+        SELECT a.student_id
+        FROM atlas.colab_mission_assignments a
+        WHERE a.mission_id = $1 AND a.unassigned_at IS NULL
+        ORDER BY a.assigned_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let holder_student: Option<Uuid> = sqlx::query_scalar(
+        r#"SELECT student_id FROM atlas.colab_maille_assignments WHERE maille_id = $1"#,
+    )
+    .bind(maille_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    if holder_student.is_none() || (my_student.is_some() && holder_student == my_student) {
+        tx.commit().await.ok();
+        return Ok(Json(json!({ "success": true, "action": "takeover", "idempotent": true })));
+    }
+
+    let holder_student = holder_student.unwrap();
+
+    let conflict_mission_id: Option<Uuid> = sqlx::query_scalar(
+        r#"
+        SELECT cm.id
+        FROM atlas.colab_missions cm
+        JOIN atlas.colab_mission_assignments a
+          ON a.mission_id = cm.id
+         AND a.unassigned_at IS NULL
+        WHERE cm.deleted_at IS NULL
+          AND cm.maille_id = $1
+          AND cm.id <> $2
+          AND a.student_id = $3
+        ORDER BY a.assigned_at DESC
+        LIMIT 1
+        "#,
+    )
+    .bind(maille_id)
+    .bind(id)
+    .bind(holder_student)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let Some(conflict_mission_id) = conflict_mission_id else {
+        tx.commit().await.ok();
+        return Ok(Json(json!({ "success": true, "action": "takeover", "idempotent": true })));
+    };
+
+    let _ = sqlx::query(
+        r#"
+        UPDATE atlas.colab_mission_assignments
+        SET unassigned_at = NOW()
+        WHERE mission_id = $1 AND unassigned_at IS NULL
+        "#,
+    )
+    .bind(conflict_mission_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
+        .bind(conflict_mission_id)
+        .execute(&mut *tx)
+        .await;
+    let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
+        .bind(id)
+        .execute(&mut *tx)
+        .await;
+
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO atlas.colab_mission_operational_events (mission_id, event_type, payload, created_by)
+        VALUES ($1, 'conflict_takeover', $2, $3)
+        "#,
+    )
+    .bind(id)
+    .bind(json!({ "maille_id": maille_id, "from_mission_id": conflict_mission_id, "holder_student_id": holder_student }))
+    .bind(auth.id)
+    .execute(&mut *tx)
+    .await;
+
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO atlas.colab_mission_operational_events (mission_id, event_type, payload, created_by)
+        VALUES ($1, 'conflict_lost_maille', $2, $3)
+        "#,
+    )
+    .bind(conflict_mission_id)
+    .bind(json!({ "maille_id": maille_id, "to_mission_id": id }))
+    .bind(auth.id)
+    .execute(&mut *tx)
+    .await;
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    Ok(Json(json!({ "success": true, "action": "takeover", "conflict_mission_id": conflict_mission_id })))
+}
+
 /// DELETE /colab/missions/:id - Supprimer une mission
 async fn delete_mission(
     State(state): State<AppState>,
@@ -1912,16 +3171,54 @@ async fn delete_mission(
         ));
     }
 
-    let result = sqlx::query("UPDATE atlas.colab_missions SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL")
-        .bind(id)
-        .execute(&state.pool)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("Erreur suppression: {}", e) })),
-            )
-        })?;
+    // B1: une mission clôturée ne doit plus être modifiée (suppression incluse)
+    let status: Option<String> = sqlx::query_scalar(
+        r#"
+        SELECT status::text
+        FROM atlas.colab_missions
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur base de données: {}", e) })),
+        )
+    })?;
+
+    let status = status.ok_or_else(|| {
+        (StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" })))
+    })?;
+
+    if matches!(status.as_str(), "completed" | "archived") {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": format!("Mission non modifiable: statut '{}'", status) })),
+        ));
+    }
+
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
+    let result = sqlx::query(
+        "UPDATE atlas.colab_missions SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL",
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur suppression: {}", e) })),
+        )
+    })?;
 
     if result.rows_affected() == 0 {
         return Err((
@@ -1929,6 +3226,30 @@ async fn delete_mission(
             Json(json!({ "error": "Mission non trouvée" })),
         ));
     }
+
+    // Option A: une mission supprimée ne doit conserver aucune affectation active
+    // (sinon on garde des "fantômes" si une vue/endpoint ne joint pas colab_missions.deleted_at).
+    let _ = sqlx::query(
+        r#"UPDATE atlas.colab_mission_assignments
+           SET unassigned_at = NOW()
+           WHERE mission_id = $1 AND unassigned_at IS NULL"#,
+    )
+    .bind(id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur désassignation: {}", e) })),
+        )
+    })?;
+
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     tracing::info!("Mission {} supprimée par {}", id, auth.email);
 

@@ -90,6 +90,14 @@ pub struct ExportRequest {
     pub filters: ExportFilters,
     pub format: ExportFormat,
     pub template_id: Option<Uuid>, // Pour Phase 2
+    pub columns: Option<Vec<String>>,
+    pub pdf_options: Option<PdfOptions>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PdfOptions {
+    pub title: Option<String>,
+    pub orientation: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -99,7 +107,7 @@ pub struct ExportFilters {
     pub theme: Option<Vec<String>>,
     pub region_id: Option<i32>,
     pub commune_id: Option<i32>,
-    pub maille_id: Option<i32>,
+    pub maille_id: Option<Uuid>,
     pub student_id: Option<Uuid>,
     pub supervisor_id: Option<Uuid>,
     // Pour Phase 2 : agrégations
@@ -120,6 +128,9 @@ pub struct ExportJobResponse {
     pub started_at: Option<chrono::DateTime<chrono::Utc>>,
     pub finished_at: Option<chrono::DateTime<chrono::Utc>>,
     pub file_path: Option<String>,
+    pub file_size: Option<i64>,
+    pub format: ExportFormat,
+    pub source: ExportDataSource,
     pub error: Option<String>,
 }
 

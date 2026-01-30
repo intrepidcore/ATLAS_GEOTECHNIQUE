@@ -127,7 +127,9 @@ async fn main() -> anyhow::Result<()> {
         auth_config,
     };
 
-    let app = Router::new()
+    // NOTE: On expose les routes à la racine ET sous /api pour rester compatible
+    // avec le frontend (fallback API_BASE_URL = origin + /api) et les reverse proxies.
+    let base_api = Router::new()
         .route("/healthz", get(health::health_check_simple))
         .route("/health", get(health::health_check))
         .route("/ping", get(|| async { "pong" }))
@@ -199,6 +201,7 @@ async fn main() -> anyhow::Result<()> {
             "/classifications/:sondage_id",
             get(geotechnical::list_classifications),
         )
+
         // ADM-based surveys (without coordinates)
         .route("/surveys/adm", post(surveys_adm::create_survey_adm))
         .route("/surveys/ungeocode", get(surveys_compat::list_ungeocode))
@@ -413,9 +416,9 @@ async fn main() -> anyhow::Result<()> {
             "/db/backup/:id",
             delete(db_manager::routes::delete_backup_handler),
         )
-        // ============================================================================
+        // ==========================================================================
         // Authentication & Authorization routes (RBAC)
-        // ============================================================================
+        // ==========================================================================
         .merge(auth::routes::auth_routes())
         // Users management (requires authentication)
         .merge(
@@ -433,20 +436,20 @@ async fn main() -> anyhow::Result<()> {
                     auth::middleware::auth_middleware,
                 )),
         )
-        // ============================================================================
+        // ==========================================================================
         // Atlas Colab routes (requires authentication)
-        // ============================================================================
+        // ==========================================================================
         .merge(
             colab::routes::colab_routes()
-                .merge(export::export_routes()) // <-- Ajout des routes export
+                .merge(export::export_routes())
                 .route_layer(middleware::from_fn_with_state(
                     state.clone(),
                     auth::middleware::auth_middleware,
                 )),
         )
-        // ============================================================================
+        // ==========================================================================
         // Atlas Colab Mobile/PWA routes (requires authentication)
-        // ============================================================================
+        // ==========================================================================
         .nest(
             "/colab",
             colab::mobile::mobile_routes()
@@ -456,7 +459,11 @@ async fn main() -> anyhow::Result<()> {
                     state.clone(),
                     auth::middleware::auth_middleware,
                 )),
-        )
+        );
+
+    let app = Router::new()
+        .nest("/", base_api.clone())
+        .nest("/api", base_api)
         // Fallback explicite pour les routes non reconnues (retourne 404)
         .fallback(|| async {
             (

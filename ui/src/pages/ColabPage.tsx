@@ -13,6 +13,7 @@ import {
   Calendar,
   Users,
   FileText,
+  Pencil,
   ChevronLeft,
   ChevronRight,
   X,
@@ -27,19 +28,20 @@ import {
   Trash2,
 } from 'lucide-react';
 import {
-  missionsApi,
-  studentsApi,
-  maillesApi,
-  supervisorsApi,
+  attributionsApi,
   communesApi,
-  regionsApi,
   documentsApi,
   exportsApi,
-  templatesApi,
+  maillesApi,
+  missionsApi,
   notifyApi,
+  studentsApi,
+  regionsApi,
   schedulesApi,
-  attributionsApi,
+  supervisorsApi,
+  templatesApi,
   MissionListItem,
+  OperationalAction,
   MissionFilters,
   SupervisorSummary,
   ColabStats,
@@ -50,6 +52,7 @@ import {
   getThemeLabel,
   formatDate,
   CreateMissionRequest,
+  UpdateMissionRequest,
   Student,
   CreateStudentRequest,
   UpdateStudentRequest,
@@ -61,6 +64,7 @@ import {
   MailleSuggestItem,
   MissionDetail,
   ColabDocument,
+  StudentPrefs,
   ExportDataSource,
   ExportFormat,
   ExportJobResponse,
@@ -76,6 +80,19 @@ import {
 } from '../services/colab-api';
 import { tokenStorage } from '../services/auth-api';
 import { usersApi } from '../services/auth-api';
+
+function formatDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '-';
+  const d = new Date(dateStr);
+  if (Number.isNaN(d.getTime())) return String(dateStr);
+  return new Intl.DateTimeFormat('fr-FR', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(d);
+}
 
 // ============================================================================
 // Composants UI
@@ -118,29 +135,83 @@ function generateMissionCode(): string {
 const MissionDetailModal: React.FC<{
   isOpen: boolean;
   missionId: string | null;
+  supervisors: SupervisorSummary[];
+  defaultTab?: 'details' | 'edit';
   onClose: () => void;
   onChanged: () => void;
   onGoToDocuments: (missionId: string) => void;
-}> = ({ isOpen, missionId, onClose, onChanged, onGoToDocuments }) => {
+}> = ({ isOpen, missionId, supervisors, defaultTab = 'details', onClose, onChanged, onGoToDocuments }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mission, setMission] = useState<MissionDetail | null>(null);
   const [status, setStatus] = useState('');
+  const [edit, setEdit] = useState<UpdateMissionRequest>({});
+  const [tab, setTab] = useState<'details' | 'edit'>('details');
+
+  const [editMailleQuery, setEditMailleQuery] = useState('');
+  const [editMailleSuggestions, setEditMailleSuggestions] = useState<MailleSuggestItem[]>([]);
+  const [editMailleLoading, setEditMailleLoading] = useState(false);
 
   useEffect(() => {
     if (!isOpen || !missionId) return;
     setLoading(true);
     setError(null);
     setMission(null);
+    setTab(defaultTab);
+    setEditMailleQuery('');
+    setEditMailleSuggestions([]);
     missionsApi
       .get(missionId)
       .then(m => {
         setMission(m);
         setStatus(m.status);
+        setEditMailleQuery(m.maille_id ? (m.zone_label || '') : '');
+        setEdit({
+          title: m.title,
+          theme: m.theme,
+          status: m.status,
+          maille_id: m.maille_id ?? undefined,
+          zone_label: m.zone_label ?? undefined,
+          commune: m.commune ?? undefined,
+          region: m.region ?? undefined,
+          supervisor_id: m.supervisor_id ?? undefined,
+          expected_sondages: m.expected_sondages ?? undefined,
+          start_date: m.start_date ?? undefined,
+          end_date: m.end_date ?? undefined,
+          description: m.description ?? undefined,
+          objectifs: m.objectifs ?? undefined,
+          notes_internal: m.notes_internal ?? undefined,
+        });
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Erreur chargement mission'))
       .finally(() => setLoading(false));
-  }, [isOpen, missionId]);
+  }, [isOpen, missionId, defaultTab]);
+
+  useEffect(() => {
+    const q = editMailleQuery.trim();
+    if (!isOpen) return;
+    if (tab !== 'edit') return;
+    if (q.length < 2) {
+      setEditMailleSuggestions([]);
+      return;
+    }
+    let cancelled = false;
+    setEditMailleLoading(true);
+    maillesApi
+      .suggest(q)
+      .then(res => {
+        if (!cancelled) setEditMailleSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setEditMailleSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setEditMailleLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [editMailleQuery, isOpen, tab]);
 
   if (!isOpen || !missionId) return null;
 
@@ -149,7 +220,25 @@ const MissionDetailModal: React.FC<{
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">Détail mission</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-semibold">Mission</h2>
+            <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+              <button
+                type="button"
+                className={`px-3 py-1 text-sm rounded-md ${tab === 'details' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
+                onClick={() => setTab('details')}
+              >
+                Détails
+              </button>
+              <button
+                type="button"
+                className={`px-3 py-1 text-sm rounded-md ${tab === 'edit' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
+                onClick={() => setTab('edit')}
+              >
+                Édition
+              </button>
+            </div>
+          </div>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
             <X className="w-5 h-5" />
           </button>
@@ -191,65 +280,350 @@ const MissionDetailModal: React.FC<{
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <div className="border rounded-lg p-3">
-                  <div className="text-xs text-gray-500">Commune</div>
-                  <div className="text-sm text-gray-900">{mission.commune || '-'}</div>
-                </div>
-                <div className="border rounded-lg p-3">
-                  <div className="text-xs text-gray-500">Région</div>
-                  <div className="text-sm text-gray-900">{mission.region || '-'}</div>
-                </div>
-                <div className="border rounded-lg p-3">
-                  <div className="text-xs text-gray-500">Début</div>
-                  <div className="text-sm text-gray-900">{formatDate(mission.start_date)}</div>
-                </div>
-                <div className="border rounded-lg p-3">
-                  <div className="text-xs text-gray-500">Fin</div>
-                  <div className="text-sm text-gray-900">{formatDate(mission.end_date)}</div>
-                </div>
-              </div>
-
-              <div className="border rounded-lg p-3">
-                <div className="text-sm font-medium text-gray-900">Statut</div>
-                <div className="mt-2 flex items-center gap-2">
-                  <div className="flex-1">
-                    <Select value={status} onChange={e => setStatus(e.target.value)} options={MISSION_STATUSES} />
+              {tab === 'details' && (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="border rounded-lg p-3">
+                      <div className="text-xs text-gray-500">Commune</div>
+                      <div className="text-sm text-gray-900">{mission.commune || '-'}</div>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <div className="text-xs text-gray-500">Région</div>
+                      <div className="text-sm text-gray-900">{mission.region || '-'}</div>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <div className="text-xs text-gray-500">Début</div>
+                      <div className="text-sm text-gray-900">{formatDate(mission.start_date)}</div>
+                    </div>
+                    <div className="border rounded-lg p-3">
+                      <div className="text-xs text-gray-500">Fin</div>
+                      <div className="text-sm text-gray-900">{formatDate(mission.end_date)}</div>
+                    </div>
                   </div>
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      try {
-                        setLoading(true);
-                        await missionsApi.update(mission.id, { status });
-                        onChanged();
-                        const refreshed = await missionsApi.get(mission.id);
-                        setMission(refreshed);
-                      } catch (err) {
-                        setError(err instanceof Error ? err.message : 'Erreur mise à jour');
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    disabled={loading}
-                  >
-                    Mettre à jour
-                  </Button>
-                </div>
-              </div>
 
-              <div className="border rounded-lg p-3">
-                <div className="text-sm font-medium text-gray-900">Étudiants assignés ({mission.assigned_students.length})</div>
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {mission.assigned_students.map(s => (
-                    <Badge key={s.student_id} className="bg-blue-50 text-blue-700">{s.full_name}</Badge>
-                  ))}
-                  {mission.assigned_students.length === 0 && <div className="text-sm text-gray-500">Aucun</div>}
+                  <div className="border rounded-lg p-3">
+                    <div className="text-sm font-medium text-gray-900">Superviseur</div>
+                    <div className="mt-1 text-sm text-gray-700">{mission.supervisor_name || '-'}</div>
+                  </div>
+
+                  <div className="border rounded-lg p-3">
+                    <div className="text-sm font-medium text-gray-900">Étudiants assignés ({mission.assigned_students.length})</div>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {mission.assigned_students.map(s => (
+                        <Badge key={s.student_id} className="bg-blue-50 text-blue-700">{s.full_name}</Badge>
+                      ))}
+                      {mission.assigned_students.length === 0 && <div className="text-sm text-gray-500">Aucun</div>}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {tab === 'edit' && (
+                <div className="border rounded-lg p-3">
+                  <div className="text-sm font-medium text-gray-900">Édition</div>
+                  <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="md:col-span-2">
+                      <div className="text-xs text-gray-500 mb-1">Maille</div>
+                      <div className="relative">
+                        <Input
+                          value={editMailleQuery}
+                          onChange={e => setEditMailleQuery(e.target.value)}
+                          placeholder={mission.maille_id ? 'Rechercher une autre maille…' : 'Rechercher une maille…'}
+                        />
+                        {(editMailleLoading || editMailleSuggestions.length > 0) && (
+                          <div className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow max-h-56 overflow-auto">
+                            {editMailleLoading && (
+                              <div className="px-3 py-2 text-sm text-gray-500">Chargement…</div>
+                            )}
+                            {!editMailleLoading &&
+                              editMailleSuggestions.map(m => (
+                                <button
+                                  key={m.id}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                                  onClick={() => {
+                                    setEdit(prev => ({ ...prev, maille_id: m.id, zone_label: m.code }));
+                                    setEditMailleQuery(m.code);
+                                    setEditMailleSuggestions([]);
+                                  }}
+                                >
+                                  <div className="font-medium text-gray-900">{m.code}</div>
+                                  <div className="text-xs text-gray-500">
+                                    {[m.adm1_name, m.adm2_name, m.adm3_name].filter(Boolean).join(' / ')}
+                                  </div>
+                                </button>
+                              ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="mt-1 text-xs text-gray-500">
+                        Maille actuelle: {mission.maille_id ? (mission.zone_label || mission.maille_id) : 'Aucune'}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Titre</div>
+                      <Input value={edit.title ?? ''} onChange={e => setEdit(prev => ({ ...prev, title: e.target.value }))} />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Thème</div>
+                      <Select
+                        value={edit.theme ?? mission.theme}
+                        onChange={e => setEdit(prev => ({ ...prev, theme: e.target.value }))}
+                        options={MISSION_THEMES}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Début</div>
+                      <Input
+                        type="date"
+                        value={(edit.start_date ?? '').slice(0, 10)}
+                        onChange={e => setEdit(prev => ({ ...prev, start_date: e.target.value || undefined }))}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Fin</div>
+                      <Input
+                        type="date"
+                        value={(edit.end_date ?? '').slice(0, 10)}
+                        onChange={e => setEdit(prev => ({ ...prev, end_date: e.target.value || undefined }))}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Superviseur</div>
+                      <select
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        value={edit.supervisor_id ?? ''}
+                        onChange={e => setEdit(prev => ({ ...prev, supervisor_id: e.target.value || undefined }))}
+                      >
+                        <option value="">Aucun</option>
+                        {supervisors.map(s => (
+                          <option key={s.id} value={s.id}>
+                            {s.full_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Sondages attendus</div>
+                      <Input
+                        type="number"
+                        value={String(edit.expected_sondages ?? '')}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setEdit(prev => ({ ...prev, expected_sondages: v === '' ? undefined : Number(v) }));
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Zone</div>
+                      <Input value={edit.zone_label ?? ''} onChange={e => setEdit(prev => ({ ...prev, zone_label: e.target.value || undefined }))} />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Commune</div>
+                      <Input value={edit.commune ?? ''} onChange={e => setEdit(prev => ({ ...prev, commune: e.target.value || undefined }))} />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Région</div>
+                      <Input value={edit.region ?? ''} onChange={e => setEdit(prev => ({ ...prev, region: e.target.value || undefined }))} />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Statut</div>
+                      <Select
+                        value={edit.status ?? status}
+                        onChange={e => {
+                          setStatus(e.target.value);
+                          setEdit(prev => ({ ...prev, status: e.target.value }));
+                        }}
+                        options={MISSION_STATUSES}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 gap-3">
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Description</div>
+                      <textarea
+                        value={edit.description ?? ''}
+                        onChange={e => setEdit(prev => ({ ...prev, description: e.target.value || undefined }))}
+                        rows={3}
+                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Objectifs</div>
+                      <textarea
+                        value={edit.objectifs ?? ''}
+                        onChange={e => setEdit(prev => ({ ...prev, objectifs: e.target.value || undefined }))}
+                        rows={3}
+                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <div className="text-xs text-gray-500 mb-1">Notes internes</div>
+                      <textarea
+                        value={edit.notes_internal ?? ''}
+                        onChange={e => setEdit(prev => ({ ...prev, notes_internal: e.target.value || undefined }))}
+                        rows={3}
+                        className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 flex justify-end">
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          setLoading(true);
+                          await missionsApi.update(mission.id, edit);
+                          onChanged();
+                          const refreshed = await missionsApi.get(mission.id);
+                          setMission(refreshed);
+                          setStatus(refreshed.status);
+                          setEdit({
+                            title: refreshed.title,
+                            theme: refreshed.theme,
+                            status: refreshed.status,
+                            maille_id: refreshed.maille_id ?? undefined,
+                            zone_label: refreshed.zone_label ?? undefined,
+                            commune: refreshed.commune ?? undefined,
+                            region: refreshed.region ?? undefined,
+                            supervisor_id: refreshed.supervisor_id ?? undefined,
+                            expected_sondages: refreshed.expected_sondages ?? undefined,
+                            start_date: refreshed.start_date ?? undefined,
+                            end_date: refreshed.end_date ?? undefined,
+                            description: refreshed.description ?? undefined,
+                            objectifs: refreshed.objectifs ?? undefined,
+                            notes_internal: refreshed.notes_internal ?? undefined,
+                          });
+                          setEditMailleQuery(refreshed.maille_id ? (refreshed.zone_label || '') : '');
+                        } catch (err) {
+                          setError(err instanceof Error ? err.message : 'Erreur mise à jour');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }}
+                      disabled={loading}
+                    >
+                      Enregistrer
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
         </div>
+      </div>
+    </div>
+  );
+};
+
+const UpdateStudentPrefsModal: React.FC<{
+  isOpen: boolean;
+  student: Student | null;
+  onClose: () => void;
+  onUpdated: () => void;
+}> = ({ isOpen, student, onClose, onUpdated }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [prefs, setPrefs] = useState<StudentPrefs | null>(null);
+  const [admCode, setAdmCode] = useState('');
+
+  useEffect(() => {
+    if (!isOpen || !student) return;
+    setError(null);
+    setPrefs(null);
+    setAdmCode('');
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const p = await studentsApi.getPrefs(student.id);
+        if (cancelled) return;
+        setPrefs(p);
+        setAdmCode(p.adm_code_pref_1 || '');
+      } catch (err) {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : 'Erreur chargement préférences');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, student]);
+
+  if (!isOpen || !student) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Compléter ADM</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <form
+          onSubmit={async e => {
+            e.preventDefault();
+            if (!student) return;
+            setError(null);
+            setLoading(true);
+            try {
+              await studentsApi.updatePrefs(student.id, {
+                adm_code_pref_1: admCode.trim() ? admCode.trim() : '',
+              });
+              onUpdated();
+              onClose();
+            } catch (err) {
+              setError(err instanceof Error ? err.message : 'Erreur mise à jour');
+            } finally {
+              setLoading(false);
+            }
+          }}
+          className="p-4 space-y-4"
+        >
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          <div className="text-sm text-gray-700">
+            <div className="font-medium">{student.full_name}</div>
+            <div className="text-gray-500">{student.email}</div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">ADM code (préférence 1)</label>
+            <Input value={admCode} onChange={e => setAdmCode(e.target.value)} />
+            {prefs && (
+              <div className="mt-1 text-xs text-gray-500">student_id: <span className="font-mono">{prefs.student_id}</span></div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} disabled={loading}>
+              Annuler
+            </Button>
+            <Button type="submit" disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Enregistrement...
+                </>
+              ) : (
+                'Enregistrer'
+              )}
+            </Button>
+          </div>
+        </form>
       </div>
     </div>
   );
@@ -729,7 +1103,7 @@ const Button: React.FC<{
   variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
   size?: 'sm' | 'md' | 'lg';
   disabled?: boolean;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void | Promise<void>;
   className?: string;
   type?: 'button' | 'submit' | 'reset';
   children: React.ReactNode;
@@ -1234,7 +1608,13 @@ const MissionCard: React.FC<{
   mission: MissionListItem;
   onClick: () => void;
   onDelete?: () => void;
-}> = ({ mission, onClick, onDelete }) => {
+  onEdit?: () => void;
+  onResolved?: () => void;
+  onOperationalAction?: (mission: MissionListItem, action: OperationalAction) => void;
+}> = ({ mission, onClick, onDelete, onEdit, onResolved, onOperationalAction }) => {
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [resolveError, setResolveError] = useState<string | null>(null);
+
   const statusIcon = {
     draft: <FileText className="w-4 h-4" />,
     planned: <Clock className="w-4 h-4" />,
@@ -1243,6 +1623,45 @@ const MissionCard: React.FC<{
     cancelled: <XCircle className="w-4 h-4" />,
     suspended: <Pause className="w-4 h-4" />,
   }[mission.status] || <FileText className="w-4 h-4" />;
+
+  const operationalBadgeClass =
+    mission.operational_status === 'ok'
+      ? 'bg-green-50 text-green-700'
+      : mission.operational_status === 'warning'
+        ? 'bg-amber-50 text-amber-700'
+        : mission.operational_status === 'blocked'
+          ? 'bg-red-50 text-red-700'
+          : 'bg-gray-100 text-gray-700';
+
+  const operationalLabel =
+    mission.operational_status === 'ok'
+      ? 'OK'
+      : mission.operational_status === 'warning'
+        ? 'À vérifier'
+        : mission.operational_status === 'blocked'
+          ? 'Bloquée'
+          : mission.operational_status;
+
+  const issues = mission.operational_issues || [];
+  const issuesToRender =
+    issues.length > 0
+      ? issues
+      : mission.operational_status !== 'ok' && mission.operational_reason
+        ? [
+            {
+              code: 'operational_reason',
+              severity: 'warning',
+              scope: 'mission',
+              message: mission.operational_reason,
+              actions: [{ code: 'open_mission', label: 'Ouvrir la mission', payload: { action: 'open_mission' } }],
+            },
+          ]
+        : [];
+
+  const openMission = (e: React.MouseEvent<HTMLButtonElement>) => {
+    e.stopPropagation();
+    onClick();
+  };
 
   return (
     <div
@@ -1259,6 +1678,19 @@ const MissionCard: React.FC<{
             {statusIcon}
             <span className="ml-1">{getStatusLabel(mission.status)}</span>
           </Badge>
+          {onEdit && (
+            <button
+              type="button"
+              className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+              onClick={e => {
+                e.stopPropagation();
+                onEdit();
+              }}
+              title="Éditer"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+          )}
           {onDelete && (
             <button
               type="button"
@@ -1272,7 +1704,30 @@ const MissionCard: React.FC<{
               <Trash2 className="w-4 h-4" />
             </button>
           )}
+
+          {(mission.operational_reason || mission.conflict_mission_id) && (
+            <button
+              type="button"
+              className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+              onClick={e => {
+                e.stopPropagation();
+                setDetailsOpen(v => !v);
+              }}
+              title={detailsOpen ? 'Masquer infos' : 'Afficher infos'}
+            >
+              <AlertCircle className="w-4 h-4" />
+            </button>
+          )}
         </div>
+      </div>
+
+      <div className="mb-2 flex flex-wrap gap-2">
+        <Badge className={operationalBadgeClass}>
+          {operationalLabel}
+        </Badge>
+        {mission.operational_status === 'blocked_conflict' && (
+          <Badge className="bg-red-50 text-red-700">Conflit</Badge>
+        )}
       </div>
 
       <div className="space-y-2 text-sm text-gray-600">
@@ -1294,6 +1749,58 @@ const MissionCard: React.FC<{
           </div>
         )}
       </div>
+
+      {detailsOpen && (mission.operational_reason || mission.conflict_mission_id) && (
+        <div className="mt-3 text-xs text-gray-600 bg-gray-50 border rounded-lg p-2">
+          {mission.operational_reason && <div className="truncate">{mission.operational_reason}</div>}
+          {mission.conflict_mission_id && (
+            <div className="mt-1 truncate">
+              Conflit: {mission.conflict_holder_name || mission.conflict_holder_email || mission.conflict_mission_id}
+            </div>
+          )}
+        </div>
+      )}
+
+      {issuesToRender.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-gray-100">
+          <div className="text-xs font-medium text-gray-700 mb-2">Résoudre</div>
+          {resolveError && (
+            <div className="mb-2 text-xs text-red-600">{resolveError}</div>
+          )}
+          <div className="space-y-3">
+            {issuesToRender.map((issue, idx) => (
+              <div key={`${issue.code}-${idx}`}>
+                <div className="text-xs text-gray-600 mb-2">{issue.message}</div>
+                <div className="flex flex-wrap gap-2">
+                  {(issue.actions || []).map((action, aIdx) => (
+                    <Button
+                      key={`${action.code}-${aIdx}`}
+                      size="sm"
+                      variant={aIdx === 0 ? 'primary' : 'outline'}
+                      disabled={false}
+                      onClick={async e => {
+                        e.stopPropagation();
+                        setResolveError(null);
+
+                        onOperationalAction?.(mission, action);
+                        if (!onOperationalAction) {
+                          onClick();
+                        }
+                      }}
+                    >
+                      {action.label}
+                    </Button>
+                  ))}
+
+                  <Button variant="ghost" size="sm" onClick={openMission}>
+                    Autres options
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
         <span className="flex items-center gap-1">
@@ -1466,6 +1973,11 @@ const CreateMissionModal: React.FC<{
   const [mailleSuggestions, setMailleSuggestions] = useState<MailleSuggestItem[]>([]);
   const [mailleLoading, setMailleLoading] = useState(false);
 
+  const [mailleLat, setMailleLat] = useState('');
+  const [mailleLon, setMailleLon] = useState('');
+  const [mailleResolveLoading, setMailleResolveLoading] = useState(false);
+  const [mailleResolveError, setMailleResolveError] = useState<string | null>(null);
+
   const [communeQuery, setCommuneQuery] = useState('');
   const [communeSuggestions, setCommuneSuggestions] = useState<string[]>([]);
   const [communeLoading, setCommuneLoading] = useState(false);
@@ -1499,6 +2011,10 @@ const CreateMissionModal: React.FC<{
     if (!isOpen) return;
     setMailleQuery('');
     setMailleSuggestions([]);
+    setMailleLat('');
+    setMailleLon('');
+    setMailleResolveLoading(false);
+    setMailleResolveError(null);
     setCommuneQuery('');
     setCommuneSuggestions([]);
     setRegionQuery('');
@@ -1597,7 +2113,7 @@ const CreateMissionModal: React.FC<{
     setCommuneLoading(true);
     communesApi
       .suggest(q)
-      .then(res => {
+      .then((res: string[]) => {
         if (!cancelled) setCommuneSuggestions(res);
       })
       .catch(() => {
@@ -1718,6 +2234,67 @@ const CreateMissionModal: React.FC<{
             {form.maille_id && (
               <div className="mt-1 text-xs text-gray-500">Sélectionné: <span className="font-mono">{form.zone_label || form.maille_id}</span></div>
             )}
+          </div>
+
+          <div className="border rounded-lg p-3">
+            <div className="text-sm font-medium text-gray-900 mb-2">Résoudre une maille depuis des coordonnées</div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Latitude</label>
+                <Input placeholder="ex: 6.172" value={mailleLat} onChange={e => setMailleLat(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 mb-1">Longitude</label>
+                <Input placeholder="ex: 1.231" value={mailleLon} onChange={e => setMailleLon(e.target.value)} />
+              </div>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-2">
+              <div className="text-xs text-gray-500">
+                {mailleLat && mailleLon ? (
+                  <a
+                    className="text-blue-700 hover:underline"
+                    href={`https://www.google.com/maps?q=${encodeURIComponent(mailleLat)},${encodeURIComponent(mailleLon)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Ouvrir sur Google Maps
+                  </a>
+                ) : (
+                  <span>Renseigne lat/lon pour activer le lien</span>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={async () => {
+                  setMailleResolveError(null);
+                  const lat = Number(mailleLat);
+                  const lon = Number(mailleLon);
+                  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+                    setMailleResolveError('Coordonnées invalides');
+                    return;
+                  }
+                  setMailleResolveLoading(true);
+                  try {
+                    const m = await maillesApi.resolve({ lat, lon });
+                    setForm(prev => ({ ...prev, maille_id: m.id, zone_label: m.code }));
+                    setMailleQuery(m.code);
+                    setMailleSuggestions([]);
+                  } catch (e) {
+                    setMailleResolveError(e instanceof Error ? e.message : 'Erreur résolution');
+                  } finally {
+                    setMailleResolveLoading(false);
+                  }
+                }}
+                disabled={mailleResolveLoading}
+              >
+                <MapPin className={`w-4 h-4 mr-2 ${mailleResolveLoading ? 'animate-pulse' : ''}`} />
+                Résoudre
+              </Button>
+            </div>
+
+            {mailleResolveError && <div className="mt-2 text-sm text-red-600">{mailleResolveError}</div>}
           </div>
 
           <div>
@@ -2387,6 +2964,7 @@ const ColabPage: React.FC = () => {
   const [showStudentDetailModal, setShowStudentDetailModal] = useState(false);
   const [showSupervisorDetailModal, setShowSupervisorDetailModal] = useState(false);
   const [showUpdateStudentModal, setShowUpdateStudentModal] = useState(false);
+  const [showUpdateStudentPrefsModal, setShowUpdateStudentPrefsModal] = useState(false);
   const [showUpdateSupervisorModal, setShowUpdateSupervisorModal] = useState(false);
   const [showDeactivateStudentModal, setShowDeactivateStudentModal] = useState(false);
   const [showDeactivateSupervisorModal, setShowDeactivateSupervisorModal] = useState(false);
@@ -2398,6 +2976,7 @@ const ColabPage: React.FC = () => {
 
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
   const [showMissionDetailModal, setShowMissionDetailModal] = useState(false);
+  const [missionDetailDefaultTab, setMissionDetailDefaultTab] = useState<'details' | 'edit'>('details');
 
   const [documents, setDocuments] = useState<ColabDocument[]>([]);
   const [documentsLoading, setDocumentsLoading] = useState(false);
@@ -2417,9 +2996,230 @@ const ColabPage: React.FC = () => {
   const [documentsSearch, setDocumentsSearch] = useState('');
   const [documentsSort, setDocumentsSort] = useState<'date_desc' | 'date_asc' | 'title_asc'>('date_desc');
 
+  const [filtersCommuneQuery, setFiltersCommuneQuery] = useState('');
+  const [filtersCommuneSuggestions, setFiltersCommuneSuggestions] = useState<string[]>([]);
+  const [filtersCommuneLoading, setFiltersCommuneLoading] = useState(false);
+
+  const [filtersRegionQuery, setFiltersRegionQuery] = useState('');
+  const [filtersRegionSuggestions, setFiltersRegionSuggestions] = useState<string[]>([]);
+  const [filtersRegionLoading, setFiltersRegionLoading] = useState(false);
+
   const [exportSource, setExportSource] = useState<ExportDataSource>('missions');
   const [exportFormat, setExportFormat] = useState<ExportFormat>('csv');
   const [exportTemplateId, setExportTemplateId] = useState<string | null>(null);
+  const [exportPdfOrientation, setExportPdfOrientation] = useState<'portrait' | 'landscape'>('portrait');
+  const [exportMissionsPreset, setExportMissionsPreset] = useState<'terrain' | 'encadrement' | 'audit'>('terrain');
+  const [exportStudentsPreset, setExportStudentsPreset] = useState<'operational' | 'audit'>('operational');
+  const [exportSupervisorsPreset, setExportSupervisorsPreset] = useState<'operational' | 'audit'>('operational');
+  const [exportDocumentsPreset, setExportDocumentsPreset] = useState<'operational' | 'audit'>('operational');
+  const missionsColumnsAll = useMemo(
+    () =>
+      [
+        { key: 'mission_id', label: 'Mission ID' },
+        { key: 'mission_code', label: 'Code mission' },
+        { key: 'mission_name', label: 'Nom mission' },
+        { key: 'mission_description', label: 'Description' },
+        { key: 'mission_type', label: 'Type mission' },
+        { key: 'mission_status', label: 'Statut mission' },
+        { key: 'maille_code', label: 'Maille (code)' },
+        { key: 'bbox_wgs84', label: 'BBox WGS84' },
+        { key: 'centroid_wgs84', label: 'Centroid WGS84' },
+        { key: 'zone', label: 'Zone' },
+        { key: 'localite', label: 'Localité' },
+        { key: 'student_name', label: 'Étudiant' },
+        { key: 'student_email', label: 'Email étudiant' },
+        { key: 'supervisor_name', label: 'Encadrant' },
+        { key: 'date_start', label: 'Date de début' },
+        { key: 'date_end', label: 'Date limite terrain' },
+        { key: 'date_created', label: 'Date création' },
+        { key: 'date_updated', label: 'Dernière modification' },
+        { key: 'operational_status', label: 'Statut opérationnel' },
+        { key: 'operational_reason', label: 'Raison' },
+        { key: 'notified', label: 'Notifiée' },
+        { key: 'conflict', label: 'Conflit maille' },
+        { key: 'conflict_mission_id', label: 'Mission concurrente' },
+        { key: 'conflict_holder_name', label: 'Titulaire conflit' },
+        { key: 'data_source', label: 'Source données' },
+        { key: 'tool_version', label: 'Version outil' },
+      ] as const,
+    [],
+  );
+
+  const studentsColumnsAll = useMemo(
+    () =>
+      [
+        { key: 'student_id', label: 'Student ID' },
+        { key: 'user_id', label: 'User ID' },
+        { key: 'username', label: 'Username' },
+        { key: 'full_name', label: 'Nom complet' },
+        { key: 'email', label: 'Email' },
+        { key: 'telephone', label: 'Téléphone' },
+        { key: 'matricule', label: 'Matricule' },
+        { key: 'promotion', label: 'Promotion' },
+        { key: 'filiere', label: 'Filière' },
+        { key: 'etablissement', label: 'Établissement' },
+        { key: 'niveau', label: 'Niveau' },
+        { key: 'age', label: 'Âge' },
+        { key: 'active_missions', label: 'Missions actives' },
+        { key: 'is_active', label: 'Actif' },
+        { key: 'data_source', label: 'Source données' },
+        { key: 'tool_version', label: 'Version outil' },
+      ] as const,
+    [],
+  );
+
+  const supervisorsColumnsAll = useMemo(
+    () =>
+      [
+        { key: 'supervisor_id', label: 'Supervisor ID' },
+        { key: 'user_id', label: 'User ID' },
+        { key: 'username', label: 'Username' },
+        { key: 'full_name', label: 'Nom' },
+        { key: 'specialite', label: 'Spécialité' },
+        { key: 'institution', label: 'Institution' },
+        { key: 'is_active', label: 'Actif' },
+        { key: 'data_source', label: 'Source données' },
+        { key: 'tool_version', label: 'Version outil' },
+      ] as const,
+    [],
+  );
+
+  const documentsColumnsAll = useMemo(
+    () =>
+      [
+        { key: 'document_id', label: 'Document ID' },
+        { key: 'mission_id', label: 'Mission ID' },
+        { key: 'uploaded_by', label: 'Uploadé par' },
+        { key: 'title', label: 'Titre' },
+        { key: 'document_type', label: 'Type' },
+        { key: 'description', label: 'Description' },
+        { key: 'file_name', label: 'Fichier' },
+        { key: 'file_size_bytes', label: 'Taille (bytes)' },
+        { key: 'mime_type', label: 'MIME' },
+        { key: 'sondage_id', label: 'Sondage ID' },
+        { key: 'version', label: 'Version' },
+        { key: 'is_current', label: 'Courant' },
+        { key: 'uploaded_at', label: 'Uploadé le' },
+        { key: 'data_source', label: 'Source données' },
+        { key: 'tool_version', label: 'Version outil' },
+      ] as const,
+    [],
+  );
+
+  const missionsPresets = useMemo<Record<'terrain' | 'encadrement' | 'audit', string[]>>(
+    () => ({
+      terrain: [
+        'mission_id',
+        'mission_name',
+        'maille_code',
+        'centroid_wgs84',
+        'zone',
+        'localite',
+        'student_name',
+        'student_email',
+        'date_start',
+        'date_end',
+        'operational_status',
+        'operational_reason',
+      ],
+      encadrement: [
+        'mission_id',
+        'mission_name',
+        'mission_type',
+        'maille_code',
+        'student_name',
+        'supervisor_name',
+        'operational_status',
+        'operational_reason',
+        'date_created',
+        'date_updated',
+        'notified',
+        'conflict',
+        'conflict_mission_id',
+      ],
+      audit: [
+        'mission_id',
+        'mission_name',
+        'mission_description',
+        'zone',
+        'maille_code',
+        'student_name',
+        'supervisor_name',
+        'date_created',
+        'date_start',
+        'mission_status',
+        'operational_reason',
+        'data_source',
+        'tool_version',
+      ],
+    }),
+    [],
+  );
+
+  const studentsPresets = useMemo<Record<'operational' | 'audit', string[]>>(
+    () => ({
+      operational: ['student_id', 'full_name', 'email', 'matricule', 'promotion', 'active_missions', 'is_active'],
+      audit: ['student_id', 'user_id', 'username', 'full_name', 'email', 'telephone', 'matricule', 'promotion', 'data_source', 'tool_version'],
+    }),
+    [],
+  );
+
+  const supervisorsPresets = useMemo<Record<'operational' | 'audit', string[]>>(
+    () => ({
+      operational: ['supervisor_id', 'full_name', 'institution', 'specialite', 'is_active'],
+      audit: ['supervisor_id', 'user_id', 'username', 'full_name', 'institution', 'specialite', 'data_source', 'tool_version'],
+    }),
+    [],
+  );
+
+  const documentsPresets = useMemo<Record<'operational' | 'audit', string[]>>(
+    () => ({
+      operational: ['document_id', 'mission_id', 'title', 'document_type', 'file_name', 'uploaded_at', 'is_current'],
+      audit: [
+        'document_id',
+        'mission_id',
+        'title',
+        'document_type',
+        'description',
+        'file_name',
+        'file_size_bytes',
+        'mime_type',
+        'version',
+        'is_current',
+        'uploaded_at',
+        'uploaded_by',
+        'data_source',
+        'tool_version',
+      ],
+    }),
+    [],
+  );
+
+  const [exportMissionsColumns, setExportMissionsColumns] = useState<string[]>(() => [...missionsPresets.terrain]);
+  const [exportStudentsColumns, setExportStudentsColumns] = useState<string[]>(() => [...studentsPresets.operational]);
+  const [exportSupervisorsColumns, setExportSupervisorsColumns] = useState<string[]>(() => [...supervisorsPresets.operational]);
+  const [exportDocumentsColumns, setExportDocumentsColumns] = useState<string[]>(() => [...documentsPresets.operational]);
+
+  useEffect(() => {
+    if (exportSource !== 'missions') return;
+    setExportMissionsColumns([...missionsPresets[exportMissionsPreset]]);
+  }, [exportSource, exportMissionsPreset, missionsPresets]);
+
+  useEffect(() => {
+    if (exportSource !== 'students') return;
+    setExportStudentsColumns([...studentsPresets[exportStudentsPreset]]);
+  }, [exportSource, exportStudentsPreset, studentsPresets]);
+
+  useEffect(() => {
+    if (exportSource !== 'supervisors') return;
+    setExportSupervisorsColumns([...supervisorsPresets[exportSupervisorsPreset]]);
+  }, [exportSource, exportSupervisorsPreset, supervisorsPresets]);
+
+  useEffect(() => {
+    if (exportSource !== 'documents') return;
+    setExportDocumentsColumns([...documentsPresets[exportDocumentsPreset]]);
+  }, [exportSource, exportDocumentsPreset, documentsPresets]);
+
   const [exportRunningJobId, setExportRunningJobId] = useState<string | null>(null);
   const [exportJobs, setExportJobs] = useState<ExportJobResponse[]>([]);
   const [exportJobsLoading, setExportJobsLoading] = useState(false);
@@ -2428,6 +3228,23 @@ const ColabPage: React.FC = () => {
   const [notifyJobs, setNotifyJobs] = useState<NotifyJob[]>([]);
   const [notifyJobsLoading, setNotifyJobsLoading] = useState(false);
   const [notifyJobsError, setNotifyJobsError] = useState<string | null>(null);
+
+  const [attrNotice, setAttrNotice] = useState<string | null>(null);
+
+  const [attrAssignOpen, setAttrAssignOpen] = useState(false);
+  const [attrAssignMission, setAttrAssignMission] = useState<AttributionItem | null>(null);
+  const [attrAssignStudentQuery, setAttrAssignStudentQuery] = useState('');
+  const [attrAssignStudents, setAttrAssignStudents] = useState<UserSuggestItem[]>([]);
+  const [attrAssignSelectedStudentId, setAttrAssignSelectedStudentId] = useState<string>('');
+  const [attrAssignLoading, setAttrAssignLoading] = useState(false);
+  const [attrAssignError, setAttrAssignError] = useState<string | null>(null);
+  const [attrAssignMode, setAttrAssignMode] = useState<'assign_student' | 'change_student' | 'assign_holder'>('assign_student');
+
+  const [takeoverOpen, setTakeoverOpen] = useState(false);
+  const [takeoverMission, setTakeoverMission] = useState<MissionListItem | null>(null);
+  const [takeoverPayload, setTakeoverPayload] = useState<any>(null);
+  const [takeoverLoading, setTakeoverLoading] = useState(false);
+  const [takeoverError, setTakeoverError] = useState<string | null>(null);
 
   const [exportTemplates, setExportTemplates] = useState<ExportTemplate[]>([]);
   const [exportTemplatesLoading, setExportTemplatesLoading] = useState(false);
@@ -2621,6 +3438,73 @@ const ColabPage: React.FC = () => {
   const handleSearch = () => {
     setFilters({ ...filters, search: searchInput, page: 1 });
   };
+
+  useEffect(() => {
+    if (activeTab !== 'missions') return;
+    const q = searchInput;
+    const id = window.setTimeout(() => {
+      setFilters(prev => ({ ...prev, search: q, page: 1 }));
+    }, 300);
+    return () => window.clearTimeout(id);
+  }, [activeTab, searchInput]);
+
+  useEffect(() => {
+    setFiltersCommuneQuery(filters.commune || '');
+  }, [filters.commune]);
+
+  useEffect(() => {
+    setFiltersRegionQuery(filters.region || '');
+  }, [filters.region]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = filtersCommuneQuery.trim();
+    if (!showFilters) return;
+    if (q.length < 2) {
+      setFiltersCommuneSuggestions([]);
+      return;
+    }
+    setFiltersCommuneLoading(true);
+    communesApi
+      .suggest(q)
+      .then((res: string[]) => {
+        if (!cancelled) setFiltersCommuneSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setFiltersCommuneSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setFiltersCommuneLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filtersCommuneQuery, showFilters]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = filtersRegionQuery.trim();
+    if (!showFilters) return;
+    if (q.length < 2) {
+      setFiltersRegionSuggestions([]);
+      return;
+    }
+    setFiltersRegionLoading(true);
+    regionsApi
+      .suggest(q)
+      .then((res: string[]) => {
+        if (!cancelled) setFiltersRegionSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setFiltersRegionSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setFiltersRegionLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filtersRegionQuery, showFilters]);
 
   const handleFilterChange = (key: keyof MissionFilters, value: string) => {
     setFilters({ ...filters, [key]: value || undefined, page: 1 });
@@ -2904,7 +3788,7 @@ const ColabPage: React.FC = () => {
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Rechercher par code ou titre..."
+                      placeholder="Rechercher (titre, code maille, thème, opérateur...)"
                       value={searchInput}
                       onChange={e => setSearchInput(e.target.value)}
                       onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -2946,19 +3830,77 @@ const ColabPage: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Commune</label>
-                    <Input
-                      placeholder="Filtrer par commune"
-                      value={filters.commune || ''}
-                      onChange={e => handleFilterChange('commune', e.target.value)}
-                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="Filtrer par commune"
+                        value={filtersCommuneQuery}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setFiltersCommuneQuery(v);
+                          handleFilterChange('commune', v);
+                        }}
+                      />
+                      {filtersCommuneLoading && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        </div>
+                      )}
+                      {filtersCommuneSuggestions.length > 0 && (
+                        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                          {filtersCommuneSuggestions.slice(0, 20).map(c => (
+                            <button
+                              key={c}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                              onClick={() => {
+                                setFiltersCommuneQuery(c);
+                                handleFilterChange('commune', c);
+                                setFiltersCommuneSuggestions([]);
+                              }}
+                            >
+                              {c}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 mb-1">Région</label>
-                    <Input
-                      placeholder="Filtrer par région"
-                      value={filters.region || ''}
-                      onChange={e => handleFilterChange('region', e.target.value)}
-                    />
+                    <div className="relative">
+                      <Input
+                        placeholder="Filtrer par région"
+                        value={filtersRegionQuery}
+                        onChange={e => {
+                          const v = e.target.value;
+                          setFiltersRegionQuery(v);
+                          handleFilterChange('region', v);
+                        }}
+                      />
+                      {filtersRegionLoading && (
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        </div>
+                      )}
+                      {filtersRegionSuggestions.length > 0 && (
+                        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                          {filtersRegionSuggestions.slice(0, 20).map(r => (
+                            <button
+                              key={r}
+                              type="button"
+                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                              onClick={() => {
+                                setFiltersRegionQuery(r);
+                                handleFilterChange('region', r);
+                                setFiltersRegionSuggestions([]);
+                              }}
+                            >
+                              {r}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div className="col-span-2 md:col-span-4 flex justify-end">
                     <Button variant="ghost" size="sm" onClick={clearFilters}>
@@ -2997,6 +3939,87 @@ const ColabPage: React.FC = () => {
                         setSelectedMissionId(mission.id);
                         setShowMissionDetailModal(true);
                       }}
+                      onOperationalAction={async (m, action) => {
+                        const kind = action?.payload?.action;
+
+                        if (kind === 'edit_student_matricule' && action.payload?.student_id) {
+                          try {
+                            const s = await studentsApi.get(action.payload.student_id);
+                            setSelectedStudent(s);
+                            setShowUpdateStudentModal(true);
+                            return;
+                          } catch {
+                            setSelectedMissionId(m.id);
+                            setMissionDetailDefaultTab('details');
+                            setShowMissionDetailModal(true);
+                            return;
+                          }
+                        }
+
+                        if (kind === 'edit_student_adm' && action.payload?.student_id) {
+                          try {
+                            const s = await studentsApi.get(action.payload.student_id);
+                            setSelectedStudent(s);
+                            setShowUpdateStudentPrefsModal(true);
+                            return;
+                          } catch {
+                            setSelectedMissionId(m.id);
+                            setMissionDetailDefaultTab('details');
+                            setShowMissionDetailModal(true);
+                            return;
+                          }
+                        }
+
+                        if (kind === 'edit_mission_maille' || kind === 'change_maille') {
+                          setSelectedMissionId(m.id);
+                          setMissionDetailDefaultTab('edit');
+                          setShowMissionDetailModal(true);
+                          return;
+                        }
+
+                        if (kind === 'assign_student' || kind === 'change_student' || kind === 'assign_holder') {
+                          setAttrAssignError(null);
+                          setAttrAssignStudentQuery('');
+                          setAttrAssignStudents([]);
+                          setAttrAssignSelectedStudentId('');
+                          setAttrAssignMode(kind);
+                          setAttrAssignMission({
+                            mission_id: m.id,
+                            mission_code: m.code,
+                            maille_id: (action.payload?.maille_id as string) || (m as any).maille_id || '',
+                            maille_code: (action.payload?.maille_code as string) || (m as any).zone_label || (m as any).maille_id || '-',
+                          } as AttributionItem);
+
+                          if (kind === 'assign_holder' && action.payload?.student_id) {
+                            try {
+                              const s = await studentsApi.get(action.payload.student_id);
+                              setAttrAssignSelectedStudentId(s.id);
+                              setAttrAssignStudentQuery(`${s.full_name}${s.promotion ? ` (${s.promotion})` : ''}`);
+                            } catch {
+                              // ignore prefill errors
+                            }
+                          }
+                          setAttrAssignOpen(true);
+                          return;
+                        }
+
+                        if (kind === 'takeover') {
+                          setTakeoverError(null);
+                          setTakeoverMission(m);
+                          setTakeoverPayload(action.payload);
+                          setTakeoverOpen(true);
+                          return;
+                        }
+
+                        setSelectedMissionId(m.id);
+                        setMissionDetailDefaultTab('details');
+                        setShowMissionDetailModal(true);
+                      }}
+                      onEdit={() => {
+                        setSelectedMissionId(mission.id);
+                        setMissionDetailDefaultTab('edit');
+                        setShowMissionDetailModal(true);
+                      }}
                       onDelete={() => {
                         setSelectedMissionToDelete(mission);
                         setShowDeleteMissionModal(true);
@@ -3005,7 +4028,6 @@ const ColabPage: React.FC = () => {
                   ))}
                 </div>
 
-                {/* Pagination */}
                 <div className="flex items-center justify-between bg-white rounded-xl border p-4">
                   <p className="text-sm text-gray-600">
                     {total} mission{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
@@ -3051,6 +4073,7 @@ const ColabPage: React.FC = () => {
                 </Button>
               </div>
             )}
+
           </>
         )}
 
@@ -3059,7 +4082,7 @@ const ColabPage: React.FC = () => {
             {stats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <StatsCard
-                  title="Missions"
+                  title="Total Missions"
                   value={stats.total_missions}
                   icon={<BarChart3 className="w-6 h-6" />}
                   color="bg-blue-50 text-blue-900"
@@ -3085,14 +4108,24 @@ const ColabPage: React.FC = () => {
               </div>
             )}
 
+            {(exportJobsError || exportTemplatesError || exportSchedulesError || createTemplateError || createScheduleError) && (
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5" />
+                <span>
+                  {exportJobsError || exportTemplatesError || exportSchedulesError || createTemplateError || createScheduleError}
+                </span>
+              </div>
+            )}
+
             <div className="bg-white rounded-xl border p-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="text-lg font-semibold text-gray-900 mb-4">Exporter des données</div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
                   <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
                   <select
-                    value={exportSource}
-                    onChange={e => setExportSource(e.target.value as ExportDataSource)}
                     className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={exportSource}
+                    onChange={e => setExportSource(e.target.value as any)}
                   >
                     <option value="missions">Missions</option>
                     <option value="students">Étudiants</option>
@@ -3104,271 +4137,263 @@ const ColabPage: React.FC = () => {
                 <div>
                   <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
                   <select
-                    value={exportFormat}
-                    onChange={e => setExportFormat(e.target.value as ExportFormat)}
                     className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={exportFormat}
+                    onChange={e => setExportFormat(e.target.value as any)}
                   >
                     <option value="csv">CSV</option>
                     <option value="json">JSON</option>
                     <option value="xlsx">XLSX</option>
+                    <option value="pdf">PDF</option>
                   </select>
                 </div>
+
+                {exportFormat === 'pdf' && (
+                  <div>
+                    <div className="text-sm font-medium text-gray-700 mb-1">Orientation</div>
+                    <select
+                      className="w-full px-3 py-2 border rounded-lg text-sm"
+                      value={exportPdfOrientation}
+                      onChange={e => setExportPdfOrientation(e.target.value as any)}
+                    >
+                      <option value="portrait">Portrait</option>
+                      <option value="landscape">Paysage</option>
+                    </select>
+                  </div>
+                )}
 
                 <div>
                   <div className="text-sm font-medium text-gray-700 mb-1">Template (optionnel)</div>
                   <select
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={exportTemplateId || ''}
                     onChange={e => setExportTemplateId(e.target.value || null)}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    disabled={exportTemplatesLoading}
                   >
                     <option value="">Aucun</option>
-                    {exportTemplates
-                      .filter(t => t.is_active)
-                      .map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
+                    {exportTemplates.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} ({t.source}/{t.format})
+                      </option>
+                    ))}
                   </select>
                 </div>
 
-                <div className="flex items-end">
+                <div className="flex items-end justify-end">
                   <Button
                     onClick={async () => {
                       setExportJobsError(null);
+                      setExportJobsLoading(true);
                       try {
-                        const req: ExportRequest = {
+                        const job = await exportsApi.create({
                           source: exportSource,
                           format: exportFormat,
                           filters: {},
                           template_id: exportTemplateId,
-                        };
-                        const res = await exportsApi.create(req);
-                        setExportRunningJobId(res.job_id);
-                        setExportJobs(prev => [res, ...prev]);
+                          columns:
+                            exportSource === 'missions'
+                              ? exportMissionsColumns
+                              : exportSource === 'students'
+                                ? exportStudentsColumns
+                                : exportSource === 'supervisors'
+                                  ? exportSupervisorsColumns
+                                  : exportSource === 'documents'
+                                    ? exportDocumentsColumns
+                                    : null,
+                          pdf_options: exportFormat === 'pdf' ? { orientation: exportPdfOrientation } : null,
+                        });
+                        setExportJobs(prev => [job, ...prev]);
+                        setExportRunningJobId(job.job_id);
                       } catch (e) {
-                        setExportJobsError(e instanceof Error ? e.message : 'Erreur lors de la création');
+                        setExportJobsError(e instanceof Error ? e.message : 'Erreur export');
+                      } finally {
+                        setExportJobsLoading(false);
                       }
                     }}
-                    disabled={!!exportRunningJobId}
+                    disabled={exportJobsLoading}
                   >
-                    {exportRunningJobId ? 'Export en cours…' : 'Lancer export'}
+                    {exportJobsLoading ? 'Export…' : 'Lancer export'}
                   </Button>
                 </div>
               </div>
 
-              {exportJobsError && (
-                <div className="mt-4 text-sm text-red-600">{exportJobsError}</div>
+              {exportSource === 'missions' && (
+                <div className="mt-4 border-t pt-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-gray-700 mb-1">Preset Missions</div>
+                      <select
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        value={exportMissionsPreset}
+                        onChange={e => setExportMissionsPreset(e.target.value as any)}
+                      >
+                        <option value="terrain">Terrain</option>
+                        <option value="encadrement">Encadrement</option>
+                        <option value="audit">Audit / Soutenance</option>
+                      </select>
+                    </div>
+
+                    <div className="md:col-span-3">
+                      <div className="text-sm font-medium text-gray-700 mb-2">Colonnes</div>
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setExportMissionsColumns(missionsColumnsAll.map(c => c.key))}
+                        >
+                          Tout
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => setExportMissionsColumns([])}>
+                          Aucun
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 mt-3">
+                        {missionsColumnsAll.map(c => {
+                          const checked = exportMissionsColumns.includes(c.key);
+                          return (
+                            <label key={c.key} className="flex items-center gap-2 text-sm text-gray-700">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => {
+                                  setExportMissionsColumns(prev =>
+                                    prev.includes(c.key) ? prev.filter(x => x !== c.key) : [...prev, c.key],
+                                  );
+                                }}
+                              />
+                              <span>{c.label}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 
-            <div className="bg-white rounded-xl border overflow-hidden">
-              <div className="px-4 py-3 border-b flex items-center justify-between">
-                <div className="font-semibold text-gray-900">Historique des exports</div>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    setExportJobsLoading(true);
-                    setExportJobsError(null);
-                    try {
-                      const history = await exportsApi.history();
-                      setExportJobs(history);
-                    } catch (e) {
-                      setExportJobsError(e instanceof Error ? e.message : "Erreur lors du chargement");
-                    } finally {
-                      setExportJobsLoading(false);
-                    }
-                  }}
-                  disabled={exportJobsLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${exportJobsLoading ? 'animate-spin' : ''}`} />
-                  Rafraîchir
-                </Button>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <th className="text-left px-4 py-3">Job</th>
-                      <th className="text-left px-4 py-3">Statut</th>
-                      <th className="text-left px-4 py-3">Créé</th>
-                      <th className="text-right px-4 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exportJobs.map(j => (
-                      <tr key={j.job_id} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{j.job_id}</td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            className={
-                              j.status === 'completed'
-                                ? 'bg-green-100 text-green-800'
-                                : j.status === 'failed'
-                                  ? 'bg-red-100 text-red-800'
-                                  : j.status === 'running'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-gray-100 text-gray-800'
-                            }
-                          >
-                            {j.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{new Date(j.created_at).toLocaleString('fr-FR')}</td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={j.status !== 'completed'}
-                            onClick={async () => {
-                              try {
-                                const blob = await exportsApi.download(j.job_id);
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a');
-                                a.href = url;
-                                const filename = j.file_path
-                                  ? (j.file_path.split('/').pop() || j.file_path.split('\\').pop() || `export_${j.job_id}`)
-                                  : `export_${j.job_id}`;
-                                a.download = filename;
-                                document.body.appendChild(a);
-                                a.click();
-                                a.remove();
-                                URL.revokeObjectURL(url);
-                              } catch (e) {
-                                setExportJobsError(e instanceof Error ? e.message : 'Erreur téléchargement');
-                              }
-                            }}
-                          >
-                            Télécharger
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                    {exportJobs.length === 0 && (
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="text-lg font-semibold text-gray-900 mb-4">Historique des exports</div>
+              {exportJobs.length === 0 ? (
+                <div className="text-sm text-gray-600">Aucun export.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-600">
                       <tr>
-                        <td className="px-4 py-6 text-center text-gray-500" colSpan={4}>
-                          Aucun export
-                        </td>
+                        <th className="text-left font-medium px-4 py-3">Date</th>
+                        <th className="text-left font-medium px-4 py-3">Source</th>
+                        <th className="text-left font-medium px-4 py-3">Format</th>
+                        <th className="text-left font-medium px-4 py-3">Statut</th>
+                        <th className="text-left font-medium px-4 py-3">Actions</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {exportJobs.map(j => (
+                        <tr key={j.job_id} className="border-t">
+                          <td className="px-4 py-3 text-gray-600">{formatDateTime(j.created_at)}</td>
+                          <td className="px-4 py-3 text-gray-900">{j.source}</td>
+                          <td className="px-4 py-3 text-gray-900">{j.format}</td>
+                          <td className="px-4 py-3 text-gray-600">{j.status}</td>
+                          <td className="px-4 py-3">
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={j.status !== 'completed'}
+                                onClick={async () => {
+                                  try {
+                                    const blob = await exportsApi.download(j.job_id);
+                                    const url = window.URL.createObjectURL(blob);
+                                    const a = document.createElement('a');
+                                    a.href = url;
+                                    a.download = `export_${j.source}_${j.job_id}.${j.format}`;
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    a.remove();
+                                    window.URL.revokeObjectURL(url);
+                                  } catch (e) {
+                                    setExportJobsError(e instanceof Error ? e.message : 'Erreur téléchargement');
+                                  }
+                                }}
+                              >
+                                Télécharger
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
 
-            <div className="bg-white rounded-xl border overflow-hidden mt-6">
-              <div className="px-4 py-3 border-b flex items-center justify-between">
-                <div className="font-semibold text-gray-900">Templates d’export</div>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    setExportTemplatesLoading(true);
-                    setExportTemplatesError(null);
-                    try {
-                      const res = await templatesApi.list({ include_inactive: true });
-                      setExportTemplates(res.templates);
-                    } catch (e) {
-                      setExportTemplatesError(e instanceof Error ? e.message : 'Erreur lors du chargement');
-                    } finally {
-                      setExportTemplatesLoading(false);
-                    }
-                  }}
-                  disabled={exportTemplatesLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${exportTemplatesLoading ? 'animate-spin' : ''}`} />
-                  Rafraîchir
-                </Button>
-              </div>
-
-              {exportTemplatesError && (
-                <div className="px-4 py-3 text-sm text-red-600">{exportTemplatesError}</div>
-              )}
-
-              <div className="px-4 py-4 border-b">
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                  <div className="md:col-span-2">
-                    <div className="text-sm font-medium text-gray-700 mb-1">Nom</div>
-                    <input
-                      value={newTemplate.name}
-                      onChange={e => setNewTemplate(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <div className="text-sm font-medium text-gray-700 mb-1">Description</div>
-                    <input
-                      value={newTemplate.description || ''}
-                      onChange={e => setNewTemplate(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
-                    <select
-                      value={newTemplate.source}
-                      onChange={e => setNewTemplate(prev => ({ ...prev, source: e.target.value as any }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    >
-                      <option value="missions">Missions</option>
-                      <option value="students">Étudiants</option>
-                      <option value="supervisors">Superviseurs</option>
-                      <option value="documents">Documents</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
-                    <select
-                      value={newTemplate.format}
-                      onChange={e => setNewTemplate(prev => ({ ...prev, format: e.target.value as any }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    >
-                      <option value="csv">CSV</option>
-                      <option value="json">JSON</option>
-                      <option value="xlsx">XLSX</option>
-                    </select>
-                  </div>
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="text-lg font-semibold text-gray-900 mb-4">Créer un template d’export</div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="md:col-span-2">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Nom</div>
+                  <Input value={newTemplate.name} onChange={e => setNewTemplate({ ...newTemplate, name: e.target.value })} />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">template_sql</div>
-                    <textarea
-                      value={newTemplate.template_sql || ''}
-                      onChange={e => setNewTemplate(prev => ({ ...prev, template_sql: e.target.value }))}
-                      rows={4}
-                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
-                    />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">template_handlebars</div>
-                    <textarea
-                      value={newTemplate.template_handlebars || ''}
-                      onChange={e => setNewTemplate(prev => ({ ...prev, template_handlebars: e.target.value }))}
-                      rows={4}
-                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
-                    />
-                  </div>
+                <div className="md:col-span-2">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Description</div>
+                  <Input
+                    value={newTemplate.description || ''}
+                    onChange={e => setNewTemplate({ ...newTemplate, description: e.target.value })}
+                  />
                 </div>
-
-                {createTemplateError && (
-                  <div className="mt-3 text-sm text-red-600">{createTemplateError}</div>
-                )}
-
-                <div className="mt-3 flex justify-end">
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={newTemplate.source}
+                    onChange={e => setNewTemplate({ ...newTemplate, source: e.target.value as any })}
+                  >
+                    <option value="missions">Missions</option>
+                    <option value="students">Étudiants</option>
+                    <option value="supervisors">Superviseurs</option>
+                    <option value="documents">Documents</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={newTemplate.format}
+                    onChange={e => setNewTemplate({ ...newTemplate, format: e.target.value as any })}
+                  >
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                    <option value="xlsx">XLSX</option>
+                    <option value="pdf">PDF</option>
+                  </select>
+                </div>
+                <div className="md:col-span-2">
+                  <div className="text-sm font-medium text-gray-700 mb-1">SQL</div>
+                  <textarea
+                    value={newTemplate.template_sql || ''}
+                    onChange={e => setNewTemplate({ ...newTemplate, template_sql: e.target.value })}
+                    rows={4}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Handlebars</div>
+                  <textarea
+                    value={newTemplate.template_handlebars || ''}
+                    onChange={e => setNewTemplate({ ...newTemplate, template_handlebars: e.target.value })}
+                    rows={4}
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+                <div className="md:col-span-4 flex justify-end">
                   <Button
                     onClick={async () => {
                       setCreateTemplateError(null);
                       setCreateTemplateLoading(true);
                       try {
-                        const created = await templatesApi.create({
-                          name: newTemplate.name,
-                          description: newTemplate.description || null,
-                          source: newTemplate.source,
-                          format: newTemplate.format,
-                          template_sql: newTemplate.template_sql || null,
-                          template_handlebars: newTemplate.template_handlebars || null,
-                        });
+                        const created = await templatesApi.create(newTemplate);
                         setExportTemplates(prev => [created, ...prev]);
                         setNewTemplate({
                           name: '',
@@ -3384,304 +4409,153 @@ const ColabPage: React.FC = () => {
                         setCreateTemplateLoading(false);
                       }
                     }}
-                    disabled={createTemplateLoading || !newTemplate.name}
+                    disabled={createTemplateLoading || !newTemplate.name.trim()}
                   >
                     {createTemplateLoading ? 'Création…' : 'Créer template'}
                   </Button>
                 </div>
               </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <th className="text-left px-4 py-3">Nom</th>
-                      <th className="text-left px-4 py-3">Source</th>
-                      <th className="text-left px-4 py-3">Format</th>
-                      <th className="text-left px-4 py-3">Actif</th>
-                      <th className="text-right px-4 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exportTemplates.map(t => (
-                      <tr key={t.id} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-900">{t.name}</td>
-                        <td className="px-4 py-3 text-gray-700">{t.source}</td>
-                        <td className="px-4 py-3 text-gray-700">{t.format}</td>
-                        <td className="px-4 py-3">
-                          <Badge className={t.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                            {t.is_active ? 'oui' : 'non'}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={!t.is_active}
-                            onClick={async () => {
-                              try {
-                                await templatesApi.deactivate(t.id);
-                                setExportTemplates(prev => prev.map(x => (x.id === t.id ? { ...x, is_active: false } : x)));
-                                if (exportTemplateId === t.id) setExportTemplateId(null);
-                              } catch (e) {
-                                setExportTemplatesError(e instanceof Error ? e.message : 'Erreur désactivation');
-                              }
-                            }}
-                          >
-                            Désactiver
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                    {exportTemplates.length === 0 && (
-                      <tr>
-                        <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
-                          Aucun template
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
             </div>
 
-            <div className="bg-white rounded-xl border overflow-hidden mt-6">
-              <div className="px-4 py-3 border-b flex items-center justify-between">
-                <div className="font-semibold text-gray-900">Schedules (Phase 3)</div>
-                <Button
-                  variant="outline"
-                  onClick={async () => {
-                    setExportSchedulesLoading(true);
-                    setExportSchedulesError(null);
-                    try {
-                      const res = await schedulesApi.list({ include_inactive: true, limit: 200 });
-                      setExportSchedules(res.schedules);
-                    } catch (e) {
-                      setExportSchedulesError(e instanceof Error ? e.message : 'Erreur chargement schedules');
-                    } finally {
-                      setExportSchedulesLoading(false);
-                    }
-                  }}
-                  disabled={exportSchedulesLoading}
-                >
-                  <RefreshCw className={`w-4 h-4 mr-2 ${exportSchedulesLoading ? 'animate-spin' : ''}`} />
-                  Rafraîchir
-                </Button>
-              </div>
-
-              {exportSchedulesError && (
-                <div className="px-4 py-3 text-sm text-red-600">{exportSchedulesError}</div>
-              )}
-
-              <div className="px-4 py-4 border-b">
-                <div className="grid grid-cols-1 md:grid-cols-6 gap-3">
-                  <div className="md:col-span-2">
-                    <div className="text-sm font-medium text-gray-700 mb-1">Nom</div>
-                    <input
-                      value={newSchedule.name}
-                      onChange={e => setNewSchedule(prev => ({ ...prev, name: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <div className="text-sm font-medium text-gray-700 mb-1">Description</div>
-                    <input
-                      value={newSchedule.description || ''}
-                      onChange={e => setNewSchedule(prev => ({ ...prev, description: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Cron</div>
-                    <input
-                      value={newSchedule.cron}
-                      onChange={e => setNewSchedule(prev => ({ ...prev, cron: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
-                    />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Timezone</div>
-                    <input
-                      value={newSchedule.timezone || 'UTC'}
-                      onChange={e => setNewSchedule(prev => ({ ...prev, timezone: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    />
-                  </div>
+            <div className="bg-white rounded-xl border p-4 mb-6">
+              <div className="text-lg font-semibold text-gray-900 mb-4">Planifications</div>
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
+                <div className="md:col-span-2">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Nom</div>
+                  <Input value={newSchedule.name} onChange={e => setNewSchedule({ ...newSchedule, name: e.target.value })} />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-3">
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
-                    <select
-                      value={newSchedule.source}
-                      onChange={e => setNewSchedule(prev => ({ ...prev, source: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    >
-                      <option value="missions">Missions</option>
-                      <option value="students">Étudiants</option>
-                      <option value="supervisors">Superviseurs</option>
-                      <option value="documents">Documents</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
-                    <select
-                      value={newSchedule.format}
-                      onChange={e => setNewSchedule(prev => ({ ...prev, format: e.target.value }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    >
-                      <option value="csv">CSV</option>
-                      <option value="json">JSON</option>
-                      <option value="xlsx">XLSX</option>
-                    </select>
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Template</div>
-                    <select
-                      value={newSchedule.template_id || ''}
-                      onChange={e => setNewSchedule(prev => ({ ...prev, template_id: e.target.value || null }))}
-                      className="w-full px-3 py-2 border rounded-lg text-sm"
-                    >
-                      <option value="">Aucun</option>
-                      {exportTemplates.filter(t => t.is_active).map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                <div className="md:col-span-2">
+                  <div className="text-sm font-medium text-gray-700 mb-1">Description</div>
+                  <Input
+                    value={newSchedule.description || ''}
+                    onChange={e => setNewSchedule({ ...newSchedule, description: e.target.value })}
+                  />
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-3">
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">filters (JSON)</div>
-                    <textarea
-                      value={JSON.stringify(newSchedule.filters || {}, null, 2)}
-                      onChange={e => {
-                        try {
-                          const v = JSON.parse(e.target.value);
-                          setNewSchedule(prev => ({ ...prev, filters: v }));
-                        } catch {
-                          setNewSchedule(prev => ({ ...prev, filters: e.target.value } as any));
-                        }
-                      }}
-                      rows={4}
-                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
-                    />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">destinations (JSON)</div>
-                    <textarea
-                      value={JSON.stringify(newSchedule.destinations || [], null, 2)}
-                      onChange={e => {
-                        try {
-                          const v = JSON.parse(e.target.value);
-                          setNewSchedule(prev => ({ ...prev, destinations: v }));
-                        } catch {
-                          setNewSchedule(prev => ({ ...prev, destinations: e.target.value } as any));
-                        }
-                      }}
-                      rows={4}
-                      className="w-full px-3 py-2 border rounded-lg text-sm font-mono"
-                    />
-                  </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={newSchedule.source}
+                    onChange={e => setNewSchedule({ ...newSchedule, source: e.target.value as any })}
+                  >
+                    <option value="missions">Missions</option>
+                    <option value="students">Étudiants</option>
+                    <option value="supervisors">Superviseurs</option>
+                    <option value="documents">Documents</option>
+                  </select>
                 </div>
-
-                {createScheduleError && (
-                  <div className="mt-3 text-sm text-red-600">{createScheduleError}</div>
-                )}
-
-                <div className="mt-3 flex justify-end">
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={newSchedule.format}
+                    onChange={e => setNewSchedule({ ...newSchedule, format: e.target.value })}
+                  >
+                    <option value="csv">CSV</option>
+                    <option value="json">JSON</option>
+                    <option value="xlsx">XLSX</option>
+                    <option value="pdf">PDF</option>
+                  </select>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Template</div>
+                  <select
+                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    value={newSchedule.template_id || ''}
+                    onChange={e => setNewSchedule({ ...newSchedule, template_id: e.target.value || null })}
+                    disabled={exportTemplatesLoading}
+                  >
+                    <option value="">Aucun</option>
+                    {exportTemplates.map(t => (
+                      <option key={t.id} value={t.id}>
+                        {t.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">CRON</div>
+                  <Input value={newSchedule.cron} onChange={e => setNewSchedule({ ...newSchedule, cron: e.target.value })} />
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-gray-700 mb-1">Timezone</div>
+                  <Input
+                    value={newSchedule.timezone || ''}
+                    onChange={e => setNewSchedule({ ...newSchedule, timezone: e.target.value })}
+                  />
+                </div>
+                <div className="md:col-span-4 flex justify-end">
                   <Button
                     onClick={async () => {
                       setCreateScheduleError(null);
                       setCreateScheduleLoading(true);
                       try {
-                        const created = await schedulesApi.create({
-                          name: newSchedule.name,
-                          description: newSchedule.description || null,
-                          source: newSchedule.source,
-                          format: newSchedule.format,
-                          cron: newSchedule.cron,
-                          timezone: newSchedule.timezone || 'UTC',
-                          template_id: newSchedule.template_id || null,
-                          filters: typeof newSchedule.filters === 'string' ? {} : (newSchedule.filters || {}),
-                          destinations: typeof newSchedule.destinations === 'string' ? [] : (newSchedule.destinations || []),
-                        });
+                        const created = await schedulesApi.create(newSchedule);
                         setExportSchedules(prev => [created, ...prev]);
-                        setNewSchedule(prev => ({ ...prev, name: '', description: '' }));
+                        setNewSchedule({
+                          name: '',
+                          description: '',
+                          source: 'missions',
+                          format: 'csv',
+                          template_id: null,
+                          cron: '0 8 * * *',
+                          timezone: 'UTC',
+                          destinations: [],
+                        });
                       } catch (e) {
                         setCreateScheduleError(e instanceof Error ? e.message : 'Erreur création schedule');
                       } finally {
                         setCreateScheduleLoading(false);
                       }
                     }}
-                    disabled={createScheduleLoading || !newSchedule.name || !newSchedule.cron}
+                    disabled={createScheduleLoading || !newSchedule.name.trim()}
                   >
                     {createScheduleLoading ? 'Création…' : 'Créer schedule'}
                   </Button>
                 </div>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <th className="text-left px-4 py-3">Nom</th>
-                      <th className="text-left px-4 py-3">Source</th>
-                      <th className="text-left px-4 py-3">Format</th>
-                      <th className="text-left px-4 py-3">Cron</th>
-                      <th className="text-left px-4 py-3">Actif</th>
-                      <th className="text-right px-4 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {exportSchedules.map(s => (
-                      <tr key={s.id} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-900">{s.name}</td>
-                        <td className="px-4 py-3 text-gray-700">{s.source}</td>
-                        <td className="px-4 py-3 text-gray-700">{s.format}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{s.cron}</td>
-                        <td className="px-4 py-3">
-                          <Badge className={s.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>
-                            {s.is_active ? 'oui' : 'non'}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={!s.is_active}
-                            onClick={async () => {
-                              try {
-                                await schedulesApi.deactivate(s.id);
-                                setExportSchedules(prev => prev.map(x => (x.id === s.id ? { ...x, is_active: false } : x)));
-                              } catch (e) {
-                                setExportSchedulesError(e instanceof Error ? e.message : 'Erreur désactivation');
-                              }
-                            }}
-                          >
-                            Désactiver
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                    {exportSchedules.length === 0 && (
+              {exportSchedules.length === 0 ? (
+                <div className="text-sm text-gray-600">Aucune planification.</div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-600">
                       <tr>
-                        <td className="px-4 py-6 text-center text-gray-500" colSpan={6}>
-                          Aucun schedule
-                        </td>
+                        <th className="text-left font-medium px-4 py-3">Nom</th>
+                        <th className="text-left font-medium px-4 py-3">Source</th>
+                        <th className="text-left font-medium px-4 py-3">Format</th>
+                        <th className="text-left font-medium px-4 py-3">CRON</th>
+                        <th className="text-left font-medium px-4 py-3">Actif</th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {exportSchedules.map(s => (
+                        <tr key={s.id} className="border-t">
+                          <td className="px-4 py-3 text-gray-900">{s.name}</td>
+                          <td className="px-4 py-3 text-gray-900">{s.source}</td>
+                          <td className="px-4 py-3 text-gray-900">{s.format}</td>
+                          <td className="px-4 py-3 text-gray-600 font-mono">{s.cron}</td>
+                          <td className="px-4 py-3 text-gray-600">{s.is_active ? 'Oui' : 'Non'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </>
         )}
 
         {activeTab === 'attributions' && (
           <>
+            {attrNotice && (
+              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5" />
+                <span>{attrNotice}</span>
+              </div>
+            )}
+
             {attrError && (
               <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
                 <AlertCircle className="w-5 h-5" />
@@ -3692,14 +4566,14 @@ const ColabPage: React.FC = () => {
             {attrSummary && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <StatsCard
-                  title="Mailles attribuées"
+                  title="Mailles notifiables"
                   value={attrSummary.total_assignments}
                   icon={<BarChart3 className="w-6 h-6" />}
                   color="bg-blue-50 text-blue-900"
                 />
                 <StatsCard
-                  title="Étudiants"
-                  value={attrSummary.total_students}
+                  title="Missions affectées"
+                  value={attrSummary.missions_with_student}
                   icon={<Users className="w-6 h-6" />}
                   color="bg-green-50 text-green-900"
                 />
@@ -3710,8 +4584,8 @@ const ColabPage: React.FC = () => {
                   color="bg-orange-50 text-orange-900"
                 />
                 <StatsCard
-                  title="Sélection"
-                  value={Object.values(attrSelected).filter(Boolean).length}
+                  title="Étudiants"
+                  value={attrSummary.total_students}
                   icon={<ClipboardList className="w-6 h-6" />}
                   color="bg-purple-50 text-purple-900"
                 />
@@ -3737,7 +4611,8 @@ const ColabPage: React.FC = () => {
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                   >
                     <option value="">Tous</option>
-                    <option value="unassigned">Non attribuée (mission sans prefs)</option>
+                    <option value="unassigned">Sans étudiant</option>
+                    <option value="skipped">Affectée mais non notifiable</option>
                     <option value="never">Jamais envoyée</option>
                     <option value="pending">En attente</option>
                     <option value="sent">Envoyée</option>
@@ -3775,140 +4650,153 @@ const ColabPage: React.FC = () => {
                   </Button>
                 </div>
               </div>
-
-              {attrHistoryError && <div className="mt-3 text-sm text-red-600">{attrHistoryError}</div>}
-              {attrEnqueueError && <div className="mt-3 text-sm text-red-600">{attrEnqueueError}</div>}
             </div>
 
-            <div className="bg-white rounded-xl border overflow-hidden">
-              <div className="px-4 py-3 border-b flex items-center justify-between">
-                <div className="font-semibold text-gray-900">Mailles attribuées</div>
-                <div className="text-sm text-gray-600">{attrItems.length} lignes</div>
-              </div>
+            {attrHistoryError && <div className="mt-3 text-sm text-red-600">{attrHistoryError}</div>}
+            {attrEnqueueError && <div className="mt-3 text-sm text-red-600">{attrEnqueueError}</div>}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <th className="text-left px-4 py-3">
-                        <input
-                          type="checkbox"
-                          checked={
-                            attrItems.filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id).length > 0 &&
-                            attrItems
-                              .filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id)
-                              .every(i => !!attrSelected[i.assignment_id as string])
-                          }
-                          onChange={e => {
-                            const checked = e.target.checked;
-                            setAttrSelected(prev => {
-                              const next = { ...prev };
-                              for (const i of attrItems) {
-                                if (i.attribution_status !== 'notifiable' || !i.assignment_id) continue;
-                                next[i.assignment_id] = checked;
-                              }
-                              return next;
-                            });
-                          }}
-                        />
-                      </th>
-                      <th className="text-left px-4 py-3">Mission</th>
-                      <th className="text-left px-4 py-3">Maille</th>
-                      <th className="text-left px-4 py-3">Étudiant</th>
-                      <th className="text-left px-4 py-3">Email</th>
-                      <th className="text-left px-4 py-3">Statut</th>
-                      <th className="text-left px-4 py-3">Raison</th>
-                      <th className="text-left px-4 py-3">Notification</th>
-                      <th className="text-left px-4 py-3">Dernier envoi</th>
-                      <th className="text-right px-4 py-3">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attrItems.map(i => (
-                      <tr key={i.mission_id} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-3">
+            <CollapsibleCard title="Attributions missions" subtitle={`${attrItems.length} lignes`} defaultOpen>
+              <div className="max-h-[65vh] overflow-auto">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                      <tr>
+                        <th className="text-left px-4 py-3">
                           <input
                             type="checkbox"
-                            disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
-                            checked={!!(i.assignment_id && attrSelected[i.assignment_id])}
+                            checked={
+                              attrItems.filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id).length > 0 &&
+                              attrItems
+                                .filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id)
+                                .every(i => !!attrSelected[i.assignment_id as string])
+                            }
                             onChange={e => {
-                              if (!i.assignment_id) return;
-                              setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: e.target.checked }));
+                              const checked = e.target.checked;
+                              setAttrSelected(prev => {
+                                const next = { ...prev };
+                                for (const i of attrItems) {
+                                  if (i.attribution_status !== 'notifiable' || !i.assignment_id) continue;
+                                  next[i.assignment_id] = checked;
+                                }
+                                return next;
+                              });
                             }}
                           />
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.mission_code}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.maille_code}</td>
-                        <td className="px-4 py-3 text-gray-900">{i.full_name || '-'}</td>
-                        <td className="px-4 py-3 text-gray-700">{i.email || '-'}</td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            className={
-                              i.attribution_status === 'notifiable'
-                                ? 'bg-green-100 text-green-800'
-                                : i.attribution_status === 'notified'
-                                  ? 'bg-blue-100 text-blue-800'
-                                  : i.attribution_status === 'error'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800'
-                            }
-                          >
-                            {i.attribution_status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600" title={i.status_reason || ''}>
-                          {i.status_reason || '-'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            className={
-                              i.notification_status === 'sent'
-                                ? 'bg-green-100 text-green-800'
-                                : i.notification_status === 'pending'
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : i.notification_status === 'failed'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800'
-                            }
-                          >
-                            {i.notification_status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">
-                          {i.notification_sent_at ? new Date(i.notification_sent_at).toLocaleString('fr-FR') : '-'}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
-                            onClick={() => {
-                              if (!i.assignment_id) return;
-                              setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: true }));
-                              setAttrConfirmOpen(true);
-                            }}
-                          >
-                            Notifier
-                          </Button>
-                        </td>
+                        </th>
+                        <th className="text-left px-4 py-3">Mission</th>
+                        <th className="text-left px-4 py-3">Maille</th>
+                        <th className="text-left px-4 py-3">Étudiant</th>
+                        <th className="text-left px-4 py-3">Email</th>
+                        <th className="text-left px-4 py-3">Statut</th>
+                        <th className="text-left px-4 py-3">Raison</th>
+                        <th className="text-left px-4 py-3">Notification</th>
+                        <th className="text-left px-4 py-3">Dernier envoi</th>
+                        <th className="text-right px-4 py-3">Action</th>
                       </tr>
-                    ))}
-                    {attrItems.length === 0 && (
-                      <tr>
-                        <td className="px-4 py-6 text-center text-gray-500" colSpan={10}>
-                          Aucune attribution
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {attrItems.map(i => (
+                        <tr key={i.mission_id} className="border-t hover:bg-gray-50">
+                          <td className="px-4 py-3">
+                            <input
+                              type="checkbox"
+                              disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
+                              checked={!!(i.assignment_id && attrSelected[i.assignment_id])}
+                              onChange={e => {
+                                if (!i.assignment_id) return;
+                                setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: e.target.checked }));
+                              }}
+                            />
+                          </td>
+                          <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.mission_code}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.maille_code}</td>
+                          <td className="px-4 py-3 text-gray-900">{i.full_name || '-'}</td>
+                          <td className="px-4 py-3 text-gray-700">{i.email || '-'}</td>
+                          <td className="px-4 py-3">
+                            <Badge
+                              className={
+                                i.attribution_status === 'notifiable'
+                                  ? 'bg-green-100 text-green-800'
+                                  : i.attribution_status === 'notified'
+                                    ? 'bg-blue-100 text-blue-800'
+                                    : i.attribution_status === 'error'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-gray-100 text-gray-800'
+                              }
+                            >
+                              {i.attribution_status}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600" title={i.status_reason || ''}>
+                            {i.status_reason || '-'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <Badge
+                              className={
+                                i.notification_status === 'sent'
+                                  ? 'bg-green-100 text-green-800'
+                                  : i.notification_status === 'pending'
+                                    ? 'bg-orange-100 text-orange-800'
+                                    : i.notification_status === 'failed'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-gray-100 text-gray-800'
+                              }
+                            >
+                              {i.notification_status}
+                            </Badge>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600">
+                            {i.notification_sent_at ? new Date(i.notification_sent_at).toLocaleString('fr-FR') : '-'}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            {i.attribution_status === 'unassigned' ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setAttrAssignError(null);
+                                  setAttrAssignStudentQuery('');
+                                  setAttrAssignStudents([]);
+                                  setAttrAssignSelectedStudentId('');
+                                  setAttrAssignMission(i);
+                                  setAttrAssignOpen(true);
+                                }}
+                              >
+                                Attribuer
+                              </Button>
+                            ) : (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
+                                onClick={() => {
+                                  if (!i.assignment_id) return;
+                                  setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: true }));
+                                  setAttrConfirmOpen(true);
+                                }}
+                              >
+                                Notifier
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {attrItems.length === 0 && (
+                        <tr>
+                          <td className="px-4 py-6 text-center text-gray-500" colSpan={10}>
+                            Aucune attribution
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
-            </div>
+            </CollapsibleCard>
 
-            <div className="bg-white rounded-xl border overflow-hidden mt-6">
-              <div className="px-4 py-3 border-b flex items-center justify-between">
-                <div className="font-semibold text-gray-900">Jobs email (worker local)</div>
-                <div className="flex items-center gap-2">
+            <div className="mt-6">
+              <CollapsibleCard title="Jobs email (worker local)" subtitle={`${notifyJobs.length} jobs`} defaultOpen={false}>
+                <div className="p-4 border-b flex items-center justify-end">
                   <Button
                     variant="outline"
                     onClick={async () => {
@@ -3929,108 +4817,133 @@ const ColabPage: React.FC = () => {
                     Rafraîchir
                   </Button>
                 </div>
-              </div>
 
-              {notifyJobsError && <div className="px-4 py-3 text-sm text-red-600">{notifyJobsError}</div>}
+                {notifyJobsError && <div className="px-4 py-3 text-sm text-red-600">{notifyJobsError}</div>}
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <th className="text-left px-4 py-3">Job</th>
-                      <th className="text-left px-4 py-3">Type</th>
-                      <th className="text-left px-4 py-3">Statut</th>
-                      <th className="text-left px-4 py-3">Créé</th>
-                      <th className="text-left px-4 py-3">Erreur</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {notifyJobs.map(j => (
-                      <tr key={j.id} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{j.id}</td>
-                        <td className="px-4 py-3 text-gray-700">{j.job_type}</td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            className={
-                              j.status === 'completed'
-                                ? 'bg-green-100 text-green-800'
-                                : j.status === 'failed'
-                                  ? 'bg-red-100 text-red-800'
-                                  : j.status === 'running'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : 'bg-gray-100 text-gray-800'
-                            }
-                          >
-                            {j.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 text-gray-600">{new Date(j.created_at).toLocaleString('fr-FR')}</td>
-                        <td className="px-4 py-3 text-gray-600">{j.error || '-'}</td>
-                      </tr>
-                    ))}
-                    {notifyJobs.length === 0 && (
-                      <tr>
-                        <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
-                          Aucun job
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                <div className="max-h-[50vh] overflow-auto">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                        <tr>
+                          <th className="text-left px-4 py-3">Job</th>
+                          <th className="text-left px-4 py-3">Type</th>
+                          <th className="text-left px-4 py-3">Statut</th>
+                          <th className="text-left px-4 py-3">Créé</th>
+                          <th className="text-left px-4 py-3">Erreur</th>
+                          <th className="text-right px-4 py-3">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {notifyJobs.map(j => (
+                          <tr key={j.id} className="border-t hover:bg-gray-50">
+                            <td className="px-4 py-3 font-mono text-xs text-gray-700">{j.id}</td>
+                            <td className="px-4 py-3 text-gray-700">{j.job_type}</td>
+                            <td className="px-4 py-3">
+                              <Badge
+                                className={
+                                  j.status === 'completed'
+                                    ? 'bg-green-100 text-green-800'
+                                    : j.status === 'failed'
+                                      ? 'bg-red-100 text-red-800'
+                                      : j.status === 'running'
+                                        ? 'bg-blue-100 text-blue-800'
+                                        : j.status === 'cancelled'
+                                          ? 'bg-gray-200 text-gray-800'
+                                          : 'bg-gray-100 text-gray-800'
+                                }
+                              >
+                                {j.status}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-gray-600">{new Date(j.created_at).toLocaleString('fr-FR')}</td>
+                            <td className="px-4 py-3 text-gray-600">{j.error || '-'}</td>
+                            <td className="px-4 py-3 text-right">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={j.status !== 'pending'}
+                                onClick={async () => {
+                                  setNotifyJobsError(null);
+                                  try {
+                                    await notifyApi.cancel(j.id);
+                                    const res = await notifyApi.list(50);
+                                    setNotifyJobs(res.jobs);
+                                    setAttrNotice('Job annulé');
+                                    window.setTimeout(() => setAttrNotice(null), 2500);
+                                  } catch (e) {
+                                    setNotifyJobsError(e instanceof Error ? e.message : 'Erreur annulation');
+                                  }
+                                }}
+                              >
+                                Annuler
+                              </Button>
+                            </td>
+                          </tr>
+                        ))}
+                        {notifyJobs.length === 0 && (
+                          <tr>
+                            <td className="px-4 py-6 text-center text-gray-500" colSpan={6}>
+                              Aucun job
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </CollapsibleCard>
             </div>
 
-            <div className="bg-white rounded-xl border overflow-hidden mt-6">
-              <div className="px-4 py-3 border-b flex items-center justify-between">
-                <div className="font-semibold text-gray-900">Historique & Logs</div>
-                <div className="text-sm text-gray-600">{attrHistory.length} entrées</div>
-              </div>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50 text-gray-600">
-                    <tr>
-                      <th className="text-left px-4 py-3">Date</th>
-                      <th className="text-left px-4 py-3">Étudiant</th>
-                      <th className="text-left px-4 py-3">Maille</th>
-                      <th className="text-left px-4 py-3">Statut</th>
-                      <th className="text-left px-4 py-3">Job</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {attrHistory.map(h => (
-                      <tr key={h.id} className="border-t hover:bg-gray-50">
-                        <td className="px-4 py-3 text-gray-600">{new Date(h.requested_at).toLocaleString('fr-FR')}</td>
-                        <td className="px-4 py-3 text-gray-900">{h.full_name}</td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{h.maille_code}</td>
-                        <td className="px-4 py-3">
-                          <Badge
-                            className={
-                              h.status === 'sent'
-                                ? 'bg-green-100 text-green-800'
-                                : h.status === 'pending'
-                                  ? 'bg-orange-100 text-orange-800'
-                                  : h.status === 'failed'
-                                    ? 'bg-red-100 text-red-800'
-                                    : 'bg-gray-100 text-gray-800'
-                            }
-                          >
-                            {h.status}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3 font-mono text-xs text-gray-700">{h.email_job_id || '-'}</td>
-                      </tr>
-                    ))}
-                    {attrHistory.length === 0 && (
-                      <tr>
-                        <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
-                          Aucun historique
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div className="mt-6">
+              <CollapsibleCard title="Historique & Logs" subtitle={`${attrHistory.length} entrées`} defaultOpen={false}>
+                <div className="max-h-[50vh] overflow-auto">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                        <tr>
+                          <th className="text-left px-4 py-3">Date</th>
+                          <th className="text-left px-4 py-3">Étudiant</th>
+                          <th className="text-left px-4 py-3">Maille</th>
+                          <th className="text-left px-4 py-3">Statut</th>
+                          <th className="text-left px-4 py-3">Job</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {attrHistory.map(h => (
+                          <tr key={h.id} className="border-t hover:bg-gray-50">
+                            <td className="px-4 py-3 text-gray-600">{new Date(h.requested_at).toLocaleString('fr-FR')}</td>
+                            <td className="px-4 py-3 text-gray-900">{h.full_name}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-gray-700">{h.maille_code}</td>
+                            <td className="px-4 py-3">
+                              <Badge
+                                className={
+                                  h.status === 'sent'
+                                    ? 'bg-green-100 text-green-800'
+                                    : h.status === 'pending'
+                                      ? 'bg-orange-100 text-orange-800'
+                                      : h.status === 'failed'
+                                        ? 'bg-red-100 text-red-800'
+                                        : 'bg-gray-100 text-gray-800'
+                                }
+                              >
+                                {h.status}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 font-mono text-xs text-gray-700">{h.email_job_id || '-'}</td>
+                          </tr>
+                        ))}
+                        {attrHistory.length === 0 && (
+                          <tr>
+                            <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
+                              Aucun historique
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </CollapsibleCard>
             </div>
 
             {attrConfirmOpen && (
@@ -4079,7 +4992,6 @@ const ColabPage: React.FC = () => {
                             include_instructions: attrIncludeInstructions,
                           });
 
-                          // refresh list + summary + history
                           const [summaryRes, listRes, historyRes] = await Promise.all([
                             attributionsApi.summary(),
                             attributionsApi.list({
@@ -4092,6 +5004,8 @@ const ColabPage: React.FC = () => {
                           setAttrSummary(summaryRes);
                           setAttrItems(listRes.items);
                           setAttrHistory(historyRes.items || []);
+                          setAttrNotice('Notifications programmées (job en attente)');
+                          window.setTimeout(() => setAttrNotice(null), 3500);
                           setAttrConfirmOpen(false);
                         } catch (e) {
                           setAttrEnqueueError(e instanceof Error ? e.message : 'Erreur enregistrement');
@@ -4102,6 +5016,202 @@ const ColabPage: React.FC = () => {
                       disabled={attrEnqueueLoading}
                     >
                       {attrEnqueueLoading ? 'Enregistrement…' : 'Confirmer'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {attrAssignOpen && attrAssignMission && (
+              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+                <div className="bg-white w-full max-w-lg rounded-xl shadow-lg border overflow-hidden">
+                  <div className="px-5 py-4 border-b">
+                    <div className="text-lg font-semibold text-gray-900">
+                      {attrAssignMode === 'assign_student'
+                        ? 'Assigner un étudiant'
+                        : attrAssignMode === 'assign_holder'
+                          ? 'Assigner le détenteur'
+                          : 'Changer l’étudiant'}
+                    </div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Mission <span className="font-mono">{attrAssignMission.mission_code}</span> — maille{' '}
+                      <span className="font-mono">{attrAssignMission.maille_code}</span>
+                    </div>
+                  </div>
+
+                  <div className="px-5 py-4 space-y-3">
+                    <div>
+                      <div className="text-sm font-medium text-gray-700 mb-1">Étudiant (recherche)</div>
+                      <input
+                        value={attrAssignStudentQuery}
+                        onChange={async e => {
+                          const q = e.target.value;
+                          setAttrAssignStudentQuery(q);
+                          setAttrAssignSelectedStudentId('');
+                          setAttrAssignError(null);
+                          if (q.trim().length < 2) {
+                            setAttrAssignStudents([]);
+                            return;
+                          }
+                          try {
+                            const res = await studentsApi.suggest(q.trim());
+                            setAttrAssignStudents(res);
+                          } catch (_e) {
+                            setAttrAssignStudents([]);
+                          }
+                        }}
+                        className="w-full px-3 py-2 border rounded-lg text-sm"
+                        placeholder="Nom / email / matricule…"
+                      />
+                      {attrAssignStudents.length > 0 && (
+                        <div className="mt-2 border rounded-lg overflow-hidden max-h-52 overflow-y-auto">
+                          {attrAssignStudents.map(s => (
+                            <button
+                              key={s.id}
+                              type="button"
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
+                                attrAssignSelectedStudentId === s.id ? 'bg-blue-50' : ''
+                              }`}
+                              onClick={() => {
+                                setAttrAssignSelectedStudentId(s.id);
+                                setAttrAssignStudentQuery(s.label);
+                                setAttrAssignStudents([]);
+                              }}
+                            >
+                              {s.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {attrAssignError && <div className="text-sm text-red-600">{attrAssignError}</div>}
+                    <div className="text-xs text-gray-500">
+                      Cette action rend la mission notifiable par email.
+                    </div>
+                  </div>
+
+                  <div className="px-5 py-4 border-t flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setAttrAssignOpen(false);
+                        setAttrAssignMission(null);
+                      }}
+                      disabled={attrAssignLoading}
+                    >
+                      Fermer
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        if (!attrAssignMission) return;
+                        if (!attrAssignSelectedStudentId) {
+                          setAttrAssignError('Sélectionne un étudiant');
+                          return;
+                        }
+                        setAttrAssignLoading(true);
+                        setAttrAssignError(null);
+                        try {
+                          await attributionsApi.assign({
+                            mission_id: attrAssignMission.mission_id,
+                            student_id: attrAssignSelectedStudentId,
+                          });
+
+                          const [summaryRes, listRes] = await Promise.all([
+                            attributionsApi.summary(),
+                            attributionsApi.list({
+                              student: attrStudentFilter.trim() || undefined,
+                              notif_status: attrNotifStatusFilter || undefined,
+                              limit: 500,
+                            }),
+                          ]);
+                          setAttrSummary(summaryRes);
+                          setAttrItems(listRes.items);
+                          setAttrNotice('Attribution enregistrée');
+                          window.setTimeout(() => setAttrNotice(null), 2500);
+                          setAttrAssignOpen(false);
+                          setAttrAssignMission(null);
+                        } catch (e) {
+                          setAttrAssignError(e instanceof Error ? e.message : 'Erreur attribution');
+                        } finally {
+                          setAttrAssignLoading(false);
+                        }
+                      }}
+                      disabled={attrAssignLoading}
+                    >
+                      {attrAssignLoading
+                        ? 'Attribution…'
+                        : attrAssignMode === 'change_student'
+                          ? 'Changer'
+                          : attrAssignMode === 'assign_holder'
+                            ? 'Assigner le détenteur'
+                            : 'Assigner'}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {takeoverOpen && takeoverMission && (
+              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
+                <div className="bg-white w-full max-w-lg rounded-xl shadow-lg border overflow-hidden">
+                  <div className="px-5 py-4 border-b">
+                    <div className="text-lg font-semibold text-gray-900">Reprendre la maille</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Mission <span className="font-mono">{takeoverMission.code}</span>
+                    </div>
+                  </div>
+
+                  <div className="p-5 space-y-3">
+                    {takeoverError && <div className="text-sm text-red-600">{takeoverError}</div>}
+                    <div className="text-sm text-gray-700">
+                      Cette action va résoudre le conflit en transférant la maille à cette mission.
+                    </div>
+                  </div>
+
+                  <div className="px-5 py-4 border-t flex justify-end gap-3">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setTakeoverOpen(false);
+                        setTakeoverMission(null);
+                        setTakeoverPayload(null);
+                        setTakeoverError(null);
+                      }}
+                      disabled={takeoverLoading}
+                    >
+                      Annuler
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        if (!takeoverMission) return;
+                        setTakeoverLoading(true);
+                        setTakeoverError(null);
+                        try {
+                          await missionsApi.resolveConflict(takeoverMission.id, {
+                            action: 'takeover',
+                            payload: takeoverPayload || {},
+                          });
+                          await loadData();
+                          setTakeoverOpen(false);
+                          setTakeoverMission(null);
+                          setTakeoverPayload(null);
+                        } catch (e) {
+                          setTakeoverError(e instanceof Error ? e.message : 'Erreur résolution');
+                        } finally {
+                          setTakeoverLoading(false);
+                        }
+                      }}
+                      disabled={takeoverLoading}
+                    >
+                      {takeoverLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Résolution...
+                        </>
+                      ) : (
+                        'Confirmer'
+                      )}
                     </Button>
                   </div>
                 </div>
@@ -4725,6 +5835,13 @@ const ColabPage: React.FC = () => {
         onUpdated={loadData}
       />
 
+      <UpdateStudentPrefsModal
+        isOpen={showUpdateStudentPrefsModal}
+        student={selectedStudent}
+        onClose={() => setShowUpdateStudentPrefsModal(false)}
+        onUpdated={loadData}
+      />
+
       <UpdateSupervisorModal
         isOpen={showUpdateSupervisorModal}
         supervisor={selectedSupervisor}
@@ -4813,6 +5930,8 @@ const ColabPage: React.FC = () => {
       <MissionDetailModal
         isOpen={showMissionDetailModal}
         missionId={selectedMissionId}
+        supervisors={supervisors}
+        defaultTab={missionDetailDefaultTab}
         onClose={() => setShowMissionDetailModal(false)}
         onChanged={loadData}
         onGoToDocuments={(missionId) => {

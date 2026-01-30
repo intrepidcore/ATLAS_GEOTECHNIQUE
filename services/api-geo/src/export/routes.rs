@@ -860,6 +860,8 @@ async fn download_export(
                     "application/json"
                 } else if resolved_str.ends_with(".xlsx") {
                     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                } else if resolved_str.ends_with(".pdf") {
+                    "application/pdf"
                 } else {
                     "application/octet-stream"
                 };
