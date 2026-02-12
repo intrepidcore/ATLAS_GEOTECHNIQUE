@@ -668,13 +668,10 @@ export class ExportQuickDialog {
 
         restoreMapInteractions = this.disableMapInteractionsForExport(map);
         restoreFractionalZoom = this.enableFractionalZoomForExport(map);
-        
-        map.fitBounds(targetBounds, { 
-          animate: false, 
-          padding: [0, 0], 
-          maxZoom: 18,
-          duration: 0
-        });
+
+        const targetZoom = this.getTargetZoomForBounds(map, targetBounds, 18);
+        console.log(`[PHASE2][${admName}] targetZoom (deterministic) = ${targetZoom}`);
+        map.setView(targetBounds.getCenter(), targetZoom, { animate: false, duration: 0 });
 
         const effective1 = await this.waitForStableBounds(map, {
           admName,
@@ -705,12 +702,9 @@ export class ExportQuickDialog {
             effectiveHeight: effectiveHeight1
           });
 
-          map.fitBounds(targetBounds, {
-            animate: false,
-            padding: [0, 0],
-            maxZoom: 18,
-            duration: 0
-          });
+          const targetZoom2 = this.getTargetZoomForBounds(map, targetBounds, 18);
+          console.log(`[PHASE2][${admName}] targetZoom retry (deterministic) = ${targetZoom2}`);
+          map.setView(targetBounds.getCenter(), targetZoom2, { animate: false, duration: 0 });
 
           bounds = await this.waitForStableBounds(map, {
             admName,
@@ -804,7 +798,12 @@ export class ExportQuickDialog {
         
         // Restaurer la vue
         if (originalBounds) {
-          map.fitBounds(originalBounds, { animate: false });
+          try {
+            const restoreZoom = this.getTargetZoomForBounds(map, originalBounds, 18);
+            map.setView(originalBounds.getCenter(), restoreZoom, { animate: false, duration: 0 });
+          } catch {
+            map.fitBounds(originalBounds, { animate: false });
+          }
         }
       }
       
@@ -2780,6 +2779,17 @@ export class ExportQuickDialog {
         console.warn('[ExportSingle] restoreFractionalZoom failed:', e);
       }
     };
+  }
+
+  private getTargetZoomForBounds(map: any, bounds: any, maxZoom: number): number {
+    let z = map.getBoundsZoom(bounds, false, [0, 0]);
+    if (typeof z !== 'number' || Number.isNaN(z)) {
+      z = map.getZoom();
+    }
+    if (typeof maxZoom === 'number') {
+      z = Math.min(z, maxZoom);
+    }
+    return z;
   }
 
   private async waitForStableBounds(

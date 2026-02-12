@@ -386,6 +386,12 @@ export class BoundsOptimizer {
           reason = `margin=${metrics.margin_min_km.toFixed(2)}km (optimal) quality=${metrics.quality_score.toFixed(3)}`
         }
       }
+
+      console.log(
+        `[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ${decision.toUpperCase()} (${reason}) ` +
+        `constraints: marginOk=${marginKmOk} padOk=${padMaxOk} ratioOk=${marginRatioOk} ` +
+        `(margin_ratio=${marginRatio.toFixed(2)}, pad_max=${(metrics.pad_max_pct*100).toFixed(1)}%)`
+      )
       
       // Collecter pour JSON
       iterationsLog.push({
