@@ -612,6 +612,7 @@ export class ExportQuickDialog {
       // v4.5.1: Initialiser avec des valeurs par défaut pour éviter null
       let bounds: { north: number; south: number; east: number; west: number } = this.config.getMapBounds();
       let restoreMapInteractions: (() => void) | null = null;
+      let restoreFractionalZoom: (() => void) | null = null;
       
       if (admBounds) {
         // v4.5.1: Utiliser les bounds optimisées
@@ -666,6 +667,7 @@ export class ExportQuickDialog {
         console.log(`[PHASE2][${admName}] fitBounds: [${bounds.south.toFixed(4)}, ${bounds.west.toFixed(4)}] → [${bounds.north.toFixed(4)}, ${bounds.east.toFixed(4)}]`);
 
         restoreMapInteractions = this.disableMapInteractionsForExport(map);
+        restoreFractionalZoom = this.enableFractionalZoomForExport(map);
         
         map.fitBounds(targetBounds, { 
           animate: false, 
@@ -777,6 +779,11 @@ export class ExportQuickDialog {
           mapCapture = await captureLeafletMap(this.config.mapContainer, opts.quality);
         }
       } finally {
+        if (restoreFractionalZoom) {
+          restoreFractionalZoom();
+          restoreFractionalZoom = null;
+        }
+
         if (restoreMapInteractions) {
           restoreMapInteractions();
           restoreMapInteractions = null;
@@ -2739,6 +2746,38 @@ export class ExportQuickDialog {
         if (original.tap) map.tap?.enable?.();
       } catch (e) {
         console.warn('[ExportSingle] restoreMapInteractions failed:', e);
+      }
+    };
+  }
+
+  private enableFractionalZoomForExport(map: any): () => void {
+    const original = {
+      zoomSnap: map.options?.zoomSnap,
+      zoomDelta: map.options?.zoomDelta,
+      wheelPxPerZoomLevel: map.options?.wheelPxPerZoomLevel,
+    };
+
+    try {
+      if (map.options) {
+        map.options.zoomSnap = 0.1;
+        map.options.zoomDelta = 0.1;
+        if (typeof map.options.wheelPxPerZoomLevel === 'number') {
+          map.options.wheelPxPerZoomLevel = 120;
+        }
+      }
+    } catch (e) {
+      console.warn('[ExportSingle] enableFractionalZoomForExport failed:', e);
+    }
+
+    return () => {
+      try {
+        if (map.options) {
+          map.options.zoomSnap = original.zoomSnap;
+          map.options.zoomDelta = original.zoomDelta;
+          map.options.wheelPxPerZoomLevel = original.wheelPxPerZoomLevel;
+        }
+      } catch (e) {
+        console.warn('[ExportSingle] restoreFractionalZoom failed:', e);
       }
     };
   }
