@@ -611,6 +611,7 @@ export class ExportQuickDialog {
       const admBounds = this.config.getAdmBounds?.();
       // v4.5.1: Initialiser avec des valeurs par défaut pour éviter null
       let bounds: { north: number; south: number; east: number; west: number } = this.config.getMapBounds();
+      let restoreMapInteractions: (() => void) | null = null;
       
       if (admBounds) {
         // v4.5.1: Utiliser les bounds optimisées
@@ -663,6 +664,8 @@ export class ExportQuickDialog {
         
         // PHASE 2 FIX: fitBounds avec maxZoom élevé + logs
         console.log(`[PHASE2][${admName}] fitBounds: [${bounds.south.toFixed(4)}, ${bounds.west.toFixed(4)}] → [${bounds.north.toFixed(4)}, ${bounds.east.toFixed(4)}]`);
+
+        restoreMapInteractions = this.disableMapInteractionsForExport(map);
         
         map.fitBounds(targetBounds, { 
           animate: false, 
@@ -671,60 +674,61 @@ export class ExportQuickDialog {
           duration: 0
         });
 
-        const moveendStart = performance.now();
-        const waitForEventOnce = (ev: string, timeoutMs: number) => new Promise<boolean>(resolve => {
-          const handler = () => {
-            map.off(ev, handler);
-            resolve(true);
-          };
-          map.on(ev, handler);
-          setTimeout(() => {
-            map.off(ev, handler);
-            resolve(false);
-          }, timeoutMs);
+        const effective1 = await this.waitForStableBounds(map, {
+          admName,
+          timeoutMs: 10000,
+          stableSamples: 6,
+          sampleIntervalMs: 120
         });
 
-        const [moveOk, zoomOk] = await Promise.all([
-          waitForEventOnce('moveend', 8000),
-          waitForEventOnce('zoomend', 8000)
-        ]);
+        const requestedWidth = Math.abs(bounds.east - bounds.west);
+        const requestedHeight = Math.abs(bounds.north - bounds.south);
+        const effectiveWidth1 = Math.abs(effective1.east - effective1.west);
+        const effectiveHeight1 = Math.abs(effective1.north - effective1.south);
 
-        if (moveOk) {
-          console.log(`[PHASE2][${admName}] moveend après ${(performance.now() - moveendStart).toFixed(0)}ms`);
+        const isAberrant = (
+          (requestedWidth > 0 && effectiveWidth1 > requestedWidth * 2.5) ||
+          (requestedHeight > 0 && effectiveHeight1 > requestedHeight * 2.5) ||
+          effectiveWidth1 > 6 ||
+          effectiveHeight1 > 6
+        );
+
+        if (isAberrant) {
+          console.warn(`[PHASE2][${admName}] Bounds effectifs aberrants détectés, re-fitBounds...`, {
+            requested: bounds,
+            effective: effective1,
+            requestedWidth,
+            requestedHeight,
+            effectiveWidth: effectiveWidth1,
+            effectiveHeight: effectiveHeight1
+          });
+
+          map.fitBounds(targetBounds, {
+            animate: false,
+            padding: [0, 0],
+            maxZoom: 18,
+            duration: 0
+          });
+
+          bounds = await this.waitForStableBounds(map, {
+            admName,
+            timeoutMs: 10000,
+            stableSamples: 6,
+            sampleIntervalMs: 120
+          });
         } else {
-          console.warn(`[PHASE2][${admName}] moveend TIMEOUT après 8000ms`);
+          bounds = effective1;
         }
-
-        if (!zoomOk) {
-          console.warn(`[PHASE2][${admName}] zoomend TIMEOUT après 8000ms`);
-        }
-
-        await waitForFrames(2);
-        
-        // Log zoom/bounds APRÈS fitBounds
-        console.log(`[PHASE2][${admName}] Map zoom APRÈS fitBounds: ${map.getZoom()}`);
-        const afterBounds = map.getBounds();
-        console.log(`[PHASE2][${admName}] Map bounds APRÈS: [${afterBounds.getSouth().toFixed(4)}, ${afterBounds.getWest().toFixed(4)}] → [${afterBounds.getNorth().toFixed(4)}, ${afterBounds.getEast().toFixed(4)}]`);
-
-        bounds = {
-          north: afterBounds.getNorth(),
-          south: afterBounds.getSouth(),
-          east: afterBounds.getEast(),
-          west: afterBounds.getWest(),
-        };
         
         // PHASE 3 FIX: Pan bias pour Maritime (réduire vide océan)
         await this.applyPanBiasIfNeeded(map, bounds, admBounds, admName);
-        
-        await waitForFrames(2);
 
-        const afterPanBounds = map.getBounds();
-        bounds = {
-          north: afterPanBounds.getNorth(),
-          south: afterPanBounds.getSouth(),
-          east: afterPanBounds.getEast(),
-          west: afterPanBounds.getWest(),
-        };
+        bounds = await this.waitForStableBounds(map, {
+          admName,
+          timeoutMs: 7000,
+          stableSamples: 4,
+          sampleIntervalMs: 120
+        });
         
         // v4.5.1: On NE réinitialise PLUS bounds avec effectiveBounds.
         // On veut garder les bounds optimisées calculées par BoundsOptimizer
@@ -773,6 +777,11 @@ export class ExportQuickDialog {
           mapCapture = await captureLeafletMap(this.config.mapContainer, opts.quality);
         }
       } finally {
+        if (restoreMapInteractions) {
+          restoreMapInteractions();
+          restoreMapInteractions = null;
+        }
+
         // Restaurer les panes
         for (const [paneName, originalDisplay] of Object.entries(hiddenPanes)) {
           const pane = panes[paneName];
@@ -2694,6 +2703,107 @@ export class ExportQuickDialog {
     } else {
       console.log(`[PHASE3][${admName}] ✅ Padding équilibré, pas de pan bias nécessaire`)
     }
+  }
+
+  private disableMapInteractionsForExport(map: any): () => void {
+    const original = {
+      dragging: !!map.dragging?.enabled?.(),
+      touchZoom: !!map.touchZoom?.enabled?.(),
+      doubleClickZoom: !!map.doubleClickZoom?.enabled?.(),
+      scrollWheelZoom: !!map.scrollWheelZoom?.enabled?.(),
+      boxZoom: !!map.boxZoom?.enabled?.(),
+      keyboard: !!map.keyboard?.enabled?.(),
+      tap: !!map.tap?.enabled?.(),
+    };
+
+    try {
+      map.dragging?.disable?.();
+      map.touchZoom?.disable?.();
+      map.doubleClickZoom?.disable?.();
+      map.scrollWheelZoom?.disable?.();
+      map.boxZoom?.disable?.();
+      map.keyboard?.disable?.();
+      map.tap?.disable?.();
+    } catch (e) {
+      console.warn('[ExportSingle] disableMapInteractionsForExport failed:', e);
+    }
+
+    return () => {
+      try {
+        if (original.dragging) map.dragging?.enable?.();
+        if (original.touchZoom) map.touchZoom?.enable?.();
+        if (original.doubleClickZoom) map.doubleClickZoom?.enable?.();
+        if (original.scrollWheelZoom) map.scrollWheelZoom?.enable?.();
+        if (original.boxZoom) map.boxZoom?.enable?.();
+        if (original.keyboard) map.keyboard?.enable?.();
+        if (original.tap) map.tap?.enable?.();
+      } catch (e) {
+        console.warn('[ExportSingle] restoreMapInteractions failed:', e);
+      }
+    };
+  }
+
+  private async waitForStableBounds(
+    map: any,
+    options: {
+      admName: string;
+      timeoutMs: number;
+      stableSamples: number;
+      sampleIntervalMs: number;
+    }
+  ): Promise<{ north: number; south: number; east: number; west: number }> {
+    const t0 = performance.now();
+
+    const almostEqual = (a: number, b: number, eps: number) => Math.abs(a - b) <= eps;
+    const eps = 1e-6;
+
+    const getRect = () => {
+      const b = map.getBounds();
+      return {
+        north: b.getNorth(),
+        south: b.getSouth(),
+        east: b.getEast(),
+        west: b.getWest(),
+      };
+    };
+
+    const eq = (
+      a: { north: number; south: number; east: number; west: number },
+      b: { north: number; south: number; east: number; west: number }
+    ) => (
+      almostEqual(a.north, b.north, eps) &&
+      almostEqual(a.south, b.south, eps) &&
+      almostEqual(a.east, b.east, eps) &&
+      almostEqual(a.west, b.west, eps)
+    );
+
+    let last = getRect();
+    let stableCount = 0;
+
+    while (performance.now() - t0 < options.timeoutMs) {
+      await new Promise(resolve => setTimeout(resolve, options.sampleIntervalMs));
+      await waitForFrames(1);
+
+      const current = getRect();
+      if (eq(current, last)) {
+        stableCount++;
+        if (stableCount >= options.stableSamples) {
+          console.log(`[PHASE2][${options.admName}] stable bounds after ${(performance.now() - t0).toFixed(0)}ms (${stableCount} samples)`);
+          console.log(`[PHASE2][${options.admName}] Map zoom: ${map.getZoom()}`);
+          console.log(`[PHASE2][${options.admName}] Map bounds: [${current.south.toFixed(4)}, ${current.west.toFixed(4)}] → [${current.north.toFixed(4)}, ${current.east.toFixed(4)}]`);
+          return current;
+        }
+      } else {
+        stableCount = 0;
+        last = current;
+      }
+    }
+
+    const fallback = getRect();
+    console.warn(`[PHASE2][${options.admName}] stable bounds TIMEOUT after ${(performance.now() - t0).toFixed(0)}ms`);
+    console.warn(`[PHASE2][${options.admName}] Map zoom: ${map.getZoom()}`);
+    console.warn(`[PHASE2][${options.admName}] Map bounds: [${fallback.south.toFixed(4)}, ${fallback.west.toFixed(4)}] → [${fallback.north.toFixed(4)}, ${fallback.east.toFixed(4)}]`);
+    return fallback;
   }
   
   /**

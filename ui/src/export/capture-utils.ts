@@ -477,6 +477,9 @@ export function waitForFrames(count: number = 2): Promise<void> {
 export function validateCapture(canvas: HTMLCanvasElement): {
   valid: boolean;
   blackRatio: number;
+  whiteRatio?: number;
+  transparentRatio?: number;
+  uniformRatio?: number;
   sampleCount: number;
 } {
   const ctx = canvas.getContext('2d');
@@ -498,31 +501,69 @@ export function validateCapture(canvas: HTMLCanvasElement): {
   }
   
   let blackCount = 0;
-  
+  let whiteCount = 0;
+  let transparentCount = 0;
+  let uniformCount = 0;
+
   for (const [x, y] of samplePoints) {
     const pixel = ctx.getImageData(x, y, 1, 1).data;
     const r = pixel[0];
     const g = pixel[1];
     const b = pixel[2];
     const a = pixel[3];
-    
-    // Pixel noir ou transparent
-    if ((r < 10 && g < 10 && b < 10) || a < 10) {
+
+    if (a < 10) {
+      transparentCount++;
       blackCount++;
+      continue;
+    }
+
+    const isBlack = (r < 10 && g < 10 && b < 10);
+    const isWhite = (r > 245 && g > 245 && b > 245);
+
+    if (isBlack) blackCount++;
+    if (isWhite) whiteCount++;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if ((max - min) < 3) {
+      uniformCount++;
     }
   }
   
   const blackRatio = blackCount / samplePoints.length;
-  const valid = blackRatio < 0.8; // Moins de 80% de pixels noirs
+  const whiteRatio = whiteCount / samplePoints.length;
+  const transparentRatio = transparentCount / samplePoints.length;
+  const uniformRatio = uniformCount / samplePoints.length;
+
+  const valid = (
+    blackRatio < 0.8 &&
+    transparentRatio < 0.8 &&
+    whiteRatio < 0.95 &&
+    uniformRatio < 0.98
+  );
   
   console.log('[Export][QA] Validation capture:', {
     blackRatio: blackRatio.toFixed(2),
     blackCount,
+    whiteRatio: whiteRatio.toFixed(2),
+    whiteCount,
+    transparentRatio: transparentRatio.toFixed(2),
+    transparentCount,
+    uniformRatio: uniformRatio.toFixed(2),
+    uniformCount,
     sampleCount: samplePoints.length,
     valid
   });
   
-  return { valid, blackRatio, sampleCount: samplePoints.length };
+  return {
+    valid,
+    blackRatio,
+    whiteRatio,
+    transparentRatio,
+    uniformRatio,
+    sampleCount: samplePoints.length
+  };
 }
 
 // ============================================================================
