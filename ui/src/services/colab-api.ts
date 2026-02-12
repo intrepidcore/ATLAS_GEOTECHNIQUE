@@ -544,6 +544,8 @@ export interface Student {
   email: string;
   full_name: string;
   telephone?: string | null;
+  deleted_at?: string | null;
+  user_deleted_at?: string | null;
   matricule: string | null;
   promotion: string;
   filiere: string | null;
@@ -552,6 +554,7 @@ export interface Student {
   age?: number | null;
   is_active: boolean;
   active_missions: number;
+  active_mailles: number;
 }
 
 export interface CreateStudentRequest {
@@ -957,14 +960,30 @@ export const studentsApi = {
   /**
    * Liste des étudiants
    */
-  async list(): Promise<{ students: Student[]; total: number }> {
-    const response = await fetchWithAuth(`${API_BASE_URL}/colab/students`);
+  async list(params?: { include_deleted?: boolean; include_inactive?: boolean; audit_mode?: boolean }): Promise<{ students: Student[]; total: number }> {
+    const search = new URLSearchParams();
+    if (params?.audit_mode) search.set('audit_mode', 'true');
+    if (params?.include_deleted) search.set('include_deleted', 'true');
+    if (params?.include_inactive) search.set('include_inactive', 'true');
+    const url = `${API_BASE_URL}/colab/students${search.toString() ? `?${search.toString()}` : ''}`;
+    const response = await fetchWithAuth(url);
     
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
       throw new Error(error.error || 'Erreur lors de la récupération des étudiants');
     }
     
+    return response.json();
+  },
+
+  async listDuplicates(): Promise<Array<{ telephone: string; students: Student[] }>> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/students/duplicates`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la récupération des doublons');
+    }
+
     return response.json();
   },
 
@@ -990,7 +1009,9 @@ export const studentsApi = {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
-      throw new Error(error.error || "Erreur lors de la création de l'étudiant");
+      const e = new Error(error.error || "Erreur lors de la création de l'étudiant");
+      (e as any).payload = error;
+      throw e;
     }
 
     return response.json();

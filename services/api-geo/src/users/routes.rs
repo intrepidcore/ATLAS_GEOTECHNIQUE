@@ -169,7 +169,7 @@ async fn create_user(
 
     // Vérifier l'unicité de l'email
     let existing: Option<(Uuid,)> = sqlx::query_as(
-        r#"SELECT id FROM atlas.users WHERE email = $1"#,
+        r#"SELECT id FROM atlas.users WHERE deleted_at IS NULL AND email = $1"#,
     )
     .bind(&request.email)
     .fetch_optional(&state.pool)
@@ -347,7 +347,7 @@ async fn update_user(
     // Vérifier l'unicité de l'email si modifié
     if let Some(email) = &request.email {
         let existing: Option<(Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM atlas.users WHERE email = $1 AND id != $2"#,
+            r#"SELECT id FROM atlas.users WHERE deleted_at IS NULL AND email = $1 AND id != $2"#,
         )
         .bind(email)
         .bind(user_id)

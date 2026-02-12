@@ -76,7 +76,29 @@ async fn login(
 
     // Chercher l'utilisateur par email
     let user: DbUser = sqlx::query_as(
-        r#"SELECT * FROM atlas.users WHERE email = $1"#,
+        r#"
+        SELECT
+            id,
+            email,
+            username,
+            password_hash,
+            first_name,
+            last_name,
+            avatar_url,
+            is_active,
+            is_verified,
+            failed_login_attempts,
+            locked_until,
+            last_login_at,
+            last_login_ip::text as last_login_ip,
+            password_changed_at,
+            created_at,
+            updated_at,
+            created_by
+        FROM atlas.users
+        WHERE deleted_at IS NULL
+          AND email = $1
+        "#,
     )
     .bind(&request.email)
     .fetch_optional(&state.pool)
@@ -292,7 +314,28 @@ async fn get_current_user(
 ) -> Result<Json<UserInfo>, AuthError> {
     // Récupérer les infos fraîches depuis la base
     let user: DbUser = sqlx::query_as(
-        r#"SELECT * FROM atlas.users WHERE id = $1"#,
+        r#"
+        SELECT
+            id,
+            email,
+            username,
+            password_hash,
+            first_name,
+            last_name,
+            avatar_url,
+            is_active,
+            is_verified,
+            failed_login_attempts,
+            locked_until,
+            last_login_at,
+            last_login_ip::text as last_login_ip,
+            password_changed_at,
+            created_at,
+            updated_at,
+            created_by
+        FROM atlas.users
+        WHERE id = $1
+        "#,
     )
     .bind(auth_user.id)
     .fetch_optional(&state.pool)
@@ -609,7 +652,7 @@ async fn register_student(
 
     // Vérifier si l'email existe déjà
     let existing: Option<DbUser> = sqlx::query_as(
-        r#"SELECT * FROM atlas.users WHERE email = $1"#,
+        r#"SELECT * FROM atlas.users WHERE deleted_at IS NULL AND email = $1"#,
     )
     .bind(&request.email)
     .fetch_optional(&state.pool)

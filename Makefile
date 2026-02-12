@@ -15,6 +15,9 @@ build:
 	$(COMPOSE) build --no-cache
 
 db-migrate:
+	$(COMPOSE) exec -T db sh -lc 'set -e; for f in /docker-entrypoint-initdb.d/*.sql; do echo "[db-migrate] applying $$f"; psql -v ON_ERROR_STOP=1 -U "$$POSTGRES_USER" -d "$$POSTGRES_DB" -f "$$f"; done'
+
+db-migrate-init:
 	$(COMPOSE) exec -T db psql -U $$POSTGRES_USER -d $$POSTGRES_DB -f /docker-entrypoint-initdb.d/init.sql
 
 seed:

@@ -977,9 +977,9 @@ export class ExportFrame {
     
     ctx.save();
     // v4.5.1: Mailles vides ULTRA-DISCRÈTES
-    ctx.fillStyle = 'rgba(240, 240, 240, 0.05)'; // Presque invisible
-    ctx.strokeStyle = 'rgba(220, 220, 220, 0.2)'; // Gris très clair et transparent
-    ctx.lineWidth = 0.1 * scale; // Très fin
+    ctx.fillStyle = 'rgba(240, 240, 240, 0.18)';
+    ctx.strokeStyle = 'rgba(180, 180, 180, 0.55)';
+    ctx.lineWidth = 0.25 * scale;
     
     for (const cell of emptyCells) {
       const geom = cell.geometry;

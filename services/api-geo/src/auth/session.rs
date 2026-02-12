@@ -122,7 +122,22 @@ impl SessionManager {
         // Trouver la session
         let session: DbSession = sqlx::query_as(
             r#"
-            SELECT s.* FROM atlas.sessions s
+            SELECT
+                s.id,
+                s.user_id,
+                s.token_hash,
+                s.refresh_token_hash,
+                s.user_agent,
+                s.ip_address::text as ip_address,
+                s.device_info,
+                s.is_active,
+                s.created_at,
+                s.expires_at,
+                s.refresh_expires_at,
+                s.last_activity_at,
+                s.revoked_at,
+                s.revoked_reason
+            FROM atlas.sessions s
             WHERE s.refresh_token_hash = $1
             AND s.is_active = TRUE
             AND s.refresh_expires_at > NOW()
@@ -191,7 +206,22 @@ impl SessionManager {
     pub async fn validate_session(&self, token_hash: &str) -> Result<DbSession, AuthError> {
         let session: DbSession = sqlx::query_as(
             r#"
-            SELECT * FROM atlas.sessions
+            SELECT
+                id,
+                user_id,
+                token_hash,
+                refresh_token_hash,
+                user_agent,
+                ip_address::text as ip_address,
+                device_info,
+                is_active,
+                created_at,
+                expires_at,
+                refresh_expires_at,
+                last_activity_at,
+                revoked_at,
+                revoked_reason
+            FROM atlas.sessions
             WHERE token_hash = $1
             AND is_active = TRUE
             AND expires_at > NOW()
@@ -295,7 +325,22 @@ impl SessionManager {
     ) -> Result<Vec<SessionInfo>, AuthError> {
         let sessions: Vec<DbSession> = sqlx::query_as(
             r#"
-            SELECT * FROM atlas.sessions
+            SELECT
+                id,
+                user_id,
+                token_hash,
+                refresh_token_hash,
+                user_agent,
+                ip_address::text as ip_address,
+                device_info,
+                is_active,
+                created_at,
+                expires_at,
+                refresh_expires_at,
+                last_activity_at,
+                revoked_at,
+                revoked_reason
+            FROM atlas.sessions
             WHERE user_id = $1 AND is_active = TRUE AND expires_at > NOW()
             ORDER BY last_activity_at DESC
             "#,

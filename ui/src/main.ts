@@ -55,12 +55,14 @@ import {
   featureMatchesFilters, 
   computeFilteredStats, 
   updateStatsDOM,
+  onFilterChange,
   notifyFilterChange,
   resetFilters as resetFiltersState
 } from './filters-state'
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
 import { makeResizable } from './components/resizable-panel'
+import { createProfessionalMetricsControl } from './components/map/ProfessionalMetricsControl'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -110,7 +112,7 @@ function safeAddEventListener(id: string, event: string, handler: EventListener)
   }
 }
 
-const map = L.map('map', { preferCanvas: true }).setView([8.6195, 0.8248], 7)
+const map = L.map('map', { preferCanvas: true, attributionControl: false }).setView([8.6195, 0.8248], 7)
 
 // Créer les panes Leaflet pour gérer le z-order des couches
 // contextPane: couches géologie/pédologie/risque (z-index 440, en dessous)
@@ -130,10 +132,14 @@ const dsmPane = map.createPane('dsmPane')
 dsmPane.style.zIndex = '460'
 dsmPane.style.pointerEvents = 'none'
 
-// Exposer les panes globalement pour les autres modules
-;(window as any).atlasMapPanes = { gridPane, contextPane, gridOverlayPane, dsmPane }
+const highlightPane = map.createPane('highlightPane')
+highlightPane.style.zIndex = '470'
+highlightPane.style.pointerEvents = 'none'
 
-console.log('[INIT] Leaflet panes created: contextPane(440), gridPane(450), gridOverlayPane(455), dsmPane(460)')
+// Exposer les panes globalement pour les autres modules
+;(window as any).atlasMapPanes = { gridPane, contextPane, gridOverlayPane, dsmPane, highlightPane }
+
+console.log('[INIT] Leaflet panes created: contextPane(440), gridPane(450), gridOverlayPane(455), dsmPane(460), highlightPane(470)')
 
 // Initialiser les tuiles avec gestion online/offline automatique
 // 1) D'abord configurer le tileserver (async), puis initialiser les layers
@@ -143,6 +149,21 @@ initOfflineTiles().then(() => {
   
   // Ajouter le contrôle de sélection des fonds de carte (OSM, ESRI, Mapbox, Azure)
   createBasemapLayerControl(map).addTo(map)
+
+  createProfessionalMetricsControl({
+    position: 'bottomright',
+    getMailleCode: () => {
+      const feature = (hoveredCell as any)?.feature
+      const p = feature?.properties || null
+      return (
+        p?.code ||
+        p?.code_m28 ||
+        p?.code_28km_lisible ||
+        p?.id ||
+        null
+      )
+    },
+  }).addTo(map)
   
   console.log('[INIT] Tile layers + basemap control initialized')
 })
@@ -154,6 +175,40 @@ let boundaryLayer: L.GeoJSON<any> | null = null  // Contour ADM0 (Togo)
 let sondagesLayer: L.LayerGroup | null = null
 let duplicateMarkers: L.CircleMarker[] = []
 let currentDuplicates: any[] = []
+
+const ADM_HIGHLIGHT_STYLE: L.PathOptions = {
+  color: '#ff0000',
+  weight: 3,
+  fill: false,
+  opacity: 1,
+}
+
+const ADM_HIGHLIGHT_UNDER_STYLE: L.PathOptions = {
+  color: '#ffffff',
+  weight: 6,
+  fill: false,
+  opacity: 0.9,
+}
+
+const admHighlightUnderLayer = L.geoJSON(null as any, {
+  pane: 'highlightPane',
+  interactive: false,
+  style: () => ADM_HIGHLIGHT_UNDER_STYLE,
+}).addTo(map)
+
+const admHighlightLayer = L.geoJSON(null as any, {
+  pane: 'highlightPane',
+  interactive: false,
+  style: () => ADM_HIGHLIGHT_STYLE,
+}).addTo(map)
+
+type AdmLevel = 'adm1' | 'adm2' | 'adm3'
+let admHighlightAbort: AbortController | null = null
+let lastAdmHighlightKey: string | null = null
+let lastAdmHighlightBounds: L.LatLngBounds | null = null
+
+const admGeojsonCache = new Map<string, any>()
+let admHighlightDebounceTimer: number | null = null
 
 // Charger et afficher le contour du Togo (ADM0)
 async function loadBoundaryLayer() {
@@ -184,6 +239,134 @@ async function loadBoundaryLayer() {
 
 // Charger le contour au démarrage
 loadBoundaryLayer()
+
+function getDeepestActiveAdmFilter(filters = currentFilters): { level: AdmLevel; id: string } | null {
+  if (filters.adm3) return { level: 'adm3', id: filters.adm3 }
+  if (filters.adm2) return { level: 'adm2', id: filters.adm2 }
+  if (filters.adm1) return { level: 'adm1', id: filters.adm1 }
+  return null
+}
+
+function clearAdmHighlight() {
+  admHighlightAbort?.abort()
+  admHighlightAbort = null
+  lastAdmHighlightKey = null
+  lastAdmHighlightBounds = null
+  admHighlightLayer.clearLayers()
+  admHighlightUnderLayer.clearLayers()
+}
+
+function applyGridFadeForAdm(bounds: L.LatLngBounds | null) {
+  if (!gridLayer) return
+
+  const hasAdmSelection = !!bounds && bounds.isValid()
+  const fadeOpacity = hasAdmSelection ? 0.2 : 1
+
+  gridLayer.eachLayer((layer: any) => {
+    const feature = layer.feature
+    if (!feature) return
+
+    const visible = featureMatchesFilters(feature, currentFilters)
+    if (!visible) return
+
+    const baseStyle = getGridFeatureStyle(feature, map?.getZoom()) as any
+    if (!hasAdmSelection) {
+      layer.setStyle({ ...baseStyle, opacity: 1 })
+      return
+    }
+
+    let isInside = true
+    try {
+      const layerBounds: L.LatLngBounds | null = typeof layer.getBounds === 'function' ? layer.getBounds() : null
+      isInside = !!layerBounds && bounds!.intersects(layerBounds)
+    } catch {
+      isInside = true
+    }
+
+    if (isInside) {
+      layer.setStyle({ ...baseStyle, opacity: 1 })
+    } else {
+      layer.setStyle({
+        ...baseStyle,
+        opacity: fadeOpacity,
+        fillOpacity: typeof baseStyle.fillOpacity === 'number' ? baseStyle.fillOpacity * 0.25 : 0.1,
+      })
+    }
+  })
+}
+
+function maybeFitToAdm(bounds: L.LatLngBounds | null) {
+  if (!bounds || !bounds.isValid()) return
+
+  const current = map.getBounds()
+  const alreadyContains = current.contains(bounds)
+  const zoom = map.getZoom()
+  const minZoomToAvoidAuto = 11
+
+  if (!alreadyContains || zoom < minZoomToAvoidAuto) {
+    map.fitBounds(bounds, { padding: [20, 20] })
+  }
+}
+
+async function updateAdmHighlightFromFilters(filters = currentFilters) {
+  const deepest = getDeepestActiveAdmFilter(filters)
+  if (!deepest) {
+    clearAdmHighlight()
+    applyGridFadeForAdm(null)
+    return
+  }
+
+  const key = `${deepest.level}:${deepest.id}`
+  if (key === lastAdmHighlightKey) {
+    applyGridFadeForAdm(lastAdmHighlightBounds)
+    return
+  }
+
+  lastAdmHighlightKey = key
+  admHighlightAbort?.abort()
+  admHighlightAbort = new AbortController()
+
+  const url = `${API_GEO}/adm/${deepest.level}/${encodeURIComponent(deepest.id)}`
+  try {
+    const cached = admGeojsonCache.get(key)
+    if (cached) {
+      admHighlightLayer.clearLayers()
+      admHighlightUnderLayer.clearLayers()
+      admHighlightUnderLayer.addData(cached)
+      admHighlightLayer.addData(cached)
+
+      const bounds = admHighlightLayer.getBounds()
+      lastAdmHighlightBounds = bounds && bounds.isValid() ? bounds : null
+      applyGridFadeForAdm(lastAdmHighlightBounds)
+      maybeFitToAdm(lastAdmHighlightBounds)
+      return
+    }
+
+    const res = await fetch(url, { signal: admHighlightAbort.signal })
+    if (!res.ok) {
+      console.warn('[ADM Highlight] fetch failed', res.status, res.statusText, url)
+      clearAdmHighlight()
+      applyGridFadeForAdm(null)
+      return
+    }
+
+    const geojson = await res.json()
+    admGeojsonCache.set(key, geojson)
+    admHighlightLayer.clearLayers()
+    admHighlightUnderLayer.clearLayers()
+    admHighlightUnderLayer.addData(geojson)
+    admHighlightLayer.addData(geojson)
+
+    const bounds = admHighlightLayer.getBounds()
+    lastAdmHighlightBounds = bounds && bounds.isValid() ? bounds : null
+    applyGridFadeForAdm(lastAdmHighlightBounds)
+    maybeFitToAdm(lastAdmHighlightBounds)
+  } catch (e: any) {
+    if (e?.name === 'AbortError') return
+    clearAdmHighlight()
+    applyGridFadeForAdm(null)
+  }
+}
 
 // Listener pour clignotement ADM (depuis modal géocodage/suggestions)
 window.addEventListener('atlas:flash-adm', async (e: any) => {
@@ -4129,12 +4312,23 @@ function applyFilters() {
   loadAndDisplayGlobalStats()
   
   console.log(`[applyFilters] ${stats.visibleCount} mailles visibles, ${stats.withDataCount} avec données, ${stats.sondagesCount} sondages, ${stats.essaisCount} essais`)
-}
+ }
 
-/**
- * Chantier A - Vide les états de survol et de sélection
- */
-function clearHoverAndSelection() {
+ onFilterChange((filters) => {
+  if (admHighlightDebounceTimer !== null) {
+    window.clearTimeout(admHighlightDebounceTimer)
+  }
+
+  admHighlightDebounceTimer = window.setTimeout(() => {
+    admHighlightDebounceTimer = null
+    void updateAdmHighlightFromFilters(filters)
+  }, 200)
+ })
+
+ /**
+  * Chantier A - Vide les états de survol et de sélection
+  */
+ function clearHoverAndSelection() {
   // Réinitialiser le survol
   if (hoveredCell) {
     hoveredCell.setStyle(getDefaultStyle((hoveredCell as any).feature))

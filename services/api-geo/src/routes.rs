@@ -1518,6 +1518,121 @@ pub async fn list_adm_zones(
     (StatusCode::OK, Json(result)).into_response()
 }
 
+// GET /adm/{level}/{id} -> GeoJSON Feature (4326) du contour ADM
+pub async fn get_adm_boundary_geojson(
+    State(state): State<AppState>,
+    Path((level, id)): Path<(String, String)>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    let candidates: Vec<(&'static str, &'static str, &'static str)> = match level.as_str() {
+        // Plusieurs schémas existent selon les environnements (adm1/adm1_tg/adm1_togo)
+        "adm1" => vec![("adm1", "gid", "adm1_fr"), ("adm1_tg", "gid", "name"), ("adm1_togo", "gid", "adm1_fr")],
+        "adm2" => vec![("adm2", "gid", "adm2_fr"), ("adm2_tg", "gid", "name"), ("adm2_togo", "gid", "adm2_fr")],
+        "adm3" => vec![("adm3", "gid", "adm3_fr"), ("adm3_tg", "gid", "name"), ("adm3_togo", "gid", "adm3_fr")],
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "invalid level, must be adm1, adm2, or adm3"})),
+            )
+                .into_response();
+        }
+    };
+
+    let id_as_i32 = id.parse::<i32>().ok();
+
+    let mut row: Option<sqlx::postgres::PgRow> = None;
+    for (table, gid_col, name_col) in candidates {
+        let query = if id_as_i32.is_some() {
+            format!(
+                r#"
+                SELECT ST_AsGeoJSON(ST_Transform(geom, 4326)) AS g
+                FROM {}
+                WHERE {} = $1
+                LIMIT 1
+                "#,
+                table, gid_col
+            )
+        } else {
+            format!(
+                r#"
+                SELECT ST_AsGeoJSON(ST_Transform(geom, 4326)) AS g
+                FROM {}
+                WHERE {} ILIKE $1
+                LIMIT 1
+                "#,
+                table, name_col
+            )
+        };
+
+        let mut q = sqlx::query(&query);
+        if let Some(v) = id_as_i32 {
+            q = q.bind(v);
+        } else {
+            let pattern = format!("%{}%", id.trim());
+            q = q.bind(pattern);
+        }
+
+        match q.fetch_optional(pool).await {
+            Ok(Some(r)) => {
+                row = Some(r);
+                break;
+            }
+            Ok(None) => continue,
+            Err(e) => {
+                tracing::warn!(?e, table, level, id, "ADM boundary query failed (trying next candidate)");
+                continue;
+            }
+        }
+    }
+
+    let row = match row {
+        Some(r) => r,
+        None => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": "adm not found"})),
+            )
+                .into_response();
+        }
+    };
+
+    let g: String = match row.try_get("g") {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(?e, "decode geojson");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "decode error"})),
+            )
+                .into_response();
+        }
+    };
+
+    let geom: serde_json::Value = match serde_json::from_str(&g) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(?e, "parse geojson");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "parse error"})),
+            )
+                .into_response();
+        }
+    };
+
+    let feature = serde_json::json!({
+        "type": "Feature",
+        "properties": {
+            "level": level,
+            "id": id,
+        },
+        "geometry": geom
+    });
+
+    (StatusCode::OK, Json(feature)).into_response()
+}
+
 #[cfg(test)]
 mod tests {
     use super::compute_idw;

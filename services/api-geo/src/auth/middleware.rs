@@ -132,6 +132,9 @@ pub async fn optional_auth_middleware(
         None
     };
 
+    if let Some(ref user) = auth_user {
+        req.extensions_mut().insert(user.clone());
+    }
     req.extensions_mut().insert(AuthUserExtension(auth_user));
     next.run(req).await
 }

@@ -13,7 +13,7 @@ import {
   Calendar,
   Users,
   FileText,
-  Pencil,
+  MoreVertical,
   ChevronLeft,
   ChevronRight,
   X,
@@ -252,9 +252,11 @@ const MissionDetailModal: React.FC<{
           )}
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              {error}
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5" />
+              <div className="flex-1">
+                <div>{error}</div>
+              </div>
             </div>
           )}
 
@@ -519,6 +521,165 @@ const MissionDetailModal: React.FC<{
   );
 };
 
+const TransferMissionModal: React.FC<{
+  isOpen: boolean;
+  mission: MissionListItem | null;
+  onClose: () => void;
+  onTransferred: () => void;
+}> = ({ isOpen, mission, onClose, onTransferred }) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [studentQuery, setStudentQuery] = useState('');
+  const [studentSuggestions, setStudentSuggestions] = useState<UserSuggestItem[]>([]);
+  const [studentLoading, setStudentLoading] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<UserSuggestItem | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setError(null);
+    setStudentQuery('');
+    setStudentSuggestions([]);
+    setSelectedStudent(null);
+  }, [isOpen]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const q = studentQuery.trim();
+    if (!isOpen) return;
+    if (q.length < 2) {
+      setStudentSuggestions([]);
+      return;
+    }
+    setStudentLoading(true);
+    studentsApi
+      .suggest(q)
+      .then(res => {
+        if (!cancelled) setStudentSuggestions(res);
+      })
+      .catch(() => {
+        if (!cancelled) setStudentSuggestions([]);
+      })
+      .finally(() => {
+        if (!cancelled) setStudentLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [studentQuery, isOpen]);
+
+  if (!isOpen || !mission) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-4 border-b">
+          <h2 className="text-lg font-semibold">Transférer mission</h2>
+          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-4 space-y-4">
+          {error && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="w-4 h-4" />
+              {error}
+            </div>
+          )}
+
+          <div className="text-sm text-gray-700">
+            <div className="text-xs text-gray-500 font-mono">{mission.code}</div>
+            <div className="font-medium text-gray-900">{mission.title}</div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Nouvel étudiant</label>
+            {selectedStudent ? (
+              <div className="flex items-center justify-between bg-blue-50 text-blue-700 rounded-lg px-3 py-2 text-sm">
+                <div className="truncate">{selectedStudent.label}</div>
+                <button
+                  type="button"
+                  className="hover:text-blue-900"
+                  onClick={() => {
+                    setSelectedStudent(null);
+                    setStudentQuery('');
+                    setStudentSuggestions([]);
+                  }}
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Input value={studentQuery} onChange={e => setStudentQuery(e.target.value)} placeholder="Rechercher un étudiant..." />
+                {studentLoading && (
+                  <div className="absolute right-2 top-2 text-gray-400">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  </div>
+                )}
+                {studentSuggestions.length > 0 && (
+                  <div className="absolute z-50 mt-1 w-full bg-white border rounded-xl shadow-lg max-h-56 overflow-y-auto">
+                    {studentSuggestions.map(s => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        onClick={() => {
+                          setSelectedStudent(s);
+                          setStudentQuery('');
+                          setStudentSuggestions([]);
+                        }}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4 border-t">
+            <Button variant="outline" onClick={onClose} disabled={loading}>
+              Annuler
+            </Button>
+            <Button
+              onClick={async () => {
+                if (!selectedStudent) {
+                  setError('Veuillez sélectionner un étudiant');
+                  return;
+                }
+                setError(null);
+                setLoading(true);
+                try {
+                  await attributionsApi.assign({ mission_id: mission.id, student_id: selectedStudent.id });
+                  onTransferred();
+                  onClose();
+                } catch (e) {
+                  setError(e instanceof Error ? e.message : 'Erreur transfert');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading || !selectedStudent}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Transfert...
+                </>
+              ) : (
+                'Transférer'
+              )}
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const UpdateStudentPrefsModal: React.FC<{
   isOpen: boolean;
   student: Student | null;
@@ -689,6 +850,7 @@ const StudentDetailModal: React.FC<{
                     </Badge>
                     <Badge className="bg-blue-50 text-blue-700">Promo: {student.promotion}</Badge>
                     <Badge className="bg-purple-50 text-purple-700">Missions actives: {student.active_missions}</Badge>
+                    <Badge className="bg-purple-50 text-purple-700">Mailles actives: {student.active_mailles}</Badge>
                   </div>
                 </div>
               </div>
@@ -1609,11 +1771,11 @@ const MissionCard: React.FC<{
   onClick: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
-  onResolved?: () => void;
+  onTransfer?: () => void;
   onOperationalAction?: (mission: MissionListItem, action: OperationalAction) => void;
-}> = ({ mission, onClick, onDelete, onEdit, onResolved, onOperationalAction }) => {
+}> = ({ mission, onClick, onDelete, onEdit, onTransfer, onOperationalAction }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [resolveError, setResolveError] = useState<string | null>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const statusIcon = {
     draft: <FileText className="w-4 h-4" />,
@@ -1658,67 +1820,143 @@ const MissionCard: React.FC<{
           ]
         : [];
 
-  const openMission = (e: React.MouseEvent<HTMLButtonElement>) => {
-    e.stopPropagation();
-    onClick();
-  };
+  const problemLine = issuesToRender.length > 0 ? issuesToRender[0].message : null;
+
+  const menuActions = useMemo(() => {
+    const seen = new Set<string>();
+    const out: OperationalAction[] = [];
+    for (const issue of issuesToRender) {
+      for (const a of issue.actions || []) {
+        const key = `${a.code}:${a.payload?.action || ''}:${a.payload?.student_id || ''}:${a.payload?.mission_id || ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        out.push(a);
+      }
+    }
+    return out;
+  }, [issuesToRender]);
 
   return (
     <div
       onClick={onClick}
       className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
     >
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <p className="text-xs font-mono text-gray-500">{mission.code}</p>
-          <h3 className="font-semibold text-gray-900 mt-1 line-clamp-1">{mission.title}</h3>
-        </div>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-mono text-gray-500 truncate">{mission.code}</span>
           <Badge className={getStatusColor(mission.status)}>
             {statusIcon}
             <span className="ml-1">{getStatusLabel(mission.status)}</span>
           </Badge>
-          {onEdit && (
-            <button
-              type="button"
-              className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900"
-              onClick={e => {
-                e.stopPropagation();
-                onEdit();
-              }}
-              title="Éditer"
-            >
-              <Pencil className="w-4 h-4" />
-            </button>
-          )}
-          {onDelete && (
-            <button
-              type="button"
-              className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-red-600"
-              onClick={e => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              title="Supprimer"
-            >
-              <Trash2 className="w-4 h-4" />
-            </button>
-          )}
+        </div>
 
-          {(mission.operational_reason || mission.conflict_mission_id) && (
-            <button
-              type="button"
-              className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900"
-              onClick={e => {
-                e.stopPropagation();
-                setDetailsOpen(v => !v);
-              }}
-              title={detailsOpen ? 'Masquer infos' : 'Afficher infos'}
+        <div className="relative">
+          <button
+            type="button"
+            className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+            onClick={e => {
+              e.stopPropagation();
+              setMenuOpen(v => !v);
+            }}
+            title="Actions"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+
+          {menuOpen && (
+            <div
+              className="absolute right-0 mt-2 w-64 bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
+              onClick={e => e.stopPropagation()}
             >
-              <AlertCircle className="w-4 h-4" />
-            </button>
+              {menuActions.length > 0 && (
+                <>
+                  <div className="px-3 py-2 text-xs font-medium text-gray-500">Résoudre</div>
+                  {menuActions.map((action, idx) => (
+                    <button
+                      key={`${action.code}-${idx}`}
+                      type="button"
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        onOperationalAction?.(mission, action);
+                      }}
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                  <div className="h-px bg-gray-100" />
+                </>
+              )}
+
+              <button
+                type="button"
+                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onClick();
+                }}
+              >
+                Ouvrir
+              </button>
+
+              {onEdit && (
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onEdit();
+                  }}
+                >
+                  Modifier
+                </button>
+              )}
+
+              {onTransfer && (
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onTransfer();
+                  }}
+                >
+                  Transférer mission
+                </button>
+              )}
+
+              {(mission.operational_reason || mission.conflict_mission_id) && (
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setDetailsOpen(v => !v);
+                  }}
+                >
+                  {detailsOpen ? 'Masquer détails' : 'Afficher détails'}
+                </button>
+              )}
+
+              {onDelete && (
+                <button
+                  type="button"
+                  className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 text-red-700"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    onDelete();
+                  }}
+                >
+                  Supprimer
+                </button>
+              )}
+            </div>
           )}
         </div>
+      </div>
+
+      <div className="mb-2">
+        <h3 className="font-semibold text-gray-900 line-clamp-1">{mission.title}</h3>
       </div>
 
       <div className="mb-2 flex flex-wrap gap-2">
@@ -1728,6 +1966,7 @@ const MissionCard: React.FC<{
         {mission.operational_status === 'blocked_conflict' && (
           <Badge className="bg-red-50 text-red-700">Conflit</Badge>
         )}
+        <Badge className="bg-gray-50 text-gray-700">{mission.assigned_students_count} étudiant(s)</Badge>
       </div>
 
       <div className="space-y-2 text-sm text-gray-600">
@@ -1761,64 +2000,18 @@ const MissionCard: React.FC<{
         </div>
       )}
 
-      {issuesToRender.length > 0 && (
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <div className="text-xs font-medium text-gray-700 mb-2">Résoudre</div>
-          {resolveError && (
-            <div className="mb-2 text-xs text-red-600">{resolveError}</div>
-          )}
-          <div className="space-y-3">
-            {issuesToRender.map((issue, idx) => (
-              <div key={`${issue.code}-${idx}`}>
-                <div className="text-xs text-gray-600 mb-2">{issue.message}</div>
-                <div className="flex flex-wrap gap-2">
-                  {(issue.actions || []).map((action, aIdx) => (
-                    <Button
-                      key={`${action.code}-${aIdx}`}
-                      size="sm"
-                      variant={aIdx === 0 ? 'primary' : 'outline'}
-                      disabled={false}
-                      onClick={async e => {
-                        e.stopPropagation();
-                        setResolveError(null);
-
-                        onOperationalAction?.(mission, action);
-                        if (!onOperationalAction) {
-                          onClick();
-                        }
-                      }}
-                    >
-                      {action.label}
-                    </Button>
-                  ))}
-
-                  <Button variant="ghost" size="sm" onClick={openMission}>
-                    Autres options
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="flex items-center gap-4 mt-4 pt-3 border-t border-gray-100 text-xs text-gray-500">
-        <span className="flex items-center gap-1">
-          <Users className="w-3.5 h-3.5" />
-          {mission.assigned_students_count} étudiants
-        </span>
-        <span className="flex items-center gap-1">
-          <MapPin className="w-3.5 h-3.5" />
-          {mission.linked_sondages_count} sondages
-        </span>
-        <span className="flex items-center gap-1">
-          <FileText className="w-3.5 h-3.5" />
-          {mission.documents_count} docs
-        </span>
-      </div>
-
-      <div className="mt-3 pt-2 border-t border-gray-100">
+      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-gray-100 text-xs text-gray-500">
         <Badge className="bg-purple-100 text-purple-800">{getThemeLabel(mission.theme)}</Badge>
+        <span className="ml-auto flex items-center gap-3">
+          <span className="flex items-center gap-1">
+            <MapPin className="w-3.5 h-3.5" />
+            {mission.linked_sondages_count}
+          </span>
+          <span className="flex items-center gap-1">
+            <FileText className="w-3.5 h-3.5" />
+            {mission.documents_count}
+          </span>
+        </span>
       </div>
     </div>
   );
@@ -1829,9 +2022,11 @@ const InlineCreateStudentModal: React.FC<{
   initialQuery: string;
   onClose: () => void;
   onCreated: (student: UserSuggestItem) => void;
-}> = ({ isOpen, initialQuery, onClose, onCreated }) => {
+  onOpenExistingStudent?: (studentId: string) => void;
+}> = ({ isOpen, initialQuery, onClose, onCreated, onOpenExistingStudent }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [existingStudentId, setExistingStudentId] = useState<string | null>(null);
   const [created, setCreated] = useState<CreateStudentResponse | null>(null);
   const [form, setForm] = useState<CreateStudentRequest>({
     email: '',
@@ -1845,6 +2040,7 @@ const InlineCreateStudentModal: React.FC<{
   useEffect(() => {
     if (!isOpen) return;
     setError(null);
+    setExistingStudentId(null);
     setCreated(null);
     setForm({
       email: '',
@@ -1881,7 +2077,15 @@ const InlineCreateStudentModal: React.FC<{
               const label = `${form.first_name} ${form.last_name} (${form.promotion})`;
               onCreated({ id: res.student_id, label });
             } catch (err) {
-              setError(err instanceof Error ? err.message : 'Erreur lors de la création');
+              const msg = err instanceof Error ? err.message : 'Erreur lors de la création';
+              const payload = (err as any)?.payload;
+              if (payload?.existing_student_id && (msg.includes('Téléphone déjà utilisé') || msg.includes('Email déjà utilisé'))) {
+                setError(msg);
+                setExistingStudentId(String(payload.existing_student_id));
+              } else {
+                setError(msg);
+                setExistingStudentId(null);
+              }
             } finally {
               setLoading(false);
             }
@@ -1889,9 +2093,26 @@ const InlineCreateStudentModal: React.FC<{
           className="p-4 space-y-4"
         >
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
-              <AlertCircle className="w-4 h-4" />
-              {error}
+            <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 mt-0.5" />
+              <div className="flex-1">
+                <div>{error}</div>
+                {(error.includes('Téléphone déjà utilisé') || error.includes('Email déjà utilisé')) && (form.telephone || form.email) && (
+                  <div className="mt-2 flex gap-2 flex-wrap">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (existingStudentId) onOpenExistingStudent?.(existingStudentId);
+                      }}
+                      disabled={!onOpenExistingStudent || !existingStudentId}
+                    >
+                      Ouvrir le compte existant
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1966,7 +2187,8 @@ const CreateMissionModal: React.FC<{
   onClose: () => void;
   onCreated: () => void;
   onCreatedMission?: (mission: MissionListItem) => void;
-}> = ({ isOpen, onClose, onCreated, onCreatedMission }) => {
+  onOpenExistingStudent?: (studentId: string) => void;
+}> = ({ isOpen, onClose, onCreated, onCreatedMission, onOpenExistingStudent }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mailleQuery, setMailleQuery] = useState('');
@@ -2548,6 +2770,7 @@ const CreateMissionModal: React.FC<{
         isOpen={showInlineCreateStudentModal}
         initialQuery={studentQuery.trim()}
         onClose={() => setShowInlineCreateStudentModal(false)}
+        onOpenExistingStudent={onOpenExistingStudent}
         onCreated={student => {
           setSelectedStudents(prev => (prev.some(x => x.id === student.id) ? prev : [...prev, student]));
           setStudentQuery('');
@@ -2569,7 +2792,8 @@ const CreateStudentModal: React.FC<{
   onCreated: () => void;
   initialForm?: Partial<CreateStudentRequest>;
   onCreatedStudent?: (student: UserSuggestItem) => void;
-}> = ({ isOpen, onClose, onCreated }) => {
+  onOpenExistingStudent?: (studentId: string) => void;
+}> = ({ isOpen, onClose, onCreated, onOpenExistingStudent }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<CreateStudentResponse | null>(null);
@@ -2603,6 +2827,11 @@ const CreateStudentModal: React.FC<{
       onCreated();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création');
+      const payload = (err as any)?.payload;
+      if (payload?.existing_student_id) {
+        // keep payload accessible
+        (window as any).__lastCreateStudentErrorPayload = payload;
+      }
     } finally {
       setLoading(false);
     }
@@ -2972,6 +3201,8 @@ const ColabPage: React.FC = () => {
   const [showDeleteSupervisorModal, setShowDeleteSupervisorModal] = useState(false);
   const [showDeleteMissionModal, setShowDeleteMissionModal] = useState(false);
   const [selectedMissionToDelete, setSelectedMissionToDelete] = useState<MissionListItem | null>(null);
+  const [showTransferMissionModal, setShowTransferMissionModal] = useState(false);
+  const [selectedMissionToTransfer, setSelectedMissionToTransfer] = useState<MissionListItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
 
   const [selectedMissionId, setSelectedMissionId] = useState<string | null>(null);
@@ -2988,6 +3219,11 @@ const ColabPage: React.FC = () => {
   const [studentsSearch, setStudentsSearch] = useState('');
   const [studentsActiveFilter, setStudentsActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [studentsSort, setStudentsSort] = useState<'promotion_desc' | 'name_asc' | 'name_desc' | 'missions_desc'>('promotion_desc');
+
+  const [studentsAuditMode, setStudentsAuditMode] = useState(false);
+  const [studentsIncludeDeleted, setStudentsIncludeDeleted] = useState(false);
+  const [studentsDuplicatesOnly, setStudentsDuplicatesOnly] = useState(false);
+  const [duplicatePhones, setDuplicatePhones] = useState<Set<string>>(new Set());
 
   const [supervisorsSearch, setSupervisorsSearch] = useState('');
   const [supervisorsActiveFilter, setSupervisorsActiveFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -3061,6 +3297,7 @@ const ColabPage: React.FC = () => {
         { key: 'niveau', label: 'Niveau' },
         { key: 'age', label: 'Âge' },
         { key: 'active_missions', label: 'Missions actives' },
+        { key: 'active_mailles', label: 'Mailles actives' },
         { key: 'is_active', label: 'Actif' },
         { key: 'data_source', label: 'Source données' },
         { key: 'tool_version', label: 'Version outil' },
@@ -3158,7 +3395,7 @@ const ColabPage: React.FC = () => {
 
   const studentsPresets = useMemo<Record<'operational' | 'audit', string[]>>(
     () => ({
-      operational: ['student_id', 'full_name', 'email', 'matricule', 'promotion', 'active_missions', 'is_active'],
+      operational: ['student_id', 'full_name', 'email', 'matricule', 'promotion', 'active_missions', 'active_mailles', 'is_active'],
       audit: ['student_id', 'user_id', 'username', 'full_name', 'email', 'telephone', 'matricule', 'promotion', 'data_source', 'tool_version'],
     }),
     [],
@@ -3298,6 +3535,19 @@ const ColabPage: React.FC = () => {
   // Vérifier l'authentification
   const isAuthenticated = !!tokenStorage.getAccessToken();
 
+  const openExistingStudent = useCallback(
+    async (studentId: string) => {
+      try {
+        const s = await studentsApi.get(studentId);
+        setSelectedStudent(s);
+        setShowUpdateStudentModal(true);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'Erreur chargement étudiant');
+      }
+    },
+    [setSelectedStudent, setShowUpdateStudentModal],
+  );
+
   const loadData = useCallback(async () => {
     if (!isAuthenticated) {
       setError('Veuillez vous connecter pour accéder à Atlas Colab');
@@ -3315,20 +3565,30 @@ const ColabPage: React.FC = () => {
           missionsApi.getStats(),
           supervisorsApi.list(),
         ]);
-
         setMissions(missionsRes.missions);
         setTotalPages(missionsRes.total_pages);
         setTotal(missionsRes.total);
         setStats(statsRes);
         setSupervisors(supervisorsRes);
       } else if (activeTab === 'students') {
-        const [studentsRes, statsRes] = await Promise.all([
-          studentsApi.list(),
+        const [studentsRes, statsRes, duplicatesRes] = await Promise.all([
+          studentsApi.list({
+            audit_mode: studentsAuditMode || undefined,
+            include_deleted: (!studentsAuditMode && studentsIncludeDeleted) || undefined,
+            include_inactive: studentsAuditMode || undefined,
+          }),
           missionsApi.getStats(),
+          studentsApi.listDuplicates().catch(() => []),
         ]);
         setStudents(studentsRes.students);
         setTotal(studentsRes.total);
         setStats(statsRes);
+
+        const phones = new Set<string>();
+        for (const g of duplicatesRes) {
+          if (g?.telephone) phones.add(String(g.telephone));
+        }
+        setDuplicatePhones(phones);
       } else if (activeTab === 'supervisors') {
         const [supervisorsRes, statsRes] = await Promise.all([
           supervisorsApi.list(),
@@ -3397,7 +3657,17 @@ const ColabPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [filters, isAuthenticated, activeTab, documentsMissionId, documentsType, attrStudentFilter, attrNotifStatusFilter]);
+  }, [
+    filters,
+    isAuthenticated,
+    activeTab,
+    documentsMissionId,
+    documentsType,
+    attrStudentFilter,
+    attrNotifStatusFilter,
+    studentsAuditMode,
+    studentsIncludeDeleted,
+  ]);
 
   useEffect(() => {
     if (activeTab !== 'exports' || !exportRunningJobId) return;
@@ -3532,6 +3802,10 @@ const ColabPage: React.FC = () => {
       });
     }
 
+    if (studentsDuplicatesOnly) {
+      items = items.filter(s => !!s.telephone && duplicatePhones.has(String(s.telephone)));
+    }
+
     const sorted = [...items];
     sorted.sort((a, b) => {
       if (studentsSort === 'name_asc') return (a.full_name || '').localeCompare(b.full_name || '');
@@ -3540,7 +3814,7 @@ const ColabPage: React.FC = () => {
       return (b.promotion || '').localeCompare(a.promotion || '');
     });
     return sorted;
-  }, [students, studentsSearch, studentsActiveFilter, studentsSort]);
+  }, [students, studentsSearch, studentsActiveFilter, studentsSort, studentsDuplicatesOnly, duplicatePhones]);
 
   const filteredSupervisors = useMemo(() => {
     const q = supervisorsSearch.trim().toLowerCase();
@@ -4019,6 +4293,10 @@ const ColabPage: React.FC = () => {
                         setSelectedMissionId(mission.id);
                         setMissionDetailDefaultTab('edit');
                         setShowMissionDetailModal(true);
+                      }}
+                      onTransfer={() => {
+                        setSelectedMissionToTransfer(mission);
+                        setShowTransferMissionModal(true);
                       }}
                       onDelete={() => {
                         setSelectedMissionToDelete(mission);
@@ -5292,6 +5570,38 @@ const ColabPage: React.FC = () => {
                   />
                 </div>
               </div>
+
+              <div className="mt-3 flex flex-wrap gap-4 text-sm text-gray-700">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={studentsAuditMode}
+                    onChange={e => {
+                      const v = e.target.checked;
+                      setStudentsAuditMode(v);
+                      if (v) setStudentsIncludeDeleted(true);
+                    }}
+                  />
+                  Mode audit
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={studentsIncludeDeleted}
+                    onChange={e => setStudentsIncludeDeleted(e.target.checked)}
+                    disabled={studentsAuditMode}
+                  />
+                  Inclure supprimés
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={studentsDuplicatesOnly}
+                    onChange={e => setStudentsDuplicatesOnly(e.target.checked)}
+                  />
+                  Voir doublons uniquement
+                </label>
+              </div>
             </div>
 
             {loading ? (
@@ -5311,6 +5621,7 @@ const ColabPage: React.FC = () => {
                           <th className="text-left font-medium px-4 py-3">Promotion</th>
                           <th className="text-left font-medium px-4 py-3">Âge</th>
                           <th className="text-left font-medium px-4 py-3">Missions actives</th>
+                          <th className="text-left font-medium px-4 py-3">Mailles actives</th>
                           <th className="text-left font-medium px-4 py-3">Actions</th>
                         </tr>
                       </thead>
@@ -5333,10 +5644,17 @@ const ColabPage: React.FC = () => {
                                 <Badge className={s.is_active ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-700'}>
                                   {s.is_active ? 'Actif' : 'Inactif'}
                                 </Badge>
+                                {!!(s as any).deleted_at && (
+                                  <Badge className="bg-red-50 text-red-700">Supprimé</Badge>
+                                )}
+                                {!!s.telephone && duplicatePhones.has(String(s.telephone)) && (
+                                  <Badge className="bg-red-50 text-red-700">Doublon téléphone</Badge>
+                                )}
                               </div>
                             </td>
                             <td className="px-4 py-3 text-gray-600">{s.age ?? '-'}</td>
                             <td className="px-4 py-3 text-gray-600">{s.active_missions}</td>
+                            <td className="px-4 py-3 text-gray-600">{s.active_mailles}</td>
                             <td className="px-4 py-3">
                               <div className="flex items-center gap-2">
                                 <span
@@ -5794,6 +6112,7 @@ const ColabPage: React.FC = () => {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreated={loadData}
+        onOpenExistingStudent={openExistingStudent}
       />
 
       <ConfirmDeactivateModal
@@ -5820,6 +6139,7 @@ const ColabPage: React.FC = () => {
         isOpen={showCreateStudentModal}
         onClose={() => setShowCreateStudentModal(false)}
         onCreated={loadData}
+        onOpenExistingStudent={openExistingStudent}
       />
 
       <CreateSupervisorModal
@@ -5880,6 +6200,7 @@ const ColabPage: React.FC = () => {
           setActionLoading(true);
           try {
             await studentsApi.delete(selectedStudent.id);
+            setStudents(prev => prev.filter(s => s.id !== selectedStudent.id));
             await loadData();
             setShowDeleteStudentModal(false);
           } finally {
@@ -5936,8 +6257,15 @@ const ColabPage: React.FC = () => {
         onChanged={loadData}
         onGoToDocuments={(missionId) => {
           setActiveTab('documents');
-          setDocumentsMissionId(missionId);
+          setSelectedMissionId(missionId);
         }}
+      />
+
+      <TransferMissionModal
+        isOpen={showTransferMissionModal}
+        mission={selectedMissionToTransfer}
+        onClose={() => setShowTransferMissionModal(false)}
+        onTransferred={loadData}
       />
 
       <StudentDetailModal

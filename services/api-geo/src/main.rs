@@ -219,6 +219,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/adm3/geojson", get(surveys_adm::get_adm3_geojson))
         .route("/adm3", get(surveys::list_adm3))
         .route("/adm/:level", get(routes::list_adm_zones))
+        .route("/adm/:level/:id", get(routes::get_adm_boundary_geojson))
         // Note: /adm-neighbors déplacé vers routes publiques (avant auth middleware)
         // Audit log endpoints
         .route("/audit", get(audit::list_audit_logs))
@@ -459,7 +460,11 @@ async fn main() -> anyhow::Result<()> {
                     state.clone(),
                     auth::middleware::auth_middleware,
                 )),
-        );
+        )
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth::middleware::optional_auth_middleware,
+        ));
 
     let app = Router::new()
         .nest("/", base_api.clone())
