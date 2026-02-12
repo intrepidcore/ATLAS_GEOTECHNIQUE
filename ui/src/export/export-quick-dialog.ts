@@ -670,37 +670,66 @@ export class ExportQuickDialog {
           maxZoom: 18,
           duration: 0
         });
-        
-        // Attendre moveend
+
         const moveendStart = performance.now();
-        await new Promise<void>(resolve => {
-          const handler = () => { 
-            map.off('moveend', handler); 
-            console.log(`[PHASE2][${admName}] moveend après ${(performance.now() - moveendStart).toFixed(0)}ms`);
-            resolve(); 
+        const waitForEventOnce = (ev: string, timeoutMs: number) => new Promise<boolean>(resolve => {
+          const handler = () => {
+            map.off(ev, handler);
+            resolve(true);
           };
-          map.on('moveend', handler);
-          setTimeout(() => { 
-            map.off('moveend', handler); 
-            console.warn(`[PHASE2][${admName}] moveend TIMEOUT après 2000ms`);
-            resolve(); 
-          }, 2000);
+          map.on(ev, handler);
+          setTimeout(() => {
+            map.off(ev, handler);
+            resolve(false);
+          }, timeoutMs);
         });
+
+        const [moveOk, zoomOk] = await Promise.all([
+          waitForEventOnce('moveend', 8000),
+          waitForEventOnce('zoomend', 8000)
+        ]);
+
+        if (moveOk) {
+          console.log(`[PHASE2][${admName}] moveend après ${(performance.now() - moveendStart).toFixed(0)}ms`);
+        } else {
+          console.warn(`[PHASE2][${admName}] moveend TIMEOUT après 8000ms`);
+        }
+
+        if (!zoomOk) {
+          console.warn(`[PHASE2][${admName}] zoomend TIMEOUT après 8000ms`);
+        }
+
+        await waitForFrames(2);
         
         // Log zoom/bounds APRÈS fitBounds
         console.log(`[PHASE2][${admName}] Map zoom APRÈS fitBounds: ${map.getZoom()}`);
         const afterBounds = map.getBounds();
         console.log(`[PHASE2][${admName}] Map bounds APRÈS: [${afterBounds.getSouth().toFixed(4)}, ${afterBounds.getWest().toFixed(4)}] → [${afterBounds.getNorth().toFixed(4)}, ${afterBounds.getEast().toFixed(4)}]`);
+
+        bounds = {
+          north: afterBounds.getNorth(),
+          south: afterBounds.getSouth(),
+          east: afterBounds.getEast(),
+          west: afterBounds.getWest(),
+        };
         
         // PHASE 3 FIX: Pan bias pour Maritime (réduire vide océan)
         await this.applyPanBiasIfNeeded(map, bounds, admBounds, admName);
         
         await waitForFrames(2);
+
+        const afterPanBounds = map.getBounds();
+        bounds = {
+          north: afterPanBounds.getNorth(),
+          south: afterPanBounds.getSouth(),
+          east: afterPanBounds.getEast(),
+          west: afterPanBounds.getWest(),
+        };
         
         // v4.5.1: On NE réinitialise PLUS bounds avec effectiveBounds.
         // On veut garder les bounds optimisées calculées par BoundsOptimizer
         // pour que la projection sur le canvas soit exacte.
-        console.log(`[Composer][${admName}] Optimized bounds preserved:`, bounds);
+        console.log(`[Composer][${admName}] Effective bounds preserved:`, bounds);
       } else {
         bounds = this.config.getMapBounds();
       }
