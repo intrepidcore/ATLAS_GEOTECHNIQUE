@@ -25,6 +25,7 @@ export class ThematicMapManager {
   private currentClassification: Classification | null = null
   private currentData: ThematicData | null = null
   private currentExportState: ThematicExportState | null = null
+  private classificationCache = new Map<string, Classification>()
   
   // Gestionnaire des couches de contexte
   private contextLayers: ContextLayersManager
@@ -38,6 +39,30 @@ export class ThematicMapManager {
     this.apiUrl = apiUrl
     this.admOverlayLayer = L.layerGroup().addTo(map)
     this.contextLayers = new ContextLayersManager(map)
+  }
+
+  private extractValue(feature: any, config: ThematicMapConfig): number | null {
+    // Backend compatibility:
+    // - include_geometry=true  => GeoJSON Feature { properties: {...} }
+    // - include_geometry=false => properties-only object (routes.rs pousse directement properties)
+    const props = feature?.properties ?? feature
+    if (!props) return null
+
+    const candidates = [
+      props.value,
+      props?.[config.parameter],
+      props.raw_value
+    ]
+
+    for (const c of candidates) {
+      if (c == null) continue
+      if (typeof c === 'string' && c.trim() === '') continue
+      const n = typeof c === 'number' ? c : Number(c)
+      if (!Number.isFinite(n)) continue
+      return n
+    }
+
+    return null
   }
   
   /**
@@ -106,12 +131,24 @@ export class ThematicMapManager {
       console.log(`[ThematicMap][Interactive] palette received="${config.style.palette}"`)
       console.log('[ThematicMap] Chargement config:', config)
       
-      // 1. Récupérer les données
-      const data = await this.fetchThematicData(config)
+      // 1. Récupérer les données de rendu (selon la grille demandée)
+      const data = await this.fetchThematicData(config, { includeGeometry: true })
       console.log('[ThematicMap] Données récupérées:', data.features.length, 'features')
-      
+
       // 2. Classifier les données
-      const classification = await this.classifyData(config, data)
+      // Exigence: ne jamais recalculer les classes séparément pour 28km.
+      // Donc en grid=28km, on calcule la classification à partir des valeurs 2km (sans géométrie) et on applique ces classes au rendu 28km.
+      const gridLevel = config.filters.grid
+      const classificationSourceData =
+        gridLevel === '28km'
+          ? await this.fetchThematicData(config, {
+              includeGeometry: false,
+              gridOverride: '2km',
+              skipBbox: true
+            })
+          : data
+
+      const classification = await this.classifyData(config, classificationSourceData)
       console.log('[ThematicMap] Classification:', classification)
       
       // 3. Afficher sur la carte selon le type
@@ -157,18 +194,28 @@ export class ThematicMapManager {
   /**
    * Récupérer les données depuis l'API
    */
-  private async fetchThematicData(config: ThematicMapConfig): Promise<ThematicData> {
+  private async fetchThematicData(
+    config: ThematicMapConfig,
+    opts?: {
+      includeGeometry?: boolean
+      gridOverride?: '2km' | '28km'
+      skipBbox?: boolean
+    }
+  ): Promise<ThematicData> {
+    const includeGeometry = opts?.includeGeometry ?? true
     const params = new URLSearchParams({
       parameter: config.parameter,
-      include_geometry: 'true',
+      include_geometry: includeGeometry ? 'true' : 'false',
       zoom: this.map.getZoom().toString()
     })
     
     // Niveau de grille (2km par défaut pour compatibilité)
     if (config.filters.grid) {
       // Mode combiné = thématique sur 2km (la 28km est juste une surcouche structurelle côté UI)
-      const grid = config.filters.grid === 'combined' ? '2km' : config.filters.grid
+      const grid = opts?.gridOverride || (config.filters.grid === 'combined' ? '2km' : config.filters.grid)
       params.append('grid', grid)
+    } else if (opts?.gridOverride) {
+      params.append('grid', opts.gridOverride)
     }
     
     // Filtres ADM - envoyer seulement si exclude_outside_adm est activé ou si un ADM est sélectionné
@@ -179,7 +226,7 @@ export class ThematicMapManager {
     }
     if (config.filters.min_sondages) params.append('min_sondages', config.filters.min_sondages.toString())
     
-    if (config.filters.bbox) {
+    if (!opts?.skipBbox && config.filters.bbox) {
       params.append('bbox', config.filters.bbox.join(','))
     }
     
@@ -191,8 +238,28 @@ export class ThematicMapManager {
       const error = await response.text()
       throw new Error(`Erreur API: ${response.status} - ${error}`)
     }
-    
-    return response.json()
+    const json = (await response.json()) as ThematicData
+
+    const isFeatureCollection = (d: any): boolean => {
+      return (
+        d &&
+        (d.feature_type === 'FeatureCollection' || d.type === 'FeatureCollection') &&
+        Array.isArray(d.features)
+      )
+    }
+
+    if (!isFeatureCollection(json)) {
+      console.error('[ThematicMap] Invalid FeatureCollection format:', json)
+      throw new Error('Invalid FeatureCollection format')
+    }
+
+    console.log('[ThematicMap] ✅ API response metadata.filters_applied:', json?.metadata?.filters_applied)
+    console.log('[ThematicMap] ✅ API response stats:', {
+      count: json?.statistics?.count,
+      null_count: json?.statistics?.null_count,
+      count_total: json?.statistics?.count_total
+    })
+    return json
   }
   
   /**
@@ -283,46 +350,77 @@ export class ThematicMapManager {
    * Classifier les données
    */
   private async classifyData(config: ThematicMapConfig, data: ThematicData): Promise<Classification> {
+    const cacheKey = JSON.stringify({
+      parameter: config.parameter,
+      type: config.type,
+      method: config.classification?.method,
+      n: config.classification?.n_classes,
+      manual: config.classification?.manual_breaks,
+      threshold: config.classification?.binary_threshold,
+      palette: config.style?.palette,
+      filters: {
+        grid: config.filters?.grid,
+        adm1: config.filters?.adm1,
+        adm2: config.filters?.adm2,
+        adm3: config.filters?.adm3,
+        min_sondages: config.filters?.min_sondages,
+        exclude_outside_adm: config.filters?.exclude_outside_adm,
+        exclude_no_data: config.filters?.exclude_no_data
+      }
+    })
+
+    const cached = this.classificationCache.get(cacheKey)
+    if (cached) return cached
+
     // Extraire les valeurs
     const values = data.features
-      .map(f => f.properties?.value)
-      .filter(v => v != null && !isNaN(v)) as number[]
+      .map(f => this.extractValue(f as any, config))
+      .filter((v): v is number => v != null && !isNaN(v))
     
     // CORRECTION ÉTAPE 5: Gérer NO DATA proprement (pas une erreur)
     if (values.length === 0) {
+      const sample = (data.features?.[0] as any)?.properties
+      const keys = sample && typeof sample === 'object' ? Object.keys(sample) : []
+      console.warn('[ThematicMap] ⚠️ NO DATA audit (sample property keys):', keys)
       console.warn(`[ThematicMap] ⚠️ NO DATA pour ${config.parameter} - aucune valeur à classifier`)
       // Retourner une classification NO DATA au lieu de throw
-      return {
+      const noData: Classification = {
         breaks: [],
         colors: ['#9CA3AF'], // Gris neutre pour NO DATA
         labels: ['NO DATA'],
         method: 'no_data',
         n_classes: 1
       }
+      this.classificationCache.set(cacheKey, noData)
+      return noData
     }
     
     // Carte binaire : classification spéciale à 2 classes
     if (config.type === 'binary') {
       const threshold = config.classification.binary_threshold ?? data.statistics.median
-      return {
+      const binary: Classification = {
         breaks: [threshold],
         colors: ['#E5E7EB', '#15803d'],
         labels: [`< ${threshold.toFixed(1)}`, `≥ ${threshold.toFixed(1)}`],
         method: 'binary',
         n_classes: 2
       }
+      this.classificationCache.set(cacheKey, binary)
+      return binary
     }
     
     // Utiliser classification manuelle si fournie
     if (config.classification?.method === 'manual' && config.classification.manual_breaks) {
       const breaks = this.sanitizeBreaks(config.classification.manual_breaks)
-      return {
+      const manual: Classification = {
         breaks,
         colors: await this.getColors(config.style.palette, breaks.length + 1),
         labels: this.generateLabels(breaks),
         method: 'manual',
         n_classes: breaks.length + 1
       }
+      this.classificationCache.set(cacheKey, manual)
+      return manual
     }
     
     // Détecter si le paramètre est un comptage (valeurs entières)
@@ -332,13 +430,15 @@ export class ThematicMapManager {
     // Pour les paramètres de densité (n_sondages, etc.), utiliser des breaks fixes
     if (param?.defaultBreaks && config.classification?.method !== 'equal_interval') {
       const breaks = param.defaultBreaks
-      return {
+      const def: Classification = {
         breaks,
         colors: await this.getColors(config.style.palette, breaks.length + 1),
         labels: this.generateLabels(breaks, isCountParameter),
         method: 'default_breaks',
         n_classes: breaks.length + 1
       }
+      this.classificationCache.set(cacheKey, def)
+      return def
     }
     
     // Calculer les breaks localement selon la méthode
@@ -385,13 +485,15 @@ export class ThematicMapManager {
       console.log(`[ThematicMap] Classes réduites: ${nClasses} demandées → ${effectiveClasses} effectives (données concentrées)`)
     }
     
-    return {
+    const computed: Classification = {
       breaks: cleanedBreaks,
       colors: await this.getColors(config.style.palette, effectiveClasses),
       labels: this.generateLabels(cleanedBreaks, isCountParameter),
       method: config.classification?.method || 'quantiles',
       n_classes: effectiveClasses
     }
+    this.classificationCache.set(cacheKey, computed)
+    return computed
   }
   
   /**
@@ -579,10 +681,18 @@ export class ThematicMapManager {
     }
 
     const gridOverlay28Layer = (window as any).gridOverlay28Layer
-    if (gridOverlay28Layer && this.map.hasLayer(gridOverlay28Layer)) {
+    const getLevel = (window as any).getCurrentGridLevel
+    const currentLevel = typeof getLevel === 'function' ? getLevel() : undefined
+    if (gridOverlay28Layer && this.map.hasLayer(gridOverlay28Layer) && currentLevel !== 'combined') {
       console.log('[ThematicMap] Masquage de la surcouche 28km')
       this.map.removeLayer(gridOverlay28Layer)
     }
+
+    // Contrat hover/interactions:
+    // - 2km: thématique interactive sur 2km
+    // - 28km: thématique interactive sur 28km, grille 2km non visible
+    // - combined: thématique interactive sur 2km + surcouche 28km structurelle (non interactive)
+    // La surcouche 28km est créée côté main.ts avec interactive:false + pointerEvents:none.
   }
   
   /**
@@ -627,7 +737,7 @@ export class ThematicMapManager {
     this.polygonLayer = L.geoJSON(data.features as any, {
       pane: 'thematicPane',
       style: (feature) => {
-        const value = feature?.properties?.value
+        const value = this.extractValue(feature as any, config)
         const color = this.getColorForValue(value, classification.breaks, classification.colors)
         
         return {
@@ -681,8 +791,8 @@ export class ThematicMapManager {
     
     // Calculer min/max pour le scaling
     const values = data.features
-      .map(f => f.properties?.value)
-      .filter(v => v != null && v > 0) as number[]
+      .map(f => this.extractValue(f as any, config))
+      .filter((v): v is number => v != null && v > 0)
     
     if (values.length === 0) {
       console.warn('[ThematicMap] Aucune valeur positive pour les cercles')
@@ -696,7 +806,7 @@ export class ThematicMapManager {
     
     // Créer les cercles
     for (const feature of data.features) {
-      const value = feature.properties?.value
+      const value = this.extractValue(feature as any, config)
       if (value == null || value <= 0) continue
       
       // Rayon proportionnel à √valeur (perception visuelle correcte)
@@ -726,7 +836,7 @@ export class ThematicMapManager {
         <div class="thematic-tooltip">
           <strong>${props?.code}</strong><br>
           <span class="tooltip-label">${data.metadata.parameter_label}:</span> 
-          <strong>${props?.value?.toFixed(2) || 'N/A'} ${data.metadata.unit}</strong><br>
+          <strong>${value?.toFixed(2) || 'N/A'} ${data.metadata.unit}</strong><br>
           <span class="tooltip-label">Sondages:</span> ${props?.n_sondages || 0}
         </div>
       `, { sticky: true })
@@ -760,7 +870,7 @@ export class ThematicMapManager {
     this.polygonLayer = L.geoJSON(data.features as any, {
       pane: 'thematicPane',
       style: (feature) => {
-        const value = feature?.properties?.value
+        const value = this.extractValue(feature as any, config)
         const present = value != null && value >= threshold
         
         return present ? {
@@ -821,8 +931,8 @@ export class ThematicMapManager {
     // 2. Préparer les données pour heatmap: [lat, lng, intensity]
     const heatData: [number, number, number][] = []
     const values = data.features
-      .map(f => f.properties?.value)
-      .filter(v => v != null && !isNaN(v)) as number[]
+      .map(f => this.extractValue(f as any, config))
+      .filter((v): v is number => v != null && !isNaN(v))
     
     if (values.length === 0) {
       console.warn('[ThematicMap][Heatmap] Aucune donnée pour heatmap')
@@ -835,7 +945,7 @@ export class ThematicMapManager {
     
     // Construire points avec intensité normalisée
     for (const feature of data.features) {
-      const value = feature.properties?.value
+      const value = this.extractValue(feature as any, config)
       if (value == null || isNaN(value)) continue
       
       // Centroïde de la maille
@@ -900,8 +1010,11 @@ export class ThematicMapManager {
     }
     
     // Parameter value if available
-    if (data.metadata.parameter_label && props?.value != null) {
-      lines.push(`<span class="tooltip-label">${data.metadata.parameter_label}:</span> <strong>${props.value.toFixed(2)} ${data.metadata.unit}</strong>`)
+    if (data.metadata.parameter_label && this.currentConfig) {
+      const v = this.extractValue(feature, this.currentConfig)
+      if (v != null) {
+        lines.push(`<span class="tooltip-label">${data.metadata.parameter_label}:</span> <strong>${v.toFixed(2)} ${data.metadata.unit}</strong>`)
+      }
     }
     
     // Surveys count

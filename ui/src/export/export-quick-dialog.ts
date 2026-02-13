@@ -37,6 +37,8 @@ import {
 import { buildExportStats, ExportStats } from './export-stats';
 import { createExportTelemetry, ExportTelemetry } from './export-telemetry';
 import { API_BASE_URL } from '../services/api';
+import { apiUrl } from '../api';
+import { buildThematicCellsFromScreenFeatures, mergeWithEmptyGrid } from './export-engine';
 
 // ============================================================================
 // Styles CSS du dialogue
@@ -430,6 +432,17 @@ export class ExportQuickDialog {
     this.options = { ...DEFAULT_EXPORT_OPTIONS };
     this.injectStyles();
   }
+
+  private async fetchWithTimeout(url: string, init: RequestInit = {}, timeoutMs: number = 10000): Promise<Response> {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), timeoutMs)
+    try {
+      const mergedInit: RequestInit = { ...init, signal: controller.signal }
+      return await fetch(url, mergedInit)
+    } finally {
+      clearTimeout(timeout)
+    }
+  }
   
   /**
    * Génère une clé de cache pour les mailles ADM
@@ -748,7 +761,7 @@ export class ExportQuickDialog {
       onProgress('Capture du fond de carte...');
       const hiddenPanes: Record<string, string> = {};
       const panes = map.getPanes();
-      const panesToHide = ['overlayPane', 'markerPane', 'tooltipPane', 'popupPane', 'shadowPane', 'thematicPane', 'thematicCirclesPane', 'gridPane'];
+      const panesToHide = ['overlayPane', 'markerPane', 'tooltipPane', 'popupPane', 'shadowPane', 'thematicPane', 'thematicCirclesPane', 'gridPane', 'gridOverlayPane'];
       
       for (const paneName of panesToHide) {
         const pane = panes[paneName];
@@ -861,6 +874,18 @@ export class ExportQuickDialog {
       
       // Dessiner la grille et le cadre
       exportFrame.drawGridAndFrame(bbox);
+
+      // Dessiner les subdivisions si demandé (ADM1/ADM2)
+      if (opts.boundaryLevel && opts.boundaryLevel !== 'none' && this.options.zone === 'adm-filtered' && admFilters) {
+        try {
+          const boundaries = await this.fetchAdmBoundaries(admFilters, opts.boundaryLevel);
+          if (boundaries?.features && Array.isArray(boundaries.features) && boundaries.features.length > 0) {
+            exportFrame.drawAdmBoundaries(boundaries.features as any, bbox, opts.boundaryLevel);
+          }
+        } catch (e) {
+          console.warn('[ExportSingle] Erreur boundaries:', e);
+        }
+      }
       
       // Re-dessiner la bordure si masque=none
       if (admPolygon && admPolygon.length >= 3 && opts.maskMode === 'none') {
@@ -1240,6 +1265,8 @@ export class ExportQuickDialog {
     // ========== SAUVEGARDER TOUTES LES OPTIONS AVANT DE MODIFIER LE DOM ==========
     // C'est CRITIQUE car body.innerHTML va détruire les éléments du formulaire
     const savedOptions = {
+      gridLevel: ((this.overlay.querySelector('#export-grid-level') as HTMLSelectElement)?.value || '2km') as '2km' | '28km' | 'combined',
+      boundaryLevel: ((this.overlay.querySelector('#export-boundary-level') as HTMLSelectElement)?.value || 'none') as 'none' | 'adm1' | 'adm2',
       hideGridLayer: (this.overlay.querySelector('#export-hide-grid-layer') as HTMLInputElement)?.checked ?? true,
       showEmptyCells: (this.overlay.querySelector('#export-show-empty-cells') as HTMLInputElement)?.checked ?? false,
       onlyAdmCells: (this.overlay.querySelector('#export-only-adm-cells') as HTMLInputElement)?.checked ?? true,
@@ -1265,10 +1292,23 @@ export class ExportQuickDialog {
     
     console.log('[Export] Options sauvegardées AVANT modification DOM:', savedOptions);
     console.log('[Export] includeMetadata sauvegardé:', savedOptions.includeMetadata);
+
+    // Appliquer le niveau de grille demandé avant capture/rendu
+    if ((window as any).setGridLevel) {
+      (window as any).setGridLevel(savedOptions.gridLevel);
+    }
+    if ((window as any).syncGridLevelUI) {
+      ;(window as any).syncGridLevelUI(savedOptions.gridLevel);
+    }
+    const panel = (window as any).thematicPanel;
+    if (panel && typeof panel.reloadFromUI === 'function') {
+      await panel.reloadFromUI();
+    }
     
     // IMPORTANT: Mettre à jour this.options avec les valeurs du DOM pour que fetchAdmCells les utilise
     this.options = {
       ...this.options,
+      boundaryLevel: savedOptions.boundaryLevel,
       showEmptyCells: savedOptions.showEmptyCells,
       onlyAdmCells: savedOptions.onlyAdmCells,
       maskMode: savedOptions.maskMode
@@ -1477,6 +1517,22 @@ export class ExportQuickDialog {
         tiles: tileResult,
         message: tileResult.timedOut ? 'Timeout tuiles' : 'Tuiles stables'
       });
+
+      // Attendre fin d'animation Leaflet (évite captures noires pendant zoom)
+      if (map && (map as any)._animatingZoom) {
+        telemetry.log('TILES_WAIT', { message: 'Leaflet _animatingZoom=true, wait zoomend' });
+        await new Promise<void>(resolve => {
+          const handler = () => {
+            map.off('zoomend', handler)
+            resolve()
+          }
+          map.on('zoomend', handler)
+          setTimeout(() => {
+            map.off('zoomend', handler)
+            resolve()
+          }, 2000)
+        })
+      }
       
       // Attendre 2 frames d'animation pour laisser le navigateur peindre
       await waitForFrames(2);
@@ -1524,6 +1580,7 @@ export class ExportQuickDialog {
           'thematicPane',     // Couche thématique custom
           'thematicCirclesPane', // Cercles thématiques
           'gridPane',         // Grille de fond
+          'gridOverlayPane',  // Surcouche structurelle (ex: 28km en mode combined)
         ];
         
         for (const paneName of panesToHide) {
@@ -1533,14 +1590,22 @@ export class ExportQuickDialog {
             pane.style.display = 'none';
           }
         }
+
+        // Invalidate size juste avant capture pour figer les dimensions DOM/canvas
+        try {
+          map.invalidateSize({ animate: false })
+        } catch {
+          // ignore
+        }
         
         telemetry.log('CAPTURE', { 
           hiddenPanes: Object.keys(hiddenPanes),
           message: 'All non-tile panes hidden - capturing background only'
         });
         
-        // Attendre le re-rendu (optimisé: 80ms au lieu de 150ms)
+        // Attendre le re-rendu + une frame (évite glitch frame noir)
         await new Promise(resolve => setTimeout(resolve, 80));
+        await waitForFrames(1);
       }
       
       telemetry.logAdmOverlayState(false, Object.keys(hiddenPanes).length > 0);
@@ -1744,6 +1809,23 @@ export class ExportQuickDialog {
       }
       
       exportFrame.drawGridAndFrame(bbox);
+
+      // Dessiner les subdivisions si demandé (ADM1/ADM2)
+      if (savedOptions.boundaryLevel !== 'none' && this.options.zone === 'adm-filtered' && admFilters) {
+        telemetry.startStage('GRID');
+        try {
+          const boundaries = await this.fetchAdmBoundaries(admFilters, savedOptions.boundaryLevel);
+          if (boundaries?.features && Array.isArray(boundaries.features) && boundaries.features.length > 0) {
+            exportFrame.drawAdmBoundaries(boundaries.features as any, bbox, savedOptions.boundaryLevel);
+            telemetry.endStage({ level: savedOptions.boundaryLevel, featureCount: boundaries.features.length });
+          } else {
+            telemetry.endStage({ level: savedOptions.boundaryLevel, featureCount: 0 });
+          }
+        } catch (e) {
+          telemetry.error('BOUNDARIES failed', e as Error);
+          telemetry.endStage({ error: true });
+        }
+      }
       
       // Re-dessiner la bordure ADM après la grille si masque=none (pour qu'elle soit visible au-dessus)
       if (this.options.zone === 'adm-filtered' && admPolygon && admPolygon.length >= 3 && savedOptions.maskMode === 'none') {
@@ -2123,9 +2205,10 @@ export class ExportQuickDialog {
     // ÉTAPE 2: Fix 401 /api/adm-neighbors avec fallback propre
     if (level && name) {
       try {
-        const response = await fetch(
+        const response = await this.fetchWithTimeout(
           `${API_BASE_URL}/adm-neighbors?level=${level}&name=${encodeURIComponent(name)}`,
-          withAuth()
+          withAuth(),
+          10000
         );
         
         if (response.ok) {
@@ -2201,40 +2284,12 @@ export class ExportQuickDialog {
         admFilters: { adm1: admFilters.adm1?.name, adm2: admFilters.adm2?.name }
       });
       
-      // Extraire les valeurs et géométries des features thématiques
-      const allThematicCells: Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number; code?: string; centroid?: {lat: number, lng: number} }> = [];
-      
-      for (const f of screenFeatures) {
-        const props: any = f.properties || {};
-        const geometry = f.geometry;
-        
-        if (!geometry) continue;
-        
-        // Extraire la valeur
-        let value = props.value;
-        if (value == null && parameterId) {
-          value = props[parameterId];
-        }
-        if (value == null) {
-          value = props.vbs_avg ?? props.n_sondages ?? props.passant_80um_avg ?? 
-                  props.passant_2mm_avg ?? props.wl_avg ?? props.wp_avg ?? props.ip_avg ??
-                  props.gamma_d_max_avg ?? props.w_opt_avg;
-        }
-        
-        const code = props.code || props.grid_id || props.cell_id || props.id;
-        
-        // Calculer le centroïde de la maille pour le test d'inclusion
-        const centroid = this.computeCentroid(geometry);
-        
-        allThematicCells.push({
-          geometry,
-          has_data: value != null && !isNaN(value),
-          n_sondages: props.n_sondages || 0,
-          value: value != null && !isNaN(value) ? value : undefined,
-          code: code ? String(code) : undefined,
-          centroid
-        });
-      }
+      // Extraire les valeurs et géométries des features thématiques (moteur isolé)
+      const allThematicCells = buildThematicCellsFromScreenFeatures(
+        screenFeatures as any,
+        parameterId,
+        (geometry) => this.computeCentroid(geometry)
+      )
       
       // FILTRAGE GÉOGRAPHIQUE: Ne garder que les mailles dont le centroïde est dans le polygone ADM
       let thematicCells = allThematicCells;
@@ -2280,11 +2335,8 @@ export class ExportQuickDialog {
       // Récupérer aussi la grille vide pour les mailles sans données
       const emptyGrid = await this.fetchGridFromCoverage(admFilters);
       
-      // Créer un Set des codes thématiques pour éviter les doublons
-      const thematicCodes = new Set(thematicCells.map(c => c.code).filter(Boolean));
-      
       // Filtrer les mailles vides: exclure celles déjà dans thematicCells
-      let emptyCellsRaw = emptyGrid.filter(cell => !thematicCodes.has(cell.cell_id));
+      let emptyCellsRaw = emptyGrid
       
       // FILTRAGE GÉOGRAPHIQUE des mailles vides par polygone ADM (même logique que thematicCells)
       if (hasAdmPolygon && this.options.onlyAdmCells) {
@@ -2308,21 +2360,14 @@ export class ExportQuickDialog {
         });
       }
       
-      const emptyCells = emptyCellsRaw.map(cell => ({
-        geometry: cell.geometry,
-        has_data: false,
-        n_sondages: 0,
-        value: undefined
-      }));
-      
       console.log('[Export][DATA] Grille combinée:', {
         thematicCells: thematicCells.length,
-        emptyCells: emptyCells.length,
-        total: thematicCells.length + emptyCells.length
+        emptyCells: emptyCellsRaw.length,
+        total: thematicCells.length + emptyCellsRaw.length
       });
       
       // Retourner les features thématiques + les mailles vides
-      return [...thematicCells, ...emptyCells];
+      return mergeWithEmptyGrid(thematicCells as any, emptyCellsRaw as any) as any
     }
     
     // FALLBACK: Si pas de features thématiques, utiliser l'ancienne méthode
@@ -2340,7 +2385,7 @@ export class ExportQuickDialog {
       // Ajouter l'authentification pour éviter l'erreur 401
       const token = localStorage.getItem('atlas_token') || localStorage.getItem('atlas_access_token');
       const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await fetch(`${API_BASE_URL}/export/cells/adm?${params.toString()}`, { headers });
+      const response = await this.fetchWithTimeout(`${API_BASE_URL}/export/cells/adm?${params.toString()}`, { headers }, 20000);
       
       if (response.ok) {
         const data = await response.json();
@@ -2376,7 +2421,7 @@ export class ExportQuickDialog {
   ): Promise<Array<{ cell_id?: string; geometry: any; has_data: boolean; n_sondages?: number }>> {
     try {
       console.log('[Export] Fallback sur /coverage/mailles pour la grille');
-      const response = await fetch(`${API_BASE_URL}/coverage/mailles`);
+      const response = await this.fetchWithTimeout(`${API_BASE_URL}/coverage/mailles`, {}, 20000);
       
       if (!response.ok) {
         console.warn('[Export] Erreur API coverage/mailles:', response.status);
@@ -2519,6 +2564,30 @@ export class ExportQuickDialog {
     }
     
     const metrics = await optimizer.computeOptimalBounds(boundsRect, admGeometry)
+
+    const isFiniteNumber = (n: any): n is number => typeof n === 'number' && Number.isFinite(n)
+    const MAX_MARGIN_KM = 50
+    const optimized = metrics.bounds
+    const optimizedWidth = optimized.east - optimized.west
+    const optimizedHeight = optimized.north - optimized.south
+
+    const marginMaxKm = metrics.margin_max_km
+    const invalidOptimizedBounds =
+      !isFiniteNumber(marginMaxKm) ||
+      marginMaxKm > MAX_MARGIN_KM ||
+      !isFiniteNumber(optimizedWidth) ||
+      !isFiniteNumber(optimizedHeight) ||
+      optimizedWidth <= 0 ||
+      optimizedHeight <= 0
+
+    if (invalidOptimizedBounds) {
+      console.warn(`[Export][Bounds] ⚠️ Optimized bounds rejected -> fallback to raw ADM bounds (${admName || 'Zone'})`, {
+        marginMaxKm,
+        optimized,
+        raw: admBounds
+      })
+      return boundsRect
+    }
     
     // Export JSON des métriques pour traçabilité
     const jsonMetrics = optimizer.toJSON()
@@ -2528,107 +2597,55 @@ export class ExportQuickDialog {
     
     return metrics.bounds
   }
-  
-  /**
-   * ÉTAPE 3: Extrait la géométrie ADM depuis Leaflet de manière robuste
-   * Gère Polygon ET MultiPolygon + structures nested
-   * Fallback API si Leaflet échoue
-   */
+
   private async extractAdmGeometryRobust(admFilters: ActiveAdmFilters): Promise<ADMGeometry | null> {
-    console.log('[ExportBoundsGeometry] Extraction géométrie ADM...')
-    
-    // TENTATIVE 1: Extraction depuis Leaflet
-    const leafletGeom = this.extractAdmGeometryFromLeaflet()
-    if (leafletGeom) {
-      const bbox = this.computeGeometryBbox(leafletGeom)
-      const totalPoints = this.countGeometryPoints(leafletGeom)
-      console.log(`[ExportBoundsGeometry] ✅ Source: leaflet | Type: ${leafletGeom.type} | Points: ${totalPoints} | BBox: [${bbox.west.toFixed(3)}, ${bbox.south.toFixed(3)}, ${bbox.east.toFixed(3)}, ${bbox.north.toFixed(3)}]`)
-      return leafletGeom
+    try {
+      const fromCallback = this.config.getAdmGeometry?.()
+      if (fromCallback) return fromCallback
+    } catch {
+      // ignore
     }
-    
-    // TENTATIVE 2: Fallback API
-    console.warn('[ExportBoundsGeometry] ⚠️ Leaflet failed, trying API fallback...')
-    const apiGeom = await this.fetchAdmGeometryFromAPI(admFilters)
-    if (apiGeom) {
-      const bbox = this.computeGeometryBbox(apiGeom)
-      const totalPoints = this.countGeometryPoints(apiGeom)
-      console.log(`[ExportBoundsGeometry] ✅ Source: api | Type: ${apiGeom.type} | Points: ${totalPoints} | BBox: [${bbox.west.toFixed(3)}, ${bbox.south.toFixed(3)}, ${bbox.east.toFixed(3)}, ${bbox.north.toFixed(3)}]`)
-      return apiGeom
-    }
-    
-    // ÉCHEC: Pas de géométrie disponible
-    console.error('[ExportBoundsGeometry] ❌ Source: none | Clearance sera approximée à 50px')
-    return null
-  }
-  
-  /**
-   * Extrait géométrie depuis polygon Leaflet (méthode originale améliorée)
-   */
-  private extractAdmGeometryFromLeaflet(): ADMGeometry | null {
-    const polygon = this.config.getAdmPolygon?.()
-    if (!polygon || polygon.length < 3) {
-      return null
-    }
-    
-    // getAdmPolygonCoords() retourne [[lng, lat], [lng, lat], ...]
-    const coordinates: [number, number][] = polygon.map(p => {
-      // Vérifier si c'est un objet {lat, lng}
-      if (typeof p === 'object' && 'lat' in p && 'lng' in p) {
-        return [(p as any).lng, (p as any).lat]
-      }
-      // Sinon c'est un tableau [lng, lat] (format GeoJSON standard)
-      return [p[0], p[1]] as [number, number]
-    })
-    
-    // Fermer le polygon si nécessaire
-    const first = coordinates[0]
-    const last = coordinates[coordinates.length - 1]
-    if (first[0] !== last[0] || first[1] !== last[1]) {
-      coordinates.push([first[0], first[1]])
-    }
-    
-    return {
-      type: 'Polygon',
-      coordinates: [coordinates]
-    }
-  }
-  
-  /**
-   * Fetch géométrie ADM depuis API (fallback)
-   */
-  private async fetchAdmGeometryFromAPI(admFilters: ActiveAdmFilters): Promise<ADMGeometry | null> {
-    let level = ''
-    let name = ''
-    
-    if (admFilters.adm3) {
+
+    let level: 'adm1' | 'adm2' | 'adm3' | null = null
+    let name: string | null = null
+    if (admFilters.adm3?.name) {
       level = 'adm3'
       name = admFilters.adm3.name
-    } else if (admFilters.adm2) {
+    } else if (admFilters.adm2?.name) {
       level = 'adm2'
       name = admFilters.adm2.name
-    } else if (admFilters.adm1) {
+    } else if (admFilters.adm1?.name) {
       level = 'adm1'
       name = admFilters.adm1.name
     }
-    
+
     if (!level || !name) return null
-    
+
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/adm-geojson?level=${level}&name=${encodeURIComponent(name)}`
+      const response = await this.fetchWithTimeout(
+        `${API_BASE_URL}/adm-geojson?level=${level}&name=${encodeURIComponent(name)}`,
+        {},
+        20000
       )
-      
-      if (response.ok) {
-        const geojson = await response.json()
-        if (geojson.features && geojson.features[0]) {
-          return geojson.features[0].geometry
-        }
+
+      if (!response.ok) return null
+
+      const geojson = await response.json()
+
+      // Formats possibles selon endpoint:
+      // - { geometry: {type,coordinates}, properties: {...} }
+      // - FeatureCollection -> prendre la 1ère feature
+      const geom = geojson?.geometry || geojson?.features?.[0]?.geometry
+      if (!geom) return null
+
+      if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') {
+        return geom as ADMGeometry
       }
-    } catch (e) {
-      console.warn('[ExportBoundsGeometry] API fetch failed:', e)
+
+      return null
+    } catch {
+      return null
     }
-    
-    return null
   }
   
   /**
@@ -2890,6 +2907,30 @@ export class ExportQuickDialog {
     }
     
     const metrics = await optimizer.computeOptimalBounds(boundsRect, geometry)
+
+    const isFiniteNumber = (n: any): n is number => typeof n === 'number' && Number.isFinite(n)
+    const MAX_MARGIN_KM = 50
+    const optimized = metrics.bounds
+    const optimizedWidth = optimized.east - optimized.west
+    const optimizedHeight = optimized.north - optimized.south
+    const marginMaxKm = metrics.margin_max_km
+
+    const invalidOptimizedBounds =
+      !isFiniteNumber(marginMaxKm) ||
+      marginMaxKm > MAX_MARGIN_KM ||
+      !isFiniteNumber(optimizedWidth) ||
+      !isFiniteNumber(optimizedHeight) ||
+      optimizedWidth <= 0 ||
+      optimizedHeight <= 0
+
+    if (invalidOptimizedBounds) {
+      console.warn(`[${level.toUpperCase()}][Bounds] ⚠️ Optimized bounds rejected -> fallback to raw ADM bounds`, {
+        marginMaxKm,
+        optimized,
+        raw: admBounds
+      })
+      return boundsRect
+    }
     
     return metrics.bounds
   }
@@ -2968,6 +3009,26 @@ export class ExportQuickDialog {
     }
     
     return inside;
+  }
+
+  private async fetchAdmBoundaries(
+    admFilters: ActiveAdmFilters,
+    level: 'adm1' | 'adm2'
+  ): Promise<any> {
+    const params = new URLSearchParams();
+    params.set('level', level);
+    if (admFilters.adm1) params.set('adm1', admFilters.adm1.name);
+    if (admFilters.adm2) params.set('adm2', admFilters.adm2.name);
+    if (admFilters.adm3) params.set('adm3', admFilters.adm3.name);
+
+    const url = apiUrl(`/coverage/adm-boundaries?${params.toString()}`);
+    console.log('[Export] Fetch boundaries:', url);
+    const res = await this.fetchWithTimeout(url, {}, 20000);
+    if (!res.ok) {
+      console.warn('[Export] boundaries HTTP', res.status, res.statusText);
+      return { type: 'FeatureCollection', features: [] };
+    }
+    return res.json();
   }
 }
 

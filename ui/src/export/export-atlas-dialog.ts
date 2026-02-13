@@ -52,6 +52,8 @@ export interface AtlasExportConfig {
   debugMode: boolean; // Limite à 1 zone + 1-3 thématiques
   // Nouveau: délimitation hiérarchique (frontières du niveau parent)
   boundaryLevel: 'none' | 'adm1' | 'adm2'; // Niveau des frontières à afficher
+  // Niveau de grille thématique (2km/28km/combined)
+  thematicGridLevel: '2km' | '28km' | 'combined';
   // Export données pour analyse
   exportData: boolean;
   dataOptions: {
@@ -596,6 +598,7 @@ export class ExportAtlasDialog {
       showAdmBoundary: true,
       debugMode: false, // Mode debug rapide désactivé par défaut
       boundaryLevel: 'adm2',
+      thematicGridLevel: '2km',
       exportData: false,
       dataOptions: {
         includeGrid: true,
@@ -758,6 +761,18 @@ export class ExportAtlasDialog {
                   <option value="adm2" selected>Préfectures (ADM2)</option>
                 </select>
                 <small class="field-hint">Frontières internes à afficher</small>
+              </div>
+            </div>
+
+            <div class="atlas-row" style="margin-top: 10px;">
+              <div class="atlas-field">
+                <label>🧭 Type de grille thématique</label>
+                <select id="atlas-thematic-grid-level">
+                  <option value="2km" selected>Grille 2 km</option>
+                  <option value="28km">Grille 28 km (Profils)</option>
+                  <option value="combined">Grille combinée (2 km + 28 km)</option>
+                </select>
+                <small class="field-hint">Influence le rendu thématique et la légende</small>
               </div>
             </div>
             <div class="atlas-checkboxes" style="margin-top: 12px;">
@@ -1309,6 +1324,7 @@ export class ExportAtlasDialog {
     const showEmptyCells = (this.overlay.querySelector('#atlas-show-empty-cells') as HTMLInputElement)?.checked;
     const onlyAdmCells = (this.overlay.querySelector('#atlas-only-adm-cells') as HTMLInputElement)?.checked;
     const boundaryLevel = (this.overlay.querySelector('#atlas-boundary-level') as HTMLSelectElement)?.value as 'none' | 'adm1' | 'adm2';
+    const thematicGridLevel = ((this.overlay.querySelector('#atlas-thematic-grid-level') as HTMLSelectElement)?.value || '2km') as '2km' | '28km' | 'combined';
     
     // Options export données
     const exportDataEnabled = (this.overlay.querySelector('#atlas-export-data') as HTMLInputElement)?.checked || false;
@@ -1346,6 +1362,7 @@ export class ExportAtlasDialog {
       onlyAdmCells,
       showAdmBoundary,
       boundaryLevel,
+      thematicGridLevel,
       exportData: exportDataEnabled,
       dataOptions,
       exportCharts: (this.overlay.querySelector('#atlas-export-charts') as HTMLInputElement)?.checked || false,
@@ -1468,7 +1485,22 @@ export class ExportAtlasDialog {
     console.log('[Atlas][CONFIG] Export Charts:', config.exportCharts);
     console.log('[Atlas][CONFIG] Export Excel:', config.exportExcel);
     console.log('[Atlas][CONFIG] Thématiques:', config.thematics);
+    console.log('[Atlas][CONFIG] Grille thématique:', config.thematicGridLevel);
     
+    const getGridLevel = (window as any).getCurrentGridLevel
+    const setGridLevel = (window as any).setGridLevel
+    const previousGridLevel = typeof getGridLevel === 'function' ? (getGridLevel() as any) : undefined
+
+    const applyGridLevel = async (level: '2km' | '28km' | 'combined') => {
+      if (typeof setGridLevel === 'function') {
+        setGridLevel(level)
+      }
+      const panel = (window as any).thematicPanel
+      if (panel?.reloadFromUI) {
+        await panel.reloadFromUI()
+      }
+    }
+
     // Déterminer les ADM à exporter
     const levels: Array<'adm1' | 'adm2' | 'adm3'> = [];
     if (config.levels.adm1) levels.push('adm1');
@@ -1548,6 +1580,9 @@ export class ExportAtlasDialog {
             this.progressModal?.log('warning', 'ABORT', 'Export annulé par l\'utilisateur');
             this.updateProgress(`Export annulé (${current}/${totalExports} complétés)`, (current / totalExports) * 100);
             await this.finalizeExport(zip, results, current, totalExports, config);
+            if (previousGridLevel) {
+              await applyGridLevel(previousGridLevel)
+            }
             return;
           }
           
@@ -1575,6 +1610,10 @@ export class ExportAtlasDialog {
               this.progressModal?.logStep('Chargement thématique et ADM...');
               const palette = config.thematicPalettes?.[thematicId];
               const mapType = config.mapType || 'choropleth';
+
+              // Appliquer le niveau de grille thématique sélectionné (non destructif: restore à la fin)
+              await applyGridLevel(config.thematicGridLevel)
+
               await this.callbacks.setThematicAndAdm(thematicId, level, adm.name, palette, mapType);
               
               // 2. Attendre le rendu complet (tuiles + thématique)
@@ -1654,6 +1693,11 @@ export class ExportAtlasDialog {
     // Finaliser et télécharger le ZIP
     this.updateProgress('Création du fichier ZIP...', 99);
     await this.finalizeExport(zip, results, current, totalExports, config);
+
+    // Restaurer l'état global (niveau de grille) après batch export
+    if (previousGridLevel) {
+      await applyGridLevel(previousGridLevel)
+    }
   }
   
   private sanitizeFilename(name: string): string {

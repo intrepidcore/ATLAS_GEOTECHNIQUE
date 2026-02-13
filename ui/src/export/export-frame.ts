@@ -1735,8 +1735,27 @@ export class ExportFrame {
    * @param targetDpi DPI cible (défaut: 300 pour impression)
    */
   async toBlobWithDpi(targetDpi: number = 300): Promise<Blob> {
-    const blob = await this.toBlob('image/png');
-    return injectPngDpiMetadata(blob, targetDpi);
+    const originalBlob = await this.toBlob('image/png');
+    const injectedBlob = await injectPngDpiMetadata(originalBlob, targetDpi);
+
+    const validation = await validatePngBlob(injectedBlob);
+    if (!validation.valid) {
+      console.warn('[DPI] Validation PNG injecté FAIL, fallback sur PNG original', {
+        targetDpi,
+        originalSize: originalBlob.size,
+        injectedSize: injectedBlob.size,
+        validation
+      });
+      return originalBlob;
+    }
+
+    console.log('[DPI] Validation PNG injecté OK', {
+      targetDpi,
+      originalSize: originalBlob.size,
+      injectedSize: injectedBlob.size,
+      validation
+    });
+    return injectedBlob;
   }
 }
 
@@ -1841,6 +1860,120 @@ export async function injectPngDpiMetadata(pngBlob: Blob, dpi: number): Promise<
   });
   
   return new Blob([result], { type: 'image/png' });
+}
+
+async function validatePngBlob(blob: Blob): Promise<{ valid: boolean; blackRatio: number; whiteRatio: number; transparentRatio: number; uniformRatio: number; sampleCount: number; decodeOk: boolean }> {
+  if (typeof createImageBitmap !== 'function') {
+    return {
+      valid: true,
+      blackRatio: 0,
+      whiteRatio: 0,
+      transparentRatio: 0,
+      uniformRatio: 0,
+      sampleCount: 0,
+      decodeOk: false
+    };
+  }
+
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(blob);
+  } catch (e) {
+    return {
+      valid: false,
+      blackRatio: 1,
+      whiteRatio: 0,
+      transparentRatio: 0,
+      uniformRatio: 1,
+      sampleCount: 0,
+      decodeOk: false
+    };
+  }
+
+  const width = bitmap.width;
+  const height = bitmap.height;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    bitmap.close();
+    return {
+      valid: false,
+      blackRatio: 1,
+      whiteRatio: 0,
+      transparentRatio: 0,
+      uniformRatio: 1,
+      sampleCount: 0,
+      decodeOk: true
+    };
+  }
+
+  ctx.drawImage(bitmap, 0, 0);
+  bitmap.close();
+
+  const samplePoints: Array<[number, number]> = [];
+  for (let i = 0; i < 5; i++) {
+    for (let j = 0; j < 10; j++) {
+      const x = Math.floor((i + 0.5) * width / 5);
+      const y = Math.floor((j + 0.5) * height / 10);
+      samplePoints.push([x, y]);
+    }
+  }
+
+  let blackCount = 0;
+  let whiteCount = 0;
+  let transparentCount = 0;
+  let uniformCount = 0;
+
+  for (const [x, y] of samplePoints) {
+    const pixel = ctx.getImageData(x, y, 1, 1).data;
+    const r = pixel[0];
+    const g = pixel[1];
+    const b = pixel[2];
+    const a = pixel[3];
+
+    if (a < 10) {
+      transparentCount++;
+      blackCount++;
+      continue;
+    }
+
+    const isBlack = (r < 10 && g < 10 && b < 10);
+    const isWhite = (r > 245 && g > 245 && b > 245);
+
+    if (isBlack) blackCount++;
+    if (isWhite) whiteCount++;
+
+    const max = Math.max(r, g, b);
+    const min = Math.min(r, g, b);
+    if ((max - min) < 3) {
+      uniformCount++;
+    }
+  }
+
+  const blackRatio = blackCount / samplePoints.length;
+  const whiteRatio = whiteCount / samplePoints.length;
+  const transparentRatio = transparentCount / samplePoints.length;
+  const uniformRatio = uniformCount / samplePoints.length;
+
+  const valid = (
+    blackRatio < 0.8 &&
+    transparentRatio < 0.8 &&
+    whiteRatio < 0.95 &&
+    uniformRatio < 0.98
+  );
+
+  return {
+    valid,
+    blackRatio,
+    whiteRatio,
+    transparentRatio,
+    uniformRatio,
+    sampleCount: samplePoints.length,
+    decodeOk: true
+  };
 }
 
 /**

@@ -4366,6 +4366,9 @@ const thematicManager = new ThematicMapManager(map, API_GEO)
 const thematicPanel = new ThematicPanel(thematicManager)
 console.log('[INIT] ✅ Cartes thématiques initialisées (Export Pro intégré dans le panneau)')
 
+;(window as any).thematicManager = thematicManager
+;(window as any).thematicPanel = thematicPanel
+
 // Écouter les clics sur les mailles thématiques pour propager vers la grille
 map.on('thematicmap:cellclick', async (e: any) => {
   const { code, properties, latlng, layer } = e

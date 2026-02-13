@@ -465,6 +465,7 @@ export interface ResponseMetadata {
   category: string
   generated_at: string
   filters_applied: {
+    grid?: '2km' | '28km'
     bbox?: [number, number, number, number]
     adm1?: string
     adm2?: string

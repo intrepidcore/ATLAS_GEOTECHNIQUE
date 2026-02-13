@@ -121,6 +121,9 @@ export interface ExportOptions {
   showEmptyCells?: boolean;
   onlyAdmCells?: boolean;
   maskMode?: 'none' | 'context' | 'focus' | 'clip';
+
+  // Subdivisions internes à afficher (Export Pro/Atlas)
+  boundaryLevel?: 'none' | 'adm1' | 'adm2';
   
   // Délimitations sous-ADM (ex: afficher les préfectures dans une région)
   showSubAdmBoundaries?: boolean;
@@ -145,6 +148,7 @@ export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   
   grid: DEFAULT_GRID_OPTIONS,
   frameStyle: 'simple',
+  boundaryLevel: 'none',
 };
 
 // ============================================================================

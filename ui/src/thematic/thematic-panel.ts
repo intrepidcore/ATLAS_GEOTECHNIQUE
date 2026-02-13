@@ -112,6 +112,10 @@ export class ThematicPanel {
     
     console.log('[ThematicPanel] ✅ Initialisation terminée')
   }
+
+  public async reloadFromUI(): Promise<void> {
+    await this.applyThematic()
+  }
   
   /**
    * Render the complete panel HTML
@@ -469,6 +473,34 @@ export class ThematicPanel {
       togglePedologieCheckbox: document.getElementById('togglePedologie') as HTMLInputElement,
       toggleRisqueGonflementCheckbox: document.getElementById('toggleRisqueGonflement') as HTMLInputElement,
       toggleDsmCheckbox: document.getElementById('toggleDsm') as HTMLInputElement
+    }
+  }
+
+  private applyThematicOverrides(palette?: string, mapType?: 'choropleth' | 'bubble' | 'heatmap'): void {
+    if (palette && this.elements.paletteSelect) {
+      console.log(`[ThematicPanel][Override] palette requested="${palette}" before apply (current select="${this.elements.paletteSelect.value}")`)
+      this.elements.paletteSelect.value = palette
+      try {
+        const custom = this.elements.paletteSelect.parentElement?.querySelector('.palette-custom-select') as HTMLElement | null
+        const selectedEl = custom?.querySelector('.palette-selected') as HTMLElement | null
+        const gradientEl = selectedEl?.querySelector('.palette-gradient') as HTMLElement | null
+        const nameEl = selectedEl?.querySelector('.palette-name') as HTMLElement | null
+        const p = PALETTE_OPTIONS.find(x => x.value === palette)
+        if (p && gradientEl) gradientEl.style.background = this.createGradientStyle(p.colors)
+        if (p && nameEl) nameEl.textContent = p.label
+        if (custom) {
+          custom.querySelectorAll('.palette-option').forEach(o => o.classList.remove('selected'))
+          const active = custom.querySelector(`.palette-option[data-value="${palette}"]`)
+          active?.classList.add('selected')
+        }
+      } catch {
+        // best-effort only
+      }
+    }
+
+    if (mapType && this.elements.mapTypeSelect) {
+      console.log(`[ThematicPanel][Override] mapType requested="${mapType}" before apply (current select="${this.elements.mapTypeSelect.value}")`)
+      this.elements.mapTypeSelect.value = mapType
     }
   }
   
@@ -1096,6 +1128,8 @@ export class ThematicPanel {
         if ((window as any).syncGridLevelUI) {
           ;(window as any).syncGridLevelUI(level)
         }
+
+        void this.applyThematic()
       })
     })
     
@@ -1737,8 +1771,14 @@ export class ThematicPanel {
     
     const callbacks = {
       // Changer la thématique et le filtre ADM - VERSION ROBUSTE (v3.5.2: palette optionnelle)
-      setThematicAndAdm: async (thematicId: string, admLevel: string, admName: string, palette?: string): Promise<void> => {
-        console.log(`[Atlas] setThematicAndAdm: ${thematicId} / ${admLevel} / ${admName} / palette=${palette || 'default'}`)
+      setThematicAndAdm: async (
+        thematicId: string,
+        admLevel: string,
+        admName: string,
+        palette?: string,
+        mapType?: 'choropleth' | 'bubble' | 'heatmap'
+      ): Promise<void> => {
+        console.log(`[Atlas] setThematicAndAdm: ${thematicId} / ${admLevel} / ${admName} / palette=${palette || 'default'} / mapType=${mapType || 'default'}`)
         
         // 1. Construire l'état thématique (source unique de vérité)
         const admFilters: ThematicState['admFilters'] = {}
@@ -1763,32 +1803,13 @@ export class ThematicPanel {
         if (this.elements.adm3Select) {
           this.elements.adm3Select.value = admFilters.adm3 || ''
         }
-        if (this.elements.parameterSelect) {
-          this.elements.parameterSelect.value = thematicId
-        }
-        
-        // 3. Construire la config directement (pas via UI)
-        // v3.5.2: Utiliser la palette passée en paramètre si disponible
-        const effectivePalette = palette || this.currentConfig.style.palette || 'Blues'
-        const config: ThematicMapConfig = {
-          ...this.currentConfig,
-          parameter: thematicId,
-          filters: {
-            ...this.currentConfig.filters,
-            adm1: admFilters.adm1,
-            adm2: admFilters.adm2,
-            adm3: admFilters.adm3
-          },
-          style: {
-            ...this.currentConfig.style,
-            palette: effectivePalette
-          }
-        }
-        console.log(`[Atlas] Palette effective: ${effectivePalette}`)
-        
-        // 4. Charger la carte thématique directement via le manager
-        console.log(`[Atlas] Chargement carte: ${thematicId}`)
-        await this.manager.loadThematicMap(config)
+
+        // Appliquer overrides export AVANT de reconstruire la config depuis le DOM
+        this.applyThematicOverrides(palette, mapType)
+
+        // Recharger la thématique avec le niveau de grille courant (2km/28km/combined)
+        // afin que l'export capture le bon rendu.
+        await this.applyThematic()
         
         // 5. Attendre que le manager soit prêt
         await this.manager.waitUntilReady(5000)

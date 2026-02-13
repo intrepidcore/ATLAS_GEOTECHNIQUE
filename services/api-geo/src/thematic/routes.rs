@@ -14,10 +14,75 @@ use super::types::*;
 
 /// Calculer le nombre total de mailles dans l'ADM (sans filtre min_sondages)
 async fn calculate_count_total(pool: &PgPool, req: &ThematicDataRequest) -> Option<usize> {
+    let grid = req.grid.as_deref().unwrap_or("2km");
+    let grid = if grid == "28km" { "28km" } else { "2km" };
+
+    if grid == "28km" {
+        // Compter le nombre total de mailles 28km dans la zone (sans filtre min_sondages)
+        // Approche robuste: compter les m28 qui intersectent au moins une maille 2km filtrée (ADM) et éventuellement bbox.
+        let mut query = String::from(
+            "SELECT COUNT(DISTINCT m28.code_m28) as cnt \n             FROM atlas.maille_28km m28 \n             JOIN (\n                 SELECT ST_Transform(geom, 25231) as geom, adm1_name, adm2_name, adm3_name\n                 FROM mailles_geotechnique_stats_wgs84\n             ) m2 ON ST_Intersects(m2.geom, m28.geom)\n             WHERE 1=1",
+        );
+        let mut param_index = 1;
+
+        if req.bbox.is_some() {
+            query.push_str(&format!(
+                " AND m28.geom && ST_Transform(ST_MakeEnvelope(${},${},${},${},4326),25231)",
+                param_index,
+                param_index + 1,
+                param_index + 2,
+                param_index + 3
+            ));
+            param_index += 4;
+        }
+
+        if req.adm1.is_some() {
+            query.push_str(&format!(" AND m2.adm1_name = ${}", param_index));
+            param_index += 1;
+        }
+        if req.adm2.is_some() {
+            query.push_str(&format!(" AND m2.adm2_name = ${}", param_index));
+            param_index += 1;
+        }
+        if req.adm3.is_some() {
+            query.push_str(&format!(" AND m2.adm3_name = ${}", param_index));
+        }
+
+        let mut query_builder = sqlx::query(&query);
+        if let Some(bbox) = req.bbox {
+            query_builder = query_builder
+                .bind(bbox[0])
+                .bind(bbox[1])
+                .bind(bbox[2])
+                .bind(bbox[3]);
+        }
+        if let Some(adm1) = &req.adm1 {
+            query_builder = query_builder.bind(adm1);
+        }
+        if let Some(adm2) = &req.adm2 {
+            query_builder = query_builder.bind(adm2);
+        }
+        if let Some(adm3) = &req.adm3 {
+            query_builder = query_builder.bind(adm3);
+        }
+
+        return match query_builder.fetch_one(pool).await {
+            Ok(row) => {
+                let cnt: i64 = row.get("cnt");
+                Some(cnt as usize)
+            }
+            Err(e) => {
+                eprintln!("⚠️ Erreur count_total 28km: {}", e);
+                None
+            }
+        };
+    }
+
     // Construire la requête de comptage sans le filtre min_sondages
-    let mut query = String::from("SELECT COUNT(*) as cnt FROM mailles_geotechnique_stats_wgs84 WHERE 1=1");
+    let mut query =
+        String::from("SELECT COUNT(*) as cnt FROM mailles_geotechnique_stats_wgs84 WHERE 1=1");
     let mut param_index = 1;
-    
+
     // Filtres ADM uniquement (pas min_sondages)
     if req.adm1.is_some() {
         query.push_str(&format!(" AND adm1_name = ${}", param_index));
@@ -31,7 +96,7 @@ async fn calculate_count_total(pool: &PgPool, req: &ThematicDataRequest) -> Opti
         query.push_str(&format!(" AND adm3_name = ${}", param_index));
         // param_index += 1; // Unused after this
     }
-    
+
     let mut query_builder = sqlx::query(&query);
     if let Some(adm1) = &req.adm1 {
         query_builder = query_builder.bind(adm1);
@@ -42,7 +107,7 @@ async fn calculate_count_total(pool: &PgPool, req: &ThematicDataRequest) -> Opti
     if let Some(adm3) = &req.adm3 {
         query_builder = query_builder.bind(adm3);
     }
-    
+
     match query_builder.fetch_one(pool).await {
         Ok(row) => {
             let cnt: i64 = row.get("cnt");
@@ -56,21 +121,38 @@ async fn calculate_count_total(pool: &PgPool, req: &ThematicDataRequest) -> Opti
 }
 
 /// Calculer le contexte parent pour comparaisons multi-niveaux
-async fn calculate_parent_context(pool: &PgPool, req: &ThematicDataRequest) -> Option<ParentContext> {
+async fn calculate_parent_context(
+    pool: &PgPool,
+    req: &ThematicDataRequest,
+) -> Option<ParentContext> {
+    let grid = req.grid.as_deref().unwrap_or("2km");
+    let grid = if grid == "28km" { "28km" } else { "2km" };
+    if grid == "28km" {
+        return None;
+    }
+
     let column = req.parameter.sql_column();
-    
+
     // Déterminer le niveau parent
     let (parent_level, parent_name, parent_filter) = if req.adm3.is_some() {
         // ADM3 → parent = ADM2
         if let Some(adm2) = &req.adm2 {
-            ("adm2", adm2.clone(), format!("adm2_name = '{}'", adm2.replace("'", "''")))
+            (
+                "adm2",
+                adm2.clone(),
+                format!("adm2_name = '{}'", adm2.replace("'", "''")),
+            )
         } else {
             return None;
         }
     } else if req.adm2.is_some() {
         // ADM2 → parent = ADM1
         if let Some(adm1) = &req.adm1 {
-            ("adm1", adm1.clone(), format!("adm1_name = '{}'", adm1.replace("'", "''")))
+            (
+                "adm1",
+                adm1.clone(),
+                format!("adm1_name = '{}'", adm1.replace("'", "''")),
+            )
         } else {
             return None;
         }
@@ -81,7 +163,7 @@ async fn calculate_parent_context(pool: &PgPool, req: &ThematicDataRequest) -> O
         // Pas de filtre ADM → pas de contexte parent
         return None;
     };
-    
+
     // Requête pour le parent
     let query = format!(
         "SELECT COALESCE(SUM({}), 0) as parent_sum, COUNT(*) as parent_cells 
@@ -89,12 +171,12 @@ async fn calculate_parent_context(pool: &PgPool, req: &ThematicDataRequest) -> O
          WHERE {} IS NOT NULL AND {}",
         column, column, parent_filter
     );
-    
+
     match sqlx::query(&query).fetch_one(pool).await {
         Ok(row) => {
             let parent_sum: f64 = row.try_get("parent_sum").unwrap_or(0.0);
             let parent_cells: i64 = row.try_get("parent_cells").unwrap_or(0);
-            
+
             Some(ParentContext {
                 level: parent_level.to_string(),
                 parent_name,
@@ -129,8 +211,12 @@ pub async fn get_thematic_data(
     let column = req.parameter.sql_column();
     let tolerance = simplify_tolerance(req.zoom);
 
+    let grid = req.grid.as_deref().unwrap_or("2km");
+    let grid = if grid == "28km" { "28km" } else { "2km" };
+
     // Construire la requête SQL dynamiquement
-    // Utiliser la MV WGS84 (zéro transform, géométries déjà en 4326)
+    // 2km: MV WGS84 (géométries déjà en 4326)
+    // 28km: agrégation PostGIS (aires en EPSG:25231), géométries retournées en 4326
     let geom_column = if tolerance > 1000.0 {
         "geom_simplified" // Zoom out : géométrie simplifiée
     } else {
@@ -172,6 +258,57 @@ pub async fn get_thematic_data(
                  WHERE d.altitude_mean IS NOT NULL"
             )
         }
+    } else if grid == "28km" {
+        // Agrégation 28km : moyenne pondérée par aire d'intersection (EPSG:25231)
+        // Notes:
+        // - On agrège sur la grille 28km (atlas.maille_28km)
+        // - On intersecte avec les mailles 2km stats (MV WGS84 transformée en 25231)
+        // - Les filtres (adm/bbox/min_sondages) doivent s'appliquer AVANT l'agrégation
+        let geom_expr = if req.include_geometry {
+            if tolerance > 1000.0 {
+                "ST_AsGeoJSON(ST_SimplifyPreserveTopology(ST_Transform(m28.geom, 4326), 0.001))::text as geom"
+            } else {
+                "ST_AsGeoJSON(ST_Transform(m28.geom, 4326))::text as geom"
+            }
+        } else {
+            "NULL::text as geom"
+        };
+
+        // On prépare la requête jusqu'au WHERE afin que les filtres puissent être ajoutés ensuite
+        format!(
+            "WITH base AS (
+                SELECT
+                    m28.code_m28 as code,
+                    {},
+                    (
+                        SUM(CAST(m2.{} AS DOUBLE PRECISION) * ST_Area(ST_Intersection(m2.geom, m28.geom)))
+                        / NULLIF(SUM(ST_Area(ST_Intersection(m2.geom, m28.geom))), 0)
+                    ) as value,
+                    SUM(m2.n_sondages)::bigint as n_sondages,
+                    SUM(m2.n_essais_geo)::bigint as n_essais_geo,
+                    NULL::text as adm1_name,
+                    NULL::text as adm2_name,
+                    NULL::text as adm3_name
+                FROM atlas.maille_28km m28
+                JOIN (
+                    SELECT
+                        code,
+                        n_sondages,
+                        n_essais_geo,
+                        adm1_name,
+                        adm2_name,
+                        adm3_name,
+                        ST_Transform(geom, 25231) as geom,
+                        {}
+                    FROM mailles_geotechnique_stats_wgs84
+                ) m2
+                  ON ST_Intersects(m2.geom, m28.geom)
+                WHERE m2.{} IS NOT NULL",
+            geom_expr,
+            column,
+            column,
+            column
+        )
     } else if req.include_geometry {
         format!(
             "SELECT 
@@ -207,22 +344,73 @@ pub async fn get_thematic_data(
 
     // Filtre min_sondages
     if req.min_sondages.is_some() {
-        query.push_str(&format!(" AND n_sondages >= ${}", param_index));
+        if grid == "28km" {
+            query.push_str(&format!(" AND m2.n_sondages >= ${}", param_index));
+        } else {
+            query.push_str(&format!(" AND n_sondages >= ${}", param_index));
+        }
         param_index += 1;
+    }
+
+    // Filtre bbox (WGS84)
+    if req.bbox.is_some() {
+        // 2km MV en 4326 direct via geom/geom_simplified
+        // 28km : on filtre sur la geom 28km (table atlas.maille_28km en 25231) en transformant l'enveloppe 4326 -> 25231
+        if grid == "28km" {
+            query.push_str(&format!(
+                " AND m28.geom && ST_Transform(ST_MakeEnvelope(${},${},${},${},4326),25231)",
+                param_index,
+                param_index + 1,
+                param_index + 2,
+                param_index + 3
+            ));
+        } else {
+            query.push_str(&format!(
+                " AND {} && ST_MakeEnvelope(${},${},${},${},4326)",
+                geom_column,
+                param_index,
+                param_index + 1,
+                param_index + 2,
+                param_index + 3
+            ));
+        }
+        param_index += 4;
     }
 
     // Filtres ADM (paramétrés - colonnes maintenant dans la MV)
     if req.adm1.is_some() {
-        query.push_str(&format!(" AND adm1_name = ${}", param_index));
+        if grid == "28km" {
+            query.push_str(&format!(" AND m2.adm1_name = ${}", param_index));
+        } else {
+            query.push_str(&format!(" AND adm1_name = ${}", param_index));
+        }
         param_index += 1;
     }
     if req.adm2.is_some() {
-        query.push_str(&format!(" AND adm2_name = ${}", param_index));
+        if grid == "28km" {
+            query.push_str(&format!(" AND m2.adm2_name = ${}", param_index));
+        } else {
+            query.push_str(&format!(" AND adm2_name = ${}", param_index));
+        }
         param_index += 1;
     }
     if req.adm3.is_some() {
-        query.push_str(&format!(" AND adm3_name = ${}", param_index));
+        if grid == "28km" {
+            query.push_str(&format!(" AND m2.adm3_name = ${}", param_index));
+        } else {
+            query.push_str(&format!(" AND adm3_name = ${}", param_index));
+        }
         param_index += 1;
+    }
+
+    if grid == "28km" {
+        query.push_str(
+            " GROUP BY m28.code_m28, m28.geom
+            )
+            SELECT code, geom, CAST(value AS DOUBLE PRECISION) as value, n_sondages, n_essais_geo, adm1_name, adm2_name, adm3_name
+            FROM base
+            WHERE value IS NOT NULL"
+        );
     }
 
     query.push_str(" ORDER BY code");
@@ -239,6 +427,14 @@ pub async fn get_thematic_data(
     // Bind parameters
     if let Some(min_s) = req.min_sondages {
         query_builder = query_builder.bind(min_s);
+    }
+
+    if let Some(bbox) = req.bbox {
+        query_builder = query_builder
+            .bind(bbox[0])
+            .bind(bbox[1])
+            .bind(bbox[2])
+            .bind(bbox[3]);
     }
     if let Some(adm1) = &req.adm1 {
         query_builder = query_builder.bind(adm1);
@@ -300,17 +496,22 @@ pub async fn get_thematic_data(
                     }
                 }
             } else {
-                features.push(properties);
+                let feature = serde_json::json!({
+                    "type": "Feature",
+                    "geometry": serde_json::Value::Null,
+                    "properties": properties
+                });
+                features.push(feature);
             }
         }
     }
 
     // Calculer count_total (toutes les mailles de l'ADM, sans filtre min_sondages)
     let count_total = calculate_count_total(pool, &req).await;
-    
+
     // Calculer parent_context pour comparaisons multi-niveaux
     let parent_context = calculate_parent_context(pool, &req).await;
-    
+
     // Calculer statistiques enrichies
     let stats = calculate_statistics_extended(&values, count_total, parent_context);
 
@@ -322,6 +523,7 @@ pub async fn get_thematic_data(
         category: req.parameter.category().to_string(),
         generated_at: chrono::Utc::now().to_rfc3339(),
         filters_applied: FiltersApplied {
+            grid: req.grid,
             bbox: req.bbox,
             adm1: req.adm1,
             adm2: req.adm2,
@@ -616,7 +818,7 @@ pub async fn get_adm_cells(
     Query(params): Query<AdmCellsRequest>,
 ) -> Result<Json<AdmCellsResponse>, (StatusCode, String)> {
     let pool = &state.pool;
-    
+
     // Construire la requête pour récupérer toutes les mailles de l'ADM
     let mut query = String::from(
         "SELECT 
@@ -625,11 +827,11 @@ pub async fn get_adm_cells(
             n_sondages,
             adm1_name, adm2_name, adm3_name
          FROM mailles_geotechnique_stats_wgs84 
-         WHERE 1=1"
+         WHERE 1=1",
     );
-    
+
     let mut param_index = 1;
-    
+
     if params.adm1.is_some() {
         query.push_str(&format!(" AND adm1_name = ${}", param_index));
         param_index += 1;
@@ -642,7 +844,7 @@ pub async fn get_adm_cells(
         query.push_str(&format!(" AND adm3_name = ${}", param_index));
         // param_index += 1;
     }
-    
+
     let mut query_builder = sqlx::query(&query);
     if let Some(adm1) = &params.adm1 {
         query_builder = query_builder.bind(adm1);
@@ -653,26 +855,29 @@ pub async fn get_adm_cells(
     if let Some(adm3) = &params.adm3 {
         query_builder = query_builder.bind(adm3);
     }
-    
+
     let rows = query_builder.fetch_all(pool).await.map_err(|e| {
-        (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur DB: {}", e))
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Erreur DB: {}", e),
+        )
     })?;
-    
+
     let mut cells: Vec<AdmCell> = Vec::new();
     let mut total_count = 0;
     let mut with_data_count = 0;
-    
+
     for row in rows {
         let cell_id: String = row.get("cell_id");
         let geometry: serde_json::Value = row.get("geometry");
         let n_sondages: Option<i32> = row.try_get("n_sondages").ok();
-        
+
         let has_data = n_sondages.map(|n| n > 0).unwrap_or(false);
         if has_data {
             with_data_count += 1;
         }
         total_count += 1;
-        
+
         cells.push(AdmCell {
             cell_id,
             geometry,
@@ -680,7 +885,7 @@ pub async fn get_adm_cells(
             n_sondages,
         });
     }
-    
+
     Ok(Json(AdmCellsResponse {
         cells,
         total_count,
