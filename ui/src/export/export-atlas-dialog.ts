@@ -1724,6 +1724,17 @@ export class ExportAtlasDialog {
     
     // Générer le ZIP si disponible et des exports ont réussi
     console.log('[Atlas] Finalisation export:', { zip: !!zip, successful, failed, completed, total });
+
+    try {
+      const logSummary = (window as any).__logExportCacheSummary
+      if (typeof logSummary === 'function') {
+        logSummary({ totalMaps: total, successful, failed })
+      } else {
+        console.log('[EXPORT SUMMARY]', { totalMaps: total, successful, failed })
+      }
+    } catch {
+      // ignore
+    }
     
     if (zip && successful > 0) {
       try {

@@ -1,9 +1,8 @@
 use crate::state::AppState;
-use axum::http::StatusCode;
-use axum::response::IntoResponse;
 use axum::{
     extract::{Path, Query, State},
-    routing::{get, post},
+    http::StatusCode,
+    response::IntoResponse,
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -14,6 +13,172 @@ pub struct LegacyLookupItem {
     pub new_code: String,
     pub coverage_pct: f64,
     pub match_type: String,
+}
+
+pub async fn get_coverage_adm_boundaries(
+    Query(params): Query<std::collections::HashMap<String, String>>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    let level = match params.get("level").map(|s| s.to_lowercase()) {
+        Some(v) => v,
+        None => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "missing level (adm1|adm2|adm3)"})),
+            )
+                .into_response();
+        }
+    };
+
+    let adm1 = params.get("adm1").cloned();
+    let adm2 = params.get("adm2").cloned();
+    let adm3 = params.get("adm3").cloned();
+
+    let candidates: Vec<(&'static str, &'static str, &'static str)> = match level.as_str() {
+        "adm1" => vec![
+            ("adm1", "gid", "adm1_fr"),
+            ("adm1_tg", "gid", "name"),
+            ("adm1_togo", "gid", "adm1_fr"),
+        ],
+        "adm2" => vec![
+            ("adm2", "gid", "adm2_fr"),
+            ("adm2_tg", "gid", "name"),
+            ("adm2_togo", "gid", "adm2_fr"),
+        ],
+        "adm3" => vec![
+            ("adm3", "gid", "adm3_fr"),
+            ("adm3_tg", "gid", "name"),
+            ("adm3_togo", "gid", "adm3_fr"),
+        ],
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "invalid level, must be adm1, adm2, or adm3"})),
+            )
+                .into_response();
+        }
+    };
+
+    let mut last_error: Option<String> = None;
+
+    for (table, gid_col, name_col) in candidates {
+        // Déterminer les filtres voulus (un seul filtre parent principal)
+        let (parent_value, parent_cols): (Option<String>, Vec<&'static str>) = match level.as_str() {
+            "adm2" => (adm1.clone(), vec!["adm1_fr", "adm1_name", "adm1"]),
+            "adm3" => {
+                if adm2.is_some() {
+                    (adm2.clone(), vec!["adm2_fr", "adm2_name", "adm2"])
+                } else {
+                    (adm1.clone(), vec!["adm1_fr", "adm1_name", "adm1"])
+                }
+            }
+            _ => (None, vec![]),
+        };
+
+        // Si aucun filtre, on tente une requête simple.
+        let parent_cols_to_try: Vec<Option<&'static str>> = if parent_value.is_some() {
+            parent_cols.into_iter().map(Some).collect()
+        } else {
+            vec![None]
+        };
+
+        for parent_col in parent_cols_to_try {
+            let mut where_parts: Vec<String> = vec![];
+            let mut bind_values: Vec<String> = vec![];
+
+            if let (Some(v), Some(col)) = (&parent_value, parent_col) {
+                where_parts.push(format!("{} ILIKE ${}", col, bind_values.len() + 1));
+                bind_values.push(format!("%{}%", v.trim()));
+            }
+
+            // Si un caller envoie adm3 par erreur, on le supporte sans casser.
+            // On tente un filtre additionnel (si possible) en réutilisant le même pattern.
+            if let Some(v) = &adm3 {
+                // Essayer une colonne plausible. Si la colonne n'existe pas, la requête échouera et on réessaiera via d'autres tables.
+                where_parts.push(format!("{} ILIKE ${}", "adm3_fr", bind_values.len() + 1));
+                bind_values.push(format!("%{}%", v.trim()));
+            }
+
+            let mut query = format!(
+                r#"
+            SELECT
+              {gid_col}::bigint AS gid,
+              {name_col}::text AS name,
+              ST_AsGeoJSON(ST_Transform(geom, 4326)) AS g
+            FROM {table}
+            "#,
+                gid_col = gid_col,
+                name_col = name_col,
+                table = table
+            );
+
+            if !where_parts.is_empty() {
+                query.push_str(" WHERE ");
+                query.push_str(&where_parts.join(" AND "));
+            }
+
+            query.push_str(" ORDER BY name ");
+
+            let mut q = sqlx::query(&query);
+            for v in &bind_values {
+                q = q.bind(v);
+            }
+
+            let rows = match q.fetch_all(pool).await {
+                Ok(r) => r,
+                Err(e) => {
+                    tracing::warn!(?e, table, level, "adm-boundaries query failed (trying next candidate)");
+                    last_error = Some(format!("{}", e));
+                    continue;
+                }
+            };
+
+            let mut features: Vec<serde_json::Value> = Vec::with_capacity(rows.len());
+            for row in rows {
+                let gid: i64 = match row.try_get("gid") {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+                let name: String = row.try_get("name").unwrap_or_else(|_| "".to_string());
+                let g: String = match row.try_get("g") {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+
+                let geom: serde_json::Value = match serde_json::from_str(&g) {
+                    Ok(v) => v,
+                    Err(_) => continue,
+                };
+
+                features.push(serde_json::json!({
+                    "type": "Feature",
+                    "properties": {
+                        "level": level,
+                        "gid": gid,
+                        "name": name
+                    },
+                    "geometry": geom
+                }));
+            }
+
+            let fc = serde_json::json!({
+                "type": "FeatureCollection",
+                "features": features
+            });
+
+            return (StatusCode::OK, Json(fc)).into_response();
+        }
+    }
+
+    // Aucun candidat n'a fonctionné -> retourner collection vide, mais loggable côté serveur.
+    tracing::warn!(level, ?adm1, ?adm2, ?adm3, ?last_error, "adm-boundaries: no candidate table/columns matched");
+    let fc = serde_json::json!({
+        "type": "FeatureCollection",
+        "features": []
+    });
+    (StatusCode::OK, Json(fc)).into_response()
 }
 
 // ============================================================================

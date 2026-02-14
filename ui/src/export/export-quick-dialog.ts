@@ -39,6 +39,12 @@ import { createExportTelemetry, ExportTelemetry } from './export-telemetry';
 import { API_BASE_URL } from '../services/api';
 import { apiUrl } from '../api';
 import { buildThematicCellsFromScreenFeatures, mergeWithEmptyGrid } from './export-engine';
+import {
+  buildCacheKey,
+  getFromThematicCache,
+  storeInThematicCache,
+  getThematicCacheStats
+} from './core/thematic-cache'
 
 // ============================================================================
 // Styles CSS du dialogue
@@ -1293,6 +1299,14 @@ export class ExportQuickDialog {
     console.log('[Export] Options sauvegardées AVANT modification DOM:', savedOptions);
     console.log('[Export] includeMetadata sauvegardé:', savedOptions.includeMetadata);
 
+    const getCurrentGridLevel = (window as any).getCurrentGridLevel
+    if (typeof getCurrentGridLevel === 'function') {
+      console.log('[Export][GRID] Global currentGridLevel BEFORE apply:', getCurrentGridLevel())
+    } else {
+      console.log('[Export][GRID] Global currentGridLevel BEFORE apply: (getCurrentGridLevel unavailable)')
+    }
+    console.log('[Export][GRID] Requested export gridLevel:', savedOptions.gridLevel)
+
     // Appliquer le niveau de grille demandé avant capture/rendu
     if ((window as any).setGridLevel) {
       (window as any).setGridLevel(savedOptions.gridLevel);
@@ -1303,6 +1317,10 @@ export class ExportQuickDialog {
     const panel = (window as any).thematicPanel;
     if (panel && typeof panel.reloadFromUI === 'function') {
       await panel.reloadFromUI();
+    }
+
+    if (typeof getCurrentGridLevel === 'function') {
+      console.log('[Export][GRID] Global currentGridLevel AFTER apply:', getCurrentGridLevel())
     }
     
     // IMPORTANT: Mettre à jour this.options avec les valeurs du DOM pour que fetchAdmCells les utilise
@@ -2253,6 +2271,38 @@ export class ExportQuickDialog {
     admFilters: ActiveAdmFilters,
     parameterId?: string
   ): Promise<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>> {
+    const t0 = performance.now()
+    const getCurrentGridLevel = (window as any).getCurrentGridLevel
+    const globalGridLevel = typeof getCurrentGridLevel === 'function' ? String(getCurrentGridLevel()) : 'unknown'
+    const coverageGrid = globalGridLevel === 'combined' ? '2km' : globalGridLevel
+
+    const cacheKey = buildCacheKey({
+      kind: 'admCells',
+      parameterId: parameterId ?? null,
+      grid: coverageGrid,
+      adm: {
+        adm1: admFilters.adm1?.name ?? null,
+        adm2: admFilters.adm2?.name ?? null,
+        adm3: admFilters.adm3?.name ?? null
+      },
+      flags: {
+        onlyAdmCells: this.options.onlyAdmCells,
+        showEmptyCells: this.options.showEmptyCells
+      }
+    })
+
+    const cached = getFromThematicCache<Array<{ geometry: any; has_data: boolean; n_sondages?: number; value?: number }>>(cacheKey)
+    if (cached) {
+      const sampleCodes = (cached as any[])
+        .slice(0, 3)
+        .map((c: any) => c?.code || c?.properties?.code || c?.cell_id)
+        .filter(Boolean)
+
+      console.log('[CACHE] GRID VALIDATION', { grid: coverageGrid, sampleCodes })
+      console.log('[CACHE] RETURN TIME', { ms: Math.round(performance.now() - t0), cache: getThematicCacheStats() })
+      return cached
+    }
+
     // 1. Récupérer les features thématiques de l'écran (SOURCE DE VÉRITÉ)
     const screenFeatures = this.config.getThematicFeatures?.() || [];
     const hasScreenData = screenFeatures.length > 0;
@@ -2367,7 +2417,20 @@ export class ExportQuickDialog {
       });
       
       // Retourner les features thématiques + les mailles vides
-      return mergeWithEmptyGrid(thematicCells as any, emptyCellsRaw as any) as any
+      const mergedCells = mergeWithEmptyGrid(thematicCells as any, emptyCellsRaw as any) as any
+
+      // Validation anti-mélange grille (codes indicatifs)
+      const sampleCodes = thematicCells.slice(0, 3).map((c: any) => c?.code).filter(Boolean)
+      console.log('[CACHE] GRID VALIDATION', { grid: coverageGrid, sampleCodes })
+
+      storeInThematicCache(cacheKey, mergedCells)
+      console.log('[CACHE] COMPUTE TIME', {
+        ms: Math.round(performance.now() - t0),
+        featureCount: screenFeatures.length,
+        cellCount: mergedCells.length,
+        cache: getThematicCacheStats()
+      })
+      return mergedCells;
     }
     
     // FALLBACK: Si pas de features thématiques, utiliser l'ancienne méthode
@@ -2420,8 +2483,21 @@ export class ExportQuickDialog {
     admFilters: ActiveAdmFilters
   ): Promise<Array<{ cell_id?: string; geometry: any; has_data: boolean; n_sondages?: number }>> {
     try {
+      const getCurrentGridLevel = (window as any).getCurrentGridLevel
+      const globalGridLevel = typeof getCurrentGridLevel === 'function' ? String(getCurrentGridLevel()) : 'unknown'
+
+      // Choix de la grille coverage: combined => base 2km (overlay 28km géré ailleurs)
+      const coverageGrid = globalGridLevel === 'combined' ? '2km' : globalGridLevel
+      console.log('[Export][GRID] fetchGridFromCoverage -> global currentGridLevel:', globalGridLevel)
+      console.log('[Export][GRID] coverage grid used:', coverageGrid)
+
+      // NOTE: volontairement, on log l'URL exacte. Si aucun param grid n'est présent,
+      // l'API peut default sur 2km -> ce qui explique l'apparition de la grille 2km.
+      const url = `${API_BASE_URL}/coverage/mailles?grid=${encodeURIComponent(String(coverageGrid))}`
+      console.log('[Export][GRID] fetchGridFromCoverage URL:', url)
+
       console.log('[Export] Fallback sur /coverage/mailles pour la grille');
-      const response = await this.fetchWithTimeout(`${API_BASE_URL}/coverage/mailles`, {}, 20000);
+      const response = await this.fetchWithTimeout(url, {}, 20000);
       
       if (!response.ok) {
         console.warn('[Export] Erreur API coverage/mailles:', response.status);
@@ -2430,6 +2506,12 @@ export class ExportQuickDialog {
       
       const geojson = await response.json();
       const features = geojson.features || [];
+
+      const sampleCodes = features.slice(0, 5).map((f: any) => f?.properties?.code || f?.properties?.cell_id).filter(Boolean)
+      console.log('[Export][GRID] coverage/mailles response:', {
+        featureCount: features.length,
+        sampleCodes
+      })
       
       // Filtrer par ADM
       const filtered = features.filter((f: any) => {
