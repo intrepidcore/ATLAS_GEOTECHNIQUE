@@ -20,10 +20,11 @@ export class ThematicMapManager {
   private circleLayer: L.LayerGroup | null = null // Couche des cercles proportionnels
   private heatLayer: any = null // Couche heatmap (leaflet.heat)
   public admOverlayLayer: L.LayerGroup  // Couche des contours ADM (public pour accès externe)
-  private currentConfig: ThematicMapConfig | null = null
   private legendControl: L.Control | null = null
+  private currentConfig: ThematicMapConfig | null = null
   private currentClassification: Classification | null = null
   private currentData: ThematicData | null = null
+  private currentSecondaryData: ThematicData | null = null
   private currentExportState: ThematicExportState | null = null
   private classificationCache = new Map<string, Classification>()
   
@@ -135,6 +136,66 @@ export class ThematicMapManager {
       const data = await this.fetchThematicData(config, { includeGeometry: true })
       console.log('[ThematicMap] Données récupérées:', data.features.length, 'features')
 
+      // Mode combined (industriel): dual dataset
+      // - dataset primaire: 2km (rendu)
+      // - dataset secondaire: 28km (disponible pour export/stats; non rendu ici)
+      this.currentSecondaryData = null
+      if (config.filters.grid === 'combined') {
+        try {
+          const coverage = await this.fetchCoverageGrid('28km')
+          const coverageFeatures = Array.isArray(coverage?.features) ? coverage.features : []
+          const withDataCount = coverageFeatures.filter((f: any) => !!f?.properties?.has_data).length
+
+          // Combined: la grille 28km est une structure (contours export), PAS une thématique.
+          // Donc on conserve la coverage complète (toutes les mailles), sans join avec des valeurs.
+          this.currentSecondaryData = {
+            feature_type: 'FeatureCollection',
+            type: 'FeatureCollection',
+            features: coverageFeatures,
+            statistics: {
+              count: withDataCount,
+              count_total: coverageFeatures.length,
+              null_count: coverageFeatures.length - withDataCount,
+              sum: null,
+              min: null,
+              max: null,
+              mean: null,
+              median: null,
+              stddev: null,
+              parent_context: null
+            },
+            metadata: {
+              parameter: config.parameter,
+              parameter_label: config.parameter,
+              unit: '',
+              category: 'coverage',
+              generated_at: new Date().toISOString(),
+              filters_applied: {
+                grid: '28km',
+                bbox: null,
+                adm1: config.filters?.adm1 ?? null,
+                adm2: config.filters?.adm2 ?? null,
+                adm3: config.filters?.adm3 ?? null,
+                min_sondages: null
+              }
+            }
+          } as any
+
+          console.log('[ThematicMap] Combined: secondary 28km coverage loaded (structure-only)', {
+            coverageCount: coverageFeatures.length,
+            withDataCount
+          })
+        } catch (e) {
+          const err = e as any
+          console.warn('[ThematicMap] Combined: secondary 28km coverage failed to load', {
+            message: err?.message,
+            name: err?.name,
+            stack: err?.stack
+          })
+          this.currentSecondaryData = null
+        }
+      }
+
       // 2. Classifier les données
       // Exigence: ne jamais recalculer les classes séparément pour 28km.
       // Donc en grid=28km, on calcule la classification à partir des valeurs 2km (sans géométrie) et on applique ces classes au rendu 28km.
@@ -233,10 +294,30 @@ export class ThematicMapManager {
     const url = `${this.apiUrl}/thematic/data?${params}`
     console.log('[ThematicMap] Fetching:', url)
     
-    const response = await fetch(url)
+    const t0 = performance.now()
+    let response: Response
+    try {
+      response = await fetch(url)
+    } catch (e) {
+      const err = e as any
+      console.error('[ThematicMap] Fetch failed (network)', {
+        url,
+        ms: Math.round(performance.now() - t0),
+        message: err?.message,
+        name: err?.name
+      })
+      throw e
+    }
+
     if (!response.ok) {
-      const error = await response.text()
-      throw new Error(`Erreur API: ${response.status} - ${error}`)
+      const errorText = await response.text().catch(() => '')
+      console.error('[ThematicMap] Fetch failed (http)', {
+        url,
+        status: response.status,
+        ms: Math.round(performance.now() - t0),
+        bodyPreview: String(errorText || '').slice(0, 800)
+      })
+      throw new Error(`Erreur API: ${response.status} - ${String(errorText || '').slice(0, 200)}`)
     }
     const json = (await response.json()) as ThematicData
 
@@ -260,6 +341,78 @@ export class ThematicMapManager {
       count_total: json?.statistics?.count_total
     })
     return json
+  }
+
+  private async fetchCoverageGrid(grid: '2km' | '28km'): Promise<any> {
+    const params = new URLSearchParams()
+    params.set('grid', grid)
+    params.set('limit', '50000')
+    const url = `${this.apiUrl}/coverage/mailles?${params}`
+
+    const t0 = performance.now()
+    const res = await fetch(url)
+    if (!res.ok) {
+      const txt = await res.text().catch(() => '')
+      console.error('[ThematicMap] Coverage fetch failed', {
+        url,
+        status: res.status,
+        ms: Math.round(performance.now() - t0),
+        bodyPreview: String(txt || '').slice(0, 800)
+      })
+      throw new Error(`Coverage API error: ${res.status}`)
+    }
+
+    const gj = await res.json()
+    if (!gj || !Array.isArray(gj.features)) {
+      console.error('[ThematicMap] Coverage invalid FeatureCollection', { url, keys: Object.keys(gj || {}) })
+      throw new Error('Coverage invalid FeatureCollection')
+    }
+    return gj
+  }
+
+  private joinCoverageWithThematicValues(
+    coverage: any,
+    values: ThematicData,
+    parameterId: string
+  ): Array<{ type: 'Feature'; geometry: any; properties: any }> {
+    const out: Array<{ type: 'Feature'; geometry: any; properties: any }> = []
+
+    const extractCode = (props: any): string | null => {
+      const c = props?.code ?? props?.grid_id ?? props?.cell_id ?? props?.id
+      if (c == null) return null
+      return String(c)
+    }
+
+    const valuesByCode = new Map<string, any>()
+    for (const f of (values.features as any[]) || []) {
+      const props = (f as any)?.properties ?? f
+      const code = extractCode(props)
+      if (!code) continue
+      valuesByCode.set(code, props)
+    }
+
+    for (const f of (coverage.features as any[]) || []) {
+      const props = (f as any)?.properties || {}
+      const code = extractCode(props)
+      if (!code) continue
+      const v = valuesByCode.get(code)
+      if (!v) continue
+
+      const mergedProps = {
+        ...props,
+        ...v,
+        // normaliser le champ valeur (export/stats)
+        value: v.value ?? v?.[parameterId] ?? v.raw_value
+      }
+
+      out.push({
+        type: 'Feature',
+        geometry: (f as any).geometry,
+        properties: mergedProps
+      })
+    }
+
+    return out
   }
   
   /**
@@ -358,6 +511,7 @@ export class ThematicMapManager {
       manual: config.classification?.manual_breaks,
       threshold: config.classification?.binary_threshold,
       palette: config.style?.palette,
+      exportPaletteEnhance: (window as any).__EXPORT_MODE === true,
       filters: {
         grid: config.filters?.grid,
         adm1: config.filters?.adm1,
@@ -532,14 +686,139 @@ export class ThematicMapManager {
     const colors = palettes[palette] || palettes['Blues']
     
     // Échantillonner uniformément
-    if (n >= colors.length) return colors
-    if (n <= 1) return [colors[Math.floor(colors.length / 2)]]
-    
-    const step = (colors.length - 1) / (n - 1)
-    return Array.from({ length: n }, (_, i) => {
-      const idx = Math.round(i * step)
-      return colors[Math.min(idx, colors.length - 1)]
-    })
+    let sampled: string[]
+    if (n >= colors.length) {
+      sampled = colors
+    } else if (n <= 1) {
+      sampled = [colors[Math.floor(colors.length / 2)]]
+    } else {
+      const step = (colors.length - 1) / (n - 1)
+      sampled = Array.from({ length: n }, (_, i) => {
+        const idx = Math.round(i * step)
+        return colors[Math.min(idx, colors.length - 1)]
+      })
+    }
+
+    // Export-only: boost global de saturation/contraste (sans impacter l'UI interactive)
+    if ((window as any).__EXPORT_MODE === true) {
+      const cfg = (window as any).__EXPORT_PALETTE_ENHANCE
+      const enabled = typeof cfg?.enabled === 'boolean' ? cfg.enabled : true
+      if (enabled) {
+        const satMultiplier = Number.isFinite(cfg?.satMultiplier) ? Number(cfg.satMultiplier) : 1.4
+        const minSaturation = Number.isFinite(cfg?.minSaturation) ? Number(cfg.minSaturation) : 0.6
+        const lightnessMultiplier = Number.isFinite(cfg?.lightnessMultiplier) ? Number(cfg.lightnessMultiplier) : 0.92
+        const gammaContrast = Number.isFinite(cfg?.gammaContrast) ? Number(cfg.gammaContrast) : 1.05
+        sampled = sampled.map(hex => {
+          const rgb = this.hexToRgb(hex)
+          if (!rgb) return hex
+          const hsl = this.rgbToHsl(rgb.r, rgb.g, rgb.b)
+          const s = Math.max(minSaturation, Math.min(1, hsl.s * satMultiplier))
+          const l = Math.max(0, Math.min(1, hsl.l * lightnessMultiplier))
+          const out = this.hslToRgb(hsl.h, s, l)
+          const gamma = this.applyGammaContrast(out, gammaContrast)
+          return this.rgbToHex(gamma.r, gamma.g, gamma.b)
+        })
+      }
+    }
+
+    return sampled
+  }
+
+  private hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+    const h = String(hex || '').trim().replace('#', '')
+    if (h.length !== 6) return null
+    const n = Number.parseInt(h, 16)
+    if (!Number.isFinite(n)) return null
+    return {
+      r: (n >> 16) & 255,
+      g: (n >> 8) & 255,
+      b: n & 255
+    }
+  }
+
+  private rgbToHex(r: number, g: number, b: number): string {
+    const clamp = (x: number) => Math.max(0, Math.min(255, Math.round(x)))
+    const to2 = (x: number) => clamp(x).toString(16).padStart(2, '0')
+    return `#${to2(r)}${to2(g)}${to2(b)}`
+  }
+
+  private rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+    const rn = r / 255
+    const gn = g / 255
+    const bn = b / 255
+    const max = Math.max(rn, gn, bn)
+    const min = Math.min(rn, gn, bn)
+    const d = max - min
+    let h = 0
+    const l = (max + min) / 2
+
+    const s = d === 0 ? 0 : d / (1 - Math.abs(2 * l - 1))
+    if (d !== 0) {
+      switch (max) {
+        case rn:
+          h = ((gn - bn) / d) % 6
+          break
+        case gn:
+          h = (bn - rn) / d + 2
+          break
+        default:
+          h = (rn - gn) / d + 4
+          break
+      }
+      h = h * 60
+      if (h < 0) h += 360
+    }
+    return { h, s, l }
+  }
+
+  private hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+    const c = (1 - Math.abs(2 * l - 1)) * s
+    const hh = ((h % 360) + 360) % 360
+    const x = c * (1 - Math.abs(((hh / 60) % 2) - 1))
+    const m = l - c / 2
+
+    let rp = 0
+    let gp = 0
+    let bp = 0
+    if (hh < 60) {
+      rp = c
+      gp = x
+    } else if (hh < 120) {
+      rp = x
+      gp = c
+    } else if (hh < 180) {
+      gp = c
+      bp = x
+    } else if (hh < 240) {
+      gp = x
+      bp = c
+    } else if (hh < 300) {
+      rp = x
+      bp = c
+    } else {
+      rp = c
+      bp = x
+    }
+
+    return {
+      r: (rp + m) * 255,
+      g: (gp + m) * 255,
+      b: (bp + m) * 255
+    }
+  }
+
+  private applyGammaContrast(
+    rgb: { r: number; g: number; b: number },
+    gammaContrast: number
+  ): { r: number; g: number; b: number } {
+    if (!Number.isFinite(gammaContrast) || gammaContrast <= 0) return rgb
+    const g = gammaContrast
+    const f = (x: number) => {
+      const n = Math.max(0, Math.min(255, x)) / 255
+      const y = Math.pow(n, 1 / g)
+      return y * 255
+    }
+    return { r: f(rgb.r), g: f(rgb.g), b: f(rgb.b) }
   }
   
   /**
@@ -1304,6 +1583,15 @@ export class ThematicMapManager {
       this.legendControl = null
     }
     
+    const isExportMode = !!(window as any).__EXPORT_MODE
+    if (isExportMode) {
+      this.currentConfig = null
+      this.currentClassification = null
+      this.currentData = null
+      this.map.fire('thematicmap:cleared')
+      return
+    }
+
     // Restaurer la couche de couverture (grille) en la rechargeant complètement
     // pour que les événements de clic soient ré-attachés
     const loadGrid = (window as any).loadGrid
@@ -1327,6 +1615,7 @@ export class ThematicMapManager {
     this.currentConfig = null
     this.currentClassification = null
     this.currentData = null
+    this.currentSecondaryData = null
     
     this.map.fire('thematicmap:cleared')
   }
@@ -1391,11 +1680,20 @@ export class ThematicMapManager {
     
     console.log('[ThematicMap] Classes built:', classes.map(c => ({ label: c.label, min: c.min, max: c.max })))
     
+    const gridLevel = this.currentConfig.filters?.grid
+    const mode = gridLevel === 'combined' ? 'combined' : 'single'
+    const primaryGrid = gridLevel === '28km' ? '28km' : '2km'
+    const secondaryGrid = gridLevel === 'combined' ? '28km' : null
+
     this.currentExportState = {
       parameterId: this.currentConfig.parameter,
       parameterLabel: param?.label || this.currentConfig.parameter,
       unit: param?.unit || '',
       mapType: this.currentConfig.type as 'choropleth' | 'proportional' | 'binary',
+      gridLevel,
+      mode,
+      primaryGrid,
+      secondaryGrid,
       classes,
       filters: {
         adm1: this.currentConfig.filters.adm1 || null,
@@ -1424,6 +1722,29 @@ export class ThematicMapManager {
         stddev: stats.stddev,
         parent_context: stats.parent_context
       }
+    }
+
+    if (gridLevel === 'combined' && this.currentSecondaryData) {
+      const s = this.currentSecondaryData.statistics
+      this.currentExportState.secondary = {
+        gridLevel: '28km',
+        features: this.currentSecondaryData.features || [],
+        totalCellCount: s.count_total || s.count || this.currentSecondaryData.features?.length || 0,
+        apiStats: {
+          count: s.count,
+          count_total: s.count_total,
+          null_count: s.null_count,
+          sum: s.sum,
+          min: s.min,
+          max: s.max,
+          mean: s.mean,
+          median: s.median,
+          stddev: s.stddev,
+          parent_context: s.parent_context
+        }
+      }
+    } else {
+      this.currentExportState.secondaryGrid = null
     }
     
     console.log('[ThematicMap] Export state updated:', this.currentExportState)

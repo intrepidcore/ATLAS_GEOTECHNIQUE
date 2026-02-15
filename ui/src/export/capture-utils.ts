@@ -371,6 +371,81 @@ export function canvasToBlob(
   });
 }
 
+export async function waitForLeafletTileLayersStable(
+  map: any,
+  timeoutMs: number = 5000
+): Promise<{ stable: boolean; loadingCount: number; timedOut: boolean; elapsedMs: number }> {
+  const t0 = performance.now()
+  return new Promise((resolve) => {
+    let resolved = false
+
+    const cleanup = () => {
+      try {
+        map.off('load', onAny)
+        map.off('tileload', onAny)
+        map.off('tileerror', onAny)
+        map.off('layeradd', onAny)
+        map.off('layerremove', onAny)
+      } catch {
+        // ignore
+      }
+    }
+
+    const computeLoadingCount = (): number => {
+      let loadingCount = 0
+      try {
+        map.eachLayer((layer: any) => {
+          if (!layer) return
+          if (layer._loading) loadingCount++
+          const tiles = layer._tiles
+          if (tiles && typeof tiles === 'object') {
+            for (const key in tiles) {
+              const t = tiles[key]
+              if (!t) continue
+              if (!t.loaded && !t.error) loadingCount++
+            }
+          }
+        })
+      } catch {
+        // ignore
+      }
+      return loadingCount
+    }
+
+    const finish = (payload: { stable: boolean; loadingCount: number; timedOut: boolean }) => {
+      if (resolved) return
+      resolved = true
+      cleanup()
+      resolve({ ...payload, elapsedMs: Math.round(performance.now() - t0) })
+    }
+
+    const onAny = () => {
+      const loadingCount = computeLoadingCount()
+      if (loadingCount === 0) {
+        finish({ stable: true, loadingCount, timedOut: false })
+      }
+    }
+
+    try {
+      map.on('load', onAny)
+      map.on('tileload', onAny)
+      map.on('tileerror', onAny)
+      map.on('layeradd', onAny)
+      map.on('layerremove', onAny)
+    } catch {
+      // ignore
+    }
+
+    // Check initial state
+    onAny()
+
+    setTimeout(() => {
+      const loadingCount = computeLoadingCount()
+      finish({ stable: loadingCount === 0, loadingCount, timedOut: true })
+    }, timeoutMs)
+  })
+}
+
 // ============================================================================
 // Attente du chargement complet des tuiles (améliorée pour 300dpi)
 // ============================================================================
@@ -480,6 +555,8 @@ export function validateCapture(canvas: HTMLCanvasElement): {
   whiteRatio?: number;
   transparentRatio?: number;
   uniformRatio?: number;
+  meanLuma?: number;
+  varianceLuma?: number;
   sampleCount: number;
 } {
   const ctx = canvas.getContext('2d');
@@ -504,6 +581,9 @@ export function validateCapture(canvas: HTMLCanvasElement): {
   let whiteCount = 0;
   let transparentCount = 0;
   let uniformCount = 0;
+  let lumaSum = 0;
+  let lumaSumSq = 0;
+  let lumaCount = 0;
 
   for (const [x, y] of samplePoints) {
     const pixel = ctx.getImageData(x, y, 1, 1).data;
@@ -524,6 +604,11 @@ export function validateCapture(canvas: HTMLCanvasElement): {
     if (isBlack) blackCount++;
     if (isWhite) whiteCount++;
 
+    const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    lumaSum += luma;
+    lumaSumSq += luma * luma;
+    lumaCount++;
+
     const max = Math.max(r, g, b);
     const min = Math.min(r, g, b);
     if ((max - min) < 3) {
@@ -536,11 +621,21 @@ export function validateCapture(canvas: HTMLCanvasElement): {
   const transparentRatio = transparentCount / samplePoints.length;
   const uniformRatio = uniformCount / samplePoints.length;
 
+  const meanLuma = lumaCount > 0 ? lumaSum / lumaCount : 0;
+  const varianceLuma = lumaCount > 1 ? Math.max(0, lumaSumSq / lumaCount - meanLuma * meanLuma) : 0;
+
+  const isTooDark = meanLuma < 8;
+  const isTooBright = meanLuma > 248;
+  const isTooFlat = varianceLuma < 6;
+
   const valid = (
     blackRatio < 0.8 &&
     transparentRatio < 0.8 &&
     whiteRatio < 0.95 &&
-    uniformRatio < 0.98
+    uniformRatio < 0.98 &&
+    !isTooDark &&
+    !isTooBright &&
+    !(isTooFlat && (blackRatio > 0.6 || whiteRatio > 0.8))
   );
   
   console.log('[Export][QA] Validation capture:', {
@@ -552,6 +647,8 @@ export function validateCapture(canvas: HTMLCanvasElement): {
     transparentCount,
     uniformRatio: uniformRatio.toFixed(2),
     uniformCount,
+    meanLuma: meanLuma.toFixed(1),
+    varianceLuma: varianceLuma.toFixed(1),
     sampleCount: samplePoints.length,
     valid
   });
@@ -562,6 +659,8 @@ export function validateCapture(canvas: HTMLCanvasElement): {
     whiteRatio,
     transparentRatio,
     uniformRatio,
+    meanLuma,
+    varianceLuma,
     sampleCount: samplePoints.length
   };
 }

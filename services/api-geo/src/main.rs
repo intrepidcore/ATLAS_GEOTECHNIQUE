@@ -1,7 +1,9 @@
 use axum::http::Method;
 use axum::{
+    extract::{Query, State},
     middleware,
     routing::{delete, get, patch, post},
+    response::IntoResponse,
     Json, Router,
 };
 use axum::http::header;
@@ -37,6 +39,7 @@ mod neighbors;
 mod observability;
 mod rbac;
 pub mod roles;
+mod search_service;
 mod sondages;
 mod sondages_geocode;
 mod sql_sanitizer;
@@ -64,6 +67,12 @@ struct Health {
 #[derive(Deserialize, Serialize)]
 struct Echo {
     any: serde_json::Value,
+}
+
+#[derive(Deserialize)]
+struct UnifiedSearchQuery {
+    q: String,
+    limit: Option<i64>,
 }
 
 use crate::state::AppState;
@@ -148,6 +157,23 @@ async fn main() -> anyhow::Result<()> {
         .route("/coverage/mailles-dsm", get(dsm::get_coverage_mailles_dsm))
         .route("/maille/:code", get(routes::get_maille_by_code))
         .route("/search/legacy/:code", get(routes::legacy_lookup))
+        .route(
+            "/search/unified",
+            get(|State(state): State<AppState>, Query(params): Query<UnifiedSearchQuery>| async move {
+                let limit = params.limit.unwrap_or(20).clamp(1, 50);
+                match search_service::unified_search(&state.pool, &params.q, limit).await {
+                    Ok(items) => (axum::http::StatusCode::OK, Json(items)).into_response(),
+                    Err(e) => {
+                        tracing::error!(?e, "unified_search error");
+                        (
+                            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                            Json(serde_json::json!({"error": "search_failed", "detail": e.to_string()})),
+                        )
+                            .into_response()
+                    }
+                }
+            }),
+        )
         .route("/adm-neighbors", get(routes::get_adm_neighbors))
         .nest("/grid", routes::grid_router())
         // Context layers endpoints (public - read-only)

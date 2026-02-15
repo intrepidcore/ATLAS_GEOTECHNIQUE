@@ -261,9 +261,19 @@ export interface ThematicLegendData {
   parameterLabel: string;
   unit: string;
   mapType: 'choropleth' | 'proportional' | 'binary' | 'heatmap';
+  gridLevel?: '2km' | '28km' | 'combined';
+  mode?: 'single' | 'combined';
+  primaryGrid?: '2km' | '28km';
+  secondaryGrid?: '28km' | null;
   classes: LegendClass[];
   features?: any[];
   totalCellCount?: number;
+  secondary?: {
+    gridLevel: '28km';
+    features: any[];
+    totalCellCount: number;
+    apiStats?: ThematicLegendData['apiStats'];
+  };
   /** Statistiques enrichies de l'API pour l'export */
   apiStats?: {
     count: number;

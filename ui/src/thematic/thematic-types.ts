@@ -506,16 +506,44 @@ export interface ThematicExportState {
   parameterLabel: string    // "VBS moyen"
   unit: string              // "g/100g"
   mapType: 'choropleth' | 'proportional' | 'binary'
+  gridLevel?: '2km' | '28km' | 'combined'
+  mode?: 'single' | 'combined'
+  primaryGrid?: '2km' | '28km'
+  secondaryGrid?: '28km' | null
   classes: ThematicClassBreak[]
   filters: ThematicExportFilters
   stats: {
-    min: number
-    max: number
-    mean: number
-    median: number
+    min?: number
+    max?: number
+    mean?: number
+    median?: number
   } | null
   features?: any[]          // Features GeoJSON pour les statistiques d'export
   totalCellCount?: number   // Nombre total de mailles dans la zone (pour calcul couverture)
+
+  secondary?: {
+    gridLevel: '28km'
+    features: any[]
+    totalCellCount: number
+    apiStats?: {
+      count: number
+      count_total?: number
+      null_count?: number
+      sum?: number
+      min?: number
+      max?: number
+      mean?: number
+      median?: number
+      stddev?: number
+      parent_context?: {
+        level: string
+        parent_name: string
+        parent_sum: number
+        parent_cells: number
+      }
+    }
+  }
+
   /** Statistiques enrichies depuis l'API (pour export) */
   apiStats?: {
     count: number

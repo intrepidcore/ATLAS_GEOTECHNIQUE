@@ -1715,13 +1715,14 @@ export class ThematicPanel {
         // Récupérer les données de légende thématique (classes, couleurs, labels, features, stats)
         getThematicLegendData: () => {
           const state = this.manager.getCurrentExportState?.()
-          if (state && state.classes && state.classes.length > 0) {
+          if (state) {
             return {
               parameterId: state.parameterId,
               parameterLabel: state.parameterLabel,
               unit: state.unit,
               mapType: state.mapType,
-              classes: state.classes.map(c => ({
+              gridLevel: state.gridLevel,
+              classes: (state.classes || []).map(c => ({
                 index: c.index,
                 min: c.min,
                 max: c.max,
@@ -1731,7 +1732,8 @@ export class ThematicPanel {
               features: state.features || [],
               totalCellCount: state.totalCellCount || 0,
               // Passer les stats enrichies de l'API pour l'export
-              apiStats: state.apiStats
+              apiStats: state.apiStats,
+              secondary: state.secondary
             }
           }
           return null

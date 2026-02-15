@@ -173,6 +173,10 @@ pub struct ThematicDataRequest {
     /// Paramètre à visualiser
     pub parameter: ThematicParameter,
 
+    /// Grille source ("2km" | "28km")
+    #[serde(default)]
+    pub grid: Option<String>,
+
     /// Filtre géographique (bbox en WGS84)
     #[serde(default)]
     pub bbox: Option<[f64; 4]>, // [west, south, east, north]
@@ -271,6 +275,7 @@ pub struct ResponseMetadata {
 
 #[derive(Debug, Serialize)]
 pub struct FiltersApplied {
+    pub grid: Option<String>,
     pub bbox: Option<[f64; 4]>,
     pub adm1: Option<String>,
     pub adm2: Option<String>,

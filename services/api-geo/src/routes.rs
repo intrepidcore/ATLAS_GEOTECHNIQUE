@@ -3,6 +3,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
+    routing::{get, post},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -38,16 +39,22 @@ pub async fn get_coverage_adm_boundaries(
 
     let candidates: Vec<(&'static str, &'static str, &'static str)> = match level.as_str() {
         "adm1" => vec![
+            ("atlas.adm1", "gid", "adm1_fr"),
+            ("public.adm1", "gid", "adm1_fr"),
             ("adm1", "gid", "adm1_fr"),
             ("adm1_tg", "gid", "name"),
             ("adm1_togo", "gid", "adm1_fr"),
         ],
         "adm2" => vec![
+            ("atlas.adm2", "gid", "adm2_fr"),
+            ("public.adm2", "gid", "adm2_fr"),
             ("adm2", "gid", "adm2_fr"),
             ("adm2_tg", "gid", "name"),
             ("adm2_togo", "gid", "adm2_fr"),
         ],
         "adm3" => vec![
+            ("atlas.adm3", "gid", "adm3_fr"),
+            ("public.adm3", "gid", "adm3_fr"),
             ("adm3", "gid", "adm3_fr"),
             ("adm3_tg", "gid", "name"),
             ("adm3_togo", "gid", "adm3_fr"),
@@ -66,12 +73,42 @@ pub async fn get_coverage_adm_boundaries(
     for (table, gid_col, name_col) in candidates {
         // Déterminer les filtres voulus (un seul filtre parent principal)
         let (parent_value, parent_cols): (Option<String>, Vec<&'static str>) = match level.as_str() {
-            "adm2" => (adm1.clone(), vec!["adm1_fr", "adm1_name", "adm1"]),
+            "adm2" => (
+                adm1.clone(),
+                vec![
+                    "adm1_fr",
+                    "adm1_name",
+                    "adm1",
+                    "adm1_code",
+                    "adm1_nom",
+                    "adm1_label",
+                ],
+            ),
             "adm3" => {
                 if adm2.is_some() {
-                    (adm2.clone(), vec!["adm2_fr", "adm2_name", "adm2"])
+                    (
+                        adm2.clone(),
+                        vec![
+                            "adm2_fr",
+                            "adm2_name",
+                            "adm2",
+                            "adm2_code",
+                            "adm2_nom",
+                            "adm2_label",
+                        ],
+                    )
                 } else {
-                    (adm1.clone(), vec!["adm1_fr", "adm1_name", "adm1"])
+                    (
+                        adm1.clone(),
+                        vec![
+                            "adm1_fr",
+                            "adm1_name",
+                            "adm1",
+                            "adm1_code",
+                            "adm1_nom",
+                            "adm1_label",
+                        ],
+                    )
                 }
             }
             _ => (None, vec![]),

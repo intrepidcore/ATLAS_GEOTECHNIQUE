@@ -278,10 +278,10 @@ pub async fn get_thematic_data(
         format!(
             "WITH base AS (
                 SELECT
-                    m28.code_m28 as code,
+                    ('TG-28KM-' || LPAD(m28.code_m28::text, 3, '0')) as code,
                     {},
                     (
-                        SUM(CAST(m2.{} AS DOUBLE PRECISION) * ST_Area(ST_Intersection(m2.geom, m28.geom)))
+                        SUM(CAST(m2.metric_value AS DOUBLE PRECISION) * ST_Area(ST_Intersection(m2.geom, m28.geom)))
                         / NULLIF(SUM(ST_Area(ST_Intersection(m2.geom, m28.geom))), 0)
                     ) as value,
                     SUM(m2.n_sondages)::bigint as n_sondages,
@@ -299,14 +299,12 @@ pub async fn get_thematic_data(
                         adm2_name,
                         adm3_name,
                         ST_Transform(geom, 25231) as geom,
-                        {}
+                        {} as metric_value
                     FROM mailles_geotechnique_stats_wgs84
                 ) m2
                   ON ST_Intersects(m2.geom, m28.geom)
-                WHERE m2.{} IS NOT NULL",
+                WHERE m2.metric_value IS NOT NULL",
             geom_expr,
-            column,
-            column,
             column
         )
     } else if req.include_geometry {

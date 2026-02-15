@@ -1486,6 +1486,19 @@ export class ExportAtlasDialog {
     console.log('[Atlas][CONFIG] Export Excel:', config.exportExcel);
     console.log('[Atlas][CONFIG] Thématiques:', config.thematics);
     console.log('[Atlas][CONFIG] Grille thématique:', config.thematicGridLevel);
+
+    const prevExportMode = !!(window as any).__EXPORT_MODE
+    const prevPaletteEnhance = (window as any).__EXPORT_PALETTE_ENHANCE
+    ;(window as any).__EXPORT_MODE = true
+    ;(window as any).__EXPORT_PALETTE_ENHANCE = {
+      ...(typeof prevPaletteEnhance === 'object' && prevPaletteEnhance ? prevPaletteEnhance : {}),
+      enabled: true,
+      satMultiplier: 1.3,
+      minSaturation: 0.45,
+      lightnessMultiplier: 0.99,
+      gammaContrast: 1.02
+    }
+    console.log('[Atlas][CONFIG] __EXPORT_PALETTE_ENHANCE effective:', (window as any).__EXPORT_PALETTE_ENHANCE)
     
     const getGridLevel = (window as any).getCurrentGridLevel
     const setGridLevel = (window as any).setGridLevel
@@ -1568,135 +1581,172 @@ export class ExportAtlasDialog {
     
     // Générer les exports
     let current = 0;
-    const results: Array<{ level: string; name: string; thematic: string; success: boolean; blob?: Blob }> = [];
+    const results: Array<{
+      level: string;
+      name: string;
+      thematic: string;
+      status: 'success' | 'failed';
+      filename: string | null;
+      blobBytes?: number;
+      attempts?: number;
+      durationMs?: number;
+      errors?: string[];
+      attemptDiagnostics?: any[];
+    }> = [];
     
-    for (const level of levels) {
-      const admList = admToExport[level] || [];
-      this.progressModal?.log('info', 'LEVEL', `Traitement niveau ${level.toUpperCase()}: ${admList.length} ADM`);
-      
-      for (const adm of admList) {
-        for (const thematicId of config.thematics) {
-          if (this.abortRequested) {
-            this.progressModal?.log('warning', 'ABORT', 'Export annulé par l\'utilisateur');
-            this.updateProgress(`Export annulé (${current}/${totalExports} complétés)`, (current / totalExports) * 100);
-            await this.finalizeExport(zip, results, current, totalExports, config);
-            if (previousGridLevel) {
-              await applyGridLevel(previousGridLevel)
+    try {
+      for (const level of levels) {
+        const admList = admToExport[level] || [];
+        this.progressModal?.log('info', 'LEVEL', `Traitement niveau ${level.toUpperCase()}: ${admList.length} ADM`);
+        
+        for (const adm of admList) {
+          for (const thematicId of config.thematics) {
+            if (this.abortRequested) {
+              this.progressModal?.log('warning', 'ABORT', 'Export annulé par l\'utilisateur');
+              this.updateProgress(`Export annulé (${current}/${totalExports} complétés)`, (current / totalExports) * 100);
+              await this.finalizeExport(zip, results, current, totalExports, config);
+              if (previousGridLevel) {
+                await applyGridLevel(previousGridLevel)
+              }
+              return;
             }
-            return;
-          }
-          
-          current++;
-          const percent = (current / totalExports) * 100;
-          const thematicLabel = ALL_THEMATICS.find(t => t.id === thematicId)?.label || thematicId;
-          const startTime = Date.now();
-          
-          // Log début de carte
-          this.progressModal?.startMap(level, adm.name, thematicId, current - 1);
-          this.progressModal?.updateProgress(current - 1, adm.name, thematicId, 'Préparation...');
-          
-          this.updateProgress(
-            `${current}/${totalExports} - ${level.toUpperCase()} ${adm.name} - ${thematicLabel}`,
-            percent
-          );
-          
-          // Générer l'export via le moteur Export Pro
-          let success = false;
-          let blob: Blob | null = null;
-          
-          if (this.callbacks?.setThematicAndAdm && this.callbacks?.getExportProConfig) {
-            try {
-              // 1. Changer la thématique et l'ADM sur la carte (v4.4: avec palette et mapType)
-              this.progressModal?.logStep('Chargement thématique et ADM...');
-              const palette = config.thematicPalettes?.[thematicId];
-              const mapType = config.mapType || 'choropleth';
+            
+            current++;
+            const percent = (current / totalExports) * 100;
+            const thematicLabel = ALL_THEMATICS.find(t => t.id === thematicId)?.label || thematicId;
+            const startTime = Date.now();
+            
+            // Log début de carte
+            this.progressModal?.startMap(level, adm.name, thematicId, current - 1);
+            this.progressModal?.updateProgress(current - 1, adm.name, thematicId, 'Préparation...');
+            
+            this.updateProgress(
+              `${current}/${totalExports} - ${level.toUpperCase()} ${adm.name} - ${thematicLabel}`,
+              percent
+            );
+            
+            // Générer l'export via le moteur Export Pro
+            let status: 'success' | 'failed' = 'failed';
+            let blob: Blob | null = null;
+            let exportDetails: any = null;
+            
+            if (this.callbacks?.setThematicAndAdm && this.callbacks?.getExportProConfig) {
+              try {
+                // 1. Changer la thématique et l'ADM sur la carte (v4.4: avec palette et mapType)
+                this.progressModal?.logStep('Chargement thématique et ADM...');
+                const palette = config.thematicPalettes?.[thematicId];
+                const mapType = config.mapType || 'choropleth';
 
-              // Appliquer le niveau de grille thématique sélectionné (non destructif: restore à la fin)
-              await applyGridLevel(config.thematicGridLevel)
+                // Appliquer le niveau de grille thématique sélectionné (non destructif: restore à la fin)
+                await applyGridLevel(config.thematicGridLevel)
 
-              await this.callbacks.setThematicAndAdm(thematicId, level, adm.name, palette, mapType);
-              
-              // 2. Attendre le rendu complet (tuiles + thématique)
-              // v4.5: Délai augmenté à 3s pour stabilisation heatmap/grille
-              this.progressModal?.logStep('Attente rendu carte (3s)...');
-              await new Promise(r => setTimeout(r, 3000));
-              
-              // 3. Créer une instance d'ExportQuickDialog avec la config actuelle
-              this.progressModal?.logStep('Initialisation moteur export...');
-              const exportProConfig = this.callbacks.getExportProConfig();
-              const exportPro = new ExportQuickDialog(exportProConfig);
-              
-              // 4. Exporter via le moteur Pro (qualité identique à Export Pro)
-              this.progressModal?.logStep('Capture et rendu PNG...');
-              blob = await exportPro.exportSingle({
-                quality: config.quality as ExportQuality,
-                maskMode: config.maskMode,
-                showEmptyCells: config.showEmptyCells,
-                onlyAdmCells: config.onlyAdmCells,
-                includeStats: config.includeStats,
-                includeNeighbors: config.includeNeighbors,
-                boundaryLevel: config.boundaryLevel,
-                // v3.5.3: Options grille et cadre
-                gridType: config.gridType,
-                frameStyle: config.frameStyle,
-                onProgress: (msg) => {
-                  this.progressModal?.logStep(msg);
-                  this.updateProgress(`${current}/${totalExports} - ${adm.name} - ${msg}`, percent);
+                await this.callbacks.setThematicAndAdm(thematicId, level, adm.name, palette, mapType);
+                
+                // 2. Attendre le rendu complet (tuiles + thématique)
+                // v4.5: Délai augmenté à 3s pour stabilisation heatmap/grille
+                this.progressModal?.logStep('Attente rendu carte (3s)...');
+                await new Promise(r => setTimeout(r, 3000));
+                
+                // 3. Créer une instance d'ExportQuickDialog avec la config actuelle
+                this.progressModal?.logStep('Initialisation moteur export...');
+                const exportProConfig = this.callbacks.getExportProConfig();
+                const exportPro = new ExportQuickDialog(exportProConfig);
+                
+                // 4. Exporter via le moteur Pro (qualité identique à Export Pro)
+                this.progressModal?.logStep('Capture et rendu PNG...');
+                const exportResult = await exportPro.exportSingle({
+                  quality: config.quality as ExportQuality,
+                  maskMode: config.maskMode,
+                  showEmptyCells: config.showEmptyCells,
+                  onlyAdmCells: config.onlyAdmCells,
+                  includeStats: config.includeStats,
+                  includeNeighbors: config.includeNeighbors,
+                  boundaryLevel: config.boundaryLevel,
+                  // v3.5.3: Options grille et cadre
+                  gridType: config.gridType,
+                  frameStyle: config.frameStyle,
+                  onProgress: (msg) => {
+                    this.progressModal?.logStep(msg);
+                    this.updateProgress(`${current}/${totalExports} - ${adm.name} - ${msg}`, percent);
+                  }
+                });
+
+                exportDetails = exportResult;
+                status = exportResult.status;
+                blob = exportResult.status === 'success' ? (exportResult.blob as Blob) : null;
+                const duration = Date.now() - startTime;
+
+                // Ajouter au ZIP uniquement si succès et blob valide
+                if (zip && status === 'success' && blob) {
+                  const filename = this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`);
+                  zip.file(filename, blob);
+                  this.progressModal?.endMapSuccess(adm.name, thematicId, duration, blob.size);
+                } else {
+                  const errorMsg = (exportResult.errors && exportResult.errors.length > 0)
+                    ? exportResult.errors[exportResult.errors.length - 1]
+                    : 'Export failed';
+                  this.progressModal?.endMapError(adm.name, thematicId, errorMsg);
                 }
-              });
-              
-              success = blob !== null;
-              const duration = Date.now() - startTime;
-              
-              // Ajouter au ZIP
-              if (zip && blob) {
-                const filename = this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`);
-                zip.file(filename, blob);
-                this.progressModal?.endMapSuccess(adm.name, thematicId, duration, blob.size);
-              } else if (!blob) {
-                this.progressModal?.endMapError(adm.name, thematicId, 'Blob null');
+              } catch (e) {
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                this.progressModal?.endMapError(adm.name, thematicId, errorMsg);
+                console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
               }
-            } catch (e) {
-              const errorMsg = e instanceof Error ? e.message : String(e);
-              this.progressModal?.endMapError(adm.name, thematicId, errorMsg);
-              console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
-            }
-          } else if (this.callbacks?.exportSingleMap) {
-            // Fallback sur l'ancienne méthode si disponible
-            this.progressModal?.logStep('Utilisation fallback exportSingleMap...');
-            try {
-              blob = await this.callbacks.exportSingleMap(level, adm.name, thematicId, config);
-              success = blob !== null;
-              const duration = Date.now() - startTime;
-              
-              if (zip && blob) {
-                const filename = this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`);
-                zip.file(filename, blob);
-                this.progressModal?.endMapSuccess(adm.name, thematicId, duration, blob.size);
+            } else if (this.callbacks?.exportSingleMap) {
+              // Fallback sur l'ancienne méthode si disponible
+              this.progressModal?.logStep('Utilisation fallback exportSingleMap...');
+              try {
+                blob = await this.callbacks.exportSingleMap(level, adm.name, thematicId, config);
+                status = blob ? 'success' : 'failed';
+                const duration = Date.now() - startTime;
+                
+                if (zip && blob) {
+                  const filename = this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`);
+                  zip.file(filename, blob);
+                  this.progressModal?.endMapSuccess(adm.name, thematicId, duration, blob.size);
+                }
+              } catch (e) {
+                const errorMsg = e instanceof Error ? e.message : String(e);
+                this.progressModal?.endMapError(adm.name, thematicId, errorMsg);
+                console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
               }
-            } catch (e) {
-              const errorMsg = e instanceof Error ? e.message : String(e);
-              this.progressModal?.endMapError(adm.name, thematicId, errorMsg);
-              console.warn(`[Atlas] Erreur export ${level}/${adm.name}/${thematicId}:`, e);
+            } else {
+              this.progressModal?.log('error', 'EXPORT', 'Aucun callback d\'export disponible');
+              console.error('[Atlas] Aucun callback d\'export disponible');
+              status = 'failed';
             }
-          } else {
-            this.progressModal?.log('error', 'EXPORT', 'Aucun callback d\'export disponible');
-            console.error('[Atlas] Aucun callback d\'export disponible');
-            success = false;
+
+            const filename = status === 'success'
+              ? this.sanitizeFilename(`${level}/${thematicId}/${adm.name}_${thematicId}.png`)
+              : null;
+
+            results.push({
+              level,
+              name: adm.name,
+              thematic: thematicId,
+              status,
+              filename,
+              blobBytes: blob ? blob.size : undefined,
+              attempts: exportDetails?.attempts,
+              durationMs: exportDetails?.durationMs,
+              errors: exportDetails?.errors,
+              attemptDiagnostics: exportDetails?.attemptDiagnostics
+            });
           }
-          
-          results.push({ level, name: adm.name, thematic: thematicId, success, blob: blob || undefined });
         }
       }
-    }
-    
-    // Finaliser et télécharger le ZIP
-    this.updateProgress('Création du fichier ZIP...', 99);
-    await this.finalizeExport(zip, results, current, totalExports, config);
+      
+      // Finaliser et télécharger le ZIP
+      this.updateProgress('Création du fichier ZIP...', 99);
+      await this.finalizeExport(zip, results, current, totalExports, config);
 
-    // Restaurer l'état global (niveau de grille) après batch export
-    if (previousGridLevel) {
-      await applyGridLevel(previousGridLevel)
+      // Restaurer l'état global (niveau de grille) après batch export
+      if (previousGridLevel) {
+        await applyGridLevel(previousGridLevel)
+      }
+    } finally {
+      ;(window as any).__EXPORT_MODE = prevExportMode
+      ;(window as any).__EXPORT_PALETTE_ENHANCE = prevPaletteEnhance
     }
   }
   
@@ -1710,13 +1760,13 @@ export class ExportAtlasDialog {
   
   private async finalizeExport(
     zip: any,
-    results: Array<{ level: string; name: string; thematic: string; success: boolean }>,
+    results: Array<{ level: string; name: string; thematic: string; status: 'success' | 'failed'; filename: string | null }>,
     completed: number,
     total: number,
     config?: AtlasExportConfig
   ): Promise<void> {
-    const successful = results.filter(r => r.success).length;
-    const failed = results.filter(r => !r.success).length;
+    const successful = results.filter(r => r.status === 'success').length;
+    const failed = results.filter(r => r.status !== 'success').length;
     
     // Démarrer la phase de finalisation dans le modal
     this.progressModal?.startFinalization();
@@ -1927,6 +1977,7 @@ export class ExportAtlasDialog {
           completed: completed,
           successful: successful,
           failed: failed,
+          mode: 'option_c' as const,
           includesDataExport: config?.exportData || false,
           includesCharts: config?.exportCharts || false,
           // v3.4.1: Thématiques ignorées car sans données
@@ -1935,12 +1986,17 @@ export class ExportAtlasDialog {
             reason: 'no_data' as const,
             message: `Aucune donnée disponible pour ${t.label}`
           })),
-          exports: results.map(r => ({
+          exports: (results as any[]).map(r => ({
             level: r.level,
             name: r.name,
             thematic: r.thematic,
-            success: r.success,
-            filename: r.success ? this.sanitizeFilename(`${r.level}/${r.thematic}/${r.name}_${r.thematic}.png`) : null
+            status: r.status,
+            filename: r.filename,
+            blobBytes: r.blobBytes,
+            attempts: r.attempts,
+            durationMs: r.durationMs,
+            errors: r.errors,
+            attemptDiagnostics: r.attemptDiagnostics
           }))
         };
         zip.file('index.json', JSON.stringify(indexData, null, 2));
@@ -1948,13 +2004,15 @@ export class ExportAtlasDialog {
         this.progressModal?.log('info', 'ZIP', 'Compression du fichier ZIP...');
         console.log('[Atlas] Génération du ZIP en cours...');
         this.updateProgress('Compression du fichier ZIP...', 99);
-        
-        // Générer le ZIP avec compression
-        const zipBlob = await zip.generateAsync({ 
+
+        const zipGenStart = Date.now()
+        // PNG déjà compressés: DEFLATE coûte très cher pour peu de gain.
+        // Utiliser STORE pour accélérer drastiquement la génération du ZIP.
+        const zipBlob = await zip.generateAsync({
           type: 'blob',
-          compression: 'DEFLATE',
-          compressionOptions: { level: 6 }
+          compression: 'STORE'
         });
+        console.log('[Atlas] ZIP generateAsync done', { ms: Date.now() - zipGenStart })
         
         const zipSizeMB = zipBlob.size / 1024 / 1024;
         console.log('[Atlas] ZIP généré, taille:', zipSizeMB.toFixed(2), 'Mo');
@@ -2036,13 +2094,13 @@ export class ExportAtlasDialog {
   }
   
   private showResults(
-    results: Array<{ level: string; name: string; thematic: string; success: boolean }>,
+    results: Array<{ level: string; name: string; thematic: string; status: 'success' | 'failed'; filename: string | null }>,
     completed: number,
     total: number,
     zipDownloaded: boolean = false
   ): void {
-    const successful = results.filter(r => r.success).length;
-    const failed = results.filter(r => !r.success).length;
+    const successful = results.filter(r => r.status === 'success').length;
+    const failed = results.filter(r => r.status !== 'success').length;
     
     let message = `📚 Export Atlas Terminé\n\n`;
     message += `✅ ${successful} exports réussis\n`;

@@ -20,6 +20,9 @@ import {
   renderFrame,
   GridGeneratorOutput
 } from './grid-generator';
+import { buildExportStats } from './export-stats';
+import { getAdm1HaloStyle, getStrokeStyle } from './export-style';
+import { APP_VERSION } from '../version';
 
 // ============================================================================
 // Constantes de layout EN MILLIMÈTRES
@@ -45,7 +48,7 @@ const LAYOUT_MM = {
   fontSubtitle: 3.2,      // 3.2mm ≈ 9pt
   fontLegend: 2.5,        // 2.5mm ≈ 7pt
   fontLegendTitle: 2.8,   // 2.8mm ≈ 8pt
-  fontStats: 2.2,         // 2.2mm ≈ 6pt
+  fontStats: 2.5,         // 2.5mm ≈ 7pt (aligner sur légende)
   fontCartouche: 2.0,     // 2.0mm ≈ 6pt
   fontCoordLabel: 2.0,    // 2.0mm ≈ 6pt
   // Épaisseurs de traits en mm
@@ -362,11 +365,17 @@ export class ExportFrame {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
   private layout: ExportFrameLayout;
-  private options: ExportOptions;
-  private scale: number;
   private dpi: number;
+  private scale: number;
   private fonts: ReturnType<typeof getScaledLayout>;
-  
+  private options: ExportOptions;
+
+  static createA4(options: ExportOptions, orientation: 'portrait' | 'landscape' = 'portrait'): ExportFrame {
+    const dpi = QUALITY_SETTINGS[options.quality].dpi
+    const { mapArea } = getA4Layout(dpi, orientation)
+    return new ExportFrame(mapArea.width, mapArea.height, options)
+  }
+
   constructor(
     mapWidth: number,
     mapHeight: number,
@@ -376,26 +385,26 @@ export class ExportFrame {
     this.scale = QUALITY_SETTINGS[options.quality].scale;
     this.dpi = QUALITY_SETTINGS[options.quality].dpi;
     this.fonts = getScaledLayout(this.dpi);
-    
+
     // Calculer le layout avec le DPI pour les dimensions scalées
     this.layout = computeExportLayout(mapWidth, mapHeight, options, this.dpi);
-    
+
     // Créer le canvas
     this.canvas = document.createElement('canvas');
     this.canvas.width = this.layout.totalWidth * this.scale;
     this.canvas.height = this.layout.totalHeight * this.scale;
-    
+
     const ctx = this.canvas.getContext('2d');
     if (!ctx) throw new Error('Impossible de créer le contexte 2D');
     this.ctx = ctx;
-    
+
     // Appliquer le scale
     this.ctx.scale(this.scale, this.scale);
-    
+
     // Fond blanc
     this.ctx.fillStyle = '#ffffff';
     this.ctx.fillRect(0, 0, this.layout.totalWidth, this.layout.totalHeight);
-    
+
     console.log('[ExportFrame] Créé avec dimensions:', {
       mapWidth, mapHeight,
       totalWidth: this.layout.totalWidth,
@@ -406,658 +415,769 @@ export class ExportFrame {
       dpi: this.dpi
     });
   }
-  
-  /**
-   * Crée un ExportFrame avec dimensions A4 fixes
-   * La carte sera centrée dans la zone disponible
-   */
-  static createA4(
-    options: ExportOptions,
-    orientation: 'portrait' | 'landscape' = 'portrait'
-  ): ExportFrame {
-    const dpi = QUALITY_SETTINGS[options.quality].dpi;
-    const a4 = getA4Dimensions(dpi, orientation);
-    
-    // Utiliser le layout scalé pour le DPI
-    const scaledLayout = getScaledLayout(dpi);
-    const labelSpace = options.grid.showLabels ? Math.round(40 * dpi / 72) : 0;
-    const headerHeight = options.includeTitle ? (scaledLayout.titleHeight + scaledLayout.subtitleHeight) : 0;
-    
-    // Zone disponible pour la carte
-    const availableWidth = a4.width - (scaledLayout.margin * 2) - (labelSpace * 2);
-    const availableHeight = a4.height - (scaledLayout.margin * 2) - headerHeight - scaledLayout.footerHeight - (labelSpace * 2) - scaledLayout.padding;
-    
-    console.log('[ExportFrame] Création A4 fixe:', {
-      orientation,
-      dpi,
-      dpiRatio: dpi / 72,
-      pageWidth: a4.width,
-      pageHeight: a4.height,
-      mapAreaWidth: availableWidth,
-      mapAreaHeight: availableHeight,
-      scaledLayout: { margin: scaledLayout.margin, titleHeight: scaledLayout.titleHeight, footerHeight: scaledLayout.footerHeight }
-    });
-    
-    return new ExportFrame(availableWidth, availableHeight, options);
+
+  // ...
+
+  private clamp01(n: number): number {
+    if (!Number.isFinite(n)) return 0
+    return Math.max(0, Math.min(1, n))
   }
-  
-  /**
-   * Dessine le titre et sous-titre
-   */
-  drawTitle(thematic: ActiveThematic, admFilters: ActiveAdmFilters): void {
-    if (!this.options.includeTitle) return;
-    
-    const { titleArea } = this.layout;
-    const ctx = this.ctx;
-    
-    // Titre principal (police scalée)
-    ctx.fillStyle = '#1a1a1a';
-    ctx.font = `bold ${this.fonts.fontTitle}px Arial, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    
-    // v4.5.1: Ajout tag de version pour validation visuelle
-    const versionTag = ' (v4.5.1)';
-    const title = (this.options.title || `Atlas Géotechnique – ${thematic.name}`) + versionTag;
-    const titleY = titleArea.y + Math.round(5 * this.dpi / 72);
-    ctx.fillText(title, titleArea.x + titleArea.width / 2, titleY);
-    
-    // Sous-titre (zone + date) - police scalée
-    if (this.options.zone === 'adm-filtered' || this.options.subtitle) {
-      ctx.font = `${this.fonts.fontSubtitle}px Arial, sans-serif`;
-      ctx.fillStyle = '#666666';
-      
-      const zonePath = formatAdmPath(admFilters);
-      const now = new Date();
-      const date = now.toLocaleDateString('fr-FR');
-      const time = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
-      const subtitle = this.options.subtitle || `Zone : ${zonePath} – Export du ${date} à ${time}`;
-      
-      const subtitleY = titleArea.y + Math.round(30 * this.dpi / 72);
-      ctx.fillText(subtitle, titleArea.x + titleArea.width / 2, subtitleY);
-    }
-  }
-  
-  /**
-   * Dessine l'image de la carte capturée
-   * Utilise un rendu LETTERBOX pour préserver l'aspect ratio (évite l'étirement)
-   */
-  async drawMapImage(mapImageData: string | HTMLImageElement | HTMLCanvasElement): Promise<void> {
-    const { mapArea } = this.layout;
-    
-    let img: HTMLImageElement | HTMLCanvasElement;
-    
-    if (typeof mapImageData === 'string') {
-      // C'est une URL data ou une URL normale
-      img = await this.loadImage(mapImageData);
-    } else {
-      img = mapImageData;
-    }
-    
-    // ========== EXPÉRIENCE 2B: Rendu LETTERBOX pour préserver l'aspect ratio ==========
-    const srcW = img.width;
-    const srcH = img.height;
-    const dstW = mapArea.width;
-    const dstH = mapArea.height;
-    
-    const arSrc = srcW / srcH;
-    const arDst = dstW / dstH;
-    
-    let drawW: number;
-    let drawH: number;
-    let drawX: number;
-    let drawY: number;
-    
-    if (Math.abs(arSrc - arDst) < 0.01) {
-      // Aspect ratios quasi-identiques, pas besoin de letterbox
-      drawW = dstW;
-      drawH = dstH;
-      drawX = mapArea.x;
-      drawY = mapArea.y;
-    } else {
-      // Calculer le scale pour FIT (letterbox) - pas de stretch
-      const scale = Math.min(dstW / srcW, dstH / srcH);
-      drawW = srcW * scale;
-      drawH = srcH * scale;
-      
-      // Centrer dans la zone carte
-      drawX = mapArea.x + (dstW - drawW) / 2;
-      drawY = mapArea.y + (dstH - drawH) / 2;
-      
-      console.log('[ExportFrame] Letterbox applied:', {
-        src: { w: srcW, h: srcH, ar: arSrc.toFixed(3) },
-        dst: { w: dstW, h: dstH, ar: arDst.toFixed(3) },
-        draw: { w: drawW.toFixed(0), h: drawH.toFixed(0), x: drawX.toFixed(0), y: drawY.toFixed(0) },
-        scale: scale.toFixed(3)
-      });
-    }
-    
-    this.ctx.drawImage(img, drawX, drawY, drawW, drawH);
-  }
-  
-  /**
-   * Dessine un masque semi-transparent ou opaque hors de l'ADM
-   * @param admPolygon - Coordonnées du polygone ADM en lat/lon [[lng, lat], ...]
-   * @param bbox - Bounding box de la carte
-   * @param mode - 'none' | 'context' (45%) | 'focus' (85%) | 'clip' (100%)
-   */
-  drawAdmMask(
-    admPolygon: number[][] | null,
-    bbox: BBox,
-    mode: 'none' | 'context' | 'focus' | 'clip' = 'context'
-  ): void {
-    console.log('[ExportFrame] drawAdmMask called:', { 
-      mode, 
-      polygonPoints: admPolygon?.length,
-      bbox
-    });
-    
-    if (mode === 'none' || !admPolygon || admPolygon.length < 3) {
-      console.log('[ExportFrame] drawAdmMask skipped');
-      return;
-    }
-    
-    const { mapArea } = this.layout;
-    const ctx = this.ctx;
-    
-    // Opacité selon le mode: context=45%, focus=85%, clip=100%
-    const opacity = mode === 'clip' ? 1.0 : (mode === 'focus' ? 0.85 : 0.45);
-    
-    // Convertir les coordonnées lng/lat en pixels sur le canvas (coordonnées logiques)
-    const toPixel = (lng: number, lat: number): [number, number] => {
-      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
-      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
-      return [x, y];
-    };
-    
-    // Debug: vérifier les premiers points convertis
-    const debugPoints = admPolygon.slice(0, 3).map(pt => ({
-      lng: pt[0], lat: pt[1],
-      pixel: toPixel(pt[0], pt[1])
-    }));
-    console.log('[ExportFrame] Masque ADM - conversion coords:', {
-      mapArea: { x: mapArea.x, y: mapArea.y, w: mapArea.width, h: mapArea.height },
-      bbox,
-      firstPoints: debugPoints,
-      opacity
-    });
-    
-    ctx.save();
-    
-    // MÉTHODE DIRECTE: Dessiner le masque directement sur le canvas principal
-    // en utilisant fill('evenodd') pour créer un trou
-    
-    // 1. Créer un chemin qui couvre la zone carte SAUF le polygone ADM
-    ctx.beginPath();
-    
-    // Rectangle extérieur (zone carte) - sens horaire
-    ctx.moveTo(mapArea.x, mapArea.y);
-    ctx.lineTo(mapArea.x + mapArea.width, mapArea.y);
-    ctx.lineTo(mapArea.x + mapArea.width, mapArea.y + mapArea.height);
-    ctx.lineTo(mapArea.x, mapArea.y + mapArea.height);
-    ctx.closePath();
-    
-    // Polygone ADM intérieur (trou) - sens anti-horaire pour créer un trou
-    const firstPoint = toPixel(admPolygon[0][0], admPolygon[0][1]);
-    ctx.moveTo(firstPoint[0], firstPoint[1]);
-    
-    // Parcourir en sens inverse pour créer le trou
-    for (let i = admPolygon.length - 1; i >= 0; i--) {
-      const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    
-    // Remplir avec le masque blanc semi-transparent
-    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
-    ctx.fill('evenodd');
-    
-    console.log('[ExportFrame] Masque dessiné avec evenodd, opacity:', opacity);
-    
-    // Dessiner aussi la bordure de l'ADM en pointillés
-    ctx.beginPath();
-    const startPt = toPixel(admPolygon[0][0], admPolygon[0][1]);
-    ctx.moveTo(startPt[0], startPt[1]);
-    for (let i = 1; i < admPolygon.length; i++) {
-      const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = '#3366cc';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    
-    console.log('[ExportFrame] Mask drawn with evenodd fill rule');
-    ctx.restore();
-  }
-  
-  /**
-   * Dessine uniquement la bordure de l'ADM (sans masque)
-   * Utile quand maskMode='none' mais qu'on veut quand même voir la délimitation
-   * @param admPolygon - Coordonnées du polygone ADM [[lng, lat], ...]
-   * @param bbox - Bounding box de la carte
-   * @param color - Couleur de la bordure (défaut: bleu)
-   * @param lineWidth - Épaisseur de la ligne (défaut: 2)
-   */
-  drawAdmBoundary(
-    admPolygon: number[][] | null,
-    bbox: BBox,
-    color: string = '#3366cc',
-    lineWidth: number = 2
-  ): void {
-    if (!admPolygon || admPolygon.length < 3) {
-      console.log('[ExportFrame] drawAdmBoundary skipped - no polygon');
-      return;
-    }
-    
-    const { mapArea } = this.layout;
-    const ctx = this.ctx;
-    
-    // Convertir les coordonnées lng/lat en pixels
-    const toPixel = (lng: number, lat: number): [number, number] => {
-      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
-      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
-      return [x, y];
-    };
-    
-    ctx.save();
-    
-    // Dessiner la bordure de l'ADM en pointillés
-    ctx.beginPath();
-    const startPt = toPixel(admPolygon[0][0], admPolygon[0][1]);
-    ctx.moveTo(startPt[0], startPt[1]);
-    for (let i = 1; i < admPolygon.length; i++) {
-      const [x, y] = toPixel(admPolygon[i][0], admPolygon[i][1]);
-      ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.setLineDash([6, 4]);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
-    ctx.stroke();
-    ctx.setLineDash([]);
-    
-    console.log('[ExportFrame] ADM boundary drawn (standalone)');
-    ctx.restore();
-  }
-  
-  /**
-   * Dessine les délimitations des ADM de niveau inférieur
-   * @param subAdmPolygons - Liste des polygones des sous-ADM [{name, polygon}]
-   * @param bbox - Bounding box de la carte
-   * @param style - Style de ligne ('dashed' | 'solid')
-   */
-  drawSubAdmBoundaries(
-    subAdmPolygons: Array<{ name: string; polygon: number[][] }>,
-    bbox: BBox,
-    style: 'dashed' | 'solid' = 'dashed'
-  ): void {
-    if (!subAdmPolygons || subAdmPolygons.length === 0) return;
-    
-    const { mapArea } = this.layout;
-    const ctx = this.ctx;
-    const scale = this.dpi / 72;
-    
-    // Convertir les coordonnées lng/lat en pixels
-    const toPixel = (lng: number, lat: number): [number, number] => {
-      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
-      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
-      return [x, y];
-    };
-    
-    ctx.save();
-    
-    // Style des lignes
-    ctx.strokeStyle = '#666666';
-    ctx.lineWidth = 1 * scale;
-    if (style === 'dashed') {
-      ctx.setLineDash([4 * scale, 2 * scale]);
-    }
-    
-    for (const subAdm of subAdmPolygons) {
-      if (!subAdm.polygon || subAdm.polygon.length < 3) continue;
-      
-      ctx.beginPath();
-      const [startX, startY] = toPixel(subAdm.polygon[0][0], subAdm.polygon[0][1]);
-      ctx.moveTo(startX, startY);
-      
-      for (let i = 1; i < subAdm.polygon.length; i++) {
-        const [x, y] = toPixel(subAdm.polygon[i][0], subAdm.polygon[i][1]);
-        ctx.lineTo(x, y);
+
+  private parseCssColor(
+    input: string
+  ):
+    | { r: number; g: number; b: number; a: number; format: 'hex' | 'rgba' }
+    | null {
+    const s = (input || '').trim()
+    if (!s) return null
+
+    // Hex: #RGB, #RRGGBB, #RRGGBBAA
+    const hexMatch = /^#?([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(s)
+    if (hexMatch) {
+      const v = hexMatch[1]
+      const expand3 = (h: string) => `${h[0]}${h[0]}${h[1]}${h[1]}${h[2]}${h[2]}`
+      const hex6 = v.length === 3 ? expand3(v) : v.slice(0, 6)
+      const r = parseInt(hex6.slice(0, 2), 16)
+      const g = parseInt(hex6.slice(2, 4), 16)
+      const b = parseInt(hex6.slice(4, 6), 16)
+      if (![r, g, b].every(Number.isFinite)) return null
+
+      let a = 1
+      if (v.length === 8) {
+        const aa = parseInt(v.slice(6, 8), 16)
+        if (Number.isFinite(aa)) a = this.clamp01(aa / 255)
       }
-      ctx.closePath();
-      ctx.stroke();
+      return { r, g, b, a, format: a < 1 ? 'rgba' : 'hex' }
     }
-    
-    ctx.setLineDash([]);
-    ctx.restore();
-    
-    console.log('[ExportFrame] Sub-ADM boundaries drawn:', subAdmPolygons.length);
-  }
-  
-  /**
-   * Dessine les frontières ADM à partir de features GeoJSON
-   * Utilisé pour superposer les limites ADM1 ou ADM2 sur la carte exportée
-   * @param features - Features GeoJSON avec geometry
-   * @param bbox - Bounding box de la carte
-   * @param level - Niveau ADM ('adm1' | 'adm2')
-   */
-  drawAdmBoundaries(
-    features: Array<{ geometry: any; properties?: any }>,
-    bbox: BBox,
-    level: 'adm1' | 'adm2' = 'adm1'
-  ): void {
-    if (!features || features.length === 0) {
-      console.log('[ExportFrame] drawAdmBoundaries skipped - no features');
-      return;
-    }
-    
-    const { mapArea } = this.layout;
-    const ctx = this.ctx;
-    const scale = this.dpi / 72;
-    
-    // Convertir les coordonnées lng/lat en pixels
-    const toPixel = (lng: number, lat: number): [number, number] => {
-      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
-      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
-      return [x, y];
-    };
-    
-    ctx.save();
-    
-    // Style selon le niveau ADM
-    const color = level === 'adm1' ? '#cc3333' : '#3366cc';
-    const lineWidth = level === 'adm1' ? 2.5 * scale : 1.5 * scale;
-    const dashPattern = level === 'adm1' ? [] : [6 * scale, 3 * scale];
-    
-    ctx.strokeStyle = color;
-    ctx.lineWidth = lineWidth;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    if (dashPattern.length > 0) {
-      ctx.setLineDash(dashPattern);
-    }
-    
-    let drawnCount = 0;
-    
-    for (const feature of features) {
-      const geom = feature.geometry;
-      if (!geom) continue;
-      
-      // Extraire les coordonnées selon le type de géométrie
-      let rings: number[][][] = [];
-      
-      if (geom.type === 'Polygon') {
-        rings = geom.coordinates;
-      } else if (geom.type === 'MultiPolygon') {
-        for (const polygon of geom.coordinates) {
-          rings.push(...polygon);
-        }
-      }
-      
-      // Dessiner chaque anneau
-      for (const ring of rings) {
-        if (!ring || ring.length < 3) continue;
-        
-        ctx.beginPath();
-        const [startX, startY] = toPixel(ring[0][0], ring[0][1]);
-        ctx.moveTo(startX, startY);
-        
-        for (let i = 1; i < ring.length; i++) {
-          const [x, y] = toPixel(ring[i][0], ring[i][1]);
-          ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.stroke();
-        drawnCount++;
+
+    // rgb()/rgba()
+    const rgbMatch = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)(?:\s*,\s*([\d.]+))?\s*\)$/i.exec(s)
+    if (rgbMatch) {
+      const r = Number(rgbMatch[1])
+      const g = Number(rgbMatch[2])
+      const b = Number(rgbMatch[3])
+      const a = rgbMatch[4] != null ? Number(rgbMatch[4]) : 1
+      if (![r, g, b, a].every(Number.isFinite)) return null
+      return {
+        r: Math.max(0, Math.min(255, r)),
+        g: Math.max(0, Math.min(255, g)),
+        b: Math.max(0, Math.min(255, b)),
+        a: this.clamp01(a),
+        format: this.clamp01(a) < 1 ? 'rgba' : 'hex'
       }
     }
-    
-    ctx.setLineDash([]);
-    ctx.restore();
-    
-    console.log(`[ExportFrame] ADM boundaries drawn: ${drawnCount} rings for ${features.length} features (${level})`);
+
+    return null
   }
-  
-  /**
-   * Dessine les labels des ADM limitrophes sur les bords du polygone ADM
-   * Les labels sont positionnés aux coordonnées réelles des voisins, sur le bord de l'ADM
-   * @param neighbors - Liste des voisins avec direction et coordonnées
-   * @param bbox - Bounding box de la carte
-   * @param admPolygon - Optionnel: polygone ADM pour calculer les intersections
-   */
-  drawNeighborLabels(
-    neighbors: Array<{
-      label: string;
-      direction: string;
-      lon: number;
-      lat: number;
-    }>,
-    bbox: BBox,
-    admPolygon?: number[][] | null
-  ): void {
-    if (!neighbors || neighbors.length === 0) return;
-    
-    const { mapArea } = this.layout;
-    const ctx = this.ctx;
-    
-    // Convertir coordonnées géo en pixels
-    const toPixel = (lng: number, lat: number): [number, number] => {
-      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
-      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
-      return [x, y];
-    };
-    
-    ctx.save();
-    // Police plus grande et visible (16px pour meilleure lisibilité)
-    ctx.font = 'italic bold 16px Arial, sans-serif';
-    
-    // Fonction pour dessiner un label avec halo
-    const drawLabelWithHalo = (text: string, x: number, y: number, align: CanvasTextAlign, baseline: CanvasTextBaseline) => {
-      ctx.textAlign = align;
-      ctx.textBaseline = baseline;
-      // Halo blanc épais
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
-      ctx.lineWidth = 4;
-      ctx.lineJoin = 'round';
-      ctx.strokeText(text, x, y);
-      // Texte principal en gris foncé
-      ctx.fillStyle = '#333333';
-      ctx.fillText(text, x, y);
-    };
-    
-    // Calculer le centroïde de l'ADM si disponible
-    let admCenterX = mapArea.x + mapArea.width / 2;
-    let admCenterY = mapArea.y + mapArea.height / 2;
-    
-    if (admPolygon && admPolygon.length > 2) {
-      let sumX = 0, sumY = 0;
-      for (const pt of admPolygon) {
-        const [px, py] = toPixel(pt[0], pt[1]);
-        sumX += px;
-        sumY += py;
-      }
-      admCenterX = sumX / admPolygon.length;
-      admCenterY = sumY / admPolygon.length;
-    }
-    
-    const labelOffset = 15; // Distance du bord de la carte
-    
-    // Dessiner chaque label à sa position géographique réelle
-    for (const neighbor of neighbors) {
-      const [px, py] = toPixel(neighbor.lon, neighbor.lat);
-      const dir = neighbor.direction.toUpperCase();
-      
-      // Clamp la position aux bords de la zone carte avec offset
-      let x = px;
-      let y = py;
-      let align: CanvasTextAlign = 'center';
-      let baseline: CanvasTextBaseline = 'middle';
-      
-      // Déterminer la position et l'alignement selon la direction
-      switch (dir) {
-        case 'N':
-          // Positionner en haut de la zone carte
-          y = mapArea.y + labelOffset;
-          x = Math.max(mapArea.x + 30, Math.min(mapArea.x + mapArea.width - 30, px));
-          align = 'center';
-          baseline = 'top';
-          break;
-        case 'S':
-          // Positionner en bas de la zone carte
-          y = mapArea.y + mapArea.height - labelOffset;
-          x = Math.max(mapArea.x + 30, Math.min(mapArea.x + mapArea.width - 30, px));
-          align = 'center';
-          baseline = 'bottom';
-          break;
-        case 'E':
-          // Positionner à droite de la zone carte
-          x = mapArea.x + mapArea.width - labelOffset;
-          y = Math.max(mapArea.y + 20, Math.min(mapArea.y + mapArea.height - 20, py));
-          align = 'right';
-          baseline = 'middle';
-          break;
-        case 'W':
-          // Positionner à gauche de la zone carte
-          x = mapArea.x + labelOffset;
-          y = Math.max(mapArea.y + 20, Math.min(mapArea.y + mapArea.height - 20, py));
-          align = 'left';
-          baseline = 'middle';
-          break;
-        default:
-          // Position par défaut basée sur la direction vers le centre
-          if (px < admCenterX) {
-            x = mapArea.x + labelOffset;
-            align = 'left';
-          } else {
-            x = mapArea.x + mapArea.width - labelOffset;
-            align = 'right';
-          }
-          y = Math.max(mapArea.y + 20, Math.min(mapArea.y + mapArea.height - 20, py));
-      }
-      
-      drawLabelWithHalo(neighbor.label, x, y, align, baseline);
-    }
-    
-    ctx.restore();
+
+  private rgbToHex(r: number, g: number, b: number): string {
+    const toHex = (x: number) => Math.max(0, Math.min(255, Math.round(x))).toString(16).padStart(2, '0')
+    return `#${toHex(r)}${toHex(g)}${toHex(b)}`
   }
-  
-  /**
-   * Dessine les mailles vides (sans données) en gris clair
-   * IMPORTANT: Cette fonction ne dessine QUE les mailles SANS données
-   * Les mailles AVEC données sont dans la capture Leaflet (thématique)
-   * @param cells - Liste des mailles avec leur géométrie
-   * @param bbox - Bounding box de la carte
-   */
-  drawEmptyCells(
-    cells: Array<{ geometry: any; has_data: boolean; value?: number }>,
-    bbox: BBox
-  ): void {
-    const { mapArea } = this.layout;
-    const ctx = this.ctx;
-    
-    // Convertir les coordonnées géo en pixels
+
+  private rgbToRgbaString(r: number, g: number, b: number, a: number): string {
+    const rr = Math.max(0, Math.min(255, Math.round(r)))
+    const gg = Math.max(0, Math.min(255, Math.round(g)))
+    const bb = Math.max(0, Math.min(255, Math.round(b)))
+    const aa = this.clamp01(a)
+    return `rgba(${rr}, ${gg}, ${bb}, ${aa})`
+  }
+
+  private rgbToHsl(r: number, g: number, b: number): { h: number; s: number; l: number } {
+    const rn = r / 255
+    const gn = g / 255
+    const bn = b / 255
+    const max = Math.max(rn, gn, bn)
+    const min = Math.min(rn, gn, bn)
+    let h = 0
+    let s = 0
+    const l = (max + min) / 2
+
+    if (max !== min) {
+      const d = max - min
+      s = l > 0.5 ? d / (2 - max - min) : d / (max + min)
+      switch (max) {
+        case rn:
+          h = (gn - bn) / d + (gn < bn ? 6 : 0)
+          break
+        case gn:
+          h = (bn - rn) / d + 2
+          break
+        case bn:
+          h = (rn - gn) / d + 4
+          break
+      }
+      h = h / 6
+    }
+
+    return { h: this.clamp01(h), s: this.clamp01(s), l: this.clamp01(l) }
+  }
+
+  private hslToRgb(h: number, s: number, l: number): { r: number; g: number; b: number } {
+    const hue2rgb = (p: number, q: number, t: number) => {
+      let tt = t
+      if (tt < 0) tt += 1
+      if (tt > 1) tt -= 1
+      if (tt < 1 / 6) return p + (q - p) * 6 * tt
+      if (tt < 1 / 2) return q
+      if (tt < 2 / 3) return p + (q - p) * (2 / 3 - tt) * 6
+      return p
+    }
+
+    const hh = this.clamp01(h)
+    const ss = this.clamp01(s)
+    const ll = this.clamp01(l)
+
+    if (ss === 0) {
+      const v = ll * 255
+      return { r: v, g: v, b: v }
+    }
+
+    const q = ll < 0.5 ? ll * (1 + ss) : ll + ss - ll * ss
+    const p = 2 * ll - q
+    const r = hue2rgb(p, q, hh + 1 / 3) * 255
+    const g = hue2rgb(p, q, hh) * 255
+    const b = hue2rgb(p, q, hh - 1 / 3) * 255
+    return { r, g, b }
+  }
+
+  private getExportPaletteEnhanceConfig(): any {
+    const cfg = (window as any).__EXPORT_PALETTE_ENHANCE
+    if (!cfg || typeof cfg !== 'object') return null
+    if (cfg.enabled === false) return null
+    return cfg
+  }
+
+  private enhanceExportColor(color: string): string {
+    const cfg = this.getExportPaletteEnhanceConfig()
+    if (!cfg) return color
+    const parsed = this.parseCssColor(color)
+    if (!parsed) return color
+
+    const satMultiplier = Number.isFinite(cfg.satMultiplier) ? Number(cfg.satMultiplier) : 1
+    const minSaturation = Number.isFinite(cfg.minSaturation) ? Number(cfg.minSaturation) : 0
+    const lightnessMultiplier = Number.isFinite(cfg.lightnessMultiplier) ? Number(cfg.lightnessMultiplier) : 1
+    const gammaContrast = Number.isFinite(cfg.gammaContrast) ? Number(cfg.gammaContrast) : 1
+
+    const hsl = this.rgbToHsl(parsed.r, parsed.g, parsed.b)
+    let s = hsl.s
+    let l = hsl.l
+
+    s = Math.max(minSaturation, s * satMultiplier)
+    l = l * lightnessMultiplier
+    l = 0.5 + (l - 0.5) * gammaContrast
+
+    const out = this.hslToRgb(hsl.h, this.clamp01(s), this.clamp01(l))
+    if (parsed.a < 1 || parsed.format === 'rgba') {
+      return this.rgbToRgbaString(out.r, out.g, out.b, parsed.a)
+    }
+    return this.rgbToHex(out.r, out.g, out.b)
+  }
+
+  private enhanceExportClasses(
+    classes: Array<{ min: number | null; max: number | null; color: string; label: string }>
+  ): Array<{ min: number | null; max: number | null; color: string; label: string }> {
+    const cfg = this.getExportPaletteEnhanceConfig()
+    if (!cfg) return classes
+
+    const enhanced = classes.map((c) => ({ ...c, color: this.enhanceExportColor(c.color) }))
+
+    const sampleBefore = classes.slice(0, 6).map((c) => c.color)
+    const sampleAfter = enhanced.slice(0, 6).map((c) => c.color)
+    console.log('[ExportPalette] enhance classes:', {
+      cfg: {
+        enabled: cfg.enabled,
+        satMultiplier: cfg.satMultiplier,
+        minSaturation: cfg.minSaturation,
+        lightnessMultiplier: cfg.lightnessMultiplier,
+        gammaContrast: cfg.gammaContrast
+      },
+      sampleBefore,
+      sampleAfter
+    })
+
+    return enhanced
+  }
+
+  wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    if (!text) return ['']
+    const words = text.split(' ')
+    const lines: string[] = []
+    let currentLine = ''
+
+    for (const word of words) {
+      const testLine = currentLine ? `${currentLine} ${word}` : word
+      const testWidth = ctx.measureText(testLine).width
+      if (testWidth > maxWidth && currentLine) {
+        lines.push(currentLine)
+        currentLine = word
+      } else {
+        currentLine = testLine
+      }
+    }
+
+    if (currentLine) lines.push(currentLine)
+    return lines.length > 0 ? lines : [text]
+  }
+
+  drawTitle(thematic: ActiveThematic, admFilters?: ActiveAdmFilters): void {
+    if (!this.options.includeTitle) return
+    const { titleArea } = this.layout
+    const ctx = this.ctx
+    const scale = this.dpi / 72
+
+    const title = this.options.title || `Atlas Géotechnique - ${thematic.name}`
+    const now = new Date()
+    const exportDate = now.toLocaleDateString('fr-FR')
+    const exportTime = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+
+    ctx.save()
+    ctx.fillStyle = '#111827'
+    ctx.font = `bold ${this.fonts.fontTitle}px Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'top'
+
+    const titleY = titleArea.y + Math.round(5 * this.dpi / 72)
+    ctx.fillText(title, titleArea.x + titleArea.width / 2, titleY)
+
+    if (this.options.zone === 'adm-filtered') {
+      const zoneLabel = admFilters ? formatAdmPath(admFilters) : ''
+      const defaultSubtitle = zoneLabel ? `Zone : ${zoneLabel} – Export du ${exportDate} à ${exportTime}` : ''
+      const sub = this.options.subtitle || defaultSubtitle
+      if (sub) {
+        ctx.fillStyle = '#4b5563'
+        ctx.font = `${this.fonts.fontSubtitle}px Arial, sans-serif`
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'top'
+        const subtitleY = titleArea.y + Math.round(5 * scale) + Math.round(this.fonts.fontTitle * 1.1)
+        ctx.fillText(sub, titleArea.x + titleArea.width / 2, subtitleY)
+      }
+    }
+
+    ctx.restore()
+
+    console.log('[ExportFrame][TITLE] effective', {
+      title,
+      subtitle:
+        this.options.zone === 'adm-filtered'
+          ? (this.options.subtitle || (admFilters ? formatAdmPath(admFilters) : ''))
+          : this.options.subtitle,
+      zone: this.options.zone,
+      exportDate,
+      exportTime
+    })
+  }
+
+  async drawMapImage(mapCanvas: HTMLCanvasElement): Promise<void> {
+    const { mapArea } = this.layout
+    const ctx = this.ctx
+    if (!mapCanvas) return
+
+    ctx.save()
+    ctx.globalAlpha = 1
+    ctx.globalCompositeOperation = 'source-over'
+    ctx.imageSmoothingEnabled = true
+    ctx.imageSmoothingQuality = 'high'
+    ctx.drawImage(mapCanvas, mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    ctx.restore()
+  }
+
+  drawEmptyCells(cells: Array<{ geometry: any; has_data: boolean }>, bbox: BBox): void {
+    const { mapArea } = this.layout
+    const ctx = this.ctx
+    const scale = this.dpi / 72
+    const emptyCells = (cells || []).filter((c) => !c?.has_data)
+    if (emptyCells.length === 0) return
+
     const toPixel = (lng: number, lat: number): [number, number] => {
-      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
-      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
-      return [x, y];
-    };
-    
-    const scale = this.dpi / 72;
-    const emptyCells = cells.filter(c => !c.has_data);
-    const withDataCells = cells.filter(c => c.has_data);
-    
-    console.log('[ExportFrame] drawEmptyCells:', {
-      total: cells.length,
-      withData: withDataCells.length,
-      withoutData: emptyCells.length
-    });
-    
-    ctx.save();
-    // v4.5.1: Mailles vides ULTRA-DISCRÈTES
-    ctx.fillStyle = 'rgba(240, 240, 240, 0.18)';
-    ctx.strokeStyle = 'rgba(180, 180, 180, 0.55)';
-    ctx.lineWidth = 0.25 * scale;
-    
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height
+      return [x, y]
+    }
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    ctx.clip()
+
+    // Réduire l'effet de filtre gris : opacité ÷2
+    ctx.fillStyle = 'rgba(210, 210, 210, 0.175)'
+    ctx.strokeStyle = 'rgba(140, 140, 140, 0.11)'
+    ctx.lineWidth = 0.35 * scale
+
+    console.log('[ExportFrame][EMPTY_CELLS] style', {
+      fillStyle: ctx.fillStyle,
+      strokeStyle: ctx.strokeStyle,
+      lineWidth: ctx.lineWidth,
+      count: emptyCells.length
+    })
+
     for (const cell of emptyCells) {
-      const geom = cell.geometry;
-      if (!geom || geom.type !== 'Polygon') continue;
-      
-      const coords = geom.coordinates?.[0];
-      if (!coords || coords.length < 3) continue;
-      
-      ctx.beginPath();
-      const [startX, startY] = toPixel(coords[0][0], coords[0][1]);
-      ctx.moveTo(startX, startY);
-      
+      const geom = cell?.geometry
+      if (!geom || geom.type !== 'Polygon') continue
+      const coords = geom.coordinates?.[0]
+      if (!coords || coords.length < 3) continue
+
+      ctx.beginPath()
+      const [sx, sy] = toPixel(coords[0][0], coords[0][1])
+      ctx.moveTo(sx, sy)
       for (let i = 1; i < coords.length; i++) {
-        const [x, y] = toPixel(coords[i][0], coords[i][1]);
-        ctx.lineTo(x, y);
+        const [x, y] = toPixel(coords[i][0], coords[i][1])
+        ctx.lineTo(x, y)
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      ctx.closePath()
+      ctx.fill()
+      ctx.stroke()
     }
-    
-    ctx.restore();
-    console.log('[ExportFrame] Empty cells drawn:', emptyCells.length);
+
+    ctx.restore()
   }
-  
-  /**
-   * Dessine les mailles avec données en mode DEBUG (rouge vif)
-   * Utile pour vérifier si les mailles thématiques sont bien présentes
-   * @param cells - Liste des mailles avec leur géométrie
-   * @param bbox - Bounding box de la carte
-   */
-  drawDataCellsDebug(
-    cells: Array<{ geometry: any; has_data: boolean; value?: number }>,
-    bbox: BBox
+
+  drawCellBoundaries(
+    cells: Array<{ geometry: any }>,
+    bbox: BBox,
+    layerType: 'grid2' | 'grid28' = 'grid2'
   ): void {
-    const { mapArea } = this.layout;
-    const ctx = this.ctx;
-    
+    const { mapArea } = this.layout
+    const ctx = this.ctx
+    const style = getStrokeStyle(layerType, this.dpi)
+
     const toPixel = (lng: number, lat: number): [number, number] => {
-      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
-      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
-      return [x, y];
-    };
-    
-    const scale = this.dpi / 72;
-    const withDataCells = cells.filter(c => c.has_data);
-    
-    console.log('[ExportFrame] DEBUG: Drawing', withDataCells.length, 'cells with data in RED');
-    
-    ctx.save();
-    ctx.fillStyle = 'rgba(255, 0, 0, 0.6)'; // Rouge vif semi-transparent
-    ctx.strokeStyle = 'rgba(200, 0, 0, 1)'; // Contour rouge foncé
-    ctx.lineWidth = 1.5 * scale;
-    
-    for (const cell of withDataCells) {
-      const geom = cell.geometry;
-      if (!geom || geom.type !== 'Polygon') continue;
-      
-      const coords = geom.coordinates?.[0];
-      if (!coords || coords.length < 3) continue;
-      
-      ctx.beginPath();
-      const [startX, startY] = toPixel(coords[0][0], coords[0][1]);
-      ctx.moveTo(startX, startY);
-      
-      for (let i = 1; i < coords.length; i++) {
-        const [x, y] = toPixel(coords[i][0], coords[i][1]);
-        ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height
+      return [x, y]
     }
-    
-    ctx.restore();
-    console.log('[ExportFrame] DEBUG cells with data drawn:', withDataCells.length);
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    ctx.clip()
+
+    ctx.globalAlpha = typeof style.globalAlpha === 'number' ? style.globalAlpha : 1
+    ctx.strokeStyle = style.strokeStyle
+    ctx.lineWidth = style.lineWidth
+    ctx.lineJoin = style.lineJoin || 'miter'
+    ctx.lineCap = style.lineCap || 'butt'
+    ctx.setLineDash(style.lineDash || [])
+
+    for (const cell of cells || []) {
+      const geom = (cell as any)?.geometry
+      if (!geom || geom.type !== 'Polygon') continue
+      const coords = geom.coordinates?.[0]
+      if (!coords || coords.length < 3) continue
+
+      ctx.beginPath()
+      const [sx, sy] = toPixel(coords[0][0], coords[0][1])
+      ctx.moveTo(sx, sy)
+      for (let i = 1; i < coords.length; i++) {
+        const [x, y] = toPixel(coords[i][0], coords[i][1])
+        ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+      ctx.stroke()
+    }
+
+    ctx.restore()
   }
-  
+
+  drawGridOverlayLines(features: any[], bbox: BBox, layerType: 'grid28' | 'grid2' = 'grid28'): void {
+    const { mapArea } = this.layout
+    const ctx = this.ctx
+    const style = getStrokeStyle(layerType, this.dpi)
+
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height
+      return [x, y]
+    }
+
+    const drawLineCoords = (coords: any[]) => {
+      if (!Array.isArray(coords) || coords.length < 2) return
+      ctx.beginPath()
+      const [sx, sy] = toPixel(coords[0][0], coords[0][1])
+      ctx.moveTo(sx, sy)
+      for (let i = 1; i < coords.length; i++) {
+        const [x, y] = toPixel(coords[i][0], coords[i][1])
+        ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    ctx.clip()
+
+    ctx.globalAlpha = typeof style.globalAlpha === 'number' ? style.globalAlpha : 1
+    ctx.strokeStyle = style.strokeStyle
+    ctx.lineWidth = style.lineWidth
+    ctx.lineJoin = style.lineJoin || 'miter'
+    ctx.lineCap = style.lineCap || 'butt'
+    ctx.setLineDash(style.lineDash || [])
+
+    for (const f of features || []) {
+      const g = f?.geometry || f
+      if (!g || !g.type) continue
+      if (g.type === 'LineString') {
+        drawLineCoords(g.coordinates)
+      } else if (g.type === 'MultiLineString') {
+        for (const part of g.coordinates || []) drawLineCoords(part)
+      }
+    }
+
+    ctx.restore()
+  }
+
+  drawAdmBoundary(
+    admPolygon: Array<[number, number]> | number[][] | null | undefined,
+    bbox: BBox,
+    color: string = '#000000',
+    width: number = 2
+  ): void {
+    const { mapArea } = this.layout
+    const ctx = this.ctx
+    const scale = this.dpi / 72
+
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height
+      return [x, y]
+    }
+
+    if (!admPolygon || admPolygon.length < 3) return
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    ctx.clip()
+
+    ctx.strokeStyle = color
+    ctx.lineWidth = width * scale
+    ctx.lineJoin = 'round'
+    ctx.lineCap = 'round'
+    ctx.setLineDash([])
+
+    ctx.beginPath()
+    const [sx, sy] = toPixel((admPolygon[0] as any)[0], (admPolygon[0] as any)[1])
+    ctx.moveTo(sx, sy)
+    for (let i = 1; i < admPolygon.length; i++) {
+      const [x, y] = toPixel((admPolygon[i] as any)[0], (admPolygon[i] as any)[1])
+      ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+    ctx.stroke()
+
+    ctx.restore()
+  }
+
+  drawAdmMask(admPolygon: Array<[number, number]> | number[][] | null | undefined, bbox: BBox, mode: 'context' | 'focus' | 'clip'): void {
+    const { mapArea } = this.layout
+    const ctx = this.ctx
+    const scale = this.dpi / 72
+
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height
+      return [x, y]
+    }
+
+    if (!admPolygon || admPolygon.length < 3) return
+
+    const alpha = mode === 'clip' ? 1 : mode === 'focus' ? 0.72 : 0.55
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    for (let i = 0; i < admPolygon.length; i++) {
+      const [lng, lat] = admPolygon[i] as any
+      const [x, y] = toPixel(lng, lat)
+      if (i === 0) ctx.moveTo(x, y)
+      else ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+
+    ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
+    ctx.fill('evenodd')
+
+    ctx.strokeStyle = '#3366cc'
+    ctx.lineWidth = 2.2 * scale
+    ctx.lineJoin = 'round'
+    ctx.lineCap = 'round'
+    ctx.setLineDash([])
+    ctx.beginPath()
+    const [sx, sy] = toPixel((admPolygon[0] as any)[0], (admPolygon[0] as any)[1])
+    ctx.moveTo(sx, sy)
+    for (let i = 1; i < admPolygon.length; i++) {
+      const [x, y] = toPixel((admPolygon[i] as any)[0], (admPolygon[i] as any)[1])
+      ctx.lineTo(x, y)
+    }
+    ctx.closePath()
+    ctx.stroke()
+
+    ctx.restore()
+  }
+
+  drawGridAndFrame(bbox: BBox): void {
+    const { mapArea, coordLabelMargin } = this.layout
+    const ctx = this.ctx
+    const gridOutput = generateGridLines({
+      bbox,
+      mapWidth: mapArea.width,
+      mapHeight: mapArea.height,
+      options: this.options.grid
+    })
+
+    renderGrid({
+      ctx,
+      mapArea,
+      gridOutput,
+      gridType: this.options.grid.type,
+      showLabels: this.options.grid.showLabels,
+      labelSides: this.options.grid.labelSides,
+      labelMargin: coordLabelMargin,
+      dpi: this.dpi
+    })
+
+    renderFrame({
+      ctx,
+      mapArea,
+      style: this.options.frameStyle,
+      color: '#111827',
+      thickness: Math.max(1, Math.round((this.dpi / 72) * 1.6))
+    } as any)
+  }
+
+  drawCartouche(scaleText: string, admFilters?: ActiveAdmFilters): void {
+    const { cartoucheArea } = this.layout
+    const ctx = this.ctx
+    const scale = this.dpi / 72
+    const padding = Math.round(8 * scale)
+    const lineHeight = Math.round(12 * scale)
+    const innerWidth = cartoucheArea.width - padding * 2
+
+    ctx.save()
+    ctx.strokeStyle = '#cccccc'
+    ctx.lineWidth = scale
+    ctx.fillStyle = '#fafafa'
+    ctx.fillRect(cartoucheArea.x, cartoucheArea.y, cartoucheArea.width, cartoucheArea.height)
+    ctx.strokeRect(cartoucheArea.x, cartoucheArea.y, cartoucheArea.width, cartoucheArea.height)
+
+    ctx.fillStyle = '#111827'
+    ctx.font = `bold ${this.fonts.fontCartouche}px Arial, sans-serif`
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'top'
+
+    let y = cartoucheArea.y + padding
+    const srcLine = `Source : Atlas Géotechnique ${APP_VERSION}`
+    const fondLine = 'Fond : © OpenStreetMap contributors'
+    const scrLine = `SCR : WGS84 (${this.options.grid.scr})`
+    const dataLine = 'Données : UTM 31N (EPSG:25231)'
+    const dateStr = new Date().toLocaleDateString('fr-FR')
+
+    ctx.fillText(srcLine, cartoucheArea.x + padding, y)
+    y += lineHeight
+    ctx.fillStyle = '#374151'
+    ctx.font = `${this.fonts.fontCartouche}px Arial, sans-serif`
+    ctx.fillText(fondLine, cartoucheArea.x + padding, y)
+    y += lineHeight
+
+    if (this.options.includeScrInfo) {
+      ctx.fillText(scrLine, cartoucheArea.x + padding, y)
+      y += lineHeight
+    }
+
+    ctx.fillText(dataLine, cartoucheArea.x + padding, y)
+    y += Math.round(lineHeight * 1.1)
+
+    ctx.fillText(`Date : ${dateStr}`, cartoucheArea.x + padding, y)
+    y += Math.round(lineHeight * 1.1)
+
+    // Zone (si présente) en plus petit
+    // (Disposition ancienne) : pas d'affichage de zone dans le cartouche
+
+    // Barre d'échelle (option)
+    if (this.options.includeScaleBar && scaleText) {
+      const barW = Math.min(innerWidth * 0.78, Math.round(150 * scale))
+      const barH = Math.round(8 * scale)
+      const barX = cartoucheArea.x + Math.round((cartoucheArea.width - barW) / 2)
+      const barY = cartoucheArea.y + cartoucheArea.height - padding - barH - Math.round(10 * scale)
+
+      ctx.fillStyle = '#000000'
+      ctx.fillRect(barX, barY, Math.round(barW / 2), barH)
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(barX + Math.round(barW / 2), barY, Math.round(barW / 2), barH)
+      ctx.strokeStyle = '#000000'
+      ctx.lineWidth = Math.max(1, Math.round(1 * scale))
+      ctx.strokeRect(barX, barY, barW, barH)
+
+      ctx.fillStyle = '#111827'
+      ctx.font = `${Math.max(9, Math.round(this.fonts.fontCartouche * 0.95))}px Arial, sans-serif`
+      ctx.textBaseline = 'top'
+      ctx.textAlign = 'center'
+      ctx.fillText(scaleText, barX + barW / 2, barY + barH + Math.round(2 * scale))
+      ctx.textAlign = 'left'
+    }
+
+    // Flèche du Nord (option)
+    if (this.options.includeNorthArrow) {
+      const nx = cartoucheArea.x + cartoucheArea.width - padding - Math.round(18 * scale)
+      const ny = cartoucheArea.y + padding + Math.round(8 * scale)
+      const radius = Math.round(16 * scale)
+
+      // Compass rose (étoilé) 8 branches, alternance noir/blanc
+      ctx.save()
+      ctx.translate(nx, ny)
+      ctx.lineWidth = Math.max(1, Math.round(1 * scale))
+      ctx.strokeStyle = '#111827'
+
+      const drawTriangle = (angleRad: number, r1: number, r2: number, fill: string) => {
+        const a = angleRad
+        const a1 = a - Math.PI / 16
+        const a2 = a + Math.PI / 16
+        ctx.beginPath()
+        ctx.moveTo(Math.cos(a) * r2, Math.sin(a) * r2)
+        ctx.lineTo(Math.cos(a1) * r1, Math.sin(a1) * r1)
+        ctx.lineTo(Math.cos(a2) * r1, Math.sin(a2) * r1)
+        ctx.closePath()
+        ctx.fillStyle = fill
+        ctx.fill()
+        ctx.stroke()
+      }
+
+      for (let i = 0; i < 8; i++) {
+        const ang = (-Math.PI / 2) + (i * Math.PI) / 4
+        const isCardinal = i % 2 === 0
+        const r2 = isCardinal ? radius * 1.35 : radius * 0.95
+        const r1 = radius * 0.25
+        const fill = isCardinal ? '#111827' : '#ffffff'
+        drawTriangle(ang, r1, r2, fill)
+      }
+
+      // Cercle central
+      ctx.beginPath()
+      ctx.fillStyle = '#ffffff'
+      ctx.arc(0, 0, Math.max(2, Math.round(2.4 * scale)), 0, Math.PI * 2)
+      ctx.fill()
+      ctx.stroke()
+
+      ctx.restore()
+    }
+
+    ctx.restore()
+
+    console.log('[ExportFrame][CARTOUCHE] layout', {
+      cartoucheArea,
+      includeScrInfo: this.options.includeScrInfo,
+      includeScaleBar: this.options.includeScaleBar,
+      includeNorthArrow: this.options.includeNorthArrow,
+      lines: { srcLine, fondLine, scrLine, dataLine, dateStr },
+      scaleText,
+      innerWidth,
+      padding,
+      lineHeight
+    })
+  }
+
+  drawAdmBoundaries(features: any[], bbox: BBox, level: 'adm1' | 'adm2'): void {
+    const { mapArea } = this.layout
+    const ctx = this.ctx
+    const style = getStrokeStyle(level, this.dpi)
+
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height
+      return [x, y]
+    }
+
+    const drawRing = (ring: any[]) => {
+      if (!Array.isArray(ring) || ring.length < 3) return
+      ctx.beginPath()
+      const [sx, sy] = toPixel(ring[0][0], ring[0][1])
+      ctx.moveTo(sx, sy)
+      for (let i = 1; i < ring.length; i++) {
+        const [x, y] = toPixel(ring[i][0], ring[i][1])
+        ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+      ctx.stroke()
+    }
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    ctx.clip()
+
+    ctx.globalAlpha = typeof style.globalAlpha === 'number' ? style.globalAlpha : 1
+    ctx.strokeStyle = style.strokeStyle
+    ctx.lineWidth = style.lineWidth
+    ctx.lineJoin = style.lineJoin || 'round'
+    ctx.lineCap = style.lineCap || 'round'
+    ctx.setLineDash(style.lineDash || [])
+
+    for (const f of features || []) {
+      const geom = f?.geometry
+      if (!geom || !geom.type) continue
+      if (geom.type === 'Polygon') {
+        for (const ring of geom.coordinates || []) drawRing(ring)
+      } else if (geom.type === 'MultiPolygon') {
+        for (const poly of geom.coordinates || []) {
+          for (const ring of poly || []) drawRing(ring)
+        }
+      }
+    }
+
+    ctx.restore()
+  }
+
+  drawNeighborLabels(
+    neighbors: Array<{ label: string; direction: string; lon: number; lat: number }>,
+    bbox: BBox,
+    _admPolygon?: Array<[number, number]> | number[][] | null
+  ): void {
+    const { mapArea } = this.layout
+    const ctx = this.ctx
+    const scale = this.dpi / 72
+    if (!neighbors || neighbors.length === 0) return
+
+    const toPixel = (lng: number, lat: number): [number, number] => {
+      const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width
+      const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height
+      return [x, y]
+    }
+
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    ctx.clip()
+
+    ctx.font = `${Math.round(9 * scale)}px Arial, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+
+    for (const n of neighbors) {
+      const [x, y] = toPixel(n.lon, n.lat)
+      const text = n.label
+      const pad = Math.round(3 * scale)
+      const w = ctx.measureText(text).width
+      const h = Math.round(12 * scale)
+
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)'
+      ctx.lineWidth = Math.max(1, Math.round(0.8 * scale))
+      ctx.beginPath()
+      ctx.rect(x - w / 2 - pad, y - h / 2, w + pad * 2, h)
+      ctx.fill()
+      ctx.stroke()
+
+      ctx.fillStyle = '#111827'
+      ctx.fillText(text, x, y)
+    }
+
+    ctx.restore()
+  }
+
+  // ...
+
   /**
    * Dessine les mailles avec données en utilisant les couleurs de la légende
    * C'est la source de vérité unique pour le rendu thématique (pas de capture Leaflet)
@@ -1073,89 +1193,79 @@ export class ExportFrame {
   ): Map<number, number> {
     const { mapArea } = this.layout;
     const ctx = this.ctx;
-    
+
     const toPixel = (lng: number, lat: number): [number, number] => {
       const x = mapArea.x + ((lng - bbox.minX) / (bbox.maxX - bbox.minX)) * mapArea.width;
       const y = mapArea.y + ((bbox.maxY - lat) / (bbox.maxY - bbox.minY)) * mapArea.height;
       return [x, y];
     };
-    
+
     const scale = this.dpi / 72;
     const withDataCells = cells.filter(c => c.has_data);
-    
+
     // Comptage des mailles par classe (pour filtrer la légende)
     const classUsageCount = new Map<number, number>();
-    
-    // Palette de couleurs plus saturées pour les classes basses (n_sondages)
-    // Les couleurs originales Blues sont trop pâles pour les valeurs faibles
-    const SATURATED_COLORS: Record<string, string> = {
-      '#f7fbff': '#a6d4f7', // Classe 0-1 : bleu très clair → bleu ciel visible
-      '#deebf7': '#7ec4f0', // Classe 1-2 : bleu clair → bleu moyen
-      '#c6dbef': '#52b3e9', // Classe 2-3 : bleu → bleu plus saturé
-    };
-    
+
+    const enhancedClasses = this.enhanceExportClasses(classes)
+
     // Fonction pour trouver la couleur d'une valeur selon les classes
     const getColorForValue = (value: number): { color: string; classIndex: number } => {
-      for (let i = 0; i < classes.length; i++) {
-        const cls = classes[i];
+      for (let i = 0; i < enhancedClasses.length; i++) {
+        const cls = enhancedClasses[i];
         const min = cls.min ?? -Infinity;
         const max = cls.max ?? Infinity;
         if (value >= min && value < max) {
-          // Utiliser couleur saturée si disponible
-          const saturated = SATURATED_COLORS[cls.color] || cls.color;
-          return { color: saturated, classIndex: i };
-        }
-        // Cas spécial pour la dernière classe (inclusive)
-        if (cls.max === null && value >= min) {
-          const saturated = SATURATED_COLORS[cls.color] || cls.color;
-          return { color: saturated, classIndex: i };
+          return { color: cls.color, classIndex: i };
         }
       }
       // Fallback: première classe ou gris
-      return { color: classes[0]?.color || '#cccccc', classIndex: 0 };
+      return { color: enhancedClasses[0]?.color || '#cccccc', classIndex: 0 };
     };
-    
+
     // Log détaillé du mapping valeur → classe → couleur (debug)
     const sampleMapping = withDataCells.slice(0, 10).map(c => {
       const v = c.value ?? c.n_sondages ?? 0;
       const { color, classIndex } = getColorForValue(v);
-      const classLabel = classes[classIndex]?.label || 'N/A';
+      const classLabel = enhancedClasses[classIndex]?.label || 'N/A';
       return { value: v, classIndex, classLabel, color };
     });
-    
+
     console.log('[ExportFrame] drawColoredCells:', {
       totalCells: cells.length,
       withData: withDataCells.length,
-      classCount: classes.length,
-      classes: classes.map(c => ({ min: c.min, max: c.max, label: c.label, color: c.color })),
+      classCount: enhancedClasses.length,
+      classes: enhancedClasses.map(c => ({ min: c.min, max: c.max, label: c.label, color: c.color })),
       sampleMapping
     });
-    
+
     ctx.save();
-    // v4.5.1: Stroke ULTRA-DISCRET pour les mailles thématiques
-    ctx.lineWidth = 0.1 * scale; // Très fin (était 1.0)
-    ctx.strokeStyle = 'rgba(200, 200, 200, 0.3)'; // Gris clair discret (était bleu-gris 0.6)
-    
+    ctx.beginPath();
+    ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height);
+    ctx.clip();
+    // Pass 1: fill (et un stroke minimal pour éviter les gaps)
+    ctx.lineWidth = 0.05 * scale;
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.02)';
+
     let drawnCount = 0;
     for (const cell of withDataCells) {
       const geom = cell.geometry;
       if (!geom || geom.type !== 'Polygon') continue;
-      
+
       const coords = geom.coordinates?.[0];
       if (!coords || coords.length < 3) continue;
-      
+
       // IMPORTANT: Utiliser cell.value (valeur thématique) en priorité, pas n_sondages
       const value = cell.value ?? cell.n_sondages ?? 0;
       const { color, classIndex } = getColorForValue(value);
-      
+
       // Compter l'usage de cette classe
       classUsageCount.set(classIndex, (classUsageCount.get(classIndex) || 0) + 1);
-      
+
       ctx.fillStyle = color;
       ctx.beginPath();
       const [startX, startY] = toPixel(coords[0][0], coords[0][1]);
       ctx.moveTo(startX, startY);
-      
+
       for (let i = 1; i < coords.length; i++) {
         const [x, y] = toPixel(coords[i][0], coords[i][1]);
         ctx.lineTo(x, y);
@@ -1165,56 +1275,46 @@ export class ExportFrame {
       ctx.stroke();
       drawnCount++;
     }
-    
+
+    // Pass 2: contour thématique sombre UNIQUEMENT sur les cellules avec données
+    // Objectif: aider à l'identification des cellules colorées sans assombrir toute la grille 2km.
+    ctx.globalAlpha = 0.82
+    ctx.lineWidth = Math.max(0.45 * scale, 1)
+    ctx.strokeStyle = '#0b0f1a'
+
+    let outlineCount = 0
+    for (const cell of withDataCells) {
+      const geom = cell.geometry
+      if (!geom || geom.type !== 'Polygon') continue
+      const coords = geom.coordinates?.[0]
+      if (!coords || coords.length < 3) continue
+
+      ctx.beginPath()
+      const [startX, startY] = toPixel(coords[0][0], coords[0][1])
+      ctx.moveTo(startX, startY)
+      for (let i = 1; i < coords.length; i++) {
+        const [x, y] = toPixel(coords[i][0], coords[i][1])
+        ctx.lineTo(x, y)
+      }
+      ctx.closePath()
+      ctx.stroke()
+      outlineCount++
+    }
+
     ctx.restore();
-    
+
     // Log du comptage par classe
     const classCountLog: Record<string, number> = {};
     classUsageCount.forEach((count, idx) => {
-      classCountLog[classes[idx]?.label || `class${idx}`] = count;
+      classCountLog[enhancedClasses[idx]?.label || `class${idx}`] = count;
     });
-    console.log('[ExportFrame] Colored cells drawn:', drawnCount, 'classUsage:', classCountLog);
-    
+    console.log('[ExportFrame] Colored cells drawn:', drawnCount, 'outlineCount:', outlineCount, 'classUsage:', classCountLog);
+
     return classUsageCount;
   }
-  
-  /**
-   * Dessine la grille et le cadre
-   */
-  drawGridAndFrame(bbox: BBox): void {
-    const { mapArea, coordLabelMargin } = this.layout;
-    const { grid, frameStyle } = this.options;
-    
-    if (grid.type === 'none' && frameStyle === 'none') return;
-    
-    // Générer les lignes de grille
-    const gridOutput: GridGeneratorOutput = generateGridLines({
-      bbox,
-      mapWidth: mapArea.width,
-      mapHeight: mapArea.height,
-      options: grid
-    });
-    
-    // Dessiner la grille (avec DPI pour scaler les labels)
-    renderGrid({
-      ctx: this.ctx,
-      mapArea,
-      gridOutput,
-      gridType: grid.type,
-      showLabels: grid.showLabels,
-      labelSides: grid.labelSides,
-      labelMargin: coordLabelMargin,
-      dpi: this.dpi
-    });
-    
-    // Dessiner le cadre
-    renderFrame({
-      ctx: this.ctx,
-      mapArea,
-      style: frameStyle
-    });
-  }
-  
+
+  // ...
+
   /**
    * Dessine la légende reconstruite depuis les classes thématiques
    * @param legendData - Données de légende
@@ -1229,17 +1329,17 @@ export class ExportFrame {
     classUsageCount?: Map<number, number>
   ): void {
     if (!this.options.includeLegend) return;
-    
+
     const { legendArea } = this.layout;
     const ctx = this.ctx;
-    
+
     // Dimensions scalées pour le DPI
     const scale = this.dpi / 72;
     const padding = Math.round(8 * scale);
     const boxSize = Math.round(12 * scale);
     const lineHeight = Math.round(16 * scale);
     const titleHeight = Math.round(24 * scale);
-    
+
     // Calculer le nombre d'entrées pour la hauteur dynamique
     let numEntries = 0;
     let visibleClasses: Array<{ label: string; color: string; actualCount?: number; index: number }> = [];
@@ -1247,7 +1347,7 @@ export class ExportFrame {
     if (legendData?.classes && legendData.classes.length > 0) {
       const classesWithCount = legendData.classes.map((cls, idx) => {
         const usageCount = classUsageCount?.get(idx) ?? cls.count ?? undefined;
-        return { ...cls, actualCount: usageCount, index: idx };
+        return { ...cls, actualCount: usageCount, index: idx, color: this.enhanceExportColor(cls.color) };
       });
       
       visibleClasses = classUsageCount 
@@ -1337,9 +1437,10 @@ export class ExportFrame {
     
     // Entrée "Mailles sans données" si activée
     if (showEmptyCells) {
-      ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+      // Cohérent avec le rendu carte: opacité ÷2
+      ctx.fillStyle = 'rgba(200, 200, 200, 0.25)';
       ctx.fillRect(legendArea.x + padding, currentY, boxSize, boxSize);
-      ctx.strokeStyle = 'rgba(150, 150, 150, 0.8)';
+      ctx.strokeStyle = 'rgba(150, 150, 150, 0.6)';
       ctx.lineWidth = 0.5 * scale;
       ctx.strokeRect(legendArea.x + padding, currentY, boxSize, boxSize);
       
@@ -1351,10 +1452,10 @@ export class ExportFrame {
     
     // Entrée "Délimitation ADM" si activée
     if (showAdmBoundary) {
-      // Dessiner une ligne pointillée bleue
+      // Dessiner une ligne continue noire
       ctx.beginPath();
-      ctx.setLineDash([Math.round(3 * scale), Math.round(2 * scale)]);
-      ctx.strokeStyle = '#3366cc';
+      ctx.setLineDash([]);
+      ctx.strokeStyle = '#000000';
       ctx.lineWidth = 2 * scale;
       ctx.moveTo(legendArea.x + padding, currentY + boxSize / 2);
       ctx.lineTo(legendArea.x + padding + boxSize, currentY + boxSize / 2);
@@ -1367,177 +1468,7 @@ export class ExportFrame {
       currentY += lineHeight;
     }
   }
-  
-  /**
-   * Dessine le cartouche (infos, échelle, nord)
-   */
-  drawCartouche(scaleText: string, admFilters?: ActiveAdmFilters): void {
-    const { cartoucheArea } = this.layout;
-    const ctx = this.ctx;
-    
-    // Dimensions scalées pour le DPI
-    const scale = this.dpi / 72;
-    const padding = Math.round(10 * scale);
-    const lineHeight = Math.round(12 * scale);
-    
-    // Cadre du cartouche
-    ctx.strokeStyle = '#cccccc';
-    ctx.lineWidth = scale;
-    ctx.fillStyle = '#fafafa';
-    ctx.fillRect(cartoucheArea.x, cartoucheArea.y, cartoucheArea.width, cartoucheArea.height);
-    ctx.strokeRect(cartoucheArea.x, cartoucheArea.y, cartoucheArea.width, cartoucheArea.height);
-    
-    const textX = cartoucheArea.x + padding;
-    let textY = cartoucheArea.y + padding;
-    
-    ctx.fillStyle = '#333333';
-    ctx.font = `${this.fonts.fontCartouche}px Arial, sans-serif`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'top';
-    
-    // Source
-    ctx.fillText('Source : Atlas Géotechnique v2.6.0', textX, textY);
-    textY += lineHeight;
-    
-    // Fond de carte
-    ctx.fillText('Fond : © OpenStreetMap contributors', textX, textY);
-    textY += lineHeight;
-    
-    // SCR d'affichage et SCR des données
-    if (this.options.includeScrInfo) {
-      const scrDisplay = this.options.grid.scr === 'EPSG:4326' 
-        ? 'WGS84 (EPSG:4326)' 
-        : 'UTM 31N (EPSG:25231)';
-      ctx.fillText(`SCR : ${scrDisplay}`, textX, textY);
-      textY += lineHeight;
-      
-      // Toujours afficher le SCR des données (stockage en base)
-      ctx.fillStyle = '#666666';
-      ctx.fillText('Données : UTM 31N (EPSG:25231)', textX, textY);
-      ctx.fillStyle = '#333333';
-      textY += lineHeight;
-    }
-    
-    // Date
-    const date = new Date().toLocaleDateString('fr-FR');
-    ctx.fillText(`Date : ${date}`, textX, textY);
-    
-    // Barre d'échelle (à droite du cartouche) - positions scalées
-    if (this.options.includeScaleBar) {
-      this.drawScaleBar(
-        cartoucheArea.x + cartoucheArea.width - Math.round(100 * scale),
-        cartoucheArea.y + cartoucheArea.height - Math.round(25 * scale),
-        scaleText
-      );
-    }
-    
-    // Flèche du Nord - positions scalées
-    if (this.options.includeNorthArrow) {
-      this.drawNorthArrow(
-        cartoucheArea.x + cartoucheArea.width - Math.round(30 * scale),
-        cartoucheArea.y + Math.round(25 * scale)
-      );
-    }
-  }
-  
-  /**
-   * Dessine la barre d'échelle
-   */
-  private drawScaleBar(x: number, y: number, scaleText: string): void {
-    const ctx = this.ctx;
-    const scale = this.dpi / 72;
-    const barWidth = Math.round(80 * scale);
-    const barHeight = Math.round(6 * scale);
-    const tickHeight = Math.round(3 * scale);
-    
-    // Barre
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(x, y, barWidth / 2, barHeight);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(x + barWidth / 2, y, barWidth / 2, barHeight);
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = scale;
-    ctx.strokeRect(x, y, barWidth, barHeight);
-    
-    // Graduations
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    ctx.lineTo(x, y - tickHeight);
-    ctx.moveTo(x + barWidth / 2, y);
-    ctx.lineTo(x + barWidth / 2, y - tickHeight);
-    ctx.moveTo(x + barWidth, y);
-    ctx.lineTo(x + barWidth, y - tickHeight);
-    ctx.stroke();
-    
-    // Label - police scalée
-    ctx.fillStyle = '#333333';
-    ctx.font = `${this.fonts.fontCartouche}px Arial, sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(scaleText, x + barWidth / 2, y + barHeight + Math.round(2 * scale));
-  }
-  
-  /**
-   * Dessine la flèche du Nord
-   */
-  private drawNorthArrow(x: number, y: number): void {
-    const ctx = this.ctx;
-    const scale = this.dpi / 72;
-    const size = Math.round(20 * scale);
-    
-    ctx.save();
-    ctx.translate(x, y);
-    
-    // Flèche
-    ctx.fillStyle = '#333333';
-    ctx.beginPath();
-    ctx.moveTo(0, -size / 2);
-    ctx.lineTo(size / 4, size / 2);
-    ctx.lineTo(0, size / 4);
-    ctx.lineTo(-size / 4, size / 2);
-    ctx.closePath();
-    ctx.fill();
-    
-    // Lettre N
-    ctx.fillStyle = '#333333';
-    ctx.font = 'bold 10px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'bottom';
-    ctx.fillText('N', 0, -size / 2 - 2);
-    
-    ctx.restore();
-  }
-  
-  /**
-   * Découpe un texte en lignes pour tenir dans une largeur max
-   */
-  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-    const words = text.split(' ');
-    const lines: string[] = [];
-    let currentLine = '';
-    
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      const testWidth = ctx.measureText(testLine).width;
-      
-      if (testWidth > maxWidth && currentLine) {
-        lines.push(currentLine);
-        currentLine = word;
-      } else {
-        currentLine = testLine;
-      }
-    }
-    if (currentLine) {
-      lines.push(currentLine);
-    }
-    return lines.length > 0 ? lines : [text];
-  }
-  
-  /**
-   * Dessine le bloc de statistiques avec layout 2 colonnes dynamiques
-   * - Labels: colonne gauche avec word-wrap si nécessaire
-   * - Valeurs: colonne droite alignée à droite, police monospace
-   */
+
   drawStats(stats?: ExportStats): void {
     if (!this.options.includeStats || !stats) return;
     
@@ -1546,19 +1477,39 @@ export class ExportFrame {
     
     // Dimensions scalées pour le DPI
     const scale = this.dpi / 72;
-    const padding = Math.round(6 * scale);
-    const headerHeight = Math.round(18 * scale);
-    const lineHeight = Math.round(10 * scale);
-    const fontSize = Math.round(7 * scale);
+    const basePadding = Math.round(6 * scale);
+    const baseHeaderHeight = Math.round(18 * scale);
+    const baseLineHeight = Math.round(10 * scale);
+    const baseFontSize = Math.round(7 * scale);
     
     // Layout 2 colonnes: 50% label, 50% valeur
-    const labelMaxWidth = Math.round((statsArea.width - padding * 3) * 0.50);
-    const valueX = statsArea.x + statsArea.width - padding;
+    const labelMaxWidth = Math.round((statsArea.width - basePadding * 3) * 0.50);
+    const valueX = statsArea.x + statsArea.width - basePadding;
+
+    // Estimer le besoin vertical réel (avec wrap) pour auto-fit
+    ctx.save();
+    ctx.font = `${baseFontSize}px Arial, sans-serif`;
+    let requiredLines = 0;
+    requiredLines += stats.subtitle ? 2 : 1;
+    for (const row of stats.rows) {
+      const labelWithColon = row.label + ' :';
+      const labelLines = this.wrapText(ctx, labelWithColon, labelMaxWidth);
+      requiredLines += Math.max(1, labelLines.length);
+    }
+    const requiredHeight = basePadding * 2 + baseHeaderHeight + requiredLines * baseLineHeight;
+    const availableHeight = statsArea.height;
+    const fit = requiredHeight > 0 ? Math.min(1, availableHeight / requiredHeight) : 1;
+    const padding = Math.max(2, Math.floor(basePadding * fit));
+    const headerHeight = Math.max(10, Math.floor(baseHeaderHeight * fit));
+    const fontSize = Math.max(9, Math.floor(baseFontSize * fit));
+    const lineHeight = Math.max(Math.floor(fontSize * 1.35), Math.floor(baseLineHeight * fit));
+    ctx.restore();
     
     console.log('[ExportFrame] drawStats 2-col layout:', {
       statsArea,
       labelMaxWidth,
-      rowCount: stats.rows.length
+      rowCount: stats.rows.length,
+      autoFit: { fit: Number(fit.toFixed(3)), requiredHeight: Math.round(requiredHeight), availableHeight }
     });
     
     // S'assurer que le contexte est propre
@@ -1585,9 +1536,9 @@ export class ExportFrame {
     
     // Sous-titre (zone)
     if (stats.subtitle) {
-      ctx.font = `${Math.round(7 * scale)}px Arial, sans-serif`;
+      ctx.font = `${fontSize}px Arial, sans-serif`;
       ctx.fillStyle = '#666666';
-      const subtitleY = statsArea.y + padding + Math.round(10 * scale);
+      const subtitleY = statsArea.y + padding + Math.round(fontSize * 1.2);
       ctx.fillText(stats.subtitle, titleX, subtitleY);
     }
     
@@ -1736,26 +1687,37 @@ export class ExportFrame {
    */
   async toBlobWithDpi(targetDpi: number = 300): Promise<Blob> {
     const originalBlob = await this.toBlob('image/png');
-    const injectedBlob = await injectPngDpiMetadata(originalBlob, targetDpi);
+    try {
+      const injectedBlob = await injectPngDpiMetadata(originalBlob, targetDpi);
 
-    const validation = await validatePngBlob(injectedBlob);
-    if (!validation.valid) {
-      console.warn('[DPI] Validation PNG injecté FAIL, fallback sur PNG original', {
+      const validation = await validatePngBlob(injectedBlob);
+      if (!validation.valid) {
+        console.warn('[DPI] Validation PNG injecté FAIL, fallback sur PNG original', {
+          targetDpi,
+          originalSize: originalBlob.size,
+          injectedSize: injectedBlob.size,
+          returnSize: originalBlob.size,
+          validation
+        });
+        return originalBlob;
+      }
+
+      console.log('[DPI] Validation PNG injecté OK', {
         targetDpi,
         originalSize: originalBlob.size,
         injectedSize: injectedBlob.size,
+        returnSize: injectedBlob.size,
         validation
       });
-      return originalBlob;
+      return injectedBlob;
+    } catch (e) {
+      console.warn('[DPI] Injection/validation error, fallback sur PNG original', {
+        targetDpi,
+        originalSize: originalBlob.size,
+        error: e instanceof Error ? e.message : String(e)
+      })
+      return originalBlob
     }
-
-    console.log('[DPI] Validation PNG injecté OK', {
-      targetDpi,
-      originalSize: originalBlob.size,
-      injectedSize: injectedBlob.size,
-      validation
-    });
-    return injectedBlob;
   }
 }
 

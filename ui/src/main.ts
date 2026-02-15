@@ -30,6 +30,7 @@ import { GeocodeManager } from './geocode-manager'
 import { SuggestionsPanel } from './suggestions-panel'
 import { ThematicMapManager } from './thematic/thematic-maps'
 import { ThematicPanel } from './thematic/thematic-panel'
+import { createSearchController, type SearchResult } from './search-controller'
 // import { ImportBulkWizard } from './import-bulk-wizard' // V2 - désactivé
 import { bootImportWizardV3 } from './import-bulk-wizard_v3'
 import { ImportWizardV2 } from './import-wizard-v2'
@@ -67,8 +68,9 @@ import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
 import './import-wizard-v2.css'
-import './styles/tabs.css'
-import './styles/import-wizard.css'
+import './db-manager/components-vanilla/styles.css'
+
+let unifiedSearchController: { destroy(): void; focus(): void } | null = null
 
 // Définir les systèmes de coordonnées
 // EPSG:25231 - UTM Zone 31N (Togo)
@@ -113,6 +115,7 @@ function safeAddEventListener(id: string, event: string, handler: EventListener)
 }
 
 const map = L.map('map', { preferCanvas: true, attributionControl: false }).setView([8.6195, 0.8248], 7)
+;(window as any).leafletMap = map
 
 // Créer les panes Leaflet pour gérer le z-order des couches
 // contextPane: couches géologie/pédologie/risque (z-index 440, en dessous)
@@ -437,6 +440,77 @@ function toast(msg: string, kind: 'ok' | 'err' = 'ok') {
   setTimeout(() => el.style.display = 'none', 5000)
 }
 
+function handleSearchSelection(result: SearchResult) {
+  if (!result.has_geom) {
+    toast('Localisation indisponible', 'err')
+    return
+  }
+
+  if (result.type === 'maille_2km' || result.type === 'maille_28km') {
+    const code = result.code?.trim()
+    if (!code) {
+      toast('Code maille manquant', 'err')
+      return
+    }
+    const codeInputEl = document.getElementById('codeInput') as HTMLInputElement | null
+    const getBtn = document.getElementById('getBtn') as HTMLButtonElement | null
+    if (!codeInputEl || !getBtn) {
+      toast('UI maille indisponible', 'err')
+      return
+    }
+    codeInputEl.value = code
+    getBtn.click()
+    return
+  }
+
+  if (result.type === 'sondage') {
+    const c = result.centroid
+    if (c) {
+      map.setView([c[1], c[0]], 16)
+      toast('📍 Sondage localisé', 'ok')
+    } else {
+      toast('Localisation indisponible', 'err')
+    }
+    return
+  }
+
+  if (result.type === 'adm1' || result.type === 'adm2' || result.type === 'adm3') {
+    const bbox = result.bbox
+    if (bbox) {
+      const b = L.latLngBounds([bbox[1], bbox[0]], [bbox[3], bbox[2]])
+      if (b.isValid()) {
+        map.fitBounds(b.pad(0.08))
+      }
+    } else if (result.centroid) {
+      map.setView([result.centroid[1], result.centroid[0]], 10)
+    }
+
+    const level = result.type
+    const name = result.label.split('·').slice(1).join('·').trim()
+
+    if (level === 'adm1') {
+      const el = document.getElementById('filterAdm1') as HTMLSelectElement | null
+      if (el) el.value = name
+      ;(document.getElementById('filterAdm1') as HTMLSelectElement | null)?.dispatchEvent(new Event('change'))
+    }
+
+    if (level === 'adm2') {
+      const el = document.getElementById('filterAdm2') as HTMLSelectElement | null
+      if (el) el.value = name
+      ;(document.getElementById('filterAdm2') as HTMLSelectElement | null)?.dispatchEvent(new Event('change'))
+    }
+
+    if (level === 'adm3') {
+      const el = document.getElementById('filterAdm3') as HTMLSelectElement | null
+      if (el) el.value = name
+      ;(document.getElementById('filterAdm3') as HTMLSelectElement | null)?.dispatchEvent(new Event('change'))
+    }
+
+    toast('📌 Zone sélectionnée', 'ok')
+    return
+  }
+}
+
 function setStatus(text: string) {
   const el = document.getElementById('status')
   if (el) el.textContent = text
@@ -711,6 +785,10 @@ function buildEnrichedTooltip(p: any): string {
 
 function onEachFeature(f: any, layer: any) {
   const p = f.properties || {}
+  const isExportMode = !!(window as any).__EXPORT_MODE
+  if (isExportMode) {
+    return
+  }
   
   // Log de debug pour vérifier l'attachement des handlers (Correction C)
   console.log('[Grid] Click handler bound to', p.code || 'unknown')
@@ -2222,6 +2300,7 @@ let gridOverlay28Layer: L.GeoJSON<any> | null = null
 
 async function loadGridOverlay28(useBbox = false) {
   try {
+    const t0 = performance.now()
     const params = new URLSearchParams()
     params.set('grid', '28km')
     params.set('limit', '50000')
@@ -2233,15 +2312,23 @@ async function loadGridOverlay28(useBbox = false) {
     }
 
     const url = `${API_GEO}/coverage/mailles?${params.toString()}`
-    console.log('[loadGridOverlay28] Fetching URL:', url)
+    console.log('[GRID28] [loadGridOverlay28] Fetching URL:', url)
 
     const res = await fetch(url)
     if (!res.ok) {
-      console.warn('[loadGridOverlay28] HTTP', res.status, res.statusText)
+      console.warn('[GRID28] [loadGridOverlay28] HTTP', res.status, res.statusText)
       return
     }
 
     const gj = await res.json()
+
+    const featureCount = Array.isArray(gj?.features) ? gj.features.length : 0
+    const sampleProps = (Array.isArray(gj?.features) ? gj.features : []).slice(0, 3).map((f: any) => f?.properties)
+    console.log('[GRID28] [loadGridOverlay28] GeoJSON received', {
+      ms: Math.round(performance.now() - t0),
+      featureCount,
+      sampleProps
+    })
 
     // Dédupliquer les segments des polygones 28km pour éviter l'effet de traits doublés
     // (frontières communes dessinées 2 fois quand on stroke des polygones adjacents)
@@ -2498,18 +2585,23 @@ let isSyncingGridLevel = false
 
 ;(window as any).setGridLevel = (level: '2km' | '28km' | 'combined') => {
   const oldLevel = currentGridLevel
-  console.log('[setGridLevel] Changement de niveau:', oldLevel, '->', level)
+  console.log('[GRID] [setGridLevel] Changement de niveau:', oldLevel, '->', level)
+  if (oldLevel === level) {
+    // En batch export on repasse souvent plusieurs fois la même valeur.
+    // Éviter de relancer un loadGrid() complet inutile.
+    return
+  }
   currentGridLevel = level
   ;(window as any).syncGridLevelUI(level)
 
   if (oldLevel === '2km' && level === 'combined') {
-    console.log('[Grid] Transition rapide: 2km -> Combined (Ajout Overlay)')
+    console.log('[GRID] Transition rapide: 2km -> Combined (Ajout Overlay)')
     void loadGridOverlay28()
     return
   }
 
   if (oldLevel === 'combined' && level === '2km') {
-    console.log('[Grid] Transition rapide: Combined -> 2km (Retrait Overlay)')
+    console.log('[GRID] Transition rapide: Combined -> 2km (Retrait Overlay)')
     if (gridOverlay28Layer) {
       map.removeLayer(gridOverlay28Layer)
       gridOverlay28Layer = null
@@ -2517,7 +2609,7 @@ let isSyncingGridLevel = false
     return
   }
 
-  console.log(`[Grid] Chargement complet pour niveau: ${level}`)
+  console.log(`[GRID] Chargement complet pour niveau: ${level}`)
   loadGrid()
 }
 
@@ -4585,6 +4677,24 @@ function initRightPanel() {
   }
 }
 
+function initUnifiedSearch() {
+  try {
+    unifiedSearchController?.destroy()
+  } catch {
+    // ignore
+  }
+
+  unifiedSearchController = createSearchController({
+    apiBase: API_GEO,
+    inputId: 'unifiedSearch',
+    minChars: 2,
+    debounceMs: 200,
+    limit: 20,
+    toast,
+    onSelect: handleSearchSelection,
+  })
+}
+
 function initTabsPanel() {
   console.log('[v2.5.0] Initialisation TabsManager')
   
@@ -4594,9 +4704,17 @@ function initTabsPanel() {
     console.error('[v2.5.0] Container #sidebar ou #right-panel not found')
     return
   }
+
+  // Conserver la barre de recherche unifiée au-dessus du panneau tabs
+  const existingSearch = document.getElementById('unifiedSearch')
+  const searchWrap = existingSearch?.closest('.search-unified') as HTMLElement | null
   
   // Vider le container pour la nouvelle UI
   container.innerHTML = ''
+
+  if (searchWrap) {
+    container.appendChild(searchWrap)
+  }
   
   // Import dynamique pour éviter le chargement si flag OFF
   import('./tabs/tab-manager').then(({ createTabsManager }) => {
@@ -4937,6 +5055,7 @@ if (document.readyState === 'loading') {
     initTabs()
     // Panneau droit (feature flag)
     initRightPanel()
+    initUnifiedSearch()
     // v2.5.0: Modal Sondages
     initSondagesModal()
     // v2.6.0: DB Manager
@@ -4956,6 +5075,7 @@ if (document.readyState === 'loading') {
   initTabs()
   // Panneau droit (feature flag)
   initRightPanel()
+  initUnifiedSearch()
   // v2.5.0: Modal Sondages
   initSondagesModal()
   // v2.6.0: DB Manager
