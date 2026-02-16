@@ -52,9 +52,9 @@ export function getStrokeStyle(layerType: ExportLayerType, dpi: number): ExportS
 
   if (layerType === 'grid28') {
     return {
-      strokeStyle: '#334155',
-      lineWidth: base * 1.8,
-      globalAlpha: 0.65,
+      strokeStyle: '#475569',
+      lineWidth: base * 1.15,
+      globalAlpha: 0.48,
       lineJoin: 'miter',
       lineCap: 'butt'
     }

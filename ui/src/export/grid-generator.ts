@@ -203,9 +203,19 @@ export function renderGrid(opts: GridRenderOptions): void {
   ctx.save();
   
   // Style de base pour la grille (scalé)
-  ctx.strokeStyle = '#888888';
-  ctx.lineWidth = 0.5 * scale;
+  // Objectif export: repères discrets (ne pas polluer la carte)
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.lineWidth = 0.8 * scale;
   ctx.setLineDash([]);
+
+  console.log('[GridGenerator][renderGrid] style', {
+    gridType,
+    showLabels,
+    strokeStyle: ctx.strokeStyle,
+    lineWidth: ctx.lineWidth,
+    lines: { x: linesX.length, y: linesY.length },
+    dpi
+  })
   
   // Dessiner selon le type
   if (gridType === 'cross') {
@@ -233,10 +243,11 @@ function renderCrossGrid(
   linesY: GridLine[],
   scale: number = 1
 ): void {
-  const crossSize = Math.round(6 * scale); // demi-longueur de la croix scalée
+  // Export: croix plus petites et plus légères (repères, pas une couche dominante)
+  const crossSize = Math.round(4 * scale); // demi-longueur de la croix scalée
   
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'; // Noir 60% opacité (plus visible)
-  ctx.lineWidth = 1.5 * scale; // Épaisseur scalée
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+  ctx.lineWidth = 0.9 * scale;
   
   // Pour chaque intersection
   for (const lineX of linesX) {
@@ -273,8 +284,8 @@ function renderContinuousGrid(
   linesY: GridLine[],
   scale: number = 1
 ): void {
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.6)'; // Noir 60% opacité (plus visible)
-  ctx.lineWidth = 1.0 * scale; // Épaisseur scalée
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
+  ctx.lineWidth = 0.8 * scale;
   
   // Lignes verticales
   for (const line of linesX) {

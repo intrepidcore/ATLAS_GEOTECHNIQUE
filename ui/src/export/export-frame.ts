@@ -357,7 +357,6 @@ export function computeExportLayout(
   };
 }
 
-// ============================================================================
 // Classe principale ExportFrame
 // ============================================================================
 
@@ -369,6 +368,15 @@ export class ExportFrame {
   private scale: number;
   private fonts: ReturnType<typeof getScaledLayout>;
   private options: ExportOptions;
+
+  private lastMapCoverCrop: {
+    srcW: number;
+    srcH: number;
+    sx: number;
+    sy: number;
+    sw: number;
+    sh: number;
+  } | null = null;
 
   static createA4(options: ExportOptions, orientation: 'portrait' | 'landscape' = 'portrait'): ExportFrame {
     const dpi = QUALITY_SETTINGS[options.quality].dpi
@@ -382,7 +390,11 @@ export class ExportFrame {
     options: ExportOptions
   ) {
     this.options = options;
-    this.scale = QUALITY_SETTINGS[options.quality].scale;
+    // IMPORTANT: Le DPI définit déjà une taille en pixels (ex: A4 @300dpi).
+    // Appliquer un scale supplémentaire ici explose la taille du canvas (OOM/blank canvas)
+    // et déclenche COMPOSE_QA_FAILED de manière intermittente. On force donc scale=1
+    // pour le canvas de composition. La haute résolution est assurée par la capture Leaflet.
+    this.scale = 1;
     this.dpi = QUALITY_SETTINGS[options.quality].dpi;
     this.fonts = getScaledLayout(this.dpi);
 
@@ -398,7 +410,7 @@ export class ExportFrame {
     if (!ctx) throw new Error('Impossible de créer le contexte 2D');
     this.ctx = ctx;
 
-    // Appliquer le scale
+    // Appliquer le scale (reste à 1)
     this.ctx.scale(this.scale, this.scale);
 
     // Fond blanc
@@ -412,7 +424,8 @@ export class ExportFrame {
       canvasWidth: this.canvas.width,
       canvasHeight: this.canvas.height,
       scale: this.scale,
-      dpi: this.dpi
+      dpi: this.dpi,
+      captureScale: QUALITY_SETTINGS[options.quality].scale
     });
   }
 
@@ -673,13 +686,82 @@ export class ExportFrame {
     const ctx = this.ctx
     if (!mapCanvas) return
 
+    const srcW = mapCanvas.width
+    const srcH = mapCanvas.height
+    const dstW = mapArea.width
+    const dstH = mapArea.height
+    const arSrc = srcW / srcH
+    const arDst = dstW / dstH
+
+    // IMPORTANT: ne JAMAIS étirer l'image (stretch) car ça déforme la carte.
+    // Stratégie par défaut: "cover" (crop centré) pour remplir la zone carte A4.
+    let sx = 0
+    let sy = 0
+    let sw = srcW
+    let sh = srcH
+
+    if (Number.isFinite(arSrc) && Number.isFinite(arDst) && Math.abs(arSrc - arDst) > 1e-3) {
+      if (arSrc > arDst) {
+        // Source trop large -> crop horizontal
+        sh = srcH
+        sw = Math.round(srcH * arDst)
+        sx = Math.max(0, Math.round((srcW - sw) / 2))
+        sy = 0
+      } else {
+        // Source trop haute -> crop vertical
+        sw = srcW
+        sh = Math.round(srcW / arDst)
+        sx = 0
+        sy = Math.max(0, Math.round((srcH - sh) / 2))
+      }
+    }
+
+    this.lastMapCoverCrop = { srcW, srcH, sx, sy, sw, sh }
+
+    console.log('[ExportFrame][MAP_IMAGE] draw cover (no-stretch)', {
+      src: { w: srcW, h: srcH, ar: Number(arSrc.toFixed(4)) },
+      dst: { w: dstW, h: dstH, ar: Number(arDst.toFixed(4)) },
+      crop: { sx, sy, sw, sh },
+      cropAR: Number(((sw / sh) || 0).toFixed(4))
+    })
+
     ctx.save()
     ctx.globalAlpha = 1
     ctx.globalCompositeOperation = 'source-over'
     ctx.imageSmoothingEnabled = true
     ctx.imageSmoothingQuality = 'high'
-    ctx.drawImage(mapCanvas, mapArea.x, mapArea.y, mapArea.width, mapArea.height)
+    ctx.drawImage(mapCanvas, sx, sy, sw, sh, mapArea.x, mapArea.y, mapArea.width, mapArea.height)
     ctx.restore()
+  }
+
+  /**
+   * IMPORTANT: si la carte a été dessinée avec un recadrage (cover), le bbox à utiliser
+   * pour projeter les vecteurs DOIT être recadré de la même façon, sinon décalage.
+   */
+  getEffectiveBboxAfterMapCrop(bbox: BBox): BBox {
+    const crop = this.lastMapCoverCrop
+    if (!crop) return bbox
+
+    const { srcW, srcH, sx, sy, sw, sh } = crop
+    if (srcW <= 0 || srcH <= 0 || sw <= 0 || sh <= 0) return bbox
+
+    const fx0 = sx / srcW
+    const fx1 = (sx + sw) / srcW
+    const fy0 = sy / srcH
+    const fy1 = (sy + sh) / srcH
+
+    const w = bbox.maxX - bbox.minX
+    const h = bbox.maxY - bbox.minY
+    if (!(w > 0) || !(h > 0)) return bbox
+
+    const minX = bbox.minX + fx0 * w
+    const maxX = bbox.minX + fx1 * w
+
+    // y pixels: 0=top => correspond à maxY; on recadre donc maxY vers le bas.
+    const maxY = bbox.maxY - fy0 * h
+    const minY = bbox.maxY - fy1 * h
+
+    return { minX, minY, maxX, maxY }
   }
 
   drawEmptyCells(cells: Array<{ geometry: any; has_data: boolean }>, bbox: BBox): void {
@@ -846,6 +928,12 @@ export class ExportFrame {
 
     if (!admPolygon || admPolygon.length < 3) return
 
+    console.log('[ExportFrame][ADM_BOUNDARY] draw', {
+      points: admPolygon.length,
+      color,
+      width
+    })
+
     ctx.save()
     ctx.beginPath()
     ctx.rect(mapArea.x, mapArea.y, mapArea.width, mapArea.height)
@@ -899,7 +987,9 @@ export class ExportFrame {
     ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`
     ctx.fill('evenodd')
 
-    ctx.strokeStyle = '#3366cc'
+    // IMPORTANT: le masque peut inclure une bordure (optionnel).
+    // On aligne la couleur sur le rendu "Limite ADM" (noir continu).
+    ctx.strokeStyle = '#000000'
     ctx.lineWidth = 2.2 * scale
     ctx.lineJoin = 'round'
     ctx.lineCap = 'round'
@@ -1335,12 +1425,12 @@ export class ExportFrame {
 
     // Dimensions scalées pour le DPI
     const scale = this.dpi / 72;
-    const padding = Math.round(8 * scale);
-    const boxSize = Math.round(12 * scale);
-    const lineHeight = Math.round(16 * scale);
-    const titleHeight = Math.round(24 * scale);
+    const basePadding = Math.round(8 * scale);
+    const baseBoxSize = Math.round(12 * scale);
+    const baseLineHeight = Math.round(16 * scale);
+    const baseTitleHeight = Math.round(24 * scale);
 
-    // Calculer le nombre d'entrées pour la hauteur dynamique
+    // Calculer le nombre d'entrées
     let numEntries = 0;
     let visibleClasses: Array<{ label: string; color: string; actualCount?: number; index: number }> = [];
     
@@ -1349,11 +1439,11 @@ export class ExportFrame {
         const usageCount = classUsageCount?.get(idx) ?? cls.count ?? undefined;
         return { ...cls, actualCount: usageCount, index: idx, color: this.enhanceExportColor(cls.color) };
       });
-      
-      visibleClasses = classUsageCount 
-        ? classesWithCount.filter(cls => cls.actualCount !== undefined && cls.actualCount > 0)
-        : classesWithCount.filter(cls => cls.actualCount === undefined || cls.actualCount > 0);
-      
+
+      // Comportement souhaité: afficher uniquement les classes présentes (n>0).
+      // Source de vérité: classUsageCount quand disponible.
+      visibleClasses = classesWithCount.filter(c => (c.actualCount ?? 0) > 0)
+
       numEntries = visibleClasses.length > 0 ? visibleClasses.length : 1; // Au moins 1 pour "aucune donnée"
     } else {
       numEntries = 1; // "aucune thématique active"
@@ -1361,25 +1451,35 @@ export class ExportFrame {
     
     if (showEmptyCells) numEntries++;
     if (showAdmBoundary) numEntries++;
-    
-    // Hauteur dynamique: titre + entrées + padding
-    const dynamicHeight = titleHeight + (numEntries * lineHeight) + padding * 2;
-    // Hauteur minimale = hauteur du layout (pour aligner avec stats/cartouche)
-    const actualHeight = Math.max(dynamicHeight, legendArea.height);
-    
-    console.log('[ExportFrame] Légende hauteur dynamique:', {
+
+    // Auto-fit: adapter police et lineHeight pour éviter toute troncature
+    const availableHeight = legendArea.height;
+    const requiredHeight = baseTitleHeight + (numEntries * baseLineHeight) + basePadding * 2;
+    const fit = requiredHeight > 0 ? Math.min(1, availableHeight / requiredHeight) : 1;
+    const padding = Math.max(2, Math.floor(basePadding * fit));
+    const boxSize = Math.max(8, Math.floor(baseBoxSize * fit));
+    const lineHeight = Math.max(10, Math.floor(baseLineHeight * fit));
+    const titleHeight = Math.max(14, Math.floor(baseTitleHeight * fit));
+
+    console.log('[ExportFrame] Légende autoFit:', {
       numEntries,
-      dynamicHeight,
-      layoutHeight: legendArea.height,
-      actualHeight
+      totalClasses: legendData?.classes?.length || 0,
+      visibleClasses: visibleClasses.length,
+      requiredHeight: Math.round(requiredHeight),
+      availableHeight,
+      fit: Number(fit.toFixed(3)),
+      padding,
+      boxSize,
+      lineHeight,
+      titleHeight
     });
-    
-    // Cadre de la légende avec hauteur dynamique
+
+    // Cadre de la légende (hauteur fixe = layout)
     ctx.strokeStyle = '#cccccc';
     ctx.lineWidth = scale;
     ctx.fillStyle = '#fafafa';
-    ctx.fillRect(legendArea.x, legendArea.y, legendArea.width, actualHeight);
-    ctx.strokeRect(legendArea.x, legendArea.y, legendArea.width, actualHeight);
+    ctx.fillRect(legendArea.x, legendArea.y, legendArea.width, legendArea.height);
+    ctx.strokeRect(legendArea.x, legendArea.y, legendArea.width, legendArea.height);
     
     // Titre de la légende (paramètre + unité) - police scalée
     ctx.fillStyle = '#333333';
@@ -1393,7 +1493,7 @@ export class ExportFrame {
     ctx.fillText(legendTitle, legendArea.x + padding, legendArea.y + Math.round(6 * scale));
     
     const textX = legendArea.x + padding + boxSize + Math.round(6 * scale);
-    let currentY = legendArea.y + Math.round(24 * scale);
+    let currentY = legendArea.y + Math.round(titleHeight * 1.0);
     
     ctx.font = `${this.fonts.fontLegend}px Arial, sans-serif`;
     
@@ -1407,7 +1507,7 @@ export class ExportFrame {
       ctx.fillText('(aucune donnée dans la zone)', legendArea.x + padding, currentY);
       currentY += lineHeight;
     } else {
-      console.log('[ExportFrame] Légende - classes visibles:', visibleClasses.length, '/', legendData.classes.length,
+      console.log('[ExportFrame] Légende - classes affichées:', visibleClasses.length, '/', legendData.classes.length,
         'classUsageCount:', classUsageCount ? Object.fromEntries(classUsageCount) : 'N/A');
       
       // Dessiner les classes thématiques présentes

@@ -349,6 +349,7 @@ function getAuthToken(): { key: string; token: string } | null {
     if (v && v.length > 10 && !v.startsWith('{')) {
       return { key: k, token: v }
     }
+
   }
 
   // Clés JSON (valeur = objet avec accessToken)
@@ -840,12 +841,31 @@ export class ExportQuickDialog {
 
       try {
         markStage('LOAD')
-        const admBounds = this.config.getAdmBounds?.()
+        const zone: ExportZone = (opts as any)?.zone || this.options.zone
+        const framing = await this.withTimeout('resolveFramingForExport', 12000, async () => {
+          return await this.resolveFramingForExport(opts.quality, zone, admName)
+        })
+
+        const admBounds = framing?.bounds || this.config.getAdmBounds?.()
         let bounds: { north: number; south: number; east: number; west: number } = this.config.getMapBounds()
 
-        if (admBounds) {
+        if (zone === 'adm-filtered' && admBounds) {
+          console.log('[ExportSingle][FRAMING] resolved', {
+            zone,
+            admName,
+            source: framing?.source || (this.config.getAdmBounds ? 'config.getAdmBounds' : 'none'),
+            bounds: admBounds,
+            hasGeometry: !!framing?.geometry
+          })
+
           bounds = await this.withTimeout('computeOptimalBoundsForSheet', 12000, async () => {
-            return await this.computeOptimalBoundsForSheet(admBounds, opts.quality, admName)
+            return await this.computeOptimalBoundsForSheet(admBounds, opts.quality, admName, framing?.geometry)
+          })
+
+          console.log('[ExportSingle][FIT] requested bounds (post-optimizer)', {
+            zone,
+            admName,
+            bounds
           })
 
           const dpi = QUALITY_SETTINGS[opts.quality].dpi
@@ -875,6 +895,15 @@ export class ExportQuickDialog {
           restoreFractionalZoom = this.enableFractionalZoomForExport(map)
 
           const targetZoom = this.getTargetZoomForBounds(map, targetBounds, 18)
+          console.log('[ExportSingle][FIT] setView', {
+            targetZoom,
+            requested: {
+              north: bounds.north,
+              south: bounds.south,
+              east: bounds.east,
+              west: bounds.west
+            }
+          })
           map.setView(targetBounds.getCenter(), targetZoom, { animate: false, duration: 0 })
 
           bounds = await this.waitForStableBounds(map, {
@@ -882,6 +911,11 @@ export class ExportQuickDialog {
             timeoutMs: 10000,
             stableSamples: 6,
             sampleIntervalMs: 120
+          })
+
+          console.log('[ExportSingle][FIT] effective bounds after stable', {
+            admName,
+            effective: bounds
           })
 
           await this.applyPanBiasIfNeeded(map, bounds, admBounds, admName)
@@ -945,6 +979,10 @@ export class ExportQuickDialog {
         exportFrame.drawTitle(thematic, admFilters)
         await exportFrame.drawMapImage(mapCapture.canvas)
 
+        // IMPORTANT: même logique que l'export UI: bbox effectif après crop cover
+        const effectiveBbox = exportFrame.getEffectiveBboxAfterMapCrop(bbox)
+        console.log('[ExportSingle][BBOX] effective after crop', { raw: bbox, effective: effectiveBbox })
+
         let admCells: Array<{ geometry: any; has_data: boolean; value?: number; n_sondages?: number }> = []
         let cellsWithData = 0
         let cellsWithoutData = 0
@@ -970,13 +1008,13 @@ export class ExportQuickDialog {
             cellsWithoutData = admCells.filter(c => !c.has_data).length
 
             if (opts.showEmptyCells && admCells.length > 0) {
-              exportFrame.drawEmptyCells(admCells, bbox)
+              exportFrame.drawEmptyCells(admCells, effectiveBbox)
             }
             if (legendData?.classes && cellsWithData > 0) {
-              classUsageCount = exportFrame.drawColoredCells(admCells, bbox, legendData.classes)
+              classUsageCount = exportFrame.drawColoredCells(admCells, effectiveBbox, legendData.classes)
               // Pass 2 (export-only): traits de limites 2km au-dessus du fill pour lisibilité
               const cellsForStroke = admCells.filter(c => c.has_data)
-              exportFrame.drawCellBoundaries(cellsForStroke as any, bbox, 'grid2')
+              exportFrame.drawCellBoundaries(cellsForStroke as any, effectiveBbox, 'grid2')
             }
 
             // Combined: dessiner la grille 28km (structure) au-dessus des cellules.
@@ -988,7 +1026,7 @@ export class ExportQuickDialog {
                 })
                 const overlayFeatures = Array.isArray(overlay?.features) ? overlay.features : []
                 if (overlayFeatures.length > 0) {
-                  exportFrame.drawGridOverlayLines(overlayFeatures as any, bbox, 'grid28')
+                  exportFrame.drawGridOverlayLines(overlayFeatures as any, effectiveBbox, 'grid28')
                   console.log('[Export][GRID] overlay 28km drawn (Option C path)', {
                     featureCount: overlayFeatures.length
                   })
@@ -1025,20 +1063,20 @@ export class ExportQuickDialog {
         const admPolygon = this.config.getAdmPolygon?.()
         if (admPolygon && admPolygon.length >= 3) {
           if (opts.maskMode !== 'none') {
-            exportFrame.drawAdmMask(admPolygon, bbox, opts.maskMode)
+            exportFrame.drawAdmMask(admPolygon, effectiveBbox, opts.maskMode)
           } else {
-            exportFrame.drawAdmBoundary(admPolygon, bbox, undefined, 2.5)
+            exportFrame.drawAdmBoundary(admPolygon, effectiveBbox, undefined, 2.5)
           }
         }
 
-        exportFrame.drawGridAndFrame(bbox)
+        exportFrame.drawGridAndFrame(effectiveBbox)
 
         // Cartouche (source, fond, SCR, date, échelle, nord)
         // NOTE: Ce bloc était présent dans l'ancien pipeline mais manquait dans le pipeline Option C.
         const centerLat = (bounds.north + bounds.south) / 2
         const scaleText = computeScaleText(
           mapCapture.width,
-          bounds.east - bounds.west,
+          effectiveBbox.maxX - effectiveBbox.minX,
           centerLat
         )
         exportFrame.drawCartouche(scaleText, admFilters)
@@ -1050,7 +1088,7 @@ export class ExportQuickDialog {
               return await this.fetchAdmBoundaries(admFilters, opts.boundaryLevel as any)
             })
             if (boundaries?.features && Array.isArray(boundaries.features) && boundaries.features.length > 0) {
-              exportFrame.drawAdmBoundaries(boundaries.features as any, bbox, opts.boundaryLevel)
+              exportFrame.drawAdmBoundaries(boundaries.features as any, effectiveBbox, opts.boundaryLevel)
             }
           } catch (e) {
             console.warn('[ExportSingle] Erreur boundaries:', e)
@@ -1058,7 +1096,7 @@ export class ExportQuickDialog {
         }
 
         if (admPolygon && admPolygon.length >= 3 && opts.maskMode === 'none') {
-          exportFrame.drawAdmBoundary(admPolygon, bbox, undefined, 2.5)
+          exportFrame.drawAdmBoundary(admPolygon, effectiveBbox, undefined, 2.5)
         }
 
         if (opts.includeNeighbors && admFilters) {
@@ -1067,7 +1105,7 @@ export class ExportQuickDialog {
               return await this.fetchAdmNeighbors(admFilters)
             })
             if (neighbors.length > 0) {
-              exportFrame.drawNeighborLabels(neighbors, bbox, admPolygon)
+              exportFrame.drawNeighborLabels(neighbors, effectiveBbox, admPolygon)
             }
           } catch (e) {
             console.warn('[ExportSingle] Erreur neighbors:', e)
@@ -1201,6 +1239,13 @@ export class ExportQuickDialog {
     const thematic = this.config.getActiveThematic();
     const admFilters = this.config.getActiveAdmFilters();
     const zonePath = formatAdmPath(admFilters);
+
+    const getCurrentGridLevel = (window as any).getCurrentGridLevel
+    const currentGridLevel =
+      typeof getCurrentGridLevel === 'function'
+        ? ((getCurrentGridLevel() || '2km') as '2km' | '28km' | 'combined')
+        : ('2km' as '2km' | '28km' | 'combined')
+    const boundaryLevel = (this.options.boundaryLevel || 'none') as 'none' | 'adm1' | 'adm2'
     
     return `
       <div class="export-dialog">
@@ -1285,6 +1330,26 @@ export class ExportQuickDialog {
               <span class="export-collapsible-arrow">▼</span>
             </div>
             <div class="export-collapsible-content">
+              <!-- Export Pro: subdivision + grille thématique -->
+              <div class="export-row">
+                <div class="export-field">
+                  <label>Subdivision</label>
+                  <select id="export-boundary-level">
+                    <option value="none" ${boundaryLevel === 'none' ? 'selected' : ''}>Aucune</option>
+                    <option value="adm1" ${boundaryLevel === 'adm1' ? 'selected' : ''}>Régions (ADM1)</option>
+                    <option value="adm2" ${boundaryLevel === 'adm2' ? 'selected' : ''}>Préfectures (ADM2)</option>
+                  </select>
+                </div>
+                <div class="export-field">
+                  <label>Type de grille thématique</label>
+                  <select id="export-grid-level">
+                    <option value="2km" ${currentGridLevel === '2km' ? 'selected' : ''}>Grille 2 km</option>
+                    <option value="28km" ${currentGridLevel === '28km' ? 'selected' : ''}>Grille 28 km (Profils)</option>
+                    <option value="combined" ${currentGridLevel === 'combined' ? 'selected' : ''}>Grille combinée (2 km + 28 km)</option>
+                  </select>
+                </div>
+              </div>
+
               <!-- Grille -->
               <div class="export-row">
                 <div class="export-field">
@@ -1451,6 +1516,20 @@ export class ExportQuickDialog {
     gridTypeSelect?.addEventListener('change', () => {
       this.options.grid.type = gridTypeSelect.value as GridType;
     });
+
+    // Subdivision (frontières internes)
+    const boundaryLevelSelect = this.overlay.querySelector('#export-boundary-level') as HTMLSelectElement
+    boundaryLevelSelect?.addEventListener('change', () => {
+      this.options.boundaryLevel = boundaryLevelSelect.value as any
+    })
+
+    // Grille thématique (2km/28km/combined) : le pipeline lit la valeur au moment de l'export
+    // et synchronise ensuite l'état global via window.setGridLevel + reload.
+    const gridLevelSelect = this.overlay.querySelector('#export-grid-level') as HTMLSelectElement
+    gridLevelSelect?.addEventListener('change', () => {
+      // Ne pas appeler setGridLevel ici pour éviter un reload coûteux à chaque click.
+      // La valeur sera lue et appliquée au moment du clic "Exporter".
+    })
     
     // SCR
     const scrSelect = this.overlay.querySelector('#export-scr') as HTMLSelectElement;
@@ -1609,18 +1688,37 @@ export class ExportQuickDialog {
       // Sauvegarder la taille originale du container pour restauration
       let originalContainerStyle: { width: string; height: string } | null = null;
       
-      if (this.options.zone === 'adm-filtered' && this.config.getAdmBounds) {
-        // Zone filtrée : utiliser le bbox du polygone ADM optimisé pour la feuille
-        const admBounds = this.config.getAdmBounds();
+      if (this.options.zone === 'adm-filtered') {
+        const admFilters = this.config.getActiveAdmFilters?.() || null
+        const admNameRaw = admFilters?.adm3 || admFilters?.adm2 || admFilters?.adm1
+        const admName: string = (typeof admNameRaw === 'object' && admNameRaw !== null ? (admNameRaw as any).name : (admNameRaw as unknown as string)) || 'National'
+
+        const framing = await this.withTimeout('resolveFramingForExport', 12000, async () => {
+          return await this.resolveFramingForExport(this.options.quality, this.options.zone, admName)
+        })
+
+        const admBounds = framing?.bounds || this.config.getAdmBounds?.() || null
+
         if (admBounds) {
           // Construire le nom ADM pour les logs (v3.5.2)
-          const admFilters = this.config.getActiveAdmFilters?.();
-          const admNameRaw = admFilters?.adm3 || admFilters?.adm2 || admFilters?.adm1;
-          const admName: string = (typeof admNameRaw === 'object' && admNameRaw !== null ? (admNameRaw as any).name : (admNameRaw as unknown as string)) || 'National';
+          console.log('[Export][FRAMING] resolved', {
+            zone: this.options.zone,
+            admName,
+            source: framing?.source || (this.config.getAdmBounds ? 'config.getAdmBounds' : 'none'),
+            bounds: admBounds,
+            hasGeometry: !!framing?.geometry
+          })
           
           // Calculer l'emprise "pro serrée" adaptée au ratio de la zone carte
-          bounds = await this.computeOptimalBoundsForSheet(admBounds, this.options.quality, admName);
+          bounds = await this.computeOptimalBoundsForSheet(admBounds, this.options.quality, admName, framing?.geometry);
           console.log('[Export] Zone filtrée ADM optimisée pour feuille:', bounds);
+
+          console.log('[Export][FIT] requested bounds (pre-leaflet)', {
+            admName,
+            requested: bounds,
+            source: framing?.source,
+            rawAdmBounds: admBounds
+          })
           
           // IMPORTANT: Zoomer la carte sur le bbox ADM AVANT la capture
           if (map) {
@@ -1737,7 +1835,11 @@ export class ExportQuickDialog {
             });
           }
         } else {
-          // Fallback sur la vue actuelle si pas de bbox ADM
+          console.warn('[Export][FRAMING] zone=adm-filtered but no framing bounds resolved -> fallback viewport', {
+            zone: this.options.zone,
+            admName,
+            hasAdmFilters: !!admFilters
+          })
           bounds = this.config.getMapBounds();
         }
       } else {
@@ -1989,6 +2091,11 @@ export class ExportQuickDialog {
       // Dessiner les éléments
       exportFrame.drawTitle(thematic, admFilters);
       await exportFrame.drawMapImage(mapCapture.canvas);
+
+      // IMPORTANT: drawMapImage utilise un recadrage (cover). Pour éviter tout décalage
+      // entre fond raster et vecteurs, on doit projeter les vecteurs avec le bbox recadré.
+      const effectiveBbox = exportFrame.getEffectiveBboxAfterMapCrop(bbox)
+      console.log('[Export][BBOX] effective after crop', { raw: bbox, effective: effectiveBbox })
       
       // Dessiner les mailles vides AVANT le masque (utiliser savedOptions)
       let emptyCellsDrawn = false;
@@ -2013,11 +2120,21 @@ export class ExportQuickDialog {
           console.log('[Export] Mailles ADM récupérées:', admCells.length, 'withData:', cellsWithData, 'withoutData:', cellsWithoutData);
           
           // Dessiner les mailles vides si option activée
-          if (savedOptions.showEmptyCells && admCells.length > 0) {
+          console.log('[Export][EMPTY_CELLS] decision', {
+            enabled: savedOptions.showEmptyCells,
+            total: admCells.length,
+            withoutData: cellsWithoutData
+          })
+
+          if (savedOptions.showEmptyCells && admCells.length > 0 && cellsWithoutData > 0) {
             telemetry.startStage('GRID');
-            exportFrame.drawEmptyCells(admCells, bbox);
+            exportFrame.drawEmptyCells(admCells, effectiveBbox);
             emptyCellsDrawn = cellsWithoutData > 0;
             telemetry.endStage({ emptyCellsDrawn, count: cellsWithoutData });
+          } else {
+            console.log('[Export][EMPTY_CELLS] skip', {
+              reason: !savedOptions.showEmptyCells ? 'disabled' : admCells.length === 0 ? 'noCells' : 'noEmptyCells'
+            })
           }
           
           // NOUVEAU: Dessiner les mailles colorées côté export (source unique)
@@ -2026,7 +2143,7 @@ export class ExportQuickDialog {
           const legendDataForCells = this.config.getThematicLegendData?.();
           if (legendDataForCells?.classes && admCells.length > 0 && cellsWithData > 0) {
             telemetry.startStage('DRAW_CELLS');
-            classUsageCount = exportFrame.drawColoredCells(admCells, bbox, legendDataForCells.classes);
+            classUsageCount = exportFrame.drawColoredCells(admCells, effectiveBbox, legendDataForCells.classes);
 
             telemetry.endStage({ 
               coloredCellsDrawn: cellsWithData,
@@ -2041,7 +2158,7 @@ export class ExportQuickDialog {
               const overlay = await this.fetchGridOverlay28kmAsLines(admFilters, bbox)
               const overlayFeatures = Array.isArray(overlay?.features) ? overlay.features : []
               if (overlayFeatures.length > 0) {
-                exportFrame.drawGridOverlayLines(overlayFeatures as any, bbox, 'grid28')
+                exportFrame.drawGridOverlayLines(overlayFeatures as any, effectiveBbox, 'grid28')
                 telemetry.endStage({ grid: '28km', featureCount: overlayFeatures.length })
               } else {
                 telemetry.endStage({ grid: '28km', featureCount: 0 })
@@ -2059,30 +2176,42 @@ export class ExportQuickDialog {
       }
       
       // Dessiner le masque hors ADM si demandé (utiliser savedOptions.maskMode)
-      const admPolygon = this.config.getAdmPolygon?.();
-      console.log('[Export] Masque ADM - mode:', savedOptions.maskMode, 'polygon:', admPolygon?.length || 0, 'points');
+      let admPolygon = this.config.getAdmPolygon?.();
+      let admPolygonSource = 'config.getAdmPolygon'
+      if (this.options.zone === 'adm-filtered' && admFilters) {
+        const resolved = await this.getAdmPolygonForExport(admFilters)
+        admPolygon = resolved.polygon
+        admPolygonSource = resolved.source
+      }
+
+      console.log('[Export][ADM_POLYGON] resolved', {
+        zone: this.options.zone,
+        maskMode: savedOptions.maskMode,
+        source: admPolygonSource,
+        points: admPolygon?.length || 0
+      })
       
       if (this.options.zone === 'adm-filtered' && admPolygon && admPolygon.length >= 3) {
         telemetry.startStage('MASK');
         if (savedOptions.maskMode !== 'none') {
           // Dessiner le masque avec la bordure incluse
-          console.log('[Export] Dessin masque ADM mode:', savedOptions.maskMode);
-          exportFrame.drawAdmMask(admPolygon, bbox, savedOptions.maskMode);
+          console.log('[Export][ADM_MASK] apply', { mode: savedOptions.maskMode, polygonPoints: admPolygon.length, source: admPolygonSource });
+          exportFrame.drawAdmMask(admPolygon, effectiveBbox, savedOptions.maskMode);
           telemetry.endStage({ maskApplied: true, polygonPoints: admPolygon.length });
         } else {
           // Masque "aucun" mais on dessine quand même la bordure ADM
-          console.log('[Export] Masque=none, dessin bordure ADM uniquement');
-          exportFrame.drawAdmBoundary(admPolygon, bbox, undefined, 2.5);
+          console.log('[Export][ADM_MASK] none -> boundary only', { polygonPoints: admPolygon.length, source: admPolygonSource });
+          exportFrame.drawAdmBoundary(admPolygon, effectiveBbox, undefined, 2.5);
           telemetry.endStage({ maskApplied: false, boundaryDrawn: true, polygonPoints: admPolygon.length });
         }
       } else if (this.options.zone === 'adm-filtered') {
         telemetry.startStage('MASK');
         telemetry.warn('Pas de polygone ADM valide pour le masque/bordure');
-        console.warn('[Export] Pas de polygone ADM valide pour le masque/bordure, zone:', this.options.zone, 'polygon:', admPolygon);
+        console.warn('[Export][ADM_MASK] invalid polygon', { zone: this.options.zone, source: admPolygonSource, polygonPoints: admPolygon?.length || 0 });
         telemetry.endStage({ maskApplied: false });
       }
       
-      exportFrame.drawGridAndFrame(bbox);
+      exportFrame.drawGridAndFrame(effectiveBbox);
 
       // Dessiner les subdivisions si demandé (ADM1/ADM2)
       if (savedOptions.boundaryLevel !== 'none' && this.options.zone === 'adm-filtered' && admFilters) {
@@ -2090,7 +2219,7 @@ export class ExportQuickDialog {
         try {
           const boundaries = await this.fetchAdmBoundaries(admFilters, savedOptions.boundaryLevel);
           if (boundaries?.features && Array.isArray(boundaries.features) && boundaries.features.length > 0) {
-            exportFrame.drawAdmBoundaries(boundaries.features as any, bbox, savedOptions.boundaryLevel);
+            exportFrame.drawAdmBoundaries(boundaries.features as any, effectiveBbox, savedOptions.boundaryLevel);
             telemetry.endStage({ level: savedOptions.boundaryLevel, featureCount: boundaries.features.length });
           } else {
             telemetry.endStage({ level: savedOptions.boundaryLevel, featureCount: 0 });
@@ -2104,7 +2233,7 @@ export class ExportQuickDialog {
       // Re-dessiner la bordure ADM après la grille si masque=none (pour qu'elle soit visible au-dessus)
       if (this.options.zone === 'adm-filtered' && admPolygon && admPolygon.length >= 3 && savedOptions.maskMode === 'none') {
         console.log('[Export] Re-dessin bordure ADM après grille (masque=none)');
-        exportFrame.drawAdmBoundary(admPolygon, bbox, undefined, 2.5);
+        exportFrame.drawAdmBoundary(admPolygon, effectiveBbox, undefined, 2.5);
       }
       
       // Dessiner les labels des ADM limitrophes si zone filtrée et option activée (utiliser savedOptions)
@@ -2115,7 +2244,7 @@ export class ExportQuickDialog {
           const admPolygonForLabels = this.config.getAdmPolygon?.();
           telemetry.setNeighborCounts(neighbors.length, neighbors.length);
           if (neighbors && neighbors.length > 0) {
-            exportFrame.drawNeighborLabels(neighbors, bbox, admPolygonForLabels);
+            exportFrame.drawNeighborLabels(neighbors, effectiveBbox, admPolygonForLabels);
           }
           telemetry.endStage();
         } catch (e) {
@@ -2220,7 +2349,7 @@ export class ExportQuickDialog {
       const centerLat = (bounds.north + bounds.south) / 2;
       const scaleText = computeScaleText(
         mapCapture.width,
-        bounds.east - bounds.west,
+        effectiveBbox.maxX - effectiveBbox.minX,
         centerLat
       );
       exportFrame.drawCartouche(scaleText);
@@ -2971,6 +3100,13 @@ export class ExportQuickDialog {
     geometry?: ADMGeometry
   ): Promise<{ north: number; south: number; east: number; west: number }> {
     
+    console.log('[Export][BoundsInput]', {
+      admName,
+      quality,
+      admBounds,
+      hasGeometryParam: !!geometry
+    })
+
     // CORRECTION ÉTAPE 3: Récupérer géométrie ADM de manière robuste
     let admGeometry = geometry
     if (!admGeometry) {
@@ -2982,13 +3118,32 @@ export class ExportQuickDialog {
     }
     
     // CORRECTION: Utiliser BoundsOptimizer pour calcul itératif avec clearance réelle
+    const admFilters = this.config.getActiveAdmFilters?.() || null
+    const isNational = this.isNationalSelection(admFilters) || admName === 'National' || admName === 'National' || admName === 'Tout le Togo'
+
+    if (isNational) {
+      console.log('[Export][BoundsPolicy] National/ADM0 detected -> relax margin_ratio and margin_max warnings (no behavior change for ADM1/ADM2/ADM3)')
+    }
+
+    console.log('[Export][BoundsPolicy] effective', {
+      isNational,
+      admName,
+      hasGeometry: !!admGeometry,
+      maxMarginRatio: isNational ? 80 : 4,
+      maxMarginKmWarn: isNational ? 2000 : 100
+    })
+
     const optimizer = new BoundsOptimizer(quality, {
       safePx: 16,
       maxIterations: 15,
       muStart: 0.01,
       searchStrategy: 'binary',
       logPrefix: 'Export',
-      admName
+      admName,
+      // ADM0/National (pays très "slender" en portrait): la contrainte margin_ratio<=4 rejette tout,
+      // et force un fallback shrink=1.0 (moins zoomé). On relâche UNIQUEMENT pour ADM0.
+      maxMarginRatio: isNational ? 80 : undefined,
+      maxMarginKmWarn: isNational ? 2000 : undefined
     })
     
     const boundsRect: BoundsRect = {
@@ -3000,8 +3155,21 @@ export class ExportQuickDialog {
     
     const metrics = await optimizer.computeOptimalBounds(boundsRect, admGeometry)
 
+    console.log('[Export][BoundsResult] optimizer metrics', {
+      admName,
+      orientation: metrics.orientation,
+      shrink: metrics.shrinkFactor,
+      occ_area: metrics.occ_area,
+      pad_max_pct: metrics.pad_max_pct,
+      margin_min_km: metrics.margin_min_km,
+      margin_max_km: metrics.margin_max_km,
+      clear_min_px: metrics.clear_min_px,
+      clear_min_side: metrics.clear_min_side,
+      bounds: metrics.bounds
+    })
+
     const isFiniteNumber = (n: any): n is number => typeof n === 'number' && Number.isFinite(n)
-    const MAX_MARGIN_KM = 50
+    const MAX_MARGIN_KM = isNational ? 2000 : 50
     const optimized = metrics.bounds
     const optimizedWidth = optimized.east - optimized.west
     const optimizedHeight = optimized.north - optimized.south
@@ -3017,7 +3185,14 @@ export class ExportQuickDialog {
 
     if (invalidOptimizedBounds) {
       console.warn(`[Export][Bounds] ⚠️ Optimized bounds rejected -> fallback to raw ADM bounds (${admName || 'Zone'})`, {
-        marginMaxKm,
+        admName,
+        isNational,
+        validation: {
+          marginMaxKm,
+          maxAllowedKm: MAX_MARGIN_KM,
+          optimizedWidth,
+          optimizedHeight
+        },
         optimized,
         raw: admBounds
       })
@@ -3029,6 +3204,217 @@ export class ExportQuickDialog {
     console.log(`[Export][BoundsJSON] ${admName || 'Zone'}:`, JSON.stringify(jsonMetrics, null, 2))
 
     return metrics.bounds
+  }
+
+  private isNationalSelection(admFilters: ActiveAdmFilters | null | undefined): boolean {
+    const f = admFilters || ({} as any)
+    return !f.adm1?.name && !f.adm2?.name && !f.adm3?.name
+  }
+
+  private computeBboxFromLngLatPairs(coords: Array<[number, number]>): { north: number; south: number; east: number; west: number } | null {
+    if (!Array.isArray(coords) || coords.length < 2) return null
+    let west = Infinity
+    let east = -Infinity
+    let south = Infinity
+    let north = -Infinity
+    for (const c of coords) {
+      const lng = c?.[0]
+      const lat = c?.[1]
+      if (typeof lng !== 'number' || typeof lat !== 'number' || !Number.isFinite(lng) || !Number.isFinite(lat)) continue
+      west = Math.min(west, lng)
+      east = Math.max(east, lng)
+      south = Math.min(south, lat)
+      north = Math.max(north, lat)
+    }
+    if (!Number.isFinite(west) || !Number.isFinite(east) || !Number.isFinite(south) || !Number.isFinite(north)) return null
+    if (!(east > west) || !(north > south)) return null
+    return { north, south, east, west }
+  }
+
+  private computeBboxFromGeoJsonGeometry(geometry: any): { north: number; south: number; east: number; west: number } | null {
+    try {
+      if (!geometry) return null
+      const type = geometry.type
+      if (type === 'Polygon') {
+        const ring = geometry.coordinates?.[0]
+        return this.computeBboxFromLngLatPairs(ring)
+      }
+      if (type === 'MultiPolygon') {
+        const polys = geometry.coordinates
+        if (!Array.isArray(polys) || polys.length === 0) return null
+        let agg: { north: number; south: number; east: number; west: number } | null = null
+        for (const p of polys) {
+          const ring = p?.[0]
+          const bb = this.computeBboxFromLngLatPairs(ring)
+          if (!bb) continue
+          agg = agg
+            ? {
+                north: Math.max(agg.north, bb.north),
+                south: Math.min(agg.south, bb.south),
+                east: Math.max(agg.east, bb.east),
+                west: Math.min(agg.west, bb.west)
+              }
+            : bb
+        }
+        return agg
+      }
+      if (type === 'Point') {
+        const c = geometry.coordinates
+        if (!Array.isArray(c) || c.length < 2) return null
+        const lng = c[0]
+        const lat = c[1]
+        if (typeof lng !== 'number' || typeof lat !== 'number' || !Number.isFinite(lng) || !Number.isFinite(lat)) return null
+        return { north: lat, south: lat, east: lng, west: lng }
+      }
+      if (type === 'MultiPoint' || type === 'LineString') {
+        return this.computeBboxFromLngLatPairs(geometry.coordinates)
+      }
+      if (type === 'MultiLineString') {
+        const lines = geometry.coordinates
+        if (!Array.isArray(lines) || lines.length === 0) return null
+        let agg: { north: number; south: number; east: number; west: number } | null = null
+        for (const line of lines) {
+          const bb = this.computeBboxFromLngLatPairs(line)
+          if (!bb) continue
+          agg = agg
+            ? {
+                north: Math.max(agg.north, bb.north),
+                south: Math.min(agg.south, bb.south),
+                east: Math.max(agg.east, bb.east),
+                west: Math.min(agg.west, bb.west)
+              }
+            : bb
+        }
+        return agg
+      }
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  private async fetchAdm0Geometry(): Promise<ADMGeometry | null> {
+    try {
+      const response = await this.fetchWithTimeout(`${API_BASE_URL}/adm0/geojson`, {}, 20000)
+      if (!response.ok) return null
+      const geojson = await response.json()
+      const geom = geojson?.geometry || geojson?.features?.[0]?.geometry
+      if (!geom) return null
+      if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') return geom as ADMGeometry
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  private computeDataDrivenBoundsFromThematicFeatures(): { bounds: { north: number; south: number; east: number; west: number }; reason: string } | null {
+    try {
+      const features = this.config.getThematicFeatures?.() || null
+      if (!Array.isArray(features) || features.length === 0) return null
+
+      let agg: { north: number; south: number; east: number; west: number } | null = null
+      let used = 0
+      for (const f of features) {
+        const v = (f as any)?.properties?.value
+        if (typeof v !== 'number' || !Number.isFinite(v)) continue
+        const bb = this.computeBboxFromGeoJsonGeometry((f as any)?.geometry)
+        if (!bb) continue
+        if (!(bb.east > bb.west) || !(bb.north > bb.south)) continue
+        agg = agg
+          ? {
+              north: Math.max(agg.north, bb.north),
+              south: Math.min(agg.south, bb.south),
+              east: Math.max(agg.east, bb.east),
+              west: Math.min(agg.west, bb.west)
+            }
+          : bb
+        used++
+      }
+
+      if (!agg || used === 0) return null
+      return { bounds: agg, reason: `thematic_features:value!=null (used=${used}/${features.length})` }
+    } catch {
+      return null
+    }
+  }
+
+  private async resolveFramingForExport(
+    quality: ExportQuality,
+    zone: ExportZone,
+    admName: string
+  ): Promise<{ bounds: { north: number; south: number; east: number; west: number }; geometry?: ADMGeometry; source: string } | null> {
+    if (zone !== 'adm-filtered') return null
+
+    console.log('[Export][FRAMING][resolve] start', {
+      zone,
+      quality,
+      admName
+    })
+
+    const admFilters = this.config.getActiveAdmFilters?.() || null
+    const directBounds = this.config.getAdmBounds?.() || null
+    if (directBounds) {
+      const extracted = await this.extractAdmGeometryRobust(admFilters || ({} as any))
+      console.log('[Export][FRAMING][resolve] hit directBounds', {
+        source: 'config.getAdmBounds',
+        hasExtractedGeometry: !!extracted
+      })
+      return { bounds: directBounds, geometry: extracted || undefined, source: 'config.getAdmBounds(+extractAdmGeometryRobust)' }
+    }
+
+    // Si une ADM est sélectionnée mais que getAdmBounds est null, on récupère la géométrie
+    // et on dérive un bbox (indispensable pour cadrage robuste).
+    if (admFilters && !this.isNationalSelection(admFilters)) {
+      const extracted = await this.extractAdmGeometryRobust(admFilters)
+      if (extracted) {
+        const bb = this.computeBboxFromGeoJsonGeometry(extracted)
+        if (bb && bb.east > bb.west && bb.north > bb.south) {
+          console.log('[Export][FRAMING][resolve] derived from adm geometry', {
+            source: 'api:/adm-geojson',
+            bounds: bb,
+            geomType: (extracted as any)?.type
+          })
+          return {
+            bounds: bb,
+            geometry: extracted,
+            source: 'api:/adm-geojson (bbox derived)'
+          }
+        }
+      }
+    }
+
+    if (this.isNationalSelection(admFilters)) {
+      const adm0 = await this.fetchAdm0Geometry()
+      if (adm0) {
+        const bb = this.computeBboxFromGeoJsonGeometry(adm0)
+        if (bb && bb.east > bb.west && bb.north > bb.south) {
+          console.log('[Export][FRAMING][resolve] hit ADM0', {
+            source: 'api:/adm0/geojson',
+            bounds: bb,
+            geomType: (adm0 as any)?.type
+          })
+          return { bounds: bb, geometry: adm0, source: 'api:/adm0/geojson' }
+        }
+      }
+    }
+
+    const dataDriven = this.computeDataDrivenBoundsFromThematicFeatures()
+    if (dataDriven) {
+      console.log('[Export][FRAMING][resolve] hit data-driven', {
+        source: `data-driven:${dataDriven.reason}`,
+        bounds: dataDriven.bounds
+      })
+      return { bounds: dataDriven.bounds, source: `data-driven:${dataDriven.reason}` }
+    }
+
+    console.warn('[Export][FRAMING][resolve] no framing found', {
+      zone,
+      quality,
+      admName,
+      isNational: this.isNationalSelection(admFilters),
+      hasAdmFilters: !!admFilters
+    })
+    return null
   }
 
   private async extractAdmGeometryRobust(admFilters: ActiveAdmFilters): Promise<ADMGeometry | null> {
@@ -3064,6 +3450,53 @@ export class ExportQuickDialog {
     } catch {
       return null
     }
+  }
+
+  private geometryToOuterRing(geometry: ADMGeometry): number[][] | null {
+    try {
+      if (!geometry) return null
+      if (geometry.type === 'Polygon') {
+        const ring = (geometry.coordinates as any)?.[0]
+        return Array.isArray(ring) && ring.length >= 3 ? (ring as number[][]) : null
+      }
+
+      if (geometry.type === 'MultiPolygon') {
+        const firstPoly = (geometry.coordinates as any)?.[0]
+        const ring = firstPoly?.[0]
+        return Array.isArray(ring) && ring.length >= 3 ? (ring as number[][]) : null
+      }
+
+      return null
+    } catch {
+      return null
+    }
+  }
+
+  private async getAdmPolygonForExport(
+    admFilters: ActiveAdmFilters
+  ): Promise<{ polygon: number[][] | null; source: string; points: number }> {
+    const direct = this.config.getAdmPolygon?.() || null
+    if (direct && Array.isArray(direct) && direct.length >= 3) {
+      return { polygon: direct, source: 'config.getAdmPolygon', points: direct.length }
+    }
+
+    const fromConfigGeom = this.config.getAdmGeometry?.() || null
+    if (fromConfigGeom) {
+      const ring = this.geometryToOuterRing(fromConfigGeom)
+      if (ring && ring.length >= 3) {
+        return { polygon: ring, source: 'config.getAdmGeometry', points: ring.length }
+      }
+    }
+
+    const extracted = await this.extractAdmGeometryRobust(admFilters)
+    if (extracted) {
+      const ring = this.geometryToOuterRing(extracted)
+      if (ring && ring.length >= 3) {
+        return { polygon: ring, source: 'extractAdmGeometryRobust', points: ring.length }
+      }
+    }
+
+    return { polygon: null, source: 'none', points: 0 }
   }
   
   /**

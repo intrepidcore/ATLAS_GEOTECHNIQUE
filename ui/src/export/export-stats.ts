@@ -228,20 +228,43 @@ export function buildExportStats(input: StatsInput): ExportStats {
   let nMaillesAvecDonnees: number;
   let sum: number;
   let values: number[];
-  
-  if (apiStats && apiStats.count > 0) {
-    // Stats enrichies depuis l'API
-    nMaillesTotales = apiStats.count_total ?? (apiStats.count + (apiStats.null_count ?? 0));
-    nMaillesAvecDonnees = apiStats.count;
-    sum = apiStats.sum ?? 0;
-    // Utiliser les values extraites pour les quartiles/percentiles
-    values = allValues;
+
+  // Source de vérité pour l'export: les valeurs réellement présentes dans la zone exportée.
+  // Même si apiStats existe, si ses filtres ne sont pas alignés, elle peut représenter un total national.
+  const hasAdmFilter = !!(getAdmName(admFilters.adm1) || getAdmName(admFilters.adm2) || getAdmName(admFilters.adm3))
+  const localNWithData = allValues.length
+  const localSum = allValues.reduce((a, b) => a + b, 0)
+  const localNTotal = totalCellCount || filteredFeatures.length
+
+  // NTotal: toujours la zone exportée (mailles ADM), pas count_total national.
+  nMaillesTotales = localNTotal
+
+  // NWithData/Sum: privilégier le local si on a un filtre ADM (cohérence carte/stats)
+  if (hasAdmFilter) {
+    nMaillesAvecDonnees = localNWithData
+    sum = localSum
+    values = allValues
+  } else if (apiStats && apiStats.count > 0) {
+    // Pas de filtre ADM: apiStats est généralement cohérente
+    nMaillesAvecDonnees = apiStats.count
+    sum = apiStats.sum ?? localSum
+    values = allValues
   } else {
-    // Fallback: calculer depuis les features FILTRÉES
-    nMaillesTotales = totalCellCount || filteredFeatures.length;
-    nMaillesAvecDonnees = allValues.length;
-    values = allValues;
-    sum = values.reduce((a, b) => a + b, 0);
+    nMaillesAvecDonnees = localNWithData
+    sum = localSum
+    values = allValues
+  }
+
+  const apiCount = apiStats?.count
+  if (apiStats && apiCount && hasAdmFilter && apiCount !== localNWithData) {
+    console.warn('[ExportStats] apiStats not aligned with filtered values -> using local nWithData/sum', {
+      parameterId,
+      apiCount,
+      localNWithData,
+      apiSum: apiStats.sum,
+      localSum,
+      nTotal: nMaillesTotales
+    })
   }
   
   const stats: ExportStats = {
@@ -251,7 +274,7 @@ export function buildExportStats(input: StatsInput): ExportStats {
   };
   
   // Vérifier si on a des données
-  const hasData = apiStats ? apiStats.count > 0 : values.length > 0;
+  const hasData = values.length > 0;
   if (!hasData) {
     stats.rows.push({ label: 'Données', value: 'Aucune donnée disponible' });
     return stats;

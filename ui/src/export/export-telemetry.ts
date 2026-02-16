@@ -459,9 +459,15 @@ export class ExportTelemetry {
       }
     });
     
-    // Warning si aspect ratio différent (étirement)
+    // NOTE: L'export ne doit JAMAIS étirer l'image. Le rendu utilise un recadrage (cover)
+    // pour remplir la zone carte A4. On logue donc l'écart d'AR sans warning bloquant.
     if (Math.abs(arSrc - arDst) > 0.01) {
-      this.warn(`Aspect ratio mismatch: src=${arSrc.toFixed(3)} dst=${arDst.toFixed(3)} - image will be stretched!`);
+      this.log('DRAW', {
+        aspectRatio: {
+          mismatch: true,
+          message: `Aspect ratio mismatch: src=${arSrc.toFixed(3)} dst=${arDst.toFixed(3)} -> crop (cover), no-stretch`
+        }
+      });
     }
   }
   

@@ -85,6 +85,9 @@ export interface OptimizationOptions {
   searchStrategy: 'binary' // Stratégie de recherche
   logPrefix: string // Préfixe des logs (ADM1/ADM2/ADM3)
   admName?: string // Nom de l'ADM pour logs
+  maxPadPct?: number
+  maxMarginRatio?: number
+  maxMarginKmWarn?: number
 }
 
 export interface ADMGeometry {
@@ -341,6 +344,16 @@ export class BoundsOptimizer {
     
     console.log(`[${this.options.logPrefix}][Bounds] ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`)
     console.log(`[${this.options.logPrefix}][Bounds][${orientation}] Début optimisation (binary search)`)
+
+    const effectiveMaxPadPct = typeof this.options.maxPadPct === 'number' ? this.options.maxPadPct : MAX_PAD_PCT
+    const effectiveMaxMarginRatio = typeof this.options.maxMarginRatio === 'number' ? this.options.maxMarginRatio : MAX_MARGIN_RATIO
+    console.log(`[${this.options.logPrefix}][Bounds][${orientation}] Constraints`, {
+      target_margin_km: TARGET_MARGIN_KM,
+      max_pad_pct: effectiveMaxPadPct,
+      max_margin_ratio: effectiveMaxMarginRatio,
+      max_iterations: this.options.maxIterations,
+      mu_start: this.options.muStart
+    })
     
     // Binary search INVERSÉE : chercher le shrink minimal qui VIOLE les contraintes
     // Puis prendre celui juste avant (le plus zoomé qui respecte encore les contraintes)
@@ -367,17 +380,17 @@ export class BoundsOptimizer {
       
       // RÈGLE MÉTIER v4.2: Vérifier marge km + contraintes pad_max et margin_ratio
       const marginKmOk = metrics.margin_min_km >= TARGET_MARGIN_KM
-      const padMaxOk = metrics.pad_max_pct <= MAX_PAD_PCT
+      const padMaxOk = metrics.pad_max_pct <= effectiveMaxPadPct
       const marginRatio = metrics.margin_min_km > 0 ? metrics.margin_max_km / metrics.margin_min_km : 999
-      const marginRatioOk = marginRatio <= MAX_MARGIN_RATIO
+      const marginRatioOk = marginRatio <= effectiveMaxMarginRatio
       
       const isAcceptable = marginKmOk && padMaxOk && marginRatioOk
       const decision = isAcceptable ? 'accept' : 'reject'
       
       let reason = ''
       if (!marginKmOk) reason = `margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM}km`
-      else if (!padMaxOk) reason = `pad_max=${(metrics.pad_max_pct*100).toFixed(1)}% > ${(MAX_PAD_PCT*100).toFixed(0)}%`
-      else if (!marginRatioOk) reason = `margin_ratio=${marginRatio.toFixed(2)} > ${MAX_MARGIN_RATIO}`
+      else if (!padMaxOk) reason = `pad_max=${(metrics.pad_max_pct*100).toFixed(1)}% > ${(effectiveMaxPadPct*100).toFixed(0)}%`
+      else if (!marginRatioOk) reason = `margin_ratio=${marginRatio.toFixed(2)} > ${effectiveMaxMarginRatio}`
       else {
         // Toutes contraintes OK - détailler la qualité
         if (metrics.margin_excess_km > 0) {
@@ -548,9 +561,12 @@ export class BoundsOptimizer {
     const margin_min_km = Math.min(margin_top_km, margin_bottom_km, margin_left_km, margin_right_km)
     const margin_max_km = Math.max(margin_top_km, margin_bottom_km, margin_left_km, margin_right_km)
     
-    // VALIDATION v4.5: détecter géométrie bbox invalide (marges > 100km = bug)
-    if (margin_max_km > 100) {
-      console.warn(`[${this.options.logPrefix}][Bounds] ⚠️ BBOX INVALIDE: margin_max=${margin_max_km.toFixed(2)}km (>100km) - possible bug géométrie`)
+    // VALIDATION v4.5: détecter géométrie bbox invalide (marges énormes)
+    const maxMarginKmWarn = typeof this.options.maxMarginKmWarn === 'number' ? this.options.maxMarginKmWarn : 100
+    if (margin_max_km > maxMarginKmWarn) {
+      console.warn(
+        `[${this.options.logPrefix}][Bounds] ⚠️ BBOX INVALIDE: margin_max=${margin_max_km.toFixed(2)}km (>${maxMarginKmWarn}km) - possible bug géométrie`
+      )
       console.warn(`[${this.options.logPrefix}][Bounds]   bounds: N=${bounds.north.toFixed(4)} S=${bounds.south.toFixed(4)} E=${bounds.east.toFixed(4)} W=${bounds.west.toFixed(4)}`)
       console.warn(`[${this.options.logPrefix}][Bounds]   admBounds: N=${admBounds.north.toFixed(4)} S=${admBounds.south.toFixed(4)} E=${admBounds.east.toFixed(4)} W=${admBounds.west.toFixed(4)}`)
     }

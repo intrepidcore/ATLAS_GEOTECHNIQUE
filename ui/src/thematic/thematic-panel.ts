@@ -1806,12 +1806,33 @@ export class ThematicPanel {
           this.elements.adm3Select.value = admFilters.adm3 || ''
         }
 
-        // Appliquer overrides export AVANT de reconstruire la config depuis le DOM
-        this.applyThematicOverrides(palette, mapType)
+        // Export Atlas: forcer le filtrage ADM côté API pour cohérence stats/légende/carte.
+        // (ThematicMapManager n'envoie adm1/adm2/adm3 que si exclude_outside_adm est activé.)
+        const prevExcludeOutsideAdm = this.elements.excludeOutsideAdmCheckbox?.checked ?? false
+        if (this.elements.excludeOutsideAdmCheckbox) {
+          this.elements.excludeOutsideAdmCheckbox.checked = true
+        }
+        console.log('[Atlas] Export override: exclude_outside_adm forced ON (will restore)', {
+          prevExcludeOutsideAdm,
+          forced: true,
+          admFilters
+        })
 
-        // Recharger la thématique avec le niveau de grille courant (2km/28km/combined)
-        // afin que l'export capture le bon rendu.
-        await this.applyThematic()
+        try {
+          // Appliquer overrides export AVANT de reconstruire la config depuis le DOM
+          this.applyThematicOverrides(palette, mapType)
+
+          // Recharger la thématique avec le niveau de grille courant (2km/28km/combined)
+          // afin que l'export capture le bon rendu.
+          await this.applyThematic()
+        } finally {
+          if (this.elements.excludeOutsideAdmCheckbox) {
+            this.elements.excludeOutsideAdmCheckbox.checked = prevExcludeOutsideAdm
+          }
+          console.log('[Atlas] Export override: exclude_outside_adm restored', {
+            restored: prevExcludeOutsideAdm
+          })
+        }
         
         // 5. Attendre que le manager soit prêt
         await this.manager.waitUntilReady(5000)
