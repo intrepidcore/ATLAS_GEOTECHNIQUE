@@ -7,6 +7,36 @@ use calamine::{open_workbook_from_rs, DataType, Reader, Xlsx};
 use std::collections::HashMap;
 use std::io::Read;
 
+fn normalize_code_site(raw: &str) -> Option<String> {
+    let mut s = raw.trim().to_string();
+    if s.is_empty() {
+        return None;
+    }
+
+    // Harmoniser séparateurs
+    s = s.replace([' ', '-'], "_");
+    s = s.to_uppercase();
+
+    // Supprimer suffixes canonisation
+    for suffix in ["_S1", "-S1"] {
+        if s.ends_with(suffix) {
+            s = s.trim_end_matches(suffix).to_string();
+        }
+    }
+
+    // Artefact (vu dans certains fichiers canonisés)
+    if s == "GRANULO" {
+        return None;
+    }
+
+    // Corrections ponctuelles
+    if s == "NASSABL" {
+        s = "NASSABLE".to_string();
+    }
+
+    Some(s)
+}
+
 #[derive(Debug, Clone)]
 pub struct XlsxImportData {
     pub sondages: Vec<SondageRow>,
@@ -138,6 +168,9 @@ pub fn parse_xlsx_multisheet<R: Read + std::io::Seek>(reader: R) -> Result<XlsxI
             )?);
         } else if sheet_lower == "granulo_points" {
             data.granulo_points = parse_granulo_points_sheet(&mut workbook, sheet_name)?;
+        } else if sheet_lower == "granulo" {
+            // Format long canonisé (code_site, depth_m, sieve_mm, passing_pct, method)
+            data.granulo_points = parse_granulo_points_sheet(&mut workbook, sheet_name)?;
         }
     }
 
@@ -174,8 +207,11 @@ fn parse_sondages_sheet<R: Read + std::io::Seek>(
             continue;
         }
 
-        let code_site = get_string_cell(row, &headers, "code_site")
+        let code_site_raw = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
+        let Some(code_site) = normalize_code_site(&code_site_raw) else {
+            continue;
+        };
 
         rows.push(SondageRow {
             code_site,
@@ -217,8 +253,11 @@ fn parse_echantillons_sheet<R: Read + std::io::Seek>(
             continue;
         }
 
-        let code_site = get_string_cell(row, &headers, "code_site")
+        let code_site_raw = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
+        let Some(code_site) = normalize_code_site(&code_site_raw) else {
+            continue;
+        };
         let depth_m = get_float_cell(row, &headers, "depth_m")
             .context(format!("depth_m manquant ligne {}", row_idx + 1))?;
 
@@ -263,8 +302,11 @@ fn parse_atterberg_sheet<R: Read + std::io::Seek>(
             continue;
         }
 
-        let code_site = get_string_cell(row, &headers, "code_site")
+        let code_site_raw = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
+        let Some(code_site) = normalize_code_site(&code_site_raw) else {
+            continue;
+        };
         let depth_m = get_float_cell(row, &headers, "depth_m")
             .context(format!("depth_m manquant ligne {}", row_idx + 1))?;
 
@@ -303,8 +345,11 @@ fn parse_vbs_sheet<R: Read + std::io::Seek>(
             continue;
         }
 
-        let code_site = get_string_cell(row, &headers, "code_site")
+        let code_site_raw = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
+        let Some(code_site) = normalize_code_site(&code_site_raw) else {
+            continue;
+        };
         let depth_m = get_float_cell(row, &headers, "depth_m")
             .context(format!("depth_m manquant ligne {}", row_idx + 1))?;
         let vbs = get_float_cell(row, &headers, "vbs")
@@ -345,8 +390,11 @@ fn parse_proctor_sheet<R: Read + std::io::Seek>(
             continue;
         }
 
-        let code_site = get_string_cell(row, &headers, "code_site")
+        let code_site_raw = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
+        let Some(code_site) = normalize_code_site(&code_site_raw) else {
+            continue;
+        };
         let depth_m = get_float_cell(row, &headers, "depth_m")
             .context(format!("depth_m manquant ligne {}", row_idx + 1))?;
         let proctor_type = get_string_cell(row, &headers, "proctor_type")
@@ -450,8 +498,11 @@ fn parse_granulo_points_sheet<R: Read + std::io::Seek>(
             continue;
         }
 
-        let code_site = get_string_cell(row, &headers, "code_site")
+        let code_site_raw = get_string_cell(row, &headers, "code_site")
             .context(format!("code_site manquant ligne {}", row_idx + 1))?;
+        let Some(code_site) = normalize_code_site(&code_site_raw) else {
+            continue;
+        };
         let depth_m = get_float_cell(row, &headers, "depth_m")
             .context(format!("depth_m manquant ligne {}", row_idx + 1))?;
         let method = get_string_cell(row, &headers, "method")
@@ -528,7 +579,9 @@ pub fn transform_large_to_long(large: &GranuloLargeSheet) -> Vec<GranuloPointRow
             continue;
         }
 
-        let code_site = parts[0].to_string();
+        let Some(code_site) = normalize_code_site(parts[0]) else {
+            continue;
+        };
         let depth_str = parts[1].replace(',', "."); // Accepter virgule
         let depth_m = match depth_str.parse::<f64>() {
             Ok(d) => d,

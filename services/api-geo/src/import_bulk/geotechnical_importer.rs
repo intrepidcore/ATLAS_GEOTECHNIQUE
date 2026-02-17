@@ -265,12 +265,12 @@ async fn upsert_sondage(
         r#"
         INSERT INTO sondages (
             id, code, geom, date_sondage, source,
-            location_mode, is_geocoded,
+            location_mode,
             created_at, updated_at
         )
         VALUES (
             $1, $2, {}, $3, $4,
-            $5, $6,
+            $5,
             now(), now()
         )
         "#,
@@ -283,7 +283,6 @@ async fn upsert_sondage(
         .bind(date_parsed)
         .bind(&sondage.source)
         .bind(geoloc_mode)
-        .bind(sondage.lon.is_some() && sondage.lat.is_some())
         .execute(&mut **tx)
         .await?;
 

@@ -1,14 +1,20 @@
 import { ThematicMapManager } from './thematic-maps'
-import type { ThematicMapConfig, ObjectifMetier, MapType, ClassificationMethod } from './thematic-types'
 import { createExportQuickDialog, type ExportQuickDialogConfig } from '../export'
 import { createExportAtlasDialog } from '../export/export-atlas-dialog'
 import { apiUrl } from '../api'
 import { 
   OBJECTIFS_METIER, 
+  type ThematicMapConfig,
+  type ObjectifMetier,
+  type ThematicParameter,
+  type MapType,
+  type ClassificationMethod,
+  type PaletteOption,
+  getRecommendedPalette,
+  PALETTE_OPTIONS, 
   THEMATIC_PARAMETERS, 
   MAP_TYPES,
   CLASSIFICATION_METHODS,
-  PALETTE_OPTIONS, 
   ADM1_OPTIONS,
   getParametersForObjectif,
   getParameterById,
@@ -62,6 +68,16 @@ export class ThematicPanel {
     toggleRisqueGonflementCheckbox?: HTMLInputElement
     toggleDsmCheckbox?: HTMLInputElement
   } = {}
+
+  private setSelectValueByOptionText(select: HTMLSelectElement | undefined, optionText: string | undefined): void {
+    if (!select || !optionText) return
+    const match = Array.from(select.options).find(o => (o.text || '').trim() === optionText)
+    if (match) {
+      select.value = match.value
+    } else {
+      select.value = ''
+    }
+  }
   
   constructor(manager: ThematicMapManager) {
     this.manager = manager
@@ -1796,15 +1812,77 @@ export class ThematicPanel {
         }
         
         // 2. Synchroniser les sélecteurs UI SANS dispatchEvent (évite les effets de bord)
-        if (this.elements.adm1Select) {
-          this.elements.adm1Select.value = admFilters.adm1 || ''
+        // IMPORTANT: les <select> ADM stockent souvent un "code" en value, alors que admName est un "label".
+        // On matche donc sur option.text pour retrouver le code.
+        console.log('[Atlas][Batch] ADM selection before', {
+          admLevel,
+          admName,
+          target: admFilters,
+          dom: {
+            adm1: this.elements.adm1Select?.value,
+            adm2: this.elements.adm2Select?.value,
+            adm3: this.elements.adm3Select?.value
+          }
+        })
+
+        this.setSelectValueByOptionText(this.elements.adm1Select, admFilters.adm1)
+        this.setSelectValueByOptionText(this.elements.adm2Select, admFilters.adm2)
+        this.setSelectValueByOptionText(this.elements.adm3Select, admFilters.adm3)
+
+        console.log('[Atlas][Batch] ADM selection applied to DOM', {
+          dom: {
+            adm1: this.elements.adm1Select?.value,
+            adm2: this.elements.adm2Select?.value,
+            adm3: this.elements.adm3Select?.value
+          },
+          domText: {
+            adm1: this.elements.adm1Select?.options[this.elements.adm1Select.selectedIndex]?.text,
+            adm2: this.elements.adm2Select?.options[this.elements.adm2Select.selectedIndex]?.text,
+            adm3: this.elements.adm3Select?.options[this.elements.adm3Select.selectedIndex]?.text
+          }
+        })
+
+        const objectifForThematic = detectObjectif(thematicId)
+        console.log('[Atlas][Batch] thematic selection', {
+          thematicId,
+          objectifForThematic,
+          before: {
+            objectifSelect: this.elements.objectifSelect?.value,
+            parameterSelect: this.elements.parameterSelect?.value
+          }
+        })
+
+        if (this.elements.objectifSelect) {
+          this.elements.objectifSelect.value = objectifForThematic
+          this.updateParameterList(objectifForThematic)
         }
-        if (this.elements.adm2Select) {
-          this.elements.adm2Select.value = admFilters.adm2 || ''
+
+        if (this.elements.parameterSelect) {
+          const options = Array.from(this.elements.parameterSelect.options).map(o => o.value)
+          const hasOption = options.includes(thematicId)
+          console.log('[Atlas][Batch] parameterSelect options', {
+            thematicId,
+            optionCount: options.length,
+            hasOption
+          })
+
+          if (hasOption) {
+            this.elements.parameterSelect.value = thematicId
+          } else {
+            console.warn('[Atlas][Batch] thematicId not present in parameterSelect options; keeping current value', {
+              thematicId,
+              current: this.elements.parameterSelect.value
+            })
+          }
+          this.updateParameterDescription()
         }
-        if (this.elements.adm3Select) {
-          this.elements.adm3Select.value = admFilters.adm3 || ''
-        }
+
+        console.log('[Atlas][Batch] thematic selection applied to DOM', {
+          after: {
+            objectifSelect: this.elements.objectifSelect?.value,
+            parameterSelect: this.elements.parameterSelect?.value
+          }
+        })
 
         // Appliquer overrides export AVANT de reconstruire la config depuis le DOM
         this.applyThematicOverrides(palette, mapType)
@@ -1878,8 +1956,6 @@ export class ThematicPanel {
       
       // Fournir la configuration pour ExportQuickDialog (moteur Export Pro)
       getExportProConfig: () => {
-        const state = this.manager.getCurrentExportState?.()
-        
         // mapContainer ne peut pas être null ici car on est dans openExportAtlasDialog
         // qui vérifie déjà que mapContainer existe
         return {
@@ -1888,11 +1964,14 @@ export class ThematicPanel {
             const b = map.getBounds()
             return { north: b.getNorth(), south: b.getSouth(), east: b.getEast(), west: b.getWest() }
           },
-          getActiveThematic: () => ({
-            name: state?.parameterLabel || 'Carte',
-            parameter: state?.parameterId || 'n_sondages',
-            unit: state?.unit
-          }),
+          getActiveThematic: () => {
+            const state = this.manager.getCurrentExportState?.()
+            return {
+              name: state?.parameterLabel || 'Carte',
+              parameter: state?.parameterId || 'n_sondages',
+              unit: state?.unit
+            }
+          },
           getActiveAdmFilters: () => ({
             adm1: this.elements.adm1Select?.value ? { 
               code: this.elements.adm1Select.value, 
@@ -1907,7 +1986,7 @@ export class ThematicPanel {
               name: this.elements.adm3Select.options[this.elements.adm3Select.selectedIndex]?.text || '' 
             } : undefined
           }),
-          getThematicLegendData: () => state || null,
+          getThematicLegendData: () => this.manager.getCurrentExportState?.() || null,
           getGridLayer: () => (window as any).gridLayer,
           getMap: () => map,
           getAdmBounds: () => {
@@ -1926,6 +2005,7 @@ export class ThematicPanel {
             return this.manager.getAdmPolygonCoords?.() || null
           },
           getThematicFeatures: () => {
+            const state = this.manager.getCurrentExportState?.()
             return state?.features || null
           }
         }

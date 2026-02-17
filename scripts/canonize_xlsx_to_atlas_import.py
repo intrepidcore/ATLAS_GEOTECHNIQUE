@@ -19,6 +19,44 @@ from datetime import datetime
 from typing import Dict, List, Tuple, Optional, Any
 import json
 
+CODE_MAPPING = {
+    'BOHOU': 'BOHOU',
+    'LAMA FEING': 'LAMA_FEING',
+    'LAMA FIENG': 'LAMA_FEING',
+    'LAMA TCHAMDE': 'LAMA_TCHAMDE',
+    'LAMA TCHAMDÈ': 'LAMA_TCHAMDE',
+    'KONSOGOU T1': 'KONSOGOUT1',
+    'KONSOGOUT1': 'KONSOGOUT1',
+    'KONSOGOU T2': 'KONSOGOUT2',
+    'KONSOGOUT2': 'KONSOGOUT2',
+    'NASSABLE': 'NASSABLE',
+    'NASSABLÉ': 'NASSABLE',
+    'NASSABL': 'NASSABLE',
+    'KONTONGBONGUE': 'KONTONGBONGUE',
+}
+
+
+def extract_code_site(sheet_name: str) -> Optional[str]:
+    if not sheet_name:
+        return None
+
+    name = str(sheet_name).strip().upper()
+    name = re.sub(r'[_\-]+', ' ', name)
+    name = re.sub(r'\s+', ' ', name)
+
+    for k, v in CODE_MAPPING.items():
+        if k in name:
+            return v
+
+    m = re.search(r'\(([^\)]+)\)', name)
+    if m:
+        inside = m.group(1)
+        for k, v in CODE_MAPPING.items():
+            if k in inside:
+                return v
+
+    return None
+
 # ============================================================================
 # CONFIGURATION
 # ============================================================================
@@ -38,6 +76,7 @@ SHEET_PATTERNS = {
 # Mapping des profondeurs depuis les noms de colonnes/feuilles
 DEPTH_PATTERNS = [
     (r'(\d+)[,.]?(\d*)\s*m', lambda m: float(f"{m.group(1)}.{m.group(2) or '0'}")),
+    (r'(\d+)[,.]?(\d*)\s*\(?m\)?', lambda m: float(f"{m.group(1)}.{m.group(2) or '0'}")),
     (r'prof.*?(\d+)[,.]?(\d*)', lambda m: float(f"{m.group(1)}.{m.group(2) or '0'}")),
     (r'@(\d+)[,.]?(\d*)', lambda m: float(f"{m.group(1)}.{m.group(2) or '0'}")),
 ]
@@ -112,6 +151,25 @@ class DepthExtractor:
 
 class GranuloParser:
     """Parse les données granulométriques (AGT/AGS)"""
+
+    @staticmethod
+    def _to_float(value: Any) -> Optional[float]:
+        if value is None:
+            return None
+        if isinstance(value, (int, float)):
+            try:
+                return float(value)
+            except Exception:
+                return None
+
+        try:
+            s = str(value).strip()
+            if not s:
+                return None
+            s = s.replace(' ', '').replace(',', '.')
+            return float(s)
+        except Exception:
+            return None
     
     @classmethod
     def parse_sheet(cls, ws, sheet_name: str, source: str) -> List[Dict]:
@@ -124,6 +182,7 @@ class GranuloParser:
         
         # Extraire la localité
         locality = LocalityExtractor.extract(sheet_name)
+        code_site = extract_code_site(sheet_name)
         
         # Lire les données
         rows = list(ws.iter_rows(values_only=True))
@@ -165,38 +224,100 @@ class GranuloParser:
                 if depth:
                     depth_cols[col_idx] = depth
         
-        if sieve_col is None or not depth_cols:
+        # Cas 1: feuille "wide" (plusieurs profondeurs dans la même feuille)
+        if sieve_col is not None and depth_cols:
+            for row in rows[header_row_idx + 1:]:
+                try:
+                    sieve_val = row[sieve_col]
+                    if sieve_val is None:
+                        continue
+
+                    sieve_mm = cls._to_float(sieve_val)
+                    if sieve_mm is None:
+                        continue
+                    if sieve_mm <= 0 or sieve_mm > 100:
+                        continue
+
+                    for col_idx, depth_m in depth_cols.items():
+                        passing_val = row[col_idx] if col_idx < len(row) else None
+                        if passing_val is None:
+                            continue
+
+                        try:
+                            passing_pct = cls._to_float(passing_val)
+                            if passing_pct is None:
+                                continue
+                            if 0 <= passing_pct <= 100:
+                                results.append({
+                                    'code_site': code_site,
+                                    'locality': locality,
+                                    'depth_m': depth_m,
+                                    'sieve_mm': sieve_mm,
+                                    'passing_pct': passing_pct,
+                                    'method': method,
+                                    'source': source
+                                })
+                        except (ValueError, TypeError):
+                            pass
+                except (ValueError, TypeError, IndexError):
+                    continue
+
+            return results
+
+        # Cas 2: feuille "long" par profondeur (une seule profondeur dans le nom de feuille)
+        if sieve_col is None:
+            return results
+
+        depth_m = DepthExtractor.from_text(sheet_name)
+        if depth_m is None:
+            return results
+
+        passing_col = None
+        for col_idx, cell in enumerate(header):
+            cell_str = str(cell or '').lower()
+            if col_idx == sieve_col:
+                continue
+            if 'passant' in cell_str or '%' in cell_str:
+                passing_col = col_idx
+                break
+
+        if passing_col is None:
+            for col_idx, cell in enumerate(header):
+                if col_idx == sieve_col:
+                    continue
+                if cell is not None:
+                    passing_col = col_idx
+                    break
+
+        if passing_col is None:
             return results
         
-        # Parser les données
         for row in rows[header_row_idx + 1:]:
             try:
                 sieve_val = row[sieve_col]
-                if sieve_val is None:
+                passing_val = row[passing_col] if passing_col < len(row) else None
+                if sieve_val is None or passing_val is None:
                     continue
-                
-                sieve_mm = float(sieve_val)
+
+                sieve_mm = cls._to_float(sieve_val)
+                if sieve_mm is None:
+                    continue
                 if sieve_mm <= 0 or sieve_mm > 100:
                     continue
-                
-                for col_idx, depth_m in depth_cols.items():
-                    passing_val = row[col_idx] if col_idx < len(row) else None
-                    if passing_val is None:
-                        continue
-                    
-                    try:
-                        passing_pct = float(passing_val)
-                        if 0 <= passing_pct <= 100:
-                            results.append({
-                                'locality': locality,
-                                'depth_m': depth_m,
-                                'sieve_mm': sieve_mm,
-                                'passing_pct': passing_pct,
-                                'method': method,
-                                'source': source
-                            })
-                    except (ValueError, TypeError):
-                        pass
+
+                passing_pct = cls._to_float(passing_val)
+                if passing_pct is None:
+                    continue
+                if 0 <= passing_pct <= 100:
+                    results.append({
+                        'code_site': code_site,
+                        'locality': locality,
+                        'depth_m': depth_m,
+                        'sieve_mm': sieve_mm,
+                        'passing_pct': passing_pct,
+                        'method': method,
+                        'source': source
+                    })
             except (ValueError, TypeError, IndexError):
                 continue
         
@@ -210,6 +331,8 @@ class AtterbergParser:
     def parse_sheet(cls, ws, sheet_name: str, source: str) -> List[Dict]:
         """Parse une feuille Atterberg"""
         results = []
+
+        code_site = extract_code_site(sheet_name)
         
         rows = list(ws.iter_rows(values_only=True))
         if len(rows) < 2:
@@ -251,8 +374,12 @@ class AtterbergParser:
                 wl = float(row[col_map['wl']]) if 'wl' in col_map and row[col_map['wl']] else None
                 wp = float(row[col_map['wp']]) if 'wp' in col_map and row[col_map['wp']] else None
                 
-                if wl is not None or wp is not None:
+                if depth_m is None:
+                    continue
+
+                if wl is not None and wp is not None:
                     results.append({
+                        'code_site': code_site,
                         'locality': locality,
                         'depth_m': depth_m,
                         'wl': wl,
@@ -272,6 +399,8 @@ class VBSParser:
     def parse_sheet(cls, ws, sheet_name: str, source: str) -> List[Dict]:
         """Parse une feuille VBS"""
         results = []
+
+        code_site = extract_code_site(sheet_name)
         
         rows = list(ws.iter_rows(values_only=True))
         if len(rows) < 2:
@@ -308,8 +437,12 @@ class VBSParser:
                 depth_m = float(row[col_map['depth']]) if 'depth' in col_map and row[col_map['depth']] else None
                 vbs = float(row[col_map['vbs']]) if 'vbs' in col_map and row[col_map['vbs']] else None
                 
+                if depth_m is None:
+                    continue
+
                 if vbs is not None:
                     results.append({
+                        'code_site': code_site,
                         'locality': locality,
                         'depth_m': depth_m,
                         'vbs': vbs,
@@ -341,9 +474,9 @@ class AtlasImportGenerator:
         for item in data:
             locality = item.get('locality', 'Unknown')
             depth_m = item.get('depth_m')
-            
+
             # Créer/mettre à jour le sondage
-            code = self._get_sondage_code(locality)
+            code = item.get('code_site') or self._get_sondage_code(locality)
             if code not in self.sondages:
                 self.sondages[code] = {
                     'locality': locality,
@@ -366,8 +499,8 @@ class AtlasImportGenerator:
         for item in data:
             locality = item.get('locality', 'Unknown')
             depth_m = item.get('depth_m')
-            
-            code = self._get_sondage_code(locality)
+
+            code = item.get('code_site') or self._get_sondage_code(locality)
             if code not in self.sondages:
                 self.sondages[code] = {
                     'locality': locality,
@@ -388,8 +521,8 @@ class AtlasImportGenerator:
         for item in data:
             locality = item.get('locality', 'Unknown')
             depth_m = item.get('depth_m')
-            
-            code = self._get_sondage_code(locality)
+
+            code = item.get('code_site') or self._get_sondage_code(locality)
             if code not in self.sondages:
                 self.sondages[code] = {
                     'locality': locality,
@@ -498,19 +631,21 @@ def canonize_xlsx(input_path: Path, output_path: Path, source: str = None):
         print(f"    Feuille: {sheet_name}")
         
         # Détecter le type de feuille
-        if re.search(SHEET_PATTERNS['agt'], sheet_lower) or re.search(SHEET_PATTERNS['ags'], sheet_lower):
+        if re.search(SHEET_PATTERNS['agt'], sheet_name, re.IGNORECASE) or re.search(
+            SHEET_PATTERNS['ags'], sheet_name, re.IGNORECASE
+        ):
             data = GranuloParser.parse_sheet(ws, sheet_name, source)
             if data:
                 generator.add_granulo_data(data)
                 print(f"      -> {len(data)} points granulo")
         
-        elif re.search(SHEET_PATTERNS['atterberg'], sheet_lower):
+        elif re.search(SHEET_PATTERNS['atterberg'], sheet_name, re.IGNORECASE):
             data = AtterbergParser.parse_sheet(ws, sheet_name, source)
             if data:
                 generator.add_atterberg_data(data)
                 print(f"      -> {len(data)} essais Atterberg")
         
-        elif re.search(SHEET_PATTERNS['vbs'], sheet_lower):
+        elif re.search(SHEET_PATTERNS['vbs'], sheet_name, re.IGNORECASE):
             data = VBSParser.parse_sheet(ws, sheet_name, source)
             if data:
                 generator.add_vbs_data(data)
