@@ -2985,8 +2985,10 @@ export class ExportQuickDialog {
 
     const cachedBounds = getFromThematicCache<{ north: number; south: number; east: number; west: number }>(boundsCacheKey)
     if (cachedBounds) {
+      console.log('[Export][Bounds][Cache] HIT', { adm: admFilters, quality, admName })
       return cachedBounds
     }
+    console.log('[Export][Bounds][Cache] MISS', { adm: admFilters, quality, admName })
 
     // CORRECTION ÉTAPE 3: Récupérer géométrie ADM de manière robuste
     let admGeometry = geometry
@@ -3014,7 +3016,9 @@ export class ExportQuickDialog {
       west: admBounds.west
     }
     
+    const t0 = performance.now()
     const metrics = await optimizer.computeOptimalBounds(boundsRect, admGeometry)
+    console.log('[Export][Bounds] computeOptimalBounds done', { ms: Math.round(performance.now() - t0), admName, quality })
 
     const isFiniteNumber = (n: any): n is number => typeof n === 'number' && Number.isFinite(n)
     const MAX_MARGIN_KM = 50
@@ -3072,11 +3076,13 @@ export class ExportQuickDialog {
 
     const cached = getFromThematicCache<any>(cacheKey)
     if (cached) {
+      console.log('[Export][ADMGeojson][Cache] HIT', { level, name })
       const geom = cached?.geometry || cached?.features?.[0]?.geometry
       if (!geom) return null
       if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') return geom as ADMGeometry
       return null
     }
+    console.log('[Export][ADMGeojson][Cache] MISS', { level, name })
 
     try {
       const response = await this.fetchWithTimeout(
@@ -3089,6 +3095,7 @@ export class ExportQuickDialog {
       const geojson = await response.json()
 
       storeInThematicCache(cacheKey, geojson)
+      console.log('[Export][ADMGeojson][Cache] STORE', { level, name })
 
       const geom = geojson?.geometry || geojson?.features?.[0]?.geometry
       if (!geom) return null

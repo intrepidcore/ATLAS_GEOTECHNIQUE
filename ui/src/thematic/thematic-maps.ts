@@ -279,11 +279,12 @@ export class ThematicMapManager {
       params.append('grid', opts.gridOverride)
     }
     
-    // Filtres ADM - dès qu'un ADM est sélectionné, l'envoyer à l'API.
-    // Cela aligne l'UI (contour ADM + export) avec l'API (filters_applied) même si exclude_outside_adm=false.
-    if (config.filters.adm1) params.append('adm1', config.filters.adm1)
-    if (config.filters.adm2) params.append('adm2', config.filters.adm2)
-    if (config.filters.adm3) params.append('adm3', config.filters.adm3)
+    // Option A (comportement historique): n'envoyer les filtres ADM à l'API que si on exclut réellement l'extérieur.
+    if (config.filters.exclude_outside_adm) {
+      if (config.filters.adm1) params.append('adm1', config.filters.adm1)
+      if (config.filters.adm2) params.append('adm2', config.filters.adm2)
+      if (config.filters.adm3) params.append('adm3', config.filters.adm3)
+    }
     if (config.filters.min_sondages) params.append('min_sondages', config.filters.min_sondages.toString())
     
     if (!opts?.skipBbox && config.filters.bbox) {

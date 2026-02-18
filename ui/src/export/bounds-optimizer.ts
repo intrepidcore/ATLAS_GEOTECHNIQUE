@@ -371,13 +371,12 @@ export class BoundsOptimizer {
       const marginRatio = metrics.margin_min_km > 0 ? metrics.margin_max_km / metrics.margin_min_km : 999
       const marginRatioOk = marginRatio <= MAX_MARGIN_RATIO
       
-      const isAcceptable = marginKmOk && padMaxOk && marginRatioOk
+      const isAcceptable = marginKmOk && padMaxOk
       const decision = isAcceptable ? 'accept' : 'reject'
       
       let reason = ''
       if (!marginKmOk) reason = `margin_min_km=${metrics.margin_min_km.toFixed(2)} < ${TARGET_MARGIN_KM}km`
       else if (!padMaxOk) reason = `pad_max=${(metrics.pad_max_pct*100).toFixed(1)}% > ${(MAX_PAD_PCT*100).toFixed(0)}%`
-      else if (!marginRatioOk) reason = `margin_ratio=${marginRatio.toFixed(2)} > ${MAX_MARGIN_RATIO}`
       else {
         // Toutes contraintes OK - détailler la qualité
         if (metrics.margin_excess_km > 0) {
@@ -385,6 +384,12 @@ export class BoundsOptimizer {
         } else {
           reason = `margin=${metrics.margin_min_km.toFixed(2)}km (optimal) quality=${metrics.quality_score.toFixed(3)}`
         }
+      }
+
+      if (isAcceptable && !marginRatioOk) {
+        console.log(
+          `[${this.options.logPrefix}][Bounds][${orientation}] iter=${iteration} ⚠️ margin_ratio high but accepted (margin_ratio=${marginRatio.toFixed(2)} > ${MAX_MARGIN_RATIO})`
+        )
       }
 
       console.log(
