@@ -11,7 +11,7 @@ export interface ThematicCacheStats {
   evictions: number
 }
 
-const MAX_CACHE_SIZE = 50
+const MAX_CACHE_SIZE = 200
 
 const thematicCache = new Map<string, ThematicCacheEntry<any>>()
 

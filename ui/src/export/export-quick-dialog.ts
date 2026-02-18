@@ -2971,10 +2971,26 @@ export class ExportQuickDialog {
     geometry?: ADMGeometry
   ): Promise<{ north: number; south: number; east: number; west: number }> {
     
+    const admFilters = this.config.getActiveAdmFilters?.()
+
+    const boundsCacheKey = buildCacheKey({
+      kind: 'optimalBounds',
+      quality,
+      adm: {
+        adm1: admFilters?.adm1?.name ?? null,
+        adm2: admFilters?.adm2?.name ?? null,
+        adm3: admFilters?.adm3?.name ?? null
+      }
+    })
+
+    const cachedBounds = getFromThematicCache<{ north: number; south: number; east: number; west: number }>(boundsCacheKey)
+    if (cachedBounds) {
+      return cachedBounds
+    }
+
     // CORRECTION ÉTAPE 3: Récupérer géométrie ADM de manière robuste
     let admGeometry = geometry
     if (!admGeometry) {
-      const admFilters = this.config.getActiveAdmFilters?.()
       if (admFilters) {
         const extracted = await this.extractAdmGeometryRobust(admFilters)
         admGeometry = extracted || undefined
@@ -3028,6 +3044,7 @@ export class ExportQuickDialog {
     const jsonMetrics = optimizer.toJSON()
     console.log(`[Export][BoundsJSON] ${admName || 'Zone'}:`, JSON.stringify(jsonMetrics, null, 2))
 
+    storeInThematicCache(boundsCacheKey, metrics.bounds)
     return metrics.bounds
   }
 
@@ -3047,6 +3064,20 @@ export class ExportQuickDialog {
 
     if (!level || !name) return null
 
+    const cacheKey = buildCacheKey({
+      kind: 'admGeojson',
+      level,
+      name
+    })
+
+    const cached = getFromThematicCache<any>(cacheKey)
+    if (cached) {
+      const geom = cached?.geometry || cached?.features?.[0]?.geometry
+      if (!geom) return null
+      if (geom.type === 'Polygon' || geom.type === 'MultiPolygon') return geom as ADMGeometry
+      return null
+    }
+
     try {
       const response = await this.fetchWithTimeout(
         `${API_BASE_URL}/adm-geojson?level=${level}&name=${encodeURIComponent(name)}`,
@@ -3056,6 +3087,8 @@ export class ExportQuickDialog {
 
       if (!response.ok) return null
       const geojson = await response.json()
+
+      storeInThematicCache(cacheKey, geojson)
 
       const geom = geojson?.geometry || geojson?.features?.[0]?.geometry
       if (!geom) return null
