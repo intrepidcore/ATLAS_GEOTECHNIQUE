@@ -37,7 +37,11 @@ async fn calculate_count_total(pool: &PgPool, req: &ThematicDataRequest) -> Opti
         }
 
         if req.adm1.is_some() {
-            query.push_str(&format!(" AND m2.adm1_name = ${}", param_index));
+            // adm1_name n'est pas forcément rempli dans la MV; déduire l'ADM1 via adm2_tg
+            query.push_str(&format!(
+                " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = m2.adm2_name AND a2.adm1_name = ${})",
+                param_index
+            ));
             param_index += 1;
         }
         if req.adm2.is_some() {
@@ -85,7 +89,11 @@ async fn calculate_count_total(pool: &PgPool, req: &ThematicDataRequest) -> Opti
 
     // Filtres ADM uniquement (pas min_sondages)
     if req.adm1.is_some() {
-        query.push_str(&format!(" AND adm1_name = ${}", param_index));
+        // adm1_name peut être NULL dans la MV; on passe par adm2_name -> adm2_tg.adm1_name
+        query.push_str(&format!(
+            " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = adm2_name AND a2.adm1_name = ${})",
+            param_index
+        ));
         param_index += 1;
     }
     if req.adm2.is_some() {
@@ -151,7 +159,10 @@ async fn calculate_parent_context(
             (
                 "adm1",
                 adm1.clone(),
-                format!("adm1_name = '{}'", adm1.replace("'", "''")),
+                format!(
+                    "EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = adm2_name AND a2.adm1_name = '{}')",
+                    adm1.replace("'", "''")
+                ),
             )
         } else {
             return None;
@@ -378,9 +389,16 @@ pub async fn get_thematic_data(
     // Filtres ADM (paramétrés - colonnes maintenant dans la MV)
     if req.adm1.is_some() {
         if grid == "28km" {
-            query.push_str(&format!(" AND m2.adm1_name = ${}", param_index));
+            // adm1_name pas forcément rempli; utiliser adm2_name -> adm2_tg
+            query.push_str(&format!(
+                " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = m2.adm2_name AND a2.adm1_name = ${})",
+                param_index
+            ));
         } else {
-            query.push_str(&format!(" AND adm1_name = ${}", param_index));
+            query.push_str(&format!(
+                " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = adm2_name AND a2.adm1_name = ${})",
+                param_index
+            ));
         }
         param_index += 1;
     }

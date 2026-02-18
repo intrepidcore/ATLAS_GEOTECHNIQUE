@@ -92,7 +92,10 @@ pub async fn export_qgis_package(
     let mut param_idx = 1;
 
     if let Some(ref adm1) = req.filters.adm1 {
-        query.push_str(&format!(" AND adm1_name = ${}", param_idx));
+        query.push_str(&format!(
+            " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = adm2_name AND a2.adm1_name = ${})",
+            param_idx
+        ));
         params.push(adm1.clone());
         param_idx += 1;
     }

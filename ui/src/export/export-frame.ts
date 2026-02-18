@@ -49,7 +49,7 @@ const LAYOUT_MM = {
   fontLegend: 2.5,        // 2.5mm ≈ 7pt
   fontLegendTitle: 2.8,   // 2.8mm ≈ 8pt
   fontStats: 2.5,         // 2.5mm ≈ 7pt (aligner sur légende)
-  fontCartouche: 2.0,     // 2.0mm ≈ 6pt
+  fontCartouche: 2.5,     // 2.5mm ≈ 7pt (aligner sur légende/stats)
   fontCoordLabel: 2.0,    // 2.0mm ≈ 6pt
   // Épaisseurs de traits en mm
   borderWidth: 0.2,       // 0.2mm trait fin
@@ -99,7 +99,7 @@ function getScaledLayout(dpi: number) {
     fontLegend: mmToPx(LAYOUT_MM.fontLegend, dpi),
     fontLegendTitle: mmToPx(LAYOUT_MM.fontLegendTitle, dpi),
     fontStats: mmToPx(LAYOUT_MM.fontStats, dpi),
-    fontCartouche: mmToPx(LAYOUT_MM.fontCartouche, dpi),
+    fontCartouche: mmToPx(LAYOUT_MM.fontLegend, dpi), // aligner sur légende/stats
     fontCoordLabel: mmToPx(LAYOUT_MM.fontCoordLabel, dpi),
     // Épaisseurs de traits
     borderWidth: mmToPx(LAYOUT_MM.borderWidth, dpi),
@@ -963,13 +963,13 @@ export class ExportFrame {
     ctx.strokeRect(cartoucheArea.x, cartoucheArea.y, cartoucheArea.width, cartoucheArea.height)
 
     ctx.fillStyle = '#111827'
-    ctx.font = `bold ${this.fonts.fontCartouche}px Arial, sans-serif`
+    ctx.font = `${this.fonts.fontLegend}px Arial, sans-serif` // aligner sur légende/stats
     ctx.textAlign = 'left'
     ctx.textBaseline = 'top'
 
     let y = cartoucheArea.y + padding
     const srcLine = `Source : Atlas Géotechnique ${APP_VERSION}`
-    const fondLine = 'Fond : © OpenStreetMap contributors'
+    const fondLine = 'Fond : OpenStreetMap contributors'
     const scrLine = `SCR : WGS84 (${this.options.grid.scr})`
     const dataLine = 'Données : UTM 31N (EPSG:25231)'
     const dateStr = new Date().toLocaleDateString('fr-FR')
@@ -977,7 +977,7 @@ export class ExportFrame {
     ctx.fillText(srcLine, cartoucheArea.x + padding, y)
     y += lineHeight
     ctx.fillStyle = '#374151'
-    ctx.font = `${this.fonts.fontCartouche}px Arial, sans-serif`
+    ctx.font = `${this.fonts.fontLegend}px Arial, sans-serif` // aligner sur légende/stats
     ctx.fillText(fondLine, cartoucheArea.x + padding, y)
     y += lineHeight
 
@@ -1011,7 +1011,7 @@ export class ExportFrame {
       ctx.strokeRect(barX, barY, barW, barH)
 
       ctx.fillStyle = '#111827'
-      ctx.font = `${Math.max(9, Math.round(this.fonts.fontCartouche * 0.95))}px Arial, sans-serif`
+      ctx.font = `${Math.round(this.fonts.fontCartouche * 0.95)}px Arial, sans-serif`
       ctx.textBaseline = 'top'
       ctx.textAlign = 'center'
       ctx.fillText(scaleText, barX + barW / 2, barY + barH + Math.round(2 * scale))

@@ -1508,10 +1508,6 @@ export class ExportAtlasDialog {
       if (typeof setGridLevel === 'function') {
         setGridLevel(level)
       }
-      const panel = (window as any).thematicPanel
-      if (panel?.reloadFromUI) {
-        await panel.reloadFromUI()
-      }
     }
 
     // Déterminer les ADM à exporter
@@ -2062,8 +2058,9 @@ export class ExportAtlasDialog {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-              }
+                Authorization: token ? `Bearer ${token}` : ''
+              },
+              body: JSON.stringify({})
             });
             
             if (response.ok) {
@@ -2071,8 +2068,13 @@ export class ExportAtlasDialog {
               console.log('[Atlas] ✅ Post-traitement terminé:', result);
               this.progressModal?.log('success', 'POST-PROCESS', 'Enrichissement préfectures terminé');
             } else {
-              console.warn('[Atlas] ⚠️ Post-traitement échoué:', response.status);
-              this.progressModal?.log('warning', 'POST-PROCESS', `Erreur ${response.status} - stats préfectures non générées`);
+              if (response.status === 404) {
+                console.log('[Atlas] Post-traitement non configuré (404) - étape ignorée');
+                this.progressModal?.log('info', 'POST-PROCESS', 'Post-traitement non configuré (404) - ignoré');
+              } else {
+                console.warn('[Atlas] ⚠️ Post-traitement échoué:', response.status);
+                this.progressModal?.log('warning', 'POST-PROCESS', `Erreur ${response.status} - stats préfectures non générées`);
+              }
             }
           } catch (e) {
             console.warn('[Atlas] ⚠️ Post-traitement non disponible:', e);

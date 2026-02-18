@@ -285,13 +285,13 @@ export class BoundsOptimizer {
       reason = `paysage respecte marge cible (${landscapeMetrics.margin_min_km.toFixed(2)}km), portrait non (${portraitMetrics.margin_min_km.toFixed(2)}km)`
     } else {
       // Les deux respectent (ou ne respectent pas) la marge cible
-      // Choisir celui avec la meilleure occupation
-      if (portraitMetrics.occ_area >= landscapeMetrics.occ_area) {
+      // Choisir celui avec le meilleur score global (inclut pénalités de marge)
+      if (portraitMetrics.quality_score >= landscapeMetrics.quality_score) {
         best = portraitMetrics
-        reason = `occupation portrait (${(portraitMetrics.occ_area*100).toFixed(1)}%) >= paysage (${(landscapeMetrics.occ_area*100).toFixed(1)}%)`
+        reason = `score portrait (${portraitMetrics.quality_score.toFixed(3)}) >= paysage (${landscapeMetrics.quality_score.toFixed(3)})`
       } else {
         best = landscapeMetrics
-        reason = `occupation paysage (${(landscapeMetrics.occ_area*100).toFixed(1)}%) > portrait (${(portraitMetrics.occ_area*100).toFixed(1)}%)`
+        reason = `score paysage (${landscapeMetrics.quality_score.toFixed(3)}) > portrait (${portraitMetrics.quality_score.toFixed(3)})`
       }
     }
     
@@ -754,10 +754,10 @@ export class BoundsOptimizer {
         processRing(geometry.coordinates[0])
       }
     } else if (geometry.type === 'MultiPolygon') {
-      // TODO: Traiter tous les polygones, pas seulement le premier
-      console.log(`[${this.options.logPrefix}][Bounds] ⚠️ MultiPolygon détecté: densification du 1er polygone uniquement`)
-      if (geometry.coordinates[0]?.[0]) {
-        processRing(geometry.coordinates[0][0])
+      for (const polygon of geometry.coordinates) {
+        if (polygon?.[0]) {
+          processRing(polygon[0])
+        }
       }
     }
     
