@@ -12,7 +12,7 @@
   - Backend Rust **Axum** (serveur HTTP principal)
   - Accès DB via **sqlx (postgres)**, nombreuses routes (surveys, export, import, colab, db-manager, etc.)
   - CORS permissif (dev)
-  - Bind port via `API_GEO_PORT` (défaut `8000`)
+  - Bind port via `A![1771594978662](image/Rapportd’architecture_MigrationversAtlasGeotechniqueProv10WindowsOfflineTauri/1771594978662.png)PI_GEO_PORT` (défaut `8000`)
 - **`atlas/services/api-infer/`**, **`atlas/services/api-opti/`**
   - Microservices Rust Axum optionnels (profiles Docker `infer`, `opti`)
   - `api-infer` dépend de `onnxruntime` (download binaries)
