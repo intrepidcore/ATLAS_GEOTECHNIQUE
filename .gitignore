@@ -42,6 +42,9 @@ yarn-error.log*
 *.tmp
 *.temp
 data/db
+backups/
+exports/db_dumps/
+ressource/DSM/
 
 # ===========================================
 # ARTEFACTS LOURDS / LOCAUX (ne pas versionner)
@@ -64,6 +67,7 @@ atlas_geotechnique_2025-12-29/donnees_analyse/donnees_brutes/
 # Exports Atlas locaux (images/logs) - ne jamais versionner
 atlas_geotechnique*/
 atlas_geotechnique_*/
+services/**/target/
 
 # Local Netlify folder
 .netlify
