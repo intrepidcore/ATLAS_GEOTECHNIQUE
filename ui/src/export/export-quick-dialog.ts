@@ -1579,6 +1579,10 @@ export class ExportQuickDialog {
       };
       const admFilters = this.config.getActiveAdmFilters();
       const map = this.config.getMap?.();
+      const dpr = (typeof window !== 'undefined' && typeof window.devicePixelRatio === 'number') ? window.devicePixelRatio : null
+      if (dpr !== null) {
+        console.log('[Export] devicePixelRatio:', dpr)
+      }
       
       // Enregistrer thématique et filtres ADM
       telemetry.setThematic({
@@ -1668,37 +1672,95 @@ export class ExportQuickDialog {
             
             // ========== FIT BOUNDS ROBUSTE ==========
             // IMPORTANT: maxZoom:18 pour éviter le clamp par un zoom restrictif
-            const z0 = map.getZoom();
-            map.fitBounds(targetBounds, { 
-              animate: false, 
-              padding: [0, 0],
-              maxZoom: 18  // CRITIQUE: pas de restriction de zoom
-            });
-            
-            // Attendre BOTH moveend ET zoomend (pas juste moveend)
-            const waitForEvent = (ev: string) => new Promise<void>(resolve => {
-              const handler = () => {
-                map.off(ev, handler);
-                resolve();
-              };
-              map.on(ev, handler);
-              // Timeout de sécurité
-              setTimeout(() => {
-                map.off(ev, handler);
-                resolve();
-              }, 2000);
-            });
-            
-            await Promise.all([
-              waitForEvent('moveend'),
-              waitForEvent('zoomend')
-            ]);
-            
-            // Attendre 2 frames pour que le navigateur peigne
-            await waitForFrames(2);
+            const waitForEvent = (ev: string) =>
+              new Promise<void>((resolve) => {
+                const handler = () => {
+                  map.off(ev, handler)
+                  resolve()
+                }
+                map.on(ev, handler)
+                // Timeout de sécurité
+                setTimeout(() => {
+                  map.off(ev, handler)
+                  resolve()
+                }, 2000)
+              })
+
+            const targetSpan = {
+              lat: Math.max(1e-9, targetBounds.getNorth() - targetBounds.getSouth()),
+              lng: Math.max(1e-9, targetBounds.getEast() - targetBounds.getWest())
+            }
+
+            const z0 = map.getZoom()
+
+            const fitOnce = async (attempt: number) => {
+              const z0 = map.getZoom()
+              try {
+                map.invalidateSize({ animate: false })
+              } catch {
+                // ignore
+              }
+              await waitForFrames(1)
+              map.fitBounds(targetBounds, {
+                animate: false,
+                padding: [0, 0],
+                maxZoom: 18 // CRITIQUE: pas de restriction de zoom
+              })
+              await Promise.all([waitForEvent('moveend'), waitForEvent('zoomend')])
+              await waitForFrames(2)
+
+              const z1 = map.getZoom()
+              const effectiveBounds = map.getBounds()
+              const effSpan = {
+                lat: Math.max(1e-9, effectiveBounds.getNorth() - effectiveBounds.getSouth()),
+                lng: Math.max(1e-9, effectiveBounds.getEast() - effectiveBounds.getWest())
+              }
+              const spanRatio = {
+                lat: effSpan.lat / targetSpan.lat,
+                lng: effSpan.lng / targetSpan.lng
+              }
+
+              console.log('[Export][FIT] fitBounds attempt', {
+                attempt,
+                z0,
+                z1,
+                requested: {
+                  north: targetBounds.getNorth().toFixed(4),
+                  south: targetBounds.getSouth().toFixed(4),
+                  east: targetBounds.getEast().toFixed(4),
+                  west: targetBounds.getWest().toFixed(4)
+                },
+                effective: {
+                  north: effectiveBounds.getNorth().toFixed(4),
+                  south: effectiveBounds.getSouth().toFixed(4),
+                  east: effectiveBounds.getEast().toFixed(4),
+                  west: effectiveBounds.getWest().toFixed(4)
+                },
+                spanRatio: {
+                  lat: spanRatio.lat.toFixed(2),
+                  lng: spanRatio.lng.toFixed(2)
+                }
+              })
+
+              // Si Leaflet sort une emprise beaucoup plus grande que demandé, c'est typiquement un état instable.
+              // On retente, sinon on exporte un fond OSM "dézoomé" (run 30).
+              const isClearlyWrong = spanRatio.lat > 2.5 || spanRatio.lng > 2.5 || z1 < 8
+              return { effectiveBounds, z1, isClearlyWrong }
+            }
+
+            let fitResult: { effectiveBounds: any; z1: number; isClearlyWrong: boolean } | null = null
+            for (let attempt = 1; attempt <= 3; attempt++) {
+              fitResult = await fitOnce(attempt)
+              if (!fitResult.isClearlyWrong) break
+              console.warn('[Export][FIT] fitBounds produced suspicious bounds/zoom, retrying...', {
+                attempt,
+                z: fitResult.z1
+              })
+              await new Promise((r) => setTimeout(r, 150))
+            }
             
             // Log les dimensions finales du container
-            const z1 = map.getZoom();
+            const z1 = map.getZoom()
             if (container) {
               console.log('[Export] Container après resize:', {
                 w: container.clientWidth,
@@ -1710,7 +1772,7 @@ export class ExportQuickDialog {
             // ========== ALIGNEMENT FOND/OVERLAYS ==========
             // Récupérer les VRAIS bounds du viewport Leaflet après fitBounds
             // C'est la SOURCE DE VÉRITÉ pour la projection (pas le bbox ADM demandé)
-            const effectiveBounds = map.getBounds();
+            const effectiveBounds = (fitResult?.effectiveBounds || map.getBounds());
             bounds = {
               north: effectiveBounds.getNorth(),
               south: effectiveBounds.getSouth(),
@@ -1747,7 +1809,40 @@ export class ExportQuickDialog {
       
       updateProgress('Attente du chargement des tuiles...');
       telemetry.startStage('TILES_WAIT');
-      const tileResult = await waitForTilesLoaded(this.config.mapContainer, 5000);
+      const isTileResultSuspicious = (r: any) => {
+        if (!r) return true
+        const total = typeof r.total === 'number' ? r.total : null
+        const expected = typeof r.expected === 'number' ? r.expected : null
+        const tooFewTiles = total !== null && expected !== null && total < Math.min(expected, 8)
+        const tooManyErrors = typeof r.errors === 'number' && r.errors > 0
+        const pending = typeof r.pending === 'number' ? r.pending : null
+        const pendingNotZero = pending !== null && pending > 0
+        return !!r.timedOut || tooFewTiles || tooManyErrors || pendingNotZero
+      }
+
+      let tileResult = await waitForTilesLoaded(this.config.mapContainer, 5000);
+
+      // Solution durable: réitérer si Leaflet/DOM est encore instable (évite fonds OSM "dézoomés")
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        if (!isTileResultSuspicious(tileResult)) break
+
+        console.warn('[Export][TILES] Tile wait suspicious, retrying...', {
+          attempt,
+          tileResult
+        })
+        telemetry.warn('TILES_WAIT suspicious, retrying')
+        telemetry.log('TILES_WAIT', { event: 'RETRY', attempt, tiles: tileResult })
+
+        try {
+          const map = this.config.getMap?.()
+          if (map) map.invalidateSize({ animate: false })
+        } catch {
+          // ignore
+        }
+
+        await waitForFrames(2)
+        tileResult = await waitForTilesLoaded(this.config.mapContainer, 8000)
+      }
 
       // Stabilisation Leaflet: vérifier explicitement l'état des TileLayer (évite races DOM)
       let leafletTileResult: any = null

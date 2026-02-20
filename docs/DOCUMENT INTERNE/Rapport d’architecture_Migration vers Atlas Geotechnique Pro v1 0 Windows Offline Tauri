@@ -1,0 +1,301 @@
+# Rapport d’architecture — Migration vers **Atlas Geotechnique Pro v1.0 (Windows / Offline / Tauri)**
+
+## 1) Audit architectural (état actuel)
+
+### Structure actuelle (observée dans le repo)
+- **`atlas/ui/`**
+  - Frontend **Vite + React + TypeScript + Tailwind**
+  - Carto **Leaflet / react-leaflet**
+  - Mode **MPA** (au moins `index.html` + `mobile.html`) via [vite.config.ts](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/ui/vite.config.ts:0:0-0:0)
+  - PWA via `vite-plugin-pwa` (mobile terrain)
+- **`atlas/services/api-geo/`**
+  - Backend Rust **Axum** (serveur HTTP principal)
+  - Accès DB via **sqlx (postgres)**, nombreuses routes (surveys, export, import, colab, db-manager, etc.)
+  - CORS permissif (dev)
+  - Bind port via `API_GEO_PORT` (défaut `8000`)
+- **`atlas/services/api-infer/`**, **`atlas/services/api-opti/`**
+  - Microservices Rust Axum optionnels (profiles Docker `infer`, `opti`)
+  - `api-infer` dépend de `onnxruntime` (download binaries)
+- **[atlas/docker-compose.yml](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/docker-compose.yml:0:0-0:0)**
+  - **PostGIS** `postgis/postgis:16-3.4` (port local `127.0.0.1:5432`)
+  - `api-geo` exposé (port `8000`)
+  - UI buildée et servie via Nginx (port `8080`)
+  - `qgis-worker` (offscreen) pour génération PDF/exports
+  - `tileserver` optionnel (port `8081`)
+
+### Dépendances critiques
+- **Frontend**
+  - `react`, `react-router-dom`, `leaflet`, `react-leaflet`, `@turf/turf`, `proj4`
+  - PWA/workbox (cache runtime, notamment tuiles OSM et endpoints mobile)
+- **Backend**
+  - `axum`, `tokio`, `tower-http` (cors/trace), `sqlx` (postgres), `uuid`, `geo`, `rayon`, etc.
+- **DB**
+  - PostGIS dans Docker + volume `./data/db`
+  - Migrations montées dans `/docker-entrypoint-initdb.d` (approche “init scripts” + scripts manuels; `sqlx::migrate!()` désactivé côté Rust)
+
+### Couplage frontend / backend
+- Couplage **fort** via **API HTTP** :
+  - [atlas/ui/src/services/api.ts](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/ui/src/services/api.ts:0:0-0:0) centralise `fetch()` sur une `API_BASE_URL`.
+  - Fallback explicite côté UI : `window.location.origin + '/api'`.
+  - Côté Rust ([api-geo/src/main.rs](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/services/api-geo/src/main.rs:0:0-0:0)) : les routes sont exposées **à la racine** ET sous `/api` pour compatibilité (`nest("/", base_api)` + `nest("/api", base_api)`).
+- Le frontend dépend donc d’un **serveur HTTP local** (ou d’un reverse proxy) même “en local”.
+
+### Dépendance à l’API HTTP
+- **Oui, structurante** :
+  - La quasi-totalité des fonctionnalités passe par `fetch` HTTP.
+  - Les routes backend sont très nombreuses; c’est l’interface stable entre UI et moteur.
+
+### Dépendance Docker
+- **Très forte** pour la v actuelle :
+  - PostGIS, `api-geo`, UI nginx, worker QGIS, etc.
+  - Les ports exposés et la résolution réseau Docker (`db:5432`, `api-geo:8000`) sont utilisés dans [docker-compose.yml](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/docker-compose.yml:0:0-0:0).
+- Les scripts PowerShell (nombreux) confirment que l’opérationnel est orienté **workflow Docker + scripts**.
+
+### Dépendance navigateur
+- Aujourd’hui : UI = app web (Vite) dans navigateur.
+- Le code suppose un environnement web standard (`window.location.origin`, `fetch`, PWA service worker…).
+
+### Points de rigidité
+- **Orchestration** : Docker compose est le “chef d’orchestre” (DB, API, worker, UI).
+- **Base URL / proxy** : Vite proxy `/api -> http://localhost:8000` en dev; nginx proxy en prod; et fallback UI sur `/api`.
+- **Ports** : 5432/8000/8080/8081… potentiellement en conflit sur des machines “client”.
+- **`api-infer`** : dépendance lourde (onnxruntime + binaire + modèle) et moins friendly en distribution desktop.
+
+### Points modulaires / opportunités
+- Le backend Rust est déjà découpé en modules (routes par domaines).
+- Exposition de routes à la racine et sous `/api` : utile pour transition.
+- DB déjà locale (offline-ready par nature).
+- Présence PWA/mobile : certaines stratégies offline existent déjà (cache runtime).
+
+---
+
+## 2) Évaluation de compatibilité avec **Tauri**
+
+### Ce qui peut être conservé tel quel
+- **Frontend Vite + React + Leaflet**
+  - Tauri embarque un WebView : l’UI peut rester une SPA/MPA Vite.
+- **Backend Rust (moteur)**
+  - La logique métier/DB via `sqlx` est réutilisable.
+- **PostGIS local**
+  - Conservé si on accepte un runtime DB (Docker ou service Windows).
+- **Approche “API contract”**
+  - Les endpoints existants peuvent rester l’interface UI<->backend au début.
+
+### Ce qui doit être modifié (minimum viable)
+- **Packaging & démarrage**
+  - Introduire un **host Tauri** (nouveau `src-tauri/`) qui :
+    - lance l’UI buildée
+    - et orchestre le backend (au minimum : démarrer `api-geo` en sous-process ou en lib)
+- **Base URL UI**
+  - Aujourd’hui fallback `window.location.origin + '/api'` => en Tauri, `origin` n’est pas un `http://localhost:...` classique.
+  - Il faudra définir une stratégie :
+    - soit **API HTTP locale** (ex: `http://127.0.0.1:<port>`),
+    - soit **proxy interne** (Tauri commands / IPC),
+    - soit **serveur embarqué** accessible via custom protocol.
+- **PWA/service worker**
+  - Le mode PWA “standalone” n’a pas le même sens en desktop. À garder seulement si utile (mobile terrain), sinon à neutraliser côté desktop (ou à isoler).
+- **CORS**
+  - En desktop, CORS est souvent un sujet “différent” (selon WebView). Si on garde HTTP, il faut maîtriser origin/headers.
+
+### Ce qui doit être supprimé (ou rendu optionnel) pour v1.0 Pro
+- **Docker UI nginx** : inutile dans Tauri (Tauri sert les assets).
+- **Tileserver** : à rendre optionnel; offline réel nécessitera plutôt MBTiles + renderer local, mais ce serait une évolution (phase D).
+- **`api-infer` / `api-opti`** : à garder optionnels dans v1.0, car distribution + perf/CPU/GPU + taille d’artefact.
+
+### Risques de performance
+- **HTTP local + JSON** :
+  - overhead acceptable au début, mais peut devenir un goulet si gros volumes GeoJSON (mailles, couches).
+- **Leaflet en WebView** :
+  - OK, mais attention aux gros GeoJSON + rendu sur machines modestes.
+- **sqlx + PostGIS** :
+  - OK; mais indexation/queries spatiales + caching sont essentiels.
+- **QGIS worker** :
+  - Si vous voulez générer PDFs offline sur Windows, Docker QGIS est lourd.
+  - Alternative future : générer autrement ou packager QGIS (complexe).
+
+### Risques liés à PostGIS
+- **Distribution** :
+  - PostGIS “simple” à obtenir via Docker, moins simple en installation native Windows (service PostgreSQL + extension PostGIS).
+- **Migrations & état DB** :
+  - Les migrations semblent gérées “manuellement”; en desktop, il faut un mécanisme robuste (versioning DB, backup/upgrade).
+
+### Risques liés aux ports locaux
+- Conflits fréquents :
+  - 5432 peut être déjà utilisé.
+  - 8000/8080… idem.
+- Sécurité locale :
+  - API exposée sur `0.0.0.0` en code actuel (bind sur toutes interfaces) => en desktop, il faut binder sur `127.0.0.1` strict.
+
+---
+
+## 3) Roadmap technique structurée (Phases A → D)
+
+## PHASE A — Préparation
+- **Objectif**
+  - Rendre le projet “desktop-ready” sans refonte : clarifier responsabilités, standardiser config, réduire dépendances à Docker UI.
+- **Modifications techniques**
+  - Normaliser la **configuration runtime** :
+    - `API_GEO_PORT`, `DATABASE_URL`, chemins exports/data
+    - binder par défaut sur `127.0.0.1` en mode desktop
+  - Clarifier la stratégie `VITE_API_URL` (actuellement [api.ts](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/ui/src/api.ts:0:0-0:0) lit `VITE_API_URL`).
+  - Isoler ce qui est “mobile PWA” vs “desktop”.
+- **Fichiers impactés**
+  - [atlas/ui/src/services/api.ts](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/ui/src/services/api.ts:0:0-0:0)
+  - [atlas/services/api-geo/src/main.rs](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/services/api-geo/src/main.rs:0:0-0:0) (bind / config)
+  - [.env.example](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/.env.example:0:0-0:0) + scripts lancement
+- **Risques**
+  - Casses de config si trop de chemins/ports codés en dur.
+- **Complexité**
+  - **Moyenne**
+
+## PHASE B — Intégration Tauri
+- **Objectif**
+  - Produire un premier exécutable Windows lançant l’UI + backend + DB locale (offline).
+- **Modifications techniques**
+  - Ajouter un projet Tauri (ex: `atlas-pro/src-tauri`) et packager `atlas/ui` comme frontend.
+  - Choisir stratégie d’intégration backend :
+    - **Option B1 (min refonte)** : garder `api-geo` en **serveur HTTP local** lancé au démarrage (process).
+    - **Option B2 (plus propre)** : compiler `api-geo` en **lib** et exposer des “commands” Tauri (IPC) pour certaines fonctions (progressif).
+  - Orchestration DB :
+    - v1 : **Docker Desktop requis** (le plus simple) OU
+    - inclure une “dépendance install” PostgreSQL/PostGIS (plus pro mais plus lourd).
+- **Fichiers impactés**
+  - Nouveaux fichiers Tauri (non présents actuellement : pas de `src-tauri/` ni `tauri.conf.json`)
+  - Adaptations UI base URL + config
+- **Risques**
+  - Gestion lifecycle (start/stop) des services.
+  - Conflits ports / firewall Windows.
+  - Signature/antivirus (Windows SmartScreen).
+- **Complexité**
+  - **Élevée** (surtout DB + distribution)
+
+## PHASE C — Stabilisation Desktop
+- **Objectif**
+  - Rendre l’expérience “logiciel pro” : installation, offline stable, logs, diagnostics, auto-réparation.
+- **Modifications techniques**
+  - Gestion ports dynamique :
+    - choisir un port libre, écrire un “port file”, UI le lit (via config/IPC)
+  - Sécuriser écoute réseau :
+    - bind `127.0.0.1` only
+    - token local / auth simplifiée ou signature requêtes
+  - Dossier “data” applicatif Windows :
+    - DB data, exports, logs dans `%APPDATA%/AtlasPro/` (ou équivalent)
+  - Gestion migrations DB :
+    - version DB, upgrade automatique + backups
+- **Fichiers impactés**
+  - Backend config ([api-geo/src/config.rs](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/services/api-geo/src/config.rs:0:0-0:0) + [main.rs](cci:7://file:///c:/PROJET_ATLAS_MASTER/atlas/services/api-geo/src/main.rs:0:0-0:0))
+  - Scripts actuels à remplacer/encapsuler par Tauri runtime
+- **Risques**
+  - Bugs d’upgrade DB; support terrain complexe.
+- **Complexité**
+  - **Élevée**
+
+## PHASE D — Optimisation vers version Pro (SIG natif à moyen terme)
+- **Objectif**
+  - Préparer l’évolution vers un vrai logiciel SIG : perf, offline carto, modularité.
+- **Modifications techniques**
+  - Réduire le “tout HTTP” :
+    - migrer progressivement des appels critiques vers **Tauri commands** (IPC)
+  - Offline carto :
+    - basemap MBTiles + renderer local (ou tileserver embarqué non-Docker)
+  - Remplacer/industrialiser QGIS worker :
+    - soit packager une chaîne de rendu PDF native,
+    - soit plugin/interop, mais à cadrer (coût élevé)
+- **Fichiers impactés**
+  - UI services API
+  - Backend exposé en lib + nouveaux modules “app-core”
+- **Risques**
+  - Dérive de scope, coûts d’intégration SIG.
+- **Complexité**
+  - **Élevée**
+
+---
+
+## 4) Décisions structurelles (réponses explicites)
+
+### Faut-il conserver l’API HTTP interne ?
+- **Oui pour Atlas Pro v1.0** (recommandé).
+- **Raison**
+  - C’est le contrat existant; minimisation de refonte; vous avez déjà des routes stables et l’UI est construite autour de `fetch`.
+- **Condition**
+  - La sécuriser : bind localhost, port dynamique, auth locale.
+
+### Faut-il migrer vers appels Rust natifs Tauri dès maintenant ?
+- **Non, pas “dès maintenant”** (pas en big bang).
+- **Recommandation**
+  - Garder HTTP pour v1, puis migrer **progressivement** certains flux lourds (exports, gros geojson, import) en **IPC Tauri** (Phase D).
+
+### Faut-il conserver Docker pour la v1 ?
+- **Oui, probablement** si l’objectif est “min refonte + offline rapide”.
+- **Mais**
+  - C’est un compromis produit :
+    - Pro : réutilise PostGIS + QGIS worker immédiatement
+    - Con : dépendance Docker Desktop (installation, droits admin, poids, friction)
+- **Alternative “plus pro”**
+  - Installer PostgreSQL/PostGIS en natif Windows via installer, mais c’est un chantier (Phase C/D).
+
+### Faut-il découpler le moteur du service HTTP ?
+- **Oui, mais en 2 temps** :
+  - v1.0 : découplage *logique* (créer un “core” appelable) sans casser l’API
+  - v1.x : permettre “dual mode” HTTP et Tauri commands
+
+### Structure de dossier recommandée pour Atlas Pro
+Objectif : **cohabiter** web + desktop sans dupliquer le métier.
+- **`atlas/`** (monorepo conservé)
+  - **`ui/`** (inchangé)
+  - **`services/api-geo/`** (inchangé à court terme)
+  - **`apps/atlas-pro/`**
+    - `src-tauri/` (Tauri shell)
+    - scripts build/release desktop
+  - **`crates/atlas-core/`** *(à introduire progressivement)*
+    - logique métier DB, services, types partagés
+    - utilisé par `api-geo` et par `atlas-pro` (IPC)
+- Cette structure permet de limiter la refonte et d’éviter de “coller” du spécifique desktop dans `api-geo`.
+
+---
+
+## 5) Risques long terme (Desktop Pro)
+
+### Maintenance Desktop
+- Multiplication des environnements (web + desktop + scripts) si non cadré.
+- Nécessité de logs/diagnostics “support client” intégrés.
+
+### Mises à jour / distribution
+- Signature code (Windows), SmartScreen.
+- Stratégie auto-update (Tauri le supporte, mais il faut un canal de distribution et une PKI/CI).
+
+### Conflits de ports
+- Très probable si HTTP + Postgres exposés.
+- Il faut :
+  - ports dynamiques
+  - bind localhost uniquement
+  - mécanisme de découverte (fichier de config local / IPC)
+
+### Sécurité locale
+- Une API locale non authentifiée est exploitable par un autre process local.
+- Minimaux indispensables :
+  - token local éphémère au démarrage
+  - bind `127.0.0.1`
+  - réduire la surface exposée (désactiver endpoints admin non nécessaires en desktop si possible)
+
+### Scalabilité future
+- À mesure que l’application devient SIG “pro”, la voie “tout HTTP + gros GeoJSON” devient limitante.
+- Nécessité future :
+  - formats plus efficaces (vector tiles, parquet/arrow, binary)
+  - rendu plus natif / pipeline carto mieux maîtrisé
+
+---
+
+# Recommandation stratégique finale
+## “Plan recommandé pour Atlas Geotechnique Pro v1.0”
+- **Choix clé** : sortir un **Atlas Pro v1.0** rapidement en **Tauri**, en conservant :
+  - UI Vite/React/Leaflet,
+  - backend Rust `api-geo` **en serveur HTTP local**,
+  - PostGIS **via Docker** (v1), tout en verrouillant localhost/ports/sécurité.
+- **Puis** stabiliser (Phase C) pour réduire la dépendance Docker et professionnaliser distribution, data-dir, migrations.
+- **Enfin** préparer la trajectoire SIG (Phase D) en introduisant un **`atlas-core`** réutilisable, et en migrant progressivement les flux lourds vers IPC Tauri.
+
+---
+
+## Statut
+- **Analyse du repo effectuée** (UI/API/DB/Docker/ports/couplage) et **roadmap + décisions** fournies.

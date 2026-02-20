@@ -456,6 +456,9 @@ export interface TileLoadResult {
   pending: number;
   stableMs: number;
   timedOut: boolean;
+  total?: number;
+  expected?: number;
+  elapsed?: number;
 }
 
 /**
@@ -470,13 +473,24 @@ export async function waitForTilesLoaded(
     const startTime = Date.now();
     let lastPendingCount = -1;
     let stableStartTime = 0;
-    const STABLE_DURATION = 300; // Tuiles stables pendant 300ms
+    const STABLE_DURATION = 450; // Tuiles stables pendant 450ms (plus robuste)
+
+    const estimateExpectedTiles = (): number => {
+      const w = Math.max(1, mapContainer.clientWidth || mapContainer.getBoundingClientRect().width || 1)
+      const h = Math.max(1, mapContainer.clientHeight || mapContainer.getBoundingClientRect().height || 1)
+      // Leaflet tiles are typically 256px; include 1 tile margin for partial tiles.
+      const tilesX = Math.ceil(w / 256) + 1
+      const tilesY = Math.ceil(h / 256) + 1
+      return Math.max(4, tilesX * tilesY)
+    }
     
     const checkTiles = () => {
       const tileImages = mapContainer.querySelectorAll('.leaflet-tile-container img');
       let loaded = 0;
       let errors = 0;
       let pending = 0;
+      const total = tileImages.length;
+      const expected = estimateExpectedTiles();
       
       tileImages.forEach((img) => {
         if (img instanceof HTMLImageElement) {
@@ -495,15 +509,19 @@ export async function waitForTilesLoaded(
       const elapsed = Date.now() - startTime;
       
       // Vérifier si les tuiles sont stables
-      if (pending === 0 && pending === lastPendingCount) {
+      // IMPORTANT: ne pas valider si Leaflet n'a pas encore injecté suffisamment de tuiles.
+      // Sinon on peut "réussir" avec loaded=0-2 et capturer un fond OSM incohérent (run 30).
+      const hasEnoughTilesInDom = total >= Math.min(expected, 8)
+
+      if (pending === 0 && pending === lastPendingCount && hasEnoughTilesInDom) {
         if (stableStartTime === 0) {
           stableStartTime = Date.now();
         }
         const stableMs = Date.now() - stableStartTime;
         
         if (stableMs >= STABLE_DURATION) {
-          console.log('[Export][TILES] Tuiles stables:', { loaded, errors, stableMs });
-          resolve({ loaded, errors, pending, stableMs, timedOut: false });
+          console.log('[Export][TILES] Tuiles stables:', { loaded, errors, pending, total, expected, stableMs, elapsed });
+          resolve({ loaded, errors, pending, stableMs, timedOut: false, total, expected, elapsed });
           return;
         }
       } else {
@@ -514,8 +532,8 @@ export async function waitForTilesLoaded(
       
       // Timeout
       if (elapsed > timeout) {
-        console.warn('[Export][TILES] Timeout:', { loaded, errors, pending, elapsed });
-        resolve({ loaded, errors, pending, stableMs: 0, timedOut: true });
+        console.warn('[Export][TILES] Timeout:', { loaded, errors, pending, total, expected, elapsed });
+        resolve({ loaded, errors, pending, stableMs: 0, timedOut: true, total, expected, elapsed });
         return;
       }
       
