@@ -28,3 +28,6 @@ ui/.cache/
 
 # Allow root .env to be created and versioned if desired
 !.env
+
+# Tauri embedded runtime (distributed as artifact, not versioned)
+apps/atlas-pro/src-tauri/pg/
