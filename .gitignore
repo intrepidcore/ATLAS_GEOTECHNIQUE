@@ -31,3 +31,6 @@ ui/.cache/
 
 # Tauri embedded runtime (distributed as artifact, not versioned)
 apps/atlas-pro/src-tauri/pg/
+
+# Tauri sidecar binaries (distributed as artifacts, not versioned)
+apps/atlas-pro/src-tauri/bin/*.exe

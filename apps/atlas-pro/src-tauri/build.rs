@@ -15,6 +15,16 @@ fn main() {
                 pg_ctl.display()
             );
         }
+
+        let api_geo = std::path::Path::new("bin").join("api-geo-x86_64-pc-windows-msvc.exe");
+        if !api_geo.exists() {
+            panic!(
+                "api-geo sidecar missing: {}\n\
+                Provide it under apps/atlas-pro/src-tauri/bin/ before building (see scripts/fetch-api-geo-artifact.ps1),\n\
+                or set ATLAS_SKIP_PG_RUNTIME_CHECK=1 to bypass (dev only).",
+                api_geo.display()
+            );
+        }
     }
 
     tauri_build::build()
