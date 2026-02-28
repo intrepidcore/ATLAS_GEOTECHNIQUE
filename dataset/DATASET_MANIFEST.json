@@ -1,0 +1,12 @@
+{
+  "version": "1.0.0",
+  "dataset": {
+    "file": "dataset_v1.sql",
+    "sha256": "64f04a3b1a936a7825c4706799b7e768a072b3e9257ba9266bb99cda93657af5"
+  },
+  "schema": {
+    "sha256": "50cca7f1f20966c7e50176aeaf293a2f27d6f89b0bbc8ecde3549e1bf486a550"
+  },
+  "created_at": "2026-02-28",
+  "compatible_schema": ">=1.0.0"
+}

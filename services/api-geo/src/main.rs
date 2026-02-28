@@ -8,6 +8,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod version;
 mod routes;
 mod config;
+mod dataset_master;
 mod surveys;
 mod surveys_extended;
 mod surveys_bulk;
@@ -60,6 +61,8 @@ async fn main() -> anyhow::Result<()> {
     tracing::info!("Connexion à la base de données...");
     let pool = config::pg_pool_with_retry(5).await?;
     tracing::info!("✅ DB connectée avec succès");
+
+    dataset_master::ensure_dataset_applied(&pool).await?;
     
     // Note: Les migrations sont gérées manuellement via scripts SQL
     // sqlx::migrate!() désactivé car les migrations sont déjà appliquées
