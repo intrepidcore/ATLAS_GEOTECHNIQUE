@@ -592,22 +592,31 @@ pub async fn list_ungeocode_surveys(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
-    let surveys = match sqlx::query!(
+
+    #[derive(sqlx::FromRow)]
+    struct UngeocodeSurveyRow {
+        id: uuid::Uuid,
+        code: Option<String>,
+        adm1_name: Option<String>,
+        adm2_name: Option<String>,
+        adm3_name: Option<String>,
+        created_at: chrono::DateTime<chrono::Utc>,
+        n_essais: i64,
+    }
+
+    let surveys = match sqlx::query_as::<_, UngeocodeSurveyRow>(
         r#"
         SELECT 
             s.id,
             s.code,
-            s.date,
-            s.source,
             s.adm1_name,
             s.adm2_name,
             s.adm3_name,
             s.created_at,
-            (SELECT COUNT(*) FROM essais WHERE sondage_id = s.id AND deleted_at IS NULL) as "n_essais!"
+            s.n_essais
         FROM sondages_non_geocodes s
         ORDER BY s.created_at DESC
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await
@@ -628,8 +637,6 @@ pub async fn list_ungeocode_surveys(
             serde_json::json!({
                 "id": row.id,
                 "code": row.code,
-                "date": row.date,
-                "source": row.source,
                 "adm1_name": row.adm1_name,
                 "adm2_name": row.adm2_name,
                 "adm3_name": row.adm3_name,

@@ -27,7 +27,7 @@ pub async fn create_import(
         r#"
         INSERT INTO imports (id, batch_id, filename, sha256, status, params, stats)
         VALUES ($1, $2, $3, $4, 'pending', '{}', '{}')
-        RETURNING id, batch_id
+        RETURNING id, batch_id as "batch_id!"
         "#,
         id,
         batch_id,
@@ -84,7 +84,7 @@ pub async fn commit_import(
     Json(req): Json<CommitRequest>,
 ) -> Result<Json<CommitResponse>, StatusCode> {
     let batch_id = sqlx::query_scalar!(
-        r#"SELECT batch_id FROM imports WHERE id = $1"#,
+        r#"SELECT batch_id as "batch_id!" FROM imports WHERE id = $1"#,
         id
     )
     .fetch_one(&state.pool)
