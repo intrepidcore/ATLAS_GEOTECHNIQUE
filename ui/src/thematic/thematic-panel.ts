@@ -927,8 +927,7 @@ export class ThematicPanel {
     
     try {
       // Appeler l'API pour récupérer les ADM2 de cette région
-      const apiUrl = (window as any).__API_GEO__ || 'http://localhost:8000'
-      const response = await fetch(`${apiUrl}/adm2?adm1=${encodeURIComponent(adm1Name)}`)
+      const response = await fetch(apiUrl(`/adm2?adm1=${encodeURIComponent(adm1Name)}`))
       if (!response.ok) throw new Error('Erreur chargement ADM2')
       
       const adm2List = await response.json()
@@ -961,8 +960,7 @@ export class ThematicPanel {
     }
     
     try {
-      const apiUrl = (window as any).__API_GEO__ || 'http://localhost:8000'
-      const response = await fetch(`${apiUrl}/adm3?adm2=${encodeURIComponent(adm2Name)}`)
+      const response = await fetch(apiUrl(`/adm3?adm2=${encodeURIComponent(adm2Name)}`))
       if (!response.ok) throw new Error('Erreur chargement ADM3')
       
       const adm3List = await response.json()
@@ -2013,7 +2011,7 @@ export class ThematicPanel {
       
       // Récupérer la liste des ADM (non utilisé, l'API est appelée directement)
       getAdmList: async (level: 'adm1' | 'adm2' | 'adm3') => {
-        const response = await fetch(`http://localhost:8000/${level}`)
+        const response = await fetch(apiUrl(`/${level}`))
         if (response.ok) return response.json()
         return []
       },

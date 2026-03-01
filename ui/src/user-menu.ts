@@ -5,6 +5,7 @@
 
 import { tokenStorage } from './services/auth-api';
 import { resetAllPanelSizes } from './components/resizable-panel';
+import { apiUrl } from './api';
 
 interface UserInfo {
   username?: string;
@@ -257,7 +258,7 @@ class UserMenu {
         // Sinon, appeler l'API
         const token = tokenStorage.getAccessToken();
         if (token) {
-          const response = await fetch('http://localhost:8000/auth/me', {
+          const response = await fetch(apiUrl('/auth/me'), {
             headers: { Authorization: `Bearer ${token}` }
           });
           if (response.ok) {

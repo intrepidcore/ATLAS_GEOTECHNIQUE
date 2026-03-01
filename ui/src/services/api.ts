@@ -2,19 +2,9 @@
  * Service API centralisé pour toutes les requêtes backend
  */
 
-// Helper pour obtenir une base URL absolue
-function getApiBaseUrl(): string {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && envUrl.startsWith('http')) {
-    return envUrl.replace(/\/+$/, '');
-  }
-  // Fallback: même origine + /api
-  return window.location.origin + '/api';
-}
+import { getApiBase } from '../api-base';
 
-// En dev (port 5173): utilise le proxy Vite vers localhost:8000
-// En prod (port 8080): utilise le proxy nginx /api/ vers api-geo:8000
-export const API_BASE_URL = getApiBaseUrl();
+export const API_BASE_URL = getApiBase();
 
 interface ApiError {
   message: string
@@ -166,28 +156,28 @@ export interface CommitResult {
 // API Methods
 export const stagingApi = {
   create: (schema: string, table: string, reason?: string) =>
-    api.post<StagingInfo>(`/api/db/table/${schema}/${table}/staging`, { reason }),
+    api.post<StagingInfo>(`/db/table/${schema}/${table}/staging`, { reason }),
 
   get: (stagingId: string) =>
-    api.get<StagingInfo>(`/api/db/staging/${stagingId}`),
+    api.get<StagingInfo>(`/db/staging/${stagingId}`),
 
   dryrun: (stagingId: string) =>
-    api.get<DryRunResult>(`/api/db/staging/${stagingId}/preview`),
+    api.get<DryRunResult>(`/db/staging/${stagingId}/preview`),
 
   commit: (stagingId: string) =>
-    api.post<CommitResult>(`/api/db/staging/${stagingId}/commit`, {}),
+    api.post<CommitResult>(`/db/staging/${stagingId}/commit`, {}),
 
   cancel: (stagingId: string) =>
-    api.delete<void>(`/api/db/staging/${stagingId}`),
+    api.delete<void>(`/db/staging/${stagingId}`),
 
   acquireLock: (stagingId: string, user: string, userEmail?: string) =>
-    api.post<StagingLock>(`/api/db/staging/${stagingId}/lock`, {
+    api.post<StagingLock>(`/db/staging/${stagingId}/lock`, {
       user,
       user_email: userEmail,
     }),
 
   releaseLock: (stagingId: string) =>
-    api.delete<void>(`/api/db/staging/${stagingId}/lock`),
+    api.delete<void>(`/db/staging/${stagingId}/lock`),
 }
 
 export const tablesApi = {
@@ -210,5 +200,5 @@ export const tablesApi = {
 }
 
 export const locksApi = {
-  list: () => api.get<StagingLock[]>('/api/db/locks'),
+  list: () => api.get<StagingLock[]>('/db/locks'),
 }
