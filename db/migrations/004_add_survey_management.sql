@@ -112,6 +112,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
   user_id TEXT DEFAULT 'system'
 );
 
+-- Ensure columns exist even if audit_log was created by an older migration/version
+ALTER TABLE audit_log
+  ADD COLUMN IF NOT EXISTS ts TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS action TEXT,
+  ADD COLUMN IF NOT EXISTS entity TEXT,
+  ADD COLUMN IF NOT EXISTS entity_id UUID,
+  ADD COLUMN IF NOT EXISTS payload JSONB,
+  ADD COLUMN IF NOT EXISTS user_id TEXT DEFAULT 'system';
+
 CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity, entity_id);
 
