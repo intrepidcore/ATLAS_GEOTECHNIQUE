@@ -284,7 +284,12 @@ fn pg_cmd(bin_dir: &Path, exe: &str) -> std::process::Command {
     // Using extended-length/UNC-like absolute paths (e.g. `//?/C:/.../initdb.exe`)
     // can make `initdb` fail to locate/spawn `postgres.exe` in the same directory.
     let mut cmd = std::process::Command::new(exe);
-    cmd.current_dir(bin_dir).env("PATH", pg_env(bin_dir));
+    cmd.current_dir(bin_dir)
+        .env("PATH", pg_env(bin_dir))
+        // Prevent psql from invoking a pager like `cat` (common in CI/dev tooling)
+        // which is not available on Windows.
+        .env("PAGER", "")
+        .env("PSQL_PAGER", "");
     cmd
 }
 
