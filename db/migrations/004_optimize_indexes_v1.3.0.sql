@@ -212,7 +212,9 @@ END $$;
 CREATE OR REPLACE FUNCTION refresh_mailles_stats()
 RETURNS void AS $$
 BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY mv_mailles_stats;
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'mv_mailles_stats') THEN
+        REFRESH MATERIALIZED VIEW CONCURRENTLY mv_mailles_stats;
+    END IF;
 END;
 $$ LANGUAGE plpgsql;
 
@@ -223,8 +225,15 @@ COMMENT ON INDEX idx_mailles_geom_gist IS 'Index spatial GIST pour requêtes bbo
 COMMENT ON INDEX idx_sondages_geom_gist IS 'Index spatial GIST pour requêtes spatiales sur sondages';
 COMMENT ON INDEX idx_essais_type IS 'Index pour filtrage par type d''essai (SPT_N, qc)';
 COMMENT ON INDEX idx_essais_depth_m IS 'Index pour filtrage par profondeur';
-COMMENT ON INDEX idx_audit_log_created_at IS 'Index pour tri chronologique de l''historique';
-COMMENT ON MATERIALIZED VIEW mv_mailles_stats IS 'Vue matérialisée des statistiques par maille pour performance';
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'idx_audit_log_created_at') THEN
+    EXECUTE 'COMMENT ON INDEX idx_audit_log_created_at IS ''Index pour tri chronologique de l''''historique''';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'mv_mailles_stats') THEN
+    EXECUTE 'COMMENT ON MATERIALIZED VIEW mv_mailles_stats IS ''Vue matérialisée des statistiques par maille pour performance''';
+  END IF;
+END $$;
 COMMENT ON FUNCTION refresh_mailles_stats() IS 'Rafraîchit les statistiques matérialisées (à exécuter périodiquement)';
 
 -- 10. Requêtes d'analyse de performance
