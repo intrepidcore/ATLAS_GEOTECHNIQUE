@@ -117,7 +117,6 @@ fn validate_embedded_runtime_layout() -> Result<()> {
     // Layout standard: <pg_root>/share/extension/postgis.control
     let pg_root = bin_dir
         .parent()
-        .and_then(|p| p.parent())
         .ok_or_else(|| anyhow!("PostgreSQL runtime invalide: impossible de résoudre pg root depuis {}", bin_dir.display()))?;
 
     let postgis_control = pg_root.join("share").join("extension").join("postgis.control");
