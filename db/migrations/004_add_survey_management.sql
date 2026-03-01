@@ -112,7 +112,6 @@ CREATE TABLE IF NOT EXISTS audit_log (
   user_id TEXT DEFAULT 'system'
 );
 
--- Ensure columns exist even if audit_log was created by an older migration/version
 ALTER TABLE audit_log
   ADD COLUMN IF NOT EXISTS ts TIMESTAMPTZ DEFAULT now(),
   ADD COLUMN IF NOT EXISTS action TEXT,

@@ -1,0 +1,111 @@
+-- Migration 096: Couper les mailles 28km à la frontière du Togo
+-- Évite les débordements sur les pays voisins (Bénin, Burkina Faso, Ghana)
+-- CORRECTION: Nom table = maille_28km (singulier) + logique conditionnelle complète
+
+BEGIN;
+
+-- Tout dans un seul bloc DO pour éviter erreurs si table absente
+DO $$
+DECLARE
+    v_table_exists boolean;
+    v_adm0_exists boolean;
+    v_updated_count integer;
+    v_deleted_count integer;
+BEGIN
+    -- Vérifier existence table maille_28km
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'atlas' AND table_name = 'maille_28km'
+    ) INTO v_table_exists;
+    
+    IF NOT v_table_exists THEN
+        RAISE NOTICE 'Table atlas.maille_28km non trouvée - migration ignorée';
+        RETURN;
+    END IF;
+    
+    -- Vérifier existence table adm0_raw avec frontière Togo
+    SELECT EXISTS (
+        SELECT 1 FROM information_schema.tables 
+        WHERE table_schema = 'public' AND table_name = 'adm0_raw'
+    ) INTO v_adm0_exists;
+    
+    IF NOT v_adm0_exists THEN
+        RAISE WARNING 'Table public.adm0_raw non trouvée - impossible de clipper à la frontière';
+        RETURN;
+    END IF;
+    
+    -- Vérifier qu'on a bien la géométrie du Togo
+    IF NOT EXISTS (SELECT 1 FROM public.adm0_raw WHERE adm0_pcode = 'TG') THEN
+        RAISE WARNING 'Géométrie Togo (adm0_pcode=TG) non trouvée dans public.adm0_raw';
+        RETURN;
+    END IF;
+    
+    RAISE NOTICE 'Début clip mailles 28km à la frontière du Togo...';
+    
+    -- Stratégie: Modifier temporairement le type de colonne pour accepter GeometryCollection
+    -- puis reconvertir en Polygon après intersection
+    EXECUTE 'ALTER TABLE atlas.maille_28km ALTER COLUMN geom TYPE geometry(Geometry, 25231)';
+    RAISE NOTICE '✓ Type colonne élargi temporairement';
+    
+    -- Couper les mailles 28km à la frontière du Togo
+    -- Transformation SRID nécessaire: adm0_raw en 4326, maille_28km en 25231
+    UPDATE atlas.maille_28km m
+    SET geom = ST_Intersection(m.geom, ST_Transform(a.geom, 25231))
+    FROM public.adm0_raw a
+    WHERE a.adm0_pcode = 'TG'
+      AND NOT ST_Equals(m.geom, ST_Intersection(m.geom, ST_Transform(a.geom, 25231)))
+      AND ST_Intersects(m.geom, ST_Transform(a.geom, 25231));
+    
+    GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+    RAISE NOTICE '✓ % mailles intersectées', v_updated_count;
+    
+    -- Nettoyer les géométries: extraire le plus grand polygone si MultiPolygon
+    UPDATE atlas.maille_28km
+    SET geom = CASE 
+        WHEN GeometryType(geom) = 'MULTIPOLYGON' THEN 
+            (SELECT (ST_Dump(geom)).geom ORDER BY ST_Area((ST_Dump(geom)).geom) DESC LIMIT 1)
+        ELSE geom
+    END
+    WHERE GeometryType(geom) != 'POLYGON';
+    
+    RAISE NOTICE '✓ Géométries nettoyées (MultiPolygon → Polygon)';
+    
+    -- Restaurer le type strict Polygon
+    EXECUTE 'ALTER TABLE atlas.maille_28km ALTER COLUMN geom TYPE geometry(Polygon, 25231)';
+    
+    GET DIAGNOSTICS v_updated_count = ROW_COUNT;
+    RAISE NOTICE '✓ % mailles clippées à la frontière', v_updated_count;
+    
+    -- Supprimer les mailles 28km qui ne touchent plus le Togo après intersection
+    DELETE FROM atlas.maille_28km m
+    WHERE NOT EXISTS (
+        SELECT 1 FROM public.adm0_raw a
+        WHERE a.adm0_pcode = 'TG'
+        AND ST_Intersects(m.geom, ST_Transform(a.geom, 25231))
+    );
+    
+    GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+    RAISE NOTICE '✓ % mailles hors Togo supprimées', v_deleted_count;
+    
+    -- Recalculer les statistiques de la table
+    EXECUTE 'ANALYZE atlas.maille_28km';
+    RAISE NOTICE '✓ Statistiques recalculées';
+    
+    -- Rafraîchir la vue matérialisée si elle existe
+    IF EXISTS (SELECT 1 FROM pg_matviews WHERE schemaname = 'atlas' AND matviewname = 'mailles_28km_stats_wgs84') THEN
+        EXECUTE 'REFRESH MATERIALIZED VIEW atlas.mailles_28km_stats_wgs84';
+        RAISE NOTICE '✓ Vue mailles_28km_stats_wgs84 rafraîchie';
+    END IF;
+    
+    RAISE NOTICE '✓ Migration 096 terminée avec succès';
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        RAISE EXCEPTION 'Erreur migration 096: % %', SQLERRM, SQLSTATE;
+END $$;
+
+COMMIT;
+
+-- Commentaire
+COMMENT ON TABLE atlas.maille_28km IS 
+'Mailles 28km clippées à la frontière du Togo pour éviter les débordements sur les pays voisins (Migration 096)';

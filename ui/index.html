@@ -189,14 +189,135 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
 .badge-vbs-eleve{background:#ef476f22;color:#ef476f;padding:2px 6px;border-radius:3px;font-size:9px;font-weight:500}
 .mini-chart-btn{background:#3aa6ff22;border:1px solid #3aa6ff44;color:#3aa6ff;padding:4px 8px;border-radius:4px;font-size:10px;cursor:pointer;margin-top:6px}
 .mini-chart-btn:hover{background:#3aa6ff33}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* PANNEAU CARTES THÉMATIQUES v2.0 */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+#thematicPanel{position:fixed;top:52px;right:0;width:320px;height:calc(100vh - 52px);background:var(--panel);border-left:1px solid #1b2740;z-index:1500;overflow-y:auto;box-shadow:-4px 0 20px rgba(0,0,0,0.3)}
+#thematicPanel .thematic-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#0a1018;border-bottom:1px solid #1b2740;position:sticky;top:0;z-index:10}
+#thematicPanel .thematic-panel-header h3{margin:0;font-size:15px;font-weight:600;color:var(--text)}
+#thematicPanel .btn-close{background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:4px}
+#thematicPanel .btn-close:hover{background:#1b2740;color:var(--text)}
+#thematicPanel .thematic-panel-body{padding:12px 16px 20px}
+
+/* Sections */
+#thematicPanel .thematic-section{margin-bottom:12px}
+#thematicPanel .section-label{font-size:11px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.5px}
+#thematicPanel .param-description{font-size:11px;color:#6b8299;margin-top:4px;line-height:1.4}
+#thematicPanel .param-description code.formula{display:block;background:#0a1018;padding:4px 8px;border-radius:4px;margin-top:4px;font-family:monospace;font-size:10px;color:var(--accent)}
+
+/* Inputs & Selects */
+#thematicPanel .thematic-select,
+#thematicPanel .thematic-input{width:100%;padding:8px 10px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:13px}
+#thematicPanel .thematic-select:focus,
+#thematicPanel .thematic-input:focus{outline:none;border-color:var(--accent)}
+#thematicPanel .thematic-input.small{width:calc(50% - 12px)}
+
+/* Opacity control */
+#thematicPanel .opacity-control{display:flex;align-items:center;gap:10px}
+#thematicPanel .opacity-control input[type="range"]{flex:1;height:6px;-webkit-appearance:none;appearance:none;background:#22304d;border-radius:3px}
+#thematicPanel .opacity-control input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;background:var(--accent);border-radius:50%;cursor:pointer}
+#thematicPanel .opacity-value{font-size:12px;color:var(--text);min-width:36px;text-align:right}
+
+/* Dividers */
+#thematicPanel .thematic-divider{display:flex;align-items:center;margin:16px 0 12px;gap:10px}
+#thematicPanel .thematic-divider::before,
+#thematicPanel .thematic-divider::after{content:'';flex:1;height:1px;background:#1b2740}
+#thematicPanel .thematic-divider span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+
+/* Checkboxes */
+#thematicPanel .checkbox-section{margin-bottom:8px}
+#thematicPanel .checkbox-label{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;color:var(--text)}
+#thematicPanel .checkbox-label input[type="checkbox"]{width:16px;height:16px;accent-color:var(--accent)}
+
+/* Range inputs */
+#thematicPanel .range-inputs{display:flex;align-items:center;gap:8px}
+#thematicPanel .range-separator{color:var(--muted)}
+
+/* Advanced filters */
+#thematicPanel .advanced-filters{margin:12px 0;border:1px solid #1b2740;border-radius:6px}
+#thematicPanel .advanced-filters summary{padding:10px 12px;cursor:pointer;font-size:12px;color:var(--muted);list-style:none}
+#thematicPanel .advanced-filters summary::-webkit-details-marker{display:none}
+#thematicPanel .advanced-filters[open] summary{border-bottom:1px solid #1b2740}
+#thematicPanel .advanced-content{padding:12px}
+
+/* Data summary */
+#thematicPanel .data-summary{background:#0a1018;border:1px solid #1b2740;border-radius:6px;padding:10px 12px;margin:12px 0;display:none}
+#thematicPanel .summary-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}
+#thematicPanel .summary-row:last-child{margin-bottom:0}
+#thematicPanel .summary-label{color:var(--muted)}
+#thematicPanel .summary-value{color:var(--text);font-weight:500}
+
+/* Buttons */
+#thematicPanel .thematic-actions{display:flex;gap:8px;margin-bottom:8px}
+#thematicPanel .btn-primary{flex:1;padding:10px 14px;background:var(--accent);border:none;border-radius:6px;color:#0d1526;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel .btn-primary:hover{background:#5ab8ff}
+#thematicPanel .btn-primary:disabled{opacity:0.6;cursor:not-allowed}
+#thematicPanel .btn-secondary{flex:1;padding:10px 14px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel .btn-secondary:hover{border-color:#3aa6ff;background:#131d30}
+#thematicPanel .btn-outline{flex:1;padding:10px 14px;background:transparent;border:1px solid #22304d;border-radius:6px;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel .btn-outline:hover{border-color:var(--accent);color:var(--text)}
+#thematicPanel .btn-small{flex:1;padding:8px 12px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+#thematicPanel .btn-small:hover{border-color:#3aa6ff}
+#thematicPanel .btn-small.full-width{flex:none;width:100%}
+#thematicPanel .btn-icon{font-size:14px}
+#thematicPanel .export-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+
+/* ADM Filter Summary */
+#thematicPanel .adm-filter-summary{background:#1e3a5f;border:1px solid #3aa6ff;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:11px;color:#e0f2fe}
+#thematicPanel .adm-filter-summary .filter-badge{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#thematicPanel .adm-filter-summary strong{color:#7dd3fc}
+
+/* Floating button */
+#openThematicPanel{position:fixed;bottom:80px;right:20px;width:50px;height:50px;background:var(--accent);border:none;border-radius:50%;font-size:22px;cursor:pointer;box-shadow:0 4px 12px rgba(58,166,255,0.3);z-index:1000;transition:transform 0.2s}
+#openThematicPanel:hover{transform:scale(1.1)}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* LÉGENDE THÉMATIQUE */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.thematic-legend{background:#ffffff;border:1px solid #d1d5db;border-radius:8px;padding:0;min-width:180px;max-width:240px;box-shadow:0 4px 12px rgba(0,0,0,0.15);font-family:system-ui,-apple-system,sans-serif}
+.thematic-legend .legend-header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #e5e7eb;background:#f9fafb;border-radius:8px 8px 0 0}
+.thematic-legend .legend-header h4{margin:0;font-size:13px;font-weight:600;color:#1f2937;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px}
+.thematic-legend .legend-close{background:transparent;border:none;color:#6b7280;font-size:18px;cursor:pointer;padding:2px 6px;border-radius:4px;line-height:1}
+.thematic-legend .legend-close:hover{background:#e5e7eb;color:#1f2937}
+.thematic-legend .legend-body{padding:8px 12px;background:#ffffff}
+.thematic-legend .legend-item{display:flex;align-items:center;gap:10px;padding:5px 0;cursor:pointer;transition:opacity 0.2s}
+.thematic-legend .legend-item.disabled{opacity:0.3}
+.thematic-legend .legend-color{width:28px;height:16px;border-radius:3px;border:1px solid rgba(0,0,0,0.15);flex-shrink:0}
+.thematic-legend .legend-label{font-size:12px;font-weight:500;color:#374151}
+.thematic-legend .legend-stats{padding:10px 12px;border-top:1px solid #e5e7eb;background:#f9fafb;border-radius:0 0 8px 8px}
+.thematic-legend .stat-row{display:flex;justify-content:space-between;font-size:11px;padding:3px 0}
+.thematic-legend .stat-row span{color:#6b7280}
+.thematic-legend .stat-row b{color:#1f2937;font-weight:600}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* TOAST NOTIFICATIONS */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.thematic-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(100px);background:#111a2a;border:1px solid #1b2740;color:#ecf2f8;padding:12px 20px;border-radius:8px;font-size:13px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.4);opacity:0;transition:all 0.3s ease}
+.thematic-toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.thematic-toast-success{border-color:#0bb07b;background:#0bb07b22}
+.thematic-toast-error{border-color:#ef476f;background:#ef476f22}
+.thematic-toast-info{border-color:#3aa6ff;background:#3aa6ff22}
+
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* LEGEND LIST (QGIS-style) */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+.legend-list{display:flex;flex-direction:column;gap:4px;padding:4px 0}
+.legend-item{display:flex;align-items:center;gap:6px;font-size:0.8rem;line-height:1.2;cursor:pointer;padding:2px 0}
+.legend-item:hover{background:rgba(59,130,246,0.1);border-radius:3px}
+.legend-item__checkbox{flex-shrink:0;cursor:pointer}
+.legend-item__swatch{width:14px;height:14px;border-radius:3px;border:1px solid rgba(255,255,255,0.3);flex-shrink:0}
+.legend-item__label{flex:1;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;color:#cbd5e1}
     </style>
   </head>
   <body>
     <div id="topbar">
       <div class="brand">🗺️ Atlas Géotechnique</div>
-      <div id="appVersion" style="background:#0f172a;padding:2px 8px;border-radius:12px;font-size:11px;color:var(--muted)">v1.6.0</div>
+      <div id="appVersion" style="background:#0f172a;padding:2px 8px;border-radius:12px;font-size:11px;color:var(--muted)">v3.5.4</div>
       <div class="kpis" id="kpis"></div>
-      <div style="margin-left:auto" class="badge"><span class="dot" style="background:var(--ok)"></span> API</div>
+      <!-- Bouton Gestion BDD retiré - accessible via menu profil -->
+      <div style="margin-left:auto"></div>
+      <div class="badge"><span class="dot" style="background:var(--ok)"></span> API</div>
       <div class="badge" id="gridBadge"><span class="dot" style="background:var(--warn)"></span> Grille</div>
     </div>
     <div id="container">
@@ -209,6 +330,88 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
             <div><strong>Avec données:</strong> <span id="statWithData">0</span></div>
             <div><strong>Sondages:</strong> <span id="statSondages">0</span></div>
             <div><strong>Essais:</strong> <span id="statEssais">0</span></div>
+          </div>
+          
+          <!-- Répartition par type d'essai (6 types) -->
+          <div id="essaisTypeStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+            <div style="font-size:11px;color:var(--accent);margin-bottom:8px;font-weight:600">📈 Répartition des essais</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;font-size:10px">
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Atterberg</span>
+                <span id="statAtterberg" style="color:#51cf66;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">VBS</span>
+                <span id="statVbs" style="color:#4c6ef5;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Classif.</span>
+                <span id="statClassif" style="color:#e85d68;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Proctor</span>
+                <span id="statProctor" style="color:#f59e0b;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Granulo</span>
+                <span id="statGranulo" style="color:#8b5cf6;font-weight:600">0</span>
+              </div>
+              <div style="display:flex;justify-content:space-between;padding:3px 6px;background:#0a1018;border-radius:4px">
+                <span style="color:var(--muted)">Gonfl.</span>
+                <span id="statGonflement" style="color:#ec4899;font-weight:600">0</span>
+              </div>
+            </div>
+            <!-- Mini graphique de répartition (6 segments) -->
+            <div id="essaisTypeBar" style="margin-top:8px;height:8px;background:#0a1018;border-radius:4px;overflow:hidden;display:flex">
+              <div id="barAtterberg" style="background:#51cf66;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barVbs" style="background:#4c6ef5;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barClassif" style="background:#e85d68;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barProctor" style="background:#f59e0b;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barGranulo" style="background:#8b5cf6;height:100%;width:0%;transition:width 0.3s"></div>
+              <div id="barGonflement" style="background:#ec4899;height:100%;width:0%;transition:width 0.3s"></div>
+            </div>
+          </div>
+          
+          <!-- Profondeurs d'investigation -->
+          <div id="depthStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+            <div style="font-size:11px;color:var(--accent);margin-bottom:4px;font-weight:600">📏 Profondeurs d'investigation (global – filtres ADM)</div>
+            <div id="depthSubtitle" style="font-size:9px;color:var(--muted);margin-bottom:8px">Calculé sur — échantillons filtrés</div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:8px">
+              <span style="color:var(--muted)">Min: <strong id="depthMin" style="color:var(--text)">—</strong></span>
+              <span style="color:var(--muted)">Moy: <strong id="depthMoy" style="color:var(--text)">—</strong></span>
+              <span style="color:var(--muted)">Max: <strong id="depthMax" style="color:var(--text)">—</strong></span>
+            </div>
+            <!-- Histogramme Chart.js -->
+            <div style="height:80px;position:relative">
+              <canvas id="depthChartCanvas"></canvas>
+            </div>
+          </div>
+          
+          <!-- Indicateur d'argilosité -->
+          <div id="argilositeStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+            <div style="font-size:11px;color:var(--accent);margin-bottom:4px;font-weight:600">💧 Indicateur d'argilosité (global – filtres ADM)</div>
+            <div id="argiloSubtitle" style="font-size:9px;color:var(--muted);margin-bottom:8px">Calculé sur — échantillons / — essais</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px">
+              <div style="text-align:center;padding:6px;background:#0a1018;border-radius:4px">
+                <div style="color:var(--muted);font-size:9px">VBS moy.</div>
+                <div id="vbsMoyen" style="color:#4c6ef5;font-weight:700;font-size:14px">—</div>
+                <div style="color:var(--muted);font-size:9px">g/100g</div>
+              </div>
+              <div style="text-align:center;padding:6px;background:#0a1018;border-radius:4px">
+                <div style="color:var(--muted);font-size:9px">% argileux</div>
+                <div id="pctArgileux" style="color:#e85d68;font-weight:700;font-size:14px">—</div>
+                <div style="color:var(--muted);font-size:9px">VBS > 2.5</div>
+              </div>
+              <div style="text-align:center;padding:6px;background:#0a1018;border-radius:4px">
+                <div style="color:var(--muted);font-size:9px">IP moy.</div>
+                <div id="ipMoyen" style="color:#51cf66;font-weight:700;font-size:14px">—</div>
+                <div style="color:var(--muted);font-size:9px">%</div>
+              </div>
+            </div>
+            <!-- Interprétation automatique -->
+            <div id="argilositeInterpretation" style="margin-top:8px;padding:6px;background:#0a1018;border-radius:4px;font-size:10px;color:var(--muted);font-style:italic;text-align:center">
+              —
+            </div>
           </div>
         </div>
 
@@ -226,107 +429,174 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
         <div class="section">
           <h4>Légende</h4>
           <div class="legend">
-            <div class="row"><span class="swatch" style="background:var(--with-data)"></span> mailles avec sondages</div>
-            <div class="row"><span class="swatch" style="background:var(--no-data)"></span> mailles sans sondages</div>
+            <div class="row"><span class="swatch" style="background:#51cf66"></span> mailles avec sondages (localisation exacte)</div>
+            <div class="row"><span class="swatch" style="background:#4c6ef5"></span> mailles avec sondages (ADM / random cell)</div>
+            <div class="row"><span class="swatch" style="background:#cfd8e3;opacity:0.3;border:1px solid #6b778c"></span> mailles sans sondages</div>
+            <div class="row"><span class="swatch" style="background:#a855f7"></span> mailles attribuées (Colab)</div>
+            <div class="row"><span class="swatch" style="background:#ffd600"></span> Mailles voisines</div>
           </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:6px">Sélectionnez une maille</div>
         </div>
 
-        <!-- Fiche Géotechnique de la Maille -->
+        <!-- Fiche Géotechnique de la Maille (sans onglets) -->
         <div id="mailleDetails" class="section">
-          <div class="maille-header">
-            <div class="maille-code-badge" id="ficheCode">—</div>
-            <div class="maille-adm" id="ficheAdm">—</div>
-            <div class="maille-status" id="ficheStatus">—</div>
-            <div class="maille-actions">
-              <button class="btn-sm" id="ficheRecalculate">🔄 Recalculer</button>
-              <button class="btn-sm" id="ficheExportGeoJSON">📦 GeoJSON</button>
-              <button class="btn-sm" id="ficheAddSurvey">+ Sondage</button>
-            </div>
+          <!-- État initial: aucune maille sélectionnée -->
+          <div id="mailleEmpty" style="padding:20px;text-align:center;color:var(--muted);font-size:12px">
+            <div style="font-size:32px;margin-bottom:8px">📍</div>
+            <div>Cliquez sur une maille pour afficher la fiche géotechnique</div>
           </div>
-
-          <!-- KPIs Grid 2x4 -->
-          <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
-            <div class="kpi-card">
-              <span class="kpi-label">Sondages</span>
-              <span class="kpi-value" id="kpiSondages">0</span>
+          
+          <!-- Contenu de la fiche (masqué par défaut) -->
+          <div id="mailleContent" style="display:none">
+            <!-- 1. En-tête – Identité maille -->
+            <div class="maille-header">
+              <div class="maille-code-badge" id="ficheCode">—</div>
+              <div class="maille-adm" id="ficheAdm">—</div>
+              <div class="maille-badges" style="display:flex;gap:6px;margin-top:4px">
+                <span id="ficheDataBadge" class="badge-sm" style="display:none">avec données</span>
+                <span id="ficheLocBadge" class="badge-sm" style="display:none">exact</span>
+              </div>
+              <div id="ficheAssignment" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:6px;border-left:3px solid #a855f7"></div>
+              <!-- Coordonnées UTM31 -->
+              <div id="ficheUtm31" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:4px;border-left:3px solid #3b82f6">
+                <div style="font-size:10px;font-weight:600;color:#94a3b8;margin-bottom:4px">📐 UTM 31N (m)</div>
+                <div style="font-size:11px;color:#cbd5e1;line-height:1.5">
+                  <div><strong>X:</strong> <span id="utmXRange">—</span></div>
+                  <div><strong>Y:</strong> <span id="utmYRange">—</span></div>
+                  <div style="font-size:10px;color:#94a3b8;margin-top:2px">Centre: <span id="utmCenter">—</span></div>
+                </div>
+              </div>
             </div>
-            <div class="kpi-card">
-              <span class="kpi-label">Échantillons</span>
-              <span class="kpi-value" id="kpiEchantillons">0</span>
+
+            <!-- 2. Instrumentation (KPI) -->
+            <div style="margin-top:12px">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px">📊 INSTRUMENTATION</div>
+              <div class="kpi-grid" style="grid-template-columns:1fr 1fr 1fr">
+                <div class="kpi-card">
+                  <span class="kpi-label">Sondages</span>
+                  <span class="kpi-value" id="kpiSondages">0</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-label">Échantillons</span>
+                  <span class="kpi-value" id="kpiEchantillons">0</span>
+                </div>
+                <div class="kpi-card">
+                  <span class="kpi-label">Essais</span>
+                  <span class="kpi-value" id="kpiEssais">0</span>
+                </div>
+              </div>
+              <div id="kpiSummaryLine" style="font-size:10px;color:var(--muted);margin-top:4px;text-align:center">
+                Données issues de — sondage(s), — échantillon(s), — essai(s)
+              </div>
             </div>
-            <div class="kpi-card">
-              <span class="kpi-label">Essais</span>
-              <span class="kpi-value" id="kpiEssais">0</span>
+
+            <!-- 3. Profondeur d'investigation – maille (bins adaptés 0-1 / 1-1.5 / 1.5-2 / >2) -->
+            <div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px">📏 PROFONDEUR D'INVESTIGATION (maille)</div>
+              <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:6px">
+                <span style="color:var(--muted)">Min: <strong id="cellDepthMin" style="color:var(--text)">—</strong></span>
+                <span style="color:var(--muted)">Moy: <strong id="cellDepthMoy" style="color:var(--text)">—</strong></span>
+                <span style="color:var(--muted)">Max: <strong id="cellDepthMax" style="color:var(--text)">—</strong></span>
+              </div>
+              <div id="cellDepthHist" style="display:flex;gap:4px;height:40px">
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                  <div style="flex:1;width:100%;background:#0a1018;border-radius:2px;position:relative;overflow:hidden">
+                    <div id="cellBar0_1" style="position:absolute;bottom:0;width:100%;background:#22c55e;height:0%;transition:height 0.3s"></div>
+                  </div>
+                  <div style="font-size:7px;color:var(--muted);margin-top:2px">0-1</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                  <div style="flex:1;width:100%;background:#0a1018;border-radius:2px;position:relative;overflow:hidden">
+                    <div id="cellBar1_15" style="position:absolute;bottom:0;width:100%;background:#3b82f6;height:0%;transition:height 0.3s"></div>
+                  </div>
+                  <div style="font-size:7px;color:var(--muted);margin-top:2px">1-1.5</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                  <div style="flex:1;width:100%;background:#0a1018;border-radius:2px;position:relative;overflow:hidden">
+                    <div id="cellBar15_2" style="position:absolute;bottom:0;width:100%;background:#f59e0b;height:0%;transition:height 0.3s"></div>
+                  </div>
+                  <div style="font-size:7px;color:var(--muted);margin-top:2px">1.5-2</div>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center">
+                  <div style="flex:1;width:100%;background:#0a1018;border-radius:2px;position:relative;overflow:hidden">
+                    <div id="cellBar2_plus" style="position:absolute;bottom:0;width:100%;background:#ef4444;height:0%;transition:height 0.3s"></div>
+                  </div>
+                  <div style="font-size:7px;color:var(--muted);margin-top:2px">>2</div>
+                </div>
+              </div>
             </div>
-            <div class="kpi-card">
-              <span class="kpi-label">% Spread</span>
-              <span class="kpi-value" id="kpiSpread">0%</span>
+
+            <!-- 4. Essais par type – maille (6 types) -->
+            <div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px">🔬 ESSAIS PAR TYPE (maille)</div>
+              <div id="cellEssaisTypes" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:4px;font-size:10px">
+                <span><strong id="cellAtterberg" style="color:#51cf66">0</strong> <span style="color:var(--muted)">Atterberg</span></span>
+                <span><strong id="cellVbs" style="color:#4c6ef5">0</strong> <span style="color:var(--muted)">VBS</span></span>
+                <span><strong id="cellClassif" style="color:#e85d68">0</strong> <span style="color:var(--muted)">Classif</span></span>
+                <span><strong id="cellProctor" style="color:#f59e0b">0</strong> <span style="color:var(--muted)">Proctor</span></span>
+                <span><strong id="cellGranulo" style="color:#8b5cf6">0</strong> <span style="color:var(--muted)">Granulo</span></span>
+                <span><strong id="cellGonflement" style="color:#ec4899">0</strong> <span style="color:var(--muted)">Gonfl.</span></span>
+              </div>
             </div>
-          </div>
 
-          <!-- Alerte Spread -->
-          <div id="spreadAlert" class="alert-spread" style="display:none">
-            🔄 Valeurs agrégées depuis <strong id="spreadSource">—</strong> — diffusion ADM3
-          </div>
-
-          <!-- Onglets -->
-          <div class="tabs">
-            <button class="tab active" data-tab="overview">📊 Vue</button>
-            <button class="tab" data-tab="essais">🔬 Essais</button>
-            <button class="tab" data-tab="sondages">📋 Sondages</button>
-            <button class="tab" data-tab="classif">🏷️ Classification</button>
-          </div>
-
-          <!-- Contenu Onglet 1: Vue d'ensemble -->
-          <div class="tab-content active" id="tab-overview">
-            <div class="charts-section">
-              <canvas id="chartAtterberg" width="320" height="120"></canvas>
-              <canvas id="chartVBS" width="320" height="120"></canvas>
-              <canvas id="chartGranulo" width="320" height="120"></canvas>
-              <canvas id="chartDepth" width="320" height="100"></canvas>
+            <!-- 5. Indicateurs d'argilosité – maille -->
+            <div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px">💧 ARGILOSITÉ (maille)</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;font-size:11px">
+                <div style="text-align:center;padding:4px;background:#0a1018;border-radius:4px">
+                  <div style="color:var(--muted);font-size:9px">VBS moy.</div>
+                  <div id="cellVbsMoy" style="color:#4c6ef5;font-weight:700;font-size:12px">—</div>
+                </div>
+                <div style="text-align:center;padding:4px;background:#0a1018;border-radius:4px">
+                  <div style="color:var(--muted);font-size:9px">% argileux</div>
+                  <div id="cellPctArgileux" style="color:#e85d68;font-weight:700;font-size:12px">—</div>
+                </div>
+                <div style="text-align:center;padding:4px;background:#0a1018;border-radius:4px">
+                  <div style="color:var(--muted);font-size:9px">IP moy.</div>
+                  <div id="cellIpMoy" style="color:#51cf66;font-weight:700;font-size:12px">—</div>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <!-- Contenu Onglet 2: Essais détaillés -->
-          <div class="tab-content" id="tab-essais">
-            <div class="essais-header">
-              <button class="btn-sm" id="expandAll">Déployer tout</button>
-              <button class="btn-sm" id="collapseAll">Replier tout</button>
+            <!-- 6. Synthèse automatique -->
+            <div id="ficheSummary" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border-left:3px solid var(--accent);font-size:11px;color:var(--text);line-height:1.5">
+              <div style="color:var(--accent);font-weight:600;margin-bottom:4px">📝 SYNTHÈSE</div>
+              <div id="ficheSummaryText" style="font-style:italic">—</div>
             </div>
-            <div id="essaisList" class="essais-list"></div>
-          </div>
 
-          <!-- Contenu Onglet 3: Sondages -->
-          <div class="tab-content" id="tab-sondages">
-            <div id="sondagesList"></div>
-          </div>
+            <!-- 7. Liste des sondages de la maille -->
+            <div style="margin-top:12px">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <div style="font-size:10px;color:var(--accent);font-weight:600">🧭 SONDAGES DE LA MAILLE</div>
+                <button id="btnOpenSondagesManager" style="font-size:9px;padding:2px 6px;background:#4c6ef5;color:white;border:none;border-radius:3px;cursor:pointer;display:none" title="Ouvrir le gestionnaire de sondages filtré sur cette maille">
+                  📂 Gérer
+                </button>
+              </div>
+              <div id="cellSurveysList" style="font-size:11px;color:var(--muted)">Aucun sondage</div>
+            </div>
 
-          <!-- Contenu Onglet 4: Classification -->
-          <div class="tab-content" id="tab-classif">
-            <canvas id="chartCasagrande" width="320" height="200"></canvas>
-            <canvas id="chartUSCSPie" width="320" height="180"></canvas>
-            <div id="classifRules" style="font-size:11px;color:var(--muted);margin-top:12px"></div>
+            <!-- 8. Échantillons & essais (bloc repliable) -->
+            <details style="margin-top:12px">
+              <summary style="cursor:pointer;font-size:10px;color:var(--accent);font-weight:600;padding:6px 0">
+                📋 ÉCHANTILLONS & ESSAIS (détail)
+              </summary>
+              <div id="cellSamplesTable" style="margin-top:8px;font-size:10px;max-height:200px;overflow-y:auto">
+                <table style="width:100%;border-collapse:collapse">
+                  <thead>
+                    <tr style="background:#0a1018">
+                      <th style="padding:4px;text-align:left;color:var(--muted)">Prof.</th>
+                      <th style="padding:4px;text-align:center;color:var(--muted)">VBS</th>
+                      <th style="padding:4px;text-align:center;color:var(--muted)">IP</th>
+                    </tr>
+                  </thead>
+                  <tbody id="cellSamplesBody"></tbody>
+                </table>
+              </div>
+            </details>
           </div>
         </div>
 
-        <!-- Accordéon Essais Physiques -->
-        <div class="section">
-          <h4>⚗️ Essais physiques</h4>
-          <div id="physiques-panel"></div>
-        </div>
-
-        <!-- Accordéon Classifications -->
-        <div class="section">
-          <h4>🏷️ Classifications</h4>
-          <div id="classif-panel"></div>
-        </div>
-
-        <!-- Accordéon Sondages -->
-        <div class="section">
-          <h4>🧭 Sondages</h4>
-          <div id="survey-list"></div>
-        </div>
-
+        <!-- Mailles voisines -->
         <div class="section">
           <h4>🔀 Mailles voisines</h4>
           <div id="neighbors" style="font-size:11px;color:var(--muted)">Sélectionnez une maille</div>
@@ -393,6 +663,10 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
                 <input type="checkbox" id="filterNoData" checked />
                 <span>Mailles sans données</span>
               </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="filterAssignedOnly" />
+                <span>Uniquement mailles attribuées</span>
+              </label>
               <div class="form-field">
                 <label>Min. sondages</label>
                 <input type="number" id="filterMinSondages" class="input" value="0" min="0" />
@@ -440,6 +714,21 @@ body{margin:0;font:14px/1.4 system-ui,Segoe UI,Roboto,Arial;background:#0e1525;c
             </div>
 
             <button id="resetFilters" class="btn btn-block">Réinitialiser</button>
+          </div>
+        </div>
+
+        <!-- SÉLECTEUR GRILLE 2km/28km -->
+        <div class="section" style="margin-bottom:12px">
+          <h4>🗺️ Niveau de grille</h4>
+          <select id="gridLevelSelect" class="input">
+            <option value="2km" selected>Grille 2 km (détaillée)</option>
+            <option value="combined">Grille combinée (2 km + 28 km)</option>
+            <option value="28km">Grille 28 km (profils régionaux)</option>
+          </select>
+          <div id="gridStats" style="font-size:11px;color:var(--muted);margin-top:6px;padding:8px;background:#0f172a;border-radius:6px">
+            <div><strong>Total:</strong> <span id="gridTotal">0</span> mailles</div>
+            <div><strong>Avec données:</strong> <span id="gridWithData">0</span> mailles</div>
+            <div><strong>Attribuées:</strong> <span id="gridAssigned">0</span> mailles</div>
           </div>
         </div>
 
@@ -731,144 +1020,16 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
     <!-- Import Bulk Wizard -->
     <div id="importBulkWizard" style="display:none"></div>
     
-    <!-- Panneau Cartes Thématiques -->
-    <div id="thematicPanel" class="panel" style="display:none;">
-      <div class="panel-header">
-        <h3>🗺️ Cartes Thématiques</h3>
-        <button id="closeThematicPanel" class="btn-close">×</button>
-      </div>
-      
-      <div class="panel-body">
-        <!-- Catégorie -->
-        <div class="form-group">
-          <label>Catégorie</label>
-          <select id="thematicCategory">
-            <option value="all">Toutes</option>
-            <option value="density">Densité & Couverture</option>
-            <option value="granulo">Granulométrie</option>
-            <option value="atterberg">Atterberg</option>
-            <option value="vbs">Bleu de Méthylène</option>
-            <option value="proctor">Proctor</option>
-            <option value="gonflement">Gonflement</option>
-          </select>
-        </div>
-        
-        <!-- Paramètre -->
-        <div class="form-group">
-          <label>Paramètre</label>
-          <select id="thematicParameter"></select>
-          <small id="parameterDescription"></small>
-        </div>
-        
-        <!-- Type de carte -->
-        <div class="form-group">
-          <label>Type de carte</label>
-          <select id="mapType">
-            <option value="choropleth">Choroplèthe (aplats)</option>
-            <option value="proportional">Symboles proportionnels</option>
-          </select>
-        </div>
-        
-        <!-- Classification -->
-        <div class="form-group">
-          <label>Méthode de classification</label>
-          <select id="classificationMethod">
-            <option value="quantiles">Quantiles</option>
-            <option value="equal_interval">Intervalles égaux</option>
-            <option value="jenks">Jenks (seuils naturels)</option>
-            <option value="custom">Personnalisé</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Nombre de classes</label>
-          <input type="number" id="nClasses" value="5" min="3" max="10">
-        </div>
-        
-        <!-- Palette -->
-        <div class="form-group">
-          <label>Palette de couleurs</label>
-          <select id="colorPalette">
-            <option value="Blues">Bleus</option>
-            <option value="Greens">Verts</option>
-            <option value="Reds">Rouges</option>
-            <option value="RdYlGn">Rouge-Jaune-Vert</option>
-            <option value="RdBu">Rouge-Bleu</option>
-            <option value="Viridis">Viridis</option>
-          </select>
-        </div>
-        
-        <!-- Opacité -->
-        <div class="form-group">
-          <label>Opacité</label>
-          <input type="range" id="opacity" min="0" max="1" step="0.1" value="0.7">
-        </div>
-        
-        <!-- Filtres -->
-        <div class="form-group">
-          <label>Région (ADM1)</label>
-          <select id="filterAdm1">
-            <option value="">— toutes régions —</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Préfecture (ADM2)</label>
-          <select id="filterAdm2">
-            <option value="">— toutes préfectures —</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Commune (ADM3)</label>
-          <select id="filterAdm3">
-            <option value="">— toutes communes —</option>
-          </select>
-        </div>
-        
-        <div class="form-group">
-          <label>Sondages minimum</label>
-          <input type="number" id="minSondages" value="3" min="0">
-        </div>
-        
-        <!-- Options d'affichage -->
-        <div class="form-group">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-            <input type="checkbox" id="toggleGridLayer" checked>
-            <span>Afficher la grille de fond</span>
-          </label>
-        </div>
-        
-        <!-- Actions -->
-        <div class="button-group">
-          <button id="applyThematic" class="btn-primary">📊 Appliquer</button>
-          <button id="autoAOI" class="btn-secondary">🎯 Auto-Zoom</button>
-        </div>
-        <div class="button-group">
-          <button id="resetThematic" class="btn-secondary">🔄 Réinitialiser</button>
-        </div>
-        
-        <!-- Statistiques -->
-        <div id="thematicStats" class="stats-box" style="display:none;">
-          <h4>Statistiques</h4>
-          <div id="statsContent"></div>
-        </div>
-        
-        <!-- Sauvegarde -->
-        <div class="button-group" style="margin-top:12px">
-          <button id="saveThematicConfig" class="btn-secondary">💾 Sauvegarder</button>
-          <button id="exportThematicGeoJSON" class="btn-secondary">📥 Export GeoJSON</button>
-        </div>
-        <div class="button-group">
-          <button id="exportThematicPNG" class="btn-secondary">🖼️ Export PNG</button>
-        </div>
-      </div>
-    </div>
+    <!-- Panneau Cartes Thématiques v2.0 (contenu généré dynamiquement par JS) -->
+    <div id="thematicPanel" style="display:none;"></div>
     
     <!-- Bouton flottant pour ouvrir le panneau -->
-    <button id="openThematicPanel" class="floating-btn" title="Cartes Thématiques">
-      🗺️
-    </button>
+    <button id="openThematicPanel" title="Cartes Thématiques">🗺️</button>
+    
+    <!-- Bibliothèques pour export cartographique v3.0 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
     <script>
       // Runtime overrides for API base URLs

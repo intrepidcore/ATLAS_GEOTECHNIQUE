@@ -6,14 +6,28 @@
 export interface SurveyToGeocode {
   id: string;
   code: string;
-  source: string;
-  location_mode: 'spread' | 'exact' | 'adm_random_cell' | null;
+  source: string | null;
+  location_mode: string | null;
   adm1_name: string | null;
   adm2_name: string | null;
   adm3_name: string | null;
+  adm1_id: string | null;
+  adm2_id: string | null;
+  adm3_id: number | null;
   adm3_code: string | null;
-  has_geom: boolean;
+  localite: string | null;
+  localite_key: string | null;
+  is_geocoded: boolean;
+  geom: Record<string, unknown> | null;
   created_at: string;
+  updated_at: string | null;
+  deleted_at: string | null;
+  meta: string | null;
+  import_id: string | null;
+  import_row_idx: string | null;
+  created_by_batch: string | null;
+  updated_by_batch: string | null;
+  n_essais: number;
 }
 
 export type GeocodeMethod = 'exact' | 'adm_random_cell';

@@ -1,0 +1,44 @@
+export interface Survey {
+  id: string;
+  code: string;
+  lon: number | null;
+  lat: number | null;
+  depth_m_min: number | null;
+  depth_m_max: number | null;
+  maille_code: string | null;
+  adm1_name: string | null;
+  adm2_name: string | null;
+  adm3_name: string | null;
+  adm1_id: string | null;
+  adm2_id: string | null;
+  adm3_id: number | null;
+  localite_base: string | null;
+  localite_key: string | null;
+  localite: string | null;
+  location_mode: string | null;
+  location_accuracy: string;
+  is_geocoded: boolean;
+  type_sol: string | null;
+  meta: { geocoded_mode?: string; [key: string]: any } | null;
+  date: string | null;
+  date_sondage: string | null;
+  source: string | null;
+  operator: string | null;
+  notes: string | null;
+  comment: string | null;
+  import_id: string | null;
+  import_row_idx: string | null;
+  loc_mode: string | null;
+  grid_code: string | null;
+  created_by_batch: string | null;
+  updated_by_batch: string | null;
+  deleted_by_batch: string | null;
+  n_essais: number;
+  created_at: string;
+  updated_at: string | null;
+  deleted_at: string | null;
+  geom: Record<string, unknown> | null;
+  // Champs extraits de meta pour badges AUTO/MANUEL (exposés par API)
+  geocoded_mode?: string | null;
+  geocoded_score?: number | null;
+}

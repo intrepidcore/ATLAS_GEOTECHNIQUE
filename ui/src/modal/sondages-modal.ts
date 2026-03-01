@@ -4,7 +4,10 @@
  */
 
 import { ImportWizardV2 } from '../import-wizard-v2'
-import { SuggestionsPanel } from '../suggestions-panel'
+import { SuggestionsAdmPanel } from '../suggestions-adm-panel'
+import { GeocodeCanonPanel } from '../geocode-canon-panel'
+import { listSondages, getSondage, extractLocaliteFromCode, formatGeocodeLabel } from '../api/sondages'
+import { toast } from '../ui/toast'
 
 type TabId = 'nouveau' | 'import' | 'liste' | 'geocode' | 'suggestions'
 
@@ -12,7 +15,8 @@ export class SondagesModal {
   private modal: HTMLElement | null = null
   private activeTab: TabId = 'nouveau'
   private importWizard: ImportWizardV2 | null = null
-  private suggestionsPanel: SuggestionsPanel | null = null
+  private suggestionsPanel: SuggestionsAdmPanel | null = null
+  private geocodeManualPanel: GeocodeCanonPanel | null = null
   private escHandler?: (e: KeyboardEvent) => void
   private loaded: Record<TabId, boolean> = {
     nouveau: false,
@@ -56,7 +60,12 @@ export class SondagesModal {
       <div class="sondages-modal">
         <div class="sondages-modal-header">
           <h2>📋 Gestionnaire de Sondages</h2>
-          <button class="modal-close" aria-label="Fermer">×</button>
+          <div style="display: flex; gap: 8px; align-items: center;">
+            <button class="modal-fullpage" aria-label="Ouvrir en pleine page" style="padding: 8px 16px; background: #4c6ef5; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px;">
+              🚀 Ouvrir en pleine page
+            </button>
+            <button class="modal-close" aria-label="Fermer">×</button>
+          </div>
         </div>
         
         <div class="sondages-modal-body">
@@ -109,6 +118,10 @@ export class SondagesModal {
     
     // Event listeners
     this.modal.querySelector('.modal-close')?.addEventListener('click', () => this.close())
+    this.modal.querySelector('.modal-fullpage')?.addEventListener('click', () => {
+      this.close()
+      window.location.hash = '/sondages'
+    })
     this.modal.addEventListener('click', (e) => {
       if (e.target === this.modal) this.close()
     })
@@ -251,16 +264,39 @@ export class SondagesModal {
     this.loaded.liste = true
   }
 
-  private ensureGeocodeLoaded() {
+  private async ensureGeocodeLoaded() {
     if (this.loaded.geocode) return
     const pane = this.getPane('geocode')
     if (!pane) return
     
-    this.renderGeocodeTab(pane)
-    this.loaded.geocode = true
+    pane.innerHTML = '<div id="modal-geocode-container" style="height:100%;"></div>'
+    
+    try {
+      this.geocodeManualPanel = new GeocodeCanonPanel(this.apiUrl)
+      await this.geocodeManualPanel.refresh()
+      this.geocodeManualPanel.renderUI(
+        'modal-geocode-container',
+        (msg: string) => {
+          console.log('[Geocode Canon]', msg)
+          // Recharger la grille pour mettre à jour les couleurs des mailles
+          if ((window as any).loadGrid) {
+            console.log('[Geocode Canon] Rechargement de la grille...')
+            ;(window as any).loadGrid(false)
+          }
+        },
+        (err: string) => {
+          console.error('[Geocode Canon]', err)
+          toast.error(`❌ ${err}`)
+        }
+      )
+      this.loaded.geocode = true
+    } catch (err) {
+      console.error('[Modal] Erreur Geocode Canon:', err)
+      pane.innerHTML = '<div class="inline-error"><h3>❌ Erreur</h3><p>Impossible de charger le géocodage des villages</p></div>'
+    }
   }
 
-  private ensureSuggestionsLoaded() {
+  private async ensureSuggestionsLoaded() {
     if (this.loaded.suggestions) return
     const pane = this.getPane('suggestions')
     if (!pane) return
@@ -268,22 +304,23 @@ export class SondagesModal {
     pane.innerHTML = '<div id="modal-suggestions-container" style="height:100%;"></div>'
     
     try {
-      this.suggestionsPanel = new SuggestionsPanel(this.apiUrl)
+      this.suggestionsPanel = new SuggestionsAdmPanel(this.apiUrl)
+      await this.suggestionsPanel.refresh()
       this.suggestionsPanel.renderUI(
         'modal-suggestions-container',
-        (msg) => {
-          console.log('[Suggestions]', msg)
+        (msg: string) => {
+          console.log('[Suggestions Canon]', msg)
           // Toast optionnel
         },
-        (err) => {
-          console.error('[Suggestions]', err)
-          alert(`Erreur: ${err}`)
+        (err: string) => {
+          console.error('[Suggestions Canon]', err)
+          toast.error(`❌ ${err}`)
         }
       )
       this.loaded.suggestions = true
-      console.log('[Suggestions] Panel chargé - les suggestions sont automatiquement rafraîchies')
+      console.log('[Sondages] Panel suggestions chargé avec sondages individuels')
     } catch (err) {
-      console.error('[Modal] Erreur Suggestions:', err)
+      console.error('[Modal] Erreur Suggestions Canon:', err)
       pane.innerHTML = '<div class="inline-error"><h3>❌ Erreur</h3><p>Impossible de charger les suggestions</p></div>'
     }
   }
@@ -325,12 +362,10 @@ export class SondagesModal {
     listContainer.innerHTML = '<p style="color: var(--muted); text-align: center; padding: 40px;">Chargement...</p>'
     
     try {
-      const response = await fetch(`${this.apiUrl}/surveys?limit=100`)
-      if (!response.ok) throw new Error('Erreur API')
+      // Utiliser l'API /sondages pour lister les sondages individuels (230)
+      const sondages = await listSondages({ limit: 500 })
       
-      const surveys = await response.json()
-      
-      if (surveys.length === 0) {
+      if (sondages.length === 0) {
         listContainer.innerHTML = `
           <div style="text-align: center; padding: 60px 20px; color: var(--muted);">
             <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
@@ -340,24 +375,28 @@ export class SondagesModal {
         return
       }
       
-      listContainer.innerHTML = surveys.map((s: any) => {
-        const title = s.code || s.localite || `Sondage ${String(s.id).slice(0,8)}`
+      listContainer.innerHTML = sondages.map((s: any) => {
+        // Titre: localite ou extrait du code
+        const title = s.localite || extractLocaliteFromCode(s.code) || s.code
+        
+        // Sous-titre: Code du sondage + Géocodé Oui/Non
+        const subtitle = [
+          `Code: ${s.code}`,
+          `Géocodé: ${formatGeocodeLabel(s)}`,
+          s.adm3_name ? `Commune: ${s.adm3_name}` : null
+        ].filter(Boolean).join(' • ')
+        
         const geocoded = s.is_geocoded ? '✅' : '❌'
-        const essais = s.n_essais > 0 ? `${s.n_essais} essais` : 'Aucun essai'
+        const mode = s.location_mode || 'unknown'
         
         return `
           <div class="survey-card" data-id="${s.id}" style="background: #0f172a; border: 1px solid #22304d; border-radius: 8px; padding: 14px; margin-bottom: 10px; cursor: pointer; transition: border-color 0.2s;">
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-              <strong style="color: #3aa6ff; font-size: 14px;">${title}</strong>
-              <span style="font-size: 11px; color: var(--muted);">${s.date || ''}</span>
+              <strong style="color: #ecf2f8; font-size: 15px; font-weight: 600;">${title}</strong>
+              <span style="font-size: 11px; padding: 3px 8px; background: ${s.is_geocoded ? '#51cf66' : '#ff6b6b'}; color: #fff; border-radius: 4px;">${geocoded} ${mode}</span>
             </div>
-            <div style="font-size: 12px; color: var(--text); margin-bottom: 4px;">
-              ${geocoded} ${s.localite || 'Localité inconnue'}${s.source ? ` • ${s.source}` : ''}
-            </div>
-            <div style="font-size: 11px; color: var(--muted);">
-              ${s.maille_code || s.grid_code ? `Maille: ${s.maille_code || s.grid_code}` : 'Pas de maille'}
-              ${s.adm3_name ? ` • ${s.adm3_name}` : ''}
-              • ${essais}
+            <div style="font-size: 13px; color: #8b9bb3; margin-bottom: 6px;">
+              ${subtitle}
             </div>
           </div>
         `
@@ -408,37 +447,38 @@ export class SondagesModal {
     panel.innerHTML = '<p style="color:var(--muted);padding:10px;">Chargement des détails…</p>'
     
     try {
-      const r = await fetch(`${this.apiUrl}/surveys/${id}`)
-      if (!r.ok) throw new Error('API')
-      const s = await r.json()
+      // Récupérer le sondage individuel
+      const s = await getSondage(id)
+
+      const displayName = s.localite || extractLocaliteFromCode(s.code) || s.code
 
       panel.innerHTML = `
         <div style="padding:10px;">
-          <h3 style="margin:0 0 12px 0;">🔎 ${s.code || s.localite || ('Sondage '+id.slice(0,6))}</h3>
+          <h3 style="margin:0 0 12px 0;">🔎 ${displayName}</h3>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
             <div class="card">
               <h4>📍 Métadonnées</h4>
               <ul>
-                <li><b>Localité :</b> ${s.localite||'-'}</li>
+                <li><b>Village :</b> ${s.localite||'-'}</li>
+                <li><b>Code :</b> ${s.code||'-'}</li>
+                <li><b>Commune (ADM3) :</b> ${s.adm3_name||'-'}</li>
+                <li><b>Géocodé :</b> ${s.is_geocoded ? '✅ Oui' : '❌ Non'}</li>
+                <li><b>Géométrie :</b> ${s.geom ? '✅ Présente' : '❌ Absente'}</li>
+                <li><b>Mode :</b> ${s.location_mode||'unknown'}</li>
                 <li><b>Date :</b> ${s.date||'-'}</li>
-                <li><b>ADM3 :</b> ${s.adm3_name||'-'} (${s.adm3||'-'})</li>
-                <li><b>Maille :</b> ${s.grid_code||'-'}</li>
-                <li><b>Mode :</b> ${s.location_mode||'-'}</li>
-                <li><b>Lat/Lon :</b> ${s.lat?.toFixed?.(6)||'-'} / ${s.lon?.toFixed?.(6)||'-'}</li>
               </ul>
             </div>
             <div class="card">
-              <h4>🧪 Essais</h4>
+              <h4>📊 Statistiques</h4>
               <ul>
-                <li><b>Atterberg :</b> ${s.atterberg?.length||0} enregistrements</li>
-                <li><b>Granulo :</b> ${s.granulo?.length||0}</li>
-                <li><b>Proctor :</b> ${s.proctor?.length||0}</li>
-                <li><b>VBS :</b> ${s.vbs?.length||0}</li>
+                <li><b>Source :</b> ${s.source || '-'}</li>
+                <li><b>Créé le :</b> ${new Date(s.created_at).toLocaleDateString('fr-FR')}</li>
+                <li><b>Mis à jour :</b> ${s.updated_at ? new Date(s.updated_at).toLocaleDateString('fr-FR') : '-'}</li>
               </ul>
             </div>
           </div>
           <div class="card" style="margin-top:12px;">
-            <h4>📄 Détails bruts</h4>
+            <h4>📄 Objet sondage (JSON)</h4>
             <pre style="white-space:pre-wrap;background:#0a1018;border:1px solid #1c2843;border-radius:6px;padding:10px;max-height:260px;overflow:auto;font-size:11px;">
 ${JSON.stringify(s,null,2)}
             </pre>

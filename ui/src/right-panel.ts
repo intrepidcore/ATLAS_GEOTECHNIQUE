@@ -41,14 +41,23 @@ export function initDirectButtons() {
     })
   }
   
-  // v2.5.0: Bouton Sondages ouvre modal central
+  // v3.9.0: Bouton Sondages navigue vers la page plein écran
   const sondagesBtn = document.getElementById('openSondagesModalBtn')
   if (sondagesBtn) {
     sondagesBtn.addEventListener('click', (e) => {
       e.preventDefault()
-      console.log('[v2.5.0] Ouverture modal Sondages')
-      const event = new CustomEvent('open-sondages-modal')
-      window.dispatchEvent(event)
+      console.log('[v3.9.0] Navigation vers gestionnaire sondages')
+      // Récupérer le code maille sélectionné s'il existe
+      const mailleCodeEl = document.getElementById('mailleCode')
+      const gridCode = mailleCodeEl?.textContent?.trim()
+      
+      if (gridCode && gridCode !== '') {
+        // Naviguer avec le filtre maille
+        window.location.hash = `#/sondages?grid=${encodeURIComponent(gridCode)}`
+      } else {
+        // Naviguer sans filtre
+        window.location.hash = '#/sondages'
+      }
     })
   }
 }
@@ -113,6 +122,10 @@ export function updateFilterBadges() {
   // Min essais
   const minEssais = parseInt((document.getElementById('filterMinEssais') as HTMLInputElement)?.value || '0')
   if (minEssais > 0) activeFilters.push({ id: 'minEssais', label: `Min ${minEssais} essais` })
+
+  // Uniquement attribuées
+  const assignedOnly = (document.getElementById('filterAssignedOnly') as HTMLInputElement)?.checked
+  if (assignedOnly) activeFilters.push({ id: 'assignedOnly', label: `Attribuées uniquement` })
   
   // Profondeur
   const depthMin = (document.getElementById('filterDepthMin') as HTMLInputElement)?.value
@@ -164,6 +177,9 @@ export function updateFilterBadges() {
       break
     case 'minEssais':
       (document.getElementById('filterMinEssais') as HTMLInputElement).value = '0'
+      break
+    case 'assignedOnly':
+      ;(document.getElementById('filterAssignedOnly') as HTMLInputElement).checked = false
       break
     case 'depth':
       (document.getElementById('filterDepthMin') as HTMLInputElement).value = ''
@@ -220,6 +236,7 @@ export function initKeyboardShortcuts() {
 export function initFilterListeners() {
   const filterIds = [
     'filterAdm1', 'filterAdm2', 'filterAdm3',
+    'filterAssignedOnly',
     'filterMinSondages', 'filterMinEssais',
     'filterDepthMin', 'filterDepthMax',
     'filterWLMin', 'filterWLMax',

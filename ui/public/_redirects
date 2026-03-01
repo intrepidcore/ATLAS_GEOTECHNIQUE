@@ -1,0 +1,11 @@
+# Netlify redirects for Atlas multi-page app
+
+# PWA Mobile terrain - toutes les routes /colab/mobile/* vers mobile.html
+/colab/mobile/*   /mobile.html   200
+
+# DB Manager
+/db-manager       /db-manager.html   200
+/db-manager/*     /db-manager.html   200
+
+# Application principale - toutes les autres routes vers index.html
+/*                /index.html    200
