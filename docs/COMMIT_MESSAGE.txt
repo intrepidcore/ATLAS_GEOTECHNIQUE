@@ -1,0 +1,110 @@
+feat: Migration UI vers granularité sondage individuel
+
+Bascule complète de l'UI du géocodage de la granularité "localité agrégée"
+vers "sondage individuel" pour une gestion plus précise et conforme aux
+décisions d'architecture.
+
+## Backend (Rust)
+
+### Nouveau module `sondages.rs`
+- GET /sondages - Liste paginée avec filtres (search, missing)
+- GET /sondages/stats - Statistiques (total, geocoded, with_geom, with_adm3)
+- GET /sondages/:id - Détails d'un sondage
+- PATCH /sondages/:id/geometry - Mise à jour géométrie (mode: adm|exact)
+- GET /sondages/:id/adm3-candidates - Suggestions ADM3 par similarité
+
+### Caractéristiques
+- Retourne 230 sondages individuels (vs 1 localité agrégée)
+- Flag `is_geocoded` calculé automatiquement (generated column)
+- Pagination et filtres dynamiques
+- Validation des payloads PATCH
+
+## Frontend (TypeScript)
+
+### Nouveau client API `api/sondages.ts`
+- Interfaces typées (Sondage, SondagesStats, Adm3Candidate)
+- Fonctions: listSondages, getSondagesStats, getSondage, updateSondageGeometry
+- Helper: extractLocaliteFromCode, formatGeocodeLabel
+- Helper global: apiPatch() ajouté dans surveys-canon.ts
+
+### UI Modifiée
+
+#### Modal Sondages (`sondages-modal.ts`)
+- Affiche 230 sondages individuels (pas 1 localité)
+- Suppression badge "X sondages"
+- Label "Géocodé : Oui/Non" préservé
+- Titre JSON: "Objet sondage" (au lieu de "canonique")
+- Toast non-bloquant au lieu d'alert()
+- Import toast utility
+
+#### Panneau Géocodage (`geocode-canon-panel.ts`)
+- Titre: "Sondages sans géométrie" (au lieu de "Villages")
+- API /sondages (au lieu de /surveys-canon)
+- Toast non-bloquant pour erreurs
+- Clic sur suggestion ADM3 pré-sélectionne le select
+- Rafraîchissement immédiat des stats après PATCH
+- Toast de succès avec nom du sondage
+
+#### Panneau Suggestions (`suggestions-canon-panel.ts`)
+- KPI: "Total sondages" (au lieu de "Total villages")
+- Suppression pilule "unknown" dans la liste
+- Pilule conservée dans la fiche détail (Mode: unknown)
+- API /sondages
+- Logs console: "[SONDAGES]"
+
+## Documentation
+
+### Nouveaux fichiers
+- docs/MIGRATION_SONDAGES_UI.md - Guide complet de migration
+- docs/TESTS_MIGRATION_SONDAGES.md - Checklist de tests détaillée
+
+### Contenu
+- Comparaison avant/après (stats, UI, API)
+- Flux de géocodage ADM3 et coordonnées exactes
+- Checklist de conformité (8 points)
+- Tests manuels (5 sections)
+- Guide de déploiement
+- Notes techniques (DB, API binding, toast system)
+
+## Conformité
+
+✅ Tous les panneaux utilisent /sondages (pas /surveys-canon)
+✅ KPI "Total sondages" (pas "villages")
+✅ Label "Géocodé : Oui/Non" préservé
+✅ Pas de badge "X sondages" dans la liste
+✅ Pas de pilule "unknown" dans la liste
+✅ Toast non-bloquant (pas d'alert())
+✅ Clic suggestion → pré-sélection ADM3
+✅ Rafraîchissement stats après PATCH
+✅ Titre JSON: "Objet sondage"
+✅ Logs console: "[SONDAGES]"
+
+## Tests
+
+### API
+```bash
+curl http://localhost:8000/sondages/stats
+# {"total":230,"geocoded":1,"with_geom":1,"with_adm3":0,...}
+
+curl "http://localhost:8000/sondages?limit=3"
+# [{"id":"...","code":"GRANULO-ANIE","localite":"ANIE",...}]
+```
+
+### UI
+- Modal affiche 230 sondages ✅
+- Géocodage ADM3 fonctionne ✅
+- Toast non-bloquant ✅
+- Stats refresh immédiat ✅
+
+## Breaking Changes
+
+Aucun - Les endpoints /surveys-canon restent disponibles pour compatibilité.
+La migration est additive (nouveaux endpoints /sondages).
+
+## Prochaines Étapes (Optionnel)
+
+- Toggle "Grouper par localité" pour basculer entre vues
+- Batch geocoding (sélection multiple)
+- Historique des modifications (audit trail)
+
+Refs: #ATLAS-GEOCODE-AUDIT

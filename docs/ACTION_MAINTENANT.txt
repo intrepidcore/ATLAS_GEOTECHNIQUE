@@ -1,0 +1,46 @@
+╔═══════════════════════════════════════════════════════════╗
+║                                                           ║
+║   ACTION IMMEDIATE - Atlas v1.5.0.3                      ║
+║                                                           ║
+╚═══════════════════════════════════════════════════════════╝
+
+PROBLEME : "Failed to fetch" = Cache navigateur
+
+SOLUTION (2 minutes) :
+
+1. FERMER tous les onglets Atlas
+
+2. Ouvrir en MODE PRIVE :
+   - Appuyer sur : Ctrl + Shift + N
+   - Aller à : http://127.0.0.1:8080
+
+3. Tester la carte thématique :
+   - Cliquer icône carte (bas droite)
+   - Sélectionner : IP moyen
+   - Cliquer : Appliquer
+
+4. Vérifier (F12) :
+   - Network → Request URL doit commencer par /api/
+   - Pas d'erreur rouge
+
+═══════════════════════════════════════════════════════════
+
+POURQUOI MODE PRIVE ?
+→ Pas de cache = Garantie de voir la nouvelle version
+
+ALTERNATIVE :
+1. Ctrl + Shift + Delete
+2. Cocher "Images et fichiers en cache"
+3. Effacer
+4. Fermer/Rouvrir navigateur
+
+═══════════════════════════════════════════════════════════
+
+TESTS AUTOMATIQUES OK :
+✅ Paramètres avec underscore fonctionnent
+✅ Endpoint /import/bulk répond
+✅ Proxy Nginx fonctionne
+
+SEUL PROBLEME : Cache navigateur
+
+═══════════════════════════════════════════════════════════
