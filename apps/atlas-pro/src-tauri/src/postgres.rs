@@ -130,6 +130,92 @@ fn validate_embedded_runtime_layout() -> Result<()> {
     Ok(())
 }
 
+fn apply_repo_migrations(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<()> {
+    // Repo root from src-tauri is ../../..
+    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("..");
+    let base_migrations_dir = repo_root.join("migrations");
+    let base_init = base_migrations_dir.join("init.sql");
+    if base_init.exists() {
+        run_migration_file(bin_dir, port, db_user, db_password, db_name, &base_init)?;
+    }
+
+    // Apply other base migrations (excluding init.sql) in lexical order.
+    if base_migrations_dir.exists() {
+        let mut entries: Vec<PathBuf> = std::fs::read_dir(&base_migrations_dir)
+            .with_context(|| format!("failed to read migrations dir ({})", base_migrations_dir.display()))?
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| {
+                p.extension().and_then(|s| s.to_str()).unwrap_or("") == "sql"
+                    && p.file_name().and_then(|s| s.to_str()).unwrap_or("") != "init.sql"
+            })
+            .collect();
+        entries.sort();
+        for file in entries {
+            run_migration_file(bin_dir, port, db_user, db_password, db_name, &file)?;
+        }
+    }
+
+    // Apply full DB migrations (historical) used by the app.
+    let migrations_dir = repo_root.join("db").join("migrations");
+    if migrations_dir.exists() {
+        let mut entries: Vec<PathBuf> = std::fs::read_dir(&migrations_dir)
+            .with_context(|| format!("failed to read migrations dir ({})", migrations_dir.display()))?
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|s| s.to_str()).unwrap_or("") == "sql")
+            .collect();
+
+        entries.sort();
+        for file in entries {
+            run_migration_file(bin_dir, port, db_user, db_password, db_name, &file)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn run_migration_file(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    file: &Path,
+) -> Result<()> {
+    let psql_out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-v")
+        .arg("ON_ERROR_STOP=1")
+        .arg("-f")
+        .arg(file)
+        .output()
+        .with_context(|| format!("failed to run psql for migration ({})", file.display()))?;
+
+    if !psql_out.status.success() {
+        return Err(anyhow!(
+            "migration failed ({}): {}",
+            file.display(),
+            String::from_utf8_lossy(&psql_out.stderr)
+        ));
+    }
+
+    Ok(())
+}
+
 pub fn ensure_password() -> Result<String> {
     let entry = keyring::Entry::new(pg_secret_service_name(), pg_secret_username())
         .map_err(|e| anyhow!("keyring entry init failed: {e}"))?;
@@ -562,8 +648,9 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
 
     if !out.status.success() {
         return Err(anyhow!(
-            "failed to check database existence (psql exit={})",
-            out.status
+            "failed to check database existence (psql exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
         ));
     }
 
@@ -607,6 +694,25 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
         return Err(anyhow!("failed to ensure schema atlas exists"));
     }
 
+    // Forcer le search_path pour que les migrations non qualifiées créent leurs objets sous `atlas`.
+    // (Sinon, elles finissent en `public` et le schéma diverge du runtime attendu.)
+    let status = pg_cmd(&bin_dir, psql)
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", pg.port.to_string())
+        .env("PGUSER", &db_user)
+        .env("PGPASSWORD", &db_password)
+        .arg("-d")
+        .arg(&db_name)
+        .arg("-v")
+        .arg("ON_ERROR_STOP=1")
+        .arg("-c")
+        .arg("ALTER ROLE atlas SET search_path = atlas, public;")
+        .status()
+        .with_context(|| format!("failed to set atlas search_path ({psql})"))?;
+    if !status.success() {
+        return Err(anyhow!("failed to set role search_path"));
+    }
+
     // 2) Activer postgis (si les binaires embarqués incluent l'extension)
     let status = pg_cmd(&bin_dir, psql)
         .env("PGHOST", "127.0.0.1")
@@ -627,6 +733,8 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
             "Impossible d'activer PostGIS (CREATE EXTENSION postgis). La distribution Postgres/PostGIS embarquée est incomplète."
         ));
     }
+
+    apply_repo_migrations(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
 
     // Vérification explicite (bloquante)
     let status = pg_cmd(&bin_dir, psql)

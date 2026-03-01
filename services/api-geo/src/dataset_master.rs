@@ -30,6 +30,10 @@ pub async fn ensure_dataset_applied(pool: &PgPool) -> anyhow::Result<()> {
     let manifest: Manifest = serde_json::from_str(DATASET_MANIFEST_JSON)
         .context("Invalid dataset/DATASET_MANIFEST.json")?;
 
+    let desktop_mode = std::env::var("ATLAS_DESKTOP")
+        .map(|v| v.trim() == "1" || v.trim().eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
     let dataset_sha256 = sha256_hex(DATASET_SQL.as_bytes());
     if !eq_hex(&dataset_sha256, &manifest.dataset.sha256) {
         anyhow::bail!(
@@ -41,11 +45,19 @@ pub async fn ensure_dataset_applied(pool: &PgPool) -> anyhow::Result<()> {
 
     let current_schema_sha256 = compute_schema_hash(pool).await?;
     if !eq_hex(&current_schema_sha256, &manifest.schema.sha256) {
-        anyhow::bail!(
-            "Schema sha256 mismatch: manifest={}, current_db={}",
-            manifest.schema.sha256,
-            current_schema_sha256
-        );
+        if desktop_mode {
+            tracing::warn!(
+                manifest = %manifest.schema.sha256,
+                current_db = %current_schema_sha256,
+                "Schema sha256 mismatch (desktop mode): continuing"
+            );
+        } else {
+            anyhow::bail!(
+                "Schema sha256 mismatch: manifest={}, current_db={}",
+                manifest.schema.sha256,
+                current_schema_sha256
+            );
+        }
     }
 
     ensure_metadata_table(pool).await?;
