@@ -82,7 +82,20 @@ ALTER TABLE essais
   ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
 
 -- Migrate existing data (SPT_N and qc)
-UPDATE essais SET test_type = type::test_type WHERE test_type IS NULL AND type IN ('SPT_N', 'qc');
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'essais'
+      AND column_name = 'type'
+  ) THEN
+    UPDATE essais
+    SET test_type = type::test_type
+    WHERE test_type IS NULL AND type IN ('SPT_N', 'qc');
+  END IF;
+END $$;
 
 -- Index for soft delete
 CREATE INDEX IF NOT EXISTS idx_essais_deleted ON essais(deleted_at) WHERE deleted_at IS NULL;
