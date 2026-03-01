@@ -22,38 +22,64 @@ ON sondages USING GIST (ST_Transform(geom, 4326));
 -- 2. Index pour les filtres ADM
 -- ============================================================================
 
-CREATE INDEX IF NOT EXISTS idx_mailles_adm1_name 
-ON mailles (adm1_name) 
-WHERE adm1_name IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm1_name'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mailles_adm1_name ON mailles (adm1_name) WHERE adm1_name IS NOT NULL';
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_mailles_adm2_name 
-ON mailles (adm2_name) 
-WHERE adm2_name IS NOT NULL;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm2_name'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mailles_adm2_name ON mailles (adm2_name) WHERE adm2_name IS NOT NULL';
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_mailles_adm3_name 
-ON mailles (adm3_name) 
-WHERE adm3_name IS NOT NULL;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm3_name'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mailles_adm3_name ON mailles (adm3_name) WHERE adm3_name IS NOT NULL';
+  END IF;
 
--- Index composite pour les filtres combinés
-CREATE INDEX IF NOT EXISTS idx_mailles_adm_composite 
-ON mailles (adm1_name, adm2_name, adm3_name);
+  -- Index composite pour les filtres combinés (uniquement si les 3 colonnes existent)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name IN ('adm1_name','adm2_name','adm3_name')
+    GROUP BY table_schema, table_name
+    HAVING COUNT(*) = 3
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mailles_adm_composite ON mailles (adm1_name, adm2_name, adm3_name)';
+  END IF;
+END $$;
 
 -- 3. Index pour les essais (profondeur et type)
 -- ============================================================================
 
 -- Index sur le type d'essai pour les filtres
-CREATE INDEX IF NOT EXISTS idx_essais_type 
-ON essais (type) 
-WHERE deleted_at IS NULL;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'essais' AND column_name = 'type'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_essais_type ON essais (type) WHERE deleted_at IS NULL';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_essais_sondage_type_depth ON essais (sondage_id, type, depth_m) WHERE deleted_at IS NULL';
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'essais' AND column_name = 'test_type'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_essais_type ON essais (test_type) WHERE deleted_at IS NULL';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_essais_sondage_type_depth ON essais (sondage_id, test_type, depth_m) WHERE deleted_at IS NULL';
+  END IF;
+END $$;
 
 -- Index sur la profondeur pour les filtres de profondeur
 CREATE INDEX IF NOT EXISTS idx_essais_depth_m 
 ON essais (depth_m) 
-WHERE deleted_at IS NULL;
-
--- Index composite pour les agrégations
-CREATE INDEX IF NOT EXISTS idx_essais_sondage_type_depth 
-ON essais (sondage_id, type, depth_m) 
 WHERE deleted_at IS NULL;
 
 -- 4. Index pour l'audit log
@@ -65,12 +91,23 @@ ON audit_log (entity);
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity_id 
 ON audit_log (entity_id);
 
-CREATE INDEX IF NOT EXISTS idx_audit_log_created_at 
-ON audit_log (created_at DESC);
-
--- Index composite pour les requêtes filtrées
-CREATE INDEX IF NOT EXISTS idx_audit_log_entity_created 
-ON audit_log (entity, created_at DESC);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'audit_log' AND column_name = 'created_at'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log (created_at DESC)';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_log_entity_created ON audit_log (entity, created_at DESC)';
+  ELSIF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'audit_log' AND column_name = 'ts'
+  ) THEN
+    -- Fallback pour les schémas qui utilisent ts (ex: bootstrap desktop)
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_log_created_at ON audit_log (ts DESC)';
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_log_entity_created ON audit_log (entity, ts DESC)';
+  END IF;
+END $$;
 
 -- 5. Index pour les sondages
 -- ============================================================================
@@ -102,32 +139,72 @@ ANALYZE audit_log;
 -- ============================================================================
 
 -- Vue matérialisée pour les statistiques par maille
-CREATE MATERIALIZED VIEW IF NOT EXISTS mv_mailles_stats AS
-SELECT 
-    m.code,
-    m.adm1_name,
-    m.adm2_name,
-    m.adm3_name,
-    COUNT(DISTINCT s.id) as n_sondages,
-    COUNT(e.id) as n_essais,
-    AVG(CASE WHEN e.type = 'SPT_N' THEN e.value::numeric ELSE NULL END) as spt_n_avg,
-    AVG(CASE WHEN e.type = 'qc' THEN e.value::numeric ELSE NULL END) as qc_avg,
-    COUNT(CASE WHEN e.depth_m >= 0 AND e.depth_m < 5 THEN 1 END) as n_depth_0_5,
-    COUNT(CASE WHEN e.depth_m >= 5 AND e.depth_m < 10 THEN 1 END) as n_depth_5_10,
-    COUNT(CASE WHEN e.depth_m >= 10 THEN 1 END) as n_depth_10plus,
-    COUNT(CASE WHEN e.type = 'SPT_N' THEN 1 END) as n_spt_n,
-    COUNT(CASE WHEN e.type = 'qc' THEN 1 END) as n_qc
-FROM mailles m
-LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
-LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
-GROUP BY m.code, m.adm1_name, m.adm2_name, m.adm3_name;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name IN ('code','adm1_name','adm2_name','adm3_name','geom')
+    GROUP BY table_schema, table_name
+    HAVING COUNT(*) = 5
+  ) THEN
+    IF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'essais' AND column_name = 'type'
+    ) THEN
+      EXECUTE $sql$
+        CREATE MATERIALIZED VIEW IF NOT EXISTS mv_mailles_stats AS
+        SELECT 
+            m.code,
+            m.adm1_name,
+            m.adm2_name,
+            m.adm3_name,
+            COUNT(DISTINCT s.id) as n_sondages,
+            COUNT(e.id) as n_essais,
+            AVG(CASE WHEN e.type = 'SPT_N' THEN e.value::numeric ELSE NULL END) as spt_n_avg,
+            AVG(CASE WHEN e.type = 'qc' THEN e.value::numeric ELSE NULL END) as qc_avg,
+            COUNT(CASE WHEN e.depth_m >= 0 AND e.depth_m < 5 THEN 1 END) as n_depth_0_5,
+            COUNT(CASE WHEN e.depth_m >= 5 AND e.depth_m < 10 THEN 1 END) as n_depth_5_10,
+            COUNT(CASE WHEN e.depth_m >= 10 THEN 1 END) as n_depth_10plus,
+            COUNT(CASE WHEN e.type = 'SPT_N' THEN 1 END) as n_spt_n,
+            COUNT(CASE WHEN e.type = 'qc' THEN 1 END) as n_qc
+        FROM mailles m
+        LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+        LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+        GROUP BY m.code, m.adm1_name, m.adm2_name, m.adm3_name
+      $sql$;
+    ELSIF EXISTS (
+      SELECT 1 FROM information_schema.columns
+      WHERE table_schema = 'public' AND table_name = 'essais' AND column_name = 'test_type'
+    ) THEN
+      EXECUTE $sql$
+        CREATE MATERIALIZED VIEW IF NOT EXISTS mv_mailles_stats AS
+        SELECT 
+            m.code,
+            m.adm1_name,
+            m.adm2_name,
+            m.adm3_name,
+            COUNT(DISTINCT s.id) as n_sondages,
+            COUNT(e.id) as n_essais,
+            AVG(CASE WHEN e.test_type = 'SPT_N' THEN e.value::numeric ELSE NULL END) as spt_n_avg,
+            AVG(CASE WHEN e.test_type = 'qc' THEN e.value::numeric ELSE NULL END) as qc_avg,
+            COUNT(CASE WHEN e.depth_m >= 0 AND e.depth_m < 5 THEN 1 END) as n_depth_0_5,
+            COUNT(CASE WHEN e.depth_m >= 5 AND e.depth_m < 10 THEN 1 END) as n_depth_5_10,
+            COUNT(CASE WHEN e.depth_m >= 10 THEN 1 END) as n_depth_10plus,
+            COUNT(CASE WHEN e.test_type = 'SPT_N' THEN 1 END) as n_spt_n,
+            COUNT(CASE WHEN e.test_type = 'qc' THEN 1 END) as n_qc
+        FROM mailles m
+        LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+        LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+        GROUP BY m.code, m.adm1_name, m.adm2_name, m.adm3_name
+      $sql$;
+    END IF;
 
--- Index sur la vue matérialisée
-CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_mailles_stats_code 
-ON mv_mailles_stats (code);
-
-CREATE INDEX IF NOT EXISTS idx_mv_mailles_stats_adm1 
-ON mv_mailles_stats (adm1_name);
+    IF EXISTS (SELECT 1 FROM pg_class WHERE relname = 'mv_mailles_stats') THEN
+      EXECUTE 'CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_mailles_stats_code ON mv_mailles_stats (code)';
+      EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mv_mailles_stats_adm1 ON mv_mailles_stats (adm1_name)';
+    END IF;
+  END IF;
+END $$;
 
 -- 8. Fonction pour rafraîchir les statistiques
 -- ============================================================================
