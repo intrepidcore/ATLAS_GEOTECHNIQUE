@@ -63,7 +63,19 @@ fn try_set_embedded_postgres_bin_dir(app: &tauri::App) {
         .path()
         .resolve("pg/bin/pg_ctl.exe", tauri::path::BaseDirectory::Resource)
         .ok()
-        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
+        .or_else(|| {
+            // Dev mode (cargo tauri dev): resources directory is not the same as the bundle.
+            // We accept the artifact layout directly under the tauri project.
+            let local = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                .join("pg")
+                .join("bin");
+            if local.join("pg_ctl.exe").exists() {
+                Some(local)
+            } else {
+                None
+            }
+        });
 
     if let Some(bin_dir) = candidate {
         let bin_dir = normalize_windows_bin_dir(&bin_dir);
