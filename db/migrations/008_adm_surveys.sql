@@ -7,12 +7,22 @@
 -- 1. ENUM pour les modes de localisation
 -- ============================================================================
 
-CREATE TYPE location_mode_enum AS ENUM (
-  'exact',      -- Coordonnées GPS précises
-  'unknown',    -- Position inconnue, rattaché à ADM uniquement
-  'centroid',   -- Centroïde du polygone ADM
-  'random'      -- Point aléatoire dans le polygone ADM
-);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_type t
+    JOIN pg_namespace n ON n.oid = t.typnamespace
+    WHERE n.nspname = 'public'
+      AND t.typname = 'location_mode_enum'
+  ) THEN
+    CREATE TYPE location_mode_enum AS ENUM (
+      'exact',      -- Coordonnées GPS précises
+      'unknown',    -- Position inconnue, rattaché à ADM uniquement
+      'centroid',   -- Centroïde du polygone ADM
+      'random'      -- Point aléatoire dans le polygone ADM
+    );
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 2. Modifier la table sondages
@@ -22,19 +32,52 @@ CREATE TYPE location_mode_enum AS ENUM (
 ALTER TABLE sondages 
 ADD COLUMN IF NOT EXISTS location_mode location_mode_enum DEFAULT 'exact';
 
--- Ajouter les colonnes ADM (si pas déjà présentes)
-ALTER TABLE sondages 
-ADD COLUMN IF NOT EXISTS adm1_id UUID REFERENCES adm1(id),
-ADD COLUMN IF NOT EXISTS adm2_id UUID REFERENCES adm2(id),
-ADD COLUMN IF NOT EXISTS adm3_id UUID REFERENCES adm3(id);
-
--- Ajouter un index pour les requêtes par ADM
-CREATE INDEX IF NOT EXISTS idx_sondages_adm1_id ON sondages(adm1_id);
-CREATE INDEX IF NOT EXISTS idx_sondages_adm2_id ON sondages(adm2_id);
-CREATE INDEX IF NOT EXISTS idx_sondages_adm3_id ON sondages(adm3_id);
-
 -- Ajouter un index pour location_mode
 CREATE INDEX IF NOT EXISTS idx_sondages_location_mode ON sondages(location_mode);
+
+-- Tout le reste de cette migration dépend de tables génériques public.adm1/adm2/adm3
+-- (UUID + geom). En desktop, on a adm*_tg (name + geom) et ce modèle n'est pas garanti.
+-- On applique ces changements uniquement si les tables existent.
+DO $do$
+BEGIN
+  IF NOT (
+    EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='adm1')
+    AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='adm2')
+    AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='adm3')
+  ) THEN
+    RAISE NOTICE '⏭️  Migration 008 partiellement skippée: tables public.adm1/adm2/adm3 introuvables (schéma desktop différent).';
+    RETURN;
+  END IF;
+
+  -- Ajouter les colonnes ADM (si pas déjà présentes)
+  EXECUTE 'ALTER TABLE sondages '
+    || 'ADD COLUMN IF NOT EXISTS adm1_id UUID REFERENCES adm1(id),'
+    || 'ADD COLUMN IF NOT EXISTS adm2_id UUID REFERENCES adm2(id),'
+    || 'ADD COLUMN IF NOT EXISTS adm3_id UUID REFERENCES adm3(id)';
+
+  -- Ajouter un index pour les requêtes par ADM
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_sondages_adm1_id ON sondages(adm1_id)';
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_sondages_adm2_id ON sondages(adm2_id)';
+  EXECUTE 'CREATE INDEX IF NOT EXISTS idx_sondages_adm3_id ON sondages(adm3_id)';
+
+  -- Ajouter une contrainte: si location_mode = ''unknown'', au moins un ADM doit être renseigné
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE c.conname = 'check_unknown_has_adm'
+      AND n.nspname = 'public'
+      AND t.relname = 'sondages'
+  ) THEN
+    EXECUTE 'ALTER TABLE sondages '
+      || 'ADD CONSTRAINT check_unknown_has_adm CHECK ('
+      || 'location_mode != ''unknown'' '
+      || 'OR (adm1_id IS NOT NULL OR adm2_id IS NOT NULL OR adm3_id IS NOT NULL)'
+      || ')';
+  END IF;
+
+END $do$;
 
 -- ============================================================================
 -- 3. Modifier les contraintes
@@ -43,13 +86,7 @@ CREATE INDEX IF NOT EXISTS idx_sondages_location_mode ON sondages(location_mode)
 -- Permettre geom NULL si location_mode = 'unknown'
 -- (pas de contrainte à ajouter, geom est déjà nullable)
 
--- Ajouter une contrainte: si location_mode = 'unknown', au moins un ADM doit être renseigné
-ALTER TABLE sondages 
-ADD CONSTRAINT check_unknown_has_adm 
-CHECK (
-  location_mode != 'unknown' 
-  OR (adm1_id IS NOT NULL OR adm2_id IS NOT NULL OR adm3_id IS NOT NULL)
-);
+-- (check_unknown_has_adm est géré conditionnellement plus haut)
 
 -- ============================================================================
 -- 4. Fonction helper: Obtenir le centroïde d'un ADM

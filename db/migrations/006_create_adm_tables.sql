@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS adm2_tg (
     UNIQUE(name, adm1_name)
 );
 
+ALTER TABLE adm2_tg
+    ADD COLUMN IF NOT EXISTS adm1_name TEXT,
+    ADD COLUMN IF NOT EXISTS adm1_code TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_adm2_tg_geom ON adm2_tg USING GIST(geom);
 CREATE INDEX IF NOT EXISTS idx_adm2_tg_name ON adm2_tg(name);
 CREATE INDEX IF NOT EXISTS idx_adm2_tg_adm1 ON adm2_tg(adm1_name);
@@ -59,6 +63,12 @@ CREATE TABLE IF NOT EXISTS adm3_tg (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE(name, adm2_name, adm1_name)
 );
+
+ALTER TABLE adm3_tg
+    ADD COLUMN IF NOT EXISTS adm2_name TEXT,
+    ADD COLUMN IF NOT EXISTS adm2_code TEXT,
+    ADD COLUMN IF NOT EXISTS adm1_name TEXT,
+    ADD COLUMN IF NOT EXISTS adm1_code TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_adm3_tg_geom ON adm3_tg USING GIST(geom);
 CREATE INDEX IF NOT EXISTS idx_adm3_tg_name ON adm3_tg(name);

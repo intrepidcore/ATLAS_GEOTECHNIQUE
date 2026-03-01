@@ -30,3 +30,4 @@ tracing-appender = "0.2"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 fs2 = "0.4"
 chrono = "0.4"
+blake3 = "1"

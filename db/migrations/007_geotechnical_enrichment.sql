@@ -147,9 +147,9 @@ CREATE TABLE IF NOT EXISTS classifications (
   CONSTRAINT unique_classification UNIQUE(sondage_id, profondeur_m, methode)
 );
 
-CREATE INDEX idx_classifications_sondage_id ON classifications(sondage_id);
-CREATE INDEX idx_classifications_methode ON classifications(methode);
-CREATE INDEX idx_classifications_deleted ON classifications(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_classifications_sondage_id ON classifications(sondage_id);
+CREATE INDEX IF NOT EXISTS idx_classifications_methode ON classifications(methode);
+CREATE INDEX IF NOT EXISTS idx_classifications_deleted ON classifications(deleted_at) WHERE deleted_at IS NULL;
 
 COMMENT ON TABLE classifications IS 'Classifications géotechniques selon méthodes reconnues (potentiel de gonflement, etc.)';
 COMMENT ON COLUMN classifications.profondeur_m IS 'Profondeur en mètres';
@@ -295,12 +295,38 @@ COMMENT ON FUNCTION calculate_atterberg_ip() IS 'Calcule automatiquement IP = WL
 -- ============================================================================
 
 -- Essai doit avoir soit valeur_numerique, soit valeur_qualitative
-ALTER TABLE essais ADD CONSTRAINT check_essai_has_value
-  CHECK (valeur_numerique IS NOT NULL OR valeur_qualitative IS NOT NULL);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE c.conname = 'check_essai_has_value'
+      AND n.nspname = 'public'
+      AND t.relname = 'essais'
+  ) THEN
+    ALTER TABLE essais ADD CONSTRAINT check_essai_has_value
+      CHECK (valeur_numerique IS NOT NULL OR valeur_qualitative IS NOT NULL);
+  END IF;
+END $$;
 
 -- Classification doit avoir profondeur positive
-ALTER TABLE classifications ADD CONSTRAINT check_classification_depth_positive
-  CHECK (profondeur_m >= 0);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE c.conname = 'check_classification_depth_positive'
+      AND n.nspname = 'public'
+      AND t.relname = 'classifications'
+  ) THEN
+    ALTER TABLE classifications ADD CONSTRAINT check_classification_depth_positive
+      CHECK (profondeur_m >= 0);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 13. Données de référence: types d'essais standards

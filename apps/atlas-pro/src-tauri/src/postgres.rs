@@ -11,6 +11,101 @@ pub struct PostgresHandle {
     pub _port_lock: std::fs::File,
 }
 
+fn ensure_desktop_state_table(bin_dir: &Path, port: u16, db_user: &str, db_password: &str, db_name: &str) -> Result<()> {
+    run_sql(
+        bin_dir,
+        port,
+        db_user,
+        db_password,
+        db_name,
+        "CREATE SCHEMA IF NOT EXISTS atlas;\n\
+         CREATE TABLE IF NOT EXISTS atlas.desktop_state (\n\
+           k TEXT PRIMARY KEY,\n\
+           v TEXT NOT NULL,\n\
+           updated_at TIMESTAMPTZ NOT NULL DEFAULT now()\n\
+         );",
+    )
+}
+
+fn run_sql(bin_dir: &Path, port: u16, db_user: &str, db_password: &str, db_name: &str, sql: &str) -> Result<()> {
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-v")
+        .arg("ON_ERROR_STOP=1")
+        .arg("-tAc")
+        .arg(sql)
+        .output()
+        .context("failed to run psql -tAc")?;
+
+    if !out.status.success() {
+        return Err(anyhow!(
+            "psql sql failed (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    Ok(())
+}
+
+fn get_desktop_state_value(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    key: &str,
+) -> Result<Option<String>> {
+    let sql = format!(
+        "SELECT v FROM atlas.desktop_state WHERE k='{}' LIMIT 1;",
+        key.replace('"', "")
+    );
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg(sql)
+        .output()
+        .context("failed to query atlas.desktop_state")?;
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to query desktop_state (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if v.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(v))
+    }
+}
+
+fn set_desktop_state_value(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    key: &str,
+    value: &str,
+) -> Result<()> {
+    let sql = format!(
+        "INSERT INTO atlas.desktop_state(k, v) VALUES ('{}', '{}')\n\
+         ON CONFLICT (k) DO UPDATE SET v=EXCLUDED.v, updated_at=now();",
+        key.replace('"', ""),
+        value.replace('"', "").replace('\'', "''")
+    );
+    run_sql(bin_dir, port, db_user, db_password, db_name, &sql)
+}
+
 pub fn data_root_dir_path() -> Result<PathBuf> {
     data_root_dir()
 }
@@ -72,7 +167,51 @@ fn pg_data_dir() -> Result<PathBuf> {
 }
 
 fn pg_log_file() -> Result<PathBuf> {
-    Ok(data_root_dir()?.join("logs").join("postgres.log"))
+    let logs_dir = data_root_dir()?.join("logs");
+    let pid = std::process::id();
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    Ok(logs_dir.join(format!("postgres-{}-{}.log", ts, pid)))
+}
+
+fn open_postgres_log_file(preferred: PathBuf) -> Result<(std::fs::File, PathBuf)> {
+    match std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&preferred)
+    {
+        Ok(f) => Ok((f, preferred)),
+        Err(e) => {
+            if e.raw_os_error() == Some(32) {
+                let pid = std::process::id();
+                let ts = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis();
+                let fallback = preferred
+                    .parent()
+                    .unwrap_or_else(|| Path::new("."))
+                    .join(format!("postgres-{}-{}.log", ts, pid));
+                let f = std::fs::OpenOptions::new()
+                    .create(true)
+                    .append(true)
+                    .open(&fallback)
+                    .with_context(|| {
+                        format!(
+                            "failed to open postgres log file ({})",
+                            fallback.display()
+                        )
+                    })?;
+                Ok((f, fallback))
+            } else {
+                Err(e).with_context(|| {
+                    format!("failed to open postgres log file ({})", preferred.display())
+                })
+            }
+        }
+    }
 }
 
 fn pg_port_file() -> Result<PathBuf> {
@@ -137,11 +276,27 @@ fn apply_repo_migrations(
     db_password: &str,
     db_name: &str,
 ) -> Result<()> {
+    ensure_desktop_state_table(bin_dir, port, db_user, db_password, db_name)?;
+
     // Repo root from src-tauri is ../../..
     let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("..")
         .join("..");
+
+    let current_fingerprint = compute_migrations_fingerprint(&repo_root)?;
+    let applied = get_desktop_state_value(
+        bin_dir,
+        port,
+        db_user,
+        db_password,
+        db_name,
+        "migrations_fingerprint",
+    )?;
+    if applied.as_deref() == Some(current_fingerprint.as_str()) {
+        return Ok(());
+    }
+
     let base_migrations_dir = repo_root.join("migrations");
     let base_init = base_migrations_dir.join("init.sql");
     if base_init.exists() {
@@ -181,7 +336,55 @@ fn apply_repo_migrations(
         }
     }
 
+    set_desktop_state_value(
+        bin_dir,
+        port,
+        db_user,
+        db_password,
+        db_name,
+        "migrations_fingerprint",
+        &current_fingerprint,
+    )?;
+
     Ok(())
+}
+
+fn compute_migrations_fingerprint(repo_root: &Path) -> Result<String> {
+    let mut hasher = blake3::Hasher::new();
+
+    // Hash both base migrations/ and db/migrations/ so changes in either directory trigger re-apply.
+    let rel_dirs: Vec<PathBuf> = vec![PathBuf::from("migrations"), PathBuf::from("db").join("migrations")];
+    for rel_dir in rel_dirs {
+        let dir = repo_root.join(&rel_dir);
+        if !dir.exists() {
+            continue;
+        }
+
+        let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+            .with_context(|| format!("failed to read migrations dir ({})", dir.display()))?
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|s| s.to_str()).unwrap_or("") == "sql")
+            .collect();
+        files.sort();
+
+        for p in files {
+            let rel = p
+                .strip_prefix(repo_root)
+                .unwrap_or(&p)
+                .to_string_lossy()
+                .replace('\\', "/");
+            hasher.update(rel.as_bytes());
+            hasher.update(&[0u8]);
+
+            let bytes = std::fs::read(&p)
+                .with_context(|| format!("failed to read migration file ({})", p.display()))?;
+            hasher.update(&bytes);
+            hasher.update(&[0u8]);
+        }
+    }
+
+    Ok(hasher.finalize().to_hex().to_string())
 }
 
 fn run_migration_file(
@@ -487,11 +690,7 @@ pub fn ensure_postgres_started() -> Result<PostgresHandle> {
         std::fs::write(&pw_file, format!("{}\n", password)).context("failed to write temporary pwfile")?;
 
         let initdb = "initdb.exe";
-        let log = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(&log_file)
-            .with_context(|| format!("failed to open postgres log file ({})", log_file.display()))?;
+        let (log, log_file) = open_postgres_log_file(log_file.clone())?;
         let log2 = log
             .try_clone()
             .with_context(|| format!("failed to clone postgres log file ({})", log_file.display()))?;
