@@ -10,9 +10,33 @@ mod support;
 
 struct ManagedPostgres(std::sync::Mutex<Option<postgres::PostgresHandle>>);
 struct ManagedAppLock(std::fs::File);
+struct ManagedApiPort(u16);
 struct ManagedPaths {
     data_dir: std::path::PathBuf,
     logs_dir: std::path::PathBuf,
+}
+
+fn port_is_free(port: u16) -> bool {
+    std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
+}
+
+fn select_api_port() -> u16 {
+    if let Ok(v) = std::env::var("ATLAS_API_PORT") {
+        if let Ok(p) = v.trim().parse::<u16>() {
+            return p;
+        }
+    }
+
+    // Prefer 8000, fallback to a small range to avoid collisions with Docker.
+    if port_is_free(8000) {
+        return 8000;
+    }
+    for p in 8001..8100 {
+        if port_is_free(p) {
+            return p;
+        }
+    }
+    8000
 }
 
 fn acquire_single_instance_lock(data_dir: &std::path::Path) -> Result<std::fs::File, Box<dyn std::error::Error>> {
@@ -165,7 +189,8 @@ pub fn run() {
         .setup(|app| {
             app.manage(ManagedPostgres(std::sync::Mutex::new(None)));
 
-            let api_port: u16 = 8000;
+            let api_port: u16 = select_api_port();
+            app.manage(ManagedApiPort(api_port));
             let data_dir = std::env::var("LOCALAPPDATA")
                 .or_else(|_| std::env::var("APPDATA"))
                 .map(|base| std::path::PathBuf::from(base).join("IntrepidCore").join("Atlas"))
@@ -318,6 +343,16 @@ pub fn run() {
             }
 
             Ok(())
+        })
+        .on_page_load(|window, _| {
+            // Provide backend URL to the frontend at runtime.
+            // This avoids hardcoding 8000 and works even when a dev Docker stack already binds it.
+            if let Some(p) = window.try_state::<ManagedApiPort>() {
+                let _ = window.eval(&format!(
+                    "window.__API_GEO__ = 'http://127.0.0.1:{}';",
+                    p.0
+                ));
+            }
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
