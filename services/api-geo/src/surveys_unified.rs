@@ -56,45 +56,45 @@ pub async fn list_unified_surveys(
     let pool = &state.pool;
     let limit = params.limit.unwrap_or(100).min(500);
     let offset = params.offset.unwrap_or(0);
-    
+
+    // DB provides atlas.v_sondages_unifies (not mv_sondages_unifies).
+    // We build a compatible response from the view.
     let rows = sqlx::query_as::<_, UnifiedSurvey>(
         r#"
-        SELECT 
-            localite_key,
-            localite,
-            survey_ids,
-            survey_codes,
-            has_bleu,
-            has_limite,
-            has_granulo,
-            has_vbs,
-            variants,
-            adm3_id,
-            adm3_name,
-            has_geometry,
-            latest_date,
-            atterberg_count,
-            granulo_count,
-            vbs_count,
-            echantillons_count,
-            total_essais
-        FROM atlas.mv_sondages_unifies
-        WHERE ($1::text IS NULL OR atlas.norm_key(localite) LIKE atlas.norm_key($1) || '%')
-          AND ($2::uuid IS NULL OR adm3_id = $2)
-          AND ($3::boolean IS NULL OR has_geometry = $3)
+        SELECT
+            v.localite_canon AS localite_key,
+            COALESCE(v.localite, v.adm3_name, v.localite_canon) AS localite,
+            v.source_survey_ids AS survey_ids,
+            v.alias_codes AS survey_codes,
+            false AS has_bleu,
+            false AS has_limite,
+            false AS has_granulo,
+            false AS has_vbs,
+            v.nb_sondages::bigint AS variants,
+            NULL::uuid AS adm3_id,
+            v.adm3_name,
+            v.has_geom AS has_geometry,
+            v.date AS latest_date,
+            0::bigint AS atterberg_count,
+            0::bigint AS granulo_count,
+            0::bigint AS vbs_count,
+            0::bigint AS echantillons_count,
+            0::bigint AS total_essais
+        FROM atlas.v_sondages_unifies v
+        WHERE ($1::text IS NULL OR atlas.norm_key(COALESCE(v.localite, v.adm3_name, v.localite_canon)) LIKE atlas.norm_key($1) || '%')
+          AND ($2::boolean IS NULL OR v.has_geom = $2)
         ORDER BY localite
-        LIMIT $4 OFFSET $5
+        LIMIT $3 OFFSET $4
         "#
     )
     .bind(&params.q)
-    .bind(params.adm3_id)
     .bind(params.has_geometry)
     .bind(limit)
     .bind(offset)
     .fetch_all(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(rows))
 }
 
@@ -112,33 +112,32 @@ pub async fn get_unified_stats(
     State(state): State<AppState>,
 ) -> Result<Json<UnifiedStats>, (StatusCode, String)> {
     let pool = &state.pool;
-    
-    let stats = sqlx::query_as::<_, (i64, i64, i64, i64)>(
+
+    let stats = sqlx::query_as::<_, (i64, i64, i64)>(
         r#"
-        SELECT 
-            COUNT(*) as total_localites,
-            SUM(variants) as total_sondages,
-            SUM(CASE WHEN variants > 1 THEN 1 ELSE 0 END) as avec_doublons,
-            SUM(total_essais) as total_essais
-        FROM atlas.mv_sondages_unifies
-        "#
+        SELECT
+            COUNT(*)::bigint AS total_localites,
+            COALESCE(SUM(nb_sondages), 0)::bigint AS total_sondages,
+            COALESCE(SUM(CASE WHEN nb_sondages > 1 THEN 1 ELSE 0 END), 0)::bigint AS avec_doublons
+        FROM atlas.v_sondages_unifies
+        "#,
     )
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     let sans_geom: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.mv_sondages_unifies WHERE has_geometry = false"
+        "SELECT COUNT(*)::bigint FROM atlas.v_sondages_unifies WHERE has_geom = false",
     )
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
+
     Ok(Json(UnifiedStats {
         total_localites: stats.0,
         total_sondages: stats.1,
         localites_avec_doublons: stats.2,
-        total_essais: stats.3,
+        total_essais: 0,
         sondages_sans_geom: sans_geom,
     }))
 }

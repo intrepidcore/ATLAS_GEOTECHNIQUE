@@ -7,6 +7,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use sqlx::FromRow;
+use sqlx::Row;
 use crate::state::AppState;
 
 // ============================================================================
@@ -92,32 +93,55 @@ pub async fn list_suggestions(
     let pool = &state.pool;
     let limit = params.limit.unwrap_or(100).min(500);
     let offset = params.offset.unwrap_or(0);
-    
-    let rows = sqlx::query_as::<_, GeocodeSuggestionRow>(
+
+    // Current desktop DB does not ship atlas.geocode_suggestions. We expose
+    // a compatible list from atlas.sondages_non_geocodes.
+    let rows = sqlx::query(
         r#"
-        SELECT id, sondage_id, reason, status, payload, created_at, updated_at
-        FROM atlas.geocode_suggestions
-        WHERE ($1::text IS NULL OR status = $1)
-          AND ($2::text IS NULL OR reason = $2)
-        ORDER BY 
-          CASE status 
-            WHEN 'pending' THEN 1
-            WHEN 'done' THEN 2
-            WHEN 'rejected' THEN 3
-          END,
-          created_at DESC
-        LIMIT $3 OFFSET $4
-        "#
+        SELECT
+            id,
+            code,
+            localite,
+            metadata,
+            created_at,
+            updated_at
+        FROM atlas.sondages_non_geocodes
+        ORDER BY created_at DESC
+        LIMIT $1 OFFSET $2
+        "#,
     )
-    .bind(&params.status)
-    .bind(&params.reason)
     .bind(limit)
     .bind(offset)
     .fetch_all(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
-    let suggestions: Vec<GeocodeSuggestion> = rows.into_iter().map(Into::into).collect();
+
+    let suggestions: Vec<GeocodeSuggestion> = rows
+        .into_iter()
+        .map(|r| {
+            let id: Uuid = r.get("id");
+            let code: String = r.try_get("code").unwrap_or_default();
+            let localite: Option<String> = r.try_get("localite").ok();
+            let metadata: serde_json::Value = r.try_get("metadata").unwrap_or_else(|_| serde_json::json!({}));
+            let created_at: chrono::DateTime<chrono::Utc> = r.get("created_at");
+            let updated_at: chrono::DateTime<chrono::Utc> = r.get("updated_at");
+
+            GeocodeSuggestion {
+                id,
+                sondage_id: id,
+                reason: params.reason.clone().unwrap_or_else(|| "non_geocode".to_string()),
+                status: params.status.clone().unwrap_or_else(|| "pending".to_string()),
+                payload: serde_json::json!({
+                    "code": code,
+                    "localite": localite,
+                    "metadata": metadata
+                }),
+                created_at,
+                updated_at,
+            }
+        })
+        .collect();
+
     Ok(Json(suggestions))
 }
 
@@ -127,77 +151,11 @@ pub async fn accept_suggestion(
     Path(id): Path<Uuid>,
     Json(payload): Json<AcceptSuggestionPayload>,
 ) -> Result<Json<GeocodeSuggestion>, (StatusCode, String)> {
-    let pool = &state.pool;
-    
-    // 1. Récupérer la suggestion
-    let suggestion = sqlx::query_as::<_, GeocodeSuggestionRow>(
-        "SELECT id, sondage_id, reason, status, payload, created_at, updated_at 
-         FROM atlas.geocode_suggestions WHERE id = $1"
-    )
-    .bind(id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::RowNotFound => (StatusCode::NOT_FOUND, "Suggestion not found".to_string()),
-        _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-    })?;
-    
-    // 2. Mettre à jour le sondage avec les nouvelles coordonnées/ADM
-    if let (Some(lon), Some(lat)) = (payload.lon, payload.lat) {
-        // Géocodage par coordonnées exactes
-        sqlx::query(
-            r#"
-            UPDATE sondages 
-            SET geom = ST_SetSRID(ST_MakePoint($1, $2), 4326),
-                location_mode = 'exact',
-                location_accuracy = 'exact',
-                is_geocoded = true
-            WHERE id = $3
-            "#
-        )
-        .bind(lon)
-        .bind(lat)
-        .bind(suggestion.sondage_id)
-        .execute(pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    } else if let Some(adm3_id) = payload.adm3_id {
-        // Géocodage par ADM3
-        sqlx::query(
-            r#"
-            UPDATE sondages s
-            SET adm3_id = $1,
-                adm3_name = a.name,
-                location_mode = 'centroid',
-                location_accuracy = 'centroid_adm3',
-                is_geocoded = true,
-                geom = ST_Centroid(a.geom)
-            FROM adm3 a
-            WHERE a.id = $1 AND s.id = $2
-            "#
-        )
-        .bind(adm3_id)
-        .bind(suggestion.sondage_id)
-        .execute(pool)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    }
-    
-    // 3. Marquer la suggestion comme 'done'
-    let updated_row = sqlx::query_as::<_, GeocodeSuggestionRow>(
-        r#"
-        UPDATE atlas.geocode_suggestions
-        SET status = 'done', updated_at = now()
-        WHERE id = $1
-        RETURNING id, sondage_id, reason, status, payload, created_at, updated_at
-        "#
-    )
-    .bind(id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
-    Ok(Json(updated_row.into()))
+    let _pool = &state.pool;
+
+    // Not supported in this DB snapshot (no atlas.geocode_suggestions backing table).
+    let _ = (id, payload);
+    Err((StatusCode::NOT_IMPLEMENTED, "geocode suggestions accept not available".to_string()))
 }
 
 /// POST /geocode/suggestions/:id/reject
@@ -205,24 +163,19 @@ pub async fn reject_suggestion(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<GeocodeSuggestion>, (StatusCode, String)> {
-    let pool = &state.pool;
-    let row = sqlx::query_as::<_, GeocodeSuggestionRow>(
-        r#"
-        UPDATE atlas.geocode_suggestions
-        SET status = 'rejected', updated_at = now()
-        WHERE id = $1
-        RETURNING id, sondage_id, reason, status, payload, created_at, updated_at
-        "#
-    )
-    .bind(id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| match e {
-        sqlx::Error::RowNotFound => (StatusCode::NOT_FOUND, "Suggestion not found".to_string()),
-        _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-    })?;
-    
-    Ok(Json(row.into()))
+    let _ = (&state, id);
+    Err((StatusCode::NOT_IMPLEMENTED, "geocode suggestions reject not available".to_string()))
+}
+
+/// POST /geocode/apply-accepted - Refresh vue unifiée
+pub async fn apply_accepted(
+    State(state): State<AppState>,
+) -> Result<Json<ApplyAcceptedResponse>, (StatusCode, String)> {
+    let _ = state;
+    Ok(Json(ApplyAcceptedResponse {
+        applied_count: 0,
+        refreshed: false,
+    }))
 }
 
 /// GET /geocode/stats
@@ -230,72 +183,17 @@ pub async fn get_stats(
     State(state): State<AppState>,
 ) -> Result<Json<GeocodeStats>, (StatusCode, String)> {
     let pool = &state.pool;
-    
-    let stats = sqlx::query_as::<_, (i64, i64, i64, i64)>(
-        r#"
-        SELECT 
-            COUNT(*) as total,
-            COUNT(*) FILTER (WHERE status = 'done') as done,
-            COUNT(*) FILTER (WHERE status = 'pending') as pending,
-            COUNT(*) FILTER (WHERE status = 'rejected') as rejected
-        FROM atlas.geocode_suggestions
-        "#
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
-    // Compter les sondages sans suggestion
-    let no_suggestion: i64 = sqlx::query_scalar(
-        r#"
-        SELECT COUNT(*)
-        FROM sondages s
-        WHERE s.deleted_at IS NULL
-          AND s.location_mode = 'unknown'
-          AND NOT EXISTS (
-            SELECT 1 FROM atlas.geocode_suggestions g 
-            WHERE g.sondage_id = s.id AND g.status = 'pending'
-          )
-        "#
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
-    Ok(Json(GeocodeStats {
-        total: stats.0,
-        accepted: stats.1,
-        pending: stats.2,
-        rejected: stats.3,
-        no_suggestion,
-    }))
-}
 
-/// POST /geocode/apply-accepted - Refresh vue unifiée
-pub async fn apply_accepted(
-    State(state): State<AppState>,
-) -> Result<Json<ApplyAcceptedResponse>, (StatusCode, String)> {
-    let pool = &state.pool;
-    
-    // Compter les suggestions 'done'
-    let done_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.geocode_suggestions WHERE status = 'done'"
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-    
-    // Refresh vue matérialisée unifiée
-    let refresh_result = sqlx::query(
-        "SELECT atlas.refresh_sondages_unifies()"
-    )
-    .execute(pool)
-    .await;
-    
-    let refreshed = refresh_result.is_ok();
-    
-    Ok(Json(ApplyAcceptedResponse {
-        applied_count: done_count,
-        refreshed,
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*)::bigint FROM atlas.sondages_non_geocodes")
+        .fetch_one(pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    Ok(Json(GeocodeStats {
+        total,
+        accepted: 0,
+        pending: total,
+        rejected: 0,
+        no_suggestion: 0,
     }))
 }

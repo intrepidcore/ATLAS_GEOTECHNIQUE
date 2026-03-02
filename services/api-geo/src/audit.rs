@@ -36,22 +36,22 @@ pub async fn list_audit_logs(
     let mut query = r#"
         SELECT 
             id::text,
-            action,
-            entity,
-            entity_id::text,
-            payload,
+            operation,
+            table_name,
+            id::text AS entity_id,
+            metadata,
             created_at,
             user_id
-        FROM audit_log
+        FROM atlas.audit_log
         WHERE 1=1
     "#.to_string();
     
     if let Some(entity) = &q.entity {
-        query.push_str(&format!(" AND entity = '{}'", entity.replace("'", "''")));
+        query.push_str(&format!(" AND table_name = '{}'", entity.replace("'", "''")));
     }
     
     if let Some(entity_id) = &q.entity_id {
-        query.push_str(&format!(" AND entity_id::text = '{}'", entity_id.replace("'", "''")));
+        query.push_str(&format!(" AND id::text = '{}'", entity_id.replace("'", "''")));
     }
     
     query.push_str(" ORDER BY created_at DESC");
@@ -68,10 +68,10 @@ pub async fn list_audit_logs(
                 
                 AuditLogEntry {
                     id: r.try_get("id").unwrap_or_default(),
-                    action: r.try_get("action").unwrap_or_default(),
-                    entity: r.try_get("entity").unwrap_or_default(),
+                    action: r.try_get("operation").unwrap_or_default(),
+                    entity: r.try_get("table_name").unwrap_or_default(),
                     entity_id: r.try_get("entity_id").unwrap_or_default(),
-                    payload: r.try_get("payload").ok(),
+                    payload: r.try_get("metadata").ok(),
                     created_at: created.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
                     user_id: r.try_get("user_id").ok(),
                 }
@@ -96,22 +96,22 @@ pub async fn export_audit_csv(
     let mut query = r#"
         SELECT 
             id::text,
-            action,
-            entity,
-            entity_id::text,
-            payload,
+            operation,
+            table_name,
+            id::text AS entity_id,
+            metadata,
             created_at,
             user_id
-        FROM audit_log
+        FROM atlas.audit_log
         WHERE 1=1
     "#.to_string();
     
     if let Some(entity) = &q.entity {
-        query.push_str(&format!(" AND entity = '{}'", entity.replace("'", "''")));
+        query.push_str(&format!(" AND table_name = '{}'", entity.replace("'", "''")));
     }
     
     if let Some(entity_id) = &q.entity_id {
-        query.push_str(&format!(" AND entity_id::text = '{}'", entity_id.replace("'", "''")));
+        query.push_str(&format!(" AND id::text = '{}'", entity_id.replace("'", "''")));
     }
     
     query.push_str(" ORDER BY created_at DESC");
@@ -127,10 +127,10 @@ pub async fn export_audit_csv(
             
             for r in rows.iter() {
                 let id: String = r.try_get("id").unwrap_or_default();
-                let action: String = r.try_get("action").unwrap_or_default();
-                let entity: String = r.try_get("entity").unwrap_or_default();
+                let action: String = r.try_get("operation").unwrap_or_default();
+                let entity: String = r.try_get("table_name").unwrap_or_default();
                 let entity_id: String = r.try_get("entity_id").unwrap_or_default();
-                let payload: Option<serde_json::Value> = r.try_get("payload").ok();
+                let payload: Option<serde_json::Value> = r.try_get("metadata").ok();
                 let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
                 let user_id: Option<String> = r.try_get("user_id").ok();
                 

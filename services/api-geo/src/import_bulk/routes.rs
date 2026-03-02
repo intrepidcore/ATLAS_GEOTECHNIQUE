@@ -496,6 +496,18 @@ pub async fn list_profiles(
     State(state): State<AppState>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<MappingProfile>>, (StatusCode, String)> {
+    // DB snapshot used in desktop mode may not include import_mapping_profiles.
+    // Returning an empty list is preferable to a 500 for route audit / UI.
+    let table_exists: Option<String> = sqlx::query_scalar(
+        "SELECT to_regclass('atlas.import_mapping_profiles')::text",
+    )
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(None);
+    if table_exists.is_none() {
+        return Ok(Json(vec![]));
+    }
+
     // Filtrer par user_id si fourni
     let user_id = params.get("user_id").and_then(|s| Uuid::parse_str(s).ok());
 

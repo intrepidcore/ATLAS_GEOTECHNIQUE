@@ -1,0 +1,1193 @@
+;
+; Archive created at 2026-01-17 13:33:50
+;     dbname: atlas_clean
+;     TOC Entries: 1183
+;     Compression: gzip
+;     Dump Version: 1.16-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 16.4 (Debian 16.4-1.pgdg110+2)
+;     Dumped by pg_dump version: 17.7 (Debian 17.7-3.pgdg11+1)
+;
+;
+; Selected TOC Entries:
+;
+18; 2615 33346 SCHEMA - atlas atlas
+50; 2615 151231 SCHEMA - atlas_ref atlas
+7062; 0 0 COMMENT - SCHEMA atlas_ref atlas
+51; 2615 151232 SCHEMA - atlas_terrain atlas
+7063; 0 0 COMMENT - SCHEMA atlas_terrain atlas
+20; 2615 41823 SCHEMA - backup_20251110_192106_30ee61cb atlas
+21; 2615 41844 SCHEMA - backup_20251110_192111_6af88d05 atlas
+22; 2615 41896 SCHEMA - backup_20251110_192300_6add4eb4 atlas
+23; 2615 41917 SCHEMA - backup_20251110_192305_fd008851 atlas
+24; 2615 41963 SCHEMA - backup_20251110_195740_850c25c5 atlas
+25; 2615 41984 SCHEMA - backup_20251110_195744_31aea478 atlas
+27; 2615 42052 SCHEMA - backup_20251110_222340_00ac3108 atlas
+26; 2615 42051 SCHEMA - backup_20251110_222340_28691973 atlas
+28; 2615 50198 SCHEMA - backup_20251112_165929_e990d5b5 atlas
+29; 2615 50210 SCHEMA - backup_20251112_171741_824fb26f atlas
+30; 2615 50222 SCHEMA - backup_20251112_172458_cf91b22c atlas
+31; 2615 50234 SCHEMA - backup_20251112_214033_a5411aae atlas
+32; 2615 58390 SCHEMA - backup_20251113_082309_b95c64f6 atlas
+33; 2615 58402 SCHEMA - backup_20251113_091240_d773a7a4 atlas
+34; 2615 58414 SCHEMA - backup_20251113_122108_3fdb8b95 atlas
+39; 2615 59267 SCHEMA - backup_20251114_075857_91c7dabf atlas
+11; 2615 31442 SCHEMA - public atlas
+7064; 0 0 COMMENT - SCHEMA public atlas
+7065; 0 0 ACL - SCHEMA public atlas
+19; 2615 25654 SCHEMA - topology atlas
+7066; 0 0 COMMENT - SCHEMA topology atlas
+3; 3079 32521 EXTENSION - pg_trgm 
+7067; 0 0 COMMENT - EXTENSION pg_trgm 
+2; 3079 31443 EXTENSION - postgis 
+7068; 0 0 COMMENT - EXTENSION postgis 
+7; 3079 234339 EXTENSION - postgis_raster 
+7069; 0 0 COMMENT - EXTENSION postgis_raster 
+5; 3079 41336 EXTENSION - postgis_topology 
+7070; 0 0 COMMENT - EXTENSION postgis_topology 
+4; 3079 33349 EXTENSION - unaccent 
+7071; 0 0 COMMENT - EXTENSION unaccent 
+6; 3079 58709 EXTENSION - uuid-ossp 
+7072; 0 0 COMMENT - EXTENSION "uuid-ossp" 
+2688; 1247 40988 TYPE atlas analyse_qualitative_enum atlas
+3150; 1247 143603 TYPE atlas comment_entity_type atlas
+2846; 1247 143531 TYPE atlas document_type atlas
+2840; 1247 143479 TYPE atlas field_log_type atlas
+2795; 1247 41323 TYPE atlas location_mode atlas
+2691; 1247 41016 TYPE atlas methode_classification_enum atlas
+2822; 1247 143374 TYPE atlas mission_status atlas
+2819; 1247 143362 TYPE atlas mission_theme atlas
+3153; 1247 143612 TYPE atlas notification_type atlas
+3156; 1247 143630 TYPE atlas sondage_validation_status atlas
+2685; 1247 40973 TYPE atlas type_sol_enum atlas
+619; 1255 41947 FUNCTION atlas cleanup_expired_locks() atlas
+1832; 1255 143178 FUNCTION atlas cleanup_expired_sessions() atlas
+992; 1255 33582 FUNCTION atlas cleanup_old_backups() atlas
+7073; 0 0 COMMENT atlas FUNCTION cleanup_old_backups() atlas
+1482; 1255 33581 FUNCTION atlas cleanup_old_staging() atlas
+7074; 0 0 COMMENT atlas FUNCTION cleanup_old_staging() atlas
+1282; 1255 216961 FUNCTION atlas count_students_per_maille(uuid) atlas
+7075; 0 0 COMMENT atlas FUNCTION count_students_per_maille(p_maille_id uuid) atlas
+1008; 1255 200385 FUNCTION atlas geocode_sondage(uuid) atlas
+7076; 0 0 COMMENT atlas FUNCTION geocode_sondage(p_sondage_id uuid) atlas
+1039; 1255 33391 FUNCTION atlas get_adm_centroid(text, integer) atlas
+7077; 0 0 COMMENT atlas FUNCTION get_adm_centroid(p_adm_level text, p_adm_gid integer) atlas
+1818; 1255 33393 FUNCTION atlas get_adm_random_point(text, integer, text) atlas
+1486; 1255 216962 FUNCTION atlas get_available_mailles_in_adm(text, text, integer) atlas
+7078; 0 0 COMMENT atlas FUNCTION get_available_mailles_in_adm(p_adm_code text, p_adm_niveau text, p_max_students_per_maille integer) atlas
+1768; 1255 143180 FUNCTION atlas get_user_permissions(uuid) atlas
+1672; 1255 143181 FUNCTION atlas get_user_roles(uuid) atlas
+847; 1255 143182 FUNCTION atlas log_auth_event(uuid, character varying, boolean, inet, text, jsonb) atlas
+1172; 1255 33347 FUNCTION atlas norm(text) atlas
+1817; 1255 33348 FUNCTION atlas norm_key(text) atlas
+853; 1255 41134 FUNCTION atlas normalize_localite(text) atlas
+556; 1255 41064 FUNCTION atlas prevent_audit_modification() atlas
+643; 1255 144056 FUNCTION atlas rebuild_track_geometry() atlas
+878; 1255 33409 FUNCTION atlas refresh_mailles_geotech() atlas
+1376; 1255 41335 FUNCTION atlas refresh_sondages_unifies() atlas
+656; 1255 41198 FUNCTION atlas refresh_surveys() atlas
+1534; 1255 41331 FUNCTION atlas tg_touch_updated_at() atlas
+1185; 1255 41124 FUNCTION atlas track_changeset(text, text, jsonb, text) atlas
+7079; 0 0 COMMENT atlas FUNCTION track_changeset(p_table_name text, p_operation text, p_changes jsonb, p_user text) atlas
+1854; 1255 200386 FUNCTION atlas trg_geocode_sondage() atlas
+7080; 0 0 COMMENT atlas FUNCTION trg_geocode_sondage() atlas
+879; 1255 143581 FUNCTION atlas update_colab_updated_at() atlas
+874; 1255 247819 FUNCTION atlas update_maille_utm31_coords() atlas
+7081; 0 0 COMMENT atlas FUNCTION update_maille_utm31_coords() atlas
+862; 1255 143917 FUNCTION atlas update_question_answers_count() atlas
+1558; 1255 143919 FUNCTION atlas update_tag_usage_count() atlas
+965; 1255 33583 FUNCTION atlas update_updated_at_column() atlas
+689; 1255 143179 FUNCTION atlas user_has_permission(uuid, character varying) atlas
+758; 1255 151383 FUNCTION atlas_ref get_layer_stats() atlas
+7082; 0 0 COMMENT atlas_ref FUNCTION get_layer_stats() atlas
+790; 1255 142046 FUNCTION public auto_accept_high_score_suggestions(double precision) atlas
+7083; 0 0 COMMENT public FUNCTION auto_accept_high_score_suggestions(score_threshold double precision) atlas
+1198; 1255 58556 FUNCTION public auto_geocode_sondage() atlas
+1304; 1255 141075 FUNCTION public random_point_in_polygon(public.geometry) atlas
+7084; 0 0 COMMENT public FUNCTION random_point_in_polygon(geom public.geometry) atlas
+964; 1255 142992 FUNCTION public refresh_mv_mailles_geotech() atlas
+7085; 0 0 COMMENT public FUNCTION refresh_mv_mailles_geotech() atlas
+1841; 1255 141783 FUNCTION public run_auto_geocode_batch(double precision) atlas
+7086; 0 0 COMMENT public FUNCTION run_auto_geocode_batch(score_threshold double precision) atlas
+1521; 1255 142967 FUNCTION public set_sondage_grid_code() atlas
+1606; 1255 85030 FUNCTION public update_essais_classif_timestamp() atlas
+1396; 1255 78892 FUNCTION public update_sondage_depth_range() atlas
+309; 1259 41053 TABLE atlas adm1_tg atlas
+308; 1259 41052 SEQUENCE atlas adm1_tg_id_seq atlas
+7087; 0 0 SEQUENCE OWNED BY atlas adm1_tg_id_seq atlas
+311; 1259 41066 TABLE atlas adm2_tg atlas
+310; 1259 41065 SEQUENCE atlas adm2_tg_id_seq atlas
+7088; 0 0 SEQUENCE OWNED BY atlas adm2_tg_id_seq atlas
+462; 1259 201802 TABLE atlas adm3 atlas
+313; 1259 41078 TABLE atlas adm3_tg atlas
+312; 1259 41076 SEQUENCE atlas adm3_tg_id_seq atlas
+7089; 0 0 SEQUENCE OWNED BY atlas adm3_tg_id_seq atlas
+296; 1259 33543 TABLE atlas audit_log atlas
+7090; 0 0 COMMENT atlas TABLE audit_log atlas
+394; 1259 143161 TABLE atlas auth_audit_log atlas
+7091; 0 0 COMMENT atlas TABLE auth_audit_log atlas
+7092; 0 0 COMMENT atlas COLUMN auth_audit_log.event_type atlas
+297; 1259 33556 TABLE atlas backup_metadata atlas
+7093; 0 0 COMMENT atlas TABLE backup_metadata atlas
+468; 1259 216878 TABLE atlas boundary_togo atlas
+7094; 0 0 COMMENT atlas TABLE boundary_togo atlas
+314; 1259 41096 TABLE atlas changesets atlas
+7095; 0 0 COMMENT atlas TABLE changesets atlas
+7096; 0 0 COMMENT atlas COLUMN changesets.operation atlas
+7097; 0 0 COMMENT atlas COLUMN changesets.changes atlas
+7098; 0 0 COMMENT atlas COLUMN changesets.undone_at atlas
+307; 1259 41031 TABLE atlas classifications atlas
+426; 1259 143818 TABLE atlas colab_answers atlas
+429; 1259 143885 TABLE atlas colab_badges atlas
+418; 1259 143670 TABLE atlas colab_comment_mentions atlas
+417; 1259 143645 TABLE atlas colab_comments atlas
+413; 1259 143549 TABLE atlas colab_documents atlas
+7099; 0 0 COMMENT atlas TABLE colab_documents atlas
+7100; 0 0 COMMENT atlas COLUMN colab_documents.file_path atlas
+412; 1259 143493 TABLE atlas colab_field_logs atlas
+7101; 0 0 COMMENT atlas TABLE colab_field_logs atlas
+7102; 0 0 COMMENT atlas COLUMN colab_field_logs.log_date atlas
+438; 1259 144029 TABLE atlas colab_field_sessions atlas
+471; 1259 216917 TABLE atlas colab_maille_assignments atlas
+7103; 0 0 COMMENT atlas TABLE colab_maille_assignments atlas
+7104; 0 0 COMMENT atlas COLUMN colab_maille_assignments.pref_rank_used atlas
+410; 1259 143424 TABLE atlas colab_mission_assignments atlas
+7105; 0 0 COMMENT atlas TABLE colab_mission_assignments atlas
+7106; 0 0 COMMENT atlas COLUMN colab_mission_assignments.role atlas
+411; 1259 143449 TABLE atlas colab_mission_sondages atlas
+7107; 0 0 COMMENT atlas TABLE colab_mission_sondages atlas
+409; 1259 143387 TABLE atlas colab_missions atlas
+7108; 0 0 COMMENT atlas TABLE colab_missions atlas
+7109; 0 0 COMMENT atlas COLUMN colab_missions.code atlas
+7110; 0 0 COMMENT atlas COLUMN colab_missions.expected_sondages atlas
+7111; 0 0 COMMENT atlas COLUMN colab_missions.notes_internal atlas
+419; 1259 143690 TABLE atlas colab_notifications atlas
+437; 1259 143998 TABLE atlas colab_photos atlas
+425; 1259 143802 TABLE atlas colab_question_tags atlas
+424; 1259 143767 TABLE atlas colab_questions atlas
+420; 1259 143718 TABLE atlas colab_sondage_status_history atlas
+470; 1259 216899 TABLE atlas colab_student_prefs atlas
+7112; 0 0 COMMENT atlas TABLE colab_student_prefs atlas
+7113; 0 0 COMMENT atlas COLUMN colab_student_prefs.adm_niveau atlas
+7114; 0 0 COMMENT atlas COLUMN colab_student_prefs.adm_code_pref_1 atlas
+407; 1259 143320 TABLE atlas colab_students atlas
+7115; 0 0 COMMENT atlas TABLE colab_students atlas
+7116; 0 0 COMMENT atlas COLUMN colab_students.promotion atlas
+7117; 0 0 COMMENT atlas COLUMN colab_students.filiere atlas
+408; 1259 143342 TABLE atlas colab_supervisors atlas
+7118; 0 0 COMMENT atlas TABLE colab_supervisors atlas
+7119; 0 0 COMMENT atlas COLUMN colab_supervisors.specialite atlas
+434; 1259 143936 TABLE atlas colab_sync_queue atlas
+423; 1259 143752 TABLE atlas colab_tags atlas
+436; 1259 143983 TABLE atlas colab_track_points atlas
+435; 1259 143958 TABLE atlas colab_tracks atlas
+430; 1259 143898 TABLE atlas colab_user_badges atlas
+428; 1259 143863 TABLE atlas colab_user_stats atlas
+427; 1259 143844 TABLE atlas colab_votes atlas
+299; 1259 33567 TABLE atlas column_ui_metadata atlas
+7120; 0 0 COMMENT atlas TABLE column_ui_metadata atlas
+298; 1259 33566 SEQUENCE atlas column_ui_metadata_id_seq atlas
+7121; 0 0 SEQUENCE OWNED BY atlas column_ui_metadata_id_seq atlas
+306; 1259 40961 TABLE atlas country_tg atlas
+305; 1259 40960 SEQUENCE atlas country_tg_id_seq atlas
+7122; 0 0 SEQUENCE OWNED BY atlas country_tg_id_seq atlas
+492; 1259 234897 TABLE atlas dsm_cop30 atlas
+7123; 0 0 COMMENT atlas TABLE dsm_cop30 atlas
+7124; 0 0 COMMENT atlas COLUMN dsm_cop30.rid atlas
+7125; 0 0 COMMENT atlas COLUMN dsm_cop30.rast atlas
+7126; 0 0 COMMENT atlas COLUMN dsm_cop30.filename atlas
+491; 1259 234896 SEQUENCE atlas dsm_cop30_rid_seq atlas
+7127; 0 0 SEQUENCE OWNED BY atlas dsm_cop30_rid_seq atlas
+277; 1259 32982 TABLE atlas echantillons atlas
+327; 1259 41512 TABLE atlas essais atlas
+278; 1259 32989 TABLE atlas essais_atterberg atlas
+279; 1259 32996 TABLE atlas essais_classif atlas
+7128; 0 0 COMMENT atlas TABLE essais_classif atlas
+7129; 0 0 COMMENT atlas COLUMN essais_classif.echantillon_id atlas
+7130; 0 0 COMMENT atlas COLUMN essais_classif.laboratory atlas
+7131; 0 0 COMMENT atlas COLUMN essais_classif.hrb atlas
+7132; 0 0 COMMENT atlas COLUMN essais_classif.unified atlas
+7133; 0 0 COMMENT atlas COLUMN essais_classif.class_chassagneux atlas
+7134; 0 0 COMMENT atlas COLUMN essais_classif.class_daksha atlas
+7135; 0 0 COMMENT atlas COLUMN essais_classif.class_seed atlas
+7136; 0 0 COMMENT atlas COLUMN essais_classif.class_vijay atlas
+7137; 0 0 COMMENT atlas COLUMN essais_classif.type_sol atlas
+7138; 0 0 COMMENT atlas COLUMN essais_classif.cg atlas
+7139; 0 0 COMMENT atlas COLUMN essais_classif.cg_qual atlas
+280; 1259 33003 TABLE atlas essais_geotechniques atlas
+7140; 0 0 COMMENT atlas COLUMN essais_geotechniques.sondage_id atlas
+7141; 0 0 COMMENT atlas COLUMN essais_geotechniques.depth_m atlas
+7142; 0 0 COMMENT atlas COLUMN essais_geotechniques.echantillon_id atlas
+7143; 0 0 COMMENT atlas COLUMN essais_geotechniques.cg atlas
+7144; 0 0 COMMENT atlas COLUMN essais_geotechniques.cg_qual atlas
+7145; 0 0 COMMENT atlas COLUMN essais_geotechniques.class_chassagneux atlas
+7146; 0 0 COMMENT atlas COLUMN essais_geotechniques.class_daksha atlas
+7147; 0 0 COMMENT atlas COLUMN essais_geotechniques.class_seed atlas
+7148; 0 0 COMMENT atlas COLUMN essais_geotechniques.class_vijay atlas
+7149; 0 0 COMMENT atlas COLUMN essais_geotechniques.type_sol atlas
+7150; 0 0 COMMENT atlas COLUMN essais_geotechniques.vbs_qual atlas
+281; 1259 33010 TABLE atlas essais_physiques atlas
+381; 1259 114000 TABLE atlas essais_potentiel_gonflement atlas
+7151; 0 0 COMMENT atlas TABLE essais_potentiel_gonflement atlas
+7152; 0 0 COMMENT atlas COLUMN essais_potentiel_gonflement.cg atlas
+7153; 0 0 COMMENT atlas COLUMN essais_potentiel_gonflement.cg_qual atlas
+7154; 0 0 COMMENT atlas COLUMN essais_potentiel_gonflement.type_sol atlas
+378; 1259 76308 TABLE atlas essais_proctor atlas
+282; 1259 33017 TABLE atlas essais_vbs atlas
+284; 1259 33031 TABLE atlas granulo_points atlas
+303; 1259 33611 TABLE atlas import_errors atlas
+7155; 0 0 COMMENT atlas TABLE import_errors atlas
+302; 1259 33595 TABLE atlas imports atlas
+7156; 0 0 COMMENT atlas TABLE imports atlas
+503; 1259 247776 TABLE atlas layer_style atlas
+467; 1259 216804 TABLE atlas maille_28km atlas
+7157; 0 0 COMMENT atlas TABLE maille_28km atlas
+7158; 0 0 COMMENT atlas COLUMN maille_28km.profil_num atlas
+466; 1259 216803 SEQUENCE atlas maille_28km_id_m28_seq atlas
+7159; 0 0 SEQUENCE OWNED BY atlas maille_28km_id_m28_seq atlas
+328; 1259 41527 TABLE atlas mailles atlas
+7160; 0 0 COMMENT atlas COLUMN mailles.xmin_utm31 atlas
+7161; 0 0 COMMENT atlas COLUMN mailles.xmax_utm31 atlas
+7162; 0 0 COMMENT atlas COLUMN mailles.ymin_utm31 atlas
+7163; 0 0 COMMENT atlas COLUMN mailles.ymax_utm31 atlas
+7164; 0 0 COMMENT atlas COLUMN mailles.xc_utm31 atlas
+7165; 0 0 COMMENT atlas COLUMN mailles.yc_utm31 atlas
+292; 1259 33092 TABLE atlas sondages atlas
+7166; 0 0 COMMENT atlas COLUMN sondages.geom atlas
+7167; 0 0 COMMENT atlas COLUMN sondages.date_sondage atlas
+7168; 0 0 COMMENT atlas COLUMN sondages.source atlas
+7169; 0 0 COMMENT atlas COLUMN sondages.meta atlas
+7170; 0 0 COMMENT atlas COLUMN sondages.code atlas
+7171; 0 0 COMMENT atlas COLUMN sondages.depth_m_min atlas
+7172; 0 0 COMMENT atlas COLUMN sondages.depth_m_max atlas
+7173; 0 0 COMMENT atlas COLUMN sondages.maille_code atlas
+7174; 0 0 COMMENT atlas COLUMN sondages.adm1_name atlas
+7175; 0 0 COMMENT atlas COLUMN sondages.adm2_name atlas
+7176; 0 0 COMMENT atlas COLUMN sondages.adm3_name atlas
+7177; 0 0 COMMENT atlas COLUMN sondages.comment atlas
+7178; 0 0 COMMENT atlas COLUMN sondages.operator atlas
+7179; 0 0 COMMENT atlas COLUMN sondages.notes atlas
+7180; 0 0 COMMENT atlas COLUMN sondages.type_sol atlas
+7181; 0 0 COMMENT atlas COLUMN sondages.location_mode atlas
+7182; 0 0 COMMENT atlas COLUMN sondages.adm1_id atlas
+7183; 0 0 COMMENT atlas COLUMN sondages.adm2_id atlas
+7184; 0 0 COMMENT atlas COLUMN sondages.import_id atlas
+7185; 0 0 COMMENT atlas COLUMN sondages.import_row_idx atlas
+7186; 0 0 COMMENT atlas COLUMN sondages.loc_mode atlas
+7187; 0 0 COMMENT atlas COLUMN sondages.geom_real atlas
+7188; 0 0 COMMENT atlas COLUMN sondages.grid_code atlas
+7189; 0 0 COMMENT atlas COLUMN sondages.localite_base atlas
+7190; 0 0 COMMENT atlas COLUMN sondages.localite_key atlas
+7191; 0 0 COMMENT atlas COLUMN sondages.id atlas
+7192; 0 0 COMMENT atlas COLUMN sondages.date atlas
+7193; 0 0 COMMENT atlas COLUMN sondages.created_at atlas
+7194; 0 0 COMMENT atlas COLUMN sondages.updated_at atlas
+7195; 0 0 COMMENT atlas COLUMN sondages.deleted_at atlas
+7196; 0 0 COMMENT atlas COLUMN sondages.adm3_id atlas
+7197; 0 0 COMMENT atlas COLUMN sondages.is_geocoded atlas
+286; 1259 33052 TABLE public mailles atlas
+384; 1259 142971 MATERIALIZED VIEW atlas mv_mailles_geotech atlas
+7198; 0 0 COMMENT atlas MATERIALIZED VIEW mv_mailles_geotech atlas
+7199; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.n_sondages atlas
+7200; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.n_echantillons atlas
+7201; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.n_essais_total atlas
+7202; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.ip_avg atlas
+7203; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.vbs_avg atlas
+7204; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.eg_avg atlas
+7205; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.passant_80um_avg atlas
+7206; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.has_exact_location atlas
+7207; 0 0 COMMENT atlas COLUMN mv_mailles_geotech.has_random_location atlas
+480; 1259 234230 TABLE atlas risque_gonflement atlas
+476; 1259 234198 TABLE atlas unites_geologiques atlas
+478; 1259 234218 TABLE atlas unites_pedologiques atlas
+499; 1259 247719 VIEW atlas v_mailles_context atlas
+7208; 0 0 COMMENT atlas VIEW v_mailles_context atlas
+497; 1259 247703 VIEW atlas v_mailles_with_location_counts atlas
+7209; 0 0 COMMENT atlas VIEW v_mailles_with_location_counts atlas
+500; 1259 247724 VIEW atlas mailles_geotechnique_stats_wgs84 atlas
+7210; 0 0 COMMENT atlas VIEW mailles_geotechnique_stats_wgs84 atlas
+393; 1259 143143 TABLE atlas password_reset_tokens atlas
+7211; 0 0 COMMENT atlas TABLE password_reset_tokens atlas
+387; 1259 143037 TABLE atlas permissions atlas
+7212; 0 0 COMMENT atlas TABLE permissions atlas
+7213; 0 0 COMMENT atlas COLUMN permissions.id atlas
+7214; 0 0 COMMENT atlas COLUMN permissions.resource atlas
+7215; 0 0 COMMENT atlas COLUMN permissions.action atlas
+317; 1259 41125 VIEW atlas recent_changesets atlas
+7216; 0 0 COMMENT atlas VIEW recent_changesets atlas
+479; 1259 234229 SEQUENCE atlas risque_gonflement_ogc_fid_seq atlas
+7217; 0 0 SEQUENCE OWNED BY atlas risque_gonflement_ogc_fid_seq atlas
+389; 1259 143057 TABLE atlas role_permissions atlas
+7218; 0 0 COMMENT atlas TABLE role_permissions atlas
+388; 1259 143047 TABLE atlas roles atlas
+7219; 0 0 COMMENT atlas TABLE roles atlas
+7220; 0 0 COMMENT atlas COLUMN roles.is_system atlas
+392; 1259 143119 TABLE atlas sessions atlas
+7221; 0 0 COMMENT atlas TABLE sessions atlas
+7222; 0 0 COMMENT atlas COLUMN sessions.token_hash atlas
+7223; 0 0 COMMENT atlas COLUMN sessions.refresh_token_hash atlas
+326; 1259 41502 TABLE atlas sondages_legacy_20251117 atlas
+304; 1259 33628 TABLE atlas sondages_non_geocodes atlas
+7224; 0 0 COMMENT atlas TABLE sondages_non_geocodes atlas
+7225; 0 0 COMMENT atlas COLUMN sondages_non_geocodes.adm1 atlas
+7226; 0 0 COMMENT atlas COLUMN sondages_non_geocodes.adm2 atlas
+7227; 0 0 COMMENT atlas COLUMN sondages_non_geocodes.adm3 atlas
+7228; 0 0 COMMENT atlas COLUMN sondages_non_geocodes.localite atlas
+7229; 0 0 COMMENT atlas COLUMN sondages_non_geocodes.date_sondage atlas
+350; 1259 41938 TABLE atlas staging_locks atlas
+7230; 0 0 COMMENT atlas TABLE staging_locks atlas
+7231; 0 0 COMMENT atlas COLUMN staging_locks.table_name atlas
+7232; 0 0 COMMENT atlas COLUMN staging_locks.locked_by atlas
+7233; 0 0 COMMENT atlas COLUMN staging_locks.expires_at atlas
+7234; 0 0 COMMENT atlas COLUMN staging_locks.staging_id atlas
+295; 1259 33531 TABLE atlas staging_metadata atlas
+7235; 0 0 COMMENT atlas TABLE staging_metadata atlas
+339; 1259 41741 TABLE atlas staging_test_staging_commit_0ed8a364eae9428a8e3031c96fc9bbf8 atlas
+332; 1259 41661 TABLE atlas staging_test_staging_commit_4f73d120_7047_4565_a744_142b3bc29fd atlas
+343; 1259 41802 TABLE atlas staging_test_staging_commit_82449d2b5ef4471abda4ccf80cb46d98 atlas
+329; 1259 41615 TABLE atlas staging_test_staging_commit_9aabfebb_e76a_4ec3_bff6_71b7de7b0c4 atlas
+342; 1259 41787 TABLE atlas staging_test_staging_commit_b6eda30a9c0f4e08b8f1203f212186b7 atlas
+334; 1259 41686 TABLE atlas staging_test_staging_commit_ef9e5cc5_4c89_4452_a21f_6dea323e514 atlas
+336; 1259 41695 TABLE atlas test_staging_rollback atlas
+335; 1259 41694 SEQUENCE atlas test_staging_rollback_id_seq atlas
+7236; 0 0 SEQUENCE OWNED BY atlas test_staging_rollback_id_seq atlas
+337; 1259 41705 TABLE atlas staging_test_staging_rollback_80f299e5_ff7a_4e69_8f08_e489bffcd atlas
+330; 1259 41634 TABLE atlas staging_test_staging_rollback_b9ea4131_07ae_4511_a1ee_f5cf0fafe atlas
+340; 1259 41756 TABLE atlas staging_test_staging_simple_95ce013a94964905963323b6ed776d00 atlas
+346; 1259 41859 TABLE atlas staging_test_staging_validation_35427a5d8c614ee2a6d465867417477 atlas
+341; 1259 41772 TABLE atlas staging_test_staging_validation_588b08c858c04fd5969ad7455444245 atlas
+331; 1259 41653 TABLE atlas staging_test_staging_validation_62ba95fe_5606_40e3_b9b7_9f53972 atlas
+347; 1259 41875 TABLE atlas staging_test_staging_validation_aa5fa5f42afe4f358a1c6674f5ca8ac atlas
+333; 1259 41669 TABLE atlas staging_test_staging_validation_c3c5d24d_503f_470d_a9a5_3f7a834 atlas
+338; 1259 41724 TABLE atlas staging_test_staging_validation_c7876d39_7d1e_4bc5_8e94_29278d7 atlas
+318; 1259 41162 TABLE atlas survey_aliases atlas
+319; 1259 41199 TABLE atlas survey_tests atlas
+369; 1259 59256 TABLE atlas surveys atlas
+316; 1259 41111 TABLE atlas table_versions atlas
+7237; 0 0 COMMENT atlas TABLE table_versions atlas
+7238; 0 0 COMMENT atlas COLUMN table_versions.schema_snapshot atlas
+7239; 0 0 COMMENT atlas COLUMN table_versions.row_count atlas
+315; 1259 41110 SEQUENCE atlas table_versions_version_seq atlas
+7240; 0 0 SEQUENCE OWNED BY atlas table_versions_version_seq atlas
+475; 1259 234197 SEQUENCE atlas unites_geologiques_ogc_fid_seq atlas
+7241; 0 0 SEQUENCE OWNED BY atlas unites_geologiques_ogc_fid_seq atlas
+477; 1259 234217 SEQUENCE atlas unites_pedologiques_ogc_fid_seq atlas
+7242; 0 0 SEQUENCE OWNED BY atlas unites_pedologiques_ogc_fid_seq atlas
+391; 1259 143096 TABLE atlas user_roles atlas
+7243; 0 0 COMMENT atlas TABLE user_roles atlas
+7244; 0 0 COMMENT atlas COLUMN user_roles.expires_at atlas
+390; 1259 143073 TABLE atlas users atlas
+7245; 0 0 COMMENT atlas TABLE users atlas
+7246; 0 0 COMMENT atlas COLUMN users.password_hash atlas
+7247; 0 0 COMMENT atlas COLUMN users.failed_login_attempts atlas
+7248; 0 0 COMMENT atlas COLUMN users.locked_until atlas
+301; 1259 33590 VIEW atlas v_active_staging atlas
+7249; 0 0 COMMENT atlas VIEW v_active_staging atlas
+399; 1259 143205 VIEW public essais_atterberg atlas
+401; 1259 143214 VIEW public essais_geotechniques atlas
+405; 1259 143231 VIEW public essais_vbs atlas
+397; 1259 143196 VIEW public sondages atlas
+464; 1259 216778 VIEW atlas v_maille_kpi_adm2 atlas
+7250; 0 0 COMMENT atlas VIEW v_maille_kpi_adm2 atlas
+465; 1259 216783 VIEW atlas v_adm2_kpi atlas
+7251; 0 0 COMMENT atlas VIEW v_adm2_kpi atlas
+300; 1259 33586 VIEW atlas v_audit_stats atlas
+7252; 0 0 COMMENT atlas VIEW v_audit_stats atlas
+432; 1259 143926 VIEW atlas v_colab_answers atlas
+473; 1259 216950 VIEW atlas v_colab_assignments_by_adm atlas
+7253; 0 0 COMMENT atlas VIEW v_colab_assignments_by_adm atlas
+421; 1259 143740 VIEW atlas v_colab_comments atlas
+433; 1259 143931 VIEW atlas v_colab_leaderboard atlas
+472; 1259 216945 VIEW atlas v_colab_maille_assignment_details atlas
+7254; 0 0 COMMENT atlas VIEW v_colab_maille_assignment_details atlas
+414; 1259 143586 VIEW atlas v_colab_missions_summary atlas
+7255; 0 0 COMMENT atlas VIEW v_colab_missions_summary atlas
+431; 1259 143921 VIEW atlas v_colab_questions atlas
+415; 1259 143591 VIEW atlas v_colab_students atlas
+7256; 0 0 COMMENT atlas VIEW v_colab_students atlas
+474; 1259 216955 VIEW atlas v_colab_students_without_maille atlas
+7257; 0 0 COMMENT atlas VIEW v_colab_students_without_maille atlas
+416; 1259 143596 VIEW atlas v_colab_supervisors atlas
+7258; 0 0 COMMENT atlas VIEW v_colab_supervisors atlas
+422; 1259 143745 VIEW atlas v_colab_unread_notifications atlas
+502; 1259 247770 VIEW atlas v_coverage_mailles_28km atlas
+7259; 0 0 COMMENT atlas VIEW v_coverage_mailles_28km atlas
+386; 1259 143027 TABLE public adm0_raw atlas
+509; 1259 255971 VIEW atlas v_coverage_mailles_28km_clip atlas
+7260; 0 0 COMMENT atlas VIEW v_coverage_mailles_28km_clip atlas
+501; 1259 247734 VIEW atlas v_coverage_mailles_2km atlas
+7261; 0 0 COMMENT atlas VIEW v_coverage_mailles_2km atlas
+382; 1259 114018 VIEW atlas v_echantillons_essais atlas
+7262; 0 0 COMMENT atlas VIEW v_echantillons_essais atlas
+383; 1259 114023 VIEW atlas v_essais_summary atlas
+7263; 0 0 COMMENT atlas VIEW v_essais_summary atlas
+504; 1259 247787 VIEW atlas v_geologie_style_map atlas
+469; 1259 216890 VIEW atlas v_maille_28km_kpi atlas
+7264; 0 0 COMMENT atlas VIEW v_maille_28km_kpi atlas
+507; 1259 247809 VIEW atlas v_mailles_28km_clip atlas
+7265; 0 0 COMMENT atlas VIEW v_mailles_28km_clip atlas
+508; 1259 255967 VIEW atlas v_maille_28km_map atlas
+495; 1259 234923 VIEW atlas v_maille_dsm_28km atlas
+7266; 0 0 COMMENT atlas VIEW v_maille_dsm_28km atlas
+496; 1259 234928 VIEW atlas v_maille_dsm_28km_flat atlas
+7267; 0 0 COMMENT atlas VIEW v_maille_dsm_28km_flat atlas
+493; 1259 234914 VIEW atlas v_maille_dsm_2km atlas
+7268; 0 0 COMMENT atlas VIEW v_maille_dsm_2km atlas
+494; 1259 234919 VIEW atlas v_maille_dsm_2km_flat atlas
+7269; 0 0 COMMENT atlas VIEW v_maille_dsm_2km_flat atlas
+505; 1259 247791 VIEW atlas v_pedologie_style_map atlas
+506; 1259 247795 VIEW atlas v_risque_style_map atlas
+396; 1259 143190 VIEW atlas v_roles_with_permissions atlas
+379; 1259 77225 VIEW atlas v_sondages_clean atlas
+7270; 0 0 COMMENT atlas VIEW v_sondages_clean atlas
+380; 1259 78894 VIEW atlas v_sondages_profondeurs atlas
+7271; 0 0 COMMENT atlas VIEW v_sondages_profondeurs atlas
+377; 1259 75282 VIEW atlas v_sondages_unifies atlas
+395; 1259 143185 VIEW atlas v_users_with_roles atlas
+452; 1259 151316 TABLE atlas_ref admin_limites_25231 atlas
+7272; 0 0 COMMENT atlas_ref TABLE admin_limites_25231 atlas
+451; 1259 151315 SEQUENCE atlas_ref admin_limites_25231_id_seq atlas
+7273; 0 0 SEQUENCE OWNED BY atlas_ref admin_limites_25231_id_seq atlas
+446; 1259 151276 TABLE atlas_ref batiments_25231 atlas
+7274; 0 0 COMMENT atlas_ref TABLE batiments_25231 atlas
+445; 1259 151275 SEQUENCE atlas_ref batiments_25231_id_seq atlas
+7275; 0 0 SEQUENCE OWNED BY atlas_ref batiments_25231_id_seq atlas
+448; 1259 151289 TABLE atlas_ref hydro_cours_eau_25231 atlas
+7276; 0 0 COMMENT atlas_ref TABLE hydro_cours_eau_25231 atlas
+447; 1259 151288 SEQUENCE atlas_ref hydro_cours_eau_25231_id_seq atlas
+7277; 0 0 SEQUENCE OWNED BY atlas_ref hydro_cours_eau_25231_id_seq atlas
+450; 1259 151303 TABLE atlas_ref hydro_surfaces_25231 atlas
+7278; 0 0 COMMENT atlas_ref TABLE hydro_surfaces_25231 atlas
+449; 1259 151302 SEQUENCE atlas_ref hydro_surfaces_25231_id_seq atlas
+7279; 0 0 SEQUENCE OWNED BY atlas_ref hydro_surfaces_25231_id_seq atlas
+442; 1259 151250 TABLE atlas_ref localites_points_25231 atlas
+7280; 0 0 COMMENT atlas_ref TABLE localites_points_25231 atlas
+441; 1259 151249 SEQUENCE atlas_ref localites_points_25231_id_seq atlas
+7281; 0 0 SEQUENCE OWNED BY atlas_ref localites_points_25231_id_seq atlas
+444; 1259 151264 TABLE atlas_ref localites_polygons_25231 atlas
+7282; 0 0 COMMENT atlas_ref TABLE localites_polygons_25231 atlas
+443; 1259 151263 SEQUENCE atlas_ref localites_polygons_25231_id_seq atlas
+7283; 0 0 SEQUENCE OWNED BY atlas_ref localites_polygons_25231_id_seq atlas
+440; 1259 151234 TABLE atlas_ref routes_25231 atlas
+7284; 0 0 COMMENT atlas_ref TABLE routes_25231 atlas
+439; 1259 151233 SEQUENCE atlas_ref routes_25231_id_seq atlas
+7285; 0 0 SEQUENCE OWNED BY atlas_ref routes_25231_id_seq atlas
+457; 1259 151350 VIEW atlas_ref v_admin_atlas atlas
+7286; 0 0 COMMENT atlas_ref VIEW v_admin_atlas atlas
+455; 1259 151341 VIEW atlas_ref v_batiments_atlas atlas
+7287; 0 0 COMMENT atlas_ref VIEW v_batiments_atlas atlas
+456; 1259 151345 VIEW atlas_ref v_hydro_atlas atlas
+7288; 0 0 COMMENT atlas_ref VIEW v_hydro_atlas atlas
+454; 1259 151337 VIEW atlas_ref v_localites_atlas atlas
+7289; 0 0 COMMENT atlas_ref VIEW v_localites_atlas atlas
+453; 1259 151333 VIEW atlas_ref v_routes_atlas atlas
+7290; 0 0 COMMENT atlas_ref VIEW v_routes_atlas atlas
+461; 1259 151372 TABLE atlas_terrain poi_terrain atlas
+7291; 0 0 COMMENT atlas_terrain TABLE poi_terrain atlas
+460; 1259 151371 SEQUENCE atlas_terrain poi_terrain_id_seq atlas
+7292; 0 0 SEQUENCE OWNED BY atlas_terrain poi_terrain_id_seq atlas
+459; 1259 151355 TABLE atlas_terrain routes_corrections atlas
+7293; 0 0 COMMENT atlas_terrain TABLE routes_corrections atlas
+458; 1259 151354 SEQUENCE atlas_terrain routes_corrections_id_seq atlas
+7294; 0 0 SEQUENCE OWNED BY atlas_terrain routes_corrections_id_seq atlas
+344; 1259 41824 TABLE backup_20251110_192106_30ee61cb test_staging_commit atlas
+345; 1259 41845 TABLE backup_20251110_192111_6af88d05 test_staging_simple atlas
+348; 1259 41897 TABLE backup_20251110_192300_6add4eb4 test_staging_commit atlas
+349; 1259 41918 TABLE backup_20251110_192305_fd008851 test_staging_simple atlas
+351; 1259 41964 TABLE backup_20251110_195740_850c25c5 test_staging_commit atlas
+352; 1259 41985 TABLE backup_20251110_195744_31aea478 test_staging_simple atlas
+354; 1259 42057 TABLE backup_20251110_222340_00ac3108 test_staging_commit atlas
+353; 1259 42053 TABLE backup_20251110_222340_28691973 test_staging_simple atlas
+355; 1259 50199 TABLE backup_20251112_165929_e990d5b5 sondages atlas
+357; 1259 50211 TABLE backup_20251112_171741_824fb26f sondages atlas
+359; 1259 50223 TABLE backup_20251112_172458_cf91b22c sondages atlas
+361; 1259 50235 TABLE backup_20251112_214033_a5411aae sondages atlas
+363; 1259 58391 TABLE backup_20251113_082309_b95c64f6 sondages atlas
+365; 1259 58403 TABLE backup_20251113_091240_d773a7a4 sondages atlas
+367; 1259 58415 TABLE backup_20251113_122108_3fdb8b95 sondages atlas
+370; 1259 59268 TABLE backup_20251114_075857_91c7dabf adm3_tg atlas
+372; 1259 74774 TABLE public _backup_echantillons_pre_020 atlas
+374; 1259 74784 TABLE public _backup_essais_classif_pre_020 atlas
+376; 1259 74794 TABLE public _backup_essais_geotechniques_pre_020 atlas
+373; 1259 74779 TABLE public _backup_essais_physiques_pre_020 atlas
+375; 1259 74789 TABLE public _backup_granulo_points_pre_020 atlas
+385; 1259 143026 SEQUENCE public adm0_raw_ogc_fid_seq atlas
+7295; 0 0 SEQUENCE OWNED BY public adm0_raw_ogc_fid_seq atlas
+268; 1259 32607 TABLE public adm1 atlas
+269; 1259 32617 TABLE public adm1_tg atlas
+270; 1259 32644 TABLE public adm2 atlas
+271; 1259 32649 TABLE public adm2_tg atlas
+272; 1259 32770 TABLE public adm3 atlas
+463; 1259 201821 VIEW public adm3_compat atlas
+7296; 0 0 COMMENT public VIEW adm3_compat atlas
+273; 1259 32776 TABLE public adm3_synonyms atlas
+274; 1259 32781 TABLE public adm3_tg atlas
+275; 1259 32968 TABLE public audit_log atlas
+276; 1259 32975 TABLE public country_tg atlas
+398; 1259 143201 VIEW public echantillons atlas
+400; 1259 143209 VIEW public essais_classif atlas
+402; 1259 143219 VIEW public essais_physiques atlas
+403; 1259 143223 VIEW public essais_potentiel_gonflement atlas
+404; 1259 143227 VIEW public essais_proctor atlas
+283; 1259 33024 TABLE public geocode_suggestions atlas
+406; 1259 143235 VIEW public granulo_points atlas
+285; 1259 33045 TABLE public grid atlas
+498; 1259 247708 VIEW public mailles_geotechnique_stats_wgs84 atlas
+7297; 0 0 COMMENT public VIEW mailles_geotechnique_stats_wgs84 atlas
+287; 1259 33059 TABLE public raw_lab_ags atlas
+288; 1259 33066 TABLE public raw_lab_agt atlas
+289; 1259 33073 TABLE public raw_lab_atterberg atlas
+290; 1259 33080 TABLE public ref_types_essais atlas
+291; 1259 33085 TABLE public refresh_queue atlas
+294; 1259 33284 TABLE public sondages_backup_20251107 atlas
+371; 1259 59453 TABLE public staging_adm3_tg_2341a12f1d5642f5a93c72089c50f209 atlas
+360; 1259 50228 TABLE public staging_sondages_1545961f5e9145519178aed3cfb06dc2 atlas
+366; 1259 58408 TABLE public staging_sondages_170996acc52a4d289130f85a30877f2f atlas
+362; 1259 50240 TABLE public staging_sondages_479a3497d4444ea0998dcf33cff5b5e4 atlas
+368; 1259 58420 TABLE public staging_sondages_4fee78f169f0477a864b5cbc35111578 atlas
+356; 1259 50204 TABLE public staging_sondages_6ec80c85913a4cb1bd82066a59babdc6 atlas
+364; 1259 58396 TABLE public staging_sondages_75907cf9329d41c585a1ab3d76b76644 atlas
+358; 1259 50216 TABLE public staging_sondages_d40623e2797e4b54894a5834dab67f22 atlas
+293; 1259 33099 TABLE public thematic_configs atlas
+5864; 2604 233723 DEFAULT atlas adm1_tg id atlas
+5866; 2604 233724 DEFAULT atlas adm2_tg id atlas
+5868; 2604 233725 DEFAULT atlas adm3_tg id atlas
+5842; 2604 233726 DEFAULT atlas column_ui_metadata id atlas
+5858; 2604 233727 DEFAULT atlas country_tg id atlas
+6063; 2604 234900 DEFAULT atlas dsm_cop30 rid atlas
+6053; 2604 216807 DEFAULT atlas maille_28km id_m28 atlas
+6062; 2604 234233 DEFAULT atlas risque_gonflement ogc_fid atlas
+5872; 2604 233728 DEFAULT atlas table_versions version atlas
+5886; 2604 233729 DEFAULT atlas test_staging_rollback id atlas
+6060; 2604 234201 DEFAULT atlas unites_geologiques ogc_fid atlas
+6061; 2604 234221 DEFAULT atlas unites_pedologiques ogc_fid atlas
+6042; 2604 233730 DEFAULT atlas_ref admin_limites_25231 id atlas
+6030; 2604 233731 DEFAULT atlas_ref batiments_25231 id atlas
+6033; 2604 233732 DEFAULT atlas_ref hydro_cours_eau_25231 id atlas
+6038; 2604 233733 DEFAULT atlas_ref hydro_surfaces_25231 id atlas
+6023; 2604 233734 DEFAULT atlas_ref localites_points_25231 id atlas
+6027; 2604 233735 DEFAULT atlas_ref localites_polygons_25231 id atlas
+6017; 2604 233736 DEFAULT atlas_ref routes_25231 id atlas
+6048; 2604 233737 DEFAULT atlas_terrain poi_terrain id atlas
+6045; 2604 233738 DEFAULT atlas_terrain routes_corrections id atlas
+5901; 2604 233739 DEFAULT public adm0_raw ogc_fid atlas
+6924; 0 41053 TABLE DATA atlas adm1_tg atlas
+6926; 0 41066 TABLE DATA atlas adm2_tg atlas
+7040; 0 201802 TABLE DATA atlas adm3 atlas
+6928; 0 41078 TABLE DATA atlas adm3_tg atlas
+6913; 0 33543 TABLE DATA atlas audit_log atlas
+6997; 0 143161 TABLE DATA atlas auth_audit_log atlas
+6914; 0 33556 TABLE DATA atlas backup_metadata atlas
+7043; 0 216878 TABLE DATA atlas boundary_togo atlas
+6929; 0 41096 TABLE DATA atlas changesets atlas
+6922; 0 41031 TABLE DATA atlas classifications atlas
+7012; 0 143818 TABLE DATA atlas colab_answers atlas
+7015; 0 143885 TABLE DATA atlas colab_badges atlas
+7006; 0 143670 TABLE DATA atlas colab_comment_mentions atlas
+7005; 0 143645 TABLE DATA atlas colab_comments atlas
+7004; 0 143549 TABLE DATA atlas colab_documents atlas
+7003; 0 143493 TABLE DATA atlas colab_field_logs atlas
+7021; 0 144029 TABLE DATA atlas colab_field_sessions atlas
+7045; 0 216917 TABLE DATA atlas colab_maille_assignments atlas
+7001; 0 143424 TABLE DATA atlas colab_mission_assignments atlas
+7002; 0 143449 TABLE DATA atlas colab_mission_sondages atlas
+7000; 0 143387 TABLE DATA atlas colab_missions atlas
+7007; 0 143690 TABLE DATA atlas colab_notifications atlas
+7020; 0 143998 TABLE DATA atlas colab_photos atlas
+7011; 0 143802 TABLE DATA atlas colab_question_tags atlas
+7010; 0 143767 TABLE DATA atlas colab_questions atlas
+7008; 0 143718 TABLE DATA atlas colab_sondage_status_history atlas
+7044; 0 216899 TABLE DATA atlas colab_student_prefs atlas
+6998; 0 143320 TABLE DATA atlas colab_students atlas
+6999; 0 143342 TABLE DATA atlas colab_supervisors atlas
+7017; 0 143936 TABLE DATA atlas colab_sync_queue atlas
+7009; 0 143752 TABLE DATA atlas colab_tags atlas
+7019; 0 143983 TABLE DATA atlas colab_track_points atlas
+7018; 0 143958 TABLE DATA atlas colab_tracks atlas
+7016; 0 143898 TABLE DATA atlas colab_user_badges atlas
+7014; 0 143863 TABLE DATA atlas colab_user_stats atlas
+7013; 0 143844 TABLE DATA atlas colab_votes atlas
+6916; 0 33567 TABLE DATA atlas column_ui_metadata atlas
+6921; 0 40961 TABLE DATA atlas country_tg atlas
+7053; 0 234897 TABLE DATA atlas dsm_cop30 atlas
+6894; 0 32982 TABLE DATA atlas echantillons atlas
+6935; 0 41512 TABLE DATA atlas essais atlas
+6895; 0 32989 TABLE DATA atlas essais_atterberg atlas
+6896; 0 32996 TABLE DATA atlas essais_classif atlas
+6897; 0 33003 TABLE DATA atlas essais_geotechniques atlas
+6898; 0 33010 TABLE DATA atlas essais_physiques atlas
+6986; 0 114000 TABLE DATA atlas essais_potentiel_gonflement atlas
+6985; 0 76308 TABLE DATA atlas essais_proctor atlas
+6899; 0 33017 TABLE DATA atlas essais_vbs atlas
+6901; 0 33031 TABLE DATA atlas granulo_points atlas
+6918; 0 33611 TABLE DATA atlas import_errors atlas
+6917; 0 33595 TABLE DATA atlas imports atlas
+7054; 0 247776 TABLE DATA atlas layer_style atlas
+7042; 0 216804 TABLE DATA atlas maille_28km atlas
+6936; 0 41527 TABLE DATA atlas mailles atlas
+6996; 0 143143 TABLE DATA atlas password_reset_tokens atlas
+6990; 0 143037 TABLE DATA atlas permissions atlas
+7051; 0 234230 TABLE DATA atlas risque_gonflement atlas
+6992; 0 143057 TABLE DATA atlas role_permissions atlas
+6991; 0 143047 TABLE DATA atlas roles atlas
+6995; 0 143119 TABLE DATA atlas sessions atlas
+6909; 0 33092 TABLE DATA atlas sondages atlas
+6934; 0 41502 TABLE DATA atlas sondages_legacy_20251117 atlas
+6919; 0 33628 TABLE DATA atlas sondages_non_geocodes atlas
+6958; 0 41938 TABLE DATA atlas staging_locks atlas
+6912; 0 33531 TABLE DATA atlas staging_metadata atlas
+6947; 0 41741 TABLE DATA atlas staging_test_staging_commit_0ed8a364eae9428a8e3031c96fc9bbf8 atlas
+6940; 0 41661 TABLE DATA atlas staging_test_staging_commit_4f73d120_7047_4565_a744_142b3bc29fd atlas
+6951; 0 41802 TABLE DATA atlas staging_test_staging_commit_82449d2b5ef4471abda4ccf80cb46d98 atlas
+6937; 0 41615 TABLE DATA atlas staging_test_staging_commit_9aabfebb_e76a_4ec3_bff6_71b7de7b0c4 atlas
+6950; 0 41787 TABLE DATA atlas staging_test_staging_commit_b6eda30a9c0f4e08b8f1203f212186b7 atlas
+6942; 0 41686 TABLE DATA atlas staging_test_staging_commit_ef9e5cc5_4c89_4452_a21f_6dea323e514 atlas
+6945; 0 41705 TABLE DATA atlas staging_test_staging_rollback_80f299e5_ff7a_4e69_8f08_e489bffcd atlas
+6938; 0 41634 TABLE DATA atlas staging_test_staging_rollback_b9ea4131_07ae_4511_a1ee_f5cf0fafe atlas
+6948; 0 41756 TABLE DATA atlas staging_test_staging_simple_95ce013a94964905963323b6ed776d00 atlas
+6954; 0 41859 TABLE DATA atlas staging_test_staging_validation_35427a5d8c614ee2a6d465867417477 atlas
+6949; 0 41772 TABLE DATA atlas staging_test_staging_validation_588b08c858c04fd5969ad7455444245 atlas
+6939; 0 41653 TABLE DATA atlas staging_test_staging_validation_62ba95fe_5606_40e3_b9b7_9f53972 atlas
+6955; 0 41875 TABLE DATA atlas staging_test_staging_validation_aa5fa5f42afe4f358a1c6674f5ca8ac atlas
+6941; 0 41669 TABLE DATA atlas staging_test_staging_validation_c3c5d24d_503f_470d_a9a5_3f7a834 atlas
+6946; 0 41724 TABLE DATA atlas staging_test_staging_validation_c7876d39_7d1e_4bc5_8e94_29278d7 atlas
+6932; 0 41162 TABLE DATA atlas survey_aliases atlas
+6933; 0 41199 TABLE DATA atlas survey_tests atlas
+6977; 0 59256 TABLE DATA atlas surveys atlas
+6931; 0 41111 TABLE DATA atlas table_versions atlas
+6944; 0 41695 TABLE DATA atlas test_staging_rollback atlas
+7047; 0 234198 TABLE DATA atlas unites_geologiques atlas
+7049; 0 234218 TABLE DATA atlas unites_pedologiques atlas
+6994; 0 143096 TABLE DATA atlas user_roles atlas
+6993; 0 143073 TABLE DATA atlas users atlas
+7035; 0 151316 TABLE DATA atlas_ref admin_limites_25231 atlas
+7029; 0 151276 TABLE DATA atlas_ref batiments_25231 atlas
+7031; 0 151289 TABLE DATA atlas_ref hydro_cours_eau_25231 atlas
+7033; 0 151303 TABLE DATA atlas_ref hydro_surfaces_25231 atlas
+7025; 0 151250 TABLE DATA atlas_ref localites_points_25231 atlas
+7027; 0 151264 TABLE DATA atlas_ref localites_polygons_25231 atlas
+7023; 0 151234 TABLE DATA atlas_ref routes_25231 atlas
+7039; 0 151372 TABLE DATA atlas_terrain poi_terrain atlas
+7037; 0 151355 TABLE DATA atlas_terrain routes_corrections atlas
+6952; 0 41824 TABLE DATA backup_20251110_192106_30ee61cb test_staging_commit atlas
+6953; 0 41845 TABLE DATA backup_20251110_192111_6af88d05 test_staging_simple atlas
+6956; 0 41897 TABLE DATA backup_20251110_192300_6add4eb4 test_staging_commit atlas
+6957; 0 41918 TABLE DATA backup_20251110_192305_fd008851 test_staging_simple atlas
+6959; 0 41964 TABLE DATA backup_20251110_195740_850c25c5 test_staging_commit atlas
+6960; 0 41985 TABLE DATA backup_20251110_195744_31aea478 test_staging_simple atlas
+6962; 0 42057 TABLE DATA backup_20251110_222340_00ac3108 test_staging_commit atlas
+6961; 0 42053 TABLE DATA backup_20251110_222340_28691973 test_staging_simple atlas
+6963; 0 50199 TABLE DATA backup_20251112_165929_e990d5b5 sondages atlas
+6965; 0 50211 TABLE DATA backup_20251112_171741_824fb26f sondages atlas
+6967; 0 50223 TABLE DATA backup_20251112_172458_cf91b22c sondages atlas
+6969; 0 50235 TABLE DATA backup_20251112_214033_a5411aae sondages atlas
+6971; 0 58391 TABLE DATA backup_20251113_082309_b95c64f6 sondages atlas
+6973; 0 58403 TABLE DATA backup_20251113_091240_d773a7a4 sondages atlas
+6975; 0 58415 TABLE DATA backup_20251113_122108_3fdb8b95 sondages atlas
+6978; 0 59268 TABLE DATA backup_20251114_075857_91c7dabf adm3_tg atlas
+6980; 0 74774 TABLE DATA public _backup_echantillons_pre_020 atlas
+6982; 0 74784 TABLE DATA public _backup_essais_classif_pre_020 atlas
+6984; 0 74794 TABLE DATA public _backup_essais_geotechniques_pre_020 atlas
+6981; 0 74779 TABLE DATA public _backup_essais_physiques_pre_020 atlas
+6983; 0 74789 TABLE DATA public _backup_granulo_points_pre_020 atlas
+6989; 0 143027 TABLE DATA public adm0_raw atlas
+6885; 0 32607 TABLE DATA public adm1 atlas
+6886; 0 32617 TABLE DATA public adm1_tg atlas
+6887; 0 32644 TABLE DATA public adm2 atlas
+6888; 0 32649 TABLE DATA public adm2_tg atlas
+6889; 0 32770 TABLE DATA public adm3 atlas
+6890; 0 32776 TABLE DATA public adm3_synonyms atlas
+6891; 0 32781 TABLE DATA public adm3_tg atlas
+6892; 0 32968 TABLE DATA public audit_log atlas
+6893; 0 32975 TABLE DATA public country_tg atlas
+6900; 0 33024 TABLE DATA public geocode_suggestions atlas
+6902; 0 33045 TABLE DATA public grid atlas
+6903; 0 33052 TABLE DATA public mailles atlas
+6904; 0 33059 TABLE DATA public raw_lab_ags atlas
+6905; 0 33066 TABLE DATA public raw_lab_agt atlas
+6906; 0 33073 TABLE DATA public raw_lab_atterberg atlas
+6907; 0 33080 TABLE DATA public ref_types_essais atlas
+6908; 0 33085 TABLE DATA public refresh_queue atlas
+6911; 0 33284 TABLE DATA public sondages_backup_20251107 atlas
+5815; 0 31761 TABLE DATA public spatial_ref_sys atlas
+6979; 0 59453 TABLE DATA public staging_adm3_tg_2341a12f1d5642f5a93c72089c50f209 atlas
+6968; 0 50228 TABLE DATA public staging_sondages_1545961f5e9145519178aed3cfb06dc2 atlas
+6974; 0 58408 TABLE DATA public staging_sondages_170996acc52a4d289130f85a30877f2f atlas
+6970; 0 50240 TABLE DATA public staging_sondages_479a3497d4444ea0998dcf33cff5b5e4 atlas
+6976; 0 58420 TABLE DATA public staging_sondages_4fee78f169f0477a864b5cbc35111578 atlas
+6964; 0 50204 TABLE DATA public staging_sondages_6ec80c85913a4cb1bd82066a59babdc6 atlas
+6972; 0 58396 TABLE DATA public staging_sondages_75907cf9329d41c585a1ab3d76b76644 atlas
+6966; 0 50216 TABLE DATA public staging_sondages_d40623e2797e4b54894a5834dab67f22 atlas
+6910; 0 33099 TABLE DATA public thematic_configs atlas
+5817; 0 41338 TABLE DATA topology topology atlas
+5818; 0 41350 TABLE DATA topology layer atlas
+7298; 0 0 SEQUENCE SET atlas adm1_tg_id_seq atlas
+7299; 0 0 SEQUENCE SET atlas adm2_tg_id_seq atlas
+7300; 0 0 SEQUENCE SET atlas adm3_tg_id_seq atlas
+7301; 0 0 SEQUENCE SET atlas column_ui_metadata_id_seq atlas
+7302; 0 0 SEQUENCE SET atlas country_tg_id_seq atlas
+7303; 0 0 SEQUENCE SET atlas dsm_cop30_rid_seq atlas
+7304; 0 0 SEQUENCE SET atlas maille_28km_id_m28_seq atlas
+7305; 0 0 SEQUENCE SET atlas risque_gonflement_ogc_fid_seq atlas
+7306; 0 0 SEQUENCE SET atlas table_versions_version_seq atlas
+7307; 0 0 SEQUENCE SET atlas test_staging_rollback_id_seq atlas
+7308; 0 0 SEQUENCE SET atlas unites_geologiques_ogc_fid_seq atlas
+7309; 0 0 SEQUENCE SET atlas unites_pedologiques_ogc_fid_seq atlas
+7310; 0 0 SEQUENCE SET atlas_ref admin_limites_25231_id_seq atlas
+7311; 0 0 SEQUENCE SET atlas_ref batiments_25231_id_seq atlas
+7312; 0 0 SEQUENCE SET atlas_ref hydro_cours_eau_25231_id_seq atlas
+7313; 0 0 SEQUENCE SET atlas_ref hydro_surfaces_25231_id_seq atlas
+7314; 0 0 SEQUENCE SET atlas_ref localites_points_25231_id_seq atlas
+7315; 0 0 SEQUENCE SET atlas_ref localites_polygons_25231_id_seq atlas
+7316; 0 0 SEQUENCE SET atlas_ref routes_25231_id_seq atlas
+7317; 0 0 SEQUENCE SET atlas_terrain poi_terrain_id_seq atlas
+7318; 0 0 SEQUENCE SET atlas_terrain routes_corrections_id_seq atlas
+7319; 0 0 SEQUENCE SET public adm0_raw_ogc_fid_seq atlas
+7320; 0 0 SEQUENCE SET topology topology_id_seq atlas
+6221; 2606 41063 CONSTRAINT atlas adm1_tg adm1_tg_name_key atlas
+6223; 2606 41061 CONSTRAINT atlas adm1_tg adm1_tg_pkey atlas
+6226; 2606 41074 CONSTRAINT atlas adm2_tg adm2_tg_pkey atlas
+6533; 2606 201812 CONSTRAINT atlas adm3 adm3_adm3_pcode_key atlas
+6535; 2606 201810 CONSTRAINT atlas adm3 adm3_pkey atlas
+6229; 2606 41087 CONSTRAINT atlas adm3_tg adm3_tg_pkey atlas
+6178; 2606 33551 CONSTRAINT atlas audit_log audit_log_pkey atlas
+6367; 2606 143169 CONSTRAINT atlas auth_audit_log auth_audit_log_pkey atlas
+6186; 2606 33564 CONSTRAINT atlas backup_metadata backup_metadata_pkey atlas
+6548; 2606 216887 CONSTRAINT atlas boundary_togo boundary_togo_pkey atlas
+6232; 2606 41106 CONSTRAINT atlas changesets changesets_pkey atlas
+6214; 2606 41040 CONSTRAINT atlas classifications classifications_pkey atlas
+6459; 2606 143830 CONSTRAINT atlas colab_answers colab_answers_pkey atlas
+6471; 2606 143897 CONSTRAINT atlas colab_badges colab_badges_code_key atlas
+6473; 2606 143895 CONSTRAINT atlas colab_badges colab_badges_pkey atlas
+6431; 2606 143678 CONSTRAINT atlas colab_comment_mentions colab_comment_mentions_comment_id_mentioned_user_id_key atlas
+6433; 2606 143676 CONSTRAINT atlas colab_comment_mentions colab_comment_mentions_pkey atlas
+6425; 2606 143655 CONSTRAINT atlas colab_comments colab_comments_pkey atlas
+6418; 2606 143560 CONSTRAINT atlas colab_documents colab_documents_pkey atlas
+6411; 2606 143504 CONSTRAINT atlas colab_field_logs colab_field_logs_pkey atlas
+6497; 2606 144041 CONSTRAINT atlas colab_field_sessions colab_field_sessions_pkey atlas
+6555; 2606 216926 CONSTRAINT atlas colab_maille_assignments colab_maille_assignments_pkey atlas
+6398; 2606 143433 CONSTRAINT atlas colab_mission_assignments colab_mission_assignments_pkey atlas
+6405; 2606 143458 CONSTRAINT atlas colab_mission_sondages colab_mission_sondages_pkey atlas
+6387; 2606 143401 CONSTRAINT atlas colab_missions colab_missions_code_key atlas
+6389; 2606 143399 CONSTRAINT atlas colab_missions colab_missions_pkey atlas
+6436; 2606 143700 CONSTRAINT atlas colab_notifications colab_notifications_pkey atlas
+6492; 2606 144010 CONSTRAINT atlas colab_photos colab_photos_pkey atlas
+6456; 2606 143806 CONSTRAINT atlas colab_question_tags colab_question_tags_pkey atlas
+6449; 2606 143781 CONSTRAINT atlas colab_questions colab_questions_pkey atlas
+6440; 2606 143726 CONSTRAINT atlas colab_sondage_status_history colab_sondage_status_history_pkey atlas
+6550; 2606 216908 CONSTRAINT atlas colab_student_prefs colab_student_prefs_pkey atlas
+6372; 2606 143333 CONSTRAINT atlas colab_students colab_students_matricule_key atlas
+6374; 2606 143329 CONSTRAINT atlas colab_students colab_students_pkey atlas
+6376; 2606 143331 CONSTRAINT atlas colab_students colab_students_user_id_key atlas
+6381; 2606 143351 CONSTRAINT atlas colab_supervisors colab_supervisors_pkey atlas
+6383; 2606 143353 CONSTRAINT atlas colab_supervisors colab_supervisors_user_id_key atlas
+6477; 2606 143948 CONSTRAINT atlas colab_sync_queue colab_sync_queue_pkey atlas
+6479; 2606 143950 CONSTRAINT atlas colab_sync_queue colab_sync_queue_user_id_client_id_key atlas
+6443; 2606 143764 CONSTRAINT atlas colab_tags colab_tags_name_key atlas
+6445; 2606 143762 CONSTRAINT atlas colab_tags colab_tags_pkey atlas
+6447; 2606 143766 CONSTRAINT atlas colab_tags colab_tags_slug_key atlas
+6488; 2606 143990 CONSTRAINT atlas colab_track_points colab_track_points_pkey atlas
+6483; 2606 143969 CONSTRAINT atlas colab_tracks colab_tracks_pkey atlas
+6475; 2606 143903 CONSTRAINT atlas colab_user_badges colab_user_badges_pkey atlas
+6469; 2606 143879 CONSTRAINT atlas colab_user_stats colab_user_stats_pkey atlas
+6464; 2606 143854 CONSTRAINT atlas colab_votes colab_votes_pkey atlas
+6466; 2606 143856 CONSTRAINT atlas colab_votes colab_votes_user_id_target_type_target_id_key atlas
+6189; 2606 33577 CONSTRAINT atlas column_ui_metadata column_ui_metadata_pkey atlas
+6191; 2606 33579 CONSTRAINT atlas column_ui_metadata column_ui_metadata_schema_name_table_name_column_name_key atlas
+6211; 2606 40970 CONSTRAINT atlas country_tg country_tg_pkey atlas
+6569; 2606 234904 CONSTRAINT atlas dsm_cop30 dsm_cop30_pkey atlas
+6109; 2606 33365 CONSTRAINT atlas echantillons echantillons_pkey atlas
+6114; 2606 75996 CONSTRAINT atlas essais_atterberg essais_atterberg_pkey atlas
+6116; 2606 85028 CONSTRAINT atlas essais_classif essais_classif_echantillon_unique atlas
+6118; 2606 75031 CONSTRAINT atlas essais_classif essais_classif_pkey atlas
+6121; 2606 78083 CONSTRAINT atlas essais_geotechniques essais_geotechniques_echantillon_unique atlas
+6123; 2606 74801 CONSTRAINT atlas essais_geotechniques essais_geotechniques_pkey atlas
+6127; 2606 91698 CONSTRAINT atlas essais_physiques essais_physiques_echantillon_unique atlas
+6129; 2606 74952 CONSTRAINT atlas essais_physiques essais_physiques_pkey atlas
+6264; 2606 41519 CONSTRAINT atlas essais essais_pkey atlas
+6312; 2606 114010 CONSTRAINT atlas essais_potentiel_gonflement essais_potentiel_gonflement_echantillon_id_key atlas
+6314; 2606 114008 CONSTRAINT atlas essais_potentiel_gonflement essais_potentiel_gonflement_pkey atlas
+6308; 2606 76322 CONSTRAINT atlas essais_proctor essais_proctor_echantillon_id_proctor_type_key atlas
+6310; 2606 76320 CONSTRAINT atlas essais_proctor essais_proctor_pkey atlas
+6132; 2606 76024 CONSTRAINT atlas essais_vbs essais_vbs_pkey atlas
+6141; 2606 75092 CONSTRAINT atlas granulo_points granulo_points_pkey atlas
+6201; 2606 33620 CONSTRAINT atlas import_errors import_errors_pkey atlas
+6197; 2606 33608 CONSTRAINT atlas imports imports_pkey atlas
+6573; 2606 247785 CONSTRAINT atlas layer_style layer_style_pkey atlas
+6541; 2606 216813 CONSTRAINT atlas maille_28km maille_28km_code_m28_key atlas
+6544; 2606 216811 CONSTRAINT atlas maille_28km maille_28km_pkey atlas
+6271; 2606 41537 CONSTRAINT atlas mailles mailles_code_key atlas
+6274; 2606 41535 CONSTRAINT atlas mailles mailles_pkey atlas
+6363; 2606 143151 CONSTRAINT atlas password_reset_tokens password_reset_tokens_pkey atlas
+6365; 2606 143153 CONSTRAINT atlas password_reset_tokens password_reset_tokens_token_hash_key atlas
+6330; 2606 143044 CONSTRAINT atlas permissions permissions_pkey atlas
+6332; 2606 143046 CONSTRAINT atlas permissions permissions_resource_action_key atlas
+6567; 2606 234235 CONSTRAINT atlas risque_gonflement risque_gonflement_pk atlas
+6336; 2606 143062 CONSTRAINT atlas role_permissions role_permissions_pkey atlas
+6334; 2606 143056 CONSTRAINT atlas roles roles_pkey atlas
+6355; 2606 143129 CONSTRAINT atlas sessions sessions_pkey atlas
+6357; 2606 143133 CONSTRAINT atlas sessions sessions_refresh_token_hash_key atlas
+6359; 2606 143131 CONSTRAINT atlas sessions sessions_token_hash_key atlas
+6262; 2606 41509 CONSTRAINT atlas sondages_legacy_20251117 sondages_legacy_pkey atlas
+6207; 2606 33639 CONSTRAINT atlas sondages_non_geocodes sondages_non_geocodes_code_key atlas
+6209; 2606 33637 CONSTRAINT atlas sondages_non_geocodes sondages_non_geocodes_pkey atlas
+6170; 2606 33290 CONSTRAINT atlas sondages sondages_pkey atlas
+6301; 2606 41945 CONSTRAINT atlas staging_locks staging_locks_pkey atlas
+6176; 2606 33540 CONSTRAINT atlas staging_metadata staging_metadata_pkey atlas
+6284; 2606 41668 CONSTRAINT atlas staging_test_staging_commit_4f73d120_7047_4565_a744_142b3bc29fd staging_test_staging_commit_4f73d120_7047_4565_a744_142b3b_pkey atlas
+6276; 2606 41622 CONSTRAINT atlas staging_test_staging_commit_9aabfebb_e76a_4ec3_bff6_71b7de7b0c4 staging_test_staging_commit_9aabfebb_e76a_4ec3_bff6_71b7de_pkey atlas
+6288; 2606 41693 CONSTRAINT atlas staging_test_staging_commit_ef9e5cc5_4c89_4452_a21f_6dea323e514 staging_test_staging_commit_ef9e5cc5_4c89_4452_a21f_6dea32_pkey atlas
+6294; 2606 41714 CONSTRAINT atlas staging_test_staging_rollback_80f299e5_ff7a_4e69_8f08_e489bffcd staging_test_staging_rollback_80f299e5_ff7a_4e69_8f08__code_key atlas
+6296; 2606 41712 CONSTRAINT atlas staging_test_staging_rollback_80f299e5_ff7a_4e69_8f08_e489bffcd staging_test_staging_rollback_80f299e5_ff7a_4e69_8f08_e489_pkey atlas
+6278; 2606 41643 CONSTRAINT atlas staging_test_staging_rollback_b9ea4131_07ae_4511_a1ee_f5cf0fafe staging_test_staging_rollback_b9ea4131_07ae_4511_a1ee__code_key atlas
+6280; 2606 41641 CONSTRAINT atlas staging_test_staging_rollback_b9ea4131_07ae_4511_a1ee_f5cf0fafe staging_test_staging_rollback_b9ea4131_07ae_4511_a1ee_f5cf_pkey atlas
+6282; 2606 41660 CONSTRAINT atlas staging_test_staging_validation_62ba95fe_5606_40e3_b9b7_9f53972 staging_test_staging_validation_62ba95fe_5606_40e3_b9b7_9f_pkey atlas
+6286; 2606 41676 CONSTRAINT atlas staging_test_staging_validation_c3c5d24d_503f_470d_a9a5_3f7a834 staging_test_staging_validation_c3c5d24d_503f_470d_a9a5_3f_pkey atlas
+6298; 2606 41731 CONSTRAINT atlas staging_test_staging_validation_c7876d39_7d1e_4bc5_8e94_29278d7 staging_test_staging_validation_c7876d39_7d1e_4bc5_8e94_29_pkey atlas
+6241; 2606 41172 CONSTRAINT atlas survey_aliases survey_aliases_alias_code_key atlas
+6243; 2606 41170 CONSTRAINT atlas survey_aliases survey_aliases_pkey atlas
+6248; 2606 41207 CONSTRAINT atlas survey_tests survey_tests_pkey atlas
+6250; 2606 41214 CONSTRAINT atlas survey_tests survey_tests_survey_id_test_type_raw_source_id_key atlas
+6239; 2606 41121 CONSTRAINT atlas table_versions table_versions_pkey atlas
+6290; 2606 41704 CONSTRAINT atlas test_staging_rollback test_staging_rollback_code_key atlas
+6292; 2606 41702 CONSTRAINT atlas test_staging_rollback test_staging_rollback_pkey atlas
+6403; 2606 143435 CONSTRAINT atlas colab_mission_assignments unique_active_assignment atlas
+6219; 2606 41042 CONSTRAINT atlas classifications unique_classification atlas
+6409; 2606 143460 CONSTRAINT atlas colab_mission_sondages unique_mission_sondage atlas
+6561; 2606 234203 CONSTRAINT atlas unites_geologiques unites_geologiques_pk atlas
+6564; 2606 234223 CONSTRAINT atlas unites_pedologiques unites_pedologiques_pk atlas
+6349; 2606 143101 CONSTRAINT atlas user_roles user_roles_pkey atlas
+6341; 2606 143090 CONSTRAINT atlas users users_email_key atlas
+6343; 2606 143088 CONSTRAINT atlas users users_pkey atlas
+6345; 2606 143092 CONSTRAINT atlas users users_username_key atlas
+6525; 2606 151325 CONSTRAINT atlas_ref admin_limites_25231 admin_limites_25231_pkey atlas
+6515; 2606 151285 CONSTRAINT atlas_ref batiments_25231 batiments_25231_pkey atlas
+6518; 2606 151300 CONSTRAINT atlas_ref hydro_cours_eau_25231 hydro_cours_eau_25231_pkey atlas
+6521; 2606 151313 CONSTRAINT atlas_ref hydro_surfaces_25231 hydro_surfaces_25231_pkey atlas
+6507; 2606 151260 CONSTRAINT atlas_ref localites_points_25231 localites_points_25231_pkey atlas
+6511; 2606 151273 CONSTRAINT atlas_ref localites_polygons_25231 localites_polygons_25231_pkey atlas
+6504; 2606 151246 CONSTRAINT atlas_ref routes_25231 routes_25231_pkey atlas
+6531; 2606 151381 CONSTRAINT atlas_terrain poi_terrain poi_terrain_pkey atlas
+6528; 2606 151364 CONSTRAINT atlas_terrain routes_corrections routes_corrections_pkey atlas
+6328; 2606 143034 CONSTRAINT public adm0_raw adm0_raw_pkey atlas
+6093; 2606 32623 CONSTRAINT public adm1_tg adm1_tg_pkey atlas
+6096; 2606 32655 CONSTRAINT public adm2_tg adm2_tg_pkey atlas
+6098; 2606 33357 CONSTRAINT public adm3 adm3_pkey atlas
+6103; 2606 32787 CONSTRAINT public adm3_tg adm3_tg_pkey atlas
+6105; 2606 32974 CONSTRAINT public audit_log audit_log_pkey atlas
+6107; 2606 32981 CONSTRAINT public country_tg country_tg_pkey atlas
+6134; 2606 33030 CONSTRAINT public geocode_suggestions geocode_suggestions_pkey atlas
+6143; 2606 33051 CONSTRAINT public grid grid_pkey atlas
+6145; 2606 33058 CONSTRAINT public mailles mailles_pkey atlas
+6148; 2606 76406 CONSTRAINT public raw_lab_ags raw_lab_ags_pkey atlas
+6151; 2606 76384 CONSTRAINT public raw_lab_agt raw_lab_agt_pkey atlas
+6153; 2606 76428 CONSTRAINT public raw_lab_atterberg raw_lab_atterberg_pkey atlas
+6155; 2606 33091 CONSTRAINT public refresh_queue refresh_queue_pkey atlas
+6172; 2606 33105 CONSTRAINT public thematic_configs thematic_configs_pkey atlas
+6546; 1259 216889 INDEX atlas boundary_togo_geom_idx atlas
+6556; 1259 216942 INDEX atlas colab_maille_assignments_student_uidx atlas
+6570; 1259 234905 INDEX atlas dsm_cop30_rast_st_convexhull_idx atlas
+6110; 1259 78040 INDEX atlas echantillons_sondage_depth_date_unique atlas
+6112; 1259 76022 INDEX atlas essais_atterberg_echantillon_unique atlas
+6130; 1259 76050 INDEX atlas essais_vbs_echantillon_unique atlas
+6139; 1259 76936 INDEX atlas granulo_points_ech_method_sieve_unique atlas
+6224; 1259 41089 INDEX atlas idx_adm1_tg_geom atlas
+6227; 1259 41090 INDEX atlas idx_adm2_tg_geom atlas
+6230; 1259 41091 INDEX atlas idx_adm3_tg_geom atlas
+6536; 1259 201813 INDEX atlas idx_atlas_adm3_geom atlas
+6537; 1259 201814 INDEX atlas idx_atlas_adm3_pcode atlas
+6302; 1259 59262 INDEX atlas idx_atlas_surveys_code atlas
+6303; 1259 59265 INDEX atlas idx_atlas_surveys_created_at atlas
+6304; 1259 59261 INDEX atlas idx_atlas_surveys_geom atlas
+6305; 1259 59263 INDEX atlas idx_atlas_surveys_localite atlas
+6306; 1259 59264 INDEX atlas idx_atlas_surveys_source atlas
+6179; 1259 33554 INDEX atlas idx_audit_log_created atlas
+6180; 1259 41051 INDEX atlas idx_audit_log_created_at atlas
+6181; 1259 33553 INDEX atlas idx_audit_log_operation atlas
+6182; 1259 33552 INDEX atlas idx_audit_log_table atlas
+6183; 1259 41079 INDEX atlas idx_audit_log_table_name atlas
+6184; 1259 33555 INDEX atlas idx_audit_log_user atlas
+6368; 1259 143177 INDEX atlas idx_auth_audit_created_at atlas
+6369; 1259 143176 INDEX atlas idx_auth_audit_event_type atlas
+6370; 1259 143175 INDEX atlas idx_auth_audit_user_id atlas
+6187; 1259 33565 INDEX atlas idx_backup_metadata_created atlas
+6233; 1259 41108 INDEX atlas idx_changesets_created_at atlas
+6234; 1259 41107 INDEX atlas idx_changesets_table_name atlas
+6235; 1259 41109 INDEX atlas idx_changesets_undone_at atlas
+6215; 1259 41050 INDEX atlas idx_classifications_methode atlas
+6216; 1259 41049 INDEX atlas idx_classifications_profondeur atlas
+6217; 1259 41048 INDEX atlas idx_classifications_sondage_id atlas
+6460; 1259 143842 INDEX atlas idx_colab_answers_author atlas
+6461; 1259 143843 INDEX atlas idx_colab_answers_best atlas
+6462; 1259 143841 INDEX atlas idx_colab_answers_question atlas
+6399; 1259 143448 INDEX atlas idx_colab_assignments_active atlas
+6400; 1259 143446 INDEX atlas idx_colab_assignments_mission atlas
+6401; 1259 143447 INDEX atlas idx_colab_assignments_student atlas
+6426; 1259 143667 INDEX atlas idx_colab_comments_author atlas
+6427; 1259 143669 INDEX atlas idx_colab_comments_created atlas
+6428; 1259 143666 INDEX atlas idx_colab_comments_entity atlas
+6429; 1259 143668 INDEX atlas idx_colab_comments_parent atlas
+6419; 1259 143580 INDEX atlas idx_colab_documents_current atlas
+6420; 1259 143576 INDEX atlas idx_colab_documents_mission atlas
+6421; 1259 143579 INDEX atlas idx_colab_documents_sondage atlas
+6422; 1259 143578 INDEX atlas idx_colab_documents_type atlas
+6423; 1259 143577 INDEX atlas idx_colab_documents_uploaded_by atlas
+6412; 1259 143526 INDEX atlas idx_colab_field_logs_author atlas
+6413; 1259 143529 INDEX atlas idx_colab_field_logs_date atlas
+6414; 1259 143525 INDEX atlas idx_colab_field_logs_mission atlas
+6415; 1259 143527 INDEX atlas idx_colab_field_logs_sondage atlas
+6416; 1259 143528 INDEX atlas idx_colab_field_logs_type atlas
+6557; 1259 216944 INDEX atlas idx_colab_maille_assignments_adm_code atlas
+6558; 1259 216943 INDEX atlas idx_colab_maille_assignments_maille atlas
+6434; 1259 143689 INDEX atlas idx_colab_mentions_user atlas
+6406; 1259 143476 INDEX atlas idx_colab_mission_sondages_mission atlas
+6407; 1259 143477 INDEX atlas idx_colab_mission_sondages_sondage atlas
+6390; 1259 143417 INDEX atlas idx_colab_missions_code atlas
+6391; 1259 143423 INDEX atlas idx_colab_missions_created_by atlas
+6392; 1259 143422 INDEX atlas idx_colab_missions_dates atlas
+6393; 1259 143420 INDEX atlas idx_colab_missions_maille_id atlas
+6394; 1259 143419 INDEX atlas idx_colab_missions_status atlas
+6395; 1259 143421 INDEX atlas idx_colab_missions_supervisor_id atlas
+6396; 1259 143418 INDEX atlas idx_colab_missions_theme atlas
+6437; 1259 143717 INDEX atlas idx_colab_notifications_created atlas
+6438; 1259 143716 INDEX atlas idx_colab_notifications_user atlas
+6493; 1259 144028 INDEX atlas idx_colab_photos_geom atlas
+6494; 1259 144026 INDEX atlas idx_colab_photos_mission atlas
+6495; 1259 144027 INDEX atlas idx_colab_photos_sondage atlas
+6450; 1259 143797 INDEX atlas idx_colab_questions_author atlas
+6451; 1259 143800 INDEX atlas idx_colab_questions_created atlas
+6452; 1259 143798 INDEX atlas idx_colab_questions_mission atlas
+6453; 1259 143799 INDEX atlas idx_colab_questions_score atlas
+6454; 1259 143801 INDEX atlas idx_colab_questions_search atlas
+6551; 1259 216916 INDEX atlas idx_colab_student_prefs_adm_niveau atlas
+6552; 1259 216915 INDEX atlas idx_colab_student_prefs_email atlas
+6553; 1259 216914 INDEX atlas idx_colab_student_prefs_user_id atlas
+6377; 1259 143341 INDEX atlas idx_colab_students_etablissement atlas
+6378; 1259 143340 INDEX atlas idx_colab_students_promotion atlas
+6379; 1259 143339 INDEX atlas idx_colab_students_user_id atlas
+6384; 1259 143360 INDEX atlas idx_colab_supervisors_institution atlas
+6385; 1259 143359 INDEX atlas idx_colab_supervisors_user_id atlas
+6484; 1259 143982 INDEX atlas idx_colab_tracks_geom atlas
+6485; 1259 143980 INDEX atlas idx_colab_tracks_mission atlas
+6486; 1259 143981 INDEX atlas idx_colab_tracks_user atlas
+6467; 1259 143862 INDEX atlas idx_colab_votes_target atlas
+6192; 1259 33580 INDEX atlas idx_column_ui_metadata_table atlas
+6212; 1259 40971 INDEX atlas idx_country_tg_geom atlas
+6111; 1259 33372 INDEX atlas idx_echantillons_sondage_id atlas
+6119; 1259 85029 INDEX atlas idx_essais_classif_echantillon atlas
+6124; 1259 78084 INDEX atlas idx_essais_geo_echantillon atlas
+6125; 1259 78085 INDEX atlas idx_essais_geo_sondage_depth atlas
+6265; 1259 41525 INDEX atlas idx_essais_sondage atlas
+6266; 1259 41526 INDEX atlas idx_essais_type atlas
+6498; 1259 144054 INDEX atlas idx_field_sessions_active atlas
+6499; 1259 144052 INDEX atlas idx_field_sessions_mission atlas
+6500; 1259 144053 INDEX atlas idx_field_sessions_user atlas
+6198; 1259 33626 INDEX atlas idx_import_errors_import_id atlas
+6199; 1259 33627 INDEX atlas idx_import_errors_severity atlas
+6193; 1259 41092 INDEX atlas idx_imports_batch_id atlas
+6194; 1259 33610 INDEX atlas idx_imports_created_at atlas
+6195; 1259 33609 INDEX atlas idx_imports_status atlas
+6571; 1259 247786 INDEX atlas idx_layer_style_layer_id atlas
+6538; 1259 247756 INDEX atlas idx_maille_28km_code_lisible atlas
+6267; 1259 41539 INDEX atlas idx_mailles_code atlas
+6268; 1259 41538 INDEX atlas idx_mailles_geom atlas
+6269; 1259 247821 INDEX atlas idx_mailles_utm31_bbox atlas
+6317; 1259 142981 INDEX atlas idx_mv_mailles_geotech_code atlas
+6318; 1259 142986 INDEX atlas idx_mv_mailles_geotech_eg_avg atlas
+6319; 1259 142979 INDEX atlas idx_mv_mailles_geotech_geom atlas
+6320; 1259 142980 INDEX atlas idx_mv_mailles_geotech_geom_4326 atlas
+6321; 1259 142982 INDEX atlas idx_mv_mailles_geotech_has_data atlas
+6322; 1259 142984 INDEX atlas idx_mv_mailles_geotech_ip_avg atlas
+6323; 1259 142983 INDEX atlas idx_mv_mailles_geotech_n_sondages atlas
+6324; 1259 142985 INDEX atlas idx_mv_mailles_geotech_vbs_avg atlas
+6360; 1259 143160 INDEX atlas idx_password_reset_token_hash atlas
+6361; 1259 143159 INDEX atlas idx_password_reset_user_id atlas
+6315; 1259 114017 INDEX atlas idx_potentiel_gonflement_cg_qual atlas
+6316; 1259 114016 INDEX atlas idx_potentiel_gonflement_echantillon atlas
+6457; 1259 143817 INDEX atlas idx_question_tags_tag atlas
+6350; 1259 143142 INDEX atlas idx_sessions_expires_at atlas
+6351; 1259 143141 INDEX atlas idx_sessions_is_active atlas
+6352; 1259 143140 INDEX atlas idx_sessions_token_hash atlas
+6353; 1259 143139 INDEX atlas idx_sessions_user_id atlas
+6441; 1259 143732 INDEX atlas idx_sondage_status_history atlas
+6156; 1259 41197 INDEX atlas idx_sondages_adm3_id atlas
+6157; 1259 101324 INDEX atlas idx_sondages_amessefe_unique atlas
+7321; 0 0 COMMENT atlas INDEX idx_sondages_amessefe_unique atlas
+6158; 1259 33292 INDEX atlas idx_sondages_date atlas
+6159; 1259 33328 INDEX atlas idx_sondages_deleted_at atlas
+6160; 1259 33293 INDEX atlas idx_sondages_geom atlas
+6161; 1259 77221 INDEX atlas idx_sondages_geom_real_gist atlas
+6162; 1259 77224 INDEX atlas idx_sondages_grid_code atlas
+6163; 1259 41321 INDEX atlas idx_sondages_is_geocoded_v2 atlas
+6259; 1259 41511 INDEX atlas idx_sondages_legacy_date atlas
+6260; 1259 41510 INDEX atlas idx_sondages_legacy_geom atlas
+6164; 1259 140454 INDEX atlas idx_sondages_localite_key atlas
+6165; 1259 247713 INDEX atlas idx_sondages_maille_code atlas
+6166; 1259 77222 INDEX atlas idx_sondages_meta_code atlas
+6167; 1259 77223 INDEX atlas idx_sondages_meta_localite atlas
+6202; 1259 33640 INDEX atlas idx_sondages_non_geocodes_code atlas
+6203; 1259 33641 INDEX atlas idx_sondages_non_geocodes_commune atlas
+6204; 1259 41094 INDEX atlas idx_sondages_non_geocodes_date atlas
+6205; 1259 41095 INDEX atlas idx_sondages_non_geocodes_localite atlas
+6299; 1259 41946 INDEX atlas idx_staging_locks_expires atlas
+6173; 1259 33542 INDEX atlas idx_staging_metadata_created atlas
+6174; 1259 33541 INDEX atlas idx_staging_metadata_table atlas
+6480; 1259 143957 INDEX atlas idx_sync_queue_created atlas
+6481; 1259 143956 INDEX atlas idx_sync_queue_user_status atlas
+6236; 1259 41123 INDEX atlas idx_table_versions_created_at atlas
+6237; 1259 41122 INDEX atlas idx_table_versions_table_name atlas
+6489; 1259 143997 INDEX atlas idx_track_points_geom atlas
+6490; 1259 143996 INDEX atlas idx_track_points_track atlas
+6346; 1259 143118 INDEX atlas idx_user_roles_role_id atlas
+6347; 1259 143117 INDEX atlas idx_user_roles_user_id atlas
+6337; 1259 143093 INDEX atlas idx_users_email atlas
+6338; 1259 143095 INDEX atlas idx_users_is_active atlas
+6339; 1259 143094 INDEX atlas idx_users_username atlas
+6539; 1259 247775 INDEX atlas idx_v_mailles_28km_clip_geom atlas
+6245; 1259 41220 INDEX atlas ix_survey_tests_survey atlas
+6246; 1259 41223 INDEX atlas ix_survey_tests_type atlas
+6542; 1259 216814 INDEX atlas maille_28km_geom_idx atlas
+6545; 1259 216815 INDEX atlas maille_28km_profil_idx atlas
+6272; 1259 216821 INDEX atlas mailles_id_m28_idx atlas
+6325; 1259 142978 INDEX atlas mv_mailles_geotech_id_idx atlas
+6565; 1259 234238 INDEX atlas risque_gonflement_geom_geom_idx atlas
+6168; 1259 216827 INDEX atlas sondage_id_m28_idx atlas
+6244; 1259 41178 INDEX atlas survey_aliases_survey_idx atlas
+6559; 1259 234206 INDEX atlas unites_geologiques_geom_geom_idx atlas
+6562; 1259 234226 INDEX atlas unites_pedologiques_geom_geom_idx atlas
+6522; 1259 151331 INDEX atlas_ref admin_limites_25231_geom_idx atlas
+6523; 1259 151332 INDEX atlas_ref admin_limites_25231_level_idx atlas
+6512; 1259 151287 INDEX atlas_ref batiments_25231_building_idx atlas
+6513; 1259 151286 INDEX atlas_ref batiments_25231_geom_idx atlas
+6516; 1259 151301 INDEX atlas_ref hydro_cours_eau_25231_geom_idx atlas
+6519; 1259 151314 INDEX atlas_ref hydro_surfaces_25231_geom_idx atlas
+6505; 1259 151261 INDEX atlas_ref localites_points_25231_geom_idx atlas
+6508; 1259 151262 INDEX atlas_ref localites_points_25231_place_idx atlas
+6509; 1259 151274 INDEX atlas_ref localites_polygons_25231_geom_idx atlas
+6501; 1259 151247 INDEX atlas_ref routes_25231_geom_idx atlas
+6502; 1259 151248 INDEX atlas_ref routes_25231_highway_idx atlas
+6529; 1259 151382 INDEX atlas_terrain poi_terrain_geom_idx atlas
+6526; 1259 151370 INDEX atlas_terrain routes_corrections_geom_idx atlas
+6326; 1259 143035 INDEX public adm0_raw_geom_geom_idx atlas
+6094; 1259 216774 INDEX public idx_adm2_geom atlas
+6099; 1259 33360 INDEX public idx_adm3_adm2_fr atlas
+6100; 1259 33358 INDEX public idx_adm3_adm3_fr atlas
+6101; 1259 33359 INDEX public idx_adm3_adm3_pcode atlas
+6135; 1259 142027 INDEX public idx_geocode_suggestions_auto_geocode atlas
+6136; 1259 142024 INDEX public idx_geocode_suggestions_entity_id atlas
+6137; 1259 142025 INDEX public idx_geocode_suggestions_status atlas
+6138; 1259 142026 INDEX public idx_geocode_suggestions_top_score atlas
+6146; 1259 78063 INDEX public raw_lab_ags_code_depth_sieve_unique atlas
+6149; 1259 78055 INDEX public raw_lab_agt_code_depth_sieve_unique atlas
+6836; 2618 143193 RULE atlas v_roles_with_permissions _RETURN atlas
+6835; 2618 143188 RULE atlas v_users_with_roles _RETURN atlas
+6657; 2620 41077 TRIGGER atlas audit_log prevent_audit_delete atlas
+7322; 0 0 COMMENT atlas TRIGGER prevent_audit_delete ON audit_log atlas
+6658; 2620 41075 TRIGGER atlas audit_log prevent_audit_update atlas
+7323; 0 0 COMMENT atlas TRIGGER prevent_audit_update ON audit_log atlas
+6676; 2620 144057 TRIGGER atlas colab_track_points rebuild_track_on_point_insert atlas
+6672; 2620 143915 TRIGGER atlas colab_answers set_updated_at_colab_answers atlas
+6669; 2620 143739 TRIGGER atlas colab_comments set_updated_at_colab_comments atlas
+6670; 2620 143914 TRIGGER atlas colab_questions set_updated_at_colab_questions atlas
+6675; 2620 144055 TRIGGER atlas colab_tracks set_updated_at_colab_tracks atlas
+6674; 2620 143916 TRIGGER atlas colab_user_stats set_updated_at_colab_user_stats atlas
+6651; 2620 85031 TRIGGER atlas essais_classif trg_essais_classif_updated atlas
+6652; 2620 142968 TRIGGER atlas sondages trg_set_sondage_grid_code atlas
+6653; 2620 201831 TRIGGER atlas sondages trg_sondage_geocode atlas
+7324; 0 0 COMMENT atlas TRIGGER trg_sondage_geocode ON sondages atlas
+6662; 2620 247820 TRIGGER atlas mailles trg_update_maille_utm31_coords atlas
+6650; 2620 78893 TRIGGER atlas echantillons trg_update_sondage_depth_range atlas
+6654; 2620 58557 TRIGGER atlas sondages trigger_auto_geocode atlas
+6655; 2620 33410 TRIGGER atlas sondages trigger_refresh_mailles atlas
+6673; 2620 143918 TRIGGER atlas colab_answers update_answers_count atlas
+6668; 2620 143585 TRIGGER atlas colab_field_logs update_colab_field_logs_updated_at atlas
+6667; 2620 143584 TRIGGER atlas colab_missions update_colab_missions_updated_at atlas
+6677; 2620 216960 TRIGGER atlas colab_student_prefs update_colab_student_prefs_updated_at atlas
+6665; 2620 143582 TRIGGER atlas colab_students update_colab_students_updated_at atlas
+6666; 2620 143583 TRIGGER atlas colab_supervisors update_colab_supervisors_updated_at atlas
+6659; 2620 33585 TRIGGER atlas column_ui_metadata update_column_ui_metadata_updated_at atlas
+6660; 2620 41093 TRIGGER atlas imports update_imports_updated_at atlas
+6663; 2620 143184 TRIGGER atlas roles update_roles_updated_at atlas
+6661; 2620 41179 TRIGGER atlas sondages_non_geocodes update_sondages_non_geocodes_updated_at atlas
+6656; 2620 33584 TRIGGER atlas staging_metadata update_staging_metadata_updated_at atlas
+6671; 2620 143920 TRIGGER atlas colab_question_tags update_tag_usage atlas
+6664; 2620 143183 TRIGGER atlas users update_users_updated_at atlas
+6598; 2606 143170 FK CONSTRAINT atlas auth_audit_log auth_audit_log_user_id_fkey atlas
+6586; 2606 41043 FK CONSTRAINT atlas classifications classifications_sondage_id_fkey atlas
+6629; 2606 143836 FK CONSTRAINT atlas colab_answers colab_answers_author_id_fkey atlas
+6630; 2606 143831 FK CONSTRAINT atlas colab_answers colab_answers_question_id_fkey atlas
+6618; 2606 143679 FK CONSTRAINT atlas colab_comment_mentions colab_comment_mentions_comment_id_fkey atlas
+6619; 2606 143684 FK CONSTRAINT atlas colab_comment_mentions colab_comment_mentions_mentioned_user_id_fkey atlas
+6616; 2606 143656 FK CONSTRAINT atlas colab_comments colab_comments_author_id_fkey atlas
+6617; 2606 143661 FK CONSTRAINT atlas colab_comments colab_comments_parent_comment_id_fkey atlas
+6613; 2606 143561 FK CONSTRAINT atlas colab_documents colab_documents_mission_id_fkey atlas
+6614; 2606 143571 FK CONSTRAINT atlas colab_documents colab_documents_sondage_id_fkey atlas
+6615; 2606 143566 FK CONSTRAINT atlas colab_documents colab_documents_uploaded_by_fkey atlas
+6609; 2606 143510 FK CONSTRAINT atlas colab_field_logs colab_field_logs_author_id_fkey atlas
+6610; 2606 143520 FK CONSTRAINT atlas colab_field_logs colab_field_logs_echantillon_id_fkey atlas
+6611; 2606 143505 FK CONSTRAINT atlas colab_field_logs colab_field_logs_mission_id_fkey atlas
+6612; 2606 143515 FK CONSTRAINT atlas colab_field_logs colab_field_logs_sondage_id_fkey atlas
+6642; 2606 144042 FK CONSTRAINT atlas colab_field_sessions colab_field_sessions_mission_id_fkey atlas
+6643; 2606 144047 FK CONSTRAINT atlas colab_field_sessions colab_field_sessions_user_id_fkey atlas
+6604; 2606 143436 FK CONSTRAINT atlas colab_mission_assignments colab_mission_assignments_mission_id_fkey atlas
+6605; 2606 143441 FK CONSTRAINT atlas colab_mission_assignments colab_mission_assignments_student_id_fkey atlas
+6606; 2606 143471 FK CONSTRAINT atlas colab_mission_sondages colab_mission_sondages_linked_by_fkey atlas
+6607; 2606 143461 FK CONSTRAINT atlas colab_mission_sondages colab_mission_sondages_mission_id_fkey atlas
+6608; 2606 143466 FK CONSTRAINT atlas colab_mission_sondages colab_mission_sondages_sondage_id_fkey atlas
+6601; 2606 143412 FK CONSTRAINT atlas colab_missions colab_missions_created_by_fkey atlas
+6602; 2606 143402 FK CONSTRAINT atlas colab_missions colab_missions_maille_id_fkey atlas
+6603; 2606 143407 FK CONSTRAINT atlas colab_missions colab_missions_supervisor_id_fkey atlas
+6620; 2606 143711 FK CONSTRAINT atlas colab_notifications colab_notifications_comment_id_fkey atlas
+6621; 2606 143706 FK CONSTRAINT atlas colab_notifications colab_notifications_mission_id_fkey atlas
+6622; 2606 143701 FK CONSTRAINT atlas colab_notifications colab_notifications_user_id_fkey atlas
+6639; 2606 144016 FK CONSTRAINT atlas colab_photos colab_photos_field_log_id_fkey atlas
+6640; 2606 144011 FK CONSTRAINT atlas colab_photos colab_photos_mission_id_fkey atlas
+6641; 2606 144021 FK CONSTRAINT atlas colab_photos colab_photos_uploaded_by_fkey atlas
+6627; 2606 143807 FK CONSTRAINT atlas colab_question_tags colab_question_tags_question_id_fkey atlas
+6628; 2606 143812 FK CONSTRAINT atlas colab_question_tags colab_question_tags_tag_id_fkey atlas
+6624; 2606 143782 FK CONSTRAINT atlas colab_questions colab_questions_author_id_fkey atlas
+6625; 2606 143792 FK CONSTRAINT atlas colab_questions colab_questions_closed_by_fkey atlas
+6626; 2606 143787 FK CONSTRAINT atlas colab_questions colab_questions_mission_id_fkey atlas
+6623; 2606 143727 FK CONSTRAINT atlas colab_sondage_status_history colab_sondage_status_history_changed_by_fkey atlas
+6599; 2606 143334 FK CONSTRAINT atlas colab_students colab_students_user_id_fkey atlas
+6600; 2606 143354 FK CONSTRAINT atlas colab_supervisors colab_supervisors_user_id_fkey atlas
+6635; 2606 143951 FK CONSTRAINT atlas colab_sync_queue colab_sync_queue_user_id_fkey atlas
+6638; 2606 143991 FK CONSTRAINT atlas colab_track_points colab_track_points_track_id_fkey atlas
+6636; 2606 143970 FK CONSTRAINT atlas colab_tracks colab_tracks_mission_id_fkey atlas
+6637; 2606 143975 FK CONSTRAINT atlas colab_tracks colab_tracks_user_id_fkey atlas
+6633; 2606 143909 FK CONSTRAINT atlas colab_user_badges colab_user_badges_badge_id_fkey atlas
+6634; 2606 143904 FK CONSTRAINT atlas colab_user_badges colab_user_badges_user_id_fkey atlas
+6632; 2606 143880 FK CONSTRAINT atlas colab_user_stats colab_user_stats_user_id_fkey atlas
+6631; 2606 143857 FK CONSTRAINT atlas colab_votes colab_votes_user_id_fkey atlas
+6574; 2606 74946 FK CONSTRAINT atlas echantillons echantillons_sondage_id_fkey atlas
+6575; 2606 85022 FK CONSTRAINT atlas essais_classif essais_classif_echantillon_fk atlas
+6576; 2606 75086 FK CONSTRAINT atlas essais_classif essais_classif_essai_id_fkey atlas
+6577; 2606 78077 FK CONSTRAINT atlas essais_geotechniques essais_geotechniques_echantillon_id_fkey atlas
+6578; 2606 74922 FK CONSTRAINT atlas essais_geotechniques essais_geotechniques_sondage_id_fkey atlas
+6579; 2606 91692 FK CONSTRAINT atlas essais_physiques essais_physiques_echantillon_fk atlas
+6580; 2606 75025 FK CONSTRAINT atlas essais_physiques essais_physiques_essai_id_fkey atlas
+6590; 2606 114011 FK CONSTRAINT atlas essais_potentiel_gonflement essais_potentiel_gonflement_echantillon_id_fkey atlas
+6589; 2606 76323 FK CONSTRAINT atlas essais_proctor essais_proctor_echantillon_id_fkey atlas
+6587; 2606 41520 FK CONSTRAINT atlas essais essais_sondage_id_fkey atlas
+6647; 2606 216937 FK CONSTRAINT atlas colab_maille_assignments fk_colab_maille_assignments_assigned_by atlas
+6648; 2606 216932 FK CONSTRAINT atlas colab_maille_assignments fk_colab_maille_assignments_maille atlas
+6649; 2606 216927 FK CONSTRAINT atlas colab_maille_assignments fk_colab_maille_assignments_student atlas
+6646; 2606 216909 FK CONSTRAINT atlas colab_student_prefs fk_colab_student_prefs_user atlas
+6588; 2606 233998 FK CONSTRAINT atlas mailles fk_mailles_maille28km atlas
+6582; 2606 234003 FK CONSTRAINT atlas sondages fk_sondage_maille28km atlas
+6583; 2606 201816 FK CONSTRAINT atlas sondages fk_sondages_adm3 atlas
+6581; 2606 75117 FK CONSTRAINT atlas granulo_points granulo_points_echantillon_id_fkey atlas
+6585; 2606 33621 FK CONSTRAINT atlas import_errors import_errors_import_id_fkey atlas
+6597; 2606 143154 FK CONSTRAINT atlas password_reset_tokens password_reset_tokens_user_id_fkey atlas
+6591; 2606 143068 FK CONSTRAINT atlas role_permissions role_permissions_permission_id_fkey atlas
+6592; 2606 143063 FK CONSTRAINT atlas role_permissions role_permissions_role_id_fkey atlas
+6596; 2606 143134 FK CONSTRAINT atlas sessions sessions_user_id_fkey atlas
+6584; 2606 143734 FK CONSTRAINT atlas sondages sondages_mission_id_fkey atlas
+6593; 2606 143112 FK CONSTRAINT atlas user_roles user_roles_assigned_by_fkey atlas
+6594; 2606 143107 FK CONSTRAINT atlas user_roles user_roles_role_id_fkey atlas
+6595; 2606 143102 FK CONSTRAINT atlas user_roles user_roles_user_id_fkey atlas
+6644; 2606 151326 FK CONSTRAINT atlas_ref admin_limites_25231 admin_limites_25231_parent_id_fkey atlas
+6645; 2606 151365 FK CONSTRAINT atlas_terrain routes_corrections routes_corrections_route_ref_id_fkey atlas
+6987; 0 142971 MATERIALIZED VIEW DATA atlas mv_mailles_geotech atlas

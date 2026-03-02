@@ -261,19 +261,25 @@ pub async fn create_config(
     
     let map_type_str = format!("{:?}", config.map_type).to_lowercase();
     
+    let created_at = chrono::Utc::now();
+    let config_text = config_json.to_string();
+    let is_public_text = if config.is_public { "true" } else { "false" };
+
     sqlx::query(
-        "INSERT INTO thematic_configs 
-         (id, name, description, map_type, parameter, config, is_public, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)"
+        "INSERT INTO public.thematic_configs 
+         (id, name, description, map_type, parameter, config, is_public, created_by, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)"
     )
-    .bind(id)
+    .bind(id.to_string())
     .bind(&config.name)
     .bind(&config.description)
     .bind(&map_type_str)
     .bind(&config.parameter)
-    .bind(&config_json)
-    .bind(config.is_public)
+    .bind(&config_text)
+    .bind(is_public_text)
     .bind(&config.created_by)
+    .bind(created_at.to_rfc3339())
+    .bind(created_at.to_rfc3339())
     .execute(pool)
     .await
     .map_err(|e| {
@@ -297,8 +303,8 @@ pub async fn list_configs(
     let rows = sqlx::query(
         "SELECT id, name, description, map_type, parameter, config, is_public, 
                 created_by, created_at, updated_at
-         FROM thematic_configs
-         WHERE is_public = true
+         FROM public.thematic_configs
+         WHERE COALESCE(NULLIF(is_public,''),'false')::boolean = true
          ORDER BY created_at DESC
          LIMIT 100"
     )
@@ -311,7 +317,8 @@ pub async fn list_configs(
     
     let mut configs = Vec::new();
     for row in rows {
-        let config_json: serde_json::Value = row.get("config");
+        let config_text: String = row.try_get("config").unwrap_or_else(|_| "{}".to_string());
+        let config_json: serde_json::Value = serde_json::from_str(&config_text).unwrap_or_else(|_| serde_json::json!({}));
         
         let classification = config_json.get("classification")
             .and_then(|c| serde_json::from_value(c.clone()).ok());
@@ -343,8 +350,28 @@ pub async fn list_configs(
             _ => MapType::Choropleth,
         };
         
+        let id_str: String = row.try_get("id").unwrap_or_default();
+        let parsed_id = Uuid::parse_str(&id_str).ok();
+
+        let created_at = row
+            .try_get::<String, _>("created_at")
+            .ok()
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+            .map(|dt| dt.with_timezone(&chrono::Utc));
+        let updated_at = row
+            .try_get::<String, _>("updated_at")
+            .ok()
+            .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+            .map(|dt| dt.with_timezone(&chrono::Utc));
+
+        let is_public = row
+            .try_get::<String, _>("is_public")
+            .ok()
+            .map(|s| s.trim().eq_ignore_ascii_case("true") || s.trim() == "1")
+            .unwrap_or(false);
+
         configs.push(ThematicConfig {
-            id: Some(row.get("id")),
+            id: parsed_id,
             name: row.get("name"),
             description: row.get("description"),
             map_type,
@@ -352,10 +379,10 @@ pub async fn list_configs(
             classification,
             style,
             filters,
-            is_public: row.get("is_public"),
+            is_public,
             created_by: row.get("created_by"),
-            created_at: row.get("created_at"),
-            updated_at: row.get("updated_at"),
+            created_at,
+            updated_at,
         });
     }
     
@@ -365,13 +392,13 @@ pub async fn list_configs(
 /// GET /thematic/configs/:id - Récupérer une configuration
 pub async fn get_config(
     State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<String>,
 ) -> Result<Json<ThematicConfig>, (StatusCode, String)> {
     let pool = &state.pool;
     let row = sqlx::query(
         "SELECT id, name, description, map_type, parameter, config, is_public,
                 created_by, created_at, updated_at
-         FROM thematic_configs
+         FROM public.thematic_configs
          WHERE id = $1"
     )
     .bind(id)
@@ -380,7 +407,11 @@ pub async fn get_config(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Erreur DB: {}", e)))?
     .ok_or((StatusCode::NOT_FOUND, "Configuration non trouvée".to_string()))?;
     
-    let config_json: serde_json::Value = row.get("config");
+    let config_text: String = row
+        .try_get("config")
+        .unwrap_or_else(|_| "{}".to_string());
+    let config_json: serde_json::Value =
+        serde_json::from_str(&config_text).unwrap_or_else(|_| serde_json::json!({}));
     
     let classification = config_json.get("classification")
         .and_then(|c| serde_json::from_value(c.clone()).ok());
@@ -405,9 +436,29 @@ pub async fn get_config(
         "comparative" => MapType::Comparative,
         _ => MapType::Choropleth,
     };
+
+    let id_str: String = row.try_get("id").unwrap_or_default();
+    let parsed_id = Uuid::parse_str(&id_str).ok();
+
+    let created_at = row
+        .try_get::<String, _>("created_at")
+        .ok()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+        .map(|dt| dt.with_timezone(&chrono::Utc));
+    let updated_at = row
+        .try_get::<String, _>("updated_at")
+        .ok()
+        .and_then(|s| chrono::DateTime::parse_from_rfc3339(&s).ok())
+        .map(|dt| dt.with_timezone(&chrono::Utc));
+
+    let is_public = row
+        .try_get::<String, _>("is_public")
+        .ok()
+        .map(|s| s.trim().eq_ignore_ascii_case("true") || s.trim() == "1")
+        .unwrap_or(false);
     
     Ok(Json(ThematicConfig {
-        id: Some(row.get("id")),
+        id: parsed_id,
         name: row.get("name"),
         description: row.get("description"),
         map_type,
@@ -415,20 +466,20 @@ pub async fn get_config(
         classification,
         style,
         filters,
-        is_public: row.get("is_public"),
+        is_public,
         created_by: row.get("created_by"),
-        created_at: row.get("created_at"),
-        updated_at: row.get("updated_at"),
+        created_at,
+        updated_at,
     }))
 }
 
 /// DELETE /thematic/configs/:id - Supprimer une configuration
 pub async fn delete_config(
     State(state): State<AppState>,
-    Path(id): Path<Uuid>,
+    Path(id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, String)> {
     let pool = &state.pool;
-    let result = sqlx::query("DELETE FROM thematic_configs WHERE id = $1")
+    let result = sqlx::query("DELETE FROM public.thematic_configs WHERE id = $1")
         .bind(id)
         .execute(pool)
         .await

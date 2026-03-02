@@ -863,7 +863,7 @@ pub async fn list_tests(
     };
     
     let rows = sqlx::query(
-        "SELECT id::text, type, value, unit, depth_m, created_at FROM essais WHERE sondage_id = $1 AND deleted_at IS NULL ORDER BY depth_m ASC"
+        "SELECT id::text, type, value, unit, depth_m FROM atlas.essais WHERE sondage_id = $1 ORDER BY depth_m ASC"
     )
     .bind(sondage_id)
     .fetch_all(pool)
@@ -877,7 +877,6 @@ pub async fn list_tests(
                 let value: Option<sqlx::types::BigDecimal> = r.try_get("value").ok().flatten();
                 let unit: Option<String> = r.try_get("unit").ok();
                 let depth: Option<sqlx::types::BigDecimal> = r.try_get("depth_m").ok().flatten();
-                let created: Option<time::OffsetDateTime> = r.try_get("created_at").ok();
                 
                 Test {
                     id: test_id.unwrap_or_default(),
@@ -886,7 +885,7 @@ pub async fn list_tests(
                     value: value.and_then(|v| v.to_f64()).unwrap_or(0.0),
                     unit: unit.unwrap_or_default(),
                     depth_m: depth.and_then(|v| v.to_f64()).unwrap_or(0.0),
-                    created_at: created.map(|t| t.format(&time::format_description::well_known::Rfc3339).unwrap()).unwrap_or_default(),
+                    created_at: String::new(),
                 }
             }).collect();
             
@@ -911,22 +910,13 @@ pub async fn delete_test(
         Err(_) => return (StatusCode::BAD_REQUEST, Json(serde_json::json!({"error": "Invalid UUID"}))).into_response(),
     };
     
-    let result = sqlx::query("UPDATE essais SET deleted_at = now() WHERE id = $1 AND deleted_at IS NULL")
+    let result = sqlx::query("DELETE FROM atlas.essais WHERE id = $1")
         .bind(uuid)
         .execute(pool)
         .await;
     
     match result {
-        Ok(r) if r.rows_affected() > 0 => {
-            let _ = sqlx::query("INSERT INTO audit_log (action, entity, entity_id) VALUES ($1, $2, $3)")
-                .bind("DELETE")
-                .bind("essai")
-                .bind(uuid)
-                .execute(pool)
-                .await;
-            
-            (StatusCode::NO_CONTENT, Json(serde_json::json!({}))).into_response()
-        }
+        Ok(r) if r.rows_affected() > 0 => (StatusCode::NO_CONTENT, Json(serde_json::json!({}))).into_response(),
         Ok(_) => (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "Test not found"}))).into_response(),
         Err(e) => {
             tracing::error!(?e, "delete_test error");
