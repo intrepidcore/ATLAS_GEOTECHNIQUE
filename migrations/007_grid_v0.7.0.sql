@@ -7,6 +7,8 @@
 -- La génération de la grille elle-même se fait via l'ETL (voir etl/cli.py : make-grid)
 -- car elle nécessite le polygone du Togo chargé au préalable.
 
+CREATE EXTENSION IF NOT EXISTS postgis;
+
 -- Table pour stocker le polygone du pays (Togo)
 CREATE TABLE IF NOT EXISTS country_tg (
   id SERIAL PRIMARY KEY,

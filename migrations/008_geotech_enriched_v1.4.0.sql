@@ -7,43 +7,76 @@
 -- ============================================================================
 
 -- Type de sol (pour sondages)
-CREATE TYPE type_sol_enum AS ENUM (
-    'Vertisols et Paravertisols',
-    'Ferrugineux Tropicaux et Pseudogley',
-    'Hydromorphes',
-    'Faiblement Ferralitique',
-    'Ferralitique Typique ou Modaux',
-    'Ferrugineux Tropicaux Lessivés',
-    'Autre'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public'
+          AND t.typname = 'type_sol_enum'
+    ) THEN
+        CREATE TYPE type_sol_enum AS ENUM (
+            'Vertisols et Paravertisols',
+            'Ferrugineux Tropicaux et Pseudogley',
+            'Hydromorphes',
+            'Faiblement Ferralitique',
+            'Ferralitique Typique ou Modaux',
+            'Ferrugineux Tropicaux Lessivés',
+            'Autre'
+        );
+    END IF;
+END $$;
 
 -- Analyses qualitatives (pour essais et classifications)
-CREATE TYPE analyse_qualitative_enum AS ENUM (
-    'Faible',
-    'Moyen',
-    'Moyenne',
-    'Fort',
-    'Forte',
-    'Très forte',
-    'Elevé',
-    'Très élevé',
-    'Non gonflant',
-    'Gonflant',
-    'Peu gonflant',
-    'Moyennement gonflant',
-    'Très gonflant'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public'
+          AND t.typname = 'analyse_qualitative_enum'
+    ) THEN
+        CREATE TYPE analyse_qualitative_enum AS ENUM (
+            'Faible',
+            'Moyen',
+            'Moyenne',
+            'Fort',
+            'Forte',
+            'Très forte',
+            'Elevé',
+            'Très élevé',
+            'Non gonflant',
+            'Gonflant',
+            'Peu gonflant',
+            'Moyennement gonflant',
+            'Très gonflant'
+        );
+    END IF;
+END $$;
 
 -- Méthodes de classification
-CREATE TYPE methode_classification_enum AS ENUM (
-    'CHASSAGNEUX D. et al. ;1996',
-    'Dakshanamurthy et Raman (1973)',
-    'SEED H. (1962)',
-    'VIJAYVERGIYA et GHAZZALY 1973',
-    'Williams et Donaldson (1980)',
-    'Chen (1988)',
-    'Autre'
-);
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_type t
+        JOIN pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public'
+          AND t.typname = 'methode_classification_enum'
+    ) THEN
+        CREATE TYPE methode_classification_enum AS ENUM (
+            'CHASSAGNEUX D. et al. ;1996',
+            'Dakshanamurthy et Raman (1973)',
+            'SEED H. (1962)',
+            'VIJAYVERGIYA et GHAZZALY 1973',
+            'Williams et Donaldson (1980)',
+            'Chen (1988)',
+            'Autre'
+        );
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 2. Enrichir la table sondages

@@ -1,0 +1,8 @@
+atlas._sqlx_migrations
+atlas.colab_email_jobs
+atlas.colab_export_jobs
+atlas.colab_export_logs
+atlas.colab_export_schedules
+atlas.colab_export_templates
+atlas.colab_maille_notification_logs
+atlas.dataset_metadata

@@ -139,6 +139,12 @@ Avant d’écrire une migration SQL, toujours :
 
 ## 3. Scripts ETL & DSM (PowerShell, GDAL)
 
+**[ETL-00] Commandes: lancer directement (pas de wrapper PowerShell)**
+
+* Préférer l’exécution directe des commandes dans le terminal.
+* Éviter les wrappers du type : `powershell -NoProfile -Command "..."`.
+* Si besoin de PowerShell : lancer directement la commande PowerShell (pipeline inclus) dans un terminal PowerShell.
+
 **[ETL-01] Un script canonique par usage**
 
 * Éviter les familles `import_dsm_cop30.ps1`, `import_dsm_cop30_v2.ps1`, `*_final.ps1`.

@@ -1,0 +1,10 @@
+{
+  "dump_schema_count": 21,
+  "db_schema_count": 21,
+  "schemas_only_in_dump": 21,
+  "schemas_only_in_db": 21,
+  "dump_table_count": 150,
+  "db_table_count": 158,
+  "tables_only_in_dump": 0,
+  "tables_only_in_db": 8
+}

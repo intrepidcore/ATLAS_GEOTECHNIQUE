@@ -9,6 +9,8 @@ mod version;
 mod routes;
 mod config;
 mod dataset_master;
+mod db_api;
+mod auth_dev;
 mod surveys;
 mod surveys_extended;
 mod surveys_bulk;
@@ -25,6 +27,12 @@ mod cells_labs;
 mod cells_kpi;
 mod surveys_compat;
 mod surveys_unified;
+mod stats_api;
+mod boundary_api;
+mod ws_api;
+mod colab_stub;
+mod adm3_api;
+mod sondages_api;
 pub mod state;
 
 #[derive(Serialize)]
@@ -52,6 +60,10 @@ async fn main() -> anyhow::Result<()> {
         .allow_origin([
             "http://localhost:8080".parse::<axum::http::HeaderValue>().unwrap(),
             "http://127.0.0.1:8080".parse::<axum::http::HeaderValue>().unwrap(),
+            "http://localhost:5173".parse::<axum::http::HeaderValue>().unwrap(),
+            "http://127.0.0.1:5173".parse::<axum::http::HeaderValue>().unwrap(),
+            "http://localhost:1420".parse::<axum::http::HeaderValue>().unwrap(),
+            "http://127.0.0.1:1420".parse::<axum::http::HeaderValue>().unwrap(),
         ])
         .allow_methods([Method::GET, Method::POST, Method::DELETE, Method::PATCH, Method::PUT, Method::OPTIONS])
         .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
@@ -73,6 +85,17 @@ async fn main() -> anyhow::Result<()> {
         .route("/healthz", get(|| async { Json(Health { status: "ok" }) }))
         .route("/version", get(version::version))
         .route("/echo", post(|Json(v): Json<serde_json::Value>| async move { Json(Echo { any: v })}))
+        .nest("/db", db_api::router())
+        .nest("/auth", auth_dev::router())
+        .route("/stats/global", get(stats_api::get_global_stats))
+        .route("/adm0/geojson", get(boundary_api::get_adm0_geojson))
+        .route("/adm3/geojson", get(adm3_api::get_adm3_geojson))
+        .route("/ws", get(ws_api::ws_handler))
+        .nest("/colab", colab_stub::router())
+        .route("/sondages", get(sondages_api::list_sondages))
+        .route("/sondages/stats", get(sondages_api::get_sondages_stats))
+        .route("/sondages/:id/details", get(sondages_api::get_sondage_details))
+        .route("/maille/:code", get(routes::get_maille_feature))
         .route("/coverage/mailles", get(routes::get_coverage_mailles))
         .nest("/grid", routes::grid_router())
         // Survey management endpoints

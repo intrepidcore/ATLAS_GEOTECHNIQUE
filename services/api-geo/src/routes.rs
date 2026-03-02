@@ -13,6 +13,93 @@ pub struct GridResponse {
     pub summary: serde_json::Value,
 }
 
+pub async fn get_maille_feature(
+    State(state): State<AppState>,
+    Path(code): Path<String>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    let row_opt = sqlx::query(
+        r#"
+        SELECT
+            m.code,
+            ST_AsGeoJSON(ST_Transform(m.geom, 4326)) AS g,
+            mv.adm1_name,
+            mv.adm2_name,
+            mv.adm3_name
+        FROM atlas.mailles m
+        LEFT JOIN atlas.mv_mailles_geotech mv ON mv.code = m.code
+        WHERE m.code = $1
+        "#,
+    )
+    .bind(&code)
+    .fetch_optional(pool)
+    .await;
+
+    let row = match row_opt {
+        Ok(Some(r)) => r,
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error":"maille introuvable"})),
+            )
+                .into_response();
+        }
+        Err(e) => {
+            tracing::error!(?e, "get_maille_feature");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error":"db error"})),
+            )
+                .into_response();
+        }
+    };
+
+    let g: String = match row.try_get("g") {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(?e, "get_maille_feature decode geojson");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error":"decode"})),
+            )
+                .into_response();
+        }
+    };
+
+    let geom: serde_json::Value = match serde_json::from_str(&g) {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::error!(?e, "get_maille_feature parse geojson");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error":"parse"})),
+            )
+                .into_response();
+        }
+    };
+
+    let mut props = serde_json::json!({
+        "code": code,
+    });
+    if let Ok(Some(v)) = row.try_get::<Option<String>, _>("adm1_name") {
+        props["adm1_name"] = serde_json::Value::String(v);
+    }
+    if let Ok(Some(v)) = row.try_get::<Option<String>, _>("adm2_name") {
+        props["adm2_name"] = serde_json::Value::String(v);
+    }
+    if let Ok(Some(v)) = row.try_get::<Option<String>, _>("adm3_name") {
+        props["adm3_name"] = serde_json::Value::String(v);
+    }
+
+    Json(serde_json::json!({
+        "type":"Feature",
+        "geometry": geom,
+        "properties": props
+    }))
+    .into_response()
+}
+
 pub fn grid_router() -> Router<AppState> {
     Router::new()
         .route("/:code", get(get_grid))
@@ -129,14 +216,36 @@ pub async fn get_coverage_mailles(
     
     // Construire la requête avec filtre bbox optionnel
     // Utilise mv_mailles_geotech qui inclut le spread ADM3
+    // UI coloring expects these properties:
+    // - has_exact_location (green)
+    // - has_random_location (blue)
+    // - is_assigned (purple) (not available in this API yet)
+    // - has_no_geom (yellow)
+    // We compute per-maille flags from atlas.sondages.location_mode/geom.
     let mut query = r#"
-        SELECT code,
-               ST_AsGeoJSON(ST_Transform(geom,4326)) AS g,
-               adm1_name,
-               adm2_name,
-               adm3_name,
-               (nb_sondages_real + nb_sondages_spread)::bigint AS n_sondages,
-               0::bigint AS n_essais,
+        WITH sondages_by_maille AS (
+            SELECT
+                m.code AS code,
+                BOOL_OR(s.location_mode = 'exact') AS has_exact_location,
+                BOOL_OR(s.location_mode = 'adm_random_cell') AS has_random_location,
+                BOOL_OR(s.geom IS NULL) AS has_no_geom
+            FROM atlas.mailles m
+            LEFT JOIN atlas.sondages s
+              ON (
+                    (s.geom IS NOT NULL AND ST_Within(ST_Transform(s.geom, 25231), m.geom))
+                 OR (s.geom IS NULL AND s.maille_code = m.code)
+                 )
+             AND s.deleted_at IS NULL
+            GROUP BY m.code
+        )
+        SELECT
+               mv.code,
+               ST_AsGeoJSON(ST_Transform(mv.geom,4326)) AS g,
+               mv.adm1_name,
+               mv.adm2_name,
+               mv.adm3_name,
+               mv.n_sondages::bigint AS n_sondages,
+               COALESCE(mv.n_essais_total, 0)::bigint AS n_essais,
                NULL::numeric AS spt_n_avg,
                NULL::numeric AS qc_avg,
                0::bigint AS n_depth_0_5,
@@ -144,8 +253,12 @@ pub async fn get_coverage_mailles(
                0::bigint AS n_depth_10plus,
                0::bigint AS n_spt_n,
                0::bigint AS n_qc,
-               has_data
-        FROM mv_mailles_geotech
+               mv.has_data,
+               COALESCE(sb.has_exact_location, false) AS has_exact_location,
+               COALESCE(sb.has_random_location, false) AS has_random_location,
+               COALESCE(sb.has_no_geom, false) AS has_no_geom
+        FROM atlas.mv_mailles_geotech mv
+        LEFT JOIN sondages_by_maille sb ON sb.code = mv.code
     "#.to_string();
     
     // Ajouter filtre bbox si présent
@@ -182,6 +295,9 @@ pub async fn get_coverage_mailles(
         let n_spt_n: i64 = r.try_get("n_spt_n").unwrap_or(0);
         let n_qc: i64 = r.try_get("n_qc").unwrap_or(0);
         let has_data = n_sondages > 0;
+        let has_exact_location: bool = r.try_get("has_exact_location").unwrap_or(false);
+        let has_random_location: bool = r.try_get("has_random_location").unwrap_or(false);
+        let has_no_geom: bool = r.try_get("has_no_geom").unwrap_or(false);
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
             let mut props = serde_json::json!({
                 "code": code,
@@ -189,6 +305,9 @@ pub async fn get_coverage_mailles(
                 "n_sondages": n_sondages,
                 "n_essais": n_essais
             });
+            props["has_exact_location"] = serde_json::Value::from(has_exact_location);
+            props["has_random_location"] = serde_json::Value::from(has_random_location);
+            props["has_no_geom"] = serde_json::Value::from(has_no_geom);
             if let Some(adm1) = adm1_name {
                 props["adm1_name"] = serde_json::Value::String(adm1);
             }
@@ -434,13 +553,25 @@ async fn get_grid_details(
     let pool = &state.pool;
     
     // 1. Récupérer les infos de la maille
+    // NB: atlas.mailles ne contient pas adm1_name/adm3_name dans ce dataset.
+    // Les infos ADM sont portées par atlas.mv_mailles_geotech.
     let maille_row = match sqlx::query(
         r#"
-        SELECT id, adm1_name, adm2_name, adm3_name, stats, updated_at
-        FROM mailles
-        WHERE code = $1
+        SELECT
+            m.id,
+            m.stats,
+            m.updated_at,
+            mv.adm1_name,
+            mv.adm2_name,
+            mv.adm3_name
+        FROM atlas.mailles m
+        LEFT JOIN atlas.mv_mailles_geotech mv ON mv.code = m.code
+        WHERE m.code = $1
         "#
-    ).bind(&code).fetch_optional(pool).await {
+    )
+    .bind(&code)
+    .fetch_optional(pool)
+    .await {
         Ok(Some(r)) => r,
         Ok(None) => return (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "maille introuvable"}))).into_response(),
         Err(e) => {
@@ -468,9 +599,9 @@ async fn get_grid_details(
             COUNT(e.id)::bigint AS n_essais,
             MIN(e.depth_m) AS zmin,
             MAX(e.depth_m) AS zmax
-        FROM mailles m
-        LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
-        LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+        FROM atlas.mailles m
+        LEFT JOIN atlas.sondages s ON ST_Within(ST_Transform(s.geom, 25231), m.geom) AND s.deleted_at IS NULL
+        LEFT JOIN atlas.essais e ON e.sondage_id = s.id
         WHERE m.id = $1
         "#
     ).bind(maille_id).fetch_one(pool).await {
@@ -505,10 +636,10 @@ async fn get_grid_details(
             s.date,
             s.location_accuracy,
             s.is_geocoded
-        FROM sondages s
-        JOIN mailles m ON m.id = $1
+        FROM atlas.sondages s
+        JOIN atlas.mailles m ON m.id = $1
         WHERE (
-            (s.geom IS NOT NULL AND ST_Within(s.geom, m.geom))
+            (s.geom IS NOT NULL AND ST_Within(ST_Transform(s.geom, 25231), m.geom))
             OR (s.geom IS NULL AND s.maille_code = m.code)
         )
         AND s.deleted_at IS NULL
@@ -532,9 +663,9 @@ async fn get_grid_details(
         // Récupérer les essais de ce sondage
         let essais_rows = match sqlx::query(
             r#"
-            SELECT type_essai, valeur_numerique, unit, depth_m
-            FROM essais
-            WHERE sondage_id = $1 AND deleted_at IS NULL AND valeur_numerique IS NOT NULL
+            SELECT type, value, unit, depth_m
+            FROM atlas.essais
+            WHERE sondage_id = $1 AND value IS NOT NULL
             ORDER BY depth_m ASC
             "#
         ).bind(sondage_id).fetch_all(pool).await {
@@ -548,8 +679,12 @@ async fn get_grid_details(
         let essais: Vec<EssaiDetail> = essais_rows.iter().map(|row| {
             let depth: sqlx::types::BigDecimal = row.get("depth_m");
             EssaiDetail {
-                test_type: row.get("type_essai"),
-                value: row.get::<sqlx::types::BigDecimal, _>("valeur_numerique").to_string().parse().unwrap_or(0.0),
+                test_type: row.get("type"),
+                value: row
+                    .get::<sqlx::types::BigDecimal, _>("value")
+                    .to_string()
+                    .parse()
+                    .unwrap_or(0.0),
                 unit: row.get("unit"),
                 depth_m: depth.to_string().parse().unwrap_or(0.0),
                 date: None,

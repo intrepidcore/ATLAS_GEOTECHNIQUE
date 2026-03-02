@@ -51,6 +51,7 @@ pub async fn ensure_dataset_applied(pool: &PgPool) -> anyhow::Result<()> {
                 current_db = %current_schema_sha256,
                 "Schema sha256 mismatch (desktop mode): continuing"
             );
+            return Ok(());
         } else {
             anyhow::bail!(
                 "Schema sha256 mismatch: manifest={}, current_db={}",

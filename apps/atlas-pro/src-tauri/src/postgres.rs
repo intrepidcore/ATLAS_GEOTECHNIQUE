@@ -11,6 +11,38 @@ pub struct PostgresHandle {
     pub _port_lock: std::fs::File,
 }
 
+fn get_desktop_state_value_if_table_exists(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    key: &str,
+) -> Result<Option<String>> {
+    let exists_sql = "SELECT 1 FROM information_schema.tables WHERE table_schema='atlas' AND table_name='desktop_state' LIMIT 1;";
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg(exists_sql)
+        .output()
+        .context("failed to check atlas.desktop_state existence")?;
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to check desktop_state existence (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    if String::from_utf8_lossy(&out.stdout).trim() != "1" {
+        return Ok(None);
+    }
+    get_desktop_state_value(bin_dir, port, db_user, db_password, db_name, key)
+}
+
 fn ensure_desktop_state_table(bin_dir: &Path, port: u16, db_user: &str, db_password: &str, db_name: &str) -> Result<()> {
     run_sql(
         bin_dir,
@@ -104,6 +136,152 @@ fn set_desktop_state_value(
         value.replace('"', "").replace('\'', "''")
     );
     run_sql(bin_dir, port, db_user, db_password, db_name, &sql)
+}
+
+fn compute_file_blake3(path: &Path) -> Result<String> {
+    let bytes = std::fs::read(path).with_context(|| format!("failed to read file ({})", path.display()))?;
+    Ok(blake3::hash(&bytes).to_hex().to_string())
+}
+
+fn repo_root_from_tauri() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("..")
+}
+
+fn find_seed_dump(repo_root: &Path) -> Option<PathBuf> {
+    if let Ok(p) = std::env::var("ATLAS_DESKTOP_SEED_DUMP_PATH") {
+        let p = PathBuf::from(p);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+
+    let base = repo_root.join("data").join("db").join("backups");
+    for name in [
+        "atlas_desktop_seed.dump",
+        "atlas_desktop_seed.sql",
+        "atlas_desktop_seed.backup",
+    ] {
+        let p = base.join(name);
+        if p.exists() {
+            return Some(p);
+        }
+    }
+
+    // Fallback: pick the newest dump-like file in backups.
+    let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
+    if let Ok(rd) = std::fs::read_dir(&base) {
+        for e in rd.flatten() {
+            let p = e.path();
+            if !p.is_file() {
+                continue;
+            }
+            let ext = p
+                .extension()
+                .and_then(|s| s.to_str())
+                .unwrap_or("")
+                .to_ascii_lowercase();
+            if ext != "dump" && ext != "backup" && ext != "sql" {
+                continue;
+            }
+            let mt = e
+                .metadata()
+                .ok()
+                .and_then(|m| m.modified().ok())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
+            let replace = match &best {
+                None => true,
+                Some((best_mt, _)) => mt > *best_mt,
+            };
+            if replace {
+                best = Some((mt, p));
+            }
+        }
+    }
+    if let Some((_, p)) = best {
+        return Some(p);
+    }
+    None
+}
+
+fn database_looks_initialized(bin_dir: &Path, port: u16, db_user: &str, db_password: &str, db_name: &str) -> Result<bool> {
+    // Heuristic: if a core table exists, we assume the DB is not empty.
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg("SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='sondages' LIMIT 1;")
+        .output()
+        .context("failed to check if database looks initialized")?;
+
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to check initialization (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim() == "1")
+}
+
+fn restore_seed_dump(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    dump_path: &Path,
+) -> Result<()> {
+    let ext = dump_path
+        .extension()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
+    if ext == "sql" {
+        let status = pg_cmd(bin_dir, "psql.exe")
+            .env("PGHOST", "127.0.0.1")
+            .env("PGPORT", port.to_string())
+            .env("PGUSER", db_user)
+            .env("PGPASSWORD", db_password)
+            .env("PGDATABASE", db_name)
+            .arg("-v")
+            .arg("ON_ERROR_STOP=1")
+            .arg("-f")
+            .arg(dump_path)
+            .status()
+            .with_context(|| format!("failed to restore seed sql ({})", dump_path.display()))?;
+        if !status.success() {
+            return Err(anyhow!("seed sql restore failed ({})", dump_path.display()));
+        }
+        return Ok(());
+    }
+
+    // Assume pg_restore compatible format (custom/tar/directory/backup).
+    let status = pg_cmd(bin_dir, "pg_restore.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .arg("--no-owner")
+        .arg("--no-privileges")
+        .arg("--clean")
+        .arg("--if-exists")
+        .arg("-d")
+        .arg(db_name)
+        .arg(dump_path)
+        .status()
+        .with_context(|| format!("failed to restore seed dump ({})", dump_path.display()))?;
+
+    if !status.success() {
+        return Err(anyhow!("seed dump restore failed ({})", dump_path.display()));
+    }
+    Ok(())
 }
 
 pub fn data_root_dir_path() -> Result<PathBuf> {
@@ -279,10 +457,7 @@ fn apply_repo_migrations(
     ensure_desktop_state_table(bin_dir, port, db_user, db_password, db_name)?;
 
     // Repo root from src-tauri is ../../..
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("..")
-        .join("..");
+    let repo_root = repo_root_from_tauri();
 
     let current_fingerprint = compute_migrations_fingerprint(&repo_root)?;
     let applied = get_desktop_state_value(
@@ -931,6 +1106,64 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
         return Err(anyhow!(
             "Impossible d'activer PostGIS (CREATE EXTENSION postgis). La distribution Postgres/PostGIS embarquée est incomplète."
         ));
+    }
+
+    // Phase 9: seed-from-dump (v1) on first-run to avoid replaying all historical migrations.
+    let repo_root = repo_root_from_tauri();
+
+    let seed_hash_existing = get_desktop_state_value_if_table_exists(
+        &bin_dir,
+        pg.port,
+        &db_user,
+        &db_password,
+        &db_name,
+        "seed_hash",
+    )?;
+    if seed_hash_existing.is_none() {
+        let allow_force = std::env::var("ATLAS_FORCE_SEED_RESTORE")
+            .map(|v| v.trim() == "1" || v.trim().eq_ignore_ascii_case("true"))
+            .unwrap_or(false);
+        let looks_init = database_looks_initialized(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+        if looks_init && !allow_force {
+            // Never destroy an existing user DB implicitly.
+        } else {
+            if let Some(seed_path) = find_seed_dump(&repo_root) {
+                let seed_hash = compute_file_blake3(&seed_path)?;
+                restore_seed_dump(&bin_dir, pg.port, &db_user, &db_password, &db_name, &seed_path)?;
+
+                // Create state table AFTER restore (pg_restore --clean may drop schema atlas).
+                ensure_desktop_state_table(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+
+                set_desktop_state_value(
+                    &bin_dir,
+                    pg.port,
+                    &db_user,
+                    &db_password,
+                    &db_name,
+                    "seed_version",
+                    "v1",
+                )?;
+                set_desktop_state_value(
+                    &bin_dir,
+                    pg.port,
+                    &db_user,
+                    &db_password,
+                    &db_name,
+                    "seed_hash",
+                    &seed_hash,
+                )?;
+
+                set_desktop_state_value(
+                    &bin_dir,
+                    pg.port,
+                    &db_user,
+                    &db_password,
+                    &db_name,
+                    "seed_dump_path",
+                    &seed_path.to_string_lossy(),
+                )?;
+            }
+        }
     }
 
     apply_repo_migrations(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;

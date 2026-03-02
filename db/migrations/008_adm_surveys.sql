@@ -32,6 +32,13 @@ END $$;
 ALTER TABLE sondages 
 ADD COLUMN IF NOT EXISTS location_mode location_mode_enum DEFAULT 'exact';
 
+-- Colonnes ADM: en desktop, les tables génériques adm1/adm2/adm3 peuvent être absentes.
+-- On crée quand même les colonnes UUID (sans FK) pour éviter de casser l'app et les migrations.
+ALTER TABLE sondages
+ADD COLUMN IF NOT EXISTS adm1_id UUID,
+ADD COLUMN IF NOT EXISTS adm2_id UUID,
+ADD COLUMN IF NOT EXISTS adm3_id UUID;
+
 -- Ajouter un index pour location_mode
 CREATE INDEX IF NOT EXISTS idx_sondages_location_mode ON sondages(location_mode);
 
@@ -49,16 +56,18 @@ BEGIN
     RETURN;
   END IF;
 
-  -- Ajouter les colonnes ADM (si pas déjà présentes)
-  EXECUTE 'ALTER TABLE sondages '
-    || 'ADD COLUMN IF NOT EXISTS adm1_id UUID REFERENCES adm1(id),'
-    || 'ADD COLUMN IF NOT EXISTS adm2_id UUID REFERENCES adm2(id),'
-    || 'ADD COLUMN IF NOT EXISTS adm3_id UUID REFERENCES adm3(id)';
-
   -- Ajouter un index pour les requêtes par ADM
   EXECUTE 'CREATE INDEX IF NOT EXISTS idx_sondages_adm1_id ON sondages(adm1_id)';
   EXECUTE 'CREATE INDEX IF NOT EXISTS idx_sondages_adm2_id ON sondages(adm2_id)';
   EXECUTE 'CREATE INDEX IF NOT EXISTS idx_sondages_adm3_id ON sondages(adm3_id)';
+
+  -- Ajouter les foreign keys si le schéma ADM générique existe
+  EXECUTE 'ALTER TABLE sondages DROP CONSTRAINT IF EXISTS sondages_adm1_id_fkey';
+  EXECUTE 'ALTER TABLE sondages DROP CONSTRAINT IF EXISTS sondages_adm2_id_fkey';
+  EXECUTE 'ALTER TABLE sondages DROP CONSTRAINT IF EXISTS sondages_adm3_id_fkey';
+  EXECUTE 'ALTER TABLE sondages ADD CONSTRAINT sondages_adm1_id_fkey FOREIGN KEY (adm1_id) REFERENCES adm1(id)';
+  EXECUTE 'ALTER TABLE sondages ADD CONSTRAINT sondages_adm2_id_fkey FOREIGN KEY (adm2_id) REFERENCES adm2(id)';
+  EXECUTE 'ALTER TABLE sondages ADD CONSTRAINT sondages_adm3_id_fkey FOREIGN KEY (adm3_id) REFERENCES adm3(id)';
 
   -- Ajouter une contrainte: si location_mode = ''unknown'', au moins un ADM doit être renseigné
   IF NOT EXISTS (
@@ -223,43 +232,119 @@ WHERE geom IS NULL AND location_mode IS NULL;
 -- 8. Vue pour les sondages géocodables
 -- ============================================================================
 
-CREATE OR REPLACE VIEW sondages_non_geocodes AS
-SELECT
-  s.id,
-  s.code,
-  s.location_mode,
-  s.adm1_id,
-  s.adm2_id,
-  s.adm3_id,
-  a1.name AS adm1_name,
-  a2.name AS adm2_name,
-  a3.name AS adm3_name,
-  s.created_at,
-  COUNT(e.id) AS n_essais
-FROM sondages s
-LEFT JOIN adm1 a1 ON s.adm1_id = a1.id
-LEFT JOIN adm2 a2 ON s.adm2_id = a2.id
-LEFT JOIN adm3 a3 ON s.adm3_id = a3.id
-LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
-WHERE s.location_mode IN ('unknown', 'centroid', 'random')
-  AND s.deleted_at IS NULL
-GROUP BY s.id, s.code, s.location_mode, s.adm1_id, s.adm2_id, s.adm3_id,
-         a1.name, a2.name, a3.name, s.created_at;
+DO $do$
+BEGIN
+  IF NOT (
+    EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='adm1')
+    AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='adm2')
+    AND EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='adm3')
+  ) THEN
+    RETURN;
+  END IF;
+
+  EXECUTE $sql$
+    CREATE OR REPLACE VIEW sondages_non_geocodes AS
+    SELECT
+      s.id,
+      s.code,
+      s.location_mode,
+      s.adm1_id,
+      s.adm2_id,
+      s.adm3_id,
+      a1.name AS adm1_name,
+      a2.name AS adm2_name,
+      a3.name AS adm3_name,
+      s.created_at,
+      COUNT(e.id) AS n_essais
+    FROM sondages s
+    LEFT JOIN adm1 a1 ON s.adm1_id = a1.id
+    LEFT JOIN adm2 a2 ON s.adm2_id = a2.id
+    LEFT JOIN adm3 a3 ON s.adm3_id = a3.id
+    LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+    WHERE s.location_mode IN ('unknown', 'centroid', 'random')
+      AND s.deleted_at IS NULL
+    GROUP BY s.id, s.code, s.location_mode, s.adm1_id, s.adm2_id, s.adm3_id,
+             a1.name, a2.name, a3.name, s.created_at
+  $sql$;
+END $do$;
 
 -- ============================================================================
 -- 9. Commentaires
 -- ============================================================================
 
 COMMENT ON COLUMN sondages.location_mode IS 'Mode de localisation: exact (GPS), unknown (non géocodé), centroid (centroïde ADM), random (point aléatoire dans ADM)';
-COMMENT ON COLUMN sondages.adm1_id IS 'Référence à la région (ADM1) pour les sondages sans coordonnées précises';
-COMMENT ON COLUMN sondages.adm2_id IS 'Référence à la préfecture (ADM2) pour les sondages sans coordonnées précises';
-COMMENT ON COLUMN sondages.adm3_id IS 'Référence à la commune (ADM3) pour les sondages sans coordonnées précises';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'sondages'
+      AND column_name = 'adm1_id'
+  ) THEN
+    COMMENT ON COLUMN sondages.adm1_id IS 'Référence à la région (ADM1) pour les sondages sans coordonnées précises';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'sondages'
+      AND column_name = 'adm2_id'
+  ) THEN
+    COMMENT ON COLUMN sondages.adm2_id IS 'Référence à la préfecture (ADM2) pour les sondages sans coordonnées précises';
+  END IF;
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'sondages'
+      AND column_name = 'adm3_id'
+  ) THEN
+    COMMENT ON COLUMN sondages.adm3_id IS 'Référence à la commune (ADM3) pour les sondages sans coordonnées précises';
+  END IF;
+END $$;
 
-COMMENT ON FUNCTION get_adm_centroid IS 'Retourne le centroïde (EPSG:25231) d''un polygone administratif';
-COMMENT ON FUNCTION get_adm_random_point IS 'Génère un point aléatoire déterministe (EPSG:25231) dans un polygone administratif';
-COMMENT ON FUNCTION find_maille_for_point IS 'Trouve la maille contenant un point donné (EPSG:25231)';
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'get_adm_centroid'
+  ) THEN
+    COMMENT ON FUNCTION get_adm_centroid IS 'Retourne le centroïde (EPSG:25231) d''un polygone administratif';
+  END IF;
 
-COMMENT ON VIEW sondages_non_geocodes IS 'Vue des sondages en attente de géocodage ou pouvant être re-géocodés (location_mode IN (unknown, centroid, random))';
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'get_adm_random_point'
+  ) THEN
+    COMMENT ON FUNCTION get_adm_random_point IS 'Génère un point aléatoire déterministe (EPSG:25231) dans un polygone administratif';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_proc p
+    JOIN pg_namespace n ON n.oid = p.pronamespace
+    WHERE n.nspname = 'public'
+      AND p.proname = 'find_maille_for_point'
+  ) THEN
+    COMMENT ON FUNCTION find_maille_for_point IS 'Trouve la maille contenant un point donné (EPSG:25231)';
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.views
+    WHERE table_schema = 'public'
+      AND table_name = 'sondages_non_geocodes'
+  ) THEN
+    COMMENT ON VIEW sondages_non_geocodes IS 'Vue des sondages en attente de géocodage ou pouvant être re-géocodés (location_mode IN (unknown, centroid, random))';
+  END IF;
+END $$;
 
 -- ============================================================================
 -- FIN DE LA MIGRATION

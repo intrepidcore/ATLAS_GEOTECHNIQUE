@@ -40,6 +40,11 @@ ALTER TABLE echantillons
     ALTER COLUMN updated_at TYPE TIMESTAMPTZ USING NULLIF(updated_at, '')::timestamptz;
 
 -- Ajouter contraintes
+ALTER TABLE echantillons DROP CONSTRAINT IF EXISTS echantillons_depth_check;
+ALTER TABLE echantillons DROP CONSTRAINT IF EXISTS echantillons_rho_s_check;
+ALTER TABLE echantillons DROP CONSTRAINT IF EXISTS echantillons_water_check;
+ALTER TABLE echantillons DROP CONSTRAINT IF EXISTS echantillons_is_index_check;
+ALTER TABLE echantillons DROP CONSTRAINT IF EXISTS echantillons_eg_check;
 ALTER TABLE echantillons
     ADD CONSTRAINT echantillons_depth_check CHECK (depth_m >= 0),
     ADD CONSTRAINT echantillons_rho_s_check CHECK (rho_s_gcm3 IS NULL OR (rho_s_gcm3 >= 2.0 AND rho_s_gcm3 <= 3.5)),
@@ -79,6 +84,9 @@ ALTER TABLE essais_physiques
     ALTER COLUMN updated_by TYPE UUID USING NULLIF(updated_by, '')::uuid;
 
 -- Ajouter contraintes
+ALTER TABLE essais_physiques DROP CONSTRAINT IF EXISTS essais_physiques_densite_app_check;
+ALTER TABLE essais_physiques DROP CONSTRAINT IF EXISTS essais_physiques_densite_abs_check;
+ALTER TABLE essais_physiques DROP CONSTRAINT IF EXISTS essais_physiques_teneur_eau_check;
 ALTER TABLE essais_physiques
     ADD CONSTRAINT essais_physiques_densite_app_check CHECK (densite_apparente_gcm3 IS NULL OR (densite_apparente_gcm3 > 0 AND densite_apparente_gcm3 < 5)),
     ADD CONSTRAINT essais_physiques_densite_abs_check CHECK (densite_absolue_gcm3 IS NULL OR (densite_absolue_gcm3 > 0 AND densite_absolue_gcm3 < 5)),
@@ -113,6 +121,7 @@ ALTER TABLE essais_classif
     ALTER COLUMN updated_by TYPE UUID USING NULLIF(updated_by, '')::uuid;
 
 -- Ajouter contraintes
+ALTER TABLE essais_classif DROP CONSTRAINT IF EXISTS essais_classif_systeme_check;
 ALTER TABLE essais_classif
     ADD CONSTRAINT essais_classif_systeme_check CHECK (systeme IN ('AASHTO', 'USCS', 'GTR', 'LPC', 'HRB'));
 
@@ -140,6 +149,9 @@ ALTER TABLE granulo_points
     ALTER COLUMN created_at TYPE TIMESTAMPTZ USING COALESCE(NULLIF(created_at, '')::timestamptz, now());
 
 -- Ajouter contraintes
+ALTER TABLE granulo_points DROP CONSTRAINT IF EXISTS granulo_points_method_check;
+ALTER TABLE granulo_points DROP CONSTRAINT IF EXISTS granulo_points_sieve_check;
+ALTER TABLE granulo_points DROP CONSTRAINT IF EXISTS granulo_points_passing_check;
 ALTER TABLE granulo_points
     ADD CONSTRAINT granulo_points_method_check CHECK (method IN ('tamisage', 'sedimento')),
     ADD CONSTRAINT granulo_points_sieve_check CHECK (sieve_mm > 0),
@@ -181,6 +193,12 @@ ALTER TABLE essais_geotechniques
     ALTER COLUMN updated_by TYPE UUID USING NULLIF(updated_by, '')::uuid;
 
 -- Ajouter contraintes
+ALTER TABLE essais_geotechniques DROP CONSTRAINT IF EXISTS essais_geotechniques_depth_check;
+ALTER TABLE essais_geotechniques DROP CONSTRAINT IF EXISTS essais_geotechniques_passant_check;
+ALTER TABLE essais_geotechniques DROP CONSTRAINT IF EXISTS essais_geotechniques_atterberg_check;
+ALTER TABLE essais_geotechniques DROP CONSTRAINT IF EXISTS essais_geotechniques_vbs_check;
+ALTER TABLE essais_geotechniques DROP CONSTRAINT IF EXISTS essais_geotechniques_proctor_check;
+ALTER TABLE essais_geotechniques DROP CONSTRAINT IF EXISTS essais_geotechniques_eg_check;
 ALTER TABLE essais_geotechniques
     ADD CONSTRAINT essais_geotechniques_depth_check CHECK (depth_m >= 0),
     ADD CONSTRAINT essais_geotechniques_passant_check CHECK (

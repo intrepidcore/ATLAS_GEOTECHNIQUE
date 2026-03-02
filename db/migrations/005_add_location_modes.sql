@@ -178,16 +178,55 @@ COMMENT ON VIEW v_sondages_by_adm IS 'Agrégation des sondages par zone administ
 -- ============================================================================
 
 -- Si is_geocoded = TRUE, alors geom doit être non-NULL
-ALTER TABLE sondages ADD CONSTRAINT check_geocoded_has_geom 
-  CHECK (NOT is_geocoded OR geom IS NOT NULL);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE c.conname = 'check_geocoded_has_geom'
+      AND n.nspname = 'public'
+      AND t.relname = 'sondages'
+  ) THEN
+    ALTER TABLE sondages ADD CONSTRAINT check_geocoded_has_geom
+      CHECK (NOT is_geocoded OR geom IS NOT NULL);
+  END IF;
+END $$;
 
 -- Si location_accuracy = 'exact', alors is_geocoded doit être TRUE
-ALTER TABLE sondages ADD CONSTRAINT check_exact_is_geocoded 
-  CHECK (location_accuracy != 'exact' OR is_geocoded = TRUE);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE c.conname = 'check_exact_is_geocoded'
+      AND n.nspname = 'public'
+      AND t.relname = 'sondages'
+  ) THEN
+    ALTER TABLE sondages ADD CONSTRAINT check_exact_is_geocoded
+      CHECK (location_accuracy != 'exact' OR is_geocoded = TRUE);
+  END IF;
+END $$;
 
 -- Si location_accuracy = 'unknown', alors geom doit être NULL
-ALTER TABLE sondages ADD CONSTRAINT check_unknown_no_geom 
-  CHECK (location_accuracy != 'unknown' OR geom IS NULL);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON t.oid = c.conrelid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE c.conname = 'check_unknown_no_geom'
+      AND n.nspname = 'public'
+      AND t.relname = 'sondages'
+  ) THEN
+    ALTER TABLE sondages ADD CONSTRAINT check_unknown_no_geom
+      CHECK (location_accuracy != 'unknown' OR geom IS NULL);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 8. Audit log: ajouter champ location_mode

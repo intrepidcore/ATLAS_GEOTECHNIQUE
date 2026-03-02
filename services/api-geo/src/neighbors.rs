@@ -31,7 +31,7 @@ pub async fn get_neighbors(
         r#"
         SELECT ST_X(ST_Transform(ST_Centroid(geom), 4326)) as lon,
                ST_Y(ST_Transform(ST_Centroid(geom), 4326)) as lat
-        FROM mailles
+        FROM atlas.mailles
         WHERE code = $1
         "#
     )
@@ -57,7 +57,7 @@ pub async fn get_neighbors(
     let neighbors_query = r#"
         WITH current_maille AS (
             SELECT geom, ST_Transform(ST_Centroid(geom), 4326) as centroid
-            FROM mailles
+            FROM atlas.mailles
             WHERE code = $1
         ),
         neighbor_stats AS (
@@ -67,16 +67,16 @@ pub async fn get_neighbors(
                 ST_Y(ST_Transform(ST_Centroid(m.geom), 4326)) as m_lat,
                 COALESCE(COUNT(DISTINCT s.id), 0)::bigint AS n_sondages,
                 COALESCE(COUNT(e.id), 0)::bigint AS n_essais,
-                AVG(CASE WHEN e.type_essai = 'SPT_N' THEN e.valeur_numerique::numeric ELSE NULL END) AS spt_n_avg,
-                AVG(CASE WHEN e.type_essai = 'qc' THEN e.valeur_numerique::numeric ELSE NULL END) AS qc_avg,
+                AVG(CASE WHEN e.type = 'SPT_N' THEN e.value::numeric ELSE NULL END) AS spt_n_avg,
+                AVG(CASE WHEN e.type = 'qc' THEN e.value::numeric ELSE NULL END) AS qc_avg,
                 ST_Distance(
                     ST_Transform(ST_Centroid(m.geom), 4326)::geography,
                     (SELECT centroid::geography FROM current_maille)
                 ) as distance_m
-            FROM mailles m
+            FROM atlas.mailles m
             CROSS JOIN current_maille cm
-            LEFT JOIN sondages s ON ST_Within(s.geom, m.geom)
-            LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+            LEFT JOIN atlas.sondages s ON ST_Within(ST_Transform(s.geom, 25231), m.geom) AND s.deleted_at IS NULL
+            LEFT JOIN atlas.essais e ON e.sondage_id = s.id
             WHERE m.code != $1
               AND ST_DWithin(
                     ST_Transform(m.geom, 4326)::geography,
