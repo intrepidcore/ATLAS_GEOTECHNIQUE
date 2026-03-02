@@ -36,25 +36,26 @@ pub async fn list_audit_logs(
     let mut query = r#"
         SELECT 
             id::text,
-            action,
-            entity,
-            entity_id::text,
-            payload,
+            operation::text as action,
+            table_name::text as entity,
+            '' as entity_id,
+            metadata as payload,
             created_at,
             user_id
-        FROM audit_log
+        FROM atlas.audit_log
         WHERE 1=1
     "#
     .to_string();
 
     if let Some(entity) = &q.entity {
-        query.push_str(&format!(" AND entity = '{}'", entity.replace("'", "''")));
+        query.push_str(&format!(" AND table_name = '{}'", entity.replace("'", "''")));
     }
 
     if let Some(entity_id) = &q.entity_id {
+        let entity_id = entity_id.replace("'", "''");
         query.push_str(&format!(
-            " AND entity_id::text = '{}'",
-            entity_id.replace("'", "''")
+            " AND (metadata->>'entity_id' = '{}' OR staging_id = '{}')",
+            entity_id, entity_id
         ));
     }
 
@@ -112,25 +113,26 @@ pub async fn export_audit_csv(
     let mut query = r#"
         SELECT 
             id::text,
-            action,
-            entity,
-            entity_id::text,
-            payload,
+            operation::text as action,
+            table_name::text as entity,
+            '' as entity_id,
+            metadata as payload,
             created_at,
             user_id
-        FROM audit_log
+        FROM atlas.audit_log
         WHERE 1=1
     "#
     .to_string();
 
     if let Some(entity) = &q.entity {
-        query.push_str(&format!(" AND entity = '{}'", entity.replace("'", "''")));
+        query.push_str(&format!(" AND table_name = '{}'", entity.replace("'", "''")));
     }
 
     if let Some(entity_id) = &q.entity_id {
+        let entity_id = entity_id.replace("'", "''");
         query.push_str(&format!(
-            " AND entity_id::text = '{}'",
-            entity_id.replace("'", "''")
+            " AND (metadata->>'entity_id' = '{}' OR staging_id = '{}')",
+            entity_id, entity_id
         ));
     }
 

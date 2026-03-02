@@ -215,13 +215,13 @@ pub async fn export_geopackage(
             m.adm3_name,
             COALESCE(COUNT(DISTINCT s.id), 0)::bigint as n_sondages,
             COALESCE(COUNT(e.id), 0)::bigint as n_essais,
-            AVG(CASE WHEN e.type_essai = 'SPT_N' THEN e.valeur_numerique::numeric ELSE NULL END) as spt_n_avg,
-            AVG(CASE WHEN e.type_essai = 'qc' THEN e.valeur_numerique::numeric ELSE NULL END) as qc_avg,
+            AVG(CASE WHEN e.type = 'SPT_N' THEN e.value::numeric ELSE NULL END) as spt_n_avg,
+            AVG(CASE WHEN e.type = 'qc' THEN e.value::numeric ELSE NULL END) as qc_avg,
             MIN(e.depth_m) as depth_min,
             MAX(e.depth_m) as depth_max
-        FROM mailles m
-        LEFT JOIN sondages s ON ST_Within(s.geom, m.geom)
-        LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+        FROM atlas.mv_mailles_geotech m
+        LEFT JOIN atlas.sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+        LEFT JOIN atlas.essais e ON e.sondage_id = s.id
         {}
         GROUP BY m.code, m.geom, m.adm1_name, m.adm2_name, m.adm3_name
         ORDER BY m.code
@@ -291,8 +291,8 @@ pub async fn export_geopackage(
                     s.depth_m_max,
                     s.location_accuracy,
                     s.created_at
-                FROM sondages s
-                JOIN mailles m ON ST_Within(s.geom, m.geom)
+                FROM atlas.sondages s
+                JOIN atlas.mv_mailles_geotech m ON ST_Within(s.geom, m.geom)
                 {}
                 AND s.deleted_at IS NULL
                 ORDER BY s.code
@@ -344,16 +344,15 @@ pub async fn export_geopackage(
                     e.id::text,
                     e.sondage_id::text,
                     s.code as sondage_code,
-                    e.type_essai,
-                    e.valeur_numerique,
+                    e.type,
+                    e.value,
                     e.unit,
                     e.depth_m,
-                    e.created_at
-                FROM essais e
-                JOIN sondages s ON e.sondage_id = s.id
-                JOIN mailles m ON ST_Within(s.geom, m.geom)
+                    NULL::text as created_at
+                FROM atlas.essais e
+                JOIN atlas.sondages s ON e.sondage_id = s.id
+                JOIN atlas.mv_mailles_geotech m ON ST_Within(s.geom, m.geom)
                 {}
-                AND e.deleted_at IS NULL
                 ORDER BY s.code, e.depth_m
                 "#,
                 where_sql.replace("m.", "m.")

@@ -838,7 +838,7 @@ pub async fn get_adm_cells(
     // Construire la requête pour récupérer toutes les mailles de l'ADM
     let mut query = String::from(
         "SELECT 
-            cell_id,
+            code as cell_id,
             ST_AsGeoJSON(geom)::json as geometry,
             n_sondages,
             adm1_name, adm2_name, adm3_name

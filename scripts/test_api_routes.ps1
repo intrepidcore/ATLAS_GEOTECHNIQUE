@@ -12,7 +12,21 @@ Write-Host "\n-- GET /export/cells/adm?level=adm1&code=Centrale" -ForegroundColo
 curl "$BASE/export/cells/adm?level=adm1&code=Centrale"
 
 Write-Host "\n-- POST /thematic/export/qgis" -ForegroundColor Yellow
-curl "$BASE/thematic/export/qgis" -Method POST -ContentType "application/json" -Body "{}"
+$qgisBody = @{
+  parameter_id = "spt_n_avg"
+  parameter_label = "SPT N (moyenne)"
+  unit = ""
+  map_type = "classes"
+  classes = @()
+  filters = @{
+    adm1 = "Centrale"
+    adm2 = $null
+    adm3 = $null
+    min_sondages = $null
+  }
+} | ConvertTo-Json -Depth 8
+
+curl "$BASE/thematic/export/qgis" -Method POST -ContentType "application/json" -Body $qgisBody
 
 Write-Host "\n-- GET /coverage/adm-boundaries?level=adm1" -ForegroundColor Yellow
 curl "$BASE/coverage/adm-boundaries?level=adm1"
