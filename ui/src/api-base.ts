@@ -13,6 +13,13 @@ const RAW_API_GEO = import.meta.env.VITE_API_GEO ?? "/api";
  * @returns URL absolue de l'API (ex: "http://localhost:8000")
  */
 export function getApiBase(): string {
+  const runtimeOverride = (window as any).__API_GEO__ as string | undefined;
+  if (typeof runtimeOverride === 'string' && runtimeOverride.trim() !== '') {
+    const normalized = runtimeOverride.trim().replace(/\/+$/, "");
+    console.debug('[API-BASE] Runtime override:', normalized);
+    return normalized;
+  }
+
   // Si la valeur est déjà absolue → on normalise juste
   if (/^https?:\/\//i.test(RAW_API_GEO)) {
     const normalized = RAW_API_GEO.replace(/\/+$/, "");
@@ -20,16 +27,9 @@ export function getApiBase(): string {
     return normalized;
   }
 
-  // Sinon : calculer depuis window.location
-  // UI sur :8080 → API sur :8000
-  const calculated = `${window.location.protocol}//${window.location.hostname}:8000`;
-  
-  console.debug('[API-BASE] Configuration calculée:', {
-    raw: RAW_API_GEO,
-    calculated: calculated
-  });
-  
-  return calculated;
+  const normalized = RAW_API_GEO.replace(/\/+$/, "");
+  console.debug('[API-BASE] Configuration relative:', normalized);
+  return normalized;
 }
 
 /**
