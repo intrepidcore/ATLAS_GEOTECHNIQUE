@@ -2,19 +2,17 @@
  * Service API centralisé pour toutes les requêtes backend
  */
 
-// Helper pour obtenir une base URL absolue
-function getApiBaseUrl(): string {
-  const envUrl = import.meta.env.VITE_API_URL;
-  if (envUrl && envUrl.startsWith('http')) {
-    return envUrl.replace(/\/+$/, '');
-  }
-  // Fallback: même origine + /api
-  return window.location.origin + '/api';
-}
+import { getApiBase } from '../api-base'
 
 // En dev (port 5173): utilise le proxy Vite vers localhost:8000
 // En prod (port 8080): utilise le proxy nginx /api/ vers api-geo:8000
-export const API_BASE_URL = getApiBaseUrl();
+// En desktop (Tauri): peut être surchargé via window.__API_GEO__
+export function getApiBaseUrl(): string {
+  return getApiBase()
+}
+
+// Compat (certain code expects a string constant)
+export const API_BASE_URL = getApiBaseUrl()
 
 interface ApiError {
   message: string
@@ -23,17 +21,12 @@ interface ApiError {
 }
 
 class ApiClient {
-  private baseUrl: string
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl
-  }
-
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${this.baseUrl}${endpoint}`
+    const baseUrl = getApiBaseUrl()
+    const url = `${baseUrl}${endpoint}`
     
     const config: RequestInit = {
       ...options,
@@ -98,7 +91,7 @@ class ApiClient {
   }
 }
 
-export const api = new ApiClient(API_BASE_URL)
+export const api = new ApiClient()
 
 // Types pour les réponses API
 export interface Table {
