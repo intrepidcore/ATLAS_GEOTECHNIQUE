@@ -143,6 +143,83 @@ fn compute_file_blake3(path: &Path) -> Result<String> {
     Ok(blake3::hash(&bytes).to_hex().to_string())
 }
 
+fn compute_file_sha256_hex(path: &Path) -> Result<String> {
+    use sha2::Digest;
+
+    let bytes = std::fs::read(path).with_context(|| format!("failed to read file ({})", path.display()))?;
+    let mut h = sha2::Sha256::new();
+    h.update(&bytes);
+    Ok(format!("{:x}", h.finalize()))
+}
+
+fn desktop_data_dir() -> Result<PathBuf> {
+    let base = std::env::var("LOCALAPPDATA")
+        .or_else(|_| std::env::var("APPDATA"))
+        .map_err(|_| anyhow!("LOCALAPPDATA/APPDATA not found"))?;
+    Ok(PathBuf::from(base).join("IntrepidCore").join("Atlas"))
+}
+
+fn backup_database_dump(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<(PathBuf, String)> {
+    let backup_dir = desktop_data_dir()?.join("backups");
+    std::fs::create_dir_all(&backup_dir)
+        .with_context(|| format!("failed to create backup dir ({})", backup_dir.display()))?;
+
+    let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S").to_string();
+    let out = backup_dir.join(format!("atlas_{db_name}_pre_migrations_{ts}.dump"));
+
+    let status = pg_cmd(bin_dir, "pg_dump.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .arg("-Fc")
+        .arg("-f")
+        .arg(&out)
+        .arg(db_name)
+        .status()
+        .with_context(|| format!("failed to run pg_dump to {}", out.display()))?;
+
+    if !status.success() {
+        return Err(anyhow!("pg_dump failed (exit={})", status));
+    }
+
+    let sha256 = compute_file_sha256_hex(&out)?;
+    Ok((out, sha256))
+}
+
+fn restore_database_dump(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    dump_path: &Path,
+) -> Result<()> {
+    let status = pg_cmd(bin_dir, "pg_restore.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .arg("--clean")
+        .arg("--if-exists")
+        .arg("-d")
+        .arg(db_name)
+        .arg(dump_path)
+        .status()
+        .with_context(|| format!("failed to run pg_restore from {}", dump_path.display()))?;
+
+    if !status.success() {
+        return Err(anyhow!("pg_restore failed (exit={})", status));
+    }
+    Ok(())
+}
+
 fn repo_root_from_tauri() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
@@ -498,6 +575,28 @@ fn apply_repo_migrations(
     }
 
     if seeded_baseline {
+        // Safety: automatic backup + rollback for post-v1 upgrades.
+        // We only do this when we actually need to apply migrations.
+        let (backup_path, backup_sha256) = backup_database_dump(bin_dir, port, db_user, db_password, db_name)?;
+        set_desktop_state_value(
+            bin_dir,
+            port,
+            db_user,
+            db_password,
+            db_name,
+            "last_migration_backup_path",
+            &backup_path.to_string_lossy(),
+        )?;
+        set_desktop_state_value(
+            bin_dir,
+            port,
+            db_user,
+            db_password,
+            db_name,
+            "last_migration_backup_sha256",
+            &backup_sha256,
+        )?;
+
         // Only apply future migrations (post baseline v1).
         let post_dir = repo_root.join("migrations_post_v1");
         if post_dir.exists() {
@@ -512,7 +611,16 @@ fn apply_repo_migrations(
 
             entries.sort();
             for file in entries {
-                run_migration_file(bin_dir, port, db_user, db_password, db_name, &file)?;
+                if let Err(e) = run_migration_file(bin_dir, port, db_user, db_password, db_name, &file) {
+                    // Rollback: restore the pre-migration backup.
+                    let _ = restore_database_dump(bin_dir, port, db_user, db_password, db_name, &backup_path);
+                    return Err(anyhow!(
+                        "post-v1 migration failed and rollback was attempted (file={}, backup={}): {:#}",
+                        file.display(),
+                        backup_path.display(),
+                        e
+                    ));
+                }
             }
         }
 
