@@ -1,4 +1,5 @@
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use tauri::State;
@@ -12,6 +13,64 @@ struct DiagnosticManifest {
     data_dir: String,
     logs_dir: String,
     postgres_port: Option<u16>,
+}
+
+#[derive(Serialize)]
+struct BackupManifest {
+    created_at: String,
+    app_version: String,
+    db_name: String,
+    backup_file: String,
+    backup_sha256: String,
+    seed_hash: Option<String>,
+    migrations_fingerprint: Option<String>,
+}
+
+fn compute_file_sha256_hex(path: &Path) -> Result<String, String> {
+    use sha2::Digest;
+
+    let bytes = std::fs::read(path)
+        .map_err(|e| format!("failed to read file for sha256 ({}): {e}", path.display()))?;
+    let mut h = sha2::Sha256::new();
+    h.update(&bytes);
+    Ok(format!("{:x}", h.finalize()))
+}
+
+fn query_desktop_state_value(
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    key: &str,
+) -> Result<Option<String>, String> {
+    let psql = postgres::pg_tool_path("psql.exe");
+    let sql = format!(
+        "SELECT v FROM atlas.desktop_state WHERE k='{}' LIMIT 1;",
+        key.replace('"', "")
+    );
+
+    let out = std::process::Command::new(&psql)
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .env("PAGER", "")
+        .env("PSQL_PAGER", "")
+        .arg("-tAc")
+        .arg(sql)
+        .output()
+        .map_err(|e| format!("failed to run psql to query desktop_state: {e}"))?;
+
+    if !out.status.success() {
+        return Ok(None);
+    }
+    let v = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if v.is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(v))
+    }
 }
 
 #[tauri::command]
@@ -141,6 +200,27 @@ pub fn db_backup(pg: State<'_, ManagedPostgres>, paths: State<'_, ManagedPaths>)
     if !status.success() {
         return Err("pg_dump failed".to_string());
     }
+
+    let backup_sha256 = compute_file_sha256_hex(&out)?;
+    let seed_hash = query_desktop_state_value(h.port, &db_user, &db_password, &db_name, "seed_hash").ok().flatten();
+    let migrations_fingerprint =
+        query_desktop_state_value(h.port, &db_user, &db_password, &db_name, "migrations_fingerprint").ok().flatten();
+
+    let manifest = BackupManifest {
+        created_at: chrono::Utc::now().to_rfc3339(),
+        app_version: env!("CARGO_PKG_VERSION").to_string(),
+        db_name: db_name.clone(),
+        backup_file: out.file_name().and_then(|s| s.to_str()).unwrap_or("backup.dump").to_string(),
+        backup_sha256,
+        seed_hash,
+        migrations_fingerprint,
+    };
+
+    let json = serde_json::to_string_pretty(&manifest)
+        .map_err(|e| format!("failed to serialize backup manifest: {e}"))?;
+    let manifest_path = PathBuf::from(format!("{}.json", out.to_string_lossy()));
+    std::fs::write(&manifest_path, json)
+        .map_err(|e| format!("failed to write backup manifest ({}): {e}", manifest_path.display()))?;
 
     Ok(out.to_string_lossy().to_string())
 }
