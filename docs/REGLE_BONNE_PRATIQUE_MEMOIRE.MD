@@ -43,7 +43,59 @@ Les règles sont numérotées pour être faciles à citer / étendre.
   * Ce n’est pas déjà fourni par une dépendance existante.
   * On ne peut pas réutiliser une vue ou un endpoint existant.
 
+**[GEN-05] Toujours confirmer “quel runtime exécute quoi” (source vs binaire embarqué)**
+
+* Quand un bug est observé en Desktop/Tauri, toujours identifier si l’API utilisée est :
+
+  * un service Docker (`docker compose`)
+  * un binaire sidecar embarqué par Tauri (`src-tauri/bin/*`)
+  * un binaire lancé manuellement
+* Règle de base : **un patch dans le code source ne corrige rien tant que le binaire réellement exécuté n’a pas été reconstruit et remplacé**.
+* Symptôme typique : “j’ai corrigé CORS / une route / un header, mais l’erreur reste identique” → on exécute probablement un autre binaire que celui patché.
+
 ---
+
+## 8. Desktop/Tauri (bootstrap, sidecars, UI dev)
+
+Cette section formalise des habitudes “anti dette technique” spécifiques au **Desktop (Tauri)**.
+
+**[DESKTOP-01] Desktop dev : démarrer Tauri via Cargo (pas NPM) si pas de package.json**
+
+* Si le projet Tauri n’a pas de `package.json` dans `src-tauri`, utiliser :
+
+  * `cargo tauri dev` depuis `apps/<app>/src-tauri`
+* Ne pas forcer un `npm --prefix ... run tauri dev` si la structure ne le supporte pas.
+
+**[DESKTOP-02] CORS : valider par un vrai preflight, pas uniquement par l’UI**
+
+* Quand l’UI affiche “blocked by CORS policy”, toujours reproduire avec une requête `OPTIONS` (preflight) et un header `Origin`.
+* Objectif : vérifier la présence de :
+
+  * `Access-Control-Allow-Origin`
+  * `Access-Control-Allow-Credentials` (si cookies/credentials)
+  * `Access-Control-Allow-Methods` / `Access-Control-Allow-Headers`
+* En parallèle, vérifier les logs backend (ex: `api-geo.log`) pour confirmer les `200` sur les routes (`/db/schema`, etc.).
+
+**[DESKTOP-03] UI : bannir les fallbacks relatifs “/api” en Desktop**
+
+* En Desktop dev, l’UI tourne souvent sur `http://localhost:1420` (ou `127.0.0.1`), et l’API sur un autre port (`8000` typiquement).
+* Toute construction d’URL de type :
+
+  * `window.location.origin + '/api'`
+  * `'/api'` par défaut
+
+  peut provoquer des `404` en pointant sur le serveur Vite.
+* Décision recommandée : centraliser la base API dans un module unique (ex: `getApiBase()`), supportant un override runtime (`window.__API_GEO__`) injecté par Tauri.
+
+**[DESKTOP-04] Patch backend Desktop : rebuild + copy explicite dans le dossier sidecar**
+
+* Après un patch backend impactant le Desktop (CORS, routes, auth…), toujours :
+
+  * `cargo build --release` dans `services/api-geo`
+  * copier le binaire vers `apps/<app>/src-tauri/bin/<api-geo>.exe`
+  * relancer `cargo tauri dev`
+
+Cette discipline évite des itérations “fantômes” où l’on teste une version différente de celle patchée.
 
 ## 2. Base de données & migrations (PostGIS)
 

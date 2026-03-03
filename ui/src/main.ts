@@ -2298,6 +2298,35 @@ let lastBounds: L.LatLngBounds | null = null
 let currentGridLevel: '2km' | '28km' | 'combined' = '2km'
 let gridOverlay28Layer: L.GeoJSON<any> | null = null
 
+type GridCacheEntry = {
+  geojson: any
+  layer: L.GeoJSON<any>
+}
+
+const gridCache: Partial<Record<'2km' | '28km', GridCacheEntry>> = {}
+
+function renderCachedGrid(level: '2km' | '28km') {
+  if (!map) return
+  const cached = gridCache[level]
+  if (!cached) return
+
+  if (gridLayer) {
+    map.removeLayer(gridLayer)
+  }
+  if (gridOverlay28Layer) {
+    map.removeLayer(gridOverlay28Layer)
+    gridOverlay28Layer = null
+  }
+
+  gridLayer = cached.layer
+  gridLayer.addTo(map)
+
+  // Mettre à jour la référence globale
+  ;(window as any).gridLayer = gridLayer
+  ;(window as any).gridOverlay28Layer = gridOverlay28Layer
+  ;(window as any).currentGridLevel = currentGridLevel
+}
+
 async function loadGridOverlay28(useBbox = false) {
   try {
     const t0 = performance.now()
@@ -2440,9 +2469,23 @@ async function loadGrid(useBbox = false) {
       params.set('bbox', bbox.join(','))
     }
     
+    // Réutiliser la grille déjà chargée (éviter un refetch 2km inutile quand on repasse depuis 28km)
+    if (!useBbox && (gridForRequest === '2km' || gridForRequest === '28km')) {
+      const cached = gridCache[gridForRequest]
+      if (cached?.geojson) {
+        console.log('[loadGrid] Cache hit:', gridForRequest)
+        renderCachedGrid(gridForRequest)
+        if (currentGridLevel === 'combined') {
+          await loadGridOverlay28(useBbox)
+        }
+        lastBounds = map.getBounds()
+        return
+      }
+    }
+
     const url = `${API_GEO}/coverage/mailles?${params.toString()}`
     console.log('[loadGrid] Fetching URL:', url)
-    
+
     const res = await fetch(url)
     console.log('[loadGrid] Response status:', res.status, res.statusText)
     if (!res.ok) {
@@ -2489,11 +2532,13 @@ async function loadGrid(useBbox = false) {
     }
     hoveredCell = null
     
-    gridLayer = L.geoJSON(gj, {
+    const newGridLayer = L.geoJSON(gj, {
       pane: 'gridPane', // Utiliser le pane dédié pour contrôler le z-order
       style: styleFeature,
       onEachFeature
     }).addTo(map)
+
+    gridLayer = newGridLayer
     
     // Log de debug pour vérifier la création de la couche (Correction C)
     console.log('[Grid] New gridLayer created with', gj.features.length, 'features, Leaflet ID:', (gridLayer as any)._leaflet_id)
@@ -2502,6 +2547,11 @@ async function loadGrid(useBbox = false) {
     ;(window as any).gridLayer = gridLayer
     ;(window as any).gridOverlay28Layer = gridOverlay28Layer
     ;(window as any).currentGridLevel = currentGridLevel
+
+    // Cache in-memory: on garde 2km et 28km pour éviter les refetchs lors des switchs UI
+    if (!useBbox && (gridForRequest === '2km' || gridForRequest === '28km')) {
+      gridCache[gridForRequest] = { geojson: gj, layer: gridLayer }
+    }
 
     if (currentGridLevel === 'combined') {
       await loadGridOverlay28(useBbox)
@@ -2607,6 +2657,19 @@ let isSyncingGridLevel = false
       gridOverlay28Layer = null
     }
     return
+  }
+
+  // Transition optimisée: on ne refetch pas 2km si on l'a déjà en cache.
+  // Cas typique: 2km chargé au boot -> passage 28km -> retour 2km/combined.
+  if (oldLevel === '28km' && (level === '2km' || level === 'combined')) {
+    if (gridCache['2km']?.layer) {
+      console.log('[GRID] Transition cache: 28km ->', level, '(réutilisation layer 2km)')
+      renderCachedGrid('2km')
+      if (level === 'combined') {
+        void loadGridOverlay28()
+      }
+      return
+    }
   }
 
   console.log(`[GRID] Chargement complet pour niveau: ${level}`)

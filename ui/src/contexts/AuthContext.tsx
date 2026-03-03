@@ -5,6 +5,7 @@
  */
 
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { getApiBase } from '../api-base';
 
 // ============================================================================
 // Types
@@ -57,8 +58,7 @@ export interface AuthContextType extends AuthState {
 // ============================================================================
 
 const STORAGE_KEY = 'atlas_auth';
-const API_BASE_URL = import.meta.env.VITE_API_GEO || 
-  (typeof window !== 'undefined' ? `${window.location.origin}/api` : 'http://localhost:8000');
+const API_BASE_URL = getApiBase();
 
 // ============================================================================
 // Context

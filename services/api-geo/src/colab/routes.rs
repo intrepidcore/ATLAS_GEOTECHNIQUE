@@ -44,7 +44,7 @@ async fn list_missions(
     let per_page = filters.per_page.unwrap_or(12).max(1).min(100);
     let offset = (page - 1) * per_page;
 
-    let mut conditions: Vec<String> = vec!["cm.deleted_at IS NULL".to_string()];
+    let mut conditions: Vec<String> = vec!["1=1".to_string()];
 
     if let Some(theme) = filters.theme {
         let t = theme.replace('\'', "''");
@@ -110,16 +110,15 @@ async fn list_missions(
           (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.mission_id = cm.id AND a.unassigned_at IS NULL) AS assigned_students_count,
           (SELECT COUNT(*) FROM atlas.colab_mission_sondages ms WHERE ms.mission_id = cm.id) AS linked_sondages_count,
           (SELECT COUNT(*) FROM atlas.colab_field_logs fl WHERE fl.mission_id = cm.id) AS field_logs_count,
-          (SELECT COUNT(*) FROM atlas.colab_documents d WHERE d.mission_id = cm.id AND d.deleted_at IS NULL) AS documents_count,
+          (SELECT COUNT(*) FROM atlas.colab_documents d WHERE d.mission_id = cm.id) AS documents_count,
           cm.created_at,
           cm.updated_at,
-          v.is_real_conflict,
-          v.holder_student_email AS conflict_holder_email,
-          v.holder_student_name AS conflict_holder_name
+          FALSE AS is_real_conflict,
+          NULL::text AS conflict_holder_email,
+          NULL::text AS conflict_holder_name
         FROM atlas.colab_missions cm
         LEFT JOIN atlas.colab_supervisors s ON s.id = cm.supervisor_id
         LEFT JOIN atlas.users su ON su.id = s.user_id
-        LEFT JOIN atlas.v_colab_mission_conflict_diagnosis v ON v.mission_id = cm.id
         WHERE {where_clause}
         ORDER BY cm.updated_at DESC
         LIMIT {per_page} OFFSET {offset}
@@ -246,33 +245,25 @@ async fn get_mission(
           cm.start_date,
           cm.end_date,
           cm.expected_sondages,
+          cm.supervisor_id,
           cm.description,
           cm.objectifs,
           cm.notes_internal,
-          cm.supervisor_id,
-          cm.created_by,
+          s.id as supervisor_id,
+          su.id as supervisor_user_id,
+          COALESCE(NULLIF(BTRIM(CONCAT(su.first_name, ' ', su.last_name)), ''), su.username) AS supervisor_name,
+          cu.id as created_by_id,
+          COALESCE(NULLIF(BTRIM(CONCAT(cu.first_name, ' ', cu.last_name)), ''), cu.username) AS created_by_name,
           cm.created_at,
           cm.updated_at,
-          COALESCE(NULLIF(BTRIM(CONCAT(su.first_name, ' ', su.last_name)), ''), su.username) AS supervisor_name,
-          su.id AS supervisor_user_id,
-          su.is_active AS supervisor_is_active,
-          s.specialite AS supervisor_specialite,
-          s.institution AS supervisor_institution,
-          cu.id AS created_by_user_id,
-          cu.username AS created_by_username,
-          cu.email AS created_by_email,
-          NULLIF(BTRIM(CONCAT(cu.first_name, ' ', cu.last_name)), '') AS created_by_full_name,
-          (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.mission_id = cm.id AND a.unassigned_at IS NULL) AS assigned_students_count,
-          (SELECT COUNT(*) FROM atlas.colab_mission_sondages ms WHERE ms.mission_id = cm.id) AS linked_sondages_count,
-          v.is_real_conflict,
-          v.holder_student_email AS conflict_holder_email,
-          v.holder_student_name AS conflict_holder_name
+          FALSE AS is_real_conflict,
+          NULL::text AS conflict_holder_email,
+          NULL::text AS conflict_holder_name
         FROM atlas.colab_missions cm
         LEFT JOIN atlas.colab_supervisors s ON s.id = cm.supervisor_id
         LEFT JOIN atlas.users su ON su.id = s.user_id
         LEFT JOIN atlas.users cu ON cu.id = cm.created_by
-        LEFT JOIN atlas.v_colab_mission_conflict_diagnosis v ON v.mission_id = cm.id
-        WHERE cm.id = $1 AND cm.deleted_at IS NULL
+        WHERE cm.id = $1
         "#,
     )
     .bind(mission_id)
@@ -501,23 +492,15 @@ async fn get_stats(
         ));
     }
 
-    let total_missions: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_missions WHERE deleted_at IS NULL",
-    )
+    let total_missions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_missions")
     .fetch_one(&state.pool)
     .await
-    .map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({ "error": format!("Erreur DB: {}", e) })),
-        )
-    })?;
+    .unwrap_or(0);
 
     let status_rows = sqlx::query(
         r#"
         SELECT status::text AS status, COUNT(*)::bigint AS count
         FROM atlas.colab_missions
-        WHERE deleted_at IS NULL
         GROUP BY status
         ORDER BY count DESC
         "#,
@@ -543,7 +526,6 @@ async fn get_stats(
         r#"
         SELECT theme::text AS theme, COUNT(*)::bigint AS count
         FROM atlas.colab_missions
-        WHERE deleted_at IS NULL
         GROUP BY theme
         ORDER BY count DESC
         "#,
@@ -565,15 +547,13 @@ async fn get_stats(
         })
         .collect();
 
-    let total_students: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_students WHERE deleted_at IS NULL",
-    )
+    let total_students: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_students")
     .fetch_one(&state.pool)
     .await
     .unwrap_or(0);
 
     let total_supervisors: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_supervisors s JOIN atlas.users u ON u.id = s.user_id WHERE s.deleted_at IS NULL AND u.deleted_at IS NULL",
+        "SELECT COUNT(*) FROM atlas.colab_supervisors s JOIN atlas.users u ON u.id = s.user_id WHERE u.deleted_at IS NULL",
     )
     .fetch_one(&state.pool)
     .await
@@ -586,9 +566,7 @@ async fn get_stats(
     .await
     .unwrap_or(0);
 
-    let total_documents: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_documents WHERE deleted_at IS NULL",
-    )
+    let total_documents: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_documents")
     .fetch_one(&state.pool)
     .await
     .unwrap_or(0);
@@ -627,8 +605,7 @@ async fn list_supervisors(
             u.is_active
         FROM atlas.colab_supervisors s
         JOIN atlas.users u ON s.user_id = u.id
-        WHERE s.deleted_at IS NULL
-          AND u.deleted_at IS NULL
+        WHERE u.deleted_at IS NULL
         ORDER BY full_name
         "#,
     )

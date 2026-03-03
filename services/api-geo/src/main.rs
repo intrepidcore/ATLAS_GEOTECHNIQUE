@@ -89,22 +89,82 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    // CORS permissif (dev/local). Autoriser tous les ports localhost
+    // CORS
+    // - Desktop/Tauri dev: le frontend tourne sur http://localhost:1420 (ou 127.0.0.1)
+    //   et fait des appels cross-origin vers l'API. Certaines requêtes utilisent des
+    //   credentials (cookies / auth), donc on DOIT éviter allow_origin(Any).
+    // - Docker/dev: si CORS_ORIGINS est défini, on l'utilise.
     use axum::http::header::{ACCEPT, AUTHORIZATION, CONTENT_TYPE};
+    use axum::http::{HeaderValue, Method};
     use tower_http::cors::Any;
 
-    let cors = CorsLayer::new()
-        .allow_origin(Any) // Permet tous les origins en dev (à restreindre en prod)
-        .allow_methods([
-            Method::GET,
-            Method::POST,
-            Method::DELETE,
-            Method::PATCH,
-            Method::PUT,
-            Method::OPTIONS,
-        ])
-        .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
-        .allow_credentials(false); // false car Any ne supporte pas credentials
+    let is_desktop = std::env::var("ATLAS_DESKTOP")
+        .map(|v| v.trim() == "1" || v.trim().eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    let cors_origins_env = std::env::var("CORS_ORIGINS")
+        .ok()
+        .map(|s| {
+            s.split(',')
+                .map(|v| v.trim().to_string())
+                .filter(|v| !v.is_empty())
+                .collect::<Vec<_>>()
+        })
+        .filter(|v| !v.is_empty());
+
+    let cors = if let Some(origins) = cors_origins_env {
+        let mut allowed: Vec<HeaderValue> = Vec::new();
+        for o in origins {
+            if let Ok(h) = HeaderValue::from_str(&o) {
+                allowed.push(h);
+            }
+        }
+
+        CorsLayer::new()
+            .allow_origin(allowed)
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::DELETE,
+                Method::PATCH,
+                Method::PUT,
+                Method::OPTIONS,
+            ])
+            .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
+            .allow_credentials(true)
+    } else if is_desktop {
+        CorsLayer::new()
+            .allow_origin([
+                "http://localhost:1420".parse::<HeaderValue>().unwrap(),
+                "http://127.0.0.1:1420".parse::<HeaderValue>().unwrap(),
+                // compat dev UI standalone
+                "http://localhost:5173".parse::<HeaderValue>().unwrap(),
+                "http://127.0.0.1:5173".parse::<HeaderValue>().unwrap(),
+            ])
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::DELETE,
+                Method::PATCH,
+                Method::PUT,
+                Method::OPTIONS,
+            ])
+            .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
+            .allow_credentials(true)
+    } else {
+        CorsLayer::new()
+            .allow_origin(Any) // Dev/local permissif
+            .allow_methods([
+                Method::GET,
+                Method::POST,
+                Method::DELETE,
+                Method::PATCH,
+                Method::PUT,
+                Method::OPTIONS,
+            ])
+            .allow_headers([AUTHORIZATION, CONTENT_TYPE, ACCEPT])
+            .allow_credentials(false) // Any ne supporte pas credentials
+    };
 
     // DB connexion avec retry (5 tentatives max, backoff exponentiel)
     tracing::info!("Connexion à la base de données...");

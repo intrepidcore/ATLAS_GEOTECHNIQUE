@@ -5,6 +5,7 @@
  */
 
 import React, { useState } from 'react';
+import { getApiBase } from '../api-base';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   MapPin,
@@ -50,7 +51,7 @@ interface FormErrors {
 // API
 // ============================================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_GEO || '';
+const API_BASE_URL = getApiBase();
 
 async function registerStudent(data: RegisterFormData): Promise<{ success: boolean; error?: string }> {
   try {

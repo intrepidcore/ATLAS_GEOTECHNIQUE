@@ -815,9 +815,9 @@ pub async fn get_coverage_mailles(
         SELECT
             mv.code,
             ST_AsGeoJSON(ST_Transform(mv.geom,4326)) AS g,
-            COALESCE(mv.adm1_name, m.adm1_name, a2.adm1_name) AS adm1_name,
+            COALESCE(mv.adm1_name, a2.adm1_name) AS adm1_name,
             COALESCE(mv.adm2_name, m.adm2_name) AS adm2_name,
-            COALESCE(mv.adm3_name, m.adm3_name) AS adm3_name,
+            mv.adm3_name AS adm3_name,
             COALESCE(mv.n_sondages, 0)::bigint AS n_sondages,
             COALESCE(mv.n_echantillons, 0)::bigint AS n_echantillons,
             COALESCE(mv.n_essais_total, 0)::bigint AS n_essais,
@@ -842,8 +842,7 @@ pub async fn get_coverage_mailles(
             JOIN atlas.users u
                 ON u.id = cs.user_id
                 AND u.deleted_at IS NULL
-            WHERE cs.id = ca.student_id
-                AND cs.deleted_at IS NULL
+            WHERE cs.id::text = ca.student_id::text
             LIMIT 1
         ) ca_user ON TRUE
         LEFT JOIN LATERAL (
@@ -856,13 +855,11 @@ pub async fn get_coverage_mailles(
                 ON cma.mission_id = cm.id
                 AND cma.unassigned_at IS NULL
             JOIN atlas.colab_students cs
-                ON cs.id = cma.student_id
-                AND cs.deleted_at IS NULL
+                ON cs.id::text = cma.student_id::text
             JOIN atlas.users u
                 ON u.id = cs.user_id
                 AND u.deleted_at IS NULL
             WHERE cm.maille_id = m.id
-                AND cm.deleted_at IS NULL
             ORDER BY cma.assigned_at DESC
             LIMIT 1
         ) ma ON TRUE
@@ -885,7 +882,7 @@ pub async fn get_coverage_mailles(
     let rows = match sqlx::query(&query).fetch_all(pool).await {
         Ok(v) => v,
         Err(e) => {
-            tracing::error!(?e, "coverage query");
+            tracing::error!(error = %e, query = %query, "coverage query");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"type":"FeatureCollection","features":[]})),
@@ -1563,7 +1560,7 @@ async fn get_grid_details(
             ST_X(ST_Transform(s.geom, 4326)) AS lon,
             ST_Y(ST_Transform(s.geom, 4326)) AS lat,
             s.source,
-            s.date,
+            s.date::text AS date,
             s.location_accuracy,
             s.is_geocoded
         FROM atlas.sondages s
@@ -1654,7 +1651,7 @@ async fn get_grid_details(
                 None
             },
             source: sondage_row.get("source"),
-            date: sondage_row.get("date"),
+            date: sondage_row.try_get("date").ok(),
             essais,
         });
     }

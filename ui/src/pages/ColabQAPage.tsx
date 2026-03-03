@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getApiBase } from '../api-base'
 import {
   MessageCircleQuestion,
   Search,
@@ -82,7 +83,7 @@ interface LeaderboardEntry {
 // API Service
 // ============================================================================
 
-const API_BASE_URL = import.meta.env.VITE_API_GEO || '/api';
+const API_BASE_URL = getApiBase();
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
   const token = localStorage.getItem('atlas_token');

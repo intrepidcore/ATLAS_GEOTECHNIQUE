@@ -396,6 +396,14 @@ fn pg_port_file() -> Result<PathBuf> {
     Ok(data_root_dir()?.join("postgres.port"))
 }
 
+fn running_port_from_postmaster_pid(data_dir: &Path) -> Option<u16> {
+    let pid_file = data_dir.join("postmaster.pid");
+    let content = std::fs::read_to_string(pid_file).ok()?;
+    // postmaster.pid format: pid, data_dir, start_time, port, ...
+    let port_line = content.lines().nth(3)?;
+    port_line.trim().parse::<u16>().ok()
+}
+
 fn pg_password_file() -> Result<PathBuf> {
     Ok(data_root_dir()?.join("postgres.password"))
 }
@@ -459,7 +467,24 @@ fn apply_repo_migrations(
     // Repo root from src-tauri is ../../..
     let repo_root = repo_root_from_tauri();
 
-    let current_fingerprint = compute_migrations_fingerprint(&repo_root)?;
+    // Seeded baseline mode (v1): the database is restored from a known-good dump and must not
+    // replay the full historical migrations. Only apply post-v1 migrations.
+    let seed_hash = get_desktop_state_value(
+        bin_dir,
+        port,
+        db_user,
+        db_password,
+        db_name,
+        "seed_hash",
+    )?;
+
+    let seeded_baseline = seed_hash.as_deref().map(|s| !s.trim().is_empty()).unwrap_or(false);
+
+    let current_fingerprint = if seeded_baseline {
+        compute_post_v1_migrations_fingerprint(&repo_root)?
+    } else {
+        compute_migrations_fingerprint(&repo_root)?
+    };
     let applied = get_desktop_state_value(
         bin_dir,
         port,
@@ -469,6 +494,38 @@ fn apply_repo_migrations(
         "migrations_fingerprint",
     )?;
     if applied.as_deref() == Some(current_fingerprint.as_str()) {
+        return Ok(());
+    }
+
+    if seeded_baseline {
+        // Only apply future migrations (post baseline v1).
+        let post_dir = repo_root.join("migrations_post_v1");
+        if post_dir.exists() {
+            let mut entries: Vec<PathBuf> = std::fs::read_dir(&post_dir)
+                .with_context(|| {
+                    format!("failed to read migrations_post_v1 dir ({})", post_dir.display())
+                })?
+                .flatten()
+                .map(|e| e.path())
+                .filter(|p| p.extension().and_then(|s| s.to_str()).unwrap_or("") == "sql")
+                .collect();
+
+            entries.sort();
+            for file in entries {
+                run_migration_file(bin_dir, port, db_user, db_password, db_name, &file)?;
+            }
+        }
+
+        set_desktop_state_value(
+            bin_dir,
+            port,
+            db_user,
+            db_password,
+            db_name,
+            "migrations_fingerprint",
+            &current_fingerprint,
+        )?;
+
         return Ok(());
     }
 
@@ -537,6 +594,38 @@ fn compute_migrations_fingerprint(repo_root: &Path) -> Result<String> {
 
         let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
             .with_context(|| format!("failed to read migrations dir ({})", dir.display()))?
+            .flatten()
+            .map(|e| e.path())
+            .filter(|p| p.extension().and_then(|s| s.to_str()).unwrap_or("") == "sql")
+            .collect();
+        files.sort();
+
+        for p in files {
+            let rel = p
+                .strip_prefix(repo_root)
+                .unwrap_or(&p)
+                .to_string_lossy()
+                .replace('\\', "/");
+            hasher.update(rel.as_bytes());
+            hasher.update(&[0u8]);
+
+            let bytes = std::fs::read(&p)
+                .with_context(|| format!("failed to read migration file ({})", p.display()))?;
+            hasher.update(&bytes);
+            hasher.update(&[0u8]);
+        }
+    }
+
+    Ok(hasher.finalize().to_hex().to_string())
+}
+
+fn compute_post_v1_migrations_fingerprint(repo_root: &Path) -> Result<String> {
+    let mut hasher = blake3::Hasher::new();
+
+    let dir = repo_root.join("migrations_post_v1");
+    if dir.exists() {
+        let mut files: Vec<PathBuf> = std::fs::read_dir(&dir)
+            .with_context(|| format!("failed to read migrations_post_v1 dir ({})", dir.display()))?
             .flatten()
             .map(|e| e.path())
             .filter(|p| p.extension().and_then(|s| s.to_str()).unwrap_or("") == "sql")
@@ -899,9 +988,27 @@ pub fn ensure_postgres_started() -> Result<PostgresHandle> {
     // (best-effort, mais on échoue explicitement si le start final ne marche pas)
     let is_running = pg_ctl_status(&data_dir).unwrap_or(false);
     if is_running {
-        wait_port("127.0.0.1", port, 5);
+        // If already running, derive the actual port from the live cluster.
+        // `select_port()` can return a different free port, so never trust it in this branch.
+        let running_port = std::env::var("ATLAS_PG_PORT")
+            .ok()
+            .and_then(|v| v.trim().parse::<u16>().ok())
+            .or_else(|| running_port_from_postmaster_pid(&data_dir))
+            .or_else(|| {
+                pg_port_file()
+                    .ok()
+                    .and_then(|p| std::fs::read_to_string(p).ok())
+                    .and_then(|s| s.trim().parse::<u16>().ok())
+            })
+            .unwrap_or(port);
+
+        if let Ok(port_file) = pg_port_file() {
+            let _ = std::fs::write(&port_file, format!("{}\n", running_port));
+        }
+
+        wait_port("127.0.0.1", running_port, 5);
         return Ok(PostgresHandle {
-            port,
+            port: running_port,
             data_dir,
             log_file,
             _cluster_lock: cluster_lock,
@@ -959,6 +1066,10 @@ pub fn ensure_postgres_started() -> Result<PostgresHandle> {
     }
 
     wait_port("127.0.0.1", port, 20);
+
+    if let Ok(port_file) = pg_port_file() {
+        let _ = std::fs::write(&port_file, format!("{}\n", port));
+    }
 
     Ok(PostgresHandle {
         port,
