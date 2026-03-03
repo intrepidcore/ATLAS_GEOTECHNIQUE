@@ -50,7 +50,9 @@ exports/*.pdf
 exports/*.xlsx
 exports/*.csv
 exports/*.json
+data/thematic_maille_matrix_fixed.xlsx
 data/tiles/*.mbtiles
+backup/
 db/dumps/
 
 # QGIS (projets/GeoPackages locaux)
