@@ -213,9 +213,7 @@ export const authApi = {
     const data = await handleResponse<LoginResponse>(response)
 
     // Stocker les tokens
-    tokenStorage.setAccessToken(data.access_token)
-    tokenStorage.setRefreshToken(data.refresh_token)
-    tokenStorage.setUser(data.user)
+    tokenStorage.setTokens(data.access_token, data.refresh_token, data.user)
 
     return data
   },

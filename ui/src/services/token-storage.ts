@@ -30,6 +30,18 @@ export const tokenStorage = {
     return token
   },
 
+  setTokens: (accessToken: string, refreshToken?: string, user?: unknown) => {
+    tokenStorage.setAccessToken(accessToken)
+    localStorage.removeItem(LEGACY_TOKEN_KEY)
+
+    if (typeof refreshToken === 'string') {
+      tokenStorage.setRefreshToken(refreshToken)
+    }
+    if (user !== undefined) {
+      tokenStorage.setUser(user)
+    }
+  },
+
   setAccessToken: (token: string) => {
     localStorage.setItem(TOKEN_KEY, token)
     try {
