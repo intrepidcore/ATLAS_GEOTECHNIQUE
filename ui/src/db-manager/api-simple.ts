@@ -1,5 +1,6 @@
 // API simplifiée pour le gestionnaire de BDD
 import { getApiBase } from '../api-base'
+import { tokenStorage } from '../services/token-storage'
 
 const API_GEO = getApiBase()
 
@@ -9,16 +10,7 @@ const BASE_URL = '/db'
 
 // Helper pour obtenir les headers d'authentification
 function getAuthHeaders(): HeadersInit {
-  // Essayer toutes les clés possibles
-  const token = localStorage.getItem('atlas_token') 
-    || localStorage.getItem('atlas_access_token')
-    || (() => {
-      try {
-        const auth = localStorage.getItem('atlas_auth')
-        return auth ? JSON.parse(auth).accessToken : null
-      } catch { return null }
-    })()
-  
+  const token = tokenStorage.getAccessToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

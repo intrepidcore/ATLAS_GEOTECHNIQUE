@@ -1,5 +1,6 @@
 // Client API pour le gestionnaire de base de données
 import { getApiBase } from '../api-base'
+import { tokenStorage } from '../services/token-storage'
 
 const API_GEO = getApiBase()
 
@@ -29,18 +30,7 @@ import type {
 const BASE_URL = '/db'
 
 function getAuthHeaders(): HeadersInit {
-  const token =
-    localStorage.getItem('atlas_token') ||
-    localStorage.getItem('atlas_access_token') ||
-    (() => {
-      try {
-        const auth = localStorage.getItem('atlas_auth')
-        return auth ? JSON.parse(auth).accessToken : null
-      } catch {
-        return null
-      }
-    })()
-
+  const token = tokenStorage.getAccessToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 

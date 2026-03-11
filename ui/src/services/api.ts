@@ -3,6 +3,7 @@
  */
 
 import { getApiBase } from '../api-base'
+import { tokenStorage } from './token-storage'
 
 // En dev (port 5173): utilise le proxy Vite vers localhost:8000
 // En prod (port 8080): utilise le proxy nginx /api/ vers api-geo:8000
@@ -18,20 +19,6 @@ interface ApiError {
   message: string
   status: number
   details?: any
-}
-
-function getBearerToken(): string | null {
-  const token = localStorage.getItem('atlas_token') || localStorage.getItem('atlas_access_token')
-  if (token) return token
-
-  try {
-    const auth = localStorage.getItem('atlas_auth')
-    if (!auth) return null
-    const parsed = JSON.parse(auth)
-    return parsed?.accessToken || null
-  } catch {
-    return null
-  }
 }
 
 async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number): Promise<Response> {
@@ -57,7 +44,7 @@ class ApiClient {
   ): Promise<T> {
     const url = this.buildUrl(endpoint)
 
-    const token = getBearerToken()
+    const token = tokenStorage.getAccessToken()
 
     const config: RequestInit = {
       ...options,
