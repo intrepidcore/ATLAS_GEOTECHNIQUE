@@ -26,6 +26,26 @@ import { selectionApi } from '@/services/selection-api'
 import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/services/api'
 import { stagingApiV2 } from '@/services/staging-api'
 
+type TauriInvoke = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>
+
+type DbConnectionInfo = {
+  database_url: string
+  host: string
+  port: number
+  db_user: string
+  db_name: string
+}
+
+function getTauriInvoke(): TauriInvoke | null {
+  const w = window as any
+  const invV2 = w?.__TAURI__?.core?.invoke
+  if (typeof invV2 === 'function') return invV2 as TauriInvoke
+
+  const invV1 = w?.__TAURI__?.tauri?.invoke
+  if (typeof invV1 === 'function') return invV1 as TauriInvoke
+  return null
+}
+
 function App() {
   const { isAuthenticated, isLoading: authLoading, user, logout } = useAuth()
   const [activeModal, setActiveModal] = useState<string | null>(null)
@@ -47,6 +67,25 @@ function App() {
   const [notifications, setNotifications] = useState<any[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
+
+  useEffect(() => {
+    const onExpired = () => {
+      logout()
+    }
+
+    window.addEventListener('atlas:auth:expired', onExpired)
+    return () => window.removeEventListener('atlas:auth:expired', onExpired)
+  }, [logout])
+
+  const [dbBusy, setDbBusy] = useState(false)
+  const [dbStatus, setDbStatus] = useState<{ kind: 'ok' | 'err' | 'info'; msg: string } | null>(
+    null,
+  )
+  const [restorePath, setRestorePath] = useState('')
+  const [lastBackupPath, setLastBackupPath] = useState<string | null>(null)
+  const [lastDiagnosticDir, setLastDiagnosticDir] = useState<string | null>(null)
+  const [lastResetQuarantine, setLastResetQuarantine] = useState<string | null>(null)
+  const [dbConnectionInfo, setDbConnectionInfo] = useState<DbConnectionInfo | null>(null)
 
   // État pour éviter le flash pendant la redirection
   const [isRedirecting, setIsRedirecting] = useState(false)
@@ -98,15 +137,21 @@ function App() {
 
   // Charger les tables au démarrage
   useEffect(() => {
+    if (authLoading) return
+    if (!isAuthenticated) return
+    if (!user?.roles?.includes('admin')) return
     loadTables()
-  }, [])
+  }, [authLoading, isAuthenticated, user])
 
   // Charger les colonnes et données quand la table change
   useEffect(() => {
+    if (authLoading) return
+    if (!isAuthenticated) return
+    if (!user?.roles?.includes('admin')) return
     if (selectedTable) {
       loadTableData()
     }
-  }, [selectedSchema, selectedTable])
+  }, [authLoading, isAuthenticated, user, selectedSchema, selectedTable])
 
   const loadTables = async () => {
     try {
@@ -219,6 +264,110 @@ function App() {
   const handleTableSelect = (schema: string, table: string) => {
     setSelectedSchema(schema)
     setSelectedTable(table)
+  }
+
+  const setDbInfo = (msg: string) => setDbStatus({ kind: 'info', msg })
+  const setDbOk = (msg: string) => setDbStatus({ kind: 'ok', msg })
+  const setDbErr = (msg: string) => setDbStatus({ kind: 'err', msg })
+
+  const runDb = async <T,>(fn: () => Promise<T>): Promise<T | null> => {
+    if (dbBusy) return null
+    setDbBusy(true)
+    try {
+      return await fn()
+    } catch (e: any) {
+      setDbErr(e?.message ? String(e.message) : String(e))
+      return null
+    } finally {
+      setDbBusy(false)
+    }
+  }
+
+  const handleDbIntegrity = async () => {
+    const inv = getTauriInvoke()
+    if (!inv) {
+      setDbErr("Commande Tauri indisponible (UI web). Ouvre cette page via l'app Desktop.")
+      return
+    }
+    setDbInfo('Contrôle d’intégrité en cours…')
+    const res = await runDb(() => inv<any>('db_integrity_check'))
+    if (!res) return
+    const ok = typeof res.ok === 'boolean' ? res.ok : false
+    const details = typeof res.details === 'string' ? res.details : ''
+    if (ok) setDbOk(details || '✅ Intégrité OK')
+    else setDbErr(details || '❌ Intégrité KO')
+  }
+
+  const handleDbConnectionInfo = async () => {
+    const inv = getTauriInvoke()
+    if (!inv) {
+      setDbErr("Commande Tauri indisponible (UI web). Ouvre cette page via l'app Desktop.")
+      return
+    }
+    setDbInfo('Récupération des infos de connexion…')
+    const res = await runDb(() => inv<DbConnectionInfo>('db_connection_info'))
+    if (!res) return
+    setDbConnectionInfo(res)
+    setDbOk('✅ Infos de connexion récupérées')
+  }
+
+  const handleDbBackup = async () => {
+    const inv = getTauriInvoke()
+    if (!inv) {
+      setDbErr("Commande Tauri indisponible (UI web). Ouvre cette page via l'app Desktop.")
+      return
+    }
+    setDbInfo('Backup en cours…')
+    const res = await runDb(() => inv<any>('db_backup'))
+    if (!res) return
+    const p = typeof res.path === 'string' ? res.path : null
+    if (p) setLastBackupPath(p)
+    setDbOk(p ? `✅ Backup créé: ${p}` : '✅ Backup terminé')
+  }
+
+  const handleDbRestore = async () => {
+    const inv = getTauriInvoke()
+    if (!inv) {
+      setDbErr("Commande Tauri indisponible (UI web). Ouvre cette page via l'app Desktop.")
+      return
+    }
+    const path = restorePath.trim()
+    if (!path) {
+      setDbErr('Chemin du backup requis')
+      return
+    }
+    setDbInfo('Restore en cours…')
+    const res = await runDb(() => inv<any>('db_restore', { backup_path: path }))
+    if (!res) return
+    setDbOk('✅ Restore terminé')
+  }
+
+  const handleDbReset = async () => {
+    const inv = getTauriInvoke()
+    if (!inv) {
+      setDbErr("Commande Tauri indisponible (UI web). Ouvre cette page via l'app Desktop.")
+      return
+    }
+    setDbInfo('Reset en cours…')
+    const res = await runDb(() => inv<any>('db_reset'))
+    if (!res) return
+    const q = typeof res.quarantine_dir === 'string' ? res.quarantine_dir : null
+    if (q) setLastResetQuarantine(q)
+    setDbOk(q ? `✅ Reset terminé (quarantaine: ${q})` : '✅ Reset terminé')
+  }
+
+  const handleDiagnosticExport = async () => {
+    const inv = getTauriInvoke()
+    if (!inv) {
+      setDbErr("Commande Tauri indisponible (UI web). Ouvre cette page via l'app Desktop.")
+      return
+    }
+    setDbInfo('Export diagnostic en cours…')
+    const res = await runDb(() => inv<any>('diagnostic_export'))
+    if (!res) return
+    const dir = typeof res.dir === 'string' ? res.dir : null
+    if (dir) setLastDiagnosticDir(dir)
+    setDbOk(dir ? `✅ Diagnostic exporté: ${dir}` : '✅ Diagnostic exporté')
   }
 
   // Handler édition cellule
@@ -567,6 +716,10 @@ function App() {
               <Calculator className="h-4 w-4 mr-2" />
               Outils
             </TabsTrigger>
+            <TabsTrigger value="database">
+              <Database className="h-4 w-4 mr-2" />
+              Base de données
+            </TabsTrigger>
             {/* Colab Studio - Gestion des missions terrain */}
             <TabsTrigger value="colab-studio">
               <Users className="h-4 w-4 mr-2" />
@@ -783,6 +936,100 @@ function App() {
                 >
                   Ouvrir Grafana
                 </Button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="database" className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Base de données (Desktop)</h2>
+                {dbBusy ? (
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Opération en cours…
+                  </div>
+                ) : null}
+              </div>
+
+              {dbStatus ? (
+                <div
+                  className={
+                    dbStatus.kind === 'ok'
+                      ? 'rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-800'
+                      : dbStatus.kind === 'err'
+                        ? 'rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800'
+                        : 'rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-800'
+                  }
+                >
+                  {dbStatus.msg}
+                </div>
+              ) : null}
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                <Button onClick={handleDbConnectionInfo} disabled={dbBusy} variant="outline">
+                  Connexion DB (DATABASE_URL)
+                </Button>
+                <Button onClick={handleDbIntegrity} disabled={dbBusy} variant="outline">
+                  Vérifier intégrité
+                </Button>
+                <Button onClick={handleDbBackup} disabled={dbBusy}>
+                  Backup
+                </Button>
+                <Button onClick={handleDbReset} disabled={dbBusy} variant="destructive">
+                  Reset
+                </Button>
+                <Button onClick={handleDiagnosticExport} disabled={dbBusy} variant="outline">
+                  Export diagnostic
+                </Button>
+              </div>
+
+              {dbConnectionInfo?.database_url ? (
+                <div className="space-y-2">
+                  <div className="text-sm text-gray-600">DATABASE_URL</div>
+                  <div className="flex gap-2">
+                    <input
+                      className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
+                      readOnly
+                      value={dbConnectionInfo.database_url}
+                    />
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          await navigator.clipboard.writeText(dbConnectionInfo.database_url)
+                          setDbOk('✅ DATABASE_URL copié dans le presse-papiers')
+                        } catch (e: any) {
+                          setDbErr(e?.message ? String(e.message) : String(e))
+                        }
+                      }}
+                    >
+                      Copier
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="space-y-2">
+                <div className="text-sm text-gray-600">Restore (chemin du backup)</div>
+                <div className="flex gap-2">
+                  <input
+                    className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
+                    value={restorePath}
+                    onChange={(e) => setRestorePath(e.target.value)}
+                    placeholder="C:\\...\\atlas-backup_YYYYMMDD_HHMMSS.zip"
+                    disabled={dbBusy}
+                  />
+                  <Button onClick={handleDbRestore} disabled={dbBusy} variant="outline">
+                    Restore
+                  </Button>
+                </div>
+              </div>
+
+              <div className="text-sm text-gray-600 space-y-1">
+                {lastBackupPath ? <div>Dernier backup: {lastBackupPath}</div> : null}
+                {lastDiagnosticDir ? <div>Dernier export diagnostic: {lastDiagnosticDir}</div> : null}
+                {lastResetQuarantine ? <div>Dernier reset (quarantaine): {lastResetQuarantine}</div> : null}
               </div>
             </div>
           </TabsContent>

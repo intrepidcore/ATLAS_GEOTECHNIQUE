@@ -20,24 +20,60 @@ interface ApiError {
   details?: any
 }
 
+function getBearerToken(): string | null {
+  const token = localStorage.getItem('atlas_token') || localStorage.getItem('atlas_access_token')
+  if (token) return token
+
+  try {
+    const auth = localStorage.getItem('atlas_auth')
+    if (!auth) return null
+    const parsed = JSON.parse(auth)
+    return parsed?.accessToken || null
+  } catch {
+    return null
+  }
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController()
+  const id = window.setTimeout(() => controller.abort(), timeoutMs)
+  try {
+    return await fetch(input, { ...init, signal: controller.signal })
+  } finally {
+    window.clearTimeout(id)
+  }
+}
+
 class ApiClient {
+  private buildUrl(endpoint: string): string {
+    const baseUrl = getApiBaseUrl().replace(/\/+$/, '')
+    const path = endpoint.startsWith('/api/') ? endpoint.slice(4) : endpoint
+    return `${baseUrl}${path}`
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const baseUrl = getApiBaseUrl()
-    const url = `${baseUrl}${endpoint}`
-    
+    const url = this.buildUrl(endpoint)
+
+    const token = getBearerToken()
+
     const config: RequestInit = {
       ...options,
       headers: {
         'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...options.headers,
       },
     }
 
     try {
-      const response = await fetch(url, config)
+      const response = await fetchWithTimeout(url, config, 30_000)
+
+      if (response.status === 401) {
+        window.dispatchEvent(new CustomEvent('atlas:auth:expired'))
+      }
 
       if (!response.ok) {
         const error: ApiError = {
@@ -48,7 +84,7 @@ class ApiClient {
         try {
           const errorData = await response.json()
           error.details = errorData
-          error.message = errorData.message || error.message
+          error.message = errorData.message || errorData.error || error.message
         } catch {
           // Ignore JSON parse errors
         }
@@ -57,13 +93,28 @@ class ApiClient {
       }
 
       return await response.json()
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof Error && 'status' in error) {
         throw error
       }
+
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw { message: 'Requête annulée', status: 0, type: 'abort' }
+      }
+
+      if (error instanceof TypeError) {
+        throw {
+          message: 'API non joignable — vérifier api-geo (port 8000)',
+          status: 0,
+          type: 'network',
+          detail: error.message,
+        }
+      }
+
       throw {
-        message: error instanceof Error ? error.message : 'Network error',
+        message: error instanceof Error ? error.message : 'Erreur inconnue',
         status: 0,
+        type: 'unknown',
       }
     }
   }

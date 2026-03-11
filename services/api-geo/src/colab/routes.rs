@@ -44,7 +44,7 @@ async fn list_missions(
     let per_page = filters.per_page.unwrap_or(12).max(1).min(100);
     let offset = (page - 1) * per_page;
 
-    let mut conditions: Vec<String> = vec!["1=1".to_string()];
+    let mut conditions: Vec<String> = vec!["1=1".to_string(), "cm.deleted_at IS NULL".to_string()];
 
     if let Some(theme) = filters.theme {
         let t = theme.replace('\'', "''");
@@ -251,9 +251,13 @@ async fn get_mission(
           cm.notes_internal,
           s.id as supervisor_id,
           su.id as supervisor_user_id,
+          su.is_active as supervisor_is_active,
           COALESCE(NULLIF(BTRIM(CONCAT(su.first_name, ' ', su.last_name)), ''), su.username) AS supervisor_name,
-          cu.id as created_by_id,
-          COALESCE(NULLIF(BTRIM(CONCAT(cu.first_name, ' ', cu.last_name)), ''), cu.username) AS created_by_name,
+          cm.created_by as created_by,
+          cu.username as created_by_username,
+          cu.email as created_by_email,
+          COALESCE(NULLIF(BTRIM(CONCAT(cu.first_name, ' ', cu.last_name)), ''), cu.username) AS created_by_full_name,
+          (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.mission_id = cm.id AND a.unassigned_at IS NULL) AS assigned_students_count,
           cm.created_at,
           cm.updated_at,
           FALSE AS is_real_conflict,
@@ -263,7 +267,7 @@ async fn get_mission(
         LEFT JOIN atlas.colab_supervisors s ON s.id = cm.supervisor_id
         LEFT JOIN atlas.users su ON su.id = s.user_id
         LEFT JOIN atlas.users cu ON cu.id = cm.created_by
-        WHERE cm.id = $1
+        WHERE cm.id = $1 AND cm.deleted_at IS NULL
         "#,
     )
     .bind(mission_id)
@@ -410,7 +414,7 @@ async fn get_mission(
         }
     };
 
-    let created_by_id: Option<Uuid> = row.get("created_by");
+    let created_by_id: Option<Uuid> = row.try_get("created_by").ok();
     let created_by = match created_by_id {
         None => None,
         Some(id) => {
@@ -467,11 +471,86 @@ async fn update_mission() -> impl IntoResponse {
     )
 }
 
-async fn delete_mission() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({ "error": "Not implemented" })),
+async fn delete_mission(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(mission_id): Path<Uuid>,
+) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.update") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    let updated = sqlx::query(
+        r#"
+        UPDATE atlas.colab_missions
+        SET deleted_at = NOW(), updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
     )
+    .bind(mission_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?
+    .rows_affected();
+
+    if updated == 0 {
+        // Idempotent: si déjà deleted_at, on renvoie NO_CONTENT; sinon 404.
+        let exists: Option<(Uuid,)> = sqlx::query_as(
+            r#"SELECT id FROM atlas.colab_missions WHERE id = $1"#,
+        )
+        .bind(mission_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+        tx.commit()
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+        return if exists.is_some() {
+            Ok(StatusCode::NO_CONTENT)
+        } else {
+            Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))))
+        };
+    }
+
+    // Désattribuer tous les étudiants
+    sqlx::query(
+        r#"
+        UPDATE atlas.colab_mission_assignments
+        SET unassigned_at = NOW()
+        WHERE mission_id = $1 AND unassigned_at IS NULL
+        "#,
+    )
+    .bind(mission_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    // Soft-delete des documents liés (les fichiers restent sur disque comme pour delete_document)
+    sqlx::query(
+        r#"
+        UPDATE atlas.colab_documents
+        SET deleted_at = NOW()
+        WHERE mission_id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(mission_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn resolve_conflict() -> impl IntoResponse {
