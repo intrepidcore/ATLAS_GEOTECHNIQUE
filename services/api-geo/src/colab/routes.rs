@@ -713,25 +713,293 @@ async fn list_supervisors(
     Ok(Json(supervisors))
 }
 
-async fn create_supervisor() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({ "error": "Not implemented" })),
+async fn create_supervisor(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(request): Json<CreateSupervisorRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.supervisors.create") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    request
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    // Email unique (comptes non supprimés)
+    let existing_email: Option<(Uuid,)> = sqlx::query_as(
+        r#"
+        SELECT s.id
+        FROM atlas.users u
+        JOIN atlas.colab_supervisors s ON s.user_id = u.id
+        WHERE u.deleted_at IS NULL
+          AND s.deleted_at IS NULL
+          AND u.email = $1
+        LIMIT 1
+        "#,
     )
+    .bind(&request.email)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    if let Some((existing_supervisor_id,)) = existing_email {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Email déjà utilisé", "existing_supervisor_id": existing_supervisor_id })),
+        ));
+    }
+
+    // Garde anti-doublon téléphone (comptes non supprimés)
+    if let Some(tel) = request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        let exists_tel: Option<(Uuid,)> = sqlx::query_as(
+            r#"
+            SELECT s.id
+            FROM atlas.users u
+            JOIN atlas.colab_supervisors s ON s.user_id = u.id
+            WHERE u.deleted_at IS NULL
+              AND s.deleted_at IS NULL
+              AND u.telephone IS NOT NULL
+              AND BTRIM(u.telephone) <> ''
+              AND u.telephone = $1
+            LIMIT 1
+            "#,
+        )
+        .bind(tel)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+        if let Some((existing_supervisor_id,)) = exists_tel {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Téléphone déjà utilisé", "existing_supervisor_id": existing_supervisor_id })),
+            ));
+        }
+    }
+
+    // Générer username unique à partir de l'email
+    let base = request.email.split('@').next().unwrap_or("user");
+    let username = ensure_unique_username(&mut tx, base)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+    // Générer un mot de passe temporaire
+    let token = Uuid::new_v4().to_string().replace('-', "");
+    let suffix: String = token.chars().take(8).collect();
+    let temp_password = format!("A{}!a1", suffix);
+    let password_hasher = PasswordHasher::new(state.auth_config.clone());
+    let password_hash = password_hasher
+        .hash_password(&temp_password)
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    let user_id: Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO atlas.users (email, username, password_hash, first_name, last_name, telephone, is_active, is_verified)
+        VALUES ($1, $2, $3, $4, $5, $6, TRUE, FALSE)
+        RETURNING id
+        "#,
+    )
+    .bind(request.email.trim())
+    .bind(&username)
+    .bind(&password_hash)
+    .bind(request.first_name.trim())
+    .bind(request.last_name.trim())
+    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+    // Assigner le rôle "supervisor"
+    sqlx::query(
+        r#"
+        INSERT INTO atlas.user_roles (user_id, role_id)
+        VALUES ($1, 'supervisor')
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+    let supervisor_id: Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO atlas.colab_supervisors (
+            user_id, specialite, institution, titre, departement, telephone, notes
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+        "#,
+    )
+    .bind(user_id)
+    .bind(request.specialite.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.institution.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.titre.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.departement.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.notes.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    Ok(Json(json!({
+        "success": true,
+        "supervisor_id": supervisor_id,
+        "user_id": user_id,
+        "temp_password": temp_password
+    })))
 }
 
-async fn update_supervisor() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({ "error": "Not implemented" })),
+async fn update_supervisor(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(supervisor_id): Path<Uuid>,
+    Json(request): Json<UpdateSupervisorRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.supervisors.update") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    request
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    let user_id: Option<Uuid> = sqlx::query_scalar(
+        r#"SELECT user_id FROM atlas.colab_supervisors WHERE id = $1 AND deleted_at IS NULL"#,
     )
+    .bind(supervisor_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    let Some(user_id) = user_id else {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Superviseur non trouvé" }))));
+    };
+
+    // Mise à jour user
+    let res_user = sqlx::query(
+        r#"
+        UPDATE atlas.users
+        SET
+            email = COALESCE($2, email),
+            first_name = COALESCE($3, first_name),
+            last_name = COALESCE($4, last_name),
+            telephone = COALESCE($5, telephone),
+            is_active = COALESCE($6, is_active),
+            updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(user_id)
+    .bind(request.email.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.first_name.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.last_name.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.is_active)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+
+    if res_user.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Utilisateur non trouvé" }))));
+    }
+
+    // Mise à jour superviseur
+    sqlx::query(
+        r#"
+        UPDATE atlas.colab_supervisors
+        SET
+            titre = COALESCE($2, titre),
+            institution = COALESCE($3, institution),
+            departement = COALESCE($4, departement),
+            specialite = COALESCE($5, specialite),
+            telephone = COALESCE($6, telephone),
+            notes = COALESCE($7, notes),
+            updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(supervisor_id)
+    .bind(request.titre.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.institution.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.departement.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.specialite.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.notes.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    Ok(Json(json!({ "success": true, "supervisor_id": supervisor_id })))
 }
 
-async fn delete_supervisor() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({ "error": "Not implemented" })),
+async fn delete_supervisor(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(supervisor_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.supervisors.delete") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    let user_id: Option<Uuid> = sqlx::query_scalar(
+        r#"SELECT user_id FROM atlas.colab_supervisors WHERE id = $1 AND deleted_at IS NULL"#,
     )
+    .bind(supervisor_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    let Some(user_id) = user_id else {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Superviseur non trouvé" }))));
+    };
+
+    sqlx::query(
+        r#"UPDATE atlas.colab_supervisors SET deleted_at = NOW(), updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL"#,
+    )
+    .bind(supervisor_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Suppression impossible", &e))))?;
+
+    sqlx::query(
+        r#"UPDATE atlas.users SET deleted_at = NOW(), is_active = FALSE, updated_at = NOW() WHERE id = $1 AND deleted_at IS NULL"#,
+    )
+    .bind(user_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Suppression impossible", &e))))?;
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    Ok(Json(json!({ "success": true, "supervisor_id": supervisor_id, "deactivated": true })))
 }
 
 async fn create_student(
@@ -1439,11 +1707,21 @@ async fn resolve_maille(
         .and_then(|s| s.parse::<f64>().ok())
         .ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "lon requis" }))))?;
 
+    // atlas.mailles.geom est en SRID 25231 dans la base. Les coordonnées du navigateur sont en WGS84 (4326).
+    // On transforme le point dans le SRID des mailles pour éviter un mismatch SRID (erreur PostGIS).
     let row = sqlx::query(
         r#"
-        SELECT id, code, adm1_name, adm2_name, adm3_name
+        SELECT
+            id,
+            code,
+            NULL::text AS adm1_name,
+            adm2_name,
+            NULL::text AS adm3_name
         FROM atlas.mailles
-        WHERE ST_Contains(geom, ST_SetSRID(ST_Point($1, $2), 4326))
+        WHERE ST_Contains(
+            geom,
+            ST_Transform(ST_SetSRID(ST_Point($1, $2), 4326), 25231)
+        )
         LIMIT 1
         "#,
     )
@@ -2855,7 +3133,12 @@ async fn suggest_mailles(
 
     let rows = sqlx::query(
         r#"
-        SELECT id, code, adm1_name, adm2_name, adm3_name
+        SELECT
+            id,
+            code,
+            NULL::text AS adm1_name,
+            adm2_name,
+            NULL::text AS adm3_name
         FROM atlas.mailles
         WHERE code ILIKE $1
         ORDER BY code
@@ -2872,9 +3155,9 @@ async fn suggest_mailles(
         .map(|r| MailleSuggestItem {
             id: r.get("id"),
             code: r.get("code"),
-            adm1_name: r.get("adm1_name"),
-            adm2_name: r.get("adm2_name"),
-            adm3_name: r.get("adm3_name"),
+            adm1_name: r.try_get("adm1_name").ok(),
+            adm2_name: r.try_get("adm2_name").ok(),
+            adm3_name: r.try_get("adm3_name").ok(),
         })
         .collect();
 
