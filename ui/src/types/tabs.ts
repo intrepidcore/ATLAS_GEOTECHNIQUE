@@ -3,7 +3,7 @@
  * v2.5.0 - Phase UI-01
  */
 
-export type TabId = 'nouveau' | 'import' | 'liste' | 'geocode';
+export type TabId = 'nouveau' | 'import' | 'liste' | 'geocode' | 'database';
 
 export interface Tab {
   id: TabId;

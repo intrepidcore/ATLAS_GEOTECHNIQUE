@@ -58,7 +58,36 @@ export interface AuthContextType extends AuthState {
 // ============================================================================
 
 const STORAGE_KEY = 'atlas_auth';
-const API_BASE_URL = getApiBase();
+
+function getAuthApiBase(): string {
+  const base = getApiBase().replace(/\/+$/, '');
+
+  if (/^https?:\/\//i.test(base)) {
+    try {
+      const u = new URL(base);
+      if (u.pathname === '/' || u.pathname === '') {
+        return `${u.origin}/api`;
+      }
+    } catch {
+      // ignore URL parse errors and fall back to base
+    }
+  }
+
+  return base;
+}
+
+async function fetchWithTimeout(input: RequestInfo | URL, init: RequestInit | undefined, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const id = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    window.clearTimeout(id);
+  }
+}
 
 // ============================================================================
 // Context
@@ -140,13 +169,18 @@ function clearAuthFromStorage(): void {
 // ============================================================================
 
 async function apiLogin(credentials: LoginCredentials): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+  const normalized: LoginCredentials = {
+    email: credentials.email.trim().toLowerCase(),
+    password: credentials.password,
+  };
+
+  const response = await fetchWithTimeout(`${getAuthApiBase()}/auth/login`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(credentials),
-  });
+    body: JSON.stringify(normalized),
+  }, 10_000);
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ error: 'Erreur de connexion' }));
@@ -157,13 +191,13 @@ async function apiLogin(credentials: LoginCredentials): Promise<LoginResponse> {
 }
 
 async function apiRefreshToken(refreshToken: string): Promise<LoginResponse> {
-  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+  const response = await fetchWithTimeout(`${getAuthApiBase()}/auth/refresh`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ refresh_token: refreshToken }),
-  });
+  }, 10_000);
 
   if (!response.ok) {
     throw new Error('Session expirée');
@@ -173,11 +207,11 @@ async function apiRefreshToken(refreshToken: string): Promise<LoginResponse> {
 }
 
 async function apiGetMe(accessToken: string): Promise<User> {
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
+  const response = await fetchWithTimeout(`${getAuthApiBase()}/auth/me`, {
     headers: {
       'Authorization': `Bearer ${accessToken}`,
     },
-  });
+  }, 10_000);
 
   if (!response.ok) {
     throw new Error('Session invalide');
@@ -263,8 +297,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, []);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
-    setState(prev => ({ ...prev, isLoading: true }));
-
     try {
       const response = await apiLogin(credentials);
       const expiresAt = Date.now() + response.expires_in * 1000;

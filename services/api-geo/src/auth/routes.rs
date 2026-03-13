@@ -6,6 +6,7 @@ use axum::{
     Json, Router,
 };
 use chrono::Datelike;
+use rand::Rng;
 use std::net::SocketAddr;
 use uuid::Uuid;
 use validator::Validate;
@@ -662,8 +663,58 @@ async fn register_student(
         return Err(AuthError::ValidationError("Un compte existe déjà avec cet email".to_string()));
     }
 
-    // Générer le username à partir de l'email
-    let username = request.email.split('@').next().unwrap_or(&request.email).to_string();
+    // Générer le username à partir de l'email (sanitization pour respecter la contrainte DB)
+    let local = request.email.split('@').next().unwrap_or(&request.email);
+    let mut username: String = local
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .collect();
+
+    username = username.trim_matches('_').to_string();
+    if username.is_empty() {
+        username = "user".to_string();
+    }
+    if username.len() < 3 {
+        username = format!("{}{}", username, "___");
+        username.truncate(3);
+    }
+    if username.len() > 50 {
+        username.truncate(50);
+    }
+
+    // Assurer l'unicité du username
+    let mut final_username = username.clone();
+    let mut attempts = 0;
+    loop {
+        let exists: bool = sqlx::query_scalar(
+            r#"
+            SELECT EXISTS(
+                SELECT 1
+                FROM atlas.users
+                WHERE deleted_at IS NULL
+                  AND username = $1
+            )
+            "#,
+        )
+        .bind(&final_username)
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(false);
+
+        if !exists {
+            break;
+        }
+
+        attempts += 1;
+        if attempts > 10 {
+            return Err(AuthError::InternalError("Impossible de générer un username unique".to_string()));
+        }
+
+        let suffix: u32 = rand::thread_rng().gen_range(1000..9999);
+        let base_len = final_username.len().min(45);
+        let base = &final_username[..base_len];
+        final_username = format!("{}-{}", base, suffix);
+    }
 
     // Hasher le mot de passe
     let password_hash = password_hasher.hash_password(&request.password)?;
@@ -680,7 +731,7 @@ async fn register_student(
         "#,
     )
     .bind(&request.email)
-    .bind(&username)
+    .bind(&final_username)
     .bind(&password_hash)
     .bind(&request.first_name)
     .bind(&request.last_name)

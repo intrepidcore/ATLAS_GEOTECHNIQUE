@@ -198,7 +198,7 @@ async fn main() -> anyhow::Result<()> {
 
     // NOTE: On expose les routes à la racine ET sous /api pour rester compatible
     // avec le frontend (fallback API_BASE_URL = origin + /api) et les reverse proxies.
-    let base_api = Router::new()
+    let mut base_api = Router::new()
         .route("/healthz", get(health::health_check_simple))
         .route("/health", get(health::health_check))
         .route("/ping", get(|| async { "pong" }))
@@ -396,162 +396,171 @@ async fn main() -> anyhow::Result<()> {
         .route(
             "/sondages/:id/adm3-candidates",
             get(sondages::get_adm3_candidates),
-        )
-        // Database Manager endpoints
-        .route(
-            "/db/types",
-            get(db_manager::routes::get_postgres_types_handler),
-        )
-        .route("/db/schema", get(db_manager::routes::get_schema_handler))
-        .route(
-            "/db/table/:schema/:table",
-            get(db_manager::routes::get_table_info_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/data",
-            get(db_manager::routes::get_table_data_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/select",
-            post(db_manager::routes::select_rows_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/select-bbox",
-            post(db_manager::routes::select_bbox_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/extent",
-            post(db_manager::routes::extent_by_ids_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/extent-related",
-            post(db_manager::routes::extent_by_related_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/row",
-            post(db_manager::routes::add_row_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/row/:id/:column",
-            axum::routing::put(db_manager::routes::update_cell_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/rows",
-            delete(db_manager::routes::delete_rows_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/staging",
-            post(db_manager::routes::create_staging_handler),
-        )
-        .route(
-            "/db/staging/:id/operation",
-            post(db_manager::routes::apply_staging_operation_handler),
-        )
-        .route(
-            "/db/staging/:id/validate",
-            get(db_manager::routes::validate_staging_handler),
-        )
-        .route(
-            "/db/staging/:id/preview",
-            get(db_manager::routes::preview_staging_handler),
-        )
-        .route(
-            "/db/staging/:id/commit",
-            post(db_manager::routes::commit_staging_handler),
-        )
-        .route(
-            "/db/staging/:id",
-            delete(db_manager::routes::cancel_staging_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/column",
-            post(db_manager::routes::add_column_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/column/:column",
-            delete(db_manager::routes::delete_column_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/column/:column/impact",
-            get(db_manager::routes::analyze_column_impact_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/column/dryrun",
-            post(db_manager::routes::dryrun_add_column_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/column/:column/dryrun",
-            get(db_manager::routes::dryrun_delete_column_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/audit",
-            get(db_manager::routes::get_audit_log_handler),
-        )
-        .route(
-            "/db/table/:schema/:table/audit/stats",
-            get(db_manager::routes::get_audit_stats_handler),
-        )
-        .route(
-            "/db/backup",
-            post(db_manager::routes::create_backup_handler)
-                .get(db_manager::routes::list_backups_handler),
-        )
-        .route(
-            "/db/backup/:id/restore",
-            post(db_manager::routes::restore_backup_handler),
-        )
-        .route(
-            "/db/backup/:id",
-            delete(db_manager::routes::delete_backup_handler),
-        )
+        );
+
+        // Database Manager endpoints (ADMIN ONLY)
+        // ==========================================================================
+        // Toutes les routes /db/* sont protégées par require_admin
+        let db_manager_routes = Router::new()
+            .route(
+                "/types",
+                get(db_manager::routes::get_postgres_types_handler),
+            )
+            .route("/schema", get(db_manager::routes::get_schema_handler))
+            .route(
+                "/table/:schema/:table",
+                get(db_manager::routes::get_table_info_handler),
+            )
+            .route(
+                "/table/:schema/:table/data",
+                get(db_manager::routes::get_table_data_handler),
+            )
+            .route(
+                "/table/:schema/:table/select",
+                post(db_manager::routes::select_rows_handler),
+            )
+            .route(
+                "/table/:schema/:table/select-bbox",
+                post(db_manager::routes::select_bbox_handler),
+            )
+            .route(
+                "/table/:schema/:table/extent",
+                post(db_manager::routes::extent_by_ids_handler),
+            )
+            .route(
+                "/table/:schema/:table/extent-related",
+                post(db_manager::routes::extent_by_related_handler),
+            )
+            .route(
+                "/table/:schema/:table/row",
+                post(db_manager::routes::add_row_handler),
+            )
+            .route(
+                "/table/:schema/:table/row/:id/:column",
+                axum::routing::put(db_manager::routes::update_cell_handler),
+            )
+            .route(
+                "/table/:schema/:table/rows",
+                delete(db_manager::routes::delete_rows_handler),
+            )
+            .route(
+                "/table/:schema/:table/staging",
+                post(db_manager::routes::create_staging_handler),
+            )
+            .route(
+                "/staging/:id/operation",
+                post(db_manager::routes::apply_staging_operation_handler),
+            )
+            .route(
+                "/staging/:id/validate",
+                get(db_manager::routes::validate_staging_handler),
+            )
+            .route(
+                "/staging/:id/preview",
+                get(db_manager::routes::preview_staging_handler),
+            )
+            .route(
+                "/staging/:id/commit",
+                post(db_manager::routes::commit_staging_handler),
+            )
+            .route(
+                "/staging/:id",
+                delete(db_manager::routes::cancel_staging_handler),
+            )
+            .route(
+                "/table/:schema/:table/column",
+                post(db_manager::routes::add_column_handler),
+            )
+            .route(
+                "/table/:schema/:table/column/:column",
+                delete(db_manager::routes::delete_column_handler),
+            )
+            .route(
+                "/table/:schema/:table/column/:column/impact",
+                get(db_manager::routes::analyze_column_impact_handler),
+            )
+            .route(
+                "/table/:schema/:table/column/dryrun",
+                post(db_manager::routes::dryrun_add_column_handler),
+            )
+            .route(
+                "/table/:schema/:table/column/:column/dryrun",
+                get(db_manager::routes::dryrun_delete_column_handler),
+            )
+            .route(
+                "/table/:schema/:table/audit",
+                get(db_manager::routes::get_audit_log_handler),
+            )
+            .route(
+                "/table/:schema/:table/audit/stats",
+                get(db_manager::routes::get_audit_stats_handler),
+            )
+            .route(
+                "/backup",
+                post(db_manager::routes::create_backup_handler)
+                    .get(db_manager::routes::list_backups_handler),
+            )
+            .route(
+                "/backup/:id/restore",
+                post(db_manager::routes::restore_backup_handler),
+            )
+            .route(
+                "/backup/:id",
+                delete(db_manager::routes::delete_backup_handler),
+            )
+            .layer(middleware::from_fn(auth::middleware::require_admin))
+            .with_state(state.clone());
+
+        base_api = base_api.nest("/db", db_manager_routes);
         // ==========================================================================
         // Authentication & Authorization routes (RBAC)
         // ==========================================================================
-        .merge(auth::routes::auth_routes())
-        // Users management (requires authentication)
-        .merge(
-            users::routes::users_routes()
-                .layer(middleware::from_fn_with_state(
-                    state.clone(),
-                    auth::middleware::auth_middleware,
-                )),
-        )
-        // Roles management (requires authentication)
-        .merge(
-            roles::routes::roles_routes()
-                .layer(middleware::from_fn_with_state(
-                    state.clone(),
-                    auth::middleware::auth_middleware,
-                )),
-        )
-        // ==========================================================================
-        // Atlas Colab routes (requires authentication)
-        // ==========================================================================
-        .merge(
-            colab::routes::colab_routes()
-                .merge(export::export_routes())
-                .route_layer(middleware::from_fn_with_state(
-                    state.clone(),
-                    auth::middleware::auth_middleware,
-                )),
-        )
-        // ==========================================================================
-        // Atlas Colab Mobile/PWA routes (requires authentication)
-        // ==========================================================================
-        .nest(
-            "/colab",
-            colab::mobile::mobile_routes()
-                .merge(colab::comments::comments_routes())
-                .merge(colab::qa::qa_routes())
-                .layer(middleware::from_fn_with_state(
-                    state.clone(),
-                    auth::middleware::auth_middleware,
-                )),
-        )
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            auth::middleware::optional_auth_middleware,
-        ));
+        base_api = base_api
+            .merge(auth::routes::auth_routes())
+            // Users management (requires authentication)
+            .merge(
+                users::routes::users_routes()
+                    .layer(middleware::from_fn_with_state(
+                        state.clone(),
+                        auth::middleware::auth_middleware,
+                    )),
+            )
+            // Roles management (requires authentication)
+            .merge(
+                roles::routes::roles_routes()
+                    .layer(middleware::from_fn_with_state(
+                        state.clone(),
+                        auth::middleware::auth_middleware,
+                    )),
+            )
+            // ==========================================================================
+            // Atlas Colab routes (requires authentication)
+            // ==========================================================================
+            .merge(
+                colab::routes::colab_routes()
+                    .merge(export::export_routes())
+                    .route_layer(middleware::from_fn_with_state(
+                        state.clone(),
+                        auth::middleware::auth_middleware,
+                    )),
+            )
+            // ==========================================================================
+            // Atlas Colab Mobile/PWA routes (requires authentication)
+            // ==========================================================================
+            .nest(
+                "/colab",
+                colab::mobile::mobile_routes()
+                    .merge(colab::comments::comments_routes())
+                    .merge(colab::qa::qa_routes())
+                    .layer(middleware::from_fn_with_state(
+                        state.clone(),
+                        auth::middleware::auth_middleware,
+                    )),
+            )
+            .layer(middleware::from_fn_with_state(
+                state.clone(),
+                auth::middleware::optional_auth_middleware,
+            ));
 
     let app = Router::new()
         .nest("/", base_api.clone())

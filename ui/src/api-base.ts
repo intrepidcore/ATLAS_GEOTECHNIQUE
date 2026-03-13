@@ -15,16 +15,38 @@ const RAW_API_GEO = import.meta.env.VITE_API_GEO ?? "/api";
 export function getApiBase(): string {
   const runtimeOverride = (window as any).__API_GEO__ as string | undefined;
   if (typeof runtimeOverride === 'string' && runtimeOverride.trim() !== '') {
-    const normalized = runtimeOverride.trim().replace(/\/+$/, "");
-    console.debug('[API-BASE] Runtime override:', normalized);
-    return normalized;
+    const raw = runtimeOverride.trim().replace(/\/+$/, "");
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const u = new URL(raw);
+        if (u.pathname === '/' || u.pathname === '') {
+          const normalized = `${u.origin}/api`;
+          console.debug('[API-BASE] Runtime override (normalized):', normalized);
+          return normalized;
+        }
+      } catch {
+        // ignore URL parse errors and fall back to raw
+      }
+    }
+    console.debug('[API-BASE] Runtime override:', raw);
+    return raw;
   }
 
   // Si la valeur est déjà absolue → on normalise juste
   if (/^https?:\/\//i.test(RAW_API_GEO)) {
-    const normalized = RAW_API_GEO.replace(/\/+$/, "");
-    console.debug('[API-BASE] Configuration explicite:', normalized);
-    return normalized;
+    const raw = RAW_API_GEO.replace(/\/+$/, "");
+    try {
+      const u = new URL(raw);
+      if (u.pathname === '/' || u.pathname === '') {
+        const normalized = `${u.origin}/api`;
+        console.debug('[API-BASE] Configuration explicite (normalized):', normalized);
+        return normalized;
+      }
+    } catch {
+      // ignore URL parse errors and fall back to raw
+    }
+    console.debug('[API-BASE] Configuration explicite:', raw);
+    return raw;
   }
 
   const normalized = RAW_API_GEO.replace(/\/+$/, "");

@@ -56,25 +56,26 @@ pub async fn get_neighbors(
     // Récupérer les 4 mailles les plus proches dans chaque direction
     let neighbors_query = r#"
         WITH current_maille AS (
-            SELECT geom, ST_Transform(ST_Centroid(geom), 4326) as centroid
+            SELECT geom, ST_Transform(geom, 4326) as geom_4326, ST_Transform(ST_Centroid(geom), 4326) as centroid
             FROM mailles
             WHERE code = $1
         ),
         neighbor_stats AS (
             SELECT 
                 m.code,
-                ST_X(ST_Transform(ST_Centroid(m.geom), 4326)) as m_lon,
-                ST_Y(ST_Transform(ST_Centroid(m.geom), 4326)) as m_lat,
+                ST_Transform(m.geom, 4326) as geom_4326,
+                ST_X(ST_Centroid(ST_Transform(m.geom, 4326))) as m_lon,
+                ST_Y(ST_Centroid(ST_Transform(m.geom, 4326))) as m_lat,
                 COALESCE(COUNT(DISTINCT s.id), 0)::bigint AS n_sondages,
                 COALESCE(COUNT(e.id), 0)::bigint AS n_essais,
                 -- SPT-N et qc retirés - ces essais n'existent pas dans l'atlas actuel
                 ST_Distance(
-                    ST_Transform(ST_Centroid(m.geom), 4326)::geography,
+                    ST_Centroid(ST_Transform(m.geom, 4326))::geography,
                     (SELECT centroid::geography FROM current_maille)
                 ) as distance_m
             FROM mailles m
             CROSS JOIN current_maille cm
-            LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+            LEFT JOIN sondages s ON ST_Within(s.geom, ST_Transform(m.geom, 4326)) AND s.deleted_at IS NULL
             LEFT JOIN essais e ON e.sondage_id = s.id
             WHERE m.code != $1
               AND ST_DWithin(

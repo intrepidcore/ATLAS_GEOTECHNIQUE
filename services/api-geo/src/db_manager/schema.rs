@@ -1,11 +1,27 @@
 // Gestion du schéma de base de données
 use super::types::*;
+use moka::sync::Cache;
+use once_cell::sync::Lazy;
 use sqlx::{PgPool, Row};
+use std::time::Duration;
+
+static DB_SCHEMA_CACHE: Lazy<Cache<(), DatabaseSchema>> = Lazy::new(|| {
+    Cache::builder()
+        .max_capacity(1)
+        .time_to_live(Duration::from_secs(30))
+        .build()
+});
 
 /// Récupère la structure complète de la base de données
 pub async fn get_database_schema(pool: &PgPool) -> Result<DatabaseSchema, sqlx::Error> {
+    if let Some(cached) = DB_SCHEMA_CACHE.get(&()) {
+        return Ok(cached);
+    }
     let schemas = get_schemas(pool).await?;
-    Ok(DatabaseSchema { schemas })
+
+    let out = DatabaseSchema { schemas };
+    DB_SCHEMA_CACHE.insert((), out.clone());
+    Ok(out)
 }
 
 /// Récupère la liste des schémas

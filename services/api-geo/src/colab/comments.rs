@@ -80,6 +80,23 @@ pub struct NotificationsResponse {
     pub total: i64,
 }
 
+#[derive(Debug, Serialize, FromRow)]
+struct NotificationWithCounts {
+    pub id: Uuid,
+    pub notification_type: String,
+    pub title: String,
+    pub message: Option<String>,
+    pub payload: serde_json::Value,
+    pub mission_id: Option<Uuid>,
+    pub sondage_id: Option<Uuid>,
+    pub comment_id: Option<Uuid>,
+    pub is_read: bool,
+    pub read_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub unread_count: i64,
+    pub total: i64,
+}
+
 // ============================================================================
 // Handlers - Commentaires
 // ============================================================================
@@ -418,11 +435,27 @@ pub async fn list_notifications(
     let limit = query.limit.unwrap_or(50).min(100);
     let offset = query.offset.unwrap_or(0);
 
-    let notifications = sqlx::query_as::<_, Notification>(
+    let rows = sqlx::query_as::<_, NotificationWithCounts>(
         r#"
-        SELECT 
+        WITH base AS (
+            SELECT
+                id,
+                notification_type::text AS notification_type,
+                title,
+                message,
+                payload,
+                mission_id,
+                sondage_id,
+                comment_id,
+                is_read,
+                read_at,
+                created_at
+            FROM atlas.colab_notifications
+            WHERE user_id = $1
+        )
+        SELECT
             id,
-            notification_type::text,
+            notification_type,
             title,
             message,
             payload,
@@ -431,9 +464,10 @@ pub async fn list_notifications(
             comment_id,
             is_read,
             read_at,
-            created_at
-        FROM atlas.colab_notifications
-        WHERE user_id = $1
+            created_at,
+            COALESCE(SUM(CASE WHEN is_read = false THEN 1 ELSE 0 END) OVER (), 0)::bigint AS unread_count,
+            COALESCE(COUNT(*) OVER (), 0)::bigint AS total
+        FROM base
         ORDER BY is_read ASC, created_at DESC
         LIMIT $2 OFFSET $3
         "#,
@@ -450,21 +484,24 @@ pub async fn list_notifications(
         )
     })?;
 
-    let unread_count: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_notifications WHERE user_id = $1 AND is_read = false",
-    )
-    .bind(auth.id)
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
-
-    let total: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_notifications WHERE user_id = $1",
-    )
-    .bind(auth.id)
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+    let unread_count = rows.first().map(|r| r.unread_count).unwrap_or(0);
+    let total = rows.first().map(|r| r.total).unwrap_or(0);
+    let notifications = rows
+        .into_iter()
+        .map(|r| Notification {
+            id: r.id,
+            notification_type: r.notification_type,
+            title: r.title,
+            message: r.message,
+            payload: r.payload,
+            mission_id: r.mission_id,
+            sondage_id: r.sondage_id,
+            comment_id: r.comment_id,
+            is_read: r.is_read,
+            read_at: r.read_at,
+            created_at: r.created_at,
+        })
+        .collect();
 
     Ok(Json(NotificationsResponse {
         notifications,

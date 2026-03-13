@@ -6,8 +6,9 @@ pub async fn pg_pool() -> anyhow::Result<PgPool> {
 
     // Configuration pool avec timeouts généreux pour Docker
     let pool = PgPoolOptions::new()
-        .max_connections(10)
-        .acquire_timeout(Duration::from_secs(60))
+        .max_connections(30)
+        .min_connections(5)
+        .acquire_timeout(Duration::from_secs(120))
         .idle_timeout(Duration::from_secs(600))
         .max_lifetime(Duration::from_secs(1800))
         .connect(&url)

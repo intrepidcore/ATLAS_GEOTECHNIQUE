@@ -46,5 +46,5 @@ SELECT
 FROM atlas.colab_maille_assignments a
 JOIN atlas.mailles m ON m.id = a.maille_id
 LEFT JOIN atlas.colab_student_prefs sp ON sp.student_id = a.student_id::text
-LEFT JOIN atlas.colab_students cs ON cs.id = a.student_id AND cs.deleted_at IS NULL
+LEFT JOIN atlas.colab_students cs ON cs.id::text = a.student_id::text AND cs.deleted_at IS NULL
 LEFT JOIN atlas.users u ON u.id = cs.user_id AND u.deleted_at IS NULL;

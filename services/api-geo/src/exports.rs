@@ -215,8 +215,8 @@ pub async fn export_geopackage(
             m.adm3_name,
             COALESCE(COUNT(DISTINCT s.id), 0)::bigint as n_sondages,
             COALESCE(COUNT(e.id), 0)::bigint as n_essais,
-            AVG(CASE WHEN e.type = 'SPT_N' THEN e.value::numeric ELSE NULL END) as spt_n_avg,
-            AVG(CASE WHEN e.type = 'qc' THEN e.value::numeric ELSE NULL END) as qc_avg,
+            AVG(CASE WHEN e.type_essai = 'SPT_N' THEN e.valeur_numerique ELSE NULL END) as spt_n_avg,
+            AVG(CASE WHEN e.type_essai = 'qc' THEN e.valeur_numerique ELSE NULL END) as qc_avg,
             MIN(e.depth_m) as depth_min,
             MAX(e.depth_m) as depth_max
         FROM atlas.mv_mailles_geotech m
@@ -344,8 +344,8 @@ pub async fn export_geopackage(
                     e.id::text,
                     e.sondage_id::text,
                     s.code as sondage_code,
-                    e.type,
-                    e.value,
+                    e.type_essai as type,
+                    e.valeur_numerique as value,
                     e.unit,
                     e.depth_m,
                     NULL::text as created_at

@@ -33,10 +33,18 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, variant = 'deskto
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+
+    const trimmedEmail = email.trim();
+    const trimmedPassword = password.trim();
+    if (!trimmedEmail || !trimmedPassword) {
+      setError('Email et mot de passe requis');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      await login({ email, password });
+      await login({ email: trimmedEmail, password: trimmedPassword });
       if (onLoginSuccess) {
         onLoginSuccess();
       }
@@ -245,7 +253,7 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
     <button
       type="submit"
-      disabled={isSubmitting || !email || !password}
+      disabled={isSubmitting}
       className="w-full bg-blue-600 text-white py-3 px-4 rounded-xl font-medium flex items-center justify-center gap-2 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
     >
       {isSubmitting ? (

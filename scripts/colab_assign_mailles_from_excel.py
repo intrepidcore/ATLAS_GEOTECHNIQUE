@@ -23,11 +23,84 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime
 import logging
+import urllib.parse
+import uuid
 
 import pandas as pd
 import psycopg2
 from psycopg2.extras import execute_values, RealDictCursor
 from dotenv import load_dotenv
+
+
+def _read_text_file_best_effort(path: Path) -> Optional[str]:
+    try:
+        s = path.read_text(encoding="utf-8", errors="strict").strip()
+        return s if s else None
+    except Exception:
+        return None
+
+
+def _try_read_atlas_desktop_pg_password() -> Optional[str]:
+    base = os.getenv("LOCALAPPDATA") or os.getenv("APPDATA")
+    if not base:
+        return None
+    path = Path(base) / "IntrepidCore" / "Atlas" / "postgres.password"
+    if not path.exists():
+        return None
+    return _read_text_file_best_effort(path)
+
+
+def _build_database_url_from_env() -> str:
+    host = os.getenv("PGHOST", "127.0.0.1")
+    port = os.getenv("PGPORT")
+    user = os.getenv("PGUSER")
+    dbname = os.getenv("PGDATABASE")
+    password = os.getenv("PGPASSWORD") or _try_read_atlas_desktop_pg_password() or ""
+    if not port or not user or not dbname:
+        raise ValueError("PGPORT/PGUSER/PGDATABASE requis")
+    if password:
+        return f"postgres://{urllib.parse.quote(user)}:{urllib.parse.quote(password)}@{host}:{port}/{urllib.parse.quote(dbname)}"
+    return f"postgres://{urllib.parse.quote(user)}@{host}:{port}/{urllib.parse.quote(dbname)}"
+
+
+def _resolve_psycopg2_connect_kwargs(database_url: str) -> Dict[str, object]:
+    host = os.getenv("PGHOST")
+    port = os.getenv("PGPORT")
+    user = os.getenv("PGUSER")
+    dbname = os.getenv("PGDATABASE")
+    password = os.getenv("PGPASSWORD")
+    if not password:
+        password = _try_read_atlas_desktop_pg_password()
+
+    if host and port and user and dbname:
+        kwargs: Dict[str, object] = {
+            "host": host,
+            "port": int(str(port)),
+            "user": user,
+            "dbname": dbname,
+        }
+        if password:
+            kwargs["password"] = password
+        return kwargs
+
+    parsed = urllib.parse.urlparse(database_url)
+    if parsed.scheme not in ("postgres", "postgresql"):
+        raise ValueError(f"DATABASE_URL invalide (scheme={parsed.scheme})")
+
+    q = urllib.parse.parse_qs(parsed.query)
+    kwargs = {
+        "host": parsed.hostname or "127.0.0.1",
+        "port": int(parsed.port or 5432),
+        "user": urllib.parse.unquote(parsed.username or ""),
+        "dbname": urllib.parse.unquote((parsed.path or "/").lstrip("/")),
+    }
+    if parsed.password:
+        kwargs["password"] = urllib.parse.unquote(parsed.password)
+    elif password:
+        kwargs["password"] = password
+    if "sslmode" in q and q["sslmode"]:
+        kwargs["sslmode"] = q["sslmode"][0]
+    return kwargs
 
 # Configuration du logging
 logging.basicConfig(
@@ -60,7 +133,8 @@ class ColabMailleAssigner:
     def connect(self):
         """Établit la connexion à la base de données avec fallback automatique db -> localhost"""
         try:
-            self.conn = psycopg2.connect(self.database_url)
+            connect_kwargs = _resolve_psycopg2_connect_kwargs(self.database_url)
+            self.conn = psycopg2.connect(**connect_kwargs)
             logger.info("✓ Connexion à la base de données établie")
         except psycopg2.OperationalError as e:
             # Si erreur "could not translate host name db", essayer localhost
@@ -68,7 +142,8 @@ class ColabMailleAssigner:
                 logger.warning("⚠️  Host 'db' inaccessible, tentative avec 'localhost'...")
                 fallback_url = self.database_url.replace('@db:', '@localhost:')
                 try:
-                    self.conn = psycopg2.connect(fallback_url)
+                    connect_kwargs = _resolve_psycopg2_connect_kwargs(fallback_url)
+                    self.conn = psycopg2.connect(**connect_kwargs)
                     self.database_url = fallback_url
                     logger.info("✓ Connexion établie via localhost")
                 except Exception as e2:
@@ -144,7 +219,7 @@ class ColabMailleAssigner:
         # Vérifications obligatoires
         if pd.isna(row.get('student_id')) or not str(row.get('student_id')).strip():
             return False, f"Ligne {row_idx}: student_id manquant"
-        
+
         if pd.isna(row.get('email')) or not str(row.get('email')).strip():
             return False, f"Ligne {row_idx}: email manquant"
         
@@ -363,7 +438,8 @@ class ColabMailleAssigner:
         # Récupérer les étudiants sans attribution
         cursor.execute("""
             SELECT 
-                s.student_id,
+                s.student_id as student_matricule,
+                cs.id as student_id,
                 s.nom,
                 s.prenom,
                 s.adm_niveau,
@@ -371,7 +447,8 @@ class ColabMailleAssigner:
                 s.adm_code_pref_2,
                 s.adm_code_pref_3
             FROM atlas.colab_student_prefs s
-            LEFT JOIN atlas.colab_maille_assignments a ON a.student_id = s.student_id
+            JOIN atlas.colab_students cs ON cs.matricule = s.student_id AND cs.deleted_at IS NULL
+            LEFT JOIN atlas.colab_maille_assignments a ON a.student_id = cs.id
             WHERE a.assignment_id IS NULL
             ORDER BY s.created_at
         """)
@@ -558,10 +635,19 @@ Exemples:
     # Charger les variables d'environnement
     load_dotenv()
     database_url = os.getenv('DATABASE_URL')
-    
+
+    pg_host = os.getenv('PGHOST')
+    pg_port = os.getenv('PGPORT')
+    pg_user = os.getenv('PGUSER')
+    pg_dbname = os.getenv('PGDATABASE')
+    pg_password = os.getenv('PGPASSWORD')
+
     if not database_url:
-        logger.error("❌ Variable DATABASE_URL non définie")
-        sys.exit(1)
+        if pg_host and pg_port and pg_user and pg_dbname:
+            database_url = _build_database_url_from_env()
+        else:
+            logger.error("❌ Variable DATABASE_URL non définie (ou PGHOST/PGPORT/PGUSER/PGDATABASE incomplets)")
+            sys.exit(1)
     
     # Vérifier que le fichier existe
     if not Path(args.input).exists():

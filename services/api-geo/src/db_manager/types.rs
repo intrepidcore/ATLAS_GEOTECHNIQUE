@@ -7,19 +7,19 @@ use std::collections::HashMap;
 // Schema & Table Info
 // ============================================================================
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DatabaseSchema {
     pub schemas: Vec<SchemaInfo>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SchemaInfo {
     pub name: String,
     pub tables: Vec<TableInfo>,
     pub views: Vec<ViewInfo>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TableInfo {
     pub name: String,
     pub schema: String,
@@ -33,7 +33,7 @@ pub struct TableInfo {
     pub foreign_keys: Vec<ForeignKeyInfo>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ViewInfo {
     pub name: String,
     pub schema: String,
@@ -58,7 +58,7 @@ pub struct ColumnInfo {
     pub ui_unit: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ForeignKeyInfo {
     pub column_name: String,
     pub foreign_table_schema: String,

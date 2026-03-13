@@ -4786,7 +4786,8 @@ function initTabsPanel() {
       import('./tabs/tab-import-wizard'),
       import('./tabs/tab-liste-sondages'),
       import('./tabs/tab-geocode'),
-    ]).then(([tabNouveau, tabImport, tabListe, tabGeocode]) => {
+      import('./tabs/tab-database'),
+    ]).then(([tabNouveau, tabImport, tabListe, tabGeocode, tabDatabase]) => {
       const tabs = [
         {
           id: 'nouveau' as const,
@@ -4812,6 +4813,12 @@ function initTabsPanel() {
           icon: '🗺️',
           component: tabGeocode.createTabGeocode(API_GEO),
         },
+        {
+          id: 'database' as const,
+          label: 'Base de données',
+          icon: '🗄️',
+          component: tabDatabase.createTabDatabase(),
+        },
       ]
       
       const manager = createTabsManager()
@@ -4820,7 +4827,7 @@ function initTabsPanel() {
       // Exposer pour debug
       ;(window as any).__tabsManager = manager
       
-      console.log('[v2.5.0] ✅ TabsManager initialized with 4 tabs')
+      console.log('[v2.5.0] ✅ TabsManager initialized with 5 tabs')
     })
   }).catch(err => {
     console.error('[v2.5.0] Failed to initialize TabsManager:', err)

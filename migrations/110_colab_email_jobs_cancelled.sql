@@ -15,11 +15,17 @@ BEGIN
     EXECUTE format('ALTER TABLE atlas.colab_email_jobs DROP CONSTRAINT %I', c_name);
   END IF;
 
-  EXECUTE $$
-    ALTER TABLE atlas.colab_email_jobs
-    ADD CONSTRAINT colab_email_jobs_status_check
-    CHECK (status IN ('pending','running','completed','failed','cancelled'))
-  $$;
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'atlas.colab_email_jobs'::regclass
+      AND contype = 'c'
+      AND conname = 'colab_email_jobs_status_check'
+  ) THEN
+    EXECUTE 'ALTER TABLE atlas.colab_email_jobs '
+      || 'ADD CONSTRAINT colab_email_jobs_status_check '
+      || 'CHECK (status IN (''pending'',''running'',''completed'',''failed'',''cancelled''))';
+  END IF;
 END $$;
 
 COMMIT;

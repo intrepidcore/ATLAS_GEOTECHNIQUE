@@ -1,4 +1,4 @@
-import { defineConfig, Plugin } from 'vite'
+import { defineConfig, Plugin, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
@@ -38,7 +38,11 @@ function mpaFallbackPlugin(): Plugin {
   }
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const apiTarget = env.VITE_API_TARGET || 'http://127.0.0.1:8000'
+
+  return {
   plugins: [
     mpaFallbackPlugin(),
     react(),
@@ -154,10 +158,19 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: apiTarget,
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api/, '')
+        secure: false,
+        configure: (proxy, _options) => {
+          proxy.on('error', (err, req) => {
+            console.error(`[PROXY ERROR] ${req.method} ${req.url} -> ${err.message}`)
+          })
+          proxy.on('proxyReq', (_proxyReq, req) => {
+            console.log(`[PROXY] ${req.method} ${req.url}`)
+          })
+        },
       }
     }
   },
+  }
 })

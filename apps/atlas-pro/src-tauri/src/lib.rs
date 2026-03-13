@@ -27,15 +27,17 @@ fn select_api_port() -> u16 {
         }
     }
 
-    // Prefer 8000, fallback to a small range to avoid collisions with Docker.
-    if port_is_free(8000) {
-        return 8000;
+    // Prefer 8001 (standard Atlas API port), fallback to a small range to avoid collisions.
+    if port_is_free(8001) {
+        return 8001;
     }
-    for p in 8001..8100 {
+    for p in 8002..8100 {
         if port_is_free(p) {
             return p;
         }
     }
+
+    // Last resort for legacy setups.
     8000
 }
 
@@ -313,23 +315,28 @@ pub fn run() {
             let api_geo_log = logs_dir.join("api-geo.log");
             rotate_log_file(&api_geo_log, 20 * 1024 * 1024, 5);
 
-            if let Ok(file) = std::fs::OpenOptions::new().create(true).append(true).open(&api_geo_log) {
-                if let Ok(file2) = file.try_clone() {
-                    cmd.stdout(std::process::Stdio::from(file));
-                    cmd.stderr(std::process::Stdio::from(file2));
+            // Si un backend écoute déjà sur le port choisi, on ne respawn pas.
+            // Cela évite les erreurs 10048 (port déjà utilisé) et stabilise le boot en dev.
+            let addr = ("127.0.0.1", api_port);
+            let backend_already_running = std::net::TcpStream::connect(addr).is_ok();
+            if !backend_already_running {
+                if let Ok(file) = std::fs::OpenOptions::new().create(true).append(true).open(&api_geo_log) {
+                    if let Ok(file2) = file.try_clone() {
+                        cmd.stdout(std::process::Stdio::from(file));
+                        cmd.stderr(std::process::Stdio::from(file2));
+                    }
                 }
+                cmd.spawn()
+                    .map_err(|e| {
+                        let msg = format!("failed to start backend: {e}");
+                        tracing::error!("{msg}");
+                        append_fatal_log(&logs_dir, &msg);
+                        msg
+                    })?;
             }
-            cmd.spawn()
-                .map_err(|e| {
-                    let msg = format!("failed to start backend: {e}");
-                    tracing::error!("{msg}");
-                    append_fatal_log(&logs_dir, &msg);
-                    msg
-                })?;
 
             // Attendre que le backend écoute, pour éviter les erreurs au premier rendu UI.
             // Best-effort (ne bloque pas indéfiniment).
-            let addr = ("127.0.0.1", api_port);
             let start = std::time::Instant::now();
             let timeout = std::time::Duration::from_secs(10);
             loop {
@@ -371,6 +378,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             greet,
             support::diagnostic_export,
+            support::db_connection_info,
             support::db_integrity_check,
             support::db_backup,
             support::db_restore,

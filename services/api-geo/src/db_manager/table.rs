@@ -42,14 +42,35 @@ pub async fn get_table_data(
         .await?;
 
     // Compter le total
-    let count_query = format!(
-        "SELECT COUNT(*) FROM {}.{}{}",
-        schema_ident, table_ident, where_clause
-    );
-    let total_count: i64 = sqlx::query_scalar(&count_query)
+    let total_count: i64 = if where_clause.is_empty() {
+        // COUNT(*) peut être extrêmement lent sur de grosses tables (ex: public.sondages)
+        // On utilise une estimation PostgreSQL (ANALYZE/auto-vacuum) qui est quasi instantanée.
+        sqlx::query_scalar::<_, Option<i64>>(
+            r#"
+            SELECT c.reltuples::bigint
+            FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = $1 AND c.relname = $2
+            "#,
+        )
+        .bind(schema)
+        .bind(table)
         .fetch_one(pool)
         .await
-        .unwrap_or(0);
+        .ok()
+        .flatten()
+        .unwrap_or(0)
+    } else {
+        // Si un filtre est fourni, l'estimation n'est pas fiable: on calcule le COUNT(*) exact.
+        let count_query = format!(
+            "SELECT COUNT(*) FROM {}.{}{}",
+            schema_ident, table_ident, where_clause
+        );
+        sqlx::query_scalar(&count_query)
+            .fetch_one(pool)
+            .await
+            .unwrap_or(0)
+    };
 
     // Récupérer les données
     let data_query = format!(

@@ -583,7 +583,7 @@ async fn get_grid(
         r#"
         SELECT COUNT(*) FROM atlas.sondages s
         JOIN {} m ON m.id = $1
-        WHERE ST_Within(s.geom, m.geom)
+        WHERE ST_Within(s.geom, ST_Transform(m.geom, 4326))
         "#,
         table_name
     );
@@ -599,7 +599,7 @@ async fn get_grid(
         SELECT COUNT(*) FROM atlas.essais e
         JOIN atlas.sondages s ON s.id = e.sondage_id
         JOIN {} m ON m.id = $1
-        WHERE ST_Within(s.geom, m.geom)
+        WHERE ST_Within(s.geom, ST_Transform(m.geom, 4326))
         "#,
         table_name
     );
@@ -616,7 +616,7 @@ async fn get_grid(
         FROM atlas.essais e
         JOIN atlas.sondages s ON s.id = e.sondage_id
         JOIN {} m ON m.id = $1
-        WHERE ST_Within(s.geom, m.geom)
+        WHERE ST_Within(s.geom, ST_Transform(m.geom, 4326))
         GROUP BY e.type_essai
         "#,
         table_name
@@ -1516,7 +1516,7 @@ async fn get_grid_details(
             MIN(e.depth_m) AS zmin,
             MAX(e.depth_m) AS zmax
         FROM {} m
-        LEFT JOIN atlas.sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+        LEFT JOIN atlas.sondages s ON ST_Within(s.geom, ST_Transform(m.geom, 4326)) AND s.deleted_at IS NULL
         LEFT JOIN atlas.essais e ON e.sondage_id = s.id
         WHERE m.id = $1
         "#,
@@ -1566,7 +1566,7 @@ async fn get_grid_details(
         FROM atlas.sondages s
         JOIN {} m ON m.id = $1
         WHERE (
-            (s.geom IS NOT NULL AND ST_Within(s.geom, m.geom))
+            (s.geom IS NOT NULL AND ST_Within(s.geom, ST_Transform(m.geom, 4326)))
             OR (s.geom IS NULL AND s.maille_code = m.code)
         )
         AND s.deleted_at IS NULL

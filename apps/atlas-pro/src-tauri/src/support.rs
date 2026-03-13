@@ -7,6 +7,15 @@ use tauri::State;
 use crate::{postgres, ManagedPaths, ManagedPostgres};
 
 #[derive(Serialize)]
+pub struct DbConnectionInfo {
+    pub database_url: String,
+    pub host: String,
+    pub port: u16,
+    pub db_user: String,
+    pub db_name: String,
+}
+
+#[derive(Serialize)]
 struct DiagnosticManifest {
     product: String,
     version: String,
@@ -161,6 +170,36 @@ pub fn db_integrity_check(pg: State<'_, ManagedPostgres>) -> Result<(), String> 
     }
 
     Ok(())
+}
+
+#[tauri::command]
+pub fn db_connection_info(pg: State<'_, ManagedPostgres>) -> Result<DbConnectionInfo, String> {
+    let handle = pg
+        .0
+        .lock()
+        .map_err(|_| "postgres state lock poisoned".to_string())?;
+    let Some(h) = handle.as_ref() else {
+        return Err("PostgreSQL not started".to_string());
+    };
+
+    let host = "127.0.0.1".to_string();
+    let port = h.port;
+    let db_user = std::env::var("DB_USER").unwrap_or_else(|_| "atlas".to_string());
+    let db_name = std::env::var("DB_NAME").unwrap_or_else(|_| "atlas_clean".to_string());
+    let db_password = postgres::ensure_password().map_err(|e| e.to_string())?;
+
+    let database_url = format!(
+        "postgres://{}:{}@{}:{}/{}",
+        db_user, db_password, host, port, db_name
+    );
+
+    Ok(DbConnectionInfo {
+        database_url,
+        host,
+        port,
+        db_user,
+        db_name,
+    })
 }
 
 #[tauri::command]
