@@ -121,11 +121,14 @@ Write-Host "Préfixe Colab détecté : '$API_PREFIX'" -ForegroundColor Green
 
 # 2) CREATE STUDENT
 Write-Host "`n2) Création étudiant..." -ForegroundColor Yellow
+$phoneSuffix = (Get-Date -Format 'HHmmssfff')
+$studentPhone = ("07{0}" -f $phoneSuffix.PadLeft(8, '0')).Substring(0, 10)
+$supervisorPhone = ("06{0}" -f $phoneSuffix.PadLeft(8, '0')).Substring(0, 10)
 $studentPayload = @{
     email = "smoke.student.$(Get-Date -Format 'yyyyMMdd_HHmmss')@example.test"
     first_name = "Smoke"
     last_name = "Student"
-    telephone = "0123456789"
+    telephone = $studentPhone
     age = 22
     promotion = "2025-2026"
 } | ConvertTo-Json -Compress
@@ -140,7 +143,7 @@ $supervisorPayload = @{
     email = "smoke.supervisor.$(Get-Date -Format 'yyyyMMdd_HHmmss')@example.test"
     first_name = "Smoke"
     last_name = "Supervisor"
-    telephone = "0987654321"
+    telephone = $supervisorPhone
     institution = "Atlas Test"
 } | ConvertTo-Json -Compress
 $createSupervisor = Invoke-AtlasCurlJson 'POST' "$API_PREFIX/colab/supervisors" $supervisorPayload
@@ -228,17 +231,17 @@ $docsAfterTotal = if ($docsAfter.data.total -ne $null) { $docsAfter.data.total }
 Write-Host "Documents après suppression : $docsAfterTotal"
 
 # 9) SUPPRIMER (DELETE)
-Write-Host "`n9) Supprimer étudiant (DELETE)..." -ForegroundColor Yellow
+Write-Host "`n9) Supprimer mission (DELETE)..." -ForegroundColor Yellow
+$delMission = Invoke-AtlasCurlJson 'DELETE' "$API_PREFIX/colab/missions/$MISSION_ID" $null
+Write-Host "Supprimer mission : status=$($delMission.status) success=$($delMission.success)"
+
+Write-Host "`n9b) Supprimer étudiant (DELETE)..." -ForegroundColor Yellow
 $delStudent = Invoke-AtlasCurlJson 'DELETE' "$API_PREFIX/colab/students/$STUDENT_ID" $null
 Write-Host "Supprimer étudiant : status=$($delStudent.status) success=$($delStudent.success)"
 
-Write-Host "`n9b) Supprimer superviseur (DELETE)..." -ForegroundColor Yellow
+Write-Host "`n9c) Supprimer superviseur (DELETE)..." -ForegroundColor Yellow
 $delSupervisor = Invoke-AtlasCurlJson 'DELETE' "$API_PREFIX/colab/supervisors/$SUPERVISOR_ID" $null
 Write-Host "Supprimer superviseur : status=$($delSupervisor.status) success=$($delSupervisor.success)"
-
-Write-Host "`n9c) Supprimer mission (DELETE)..." -ForegroundColor Yellow
-$delMission = Invoke-AtlasCurlJson 'DELETE' "$API_PREFIX/colab/missions/$MISSION_ID" $null
-Write-Host "Supprimer mission : status=$($delMission.status) success=$($delMission.success)"
 
 # 10) VÉRIFIER LISTES APRÈS SUPPRESSION + présence des IDs
 Write-Host "`n10) Listes après suppression..." -ForegroundColor Yellow

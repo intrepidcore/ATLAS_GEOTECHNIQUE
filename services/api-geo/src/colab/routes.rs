@@ -211,11 +211,159 @@ async fn list_missions(
     }))
 }
 
-async fn create_mission() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({ "error": "Not implemented" })),
+async fn create_mission(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(request): Json<CreateMissionRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.create") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    request
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+
+    let theme = MissionTheme::from_str(request.theme.trim()).ok_or_else(|| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Theme invalide" })),
+        )
+    })?;
+
+    let expected_sondages = request.expected_sondages.unwrap_or(0).max(0);
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    // Garde anti-doublon code (missions non supprimées)
+    let existing: Option<Uuid> = sqlx::query_scalar(
+        r#"SELECT id FROM atlas.colab_missions WHERE deleted_at IS NULL AND code = $1 LIMIT 1"#,
     )
+    .bind(request.code.trim())
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    if let Some(existing_id) = existing {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Code déjà utilisé", "existing_mission_id": existing_id })),
+        ));
+    }
+
+    let mission_id: Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO atlas.colab_missions (
+            code,
+            title,
+            theme,
+            status,
+            maille_id,
+            zone_label,
+            commune,
+            region,
+            supervisor_id,
+            expected_sondages,
+            start_date,
+            end_date,
+            description,
+            objectifs,
+            notes_internal,
+            created_by
+        )
+        VALUES (
+            $1,
+            $2,
+            $3::atlas.mission_theme,
+            'draft'::atlas.mission_status,
+            $4,
+            $5,
+            $6,
+            $7,
+            $8,
+            $9,
+            $10,
+            $11,
+            $12,
+            $13,
+            $14,
+            $15
+        )
+        RETURNING id
+        "#,
+    )
+    .bind(request.code.trim())
+    .bind(request.title.trim())
+    .bind(theme.as_str())
+    .bind(request.maille_id)
+    .bind(request.zone_label.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.commune.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.region.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.supervisor_id)
+    .bind(expected_sondages)
+    .bind(request.start_date)
+    .bind(request.end_date)
+    .bind(request.description.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.objectifs.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.notes_internal.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(auth.id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+    // Assignations initiales (idempotent)
+    for student_id in request.assigned_student_ids.iter() {
+        let exists_student: Option<Uuid> = sqlx::query_scalar(
+            r#"SELECT id FROM atlas.colab_students WHERE id = $1 AND deleted_at IS NULL LIMIT 1"#,
+        )
+        .bind(student_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+        if exists_student.is_none() {
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Étudiant introuvable", "student_id": student_id })),
+            ));
+        }
+
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO atlas.colab_mission_assignments (mission_id, student_id, role)
+            VALUES ($1, $2, 'membre')
+            ON CONFLICT DO NOTHING
+            "#,
+        )
+        .bind(mission_id)
+        .bind(student_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    }
+
+    // Si une maille est connue, on tente de synchroniser la table dérivée.
+    if request.maille_id.is_some() {
+        let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
+            .bind(mission_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": format!("Erreur sync attribution: {}", e) })),
+                )
+            })?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    Ok(Json(json!({ "success": true, "id": mission_id })))
 }
 
 async fn get_mission(
