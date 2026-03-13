@@ -31,3 +31,52 @@ Une mission est **active** si l’affectation étudiant↔mission est active :
 ## BM-06 — Remapping legacy → nouveau code
 
 Le remapping legacy utilise une logique d’intersection géométrique (coverage %) avec fallback si nécessaire.
+
+## BM-07 — Mailles actives d’un étudiant
+
+Une “maille active” pour un étudiant signifie :
+
+- l’étudiant a au moins une **mission active**
+- et cette mission pointe vers une maille (`colab_missions.maille_id IS NOT NULL`)
+
+Définition canonique (métrique) :
+
+- `active_mailles = COUNT(DISTINCT colab_missions.maille_id)`
+- restreint aux assignations actives : `colab_mission_assignments.unassigned_at IS NULL`
+
+## BM-08 — Cohérence missions ↔ mailles
+
+Une mission active doit pointer vers une maille (sauf cas explicitement documenté). En pratique :
+
+- `colab_missions.deleted_at IS NULL`
+- `colab_missions.maille_id IS NOT NULL` pour les missions opérationnelles
+
+Si une mission est active mais sans maille, c’est un bug de données à corriger par audit/migration.
+
+## BM-09 — Statut canonique d’une maille
+
+Le statut d’une maille est défini par la vue canonique :
+
+- `atlas.v_maille_status`
+
+L’API/UI ne doit pas recalculer ce statut localement.
+
+## BM-10 — Seed dump Desktop : format canonique
+
+Le seed dump Desktop est au format `pg_dump -Fc` et restauré via `pg_restore`.
+
+## BM-11 — Seed dump Desktop : intégrité
+
+Chaque seed dump Desktop doit être accompagné d’un manifest contenant un hash (SHA256 minimum).
+Le restore doit vérifier le hash avant d’appliquer le dump.
+
+## BM-12 — Seed dump Desktop : non-destruction implicite
+
+Le Desktop ne doit jamais écraser une base utilisateur existante implicitement.
+Un restore “forcé” est un mode dev explicite (ex: `ATLAS_FORCE_SEED_RESTORE=1`).
+
+---
+
+## Historique des révisions
+
+- 2026-03-13 : ajout BM-07..BM-12 (missions/mailles étudiants + seed contract) et canonicalisation autour de `atlas.v_maille_status`.
