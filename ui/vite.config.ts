@@ -161,6 +161,7 @@ export default defineConfig(({ mode }) => {
         target: apiTarget,
         changeOrigin: true,
         secure: false,
+        ws: true,
         configure: (proxy, _options) => {
           proxy.on('error', (err, req) => {
             console.error(`[PROXY ERROR] ${req.method} ${req.url} -> ${err.message}`)

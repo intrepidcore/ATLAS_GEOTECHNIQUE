@@ -204,10 +204,10 @@ export function createMapboxStreetsBasemap(): L.TileLayer | null {
 // Azure Maps Satellite (nécessite clé)
 // ============================================
 export function createAzureSatelliteBasemap(): L.TileLayer | null {
-  const key = import.meta.env.VITE_AZURE_MAPS_KEY;
+  const key = import.meta.env.VITE_AZURE_MAPS_KEY || import.meta.env.VITE_PS_KEY;
   
   if (!key) {
-    console.warn('[Basemaps] VITE_AZURE_MAPS_KEY manquant → fond Azure désactivé');
+    console.warn('[Basemaps] VITE_AZURE_MAPS_KEY/VITE_PS_KEY manquant → fond Azure désactivé');
     return null;
   }
 
@@ -224,10 +224,10 @@ export function createAzureSatelliteBasemap(): L.TileLayer | null {
 // Azure Maps Road (nécessite clé)
 // ============================================
 export function createAzureRoadBasemap(): L.TileLayer | null {
-  const key = import.meta.env.VITE_AZURE_MAPS_KEY;
+  const key = import.meta.env.VITE_AZURE_MAPS_KEY || import.meta.env.VITE_PS_KEY;
   
   if (!key) {
-    console.warn('[Basemaps] VITE_AZURE_MAPS_KEY manquant → fond Azure Road désactivé');
+    console.warn('[Basemaps] VITE_AZURE_MAPS_KEY/VITE_PS_KEY manquant → fond Azure Road désactivé');
     return null;
   }
 
