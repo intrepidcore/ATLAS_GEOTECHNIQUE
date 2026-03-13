@@ -171,6 +171,23 @@ async fn main() -> anyhow::Result<()> {
     let pool = config::pg_pool_with_retry(5).await?;
     tracing::info!("✅ DB connectée avec succès");
 
+    // Pool admin optionnel pour le DB Manager (/db/*)
+    // Par défaut: désactivé (anti-dette + sécurité).
+    let enable_db_manager = std::env::var("ENABLE_DB_MANAGER")
+        .ok()
+        .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+        .unwrap_or(false);
+    let admin_pool = if enable_db_manager {
+        let url = std::env::var("DATABASE_URL_ADMIN")
+            .expect("DATABASE_URL_ADMIN requis si ENABLE_DB_MANAGER=true");
+        let p = sqlx::PgPool::connect(&url).await?;
+        // Health check explicite
+        let _one: i32 = sqlx::query_scalar::<_, i32>("SELECT 1").fetch_one(&p).await?;
+        Some(p)
+    } else {
+        None
+    };
+
     // Note: Les migrations sont gérées manuellement via scripts SQL
     // sqlx::migrate!() désactivé car les migrations sont déjà appliquées
 
@@ -191,6 +208,7 @@ async fn main() -> anyhow::Result<()> {
 
     let state = AppState {
         pool,
+        admin_pool,
         metrics: metrics.clone(),
         ws_tx,
         auth_config,

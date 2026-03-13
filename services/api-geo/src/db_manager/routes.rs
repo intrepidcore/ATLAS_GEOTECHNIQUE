@@ -8,6 +8,19 @@ use axum::{
 };
 use serde::Serialize;
 use std::collections::HashMap;
+use sqlx::PgPool;
+
+fn require_admin_pool(
+    state: &AppState,
+) -> Result<&PgPool, (StatusCode, Json<DbManagerError>)> {
+    state.admin_pool.as_ref().ok_or((
+        StatusCode::SERVICE_UNAVAILABLE,
+        Json(DbManagerError::new(
+            "DB_MANAGER_DISABLED",
+            "DB Manager désactivé (ENABLE_DB_MANAGER=false)",
+        )),
+    ))
+}
 
 #[derive(Serialize)]
 pub struct GeocodeStatus {
@@ -35,7 +48,8 @@ pub async fn extent_by_related_handler(
     Path((schema, table)): Path<(String, String)>,
     Json(ids): Json<Vec<String>>,
 ) -> Result<Json<Option<BBox>>, (StatusCode, Json<DbManagerError>)> {
-    match table::get_extent_by_related(&state.pool, &schema, &table, &ids).await {
+    let pool = require_admin_pool(&state)?;
+    match table::get_extent_by_related(pool, &schema, &table, &ids).await {
         Ok(bbox) => Ok(Json(bbox)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -54,6 +68,7 @@ pub async fn select_bbox_handler(
     Path((schema, table)): Path<(String, String)>,
     Json(payload): Json<HashMap<String, serde_json::Value>>,
 ) -> Result<Json<SelectionResponse>, (StatusCode, Json<DbManagerError>)> {
+    let pool = require_admin_pool(&state)?;
     let min_x = payload.get("min_x").and_then(|v| v.as_f64()).ok_or((
         StatusCode::BAD_REQUEST,
         Json(DbManagerError::new("BAD_REQUEST", "min_x manquant")),
@@ -73,7 +88,7 @@ pub async fn select_bbox_handler(
     let srid = payload.get("srid").and_then(|v| v.as_i64()).unwrap_or(4326) as i32;
 
     match table::select_bbox(
-        &state.pool,
+        pool,
         &schema,
         &table,
         min_x,
@@ -105,7 +120,8 @@ pub async fn extent_by_ids_handler(
         })));
     }
 
-    match table::get_extent_by_ids(&state.pool, &schema, &table, &ids).await {
+    let pool = require_admin_pool(&state)?;
+    match table::get_extent_by_ids(pool, &schema, &table, &ids).await {
         Ok(Some(bbox)) => Ok(Json(serde_json::json!({
             "bbox": bbox,
             "message": "Extent calculated successfully"
@@ -129,7 +145,8 @@ pub async fn extent_by_ids_handler(
 pub async fn get_schema_handler(
     State(state): State<AppState>,
 ) -> Result<Json<DatabaseSchema>, (StatusCode, Json<DbManagerError>)> {
-    match schema::get_database_schema(&state.pool).await {
+    let pool = require_admin_pool(&state)?;
+    match schema::get_database_schema(pool).await {
         Ok(schema) => Ok(Json(schema)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -143,7 +160,8 @@ pub async fn get_table_info_handler(
     State(state): State<AppState>,
     Path((schema, table)): Path<(String, String)>,
 ) -> Result<Json<TableInfo>, (StatusCode, Json<DbManagerError>)> {
-    match schema::get_table_info(&state.pool, &schema, &table).await {
+    let pool = require_admin_pool(&state)?;
+    match schema::get_table_info(pool, &schema, &table).await {
         Ok(info) => Ok(Json(info)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -162,7 +180,8 @@ pub async fn get_table_data_handler(
     Path((schema, table)): Path<(String, String)>,
     Query(query): Query<TableDataQuery>,
 ) -> Result<Json<TableDataResponse>, (StatusCode, Json<DbManagerError>)> {
-    match table::get_table_data(&state.pool, &schema, &table, query).await {
+    let pool = require_admin_pool(&state)?;
+    match table::get_table_data(pool, &schema, &table, query).await {
         Ok(data) => Ok(Json(data)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -177,7 +196,8 @@ pub async fn select_rows_handler(
     Path((schema, table)): Path<(String, String)>,
     Json(request): Json<SelectionRequest>,
 ) -> Result<Json<SelectionResponse>, (StatusCode, Json<DbManagerError>)> {
-    match table::select_rows(&state.pool, &schema, &table, request).await {
+    let pool = require_admin_pool(&state)?;
+    match table::select_rows(pool, &schema, &table, request).await {
         Ok(response) => Ok(Json(response)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -191,17 +211,18 @@ pub async fn add_row_handler(
     State(state): State<AppState>,
     Path((schema, table)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<DbManagerError>)> {
+    let pool = require_admin_pool(&state)?;
     // Créer un backup automatique
-    if let Err(e) = backup::create_auto_backup(&state.pool, &schema, &table, "Ajout de ligne").await
+    if let Err(e) = backup::create_auto_backup(pool, &schema, &table, "Ajout de ligne").await
     {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
 
-    match table::add_empty_row(&state.pool, &schema, &table).await {
+    match table::add_empty_row(pool, &schema, &table).await {
         Ok(id) => {
             // Créer un audit log
             let _ = audit::create_audit_entry(
-                &state.pool,
+                pool,
                 &schema,
                 &table,
                 "INSERT_ROW",
@@ -228,11 +249,12 @@ pub async fn update_cell_handler(
     Path((schema, table, row_id, column)): Path<(String, String, String, String)>,
     Json(value): Json<serde_json::Value>,
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
-    match table::update_cell(&state.pool, &schema, &table, &row_id, &column, value).await {
+    let pool = require_admin_pool(&state)?;
+    match table::update_cell(pool, &schema, &table, &row_id, &column, value).await {
         Ok(_) => {
             // Créer un audit log
             let _ = audit::create_audit_entry(
-                &state.pool,
+                pool,
                 &schema,
                 &table,
                 "UPDATE_CELL",
@@ -262,20 +284,21 @@ pub async fn delete_rows_handler(
     Path((schema, table)): Path<(String, String)>,
     Json(row_ids): Json<Vec<String>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<DbManagerError>)> {
+    let pool = require_admin_pool(&state)?;
     if row_ids.len() > 5 {
         // Créer un backup automatique pour les suppressions massives
         if let Err(e) =
-            backup::create_auto_backup(&state.pool, &schema, &table, "Suppression massive").await
+            backup::create_auto_backup(pool, &schema, &table, "Suppression massive").await
         {
             eprintln!("Erreur lors de la création du backup: {}", e);
         }
     }
 
-    match table::delete_rows(&state.pool, &schema, &table, &row_ids).await {
+    match table::delete_rows(pool, &schema, &table, &row_ids).await {
         Ok(count) => {
             // Créer un audit log
             let _ = audit::create_audit_entry(
-                &state.pool,
+                pool,
                 &schema,
                 &table,
                 "DELETE_ROWS",
@@ -308,14 +331,15 @@ pub async fn create_staging_handler(
     Path((schema, table)): Path<(String, String)>,
     Json(request): Json<CreateStagingRequest>,
 ) -> Result<Json<StagingInfo>, (StatusCode, Json<DbManagerError>)> {
+    let pool = require_admin_pool(&state)?;
     // Créer un backup automatique
     if let Err(e) =
-        backup::create_auto_backup(&state.pool, &schema, &table, "Création staging").await
+        backup::create_auto_backup(pool, &schema, &table, "Création staging").await
     {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
 
-    match staging::create_staging(&state.pool, &schema, &table, request).await {
+    match staging::create_staging(pool, &schema, &table, request).await {
         Ok(info) => Ok(Json(info)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -330,7 +354,8 @@ pub async fn apply_staging_operation_handler(
     Path(staging_id): Path<String>,
     Json(operation): Json<StagingRowOperation>,
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
-    match staging::apply_staging_operation(&state.pool, &staging_id, operation).await {
+    let pool = require_admin_pool(&state)?;
+    match staging::apply_staging_operation(pool, &staging_id, operation).await {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -344,7 +369,8 @@ pub async fn validate_staging_handler(
     State(state): State<AppState>,
     Path(staging_id): Path<String>,
 ) -> Result<Json<StagingValidationResult>, (StatusCode, Json<DbManagerError>)> {
-    match staging::validate_staging(&state.pool, &staging_id).await {
+    let pool = require_admin_pool(&state)?;
+    match staging::validate_staging(pool, &staging_id).await {
         Ok(result) => Ok(Json(result)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -359,9 +385,10 @@ pub async fn preview_staging_handler(
     Path(staging_id): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<StagingPreview>, (StatusCode, Json<DbManagerError>)> {
+    let pool = require_admin_pool(&state)?;
     let limit = params.get("limit").and_then(|s| s.parse::<i64>().ok());
 
-    match staging::preview_staging(&state.pool, &staging_id, limit).await {
+    match staging::preview_staging(pool, &staging_id, limit).await {
         Ok(preview) => Ok(Json(preview)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -375,7 +402,8 @@ pub async fn commit_staging_handler(
     State(state): State<AppState>,
     Path(staging_id): Path<String>,
 ) -> Result<Json<CommitResult>, (StatusCode, Json<DbManagerError>)> {
-    match staging::commit_staging(&state.pool, &staging_id).await {
+    let pool = require_admin_pool(&state)?;
+    match staging::commit_staging(pool, &staging_id).await {
         Ok(result) => Ok(Json(result)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -389,7 +417,8 @@ pub async fn cancel_staging_handler(
     State(state): State<AppState>,
     Path(staging_id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
-    match staging::cancel_staging(&state.pool, &staging_id).await {
+    let pool = require_admin_pool(&state)?;
+    match staging::cancel_staging(pool, &staging_id).await {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -408,9 +437,10 @@ pub async fn add_column_handler(
     Path((schema, table)): Path<(String, String)>,
     Json(request): Json<AddColumnRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
+    let pool = require_admin_pool(&state)?;
     // Créer un backup automatique
     if let Err(e) =
-        backup::create_auto_backup(&state.pool, &schema, &table, "Ajout de colonne").await
+        backup::create_auto_backup(pool, &schema, &table, "Ajout de colonne").await
     {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
@@ -418,7 +448,7 @@ pub async fn add_column_handler(
     // Construire la requête ALTER TABLE
     let schema_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&schema)
-        .fetch_one(&state.pool)
+        .fetch_one(pool)
         .await
     {
         Ok(s) => s,
@@ -432,7 +462,7 @@ pub async fn add_column_handler(
 
     let table_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&table)
-        .fetch_one(&state.pool)
+        .fetch_one(pool)
         .await
     {
         Ok(s) => s,
@@ -446,7 +476,7 @@ pub async fn add_column_handler(
 
     let column_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&request.name)
-        .fetch_one(&state.pool)
+        .fetch_one(pool)
         .await
     {
         Ok(s) => s,
@@ -477,11 +507,11 @@ pub async fn add_column_handler(
         schema_ident, table_ident, column_ident, data_type, nullable, default
     );
 
-    match sqlx::query(&alter_query).execute(&state.pool).await {
+    match sqlx::query(&alter_query).execute(pool).await {
         Ok(_) => {
             // Créer un audit log
             let _ = audit::create_audit_entry(
-                &state.pool,
+                pool,
                 &schema,
                 &table,
                 "ADD_COLUMN",
@@ -511,9 +541,10 @@ pub async fn delete_column_handler(
     Path((schema, table, column)): Path<(String, String, String)>,
     Json(request): Json<DeleteColumnRequest>,
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
+    let pool = require_admin_pool(&state)?;
     // Créer un backup automatique
     if let Err(e) =
-        backup::create_auto_backup(&state.pool, &schema, &table, "Suppression de colonne").await
+        backup::create_auto_backup(pool, &schema, &table, "Suppression de colonne").await
     {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
@@ -538,7 +569,7 @@ pub async fn delete_column_handler(
 
             let schema_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
                 .bind(&schema)
-                .fetch_one(&state.pool)
+                .fetch_one(pool)
                 .await
             {
                 Ok(s) => s,
@@ -552,7 +583,7 @@ pub async fn delete_column_handler(
 
             let table_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
                 .bind(&table)
-                .fetch_one(&state.pool)
+                .fetch_one(pool)
                 .await
             {
                 Ok(s) => s,
@@ -566,7 +597,7 @@ pub async fn delete_column_handler(
 
             let column_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
                 .bind(&column)
-                .fetch_one(&state.pool)
+                .fetch_one(pool)
                 .await
             {
                 Ok(s) => s,
@@ -583,11 +614,11 @@ pub async fn delete_column_handler(
                 schema_ident, table_ident, column_ident
             );
 
-            match sqlx::query(&drop_query).execute(&state.pool).await {
+            match sqlx::query(&drop_query).execute(pool).await {
                 Ok(_) => {
                     // Créer un audit log
                     let _ = audit::create_audit_entry(
-                        &state.pool,
+                        pool,
                         &schema,
                         &table,
                         "DROP_COLUMN",
@@ -617,10 +648,11 @@ pub async fn analyze_column_impact_handler(
     State(state): State<AppState>,
     Path((schema, table, column)): Path<(String, String, String)>,
 ) -> Result<Json<ColumnImpactAnalysis>, (StatusCode, Json<DbManagerError>)> {
+    let pool = require_admin_pool(&state)?;
     // Compter les lignes affectées
     let schema_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&schema)
-        .fetch_one(&state.pool)
+        .fetch_one(pool)
         .await
     {
         Ok(s) => s,
@@ -634,7 +666,7 @@ pub async fn analyze_column_impact_handler(
 
     let table_ident = match sqlx::query_scalar::<_, String>("SELECT quote_ident($1)")
         .bind(&table)
-        .fetch_one(&state.pool)
+        .fetch_one(pool)
         .await
     {
         Ok(s) => s,
@@ -648,7 +680,7 @@ pub async fn analyze_column_impact_handler(
 
     let count_query = format!("SELECT COUNT(*) FROM {}.{}", schema_ident, table_ident);
     let affected_rows: i64 = sqlx::query_scalar(&count_query)
-        .fetch_one(&state.pool)
+        .fetch_one(pool)
         .await
         .unwrap_or(0);
 
@@ -665,7 +697,7 @@ pub async fn analyze_column_impact_handler(
     .bind(&schema)
     .bind(&table)
     .bind(&column)
-    .fetch_all(&state.pool)
+    .fetch_all(pool)
     .await
     .unwrap_or_default();
 
@@ -692,7 +724,8 @@ pub async fn get_audit_log_handler(
     Path((schema, table)): Path<(String, String)>,
     Query(query): Query<AuditQuery>,
 ) -> Result<Json<Vec<AuditLog>>, (StatusCode, Json<DbManagerError>)> {
-    match audit::get_audit_log(&state.pool, &schema, &table, query).await {
+    let pool = require_admin_pool(&state)?;
+    match audit::get_audit_log(pool, &schema, &table, query).await {
         Ok(logs) => Ok(Json(logs)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -706,7 +739,8 @@ pub async fn get_audit_stats_handler(
     State(state): State<AppState>,
     Path((schema, table)): Path<(String, String)>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<DbManagerError>)> {
-    match audit::get_audit_stats(&state.pool, &schema, &table).await {
+    let pool = require_admin_pool(&state)?;
+    match audit::get_audit_stats(pool, &schema, &table).await {
         Ok(stats) => Ok(Json(stats)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -724,7 +758,8 @@ pub async fn create_backup_handler(
     State(state): State<AppState>,
     Json(request): Json<CreateBackupRequest>,
 ) -> Result<Json<BackupInfo>, (StatusCode, Json<DbManagerError>)> {
-    match backup::create_backup(&state.pool, request).await {
+    let pool = require_admin_pool(&state)?;
+    match backup::create_backup(pool, request).await {
         Ok(info) => Ok(Json(info)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -737,7 +772,8 @@ pub async fn create_backup_handler(
 pub async fn list_backups_handler(
     State(state): State<AppState>,
 ) -> Result<Json<Vec<BackupInfo>>, (StatusCode, Json<DbManagerError>)> {
-    match backup::list_backups(&state.pool).await {
+    let pool = require_admin_pool(&state)?;
+    match backup::list_backups(pool).await {
         Ok(backups) => Ok(Json(backups)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -751,7 +787,8 @@ pub async fn restore_backup_handler(
     State(state): State<AppState>,
     Path(backup_id): Path<String>,
 ) -> Result<Json<RestoreResult>, (StatusCode, Json<DbManagerError>)> {
-    match backup::restore_backup(&state.pool, &backup_id).await {
+    let pool = require_admin_pool(&state)?;
+    match backup::restore_backup(pool, &backup_id).await {
         Ok(result) => Ok(Json(result)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -765,7 +802,8 @@ pub async fn delete_backup_handler(
     State(state): State<AppState>,
     Path(backup_id): Path<String>,
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
-    match backup::delete_backup(&state.pool, &backup_id).await {
+    let pool = require_admin_pool(&state)?;
+    match backup::delete_backup(pool, &backup_id).await {
         Ok(_) => Ok(StatusCode::OK),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -784,7 +822,8 @@ pub async fn dryrun_add_column_handler(
     Path((schema, table)): Path<(String, String)>,
     Json(request): Json<AddColumnRequest>,
 ) -> Result<Json<DryRunResult>, (StatusCode, Json<DbManagerError>)> {
-    match dryrun::dryrun_add_column(&state.pool, &schema, &table, &request).await {
+    let pool = require_admin_pool(&state)?;
+    match dryrun::dryrun_add_column(pool, &schema, &table, &request).await {
         Ok(result) => Ok(Json(result)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -798,7 +837,8 @@ pub async fn dryrun_delete_column_handler(
     State(state): State<AppState>,
     Path((schema, table, column)): Path<(String, String, String)>,
 ) -> Result<Json<DryRunResult>, (StatusCode, Json<DbManagerError>)> {
-    match dryrun::dryrun_delete_column(&state.pool, &schema, &table, &column).await {
+    let pool = require_admin_pool(&state)?;
+    match dryrun::dryrun_delete_column(pool, &schema, &table, &column).await {
         Ok(result) => Ok(Json(result)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
