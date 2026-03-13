@@ -216,6 +216,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/coverage/adm-boundaries", get(routes::get_coverage_adm_boundaries))
         .route("/coverage/mailles-dsm", get(dsm::get_coverage_mailles_dsm))
         .route("/maille/:code", get(routes::get_maille_by_code))
+        .route("/mailles/:code", get(routes::get_maille_lookup))
         .route("/search/legacy/:code", get(routes::legacy_lookup))
         .route(
             "/search/unified",

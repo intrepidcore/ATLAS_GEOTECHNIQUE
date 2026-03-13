@@ -1,0 +1,55 @@
+BEGIN;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_app') THEN
+    CREATE ROLE atlas_app NOLOGIN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_readonly') THEN
+    CREATE ROLE atlas_readonly NOLOGIN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_etl') THEN
+    CREATE ROLE atlas_etl NOLOGIN;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_app_user') THEN
+    CREATE ROLE atlas_app_user LOGIN IN ROLE atlas_app;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_readonly_user') THEN
+    CREATE ROLE atlas_readonly_user LOGIN IN ROLE atlas_readonly;
+  END IF;
+
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_etl_user') THEN
+    CREATE ROLE atlas_etl_user LOGIN IN ROLE atlas_etl;
+  END IF;
+END
+$$;
+
+GRANT USAGE ON SCHEMA atlas TO atlas_app;
+GRANT USAGE ON SCHEMA atlas TO atlas_readonly;
+GRANT USAGE ON SCHEMA atlas TO atlas_etl;
+
+GRANT SELECT ON ALL TABLES IN SCHEMA atlas TO atlas_readonly;
+
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA atlas TO atlas_app;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA atlas TO atlas_app;
+
+GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON ALL TABLES IN SCHEMA atlas TO atlas_etl;
+GRANT USAGE, SELECT, UPDATE ON ALL SEQUENCES IN SCHEMA atlas TO atlas_etl;
+
+REVOKE ALL ON TABLE atlas.mailles FROM atlas_app;
+GRANT SELECT ON TABLE atlas.mailles TO atlas_app;
+
+REVOKE ALL ON TABLE atlas.mailles FROM atlas_readonly;
+GRANT SELECT ON TABLE atlas.mailles TO atlas_readonly;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA atlas GRANT SELECT ON TABLES TO atlas_readonly;
+ALTER DEFAULT PRIVILEGES IN SCHEMA atlas GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO atlas_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA atlas GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO atlas_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA atlas GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON TABLES TO atlas_etl;
+ALTER DEFAULT PRIVILEGES IN SCHEMA atlas GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO atlas_etl;
+
+COMMIT;

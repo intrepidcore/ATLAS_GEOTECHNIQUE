@@ -65,6 +65,38 @@ async fn list_missions(
     if let Some(supervisor_id) = filters.supervisor_id {
         conditions.push(format!("cm.supervisor_id = '{}'", supervisor_id));
     }
+
+    if let Some(maille) = filters.maille.clone() {
+        let m = maille.trim();
+        if !m.is_empty() {
+            let is_legacy = m.to_uppercase().starts_with("TG-");
+            let sql = if is_legacy {
+                "SELECT id::text FROM atlas.mailles_lookup WHERE maille_code = $1 LIMIT 1"
+            } else {
+                "SELECT id::text FROM atlas.mailles_lookup WHERE spatial_id = $1 LIMIT 1"
+            };
+
+            let maille_id: Option<String> = sqlx::query_scalar(sql)
+                .bind(m)
+                .fetch_optional(&state.pool)
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": format!("Erreur DB: {}", e) })),
+                    )
+                })?;
+
+            let Some(maille_id) = maille_id else {
+                return Err((
+                    StatusCode::NOT_FOUND,
+                    Json(json!({ "error": "Maille introuvable", "maille": m })),
+                ));
+            };
+
+            conditions.push(format!("cm.maille_id = '{}'", maille_id));
+        }
+    }
     if let Some(search) = filters.search {
         let q = search.replace('\'', "''");
         conditions.push(format!(
@@ -612,11 +644,147 @@ async fn get_mission(
     }))
 }
 
-async fn update_mission() -> impl IntoResponse {
-    (
-        StatusCode::NOT_IMPLEMENTED,
-        Json(json!({ "error": "Not implemented" })),
+async fn update_mission(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(mission_id): Path<Uuid>,
+    Json(request): Json<UpdateMissionRequest>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.update") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    request
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+
+    let theme: Option<String> = match request.theme.as_deref() {
+        None => None,
+        Some(t) => {
+            let t = t.trim();
+            if t.is_empty() {
+                None
+            } else {
+                MissionTheme::from_str(t)
+                    .map(|th| th.as_str().to_string())
+                    .ok_or_else(|| {
+                        (
+                            StatusCode::BAD_REQUEST,
+                            Json(json!({ "error": "Theme invalide" })),
+                        )
+                    })
+                    .map(Some)?
+            }
+        }
+    };
+
+    let status: Option<String> = match request.status.as_deref() {
+        None => None,
+        Some(s) => {
+            let s = s.trim();
+            if s.is_empty() {
+                None
+            } else {
+                MissionStatus::from_str(s)
+                    .map(|st| st.as_str().to_string())
+                    .ok_or_else(|| {
+                        (
+                            StatusCode::BAD_REQUEST,
+                            Json(json!({ "error": "Statut invalide" })),
+                        )
+                    })
+                    .map(Some)?
+            }
+        }
+    };
+
+    let expected_sondages = request.expected_sondages.map(|v| v.max(0));
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    // Vérifier existence
+    let exists: Option<Uuid> = sqlx::query_scalar(
+        r#"SELECT id FROM atlas.colab_missions WHERE id = $1 AND deleted_at IS NULL"#,
     )
+    .bind(mission_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    if exists.is_none() {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))));
+    }
+
+    let res = sqlx::query(
+        r#"
+        UPDATE atlas.colab_missions
+        SET
+          title = COALESCE($2, title),
+          theme = COALESCE($3::atlas.mission_theme, theme),
+          status = COALESCE($4::atlas.mission_status, status),
+          maille_id = COALESCE($5, maille_id),
+          zone_label = COALESCE($6, zone_label),
+          commune = COALESCE($7, commune),
+          region = COALESCE($8, region),
+          supervisor_id = COALESCE($9, supervisor_id),
+          expected_sondages = COALESCE($10, expected_sondages),
+          start_date = COALESCE($11, start_date),
+          end_date = COALESCE($12, end_date),
+          description = COALESCE($13, description),
+          objectifs = COALESCE($14, objectifs),
+          notes_internal = COALESCE($15, notes_internal),
+          updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(mission_id)
+    .bind(request.title.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(theme)
+    .bind(status)
+    .bind(request.maille_id)
+    .bind(request.zone_label.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.commune.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.region.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.supervisor_id)
+    .bind(expected_sondages)
+    .bind(request.start_date)
+    .bind(request.end_date)
+    .bind(request.description.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.objectifs.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.notes_internal.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+
+    if res.rows_affected() == 0 {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))));
+    }
+
+    // Sync derived maille assignment if maille_id is set (or kept)
+    let current_maille_id: Option<Uuid> = sqlx::query_scalar(
+        r#"SELECT maille_id FROM atlas.colab_missions WHERE id = $1 AND deleted_at IS NULL"#,
+    )
+    .bind(mission_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    if current_maille_id.is_some() {
+        let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
+            .bind(mission_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur sync attribution: {}", e) }))))?;
+    }
+
+    tx.commit()
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+
+    Ok(Json(json!({ "success": true, "id": mission_id })))
 }
 
 async fn delete_mission(

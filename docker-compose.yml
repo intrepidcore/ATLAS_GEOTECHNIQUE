@@ -33,7 +33,7 @@ services:
       - ./.env
       - ./.env.example
     environment:
-      DATABASE_URL: postgres://atlas:atlas@db:5432/atlas_clean
+      DATABASE_URL: postgres://atlas_app_user:${ATLAS_DB_APP_PASSWORD}@db:5432/atlas_clean
       RUST_LOG: ${RUST_LOG:-info}
       API_BIND: 0.0.0.0:8000
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
@@ -156,7 +156,7 @@ services:
       QGIS_TEMPLATE: /app/templates/atlas_base_skeleton.qpt
       QGIS_LAYOUT: atlas_base_skeleton
       OUTPUT_PDF: /data/exports/test_docker.pdf
-      DATABASE_URL: postgres://atlas:atlas@db:5432/atlas_clean
+      DATABASE_URL: postgres://atlas_readonly_user:${ATLAS_DB_READONLY_PASSWORD}@db:5432/atlas_clean
       QT_QPA_PLATFORM: offscreen
       XDG_RUNTIME_DIR: /tmp/runtime-qgis
     depends_on:

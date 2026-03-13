@@ -451,6 +451,8 @@ pub struct MissionFilters {
     pub region: Option<String>,
     pub promotion: Option<String>,
     pub supervisor_id: Option<Uuid>,
+    #[serde(alias = "maille")]
+    pub maille: Option<String>,
     #[serde(alias = "q")]
     pub search: Option<String>, // recherche texte libre (code, titre, maille, zone, opérateur...)
     pub page: Option<i64>,

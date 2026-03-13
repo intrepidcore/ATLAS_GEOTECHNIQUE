@@ -5,6 +5,7 @@
  */
 
 import { API_BASE_URL } from './api';
+import { tokenStorage } from './auth-api';
 
 // ============================================================================
 // Types - Commentaires
@@ -163,7 +164,7 @@ export interface Badge {
 // ============================================================================
 
 function getAuthHeaders(): HeadersInit {
-  const token = localStorage.getItem('atlas_token');
+  const token = tokenStorage.getAccessToken();
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),

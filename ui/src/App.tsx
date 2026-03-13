@@ -24,6 +24,7 @@ import LoginPage from '@/pages/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
 import { selectionApi } from '@/services/selection-api'
 import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/services/api'
+import { authApi, tokenStorage } from './services/auth-api'
 import { stagingApiV2 } from '@/services/staging-api'
 
 type TauriInvoke = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>
@@ -106,12 +107,38 @@ function App() {
 
   const loadNotifications = async () => {
     try {
-      const token = localStorage.getItem('atlas_token')
+      const token = tokenStorage.getAccessToken()
       if (!token) return
-      
+
       const res = await fetch(`${API_BASE_URL}/colab/notifications?unread_only=true&limit=10`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       })
+
+      if (res.status === 401) {
+        const refreshed = await authApi.refresh()
+        if (!refreshed) {
+          tokenStorage.clear()
+          return
+        }
+
+        const token2 = tokenStorage.getAccessToken()
+        if (!token2) return
+
+        const res2 = await fetch(`${API_BASE_URL}/colab/notifications?unread_only=true&limit=10`, {
+          headers: { Authorization: `Bearer ${token2}` },
+        })
+
+        if (!res2.ok) {
+          if (res2.status === 401) tokenStorage.clear()
+          return
+        }
+
+        const data = await res2.json()
+        setNotifications(data.notifications || [])
+        setUnreadCount(data.unread_count || 0)
+        return
+      }
+
       if (res.ok) {
         const data = await res.json()
         setNotifications(data.notifications || [])
@@ -124,7 +151,8 @@ function App() {
 
   const markNotificationRead = async (id: string) => {
     try {
-      const token = localStorage.getItem('atlas_token')
+      const token = tokenStorage.getAccessToken()
+      if (!token) return
       await fetch(`${API_BASE_URL}/colab/notifications/${id}/read`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` }

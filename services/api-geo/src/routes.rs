@@ -10,10 +10,90 @@ use serde::{Deserialize, Serialize};
 use sqlx::Row;
 
 #[derive(Serialize)]
+pub struct MailleLookupResponse {
+    pub id: String,
+    pub maille_code: String,
+    pub spatial_id: Option<String>,
+}
+
+#[derive(Serialize)]
 pub struct LegacyLookupItem {
     pub new_code: String,
     pub coverage_pct: f64,
     pub match_type: String,
+}
+
+/// GET /mailles/{code}
+/// Supporte:
+/// - ancien code (ex: TG-0048-0045-01) -> lookup sur maille_code
+/// - spatial_id (ex: TG5-XXXXXX) -> lookup sur spatial_id
+pub async fn get_maille_lookup(
+    State(state): State<AppState>,
+    Path(code): Path<String>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+    let c = code.trim();
+    if c.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({"error": "code requis"})),
+        )
+            .into_response();
+    }
+
+    let is_legacy = c.to_uppercase().starts_with("TG-");
+    let (sql, bind_value) = if is_legacy {
+        (
+            r#"
+            SELECT id::text AS id, maille_code, spatial_id
+            FROM atlas.mailles_lookup
+            WHERE maille_code = $1
+            LIMIT 1
+            "#,
+            c.to_string(),
+        )
+    } else {
+        (
+            r#"
+            SELECT id::text AS id, maille_code, spatial_id
+            FROM atlas.mailles_lookup
+            WHERE spatial_id = $1
+            LIMIT 1
+            "#,
+            c.to_string(),
+        )
+    };
+
+    let row = match sqlx::query(sql)
+        .bind(bind_value)
+        .fetch_optional(pool)
+        .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            tracing::error!(?e, code, "get_maille_lookup db error");
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "db error"})),
+            )
+                .into_response();
+        }
+    };
+
+    let Some(row) = row else {
+        return (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({"error": "maille introuvable", "code": c})),
+        )
+            .into_response();
+    };
+
+    let out = MailleLookupResponse {
+        id: row.try_get("id").unwrap_or_default(),
+        maille_code: row.try_get("maille_code").unwrap_or_default(),
+        spatial_id: row.try_get("spatial_id").ok(),
+    };
+    (StatusCode::OK, Json(out)).into_response()
 }
 
 pub async fn get_coverage_adm_boundaries(

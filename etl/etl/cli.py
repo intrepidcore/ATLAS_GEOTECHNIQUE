@@ -251,6 +251,22 @@ def make_grid(
     typer.secho(f"Génération grille : aire cible = {cell_area_m2:,.0f} m² → côté ≈ {side_m:.2f} m", fg=typer.colors.CYAN)
 
     with conn, conn.cursor() as cur:
+        # Empêcher la régénération de la grille si elle existe déjà (sauf si --truncate)
+        if not truncate:
+            try:
+                cur.execute("SELECT COUNT(*) FROM atlas.mailles")
+            except Exception:
+                cur.execute("SELECT COUNT(*) FROM mailles")
+
+            existing = cur.fetchone()[0]
+            if existing and int(existing) > 0:
+                typer.secho(
+                    f"❌ Grille déjà existante ({existing} mailles). Utilisez --truncate pour forcer.",
+                    fg=typer.colors.RED,
+                    err=True,
+                )
+                raise typer.Exit(1)
+
         # Vérifier que le polygone du Togo existe
         cur.execute("SELECT COUNT(*) FROM country_tg")
         if cur.fetchone()[0] == 0:

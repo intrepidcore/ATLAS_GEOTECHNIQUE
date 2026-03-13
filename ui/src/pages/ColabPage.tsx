@@ -3168,6 +3168,7 @@ const ColabPage: React.FC = () => {
   const [stats, setStats] = useState<ColabStats | null>(null);
   const [supervisors, setSupervisors] = useState<SupervisorSummary[]>([]);
   const [students, setStudents] = useState<Student[]>([]);
+  const [studentsTotal, setStudentsTotal] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [totalPages, setTotalPages] = useState(1);
@@ -3582,6 +3583,7 @@ const ColabPage: React.FC = () => {
         ]);
         setStudents(studentsRes.students);
         setTotal(studentsRes.total);
+        setStudentsTotal(studentsRes.total);
         setStats(statsRes);
 
         const phones = new Set<string>();
@@ -3668,6 +3670,11 @@ const ColabPage: React.FC = () => {
     studentsAuditMode,
     studentsIncludeDeleted,
   ]);
+
+  const studentsKpiValue = useMemo(() => {
+    if (activeTab === 'students') return studentsTotal;
+    return stats?.total_students ?? 0;
+  }, [activeTab, studentsTotal, stats?.total_students]);
 
   useEffect(() => {
     if (activeTab !== 'exports' || !exportRunningJobId) return;
@@ -4022,7 +4029,7 @@ const ColabPage: React.FC = () => {
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Contenu selon l'onglet actif */}
-        {activeTab === 'missions' && (
+        {activeTab === 'students' && (
           <>
             {/* Stats */}
             {stats && (
@@ -4035,7 +4042,7 @@ const ColabPage: React.FC = () => {
                 />
                 <StatsCard
                   title="Étudiants"
-                  value={stats.total_students}
+                  value={studentsKpiValue}
                   icon={<Users className="w-6 h-6" />}
                   color="bg-green-50 text-green-900"
                 />
@@ -6127,7 +6134,9 @@ const ColabPage: React.FC = () => {
           setActionLoading(true);
           try {
             await missionsApi.delete(selectedMissionToDelete.id);
-            await loadData();
+            setMissions(prev => prev.filter(m => m.id !== selectedMissionToDelete.id));
+            setTotal(prev => Math.max(0, prev - 1));
+            setStats(prev => (prev ? { ...prev, total_missions: Math.max(0, prev.total_missions - 1) } : prev));
             setShowDeleteMissionModal(false);
           } finally {
             setActionLoading(false);
@@ -6201,7 +6210,9 @@ const ColabPage: React.FC = () => {
           try {
             await studentsApi.delete(selectedStudent.id);
             setStudents(prev => prev.filter(s => s.id !== selectedStudent.id));
-            await loadData();
+            setTotal(prev => Math.max(0, prev - 1));
+            setStudentsTotal(prev => Math.max(0, prev - 1));
+            setStats(prev => (prev ? { ...prev, total_students: Math.max(0, prev.total_students - 1) } : prev));
             setShowDeleteStudentModal(false);
           } finally {
             setActionLoading(false);
@@ -6240,7 +6251,9 @@ const ColabPage: React.FC = () => {
           setActionLoading(true);
           try {
             await supervisorsApi.delete(selectedSupervisor.id);
-            await loadData();
+            setSupervisors(prev => prev.filter(s => s.id !== selectedSupervisor.id));
+            setTotal(prev => Math.max(0, prev - 1));
+            setStats(prev => (prev ? { ...prev, total_supervisors: Math.max(0, prev.total_supervisors - 1) } : prev));
             setShowDeleteSupervisorModal(false);
           } finally {
             setActionLoading(false);

@@ -209,6 +209,7 @@ pub async fn export_geopackage(
         r#"
         SELECT 
             m.code,
+            ml.spatial_id,
             ST_AsGeoJSON(ST_Transform(m.geom, 4326)) as geom_json,
             m.adm1_name,
             m.adm2_name,
@@ -220,10 +221,11 @@ pub async fn export_geopackage(
             MIN(e.depth_m) as depth_min,
             MAX(e.depth_m) as depth_max
         FROM atlas.mv_mailles_geotech m
+        LEFT JOIN atlas.mailles ml ON ml.code = m.code
         LEFT JOIN atlas.sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
         LEFT JOIN atlas.essais e ON e.sondage_id = s.id
         {}
-        GROUP BY m.code, m.geom, m.adm1_name, m.adm2_name, m.adm3_name
+        GROUP BY m.code, ml.spatial_id, m.geom, m.adm1_name, m.adm2_name, m.adm3_name
         ORDER BY m.code
         "#,
         where_sql
@@ -238,6 +240,7 @@ pub async fn export_geopackage(
 
             for r in &rows {
                 let code: String = r.try_get("code").unwrap_or_default();
+                let spatial_id: Option<String> = r.try_get("spatial_id").ok();
                 let geom_json: String = r.try_get("geom_json").unwrap_or_default();
                 let adm1: Option<String> = r.try_get("adm1_name").ok();
                 let adm2: Option<String> = r.try_get("adm2_name").ok();
@@ -258,15 +261,16 @@ pub async fn export_geopackage(
                         "geometry": geom,
                         "properties": {
                             "code": code,
+                            "spatial_id": spatial_id,
                             "adm1_name": adm1,
                             "adm2_name": adm2,
                             "adm3_name": adm3,
                             "n_sondages": n_sondages,
                             "n_essais": n_essais,
-                            "spt_n_avg": spt_avg.and_then(|v| v.to_string().parse::<f64>().ok()),
-                            "qc_avg": qc_avg.and_then(|v| v.to_string().parse::<f64>().ok()),
-                            "depth_min": depth_min.and_then(|v| v.to_string().parse::<f64>().ok()),
-                            "depth_max": depth_max.and_then(|v| v.to_string().parse::<f64>().ok()),
+                            "spt_n_avg": spt_avg.map(|v| v.to_string()),
+                            "qc_avg": qc_avg.map(|v| v.to_string()),
+                            "depth_min": depth_min.map(|v| v.to_string()),
+                            "depth_max": depth_max.map(|v| v.to_string()),
                         }
                     }));
                 }
