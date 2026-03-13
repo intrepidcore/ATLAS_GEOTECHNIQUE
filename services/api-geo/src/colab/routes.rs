@@ -3041,7 +3041,15 @@ async fn get_student(
             s.niveau,
             s.age,
             (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.student_id = s.id AND a.unassigned_at IS NULL) as active_missions,
-            (SELECT COUNT(*) FROM atlas.colab_maille_assignments ma WHERE ma.student_id = s.id) as active_mailles
+            (
+                SELECT COUNT(DISTINCT cm.maille_id)
+                FROM atlas.colab_mission_assignments a
+                JOIN atlas.colab_missions cm ON cm.id = a.mission_id
+                WHERE a.student_id = s.id
+                  AND a.unassigned_at IS NULL
+                  AND cm.deleted_at IS NULL
+                  AND cm.maille_id IS NOT NULL
+            ) as active_mailles
         FROM atlas.colab_students s
         JOIN atlas.users u ON s.user_id = u.id
         WHERE s.id = $1 AND s.deleted_at IS NULL AND u.deleted_at IS NULL
@@ -3116,7 +3124,15 @@ async fn list_students(
             s.age,
             u.is_active,
             (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.student_id = s.id AND a.unassigned_at IS NULL) as active_missions,
-            (SELECT COUNT(*) FROM atlas.colab_maille_assignments ma WHERE ma.student_id = s.id) as active_mailles
+            (
+                SELECT COUNT(DISTINCT cm.maille_id)
+                FROM atlas.colab_mission_assignments a
+                JOIN atlas.colab_missions cm ON cm.id = a.mission_id
+                WHERE a.student_id = s.id
+                  AND a.unassigned_at IS NULL
+                  AND cm.deleted_at IS NULL
+                  AND cm.maille_id IS NOT NULL
+            ) as active_mailles
         FROM atlas.colab_students s
         JOIN atlas.users u ON s.user_id = u.id
         WHERE {}
@@ -3188,7 +3204,15 @@ async fn list_student_duplicates(
             s.age,
             u.is_active,
             (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.student_id = s.id AND a.unassigned_at IS NULL) as active_missions,
-            (SELECT COUNT(*) FROM atlas.colab_maille_assignments ma WHERE ma.student_id = s.id) as active_mailles
+            (
+                SELECT COUNT(DISTINCT cm.maille_id)
+                FROM atlas.colab_mission_assignments a
+                JOIN atlas.colab_missions cm ON cm.id = a.mission_id
+                WHERE a.student_id = s.id
+                  AND a.unassigned_at IS NULL
+                  AND cm.deleted_at IS NULL
+                  AND cm.maille_id IS NOT NULL
+            ) as active_mailles
         FROM atlas.colab_students s
         JOIN atlas.users u ON s.user_id = u.id
         JOIN (

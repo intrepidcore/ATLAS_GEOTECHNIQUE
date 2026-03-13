@@ -41,7 +41,10 @@ yarn-error.log*
 # Temporary files
 *.tmp
 *.temp
-data/db
+data/db/**
+!data/db/backups/
+!data/db/backups/atlas_desktop_seed.dump
+!data/db/backups/atlas_desktop_seed.dump.json
 
 # ===========================================
 # ARTEFACTS LOURDS / LOCAUX (ne pas versionner)
@@ -66,6 +69,9 @@ atlas_geotechnique_2025-12-29/donnees_analyse/donnees_brutes/
 # Exports Atlas locaux (images/logs) - ne jamais versionner
 atlas_geotechnique*/
 atlas_geotechnique_*/
+
+# Docs images (captures/exports)
+docs/image/
 
 # Local Netlify folder
 .netlify

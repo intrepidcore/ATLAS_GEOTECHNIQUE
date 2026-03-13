@@ -895,7 +895,7 @@ pub async fn get_coverage_mailles(
         SELECT
             mv.code,
             ST_AsGeoJSON(ST_Transform(mv.geom,4326)) AS g,
-            COALESCE(mv.adm1_name, a2.adm1_name) AS adm1_name,
+            mv.adm1_name AS adm1_name,
             COALESCE(mv.adm2_name, m.adm2_name) AS adm2_name,
             mv.adm3_name AS adm3_name,
             COALESCE(mv.n_sondages, 0)::bigint AS n_sondages,
@@ -908,41 +908,16 @@ pub async fn get_coverage_mailles(
             mv.has_data,
             mv.has_exact_location,
             mv.has_random_location,
-            COALESCE(ma.student_id::text, ca.student_id::text) AS assigned_student_id,
-            COALESCE(ma.full_name, ca_user.full_name) AS assigned_student_name,
-            COALESCE(ma.assigned_at::text, ca.assigned_at::text) AS assigned_at
+            vs.responsible_student_id AS assigned_student_id,
+            COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), u.username) AS assigned_student_name,
+            vs.responsible_assigned_at::text AS assigned_at,
+            vs.maille_status AS maille_status,
+            vs.responsible_source AS assigned_source
         FROM atlas.mv_mailles_geotech mv
         LEFT JOIN atlas.mailles m ON m.code = mv.code
-        LEFT JOIN public.adm2_tg a2 ON a2.name = COALESCE(mv.adm2_name, m.adm2_name)
-        LEFT JOIN atlas.colab_maille_assignments ca ON ca.maille_id = m.id
-        LEFT JOIN LATERAL (
-            SELECT
-                COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), u.username) AS full_name
-            FROM atlas.colab_students cs
-            JOIN atlas.users u
-                ON u.id = cs.user_id
-                AND u.deleted_at IS NULL
-            WHERE cs.id::text = ca.student_id::text
-            LIMIT 1
-        ) ca_user ON TRUE
-        LEFT JOIN LATERAL (
-            SELECT
-                cma.student_id,
-                cma.assigned_at,
-                COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''), u.username) AS full_name
-            FROM atlas.colab_missions cm
-            JOIN atlas.colab_mission_assignments cma
-                ON cma.mission_id = cm.id
-                AND cma.unassigned_at IS NULL
-            JOIN atlas.colab_students cs
-                ON cs.id::text = cma.student_id::text
-            JOIN atlas.users u
-                ON u.id = cs.user_id
-                AND u.deleted_at IS NULL
-            WHERE cm.maille_id = m.id
-            ORDER BY cma.assigned_at DESC
-            LIMIT 1
-        ) ma ON TRUE
+        LEFT JOIN atlas.v_maille_status vs ON vs.maille_id = m.id
+        LEFT JOIN atlas.colab_students cs ON cs.id::text = vs.responsible_student_id AND cs.deleted_at IS NULL
+        LEFT JOIN atlas.users u ON u.id = cs.user_id AND u.deleted_at IS NULL
     "#
     .to_string();
 
@@ -990,6 +965,8 @@ pub async fn get_coverage_mailles(
         let assigned_student_id: Option<String> = r.try_get("assigned_student_id").ok();
         let assigned_student_name: Option<String> = r.try_get("assigned_student_name").ok();
         let assigned_at: Option<String> = r.try_get("assigned_at").ok();
+        let maille_status: Option<String> = r.try_get("maille_status").ok();
+        let assigned_source: Option<String> = r.try_get("assigned_source").ok();
         let is_assigned = assigned_student_id.is_some();
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
             let mut props = serde_json::json!({
@@ -1007,7 +984,9 @@ pub async fn get_coverage_mailles(
                 "is_assigned": is_assigned,
                 "assigned_student_id": assigned_student_id,
                 "assigned_student_name": assigned_student_name,
-                "assigned_at": assigned_at
+                "assigned_at": assigned_at,
+                "maille_status": maille_status,
+                "assigned_source": assigned_source
             });
             if let Some(adm1) = adm1_name {
                 props["adm1_name"] = serde_json::Value::String(adm1);
