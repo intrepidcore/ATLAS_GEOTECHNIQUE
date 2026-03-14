@@ -152,6 +152,153 @@ fn compute_file_sha256_hex(path: &Path) -> Result<String> {
     Ok(format!("{:x}", h.finalize()))
 }
 
+fn max_migration_number(repo_root: &Path) -> Result<i32> {
+    let dir = repo_root.join("migrations");
+    if !dir.exists() {
+        return Ok(0);
+    }
+    let mut best: i32 = 0;
+    for e in std::fs::read_dir(&dir).with_context(|| format!("failed to read migrations dir ({})", dir.display()))? {
+        let p = match e {
+            Ok(v) => v.path(),
+            Err(_) => continue,
+        };
+        if p.extension().and_then(|s| s.to_str()).unwrap_or("") != "sql" {
+            continue;
+        }
+        let file = p.file_name().and_then(|s| s.to_str()).unwrap_or("");
+        let prefix = file.split('_').next().unwrap_or("");
+        if let Ok(n) = prefix.parse::<i32>() {
+            if n > best {
+                best = n;
+            }
+        }
+    }
+    Ok(best)
+}
+
+fn ensure_desktop_seed_state_table(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<()> {
+    run_sql(
+        bin_dir,
+        port,
+        db_user,
+        db_password,
+        db_name,
+        "CREATE SCHEMA IF NOT EXISTS atlas;\n\
+         CREATE TABLE IF NOT EXISTS atlas.desktop_seed_state (\n\
+           id SERIAL PRIMARY KEY,\n\
+           seed_sha256 TEXT NOT NULL UNIQUE,\n\
+           max_migration_applied INTEGER NOT NULL,\n\
+           applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n\
+           notes TEXT\n\
+         );",
+    )
+}
+
+fn desktop_seed_state_has_hash(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    seed_sha256: &str,
+) -> Result<bool> {
+    let exists_sql = "SELECT 1 FROM information_schema.tables WHERE table_schema='atlas' AND table_name='desktop_seed_state' LIMIT 1;";
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg(exists_sql)
+        .output()
+        .context("failed to check atlas.desktop_seed_state existence")?;
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to check desktop_seed_state existence (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    if String::from_utf8_lossy(&out.stdout).trim() != "1" {
+        return Ok(false);
+    }
+
+    let sql = format!(
+        "SELECT 1 FROM atlas.desktop_seed_state WHERE seed_sha256='{}' LIMIT 1;",
+        seed_sha256.replace('"', "").replace('\'', "''")
+    );
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg(sql)
+        .output()
+        .context("failed to query atlas.desktop_seed_state")?;
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to query desktop_seed_state (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim() == "1")
+}
+
+fn record_desktop_seed_state(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    seed_sha256: &str,
+    max_migration_applied: i32,
+    notes: &str,
+) -> Result<()> {
+    ensure_desktop_seed_state_table(bin_dir, port, db_user, db_password, db_name)?;
+    let sql = format!(
+        "INSERT INTO atlas.desktop_seed_state(seed_sha256, max_migration_applied, notes)\n\
+         VALUES ('{}', {}, '{}')\n\
+         ON CONFLICT (seed_sha256) DO UPDATE SET max_migration_applied=EXCLUDED.max_migration_applied, notes=EXCLUDED.notes, applied_at=now();",
+        seed_sha256.replace('"', "").replace('\'', "''"),
+        max_migration_applied,
+        notes.replace('"', "").replace('\'', "''"),
+    );
+    run_sql(bin_dir, port, db_user, db_password, db_name, &sql)
+}
+
+fn database_has_user_objects(bin_dir: &Path, port: u16, db_user: &str, db_password: &str, db_name: &str) -> Result<bool> {
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg("SELECT 1 FROM information_schema.tables WHERE table_schema NOT IN ('pg_catalog','information_schema') LIMIT 1;")
+        .output()
+        .context("failed to check if database has user objects")?;
+
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to check user objects (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim() == "1")
+}
+
 fn desktop_data_dir() -> Result<PathBuf> {
     let base = std::env::var("LOCALAPPDATA")
         .or_else(|_| std::env::var("APPDATA"))
@@ -284,26 +431,7 @@ fn find_seed_dump(repo_root: &Path) -> Option<PathBuf> {
 }
 
 fn database_looks_initialized(bin_dir: &Path, port: u16, db_user: &str, db_password: &str, db_name: &str) -> Result<bool> {
-    // Heuristic: if a core table exists, we assume the DB is not empty.
-    let out = pg_cmd(bin_dir, "psql.exe")
-        .env("PGHOST", "127.0.0.1")
-        .env("PGPORT", port.to_string())
-        .env("PGUSER", db_user)
-        .env("PGPASSWORD", db_password)
-        .env("PGDATABASE", db_name)
-        .arg("-tAc")
-        .arg("SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name='sondages' LIMIT 1;")
-        .output()
-        .context("failed to check if database looks initialized")?;
-
-    if !out.status.success() {
-        return Err(anyhow!(
-            "failed to check initialization (exit={}): {}",
-            out.status,
-            String::from_utf8_lossy(&out.stderr)
-        ));
-    }
-    Ok(String::from_utf8_lossy(&out.stdout).trim() == "1")
+    database_has_user_objects(bin_dir, port, db_user, db_password, db_name)
 }
 
 fn restore_seed_dump(
@@ -1330,6 +1458,19 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
     // Phase 9: seed-from-dump (v1) on first-run to avoid replaying all historical migrations.
     let repo_root = repo_root_from_tauri();
 
+    let allow_force = std::env::var("ATLAS_FORCE_SEED_RESTORE")
+        .map(|v| v.trim() == "1" || v.trim().eq_ignore_ascii_case("true"))
+        .unwrap_or(false);
+
+    let mut seed_already_applied = false;
+    if let Some(seed_path) = find_seed_dump(&repo_root) {
+        if let Ok(seed_sha256) = compute_file_sha256_hex(&seed_path) {
+            if desktop_seed_state_has_hash(&bin_dir, pg.port, &db_user, &db_password, &db_name, &seed_sha256)? {
+                seed_already_applied = true;
+            }
+        }
+    }
+
     let seed_hash_existing = get_desktop_state_value_if_table_exists(
         &bin_dir,
         pg.port,
@@ -1338,50 +1479,70 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
         &db_name,
         "seed_hash",
     )?;
-    if seed_hash_existing.is_none() {
-        let allow_force = std::env::var("ATLAS_FORCE_SEED_RESTORE")
-            .map(|v| v.trim() == "1" || v.trim().eq_ignore_ascii_case("true"))
-            .unwrap_or(false);
+    if seed_hash_existing.is_some() || seed_already_applied {
+        // DB seed already recorded (legacy key/value or new desktop_seed_state).
+    } else {
         let looks_init = database_looks_initialized(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
         if looks_init && !allow_force {
             // Never destroy an existing user DB implicitly.
-        } else {
-            if let Some(seed_path) = find_seed_dump(&repo_root) {
-                let seed_hash = compute_file_blake3(&seed_path)?;
-                restore_seed_dump(&bin_dir, pg.port, &db_user, &db_password, &db_name, &seed_path)?;
+        } else if let Some(seed_path) = find_seed_dump(&repo_root) {
+            let seed_sha256 = compute_file_sha256_hex(&seed_path)?;
+            let max_mig = max_migration_number(&repo_root)?;
 
-                // Create state table AFTER restore (pg_restore --clean may drop schema atlas).
-                ensure_desktop_state_table(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+            restore_seed_dump(&bin_dir, pg.port, &db_user, &db_password, &db_name, &seed_path)?;
 
-                set_desktop_state_value(
-                    &bin_dir,
-                    pg.port,
-                    &db_user,
-                    &db_password,
-                    &db_name,
-                    "seed_version",
-                    "v1",
-                )?;
-                set_desktop_state_value(
-                    &bin_dir,
-                    pg.port,
-                    &db_user,
-                    &db_password,
-                    &db_name,
-                    "seed_hash",
-                    &seed_hash,
-                )?;
+            // Create state tables AFTER restore (pg_restore --clean may drop schema atlas).
+            ensure_desktop_state_table(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+            ensure_desktop_seed_state_table(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
 
-                set_desktop_state_value(
-                    &bin_dir,
-                    pg.port,
-                    &db_user,
-                    &db_password,
-                    &db_name,
-                    "seed_dump_path",
-                    &seed_path.to_string_lossy(),
-                )?;
-            }
+            record_desktop_seed_state(
+                &bin_dir,
+                pg.port,
+                &db_user,
+                &db_password,
+                &db_name,
+                &seed_sha256,
+                max_mig,
+                "seed restore",
+            )?;
+
+            // Backward-compat state keys
+            set_desktop_state_value(
+                &bin_dir,
+                pg.port,
+                &db_user,
+                &db_password,
+                &db_name,
+                "seed_version",
+                "v1",
+            )?;
+            set_desktop_state_value(
+                &bin_dir,
+                pg.port,
+                &db_user,
+                &db_password,
+                &db_name,
+                "seed_hash",
+                &seed_sha256,
+            )?;
+            set_desktop_state_value(
+                &bin_dir,
+                pg.port,
+                &db_user,
+                &db_password,
+                &db_name,
+                "seed_dump_path",
+                &seed_path.to_string_lossy(),
+            )?;
+            set_desktop_state_value(
+                &bin_dir,
+                pg.port,
+                &db_user,
+                &db_password,
+                &db_name,
+                "seed_max_migration_applied",
+                &max_mig.to_string(),
+            )?;
         }
     }
 

@@ -75,8 +75,21 @@ Le restore doit vérifier le hash avant d’appliquer le dump.
 Le Desktop ne doit jamais écraser une base utilisateur existante implicitement.
 Un restore “forcé” est un mode dev explicite (ex: `ATLAS_FORCE_SEED_RESTORE=1`).
 
+## BM-13 — Validité géographique d’un rattachement mission → maille
+
+Un rattachement `colab_missions.maille_id` est considéré **correct** si et seulement si :
+
+1) Il respecte les règles d’intégrité (voir BM-08)
+2) Il est **cohérent géographiquement** vis-à-vis d’une source de référence (géométrie de la maille legacy correspondante, ou bbox/coordonnées terrain)
+
+Note :
+
+- Un audit de type “FK non rompue / `maille_id` non NULL” ne prouve **pas** la validité géographique.
+- La validité géographique nécessite une source de vérité spatiale (ex: table legacy `public.mailles_legacy_*` ou bounding boxes importées) et une vérification par intersection/containment.
+
 ---
 
 ## Historique des révisions
 
 - 2026-03-13 : ajout BM-07..BM-12 (missions/mailles étudiants + seed contract) et canonicalisation autour de `atlas.v_maille_status`.
+- 2026-03-14 : ajout BM-13 (distinction intégrité référentielle vs validité géographique mission→maille).

@@ -34,6 +34,8 @@ services:
       - ./.env.example
     environment:
       DATABASE_URL: postgres://atlas_app_user:${ATLAS_DB_APP_PASSWORD}@db:5432/atlas_clean
+      ENABLE_DB_MANAGER: ${ENABLE_DB_MANAGER:-false}
+      DATABASE_URL_ADMIN: postgres://atlas_etl_user:${ATLAS_DB_ETL_PASSWORD}@db:5432/atlas_clean
       RUST_LOG: ${RUST_LOG:-info}
       API_BIND: 0.0.0.0:8000
       CORS_ORIGIN: ${CORS_ORIGIN:-*}

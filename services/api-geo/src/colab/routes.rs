@@ -1597,7 +1597,15 @@ async fn delete_student(
     .await
     .unwrap_or(0);
     let active_mailles: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_maille_assignments WHERE student_id = $1",
+        r#"
+        SELECT COUNT(DISTINCT cm.maille_id)
+        FROM atlas.colab_mission_assignments a
+        JOIN atlas.colab_missions cm ON cm.id = a.mission_id
+        WHERE a.student_id = $1
+          AND a.unassigned_at IS NULL
+          AND cm.deleted_at IS NULL
+          AND cm.maille_id IS NOT NULL
+        "#,
     )
     .bind(student_id)
     .fetch_one(&state.pool)
@@ -1977,6 +1985,7 @@ pub fn colab_routes() -> Router<AppState> {
         // Étudiants
         .route("/colab/students", get(list_students).post(create_student))
         .route("/colab/students/duplicates", get(list_student_duplicates))
+        .route("/colab/students/:id/stats", get(get_student_stats))
         .route(
             "/colab/students/:id",
             get(get_student).put(update_student).delete(delete_student),
@@ -3262,6 +3271,107 @@ async fn list_student_duplicates(
         .collect();
 
     Ok(Json(json!(groups)))
+}
+
+async fn get_student_stats(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(student_id): Path<Uuid>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.students.read") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let exists: Option<i64> = sqlx::query_scalar(
+        r#"
+        SELECT 1::bigint
+        FROM atlas.colab_students s
+        JOIN atlas.users u ON u.id = s.user_id
+        WHERE s.id = $1
+          AND s.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+        "#,
+    )
+    .bind(student_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    if exists.is_none() {
+        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Étudiant non trouvé" }))));
+    }
+
+    let active_missions: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM atlas.colab_mission_assignments a
+        WHERE a.student_id = $1
+          AND a.unassigned_at IS NULL
+        "#,
+    )
+    .bind(student_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+
+    let active_mailles: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(DISTINCT cm.maille_id)
+        FROM atlas.colab_mission_assignments a
+        JOIN atlas.colab_missions cm ON cm.id = a.mission_id
+        WHERE a.student_id = $1
+          AND a.unassigned_at IS NULL
+          AND cm.deleted_at IS NULL
+          AND cm.maille_id IS NOT NULL
+        "#,
+    )
+    .bind(student_id)
+    .fetch_one(&state.pool)
+    .await
+    .unwrap_or(0);
+
+    let rows = sqlx::query(
+        r#"
+        SELECT
+          m.id AS maille_id,
+          m.code AS maille_code,
+          m.spatial_id AS spatial_id,
+          cm.title AS mission_title,
+          a.assigned_at AS assigned_at
+        FROM atlas.colab_mission_assignments a
+        JOIN atlas.colab_missions cm ON cm.id = a.mission_id
+        JOIN atlas.mailles m ON m.id = cm.maille_id
+        WHERE a.student_id = $1
+          AND a.unassigned_at IS NULL
+          AND cm.deleted_at IS NULL
+          AND cm.maille_id IS NOT NULL
+        ORDER BY a.assigned_at DESC
+        "#,
+    )
+    .bind(student_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    let mailles_detail: Vec<serde_json::Value> = rows
+        .iter()
+        .map(|r| {
+            json!({
+                "maille_id": r.get::<Uuid, _>("maille_id"),
+                "maille_code": r.get::<String, _>("maille_code"),
+                "spatial_id": r.get::<Option<String>, _>("spatial_id"),
+                "mission_title": r.get::<String, _>("mission_title"),
+                "assigned_at": r.get::<chrono::DateTime<chrono::Utc>, _>("assigned_at"),
+            })
+        })
+        .collect();
+
+    Ok(Json(json!({
+        "student_id": student_id,
+        "active_missions": active_missions,
+        "active_mailles": active_mailles,
+        "mailles_detail": mailles_detail,
+    })))
 }
 
 // ============================================================================

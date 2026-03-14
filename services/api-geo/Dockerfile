@@ -4,6 +4,7 @@ ARG RUST_VERSION=1.86
 FROM rust:${RUST_VERSION} as builder
 ENV CARGO_TERM_COLOR=always
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
+ENV CARGO_BUILD_JOBS=1
 WORKDIR /app
 
 # Pre-build to cache dependencies
@@ -21,14 +22,17 @@ COPY . .
 # Les migrations seront appliquées au démarrage via sqlx::migrate!()
 ENV SQLX_OFFLINE=true
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
-    cargo build --release
+    --mount=type=cache,target=/app/target \
+    cargo build --release \
+    && mkdir -p /out \
+    && cp /app/target/release/api-geo /out/api-geo
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl fonts-dejavu-core fonts-liberation \
     && ln -sf /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf /usr/share/fonts/truetype/dejavu/DejaVuSans-Regular.ttf \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY --from=builder /app/target/release/api-geo /usr/local/bin/api-geo
+COPY --from=builder /out/api-geo /usr/local/bin/api-geo
 ENV RUST_LOG=info
 EXPOSE 8000
 CMD ["/usr/local/bin/api-geo"]
