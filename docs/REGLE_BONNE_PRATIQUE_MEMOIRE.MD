@@ -107,6 +107,25 @@ Cette discipline évite des itérations “fantômes” où l’on teste une ver
 * Export / diffusion : **EPSG:4326** (WGS84) pour les sorties publiques (GeoJSON, Leaflet, etc.).
 * Les vues “_wgs84” ou champs `geom_4326` sont les points de contact avec l’extérieur.
 
+**[DB-03] Registry des grilles (contrat permanent)**
+
+* Toute grille utilisée pour des imports, des rattachements (missions→mailles), ou du remapping (legacy/provisoire) doit être enregistrée dans un registre explicite avec :
+
+  * `srid`
+  * `unit` (`m`, `deg`, etc.)
+  * `step` (pas)
+  * `origin_x`, `origin_y` (si applicable)
+  * `algo` (ex: `iso_code`, `square_grid`, `adm3_centroid_contains`, etc.)
+  * `params` (JSON: tolérance snap, précision geohash, etc.)
+  * `source_ref` (fichier/commit/export/table source)
+
+* Objectif : éviter les situations où un code (ex: `TG-00xx-...`) existe dans un document mais sans géométrie/paramètres, rendant tout remapping non vérifiable.
+
+* Implémentation recommandée :
+
+  * `atlas.grid_metadata` : metadata minimale de version de grille (déjà utilisée)
+  * `atlas.grid_registry` : registre étendu “anti-dette” (contrat permanent), pour toutes grilles et méthodes de rattachement
+
 **[DB-02] Types de géométrie cohérents**
 
 * Les colonnes `geom` des tables principales gardent un type **fixe**.

@@ -65,6 +65,20 @@ Conclusion : ces codes appartiennent à une **troisième grille** (distincte de 
 - la legacy V1 archivée (table `public.mailles_legacy_v1_archive`)
 - la V2 actuelle (`atlas.mailles`)
 
+### 2.4. Preuve du rattachement actuel vers V2 : commune (ADM3) → centroid → maille contenant le point
+
+Constat DB : les missions importées conservent le code source dans `notes_internal` mais ont bien un `maille_id` V2.
+
+Preuve : pour les 21 missions contenant `maille_code=TG-00..` dans `notes_internal`, le `maille_id` actuel correspond exactement à la maille V2 contenant le centroïde de la commune (`public.adm3.geom`) :
+
+- jointure: `lower(public.adm3.adm3_fr) = lower(colab_missions.commune)`
+- point: `ST_Transform(ST_Centroid(adm3.geom), 25231)`
+- rattachement: `ST_Contains(atlas.mailles.geom, point)`
+
+Résultat : **match 21/21** (le `maille_id` calculé = `maille_id` actuel).
+
+Note : la table `atlas.colab_maille_code_map` contient bien les 18 codes `TG-00..` mais `target_code` est vide (pas de mapping explicite), ce qui confirme que le rattachement n’a pas été fait via cette table.
+
 ---
 
 ## 3) Hypothèses et limites
