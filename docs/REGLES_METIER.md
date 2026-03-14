@@ -87,6 +87,19 @@ Note :
 - Un audit de type “FK non rompue / `maille_id` non NULL” ne prouve **pas** la validité géographique.
 - La validité géographique nécessite une source de vérité spatiale (ex: table legacy `public.mailles_legacy_*` ou bounding boxes importées) et une vérification par intersection/containment.
 
+## BM-14 — Précision géographique du rattachement par commune (ADM3) → centroïde → maille V2
+
+Quand une mission est rattachée à une maille V2 via :
+
+- `colab_missions.commune` → `public.adm3.adm3_fr`
+- puis `ST_Transform(ST_Centroid(adm3.geom), 25231)`
+- puis `ST_Contains(atlas.mailles.geom, point)`
+
+alors la précision géographique est celle de la **commune (ADM3)** (ordre de grandeur km), pas celle d’une maille 2 km.
+
+Conséquence : plusieurs missions appartenant à la même commune peuvent pointer vers la même maille V2.
+Ce rattachement est acceptable comme **fallback** (données terrain insuffisantes) mais ne remplace pas un rattachement basé sur une géométrie legacy, un code maille fiable ou des coordonnées terrain.
+
 ---
 
 ## Historique des révisions
