@@ -30,6 +30,21 @@ Conséquence :
 
 Ces fichiers listent explicitement des missions `M-2026...` associées à des `Code Référence` de type `TG-00xx-00yy-01`.
 
+### 2.1.b. L’export missions XLSX ne contient pas de bbox/coordonnées
+
+Le fichier `data/colab/export_missions_ceb08621-3e8c-4fac-9435-e9ef0a0b6615.xlsx` contient uniquement (sheet `missions`) les colonnes suivantes :
+
+- `mission_id`, `mission_code`, `mission_name`
+- `maille_code`
+- `zone`, `localite`
+- `student_name`, `student_email`
+- `date_start`, `date_end`
+- `operational_status`, `operational_reason`
+
+Il n’y a pas de colonnes `bbox`, `xmin/xmax/ymin/ymax`, `lat/lon` ou géométrie.
+
+Conclusion : cet export ne permet pas à lui seul un remapping spatial prouvé vers `atlas.mailles`.
+
 ### 2.2. Les codes `TG-00xx` ne sont pas dans la grille courante
 
 - Requêtes DB exécutées :
