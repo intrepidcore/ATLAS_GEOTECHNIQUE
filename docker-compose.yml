@@ -16,7 +16,7 @@ services:
       - "127.0.0.1:5432:5432"
     volumes:
       - ./data/db:/var/lib/postgresql/data
-      - ./migrations:/docker-entrypoint-initdb.d:ro
+      - ./db/migrations:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
       interval: 10s
@@ -143,7 +143,7 @@ services:
       - atlas-net
     # no published ports; run with `docker compose run --rm etl etl ...`
     volumes:
-      - ./migrations:/migrations:ro
+      - ./db/migrations:/migrations:ro
       - ./data:/data:ro
 
   qgis-worker:
