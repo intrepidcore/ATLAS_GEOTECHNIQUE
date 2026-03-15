@@ -23,6 +23,24 @@ L'application sera disponible sur `http://localhost:5173`
 npm run build
 ```
 
+## DB Manager (endpoints `/db/*`)
+
+Certaines fonctionnalités de l'UI (DB Manager / staging / sélection avancée) appellent des endpoints `/db/*`.
+
+- En configuration par défaut, l'API renvoie **503** sur `/db/*` car `ENABLE_DB_MANAGER=false` (sécurité / least privilege).
+- Pour activer en dev/local, définir dans `.env` à la racine du repo :
+
+```bash
+ENABLE_DB_MANAGER=true
+DATABASE_URL_ADMIN=postgres://atlas_etl_user:${ATLAS_DB_ETL_PASSWORD}@db:5432/atlas_clean
+```
+
+Puis redémarrer `api-geo` :
+
+```bash
+docker compose up -d --force-recreate api-geo
+```
+
 ## Structure
 
 ```

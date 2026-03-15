@@ -71,7 +71,12 @@ class ApiClient {
         try {
           const errorData = await response.json()
           error.details = errorData
-          error.message = errorData.message || errorData.error || error.message
+          if (response.status === 503 && errorData?.code === 'DB_MANAGER_DISABLED') {
+            error.message =
+              'DB Manager désactivé (ENABLE_DB_MANAGER=false). Pour activer en dev: définir ENABLE_DB_MANAGER=true + DATABASE_URL_ADMIN, puis redémarrer api-geo.'
+          } else {
+            error.message = errorData.message || errorData.error || error.message
+          }
         } catch {
           // Ignore JSON parse errors
         }

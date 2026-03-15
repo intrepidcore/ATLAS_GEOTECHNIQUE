@@ -1,8 +1,14 @@
 # Atlas Géotechnique (Monorepo local)
 
-**Version actuelle : 1.0.0**
+**Version actuelle : 1.0.1**
 
 Ce dépôt fournit une ossature de monorepo pour un atlas géotechnique local uniquement, avec PostGIS, APIs Rust (axum), UI Vite + TS + Leaflet, et un ETL Python.
+
+## Nouveautés v1.0.1
+
+* **Desktop (Tauri)** : Updater v2 configuré (artefacts updater + signatures) et pipeline GitHub Releases.
+* **Performance UI** : code splitting (Colab Studio lazy-load + vendors isolés) + garde-fou CI bundle size (gzip).
+* **DB Manager** : endpoints `/db/*` désactivés par défaut (503 attendu) avec activation explicite en dev via `ENABLE_DB_MANAGER=true`.
 
 ## Nouveautés v1.0.0 🚀
 
@@ -61,6 +67,26 @@ Ce dépôt fournit une ossature de monorepo pour un atlas géotechnique local un
 - Rust (local facultatif). Les images Docker utilisent Rust 1.86 pour la compilation.
 - Node.js 18+
 - Python 3.11+
+
+## DB Manager (endpoints `/db/*`) — 503 attendu par défaut
+
+Pour des raisons de sécurité (least privilege), les endpoints “DB Manager” sont **désactivés par défaut**.
+
+- Si `ENABLE_DB_MANAGER=false` (valeur par défaut), les routes `/db/*` répondent **503** avec le code `DB_MANAGER_DISABLED`.
+- Pour activer en dev/local :
+
+```bash
+# dans .env (local, non committé)
+ENABLE_DB_MANAGER=true
+# requis si ENABLE_DB_MANAGER=true
+DATABASE_URL_ADMIN=postgres://atlas_etl_user:${ATLAS_DB_ETL_PASSWORD}@db:5432/atlas_clean
+```
+
+Puis redémarrer le service :
+
+```bash
+docker compose up -d --force-recreate api-geo
+```
 
 ## Projections et données
 - La base de données stocke les géométries en **EPSG:25231** (Lomé / UTM zone 31N), en mètres
