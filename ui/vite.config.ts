@@ -148,10 +148,19 @@ export default defineConfig(({ mode }) => {
     },
   },
   build: {
+    chunkSizeWarningLimit: 1500,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
         mobile: path.resolve(__dirname, 'mobile.html'),
+      },
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-leaflet': ['leaflet', 'leaflet.heat'],
+          'vendor-charts': ['chart.js'],
+          'vendor-export': ['exceljs', 'jspdf', 'html2canvas', 'file-saver'],
+        },
       },
     },
   },

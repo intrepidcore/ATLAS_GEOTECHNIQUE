@@ -138,6 +138,7 @@ fn set_desktop_state_value(
     run_sql(bin_dir, port, db_user, db_password, db_name, &sql)
 }
 
+#[allow(dead_code)]
 fn compute_file_blake3(path: &Path) -> Result<String> {
     let bytes = std::fs::read(path).with_context(|| format!("failed to read file ({})", path.display()))?;
     Ok(blake3::hash(&bytes).to_hex().to_string())
@@ -489,6 +490,7 @@ fn restore_seed_dump(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub fn data_root_dir_path() -> Result<PathBuf> {
     data_root_dir()
 }

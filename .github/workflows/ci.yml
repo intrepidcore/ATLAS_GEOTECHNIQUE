@@ -106,3 +106,30 @@ jobs:
         run: |
           cd ui
           npm run build
+
+      - name: bundle-size
+        run: |
+          cd ui
+          set -e
+          if ls dist/assets/main-*.js >/dev/null 2>&1; then
+            MAIN_FILE=$(ls -1 dist/assets/main-*.js | head -n 1)
+          else
+            MAIN_FILE=$(find dist/assets -maxdepth 1 -type f -name "*.js" ! -name "workbox-*.js" ! -name "sw.js" -printf "%s %p\n" | sort -nr | head -n 1 | awk '{print $2}')
+          fi
+
+          if [ -z "${MAIN_FILE}" ]; then
+            echo "❌ Impossible de trouver un chunk JS à analyser dans ui/dist/assets"
+            exit 1
+          fi
+
+          MAIN_GZ=$(gzip -c "${MAIN_FILE}" | wc -c)
+          echo "Chunk analysé: ${MAIN_FILE}"
+          echo "Taille gzip: ${MAIN_GZ} bytes"
+
+          MAX_BYTES=$((1024 * 1024))
+          if [ "${MAIN_GZ}" -gt "${MAX_BYTES}" ]; then
+            echo "❌ Chunk principal trop grand: ${MAIN_GZ} bytes (max: ${MAX_BYTES})"
+            exit 1
+          fi
+
+          echo "✅ Bundle size OK: ${MAIN_GZ} bytes"

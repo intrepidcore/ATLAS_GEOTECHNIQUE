@@ -10,6 +10,7 @@ mod support;
 mod sync;
 
 struct ManagedPostgres(std::sync::Mutex<Option<postgres::PostgresHandle>>);
+#[allow(dead_code)]
 struct ManagedAppLock(std::fs::File);
 struct ManagedApiPort(u16);
 struct ManagedPaths {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, Suspense } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StagingModal } from '@/components/StagingModal'
@@ -18,7 +18,6 @@ import { UnsavedChangesAlert } from '@/components/UnsavedChangesAlert'
 import { DataGridToolbar } from '@/components/DataGridToolbar'
 import { AdvancedSelectionDialog } from '@/components/AdvancedSelectionDialog'
 import { MapPanel } from '@/components/MapPanel'
-import ColabPage from '@/pages/ColabPage'
 import ColabStudentPage from '@/pages/ColabStudentPage'
 import LoginPage from '@/pages/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
@@ -26,6 +25,8 @@ import { selectionApi } from '@/services/selection-api'
 import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/services/api'
 import { authApi, tokenStorage } from './services/auth-api'
 import { stagingApiV2 } from '@/services/staging-api'
+
+const ColabPage = React.lazy(() => import('@/pages/ColabPage'))
 
 type TauriInvoke = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>
 
@@ -1064,7 +1065,9 @@ function App() {
 
           {/* Colab Studio Tab - Gestion des missions terrain */}
           <TabsContent value="colab-studio" className="h-[calc(100vh-12rem)]">
-            <ColabPage />
+            <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Chargement…</div>}>
+              <ColabPage />
+            </Suspense>
           </TabsContent>
         </Tabs>
       </main>
