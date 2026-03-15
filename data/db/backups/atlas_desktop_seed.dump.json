@@ -1,9 +1,9 @@
 {
-  "created_at": "2026-03-13T13:25:02.9697947+00:00",
+  "created_at": "2026-03-15T18:45:24.0000000+00:00",
   "db_name": "atlas_clean",
   "source": "docker atlas-db",
   "format": "pg_dump -Fc",
   "file": "atlas_desktop_seed.dump",
-  "size_bytes": 666867663,
-  "sha256": "4a75d2011f92719fb436381f035aa050e98731a00d140a8e5df658144c644369"
+  "size_bytes": 667946540,
+  "sha256": "9856b33728aea7f7c2c3742b6cbd951ed6852dfa8e7e1cb904c04c09e3e44900"
 }

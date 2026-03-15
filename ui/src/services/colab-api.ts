@@ -65,6 +65,37 @@ export interface MissionListResponse {
   total_pages: number;
 }
 
+export interface UnassignMissionMailleResponse {
+  mission_id: string;
+  ex_maille_code: string | null;
+  status: string;
+}
+
+export interface ReassignMissionRequest {
+  new_maille_id: string;
+  student_id: string;
+}
+
+export interface ReassignMissionResponse {
+  old_mission_id: string;
+  new_mission_id: string;
+  new_maille_id: string;
+  status: string;
+}
+
+export interface MailleActiveMissionItem {
+  mission_id: string;
+  mission_code: string;
+  student_id: string | null;
+  student_name: string | null;
+  assigned_at: string | null;
+}
+
+export interface MailleActiveMissionsResponse {
+  maille_id: string;
+  missions: MailleActiveMissionItem[];
+}
+
 export interface SupervisorSummary {
   id: string;
   user_id: string;
@@ -676,6 +707,53 @@ export const missionsApi = {
       throw new Error(error.error || 'Erreur lors de la récupération des missions');
     }
     
+    return response.json();
+  },
+
+  /**
+   * Désassigner la maille d'une mission (soft-delete + ex_maille_code)
+   */
+  async unassignMaille(id: string): Promise<UnassignMissionMailleResponse> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/missions/${id}/maille`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la désassignation');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Réassigner une mission vers une autre maille (crée une nouvelle mission)
+   */
+  async reassign(id: string, input: ReassignMissionRequest): Promise<ReassignMissionResponse> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/missions/${id}/reassign`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la réattribution');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Lister les missions actives sur une maille (panneau carte)
+   */
+  async listMailleMissions(mailleId: string): Promise<MailleActiveMissionsResponse> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/mailles/${mailleId}/missions`);
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la récupération');
+    }
+
     return response.json();
   },
 

@@ -1,10 +1,10 @@
 # Atlas Géotechnique (Monorepo local)
 
-**Version actuelle : 1.4.0**
+**Version actuelle : 1.0.0**
 
 Ce dépôt fournit une ossature de monorepo pour un atlas géotechnique local uniquement, avec PostGIS, APIs Rust (axum), UI Vite + TS + Leaflet, et un ETL Python.
 
-## Nouveautés v1.4.0 - Import Bulk Production Ready 🚀
+## Nouveautés v1.0.0 🚀
 
 * **Import Bulk Complet** : Système d'import massif de sondages géotechniques (CSV/XLSX/JSON)
   - Support multi-formats : CSV (auto-détection séparateur), XLSX (via calamine), JSON

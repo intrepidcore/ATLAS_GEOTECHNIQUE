@@ -58,8 +58,108 @@ import {
   updateStatsDOM,
   onFilterChange,
   notifyFilterChange,
-  resetFilters as resetFiltersState
 } from './filters-state'
+
+let currentUserPermissions: string[] = []
+
+function getCurrentUserPermissions(): string[] {
+  if (Array.isArray(currentUserPermissions) && currentUserPermissions.length > 0) {
+    return currentUserPermissions
+  }
+  try {
+    const u: any = tokenStorage.getUser?.() ?? null
+    if (u && Array.isArray(u.permissions)) return u.permissions
+  } catch {}
+  return []
+}
+
+function can(permission: string): boolean {
+  const perms = getCurrentUserPermissions()
+  return perms.includes(permission)
+}
+
+async function refreshCurrentUserPermissions(): Promise<void> {
+  try {
+    const token = tokenStorage.getAccessToken?.()
+    if (!token) return
+
+    const res = await fetch(`${API_GEO}/auth/me`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    })
+
+    if (!res.ok) return
+    const me: any = await res.json().catch(() => null)
+    if (me && Array.isArray(me.permissions)) {
+      currentUserPermissions = me.permissions
+    }
+  } catch {
+    return
+  }
+}
+
+async function fetchWithBearerJSON<T>(url: string, init?: RequestInit): Promise<T> {
+  const token = tokenStorage.getAccessToken?.()
+  const headers = new Headers(init?.headers)
+  if (token) headers.set('Authorization', `Bearer ${token}`)
+
+  const res = await fetch(url, {
+    ...init,
+    headers,
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    const msg = (data && (data.error || data.message)) || `HTTP ${res.status}`
+    throw new Error(msg)
+  }
+  return res.json() as Promise<T>
+}
+
+let gridContextMenuEl: HTMLDivElement | null = null
+function closeGridContextMenu() {
+  if (gridContextMenuEl) {
+    gridContextMenuEl.remove()
+    gridContextMenuEl = null
+  }
+}
+
+function openGridContextMenu(container: HTMLElement, x: number, y: number, content: HTMLElement) {
+  closeGridContextMenu()
+  const el = document.createElement('div')
+  el.style.position = 'absolute'
+  el.style.left = `${x}px`
+  el.style.top = `${y}px`
+  el.style.zIndex = '9999'
+  el.style.minWidth = '260px'
+  el.style.maxWidth = '360px'
+  el.style.background = '#0f172a'
+  el.style.border = '1px solid #334155'
+  el.style.borderRadius = '10px'
+  el.style.boxShadow = '0 8px 20px rgba(0,0,0,0.35)'
+  el.style.padding = '10px'
+  el.style.color = '#e2e8f0'
+  el.appendChild(content)
+  container.appendChild(el)
+  gridContextMenuEl = el
+
+  const onDocClick = (ev: MouseEvent) => {
+    if (!gridContextMenuEl) return
+    if (ev.target && gridContextMenuEl.contains(ev.target as Node)) return
+    closeGridContextMenu()
+    document.removeEventListener('mousedown', onDocClick)
+  }
+  document.addEventListener('mousedown', onDocClick)
+
+  const onKeyDown = (ev: KeyboardEvent) => {
+    if (ev.key === 'Escape') {
+      closeGridContextMenu()
+      document.removeEventListener('keydown', onKeyDown)
+    }
+  }
+  document.addEventListener('keydown', onKeyDown)
+}
+
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
 import { makeResizable } from './components/resizable-panel'
@@ -103,6 +203,7 @@ import { getApiBase } from './api-base'
 
 const API_GEO = getApiBase()
 console.log('[INIT] API_GEO configuré:', API_GEO)
+void refreshCurrentUserPermissions()
 
 // Helper pour ajouter des event listeners de manière sûre
 function safeAddEventListener(id: string, event: string, handler: EventListener) {
@@ -801,6 +902,113 @@ function onEachFeature(f: any, layer: any) {
   layer.on({
     mouseover: () => handleMouseOver(layer, f),
     mouseout: () => handleMouseOut(layer, f),
+    contextmenu: async (e: any) => {
+      try {
+        if (!map) return
+
+        const mapContainer = map.getContainer()
+        const perms = getCurrentUserPermissions()
+        const canView = perms.includes('colab.mailles.view_active')
+        const canUnassign = perms.includes('colab.missions.unassign')
+
+        const content = document.createElement('div')
+        content.innerHTML = `
+          <div style="font-weight:700;margin-bottom:6px">Maille ${p.code || '—'}</div>
+          <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Actions</div>
+        `
+
+        const btnView = document.createElement('button')
+        btnView.textContent = canView ? 'Voir missions actives' : 'Voir missions actives (interdit)'
+        btnView.className = 'btn secondary btn-sm'
+        btnView.style.width = '100%'
+        ;(btnView as any).disabled = !canView
+
+        const missionsBox = document.createElement('div')
+        missionsBox.style.marginTop = '10px'
+
+        btnView.onclick = async () => {
+          try {
+            missionsBox.innerHTML = `<div style="font-size:12px;color:#94a3b8">Chargement…</div>`
+            const mailleId = p.id
+            if (!mailleId) {
+              missionsBox.innerHTML = `<div style="font-size:12px;color:#fca5a5">maille_id indisponible</div>`
+              return
+            }
+            const url = `${API_GEO}/colab/mailles/${encodeURIComponent(mailleId)}/missions`
+            const data = await fetchWithBearerJSON<any>(url)
+
+            const missions = Array.isArray(data?.missions) ? data.missions : []
+            if (missions.length === 0) {
+              missionsBox.innerHTML = `<div style="font-size:12px;color:#94a3b8">Aucune mission active</div>`
+              return
+            }
+
+            const table = document.createElement('div')
+            table.style.display = 'flex'
+            table.style.flexDirection = 'column'
+            table.style.gap = '6px'
+
+            missions.forEach((m: any) => {
+              const row = document.createElement('div')
+              row.style.display = 'flex'
+              row.style.alignItems = 'center'
+              row.style.justifyContent = 'space-between'
+              row.style.gap = '8px'
+              row.style.padding = '8px'
+              row.style.border = '1px solid #334155'
+              row.style.borderRadius = '8px'
+              row.style.background = '#0b1220'
+
+              const left = document.createElement('div')
+              left.style.display = 'flex'
+              left.style.flexDirection = 'column'
+              left.style.gap = '2px'
+              left.innerHTML = `
+                <div style="font-size:12px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">${m.mission_code || '—'}</div>
+                <div style="font-size:12px;color:#94a3b8">${m.student_name || '—'}</div>
+              `
+
+              row.appendChild(left)
+
+              if (canUnassign && m.mission_id) {
+                const btn = document.createElement('button')
+                btn.textContent = 'Désassigner'
+                btn.className = 'btn danger btn-sm'
+                btn.onclick = async () => {
+                  try {
+                    btn.setAttribute('disabled', 'true')
+                    const delUrl = `${API_GEO}/colab/missions/${encodeURIComponent(m.mission_id)}/maille`
+                    await fetchWithBearerJSON<any>(delUrl, { method: 'DELETE' })
+                    toast('Mission désassignée', 'ok')
+                    btnView.click()
+                  } catch (err: any) {
+                    toast(err?.message || 'Erreur désassignation', 'err')
+                  } finally {
+                    btn.removeAttribute('disabled')
+                  }
+                }
+                row.appendChild(btn)
+              }
+
+              table.appendChild(row)
+            })
+
+            missionsBox.innerHTML = ''
+            missionsBox.appendChild(table)
+          } catch (err: any) {
+            missionsBox.innerHTML = `<div style="font-size:12px;color:#fca5a5">${err?.message || 'Erreur'}</div>`
+          }
+        }
+
+        content.appendChild(btnView)
+        content.appendChild(missionsBox)
+
+        const pt = map.latLngToContainerPoint(e.latlng)
+        openGridContextMenu(mapContainer, pt.x + 8, pt.y + 8, content)
+      } catch (err: any) {
+        console.error('[Grid] contextmenu error:', err)
+      }
+    },
     click: async () => {
       // Appeler le handler de clic centralisé
       handleClick(layer, f, p)

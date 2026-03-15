@@ -268,6 +268,46 @@ pub struct ColabDocumentsListResponse {
 }
 
 // ============================================================================
+// Réattribution / Désassignation de mailles
+// ============================================================================
+
+#[derive(Debug, Clone, Deserialize, Validate)]
+pub struct ReassignMissionRequest {
+    pub new_maille_id: Uuid,
+    pub student_id: Uuid,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UnassignMissionMailleResponse {
+    pub mission_id: Uuid,
+    pub ex_maille_code: Option<String>,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ReassignMissionResponse {
+    pub old_mission_id: Uuid,
+    pub new_mission_id: Uuid,
+    pub new_maille_id: Uuid,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MailleActiveMissionItem {
+    pub mission_id: Uuid,
+    pub mission_code: String,
+    pub student_id: Option<Uuid>,
+    pub student_name: Option<String>,
+    pub assigned_at: Option<DateTime<Utc>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MailleActiveMissionsResponse {
+    pub maille_id: Uuid,
+    pub missions: Vec<MailleActiveMissionItem>,
+}
+
+// ============================================================================
 // Requêtes de création/modification
 // ============================================================================
 

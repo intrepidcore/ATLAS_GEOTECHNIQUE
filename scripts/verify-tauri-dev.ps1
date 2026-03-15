@@ -6,7 +6,9 @@ param(
     [int]$DevPort = 5173,
     [int]$ApiPort = 8000,
     [string]$AdminEmail = "admin@atlas.local",
-    [string]$AdminPassword = "Atlas2024!"
+    [string]$AdminPassword = "Atlas2024!",
+    [string]$SeedDumpPath = "data/db/backups/atlas_desktop_seed.dump",
+    [string]$SeedManifestPath = "data/db/backups/atlas_desktop_seed.dump.json"
 )
 
 $errors = 0
@@ -100,6 +102,55 @@ if ($TOKEN) {
     } catch {
         Check "Migrations : desktop_seed_state présent" $false
         Check "Migrations : UNIQUE colab_maille_assignments" $false
+    }
+
+    # 9. Migrations 135/136 (tables attendues)
+    try {
+        $hasDataChangeLogRaw = docker compose exec -T db psql -U atlas -d atlas_clean -tAc `
+            "SELECT to_regclass('atlas.data_change_log') IS NOT NULL" 2>$null
+        $hasDataChangeLog = ($hasDataChangeLogRaw | Out-String).Trim() -eq 't'
+
+        $hasOrganizationsRaw = docker compose exec -T db psql -U atlas -d atlas_clean -tAc `
+            "SELECT to_regclass('atlas.organizations') IS NOT NULL" 2>$null
+        $hasOrganizations = ($hasOrganizationsRaw | Out-String).Trim() -eq 't'
+
+        $hasSubscriptionPlansRaw = docker compose exec -T db psql -U atlas -d atlas_clean -tAc `
+            "SELECT to_regclass('atlas.subscription_plans') IS NOT NULL" 2>$null
+        $hasSubscriptionPlans = ($hasSubscriptionPlansRaw | Out-String).Trim() -eq 't'
+
+        $hasOrgSubscriptionsRaw = docker compose exec -T db psql -U atlas -d atlas_clean -tAc `
+            "SELECT to_regclass('atlas.organization_subscriptions') IS NOT NULL" 2>$null
+        $hasOrgSubscriptions = ($hasOrgSubscriptionsRaw | Out-String).Trim() -eq 't'
+
+        Check "Migration 135 : atlas.data_change_log présent" $hasDataChangeLog
+        Check "Migration 136 : atlas.organizations présent" $hasOrganizations
+        Check "Migration 136 : atlas.subscription_plans présent" $hasSubscriptionPlans
+        Check "Migration 136 : atlas.organization_subscriptions présent" $hasOrgSubscriptions
+    } catch {
+        Check "Migration 135 : atlas.data_change_log présent" $false
+        Check "Migration 136 : atlas.organizations présent" $false
+        Check "Migration 136 : atlas.subscription_plans présent" $false
+        Check "Migration 136 : atlas.organization_subscriptions présent" $false
+    }
+
+    # 10. Seed dump + manifest (cohérence fichier)
+    try {
+        $dumpExists = Test-Path $SeedDumpPath
+        $manifestExists = Test-Path $SeedManifestPath
+        Check "Seed dump : fichier présent" $dumpExists
+        Check "Seed dump : manifest JSON présent" $manifestExists
+
+        if ($dumpExists -and $manifestExists) {
+            $manifest = Get-Content -Raw $SeedManifestPath | ConvertFrom-Json
+            $sizeBytes = (Get-Item $SeedDumpPath).Length
+            $sha256 = (Get-FileHash -Algorithm SHA256 $SeedDumpPath).Hash.ToLower()
+
+            Check "Seed dump : size_bytes conforme" ($manifest.size_bytes -eq $sizeBytes)
+            Check "Seed dump : sha256 conforme" ($manifest.sha256.ToLower() -eq $sha256)
+        }
+    } catch {
+        Check "Seed dump : fichier présent" $false
+        Check "Seed dump : manifest JSON présent" $false
     }
 }
 

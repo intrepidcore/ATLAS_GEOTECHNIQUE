@@ -15,6 +15,7 @@ import {
   formatDate,
 } from '../../services/colab-api';
 import { Badge, Button, Input, Select } from './ui';
+import { usePermissions } from '../../hooks/use-permissions';
 
 const MissionDetailModal: React.FC<{
   isOpen: boolean;
@@ -31,6 +32,8 @@ const MissionDetailModal: React.FC<{
   const [status, setStatus] = useState('');
   const [edit, setEdit] = useState<UpdateMissionRequest>({});
   const [tab, setTab] = useState<'details' | 'edit'>('details');
+
+  const { can } = usePermissions();
 
   const [editMailleQuery, setEditMailleQuery] = useState('');
   const [editMailleSuggestions, setEditMailleSuggestions] = useState<MailleSuggestItem[]>([]);
@@ -205,12 +208,62 @@ const MissionDetailModal: React.FC<{
                       {mission.assigned_students.length === 0 && <div className="text-sm text-gray-500">Aucun</div>}
                     </div>
                   </div>
+
+                  {(can('colab.missions.unassign') || can('colab.missions.reassign')) && (
+                    <div className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-900">Réattribution</div>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {can('colab.missions.unassign') && (
+                          <Button
+                            variant="outline"
+                            disabled={loading}
+                            onClick={async () => {
+                              try {
+                                setError(null);
+                                setLoading(true);
+                                await missionsApi.unassignMaille(mission.id);
+                                onChanged();
+                                onClose();
+                              } catch (err) {
+                                setError(err instanceof Error ? err.message : 'Erreur désassignation');
+                              } finally {
+                                setLoading(false);
+                              }
+                            }}
+                          >
+                            Désassigner la maille
+                          </Button>
+                        )}
+
+                        {can('colab.missions.reassign') && (
+                          <Button
+                            disabled={loading}
+                            onClick={() => {
+                              setTab('edit');
+                            }}
+                          >
+                            Réassigner…
+                          </Button>
+                        )}
+                      </div>
+                      {can('colab.missions.reassign') && (
+                        <div className="mt-2 text-xs text-gray-500">
+                          Pour réassigner, passez en onglet Édition et sélectionnez une nouvelle maille.
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </>
               )}
 
               {tab === 'edit' && (
                 <div className="border rounded-lg p-3">
                   <div className="text-sm font-medium text-gray-900">Édition</div>
+                  {!can('colab.missions.manage') && (
+                    <div className="mt-2 text-sm text-gray-600">
+                      Vous n'avez pas les droits nécessaires pour modifier cette mission.
+                    </div>
+                  )}
                   <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
                     <div className="md:col-span-2">
                       <div className="text-xs text-gray-500 mb-1">Maille</div>
@@ -219,6 +272,7 @@ const MissionDetailModal: React.FC<{
                           value={editMailleQuery}
                           onChange={e => setEditMailleQuery(e.target.value)}
                           placeholder={mission.maille_id ? 'Rechercher une autre maille…' : 'Rechercher une maille…'}
+                          disabled={!can('colab.missions.reassign')}
                         />
                         {(editMailleLoading || editMailleSuggestions.length > 0) && (
                           <div className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow max-h-56 overflow-auto">
@@ -371,6 +425,10 @@ const MissionDetailModal: React.FC<{
                       onClick={async () => {
                         try {
                           setLoading(true);
+                          if (!can('colab.missions.manage')) {
+                            setError('Permission insuffisante');
+                            return;
+                          }
                           await missionsApi.update(mission.id, edit);
                           onChanged();
                           const refreshed = await missionsApi.get(mission.id);
@@ -399,7 +457,7 @@ const MissionDetailModal: React.FC<{
                           setLoading(false);
                         }
                       }}
-                      disabled={loading}
+                      disabled={loading || !can('colab.missions.manage')}
                     >
                       Enregistrer
                     </Button>

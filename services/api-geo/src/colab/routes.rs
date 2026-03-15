@@ -7,7 +7,7 @@ use axum::{
     routing::{get, post, put, delete},
     Json, Router,
 };
-use chrono::Utc;
+use chrono::{NaiveDate, Utc};
 use serde_json::json;
 use sqlx::{Postgres, Row, Transaction};
 use tokio::fs;
@@ -17,7 +17,10 @@ use validator::Validate;
 
 use crate::state::AppState;
 use crate::auth::middleware::AuthUser;
+use crate::auth::middleware::require_permission;
 use crate::auth::password::PasswordHasher;
+use crate::auth::session::SessionManager;
+use crate::auth::types::AuthEventType;
 
 use super::types::*;
 
@@ -867,6 +870,529 @@ async fn delete_mission(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+async fn unassign_mission_maille(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(mission_id): Path<Uuid>,
+) -> Result<Json<UnassignMissionMailleResponse>, (StatusCode, Json<serde_json::Value>)> {
+    require_permission(&state.pool, auth.id, "colab.missions.unassign").await?;
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?;
+
+    // Idempotence: si la mission est déjà supprimée, on ne fait rien.
+    let row = sqlx::query(
+        r#"
+        SELECT
+          cm.deleted_at IS NULL AS is_active,
+          cm.ex_maille_code,
+          m.code AS maille_code
+        FROM atlas.colab_missions cm
+        LEFT JOIN atlas.mailles m ON m.id = cm.maille_id
+        WHERE cm.id = $1
+        "#,
+    )
+    .bind(mission_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))))?;
+
+    let is_active: bool = row.get("is_active");
+    let existing_ex_maille_code: Option<String> = row.try_get("ex_maille_code").ok();
+    let maille_code: Option<String> = row.try_get("maille_code").ok();
+
+    if !is_active {
+        tx.commit()
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": format!("Erreur DB: {}", e) })),
+                )
+            })?;
+
+        return Ok(Json(UnassignMissionMailleResponse {
+            mission_id,
+            ex_maille_code: existing_ex_maille_code,
+            status: "already_unassigned".to_string(),
+        }));
+    }
+
+    let ex_maille_code = maille_code.or(existing_ex_maille_code);
+
+    sqlx::query(
+        r#"
+        UPDATE atlas.colab_missions
+        SET
+          ex_maille_code = COALESCE(ex_maille_code, $2),
+          maille_id = NULL,
+          deleted_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(mission_id)
+    .bind(ex_maille_code.as_deref())
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
+    // Sync derived table state (libère la maille si besoin)
+    let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
+        .bind(mission_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur sync attribution: {}", e) })),
+            )
+        })?;
+
+    tx.commit()
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?;
+
+    // Audit trail (BM-20): tracer l'action sensible
+    let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
+    let _ = session_manager
+        .log_auth_event(
+            Some(auth.id),
+            AuthEventType::MissionUnassign,
+            true,
+            None,
+            None,
+            Some(json!({
+                "mission_id": mission_id,
+                "ex_maille_code": ex_maille_code,
+                "action": "unassign_mission_maille"
+            })),
+        )
+        .await;
+
+    Ok(Json(UnassignMissionMailleResponse {
+        mission_id,
+        ex_maille_code,
+        status: "unassigned".to_string(),
+    }))
+}
+
+async fn get_maille_active_missions(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(maille_id): Path<Uuid>,
+) -> Result<Json<MailleActiveMissionsResponse>, (StatusCode, Json<serde_json::Value>)> {
+    require_permission(&state.pool, auth.id, "colab.mailles.view_active").await?;
+
+    // BM-18: un student ne peut consulter que ses propres missions.
+    // On résout ici l'identité colab_students.id à partir de users.id.
+    let student_id: Option<Uuid> = if auth.has_role("student") && !auth.is_admin() {
+        let sid = sqlx::query_scalar(
+            r#"
+            SELECT cs.id
+            FROM atlas.colab_students cs
+            WHERE cs.user_id = $1 AND cs.deleted_at IS NULL
+            LIMIT 1
+            "#,
+        )
+        .bind(auth.id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?;
+
+        // Pas de profil student rattaché => ne rien exposer.
+        if sid.is_none() {
+            return Ok(Json(MailleActiveMissionsResponse {
+                maille_id,
+                missions: Vec::new(),
+            }));
+        }
+
+        sid
+    } else {
+        None
+    };
+
+    let rows = if let Some(student_id) = student_id {
+        sqlx::query(
+            r#"
+            SELECT
+              cm.id AS mission_id,
+              cm.code AS mission_code,
+              cma.student_id AS student_id,
+              cma.assigned_at AS assigned_at,
+              COALESCE(NULLIF(BTRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.username) AS student_name
+            FROM atlas.colab_missions cm
+            LEFT JOIN atlas.colab_mission_assignments cma
+              ON cma.mission_id = cm.id
+             AND cma.unassigned_at IS NULL
+            LEFT JOIN atlas.colab_students cs ON cs.id = cma.student_id
+            LEFT JOIN atlas.users u ON u.id = cs.user_id
+            WHERE cm.deleted_at IS NULL
+              AND cm.maille_id = $1
+              AND cma.student_id = $2
+            ORDER BY cma.assigned_at DESC NULLS LAST, cm.created_at DESC
+            "#,
+        )
+        .bind(maille_id)
+        .bind(student_id)
+        .fetch_all(&state.pool)
+        .await
+    } else {
+        sqlx::query(
+            r#"
+            SELECT
+              cm.id AS mission_id,
+              cm.code AS mission_code,
+              cma.student_id AS student_id,
+              cma.assigned_at AS assigned_at,
+              COALESCE(NULLIF(BTRIM(CONCAT(u.first_name, ' ', u.last_name)), ''), u.username) AS student_name
+            FROM atlas.colab_missions cm
+            LEFT JOIN atlas.colab_mission_assignments cma
+              ON cma.mission_id = cm.id
+             AND cma.unassigned_at IS NULL
+            LEFT JOIN atlas.colab_students cs ON cs.id = cma.student_id
+            LEFT JOIN atlas.users u ON u.id = cs.user_id
+            WHERE cm.deleted_at IS NULL
+              AND cm.maille_id = $1
+            ORDER BY cma.assigned_at DESC NULLS LAST, cm.created_at DESC
+            "#,
+        )
+        .bind(maille_id)
+        .fetch_all(&state.pool)
+        .await
+    }
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
+    let missions = rows
+        .iter()
+        .map(|r| MailleActiveMissionItem {
+            mission_id: r.get("mission_id"),
+            mission_code: r.get("mission_code"),
+            student_id: r.try_get("student_id").ok(),
+            student_name: r.try_get("student_name").ok(),
+            assigned_at: r.try_get("assigned_at").ok(),
+        })
+        .collect();
+
+    Ok(Json(MailleActiveMissionsResponse { maille_id, missions }))
+}
+
+async fn reassign_mission(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(mission_id): Path<Uuid>,
+    Json(request): Json<ReassignMissionRequest>,
+) -> Result<Json<ReassignMissionResponse>, (StatusCode, Json<serde_json::Value>)> {
+    require_permission(&state.pool, auth.id, "colab.missions.reassign").await?;
+
+    request
+        .validate()
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+
+    let mut tx = state
+        .pool
+        .begin()
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?;
+
+    // Charger la mission source (active)
+    let src = sqlx::query(
+        r#"
+        SELECT
+          cm.code,
+          cm.title,
+          cm.theme::text AS theme,
+          cm.status::text AS status,
+          cm.maille_id,
+          cm.zone_label,
+          cm.commune,
+          cm.region,
+          cm.supervisor_id,
+          cm.expected_sondages,
+          cm.start_date,
+          cm.end_date,
+          cm.description,
+          cm.objectifs,
+          cm.notes_internal,
+          m.code AS maille_code
+        FROM atlas.colab_missions cm
+        LEFT JOIN atlas.mailles m ON m.id = cm.maille_id
+        WHERE cm.id = $1 AND cm.deleted_at IS NULL
+        "#,
+    )
+    .bind(mission_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?
+    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))))?;
+
+    let old_code: String = src.get("code");
+    let title: String = src.get("title");
+    let theme: String = src.get("theme");
+    let status: String = src.get("status");
+    let zone_label: Option<String> = src.try_get("zone_label").ok();
+    let commune: Option<String> = src.try_get("commune").ok();
+    let region: Option<String> = src.try_get("region").ok();
+    let supervisor_id: Option<Uuid> = src.try_get("supervisor_id").ok();
+    let expected_sondages: i32 = src.try_get::<i32, _>("expected_sondages").unwrap_or(0);
+    let start_date: Option<NaiveDate> = src.try_get("start_date").ok();
+    let end_date: Option<NaiveDate> = src.try_get("end_date").ok();
+    let description: Option<String> = src.try_get("description").ok();
+    let objectifs: Option<String> = src.try_get("objectifs").ok();
+    let notes_internal: Option<String> = src.try_get("notes_internal").ok();
+    let maille_code: Option<String> = src.try_get("maille_code").ok();
+
+    // Vérifier student existant
+    let exists_student: Option<Uuid> = sqlx::query_scalar(
+        r#"SELECT id FROM atlas.colab_students WHERE id = $1 AND deleted_at IS NULL LIMIT 1"#,
+    )
+    .bind(request.student_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Réattribution impossible", &e))))?;
+
+    if exists_student.is_none() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Étudiant introuvable", "student_id": request.student_id })),
+        ));
+    }
+
+    // BM-16: éviter doublon actif sur la même maille
+    let already_active: Option<i64> = sqlx::query_scalar(
+        r#"
+        SELECT 1
+        FROM atlas.colab_missions cm
+        JOIN atlas.colab_mission_assignments cma
+          ON cma.mission_id = cm.id
+         AND cma.unassigned_at IS NULL
+        WHERE cm.deleted_at IS NULL
+          AND cm.maille_id = $1
+          AND cma.student_id = $2
+        LIMIT 1
+        "#,
+    )
+    .bind(request.new_maille_id)
+    .bind(request.student_id)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
+    if already_active.is_some() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Mission déjà active pour cet étudiant sur cette maille" })),
+        ));
+    }
+
+    // Soft-delete mission source et conserver ex_maille_code
+    sqlx::query(
+        r#"
+        UPDATE atlas.colab_missions
+        SET
+          ex_maille_code = COALESCE(ex_maille_code, $2),
+          maille_id = NULL,
+          deleted_at = NOW(),
+          updated_at = NOW()
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(mission_id)
+    .bind(maille_code.as_deref())
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
+    // Générer un nouveau code mission (unique)
+    let suffix = Uuid::new_v4().to_string();
+    let suffix = suffix.split('-').next().unwrap_or("r");
+    let mut new_code = format!("{}-R{}", old_code, suffix);
+    if new_code.len() > 50 {
+        new_code.truncate(50);
+    }
+
+    // Créer la nouvelle mission
+    let new_mission_id: Uuid = sqlx::query_scalar(
+        r#"
+        INSERT INTO atlas.colab_missions (
+          code,
+          title,
+          theme,
+          status,
+          maille_id,
+          zone_label,
+          commune,
+          region,
+          supervisor_id,
+          expected_sondages,
+          start_date,
+          end_date,
+          description,
+          objectifs,
+          notes_internal,
+          reassigned_from,
+          created_by
+        )
+        VALUES (
+          $1,
+          $2,
+          $3::atlas.mission_theme,
+          $4::atlas.mission_status,
+          $5,
+          $6,
+          $7,
+          $8,
+          $9,
+          $10,
+          $11,
+          $12,
+          $13,
+          $14,
+          $15,
+          $16,
+          $17
+        )
+        RETURNING id
+        "#,
+    )
+    .bind(new_code.trim())
+    .bind(title.trim())
+    .bind(theme.as_str())
+    .bind(status.as_str())
+    .bind(request.new_maille_id)
+    .bind(zone_label)
+    .bind(commune)
+    .bind(region)
+    .bind(supervisor_id)
+    .bind(expected_sondages)
+    .bind(start_date)
+    .bind(end_date)
+    .bind(description)
+    .bind(objectifs)
+    .bind(notes_internal)
+    .bind(mission_id)
+    .bind(auth.id)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Réattribution impossible", &e))))?;
+
+    // Assigner l'étudiant
+    sqlx::query(
+        r#"
+        INSERT INTO atlas.colab_mission_assignments (mission_id, student_id, role)
+        VALUES ($1, $2, 'membre')
+        ON CONFLICT DO NOTHING
+        "#,
+    )
+    .bind(new_mission_id)
+    .bind(request.student_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Réattribution impossible", &e))))?;
+
+    // Sync derived maille assignment
+    let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
+        .bind(new_mission_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur sync attribution: {}", e) })),
+            )
+        })?;
+
+    tx.commit()
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?;
+
+    // Audit trail (BM-20): tracer l'action sensible
+    let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
+    let _ = session_manager
+        .log_auth_event(
+            Some(auth.id),
+            AuthEventType::MissionReassign,
+            true,
+            None,
+            None,
+            Some(json!({
+                "old_mission_id": mission_id,
+                "new_mission_id": new_mission_id,
+                "new_maille_id": request.new_maille_id,
+                "student_id": request.student_id,
+                "action": "reassign_mission"
+            })),
+        )
+        .await;
+
+    Ok(Json(ReassignMissionResponse {
+        old_mission_id: mission_id,
+        new_mission_id,
+        new_maille_id: request.new_maille_id,
+        status: "reassigned".to_string(),
+    }))
 }
 
 async fn resolve_conflict() -> impl IntoResponse {
@@ -1963,8 +2489,11 @@ pub fn colab_routes() -> Router<AppState> {
         // Missions
         .route("/colab/missions", get(list_missions).post(create_mission))
         .route("/colab/missions/:id", get(get_mission).put(update_mission).delete(delete_mission))
+        .route("/colab/missions/:id/maille", delete(unassign_mission_maille))
+        .route("/colab/missions/:id/reassign", post(reassign_mission))
         .route("/colab/missions/:id/resolve-conflict", post(resolve_conflict))
         .route("/colab/missions/stats", get(get_stats))
+        .route("/colab/mailles/:id/missions", get(get_maille_active_missions))
         // Documents
         .route("/colab/documents", get(list_documents).post(upload_document))
         .route("/colab/documents/:id", delete(delete_document))

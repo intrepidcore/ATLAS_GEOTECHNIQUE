@@ -7,6 +7,7 @@ use std::io::Write;
 
 mod postgres;
 mod support;
+mod sync;
 
 struct ManagedPostgres(std::sync::Mutex<Option<postgres::PostgresHandle>>);
 struct ManagedAppLock(std::fs::File);
@@ -374,6 +375,7 @@ pub fn run() {
                 }
             }
         })
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             greet,
@@ -383,6 +385,7 @@ pub fn run() {
             support::db_backup,
             support::db_restore,
             support::db_reset,
+            sync::check_for_updates,
         ])
         .run(tauri::generate_context!());
 

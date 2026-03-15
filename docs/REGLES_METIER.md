@@ -100,9 +100,72 @@ alors la précision géographique est celle de la **commune (ADM3)** (ordre de g
 Conséquence : plusieurs missions appartenant à la même commune peuvent pointer vers la même maille V2.
 Ce rattachement est acceptable comme **fallback** (données terrain insuffisantes) mais ne remplace pas un rattachement basé sur une géométrie legacy, un code maille fiable ou des coordonnées terrain.
 
+## BM-SYNC-01 — Offline-first : la base locale est source de vérité opérationnelle
+
+L’application Desktop fonctionne en mode **offline-first** : la base PostgreSQL locale est la source de vérité pour l’exécution (UI + API embarquée).
+
+- Un check d’update ou de sync ne doit jamais bloquer l’application en démarrage (best-effort).
+- Les erreurs réseau ne doivent jamais corrompre l’état local.
+
+## BM-SYNC-02 — Non-destruction implicite (sync/update)
+
+Une opération d’update ou de sync ne doit jamais écraser ou supprimer des données utilisateur implicitement.
+
+- Toute action destructrice doit être un mode explicite (opt-in) et tracée.
+- Les migrations DB doivent être transactionnelles et réversibles (via backup/restore) lorsque possible.
+
+## BM-SYNC-03 — Traçabilité des checks et des syncs
+
+Chaque check d’update et chaque opération de sync doit être tracé en base.
+
+- `atlas.update_check_log` : historique des checks, compat schéma, erreurs, url.
+- `atlas.sync_state` : état machine des opérations (type, direction, status, erreurs).
+
+## BM-SYNC-04 — Compatibilité schéma avant update/apply
+
+Avant d’appliquer un update (ou un bundle de sync), l’application doit vérifier la compatibilité de schéma.
+
+- Un update peut exiger une version minimale de schéma (`min_schema_required`).
+- Si la base locale est en dessous, l’update est refusée (grâce à un message explicite) et l’événement est tracé.
+
+## BM-SYNC-05 — Idempotence et reprise après incident
+
+Les opérations de sync/update doivent être **idempotentes** et reprendre proprement après crash.
+
+- Un même bundle ne doit pas être appliqué deux fois (hash/version/bundle_id).
+- Les états `pending/running/success/failed/skipped` permettent de diagnostiquer et relancer.
+
+## BM-18 — Accès à la réattribution
+
+La réattribution (désassigner/réassigner une maille, supprimer des missions dans le cadre du workflow réattribution) est une opération critique.
+
+- Seuls les utilisateurs disposant du rôle `admin` ou `coordinator` peuvent exécuter ces actions.
+- Un opérateur terrain (`student`) peut uniquement consulter ses propres missions.
+
+Décision RBAC : ces actions sont contrôlées via permissions dédiées (`colab.missions.unassign`, `colab.missions.reassign`, `colab.missions.manage`).
+
+## BM-19 — Visibilité UI conditionnelle
+
+Les contrôles UI de réattribution (boutons dans Colab, menu contextuel carte, écrans d'édition) ne sont rendus que si l'utilisateur courant dispose des permissions nécessaires.
+
+- Exemple : le menu de désassignation doit être masqué si `colab.missions.unassign` n'est pas présent.
+
+Note : ce gating est une aide UX, pas une barrière de sécurité.
+
+## BM-20 — Protection API et traçabilité
+
+Les endpoints sensibles doivent être protégés côté serveur **indépendamment** de l'UI.
+
+- `DELETE /api/colab/missions/:id/maille` exige `colab.missions.unassign`
+- `POST /api/colab/missions/:id/reassign` exige `colab.missions.reassign`
+- `GET /api/colab/mailles/:id/missions` exige `colab.mailles.view_active` et, si l'utilisateur est `student`, la liste est filtrée à ses missions.
+
+Toute action sensible de réattribution doit être tracée dans `atlas.auth_audit_log` avec un `details` JSON.
+
 ---
 
 ## Historique des révisions
 
 - 2026-03-13 : ajout BM-07..BM-12 (missions/mailles étudiants + seed contract) et canonicalisation autour de `atlas.v_maille_status`.
 - 2026-03-14 : ajout BM-13 (distinction intégrité référentielle vs validité géographique mission→maille).
+- 2026-03-14 : ajout BM-18..BM-20 (RBAC réattribution + gating UI + protection API + audit trail).

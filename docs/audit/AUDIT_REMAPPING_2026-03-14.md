@@ -283,6 +283,91 @@ Résultat :
 
 **Conclusion** : la variabilité observée de `X0/Y0` est non négligeable sur l’échantillon ; à ce stade, on ne fige pas une origine unique comme vérité.
 
+#### 4.3.1. Hypothèse alternative A — les indices encodent directement la position (lon/lat) à l’échelle 1/100
+
+Test :
+
+- `lon_direct = col_prov / 100`
+- `lat_direct = row_prov / 100`
+
+Commande :
+
+```bash
+docker compose exec -T db psql -U atlas -d atlas_clean -c "WITH missions AS (\
+  SELECT cm.code AS mission_code,\
+         cm.commune,\
+         SUBSTRING(cm.notes_internal FROM 'maille_code=(TG-[0-9]+-[0-9]+-[0-9]+)') AS code_prov,\
+         (SUBSTRING(cm.notes_internal FROM 'maille_code=TG-([0-9]+)-[0-9]+-[0-9]+')::int) AS col_prov,\
+         (SUBSTRING(cm.notes_internal FROM 'maille_code=TG-[0-9]+-([0-9]+)-[0-9]+')::int) AS row_prov,\
+         ST_X(ST_Transform(ST_Centroid(m.geom), 4326)) AS lon_v2,\
+         ST_Y(ST_Transform(ST_Centroid(m.geom), 4326)) AS lat_v2\
+  FROM atlas.colab_missions cm\
+  JOIN atlas.mailles m ON m.id = cm.maille_id\
+  WHERE cm.notes_internal ILIKE '%maille_code=TG-00%'\
+), test_direct AS (\
+  SELECT *,\
+         col_prov::float / 100.0 AS lon_direct,\
+         row_prov::float / 100.0 AS lat_direct,\
+         ABS(lon_v2 - col_prov::float / 100.0) AS ecart_lon,\
+         ABS(lat_v2 - row_prov::float / 100.0) AS ecart_lat\
+  FROM missions\
+)\
+SELECT mission_code, commune, code_prov,\
+       ROUND(lon_v2::numeric, 4) AS lon_v2,\
+       ROUND(lat_v2::numeric, 4) AS lat_v2,\
+       ROUND(lon_direct::numeric, 4) AS lon_direct,\
+       ROUND(lat_direct::numeric, 4) AS lat_direct,\
+       ROUND(ecart_lon::numeric, 4) AS ecart_lon,\
+       ROUND(ecart_lat::numeric, 4) AS ecart_lat\
+FROM test_direct\
+ORDER BY ecart_lon;"
+```
+
+Résultat : pour les 21 lignes, `ecart_lon` est de l’ordre de `0.66 → 0.74` (et `ecart_lat` `~5.74 → 5.83`).
+
+**Conclusion** : hypothèse rejetée ; les indices ne sont pas un encodage direct `lon/lat` à 1/100.
+
+#### 4.3.2. Hypothèse alternative B — la grille serait à `step=0.001°` (10× plus fine)
+
+Test :
+
+- `x0_001 = lon_v2 - col_prov*0.001`
+- `y0_001 = lat_v2 - row_prov*0.001`
+
+Commande :
+
+```bash
+docker compose exec -T db psql -U atlas -d atlas_clean -c "WITH missions AS (\
+  SELECT (SUBSTRING(cm.notes_internal FROM 'maille_code=TG-([0-9]+)-[0-9]+-[0-9]+')::int) AS col_prov,\
+         (SUBSTRING(cm.notes_internal FROM 'maille_code=TG-[0-9]+-([0-9]+)-[0-9]+')::int) AS row_prov,\
+         ST_X(ST_Transform(ST_Centroid(m.geom), 4326)) AS lon_v2,\
+         ST_Y(ST_Transform(ST_Centroid(m.geom), 4326)) AS lat_v2\
+  FROM atlas.colab_missions cm\
+  JOIN atlas.mailles m ON m.id = cm.maille_id\
+  WHERE cm.notes_internal ILIKE '%maille_code=TG-00%'\
+), x0y0_001 AS (\
+  SELECT *, (lon_v2 - col_prov * 0.001) AS x0_001, (lat_v2 - row_prov * 0.001) AS y0_001\
+  FROM missions\
+)\
+SELECT COUNT(*) AS n,\
+       ROUND(MIN(x0_001)::numeric, 4) AS x0_min,\
+       ROUND(MAX(x0_001)::numeric, 4) AS x0_max,\
+       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY x0_001)::numeric, 4) AS x0_median,\
+       ROUND(MAX(x0_001)::numeric - MIN(x0_001)::numeric, 4) AS x0_range,\
+       ROUND(MIN(y0_001)::numeric, 4) AS y0_min,\
+       ROUND(MAX(y0_001)::numeric, 4) AS y0_max,\
+       ROUND(PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY y0_001)::numeric, 4) AS y0_median,\
+       ROUND(MAX(y0_001)::numeric - MIN(y0_001)::numeric, 4) AS y0_range\
+FROM x0y0_001;"
+```
+
+Résultat :
+
+- `x0_min=1.0746`, `x0_max=1.1856`, `x0_median=1.1481`, `x0_range=0.1111`
+- `y0_min=6.1161`, `y0_max=6.2977`, `y0_median=6.1907`, `y0_range=0.1816`
+
+**Conclusion** : l’origine reste trop variable ; l’hypothèse `step=0.001°` ne stabilise pas une origine unique.
+
 ### 4.4. Backfill du mapping explicite `atlas.colab_maille_code_map` (TG-00xx → V2)
 
 La table `atlas.colab_maille_code_map` contient les codes provisoires (18 entrées) et a été backfillée avec `target_code` via le fallback ADM3-centroid.
@@ -309,3 +394,4 @@ docker compose exec -T db psql -U atlas -d atlas_clean -c "\
 
 - Le rattachement ADM3→centroïde→V2 est validé comme **fallback opérationnel** (BM-14) et rendu traçable via `colab_maille_code_map`.
 - La reconstruction géométrique “pleine” de la grille TG-00xx reste **non validée** sur l’échantillon ; aucune migration ne doit créer une géométrie “source de vérité” tant que l’origine n’est pas confirmée par une référence externe (export/shapefile/paramètres terrain).
+- Les hypothèses alternatives G-10 (test direct col/row->lon/lat et test step=0.001°) ne tiennent pas sur l'échantillon, confirmant que la reconstruction géométrique de la grille TG-00xx nécessite des informations supplémentaires pour être validée.

@@ -297,6 +297,19 @@ Avant d’écrire une migration SQL, toujours :
 * L’API ne doit pas réécrire la logique d’agrégation SQL dans Rust.
 * Utiliser les vues et matviews (`mv_mailles_geotech`, statistiques 28 km, etc.) comme sources de vérité.
 
+**[API-05] Toute action sur les données d'un autre utilisateur = RBAC + audit trail**
+
+* Toute route/API qui modifie l'état métier d'un autre utilisateur (ex: réassigner/désassigner une mission d'opérateur) doit obligatoirement :
+
+  - **vérifier la permission côté serveur** (RBAC en base, pas seulement UI)
+  - **tracer l'action** dans `atlas.auth_audit_log` avec un `details` JSON structuré
+
+* Exemple (réattribution missions/mailles) :
+
+  - Permission requise : `colab.missions.unassign` / `colab.missions.reassign`
+  - Event : `mission_unassign` / `mission_reassign`
+  - Détails : `{ mission_id, old_mission_id, new_mission_id, new_maille_id, student_id, ... }`
+
 ---
 
 ## 5. Frontend / UI (Leaflet + Vite)

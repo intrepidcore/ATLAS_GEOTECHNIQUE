@@ -7,6 +7,8 @@ use axum::{
     response::{IntoResponse, Response},
     Json,
 };
+use serde_json::json;
+use sqlx::PgPool;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -139,8 +141,8 @@ pub async fn optional_auth_middleware(
     next.run(req).await
 }
 
-/// Middleware pour vérifier une permission spécifique
-pub fn require_permission(permission: &'static str) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Response, AuthError>> + Send>> + Clone {
+/// Middleware pour vérifier une permission spécifique (JWT-only)
+pub fn require_permission_jwt(permission: &'static str) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Response, AuthError>> + Send>> + Clone {
     move |req: Request, next: Next| {
         let permission = permission;
         Box::pin(async move {
@@ -159,6 +161,43 @@ pub fn require_permission(permission: &'static str) -> impl Fn(Request, Next) ->
             Ok(next.run(req).await)
         })
     }
+}
+
+pub async fn require_permission(
+    pool: &PgPool,
+    user_id: Uuid,
+    permission: &str,
+) -> Result<(), (StatusCode, Json<serde_json::Value>)> {
+    let has_perm: bool = sqlx::query_scalar(
+        r#"
+        SELECT EXISTS(
+            SELECT 1
+            FROM atlas.user_roles ur
+            JOIN atlas.role_permissions rp ON rp.role_id = ur.role_id
+            WHERE ur.user_id = $1
+              AND rp.permission_id = $2
+              AND (ur.expires_at IS NULL OR ur.expires_at > NOW())
+        )
+        "#,
+    )
+    .bind(user_id)
+    .bind(permission)
+    .fetch_one(pool)
+    .await
+    .unwrap_or(false);
+
+    if !has_perm {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({
+                "error": "Permission insuffisante",
+                "required": permission,
+                "code": "FORBIDDEN"
+            })),
+        ));
+    }
+
+    Ok(())
 }
 
 /// Middleware pour vérifier un rôle spécifique

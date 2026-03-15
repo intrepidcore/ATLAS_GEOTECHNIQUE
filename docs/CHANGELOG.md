@@ -4,6 +4,14 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [1.0.0] - 2026-03-15
+
+### Ajouté
+- **[Desktop]** Configuration updater Tauri v2 (signature ed25519, artefacts updater)
+- **[CI/CD]** Workflow GitHub Actions de release (build + publication GitHub Releases)
+- **[DB]** Migrations 133-136 (RBAC coordinator + sync infra + audit change log + subscription plans)
+- **[Data]** Seed dump Desktop + manifest (sha256/size) régénérés après migrations
+
 ## [1.2.0] - 2025-10-17
 
 ### Ajouté
