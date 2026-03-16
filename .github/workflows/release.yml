@@ -44,6 +44,16 @@ jobs:
           cd ui
           npm ci
 
+      - name: Build api-geo sidecar (release)
+        run: |
+          cd services/api-geo
+          cargo build --release
+
+      - name: Prepare api-geo sidecar for Tauri bundle
+        shell: pwsh
+        run: |
+          ./scripts/fetch-api-geo-artifact.ps1 -ExePath ./services/api-geo/target/release/api-geo.exe
+
       - name: Build & publish
         uses: tauri-apps/tauri-action@v0
         env:
