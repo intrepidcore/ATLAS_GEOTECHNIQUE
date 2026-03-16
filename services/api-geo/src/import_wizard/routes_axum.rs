@@ -6,6 +6,7 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use sqlx::Row;
 use uuid::Uuid;
 
 use super::batch;
@@ -23,27 +24,31 @@ pub async fn create_import(
     let batch_id = batch::generate_batch_id();
     let id = Uuid::new_v4();
 
-    let result = sqlx::query!(
+    let result = sqlx::query(
         r#"
         INSERT INTO imports (id, batch_id, filename, sha256, status, params, stats)
         VALUES ($1, $2, $3, $4, 'pending', '{}', '{}')
         RETURNING id, batch_id
         "#,
-        id,
-        batch_id,
-        req.filename,
-        req.sha256,
     )
+    .bind(id)
+    .bind(batch_id)
+    .bind(&req.filename)
+    .bind(&req.sha256)
     .fetch_one(&state.pool)
     .await;
 
     match result {
-        Ok(row) => Ok(Json(CreateImportResponse {
-            id: row.id,
-            batch_id: row.batch_id.map(|uuid| uuid.to_string()),
+        Ok(row) => {
+            let id: Uuid = row.get("id");
+            let batch_id: Option<Uuid> = row.get("batch_id");
+            Ok(Json(CreateImportResponse {
+                id,
+                batch_id: batch_id.map(|uuid| uuid.to_string()),
             status: ImportStatus::Pending,
-            upload_url: format!("/imports/{}/upload", row.id),
-        })),
+                upload_url: format!("/imports/{}/upload", id),
+            }))
+        }
         Err(e) => {
             eprintln!("[IMPORT] Erreur création: {}", e);
             Err(StatusCode::INTERNAL_SERVER_ERROR)
@@ -81,18 +86,19 @@ pub async fn commit_import(
     Path(id): Path<Uuid>,
     Json(req): Json<CommitRequest>,
 ) -> Result<Json<CommitResponse>, StatusCode> {
-    let batch_id = sqlx::query_scalar!(r#"SELECT batch_id FROM imports WHERE id = $1"#, id)
+    let _ = req;
+
+    let batch_id: Option<Uuid> = sqlx::query_scalar(r#"SELECT batch_id FROM imports WHERE id = $1"#)
+        .bind(id)
         .fetch_one(&state.pool)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
 
-    sqlx::query!(
-        r#"UPDATE imports SET status = 'running', updated_at = now() WHERE id = $1"#,
-        id
-    )
-    .execute(&state.pool)
-    .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    sqlx::query(r#"UPDATE imports SET status = 'running', updated_at = now() WHERE id = $1"#)
+        .bind(id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(CommitResponse {
         batch_id: batch_id.map(|uuid| uuid.to_string()),
@@ -104,7 +110,8 @@ pub async fn undo_import(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<UndoResponse>, StatusCode> {
-    let batch_id = sqlx::query_scalar!(r#"SELECT batch_id FROM imports WHERE id = $1"#, id)
+    let batch_id: Option<Uuid> = sqlx::query_scalar(r#"SELECT batch_id FROM imports WHERE id = $1"#)
+        .bind(id)
         .fetch_one(&state.pool)
         .await
         .map_err(|_| StatusCode::NOT_FOUND)?;
@@ -113,39 +120,37 @@ pub async fn undo_import(
     let batch_id_str = batch_id.as_ref().map(|uuid| uuid.to_string());
     let batch_id_ref = batch_id_str.as_deref();
 
-    let sondages_deleted = sqlx::query!(
+    let sondages_deleted = sqlx::query(
         r#"
         UPDATE sondages 
         SET deleted_at = now(), deleted_by_batch = $1
         WHERE created_by_batch = $1 AND deleted_at IS NULL
         "#,
-        batch_id_ref
     )
+    .bind(batch_id_ref)
     .execute(&state.pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     .rows_affected() as usize;
 
-    let essais_deleted = sqlx::query!(
+    let essais_deleted = sqlx::query(
         r#"
         UPDATE essais_geotechniques
         SET deleted_at = now(), deleted_by_batch = $1
         WHERE created_by_batch = $1 AND deleted_at IS NULL
         "#,
-        batch_id_ref
     )
+    .bind(batch_id_ref)
     .execute(&state.pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
     .rows_affected() as usize;
 
-    sqlx::query!(
-        r#"UPDATE imports SET status = 'undone', updated_at = now() WHERE id = $1"#,
-        id
-    )
-    .execute(&state.pool)
-    .await
-    .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    sqlx::query(r#"UPDATE imports SET status = 'undone', updated_at = now() WHERE id = $1"#)
+        .bind(id)
+        .execute(&state.pool)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(Json(UndoResponse {
         undone: UndoStats {
@@ -161,11 +166,10 @@ pub async fn get_import_log(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<String, StatusCode> {
-    let errors = sqlx::query_as!(
-        ImportError,
+    let errors = sqlx::query_as::<_, ImportError>(
         r#"SELECT * FROM import_errors WHERE import_id = $1 ORDER BY row_no"#,
-        id
     )
+    .bind(id)
     .fetch_all(&state.pool)
     .await
     .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

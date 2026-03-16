@@ -25,7 +25,7 @@ rayon = "1.8"
 geo = "0.27"
 nalgebra = "0.32"
 uuid = { version = "1", features = ["v4", "serde"] }
-chrono = { version = "0.4", features = ["serde"] }
+chrono = { version = "0.4", features = ["serde", "clock"] }
 dotenvy = "0.15"
 time = { version = "0.3", features = ["serde", "formatting"] }
 num-traits = "0.2"

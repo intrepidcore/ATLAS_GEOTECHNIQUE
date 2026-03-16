@@ -10,7 +10,8 @@ use axum::{
 };
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
-use sqlx::{types::Uuid, Row};
+use sqlx::Row;
+use uuid::Uuid;
 
 // ============================================================================
 // Types
@@ -654,7 +655,7 @@ pub async fn geocode_survey(
 pub async fn list_ungeocode_surveys(State(state): State<AppState>) -> impl IntoResponse {
     let pool = &state.pool;
 
-    let surveys = match sqlx::query!(
+    let surveys = match sqlx::query(
         r#"
         SELECT 
             s.id,
@@ -665,10 +666,10 @@ pub async fn list_ungeocode_surveys(State(state): State<AppState>) -> impl IntoR
             s.adm2 as adm2_name,
             s.adm3 as adm3_name,
             s.created_at,
-            0::bigint as "n_essais!"
+            0::bigint as n_essais
         FROM sondages_non_geocodes s
         ORDER BY s.created_at DESC
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await
@@ -687,15 +688,23 @@ pub async fn list_ungeocode_surveys(State(state): State<AppState>) -> impl IntoR
     let result: Vec<serde_json::Value> = surveys
         .into_iter()
         .map(|row| {
+            let id: Uuid = row.get("id");
+            let code: Option<String> = row.get("code");
+            let date: Option<chrono::NaiveDate> = row.get("date");
+            let source: Option<String> = row.get("source");
+            let adm1_name: Option<String> = row.get("adm1_name");
+            let adm2_name: Option<String> = row.get("adm2_name");
+            let adm3_name: Option<String> = row.get("adm3_name");
+            let n_essais: i64 = row.get("n_essais");
             serde_json::json!({
-                "id": row.id,
-                "code": row.code,
-                "date": row.date,
-                "source": row.source,
-                "adm1_name": row.adm1_name,
-                "adm2_name": row.adm2_name,
-                "adm3_name": row.adm3_name,
-                "n_essais": row.n_essais
+                "id": id,
+                "code": code,
+                "date": date,
+                "source": source,
+                "adm1_name": adm1_name,
+                "adm2_name": adm2_name,
+                "adm3_name": adm3_name,
+                "n_essais": n_essais
             })
         })
         .collect();

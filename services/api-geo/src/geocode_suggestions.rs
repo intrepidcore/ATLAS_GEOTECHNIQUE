@@ -7,6 +7,7 @@ use axum::{
     http::StatusCode,
     Json,
 };
+use sqlx::Row;
 use serde::{Deserialize, Serialize};
 // use sqlx::PgPool; // Unused import
 
@@ -250,7 +251,7 @@ pub async fn get_suggestions_stats(
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pool;
     
-    let stats = sqlx::query!(
+    let stats = sqlx::query(
         r#"
         SELECT 
             COUNT(*) FILTER (WHERE status = 'pending') as pending,
@@ -258,17 +259,22 @@ pub async fn get_suggestions_stats(
             COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
             COUNT(*) as total
         FROM public.geocode_suggestions
-        "#
+        "#,
     )
     .fetch_one(pool)
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+
+    let total: i64 = stats.try_get("total").unwrap_or(0);
+    let pending: i64 = stats.try_get("pending").unwrap_or(0);
+    let accepted: i64 = stats.try_get("accepted").unwrap_or(0);
+    let rejected: i64 = stats.try_get("rejected").unwrap_or(0);
     
     Ok(Json(serde_json::json!({
-        "total": stats.total.unwrap_or(0),
-        "pending": stats.pending.unwrap_or(0),
-        "accepted": stats.accepted.unwrap_or(0),
-        "rejected": stats.rejected.unwrap_or(0)
+        "total": total,
+        "pending": pending,
+        "accepted": accepted,
+        "rejected": rejected
     })))
 }
 

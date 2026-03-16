@@ -40,23 +40,23 @@ pub async fn save_errors(
     errors: &[ValidationError],
 ) -> Result<(), String> {
     for error in errors {
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO import_errors (import_id, row_no, column_name, error_code, message, severity, value, hint)
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             "#,
-            import_id,
-            error.row as i32,
-            error.column.as_deref(),
-            error.code,
-            error.message,
-            match error.severity {
-                ErrorSeverity::Error => "error",
-                ErrorSeverity::Warning => "warning",
-            },
-            error.value.as_ref().map(|v| v.to_string()),
-            error.hint.as_deref(),
         )
+        .bind(import_id)
+        .bind(error.row as i32)
+        .bind(error.column.as_deref())
+        .bind(&error.code)
+        .bind(&error.message)
+        .bind(match error.severity {
+            ErrorSeverity::Error => "error",
+            ErrorSeverity::Warning => "warning",
+        })
+        .bind(error.value.as_ref().map(|v| v.to_string()))
+        .bind(error.hint.as_deref())
         .execute(pool)
         .await
         .map_err(|e| {
