@@ -182,9 +182,7 @@ async fn main() -> anyhow::Result<()> {
             .ok()
             .or_else(|| std::env::var("DATABASE_URL").ok())
             .expect("DATABASE_URL_ADMIN requis si ENABLE_DB_MANAGER=true");
-        let p = sqlx::PgPool::connect(&url).await?;
-        // Health check explicite
-        let _one: i32 = sqlx::query_scalar::<_, i32>("SELECT 1").fetch_one(&p).await?;
+        let p = config::pg_pool_from_url(&url).await?;
         Some(p)
     } else {
         None

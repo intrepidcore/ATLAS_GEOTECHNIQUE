@@ -3,7 +3,10 @@ use std::time::Duration;
 
 pub async fn pg_pool() -> anyhow::Result<PgPool> {
     let url = std::env::var("DATABASE_URL").expect("DATABASE_URL is required");
+    pg_pool_from_url(&url).await
+}
 
+pub async fn pg_pool_from_url(url: &str) -> anyhow::Result<PgPool> {
     // Configuration pool avec timeouts généreux pour Docker
     let pool = PgPoolOptions::new()
         .max_connections(30)
@@ -11,14 +14,21 @@ pub async fn pg_pool() -> anyhow::Result<PgPool> {
         .acquire_timeout(Duration::from_secs(120))
         .idle_timeout(Duration::from_secs(600))
         .max_lifetime(Duration::from_secs(1800))
-        .connect(&url)
+        .after_connect(|conn, _meta| {
+            Box::pin(async move {
+                // Garantit la résolution des tables non qualifiées (ex: essais) dans le schéma atlas.
+                sqlx::query("SET search_path TO atlas, public")
+                    .execute(conn)
+                    .await?;
+                Ok(())
+            })
+        })
+        .connect(url)
         .await?;
 
     // Health check en runtime (pas de macro compile-time) pour garder les builds Docker
     // indépendants de la DB et éviter d'exiger sqlx-data.json/SQLX_OFFLINE.
-    let _one: i32 = sqlx::query_scalar::<_, i32>("SELECT 1")
-        .fetch_one(&pool)
-        .await?;
+    let _one: i32 = sqlx::query_scalar::<_, i32>("SELECT 1").fetch_one(&pool).await?;
 
     Ok(pool)
 }
