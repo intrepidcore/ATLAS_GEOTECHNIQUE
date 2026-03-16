@@ -86,6 +86,7 @@ import MissionDetailModal from './colab/mission-detail-modal';
 import CreateMissionModal from './colab/create-mission-modal';
 import CreateStudentModal from './colab/create-student-modal';
 import CreateSupervisorModal from './colab/create-supervisor-modal';
+import MissionsTab from './colab/tabs/missions-tab';
 import TransferMissionModal from './colab/transfer-mission-modal';
 import StudentDetailModal from './colab/student-detail-modal';
 import SupervisorDetailModal from './colab/supervisor-detail-modal';
@@ -1131,340 +1132,134 @@ const ColabPage: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Contenu selon l'onglet actif */}
         {activeTab === 'missions' && (
-          <>
-            {/* Stats */}
-            {stats && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-                <StatsCard
-                  title="Total Missions"
-                  value={stats.total_missions}
-                  icon={<BarChart3 className="w-6 h-6" />}
-                  color="bg-blue-50 text-blue-900"
-                />
-                <StatsCard
-                  title="Étudiants"
-                  value={studentsKpiValue}
-                  icon={<Users className="w-6 h-6" />}
-                  color="bg-green-50 text-green-900"
-                />
-                <StatsCard
-                  title="Superviseurs"
-                  value={stats.total_supervisors}
-                  icon={<Users className="w-6 h-6" />}
-                  color="bg-purple-50 text-purple-900"
-                />
-                <StatsCard
-                  title="Documents"
-                  value={stats.total_documents}
-                  icon={<FileText className="w-6 h-6" />}
-                  color="bg-orange-50 text-orange-900"
-                />
-              </div>
-            )}
+          <MissionsTab
+            stats={stats}
+            studentsKpiValue={studentsKpiValue}
+            missions={missions}
+            loading={loading}
+            error={error}
+            searchInput={searchInput}
+            onSearchInputChange={setSearchInput}
+            onSearch={handleSearch}
+            showFilters={showFilters}
+            onToggleFilters={() => setShowFilters(!showFilters)}
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={clearFilters}
+            filtersCommuneQuery={filtersCommuneQuery}
+            onFiltersCommuneQueryChange={setFiltersCommuneQuery}
+            filtersCommuneSuggestions={filtersCommuneSuggestions}
+            filtersCommuneLoading={filtersCommuneLoading}
+            onSelectCommune={c => {
+              setFiltersCommuneQuery(c);
+              handleFilterChange('commune', c);
+              setFiltersCommuneSuggestions([]);
+            }}
+            filtersRegionQuery={filtersRegionQuery}
+            onFiltersRegionQueryChange={setFiltersRegionQuery}
+            filtersRegionSuggestions={filtersRegionSuggestions}
+            filtersRegionLoading={filtersRegionLoading}
+            onSelectRegion={r => {
+              setFiltersRegionQuery(r);
+              handleFilterChange('region', r);
+              setFiltersRegionSuggestions([]);
+            }}
+            total={total}
+            totalPages={totalPages}
+            onPrevPage={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}
+            onNextPage={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
+            canTransferMission={canTransferMission}
+            onOpenMissionDetail={(missionId, tab) => {
+              setSelectedMissionId(missionId);
+              setMissionDetailDefaultTab(tab || 'details');
+              setShowMissionDetailModal(true);
+            }}
+            onOperationalAction={async (m, action) => {
+              const kind = action?.payload?.action;
 
-            {/* Search & Filters */}
-            <div className="bg-white rounded-xl border p-4 mb-6">
-              <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex-1 flex gap-2">
-                  <div className="flex-1 relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Rechercher (titre, code maille, thème, opérateur...)"
-                      value={searchInput}
-                      onChange={e => setSearchInput(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleSearch()}
-                      className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                  <Button variant="secondary" onClick={handleSearch}>
-                    Rechercher
-                  </Button>
-                </div>
-                <Button
-                  variant={showFilters ? 'primary' : 'outline'}
-                  onClick={() => setShowFilters(!showFilters)}
-                >
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filtres
-                </Button>
-              </div>
+              if (kind === 'edit_student_matricule' && action.payload?.student_id) {
+                try {
+                  const s = await studentsApi.get(action.payload.student_id);
+                  setSelectedStudent(s);
+                  setShowUpdateStudentModal(true);
+                  return;
+                } catch {
+                  setSelectedMissionId(m.id);
+                  setMissionDetailDefaultTab('details');
+                  setShowMissionDetailModal(true);
+                  return;
+                }
+              }
 
-              {showFilters && (
-                <div className="mt-4 pt-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Thème</label>
-                    <Select
-                      value={filters.theme || ''}
-                      onChange={e => handleFilterChange('theme', e.target.value)}
-                      options={MISSION_THEMES}
-                      placeholder="Tous les thèmes"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Statut</label>
-                    <Select
-                      value={filters.status || ''}
-                      onChange={e => handleFilterChange('status', e.target.value)}
-                      options={MISSION_STATUSES}
-                      placeholder="Tous les statuts"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Commune</label>
-                    <div className="relative">
-                      <Input
-                        placeholder="Filtrer par commune"
-                        value={filtersCommuneQuery}
-                        onChange={e => {
-                          const v = e.target.value;
-                          setFiltersCommuneQuery(v);
-                          handleFilterChange('commune', v);
-                        }}
-                      />
-                      {filtersCommuneLoading && (
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        </div>
-                      )}
-                      {filtersCommuneSuggestions.length > 0 && (
-                        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow max-h-48 overflow-auto">
-                          {filtersCommuneSuggestions.slice(0, 20).map(c => (
-                            <button
-                              key={c}
-                              type="button"
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                              onClick={() => {
-                                setFiltersCommuneQuery(c);
-                                handleFilterChange('commune', c);
-                                setFiltersCommuneSuggestions([]);
-                              }}
-                            >
-                              {c}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Région</label>
-                    <div className="relative">
-                      <Input
-                        placeholder="Filtrer par région"
-                        value={filtersRegionQuery}
-                        onChange={e => {
-                          const v = e.target.value;
-                          setFiltersRegionQuery(v);
-                          handleFilterChange('region', v);
-                        }}
-                      />
-                      {filtersRegionLoading && (
-                        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        </div>
-                      )}
-                      {filtersRegionSuggestions.length > 0 && (
-                        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow max-h-48 overflow-auto">
-                          {filtersRegionSuggestions.slice(0, 20).map(r => (
-                            <button
-                              key={r}
-                              type="button"
-                              className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
-                              onClick={() => {
-                                setFiltersRegionQuery(r);
-                                handleFilterChange('region', r);
-                                setFiltersRegionSuggestions([]);
-                              }}
-                            >
-                              {r}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  <div className="col-span-2 md:col-span-4 flex justify-end">
-                    <Button variant="ghost" size="sm" onClick={clearFilters}>
-                      <X className="w-4 h-4 mr-1" />
-                      Réinitialiser les filtres
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+              if (kind === 'edit_student_adm' && action.payload?.student_id) {
+                try {
+                  const s = await studentsApi.get(action.payload.student_id);
+                  setSelectedStudent(s);
+                  setShowUpdateStudentPrefsModal(true);
+                  return;
+                } catch {
+                  setSelectedMissionId(m.id);
+                  setMissionDetailDefaultTab('details');
+                  setShowMissionDetailModal(true);
+                  return;
+                }
+              }
 
-            {/* Error */}
-            {error && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
-                <AlertCircle className="w-5 h-5" />
-                <span>{error}</span>
-              </div>
-            )}
+              if (kind === 'edit_mission_maille' || kind === 'change_maille') {
+                setSelectedMissionId(m.id);
+                setMissionDetailDefaultTab('edit');
+                setShowMissionDetailModal(true);
+                return;
+              }
 
-            {/* Loading */}
-            {loading && (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
-              </div>
-            )}
+              if (kind === 'assign_student' || kind === 'change_student' || kind === 'assign_holder') {
+                setAttrAssignError(null);
+                setAttrAssignStudentQuery('');
+                setAttrAssignStudents([]);
+                setAttrAssignSelectedStudentId('');
+                setAttrAssignMode(kind);
+                setAttrAssignMission({
+                  mission_id: m.id,
+                  mission_code: m.code,
+                  maille_id: (action.payload?.maille_id as string) || (m as any).maille_id || '',
+                  maille_code: (action.payload?.maille_code as string) || (m as any).zone_label || (m as any).maille_id || '-',
+                } as AttributionItem);
 
-            {/* Missions Grid */}
-            {!loading && missions.length > 0 && (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-                  {missions.map(mission => (
-                    <MissionCard
-                      key={mission.id}
-                      mission={mission}
-                      onClick={() => {
-                        setSelectedMissionId(mission.id);
-                        setShowMissionDetailModal(true);
-                      }}
-                      onOperationalAction={async (m, action) => {
-                        const kind = action?.payload?.action;
+                if (kind === 'assign_holder' && action.payload?.student_id) {
+                  try {
+                    const s = await studentsApi.get(action.payload.student_id);
+                    setAttrAssignSelectedStudentId(s.id);
+                    setAttrAssignStudentQuery(`${s.full_name}${s.promotion ? ` (${s.promotion})` : ''}`);
+                  } catch {
+                    // ignore prefill errors
+                  }
+                }
+                setAttrAssignOpen(true);
+                return;
+              }
 
-                        if (kind === 'edit_student_matricule' && action.payload?.student_id) {
-                          try {
-                            const s = await studentsApi.get(action.payload.student_id);
-                            setSelectedStudent(s);
-                            setShowUpdateStudentModal(true);
-                            return;
-                          } catch {
-                            setSelectedMissionId(m.id);
-                            setMissionDetailDefaultTab('details');
-                            setShowMissionDetailModal(true);
-                            return;
-                          }
-                        }
+              if (kind === 'takeover') {
+                setTakeoverError(null);
+                setTakeoverMission(m);
+                setTakeoverPayload(action.payload);
+                setTakeoverOpen(true);
+                return;
+              }
 
-                        if (kind === 'edit_student_adm' && action.payload?.student_id) {
-                          try {
-                            const s = await studentsApi.get(action.payload.student_id);
-                            setSelectedStudent(s);
-                            setShowUpdateStudentPrefsModal(true);
-                            return;
-                          } catch {
-                            setSelectedMissionId(m.id);
-                            setMissionDetailDefaultTab('details');
-                            setShowMissionDetailModal(true);
-                            return;
-                          }
-                        }
-
-                        if (kind === 'edit_mission_maille' || kind === 'change_maille') {
-                          setSelectedMissionId(m.id);
-                          setMissionDetailDefaultTab('edit');
-                          setShowMissionDetailModal(true);
-                          return;
-                        }
-
-                        if (kind === 'assign_student' || kind === 'change_student' || kind === 'assign_holder') {
-                          setAttrAssignError(null);
-                          setAttrAssignStudentQuery('');
-                          setAttrAssignStudents([]);
-                          setAttrAssignSelectedStudentId('');
-                          setAttrAssignMode(kind);
-                          setAttrAssignMission({
-                            mission_id: m.id,
-                            mission_code: m.code,
-                            maille_id: (action.payload?.maille_id as string) || (m as any).maille_id || '',
-                            maille_code: (action.payload?.maille_code as string) || (m as any).zone_label || (m as any).maille_id || '-',
-                          } as AttributionItem);
-
-                          if (kind === 'assign_holder' && action.payload?.student_id) {
-                            try {
-                              const s = await studentsApi.get(action.payload.student_id);
-                              setAttrAssignSelectedStudentId(s.id);
-                              setAttrAssignStudentQuery(`${s.full_name}${s.promotion ? ` (${s.promotion})` : ''}`);
-                            } catch {
-                              // ignore prefill errors
-                            }
-                          }
-                          setAttrAssignOpen(true);
-                          return;
-                        }
-
-                        if (kind === 'takeover') {
-                          setTakeoverError(null);
-                          setTakeoverMission(m);
-                          setTakeoverPayload(action.payload);
-                          setTakeoverOpen(true);
-                          return;
-                        }
-
-                        setSelectedMissionId(m.id);
-                        setMissionDetailDefaultTab('details');
-                        setShowMissionDetailModal(true);
-                      }}
-                      onEdit={() => {
-                        setSelectedMissionId(mission.id);
-                        setMissionDetailDefaultTab('edit');
-                        setShowMissionDetailModal(true);
-                      }}
-                      onTransfer={
-                        canTransferMission
-                          ? () => {
-                              setSelectedMissionToTransfer(mission);
-                              setShowTransferMissionModal(true);
-                            }
-                          : undefined
-                      }
-                      onDelete={() => {
-                        setSelectedMissionToDelete(mission);
-                        setShowDeleteMissionModal(true);
-                      }}
-                    />
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between bg-white rounded-xl border p-4">
-                  <p className="text-sm text-gray-600">
-                    {total} mission{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={filters.page === 1}
-                      onClick={() => setFilters({ ...filters, page: (filters.page || 1) - 1 })}
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </Button>
-                    <span className="text-sm text-gray-600">
-                      Page {filters.page || 1} / {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={(filters.page || 1) >= totalPages}
-                      onClick={() => setFilters({ ...filters, page: (filters.page || 1) + 1 })}
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Empty State */}
-            {!loading && missions.length === 0 && !error && (
-              <div className="text-center py-12">
-                <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune mission trouvée</h3>
-                <p className="text-gray-500 mb-4">
-                  {filters.search || filters.theme || filters.status
-                    ? 'Essayez de modifier vos filtres'
-                    : 'Créez votre première mission terrain'}
-                </p>
-                <Button onClick={() => setShowCreateModal(true)}>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Créer une mission
-                </Button>
-              </div>
-            )}
-
-          </>
+              setSelectedMissionId(m.id);
+              setMissionDetailDefaultTab('details');
+              setShowMissionDetailModal(true);
+            }}
+            onTransferMission={mission => {
+              setSelectedMissionToTransfer(mission);
+              setShowTransferMissionModal(true);
+            }}
+            onDeleteMission={mission => {
+              setSelectedMissionToDelete(mission);
+              setShowDeleteMissionModal(true);
+            }}
+            onOpenCreateMission={() => setShowCreateModal(true)}
+          />
         )}
 
         {activeTab === 'exports' && (
