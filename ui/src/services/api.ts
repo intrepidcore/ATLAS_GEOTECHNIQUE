@@ -74,6 +74,8 @@ class ApiClient {
           if (response.status === 503 && errorData?.code === 'DB_MANAGER_DISABLED') {
             error.message =
               'DB Manager désactivé (ENABLE_DB_MANAGER=false). Pour activer en dev: définir ENABLE_DB_MANAGER=true + DATABASE_URL_ADMIN, puis redémarrer api-geo.'
+          } else if (response.status === 403 && errorData?.error_code === 'PERMISSION_DENIED') {
+            error.message = errorData?.error || errorData?.message || 'Accès administrateur requis.'
           } else {
             error.message = errorData.message || errorData.error || error.message
           }

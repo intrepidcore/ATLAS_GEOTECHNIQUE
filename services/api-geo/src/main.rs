@@ -176,9 +176,11 @@ async fn main() -> anyhow::Result<()> {
     let enable_db_manager = std::env::var("ENABLE_DB_MANAGER")
         .ok()
         .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
-        .unwrap_or(false);
+        .unwrap_or(is_desktop);
     let admin_pool = if enable_db_manager {
         let url = std::env::var("DATABASE_URL_ADMIN")
+            .ok()
+            .or_else(|| std::env::var("DATABASE_URL").ok())
             .expect("DATABASE_URL_ADMIN requis si ENABLE_DB_MANAGER=true");
         let p = sqlx::PgPool::connect(&url).await?;
         // Health check explicite

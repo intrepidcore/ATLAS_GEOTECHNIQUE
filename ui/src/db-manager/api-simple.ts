@@ -8,6 +8,26 @@ import type { DatabaseSchema, TableDataResponse, TableDataQuery, PostgresType } 
 
 const BASE_URL = '/db'
 
+async function parseErrorMessage(response: Response): Promise<string> {
+  const base = `HTTP ${response.status}: ${response.statusText}`
+  try {
+    const data: any = await response.json()
+    const code = data?.code || data?.error_code
+    if (response.status === 503 && code === 'DB_MANAGER_DISABLED') {
+      return (
+        data?.message ||
+        'DB Manager désactivé. Pour activer: ENABLE_DB_MANAGER=true (et DATABASE_URL_ADMIN si nécessaire), puis redémarrer api-geo.'
+      )
+    }
+    if (response.status === 403 && code === 'PERMISSION_DENIED') {
+      return data?.error || data?.message || 'Accès administrateur requis.'
+    }
+    return data?.message || data?.error || base
+  } catch {
+    return base
+  }
+}
+
 // Helper pour obtenir les headers d'authentification
 function getAuthHeaders(): HeadersInit {
   const token = tokenStorage.getAccessToken()
@@ -20,7 +40,7 @@ export async function getPostgresTypes(): Promise<PostgresType[]> {
   })
   
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    throw new Error(await parseErrorMessage(response))
   }
   
   const text = await response.text()
@@ -42,7 +62,7 @@ export async function getSchema(): Promise<DatabaseSchema> {
   })
   
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    throw new Error(await parseErrorMessage(response))
   }
   
   const text = await response.text()
@@ -76,7 +96,7 @@ export async function getTableData(
   })
   
   if (!response.ok) {
-    throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    throw new Error(await parseErrorMessage(response))
   }
   
   const text = await response.text()

@@ -50,6 +50,7 @@ function getTauriInvoke(): TauriInvoke | null {
 
 function App() {
   const { isAuthenticated, isLoading: authLoading, user, logout } = useAuth()
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<string>('sondages')
   const [selectedSchema, setSelectedSchema] = useState<string>('public')
@@ -89,12 +90,27 @@ function App() {
   const [lastResetQuarantine, setLastResetQuarantine] = useState<string | null>(null)
   const [dbConnectionInfo, setDbConnectionInfo] = useState<DbConnectionInfo | null>(null)
 
-  // État pour éviter le flash pendant la redirection
-  const [isRedirecting, setIsRedirecting] = useState(false)
-  
-  // NOTE: La redirection automatique après login a été supprimée
-  // Les utilisateurs non-étudiants peuvent maintenant accéder librement à db-manager.html
-  // La redirection se fait uniquement via le bouton "Retour à la carte" si nécessaire
+  // Desktop first-run: si le marker d'installation n'existe pas, on bascule sur l'installateur
+  useEffect(() => {
+    const inv = getTauriInvoke()
+    if (!inv) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const installed = await inv<boolean>('installer_is_installed')
+        if (cancelled) return
+        if (!installed && window.location.pathname !== '/installer.html') {
+          setIsRedirecting(true)
+          window.location.href = '/installer.html'
+        }
+      } catch {
+        // ignore
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   // Charger les notifications
   useEffect(() => {

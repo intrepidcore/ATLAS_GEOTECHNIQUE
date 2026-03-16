@@ -8,6 +8,7 @@ use std::io::Write;
 mod postgres;
 mod support;
 mod sync;
+mod installer;
 
 struct ManagedPostgres(std::sync::Mutex<Option<postgres::PostgresHandle>>);
 #[allow(dead_code)]
@@ -16,6 +17,14 @@ struct ManagedApiPort(u16);
 struct ManagedPaths {
     data_dir: std::path::PathBuf,
     logs_dir: std::path::PathBuf,
+}
+
+fn install_marker_path(data_dir: &std::path::Path) -> std::path::PathBuf {
+    data_dir.join("install").join("installed.marker")
+}
+
+fn is_installed(data_dir: &std::path::Path) -> bool {
+    install_marker_path(data_dir).exists()
 }
 
 fn port_is_free(port: u16) -> bool {
@@ -230,6 +239,13 @@ pub fn run() {
             // Embedded Postgres (bundle): auto-résolution du bin dir depuis les resources
             try_set_embedded_postgres_bin_dir(app);
 
+            // First-run: on n'effectue pas le bootstrap DB/API avant que l'installateur
+            // (wizard UI) n'ait validé et déclenché l'installation.
+            if !is_installed(&data_dir) {
+                tracing::info!("Installer mode: skipping postgres/api bootstrap (marker missing)");
+                return Ok(());
+            }
+
             // Postgres embarqué (dev: détection auto; prod: resources Tauri)
             if !postgres::postgres_available() {
                 let msg = "PostgreSQL embarqué indisponible. En dev, définis ATLAS_PG_BIN_DIR vers le dossier contenant pg_ctl.exe/initdb.exe/psql.exe (ex: C:\\Program Files\\EnterpriseDB\\...\\bin), puis relance.";
@@ -298,10 +314,12 @@ pub fn run() {
             cmd.env("API_GEO_PORT", api_port.to_string());
             cmd.env("ATLAS_DATA_DIR", data_dir.to_string_lossy().to_string());
             cmd.env("ATLAS_DESKTOP", "1");
+            cmd.env("ENABLE_DB_MANAGER", "1");
 
             // Isolation Docker / dotenv: on purge toute valeur héritée.
             cmd.env_remove("DATABASE_URL");
             cmd.env("DATABASE_URL", &database_url);
+            cmd.env("DATABASE_URL_ADMIN", &database_url);
 
             // Override autorisé uniquement en debug (dev ergonomics)
             if cfg!(debug_assertions) {
@@ -378,8 +396,12 @@ pub fn run() {
         })
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             greet,
+            installer::installer_is_installed,
+            installer::installer_check_free_space,
+            installer::installer_run,
             support::diagnostic_export,
             support::db_connection_info,
             support::db_integrity_check,

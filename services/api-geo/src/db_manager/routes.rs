@@ -17,7 +17,7 @@ fn require_admin_pool(
         StatusCode::SERVICE_UNAVAILABLE,
         Json(DbManagerError::new(
             "DB_MANAGER_DISABLED",
-            "DB Manager désactivé (ENABLE_DB_MANAGER=false)",
+            "DB Manager désactivé",
         )),
     ))
 }

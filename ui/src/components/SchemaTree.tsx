@@ -24,6 +24,7 @@ export function SchemaTree({
 }: SchemaTreeProps) {
   const [schemas, setSchemas] = useState<SchemaData[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     loadSchemas()
@@ -32,6 +33,7 @@ export function SchemaTree({
   const loadSchemas = async () => {
     try {
       setLoading(true)
+      setError(null)
       // Charger les schémas principaux
       const schemaNames = ['public', 'atlas']
       const schemasData: SchemaData[] = []
@@ -47,6 +49,8 @@ export function SchemaTree({
 
       setSchemas(schemasData)
     } catch (err) {
+      const msg = err && typeof err === 'object' && 'message' in err ? String((err as any).message) : 'Erreur inconnue'
+      setError(msg)
       console.error('Error loading schemas:', err)
     } finally {
       setLoading(false)
@@ -67,6 +71,22 @@ export function SchemaTree({
     return (
       <div className="flex items-center justify-center p-8">
         <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="p-4">
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+          {error}
+        </div>
+        <button
+          onClick={loadSchemas}
+          className="mt-3 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800"
+        >
+          Réessayer
+        </button>
       </div>
     )
   }
