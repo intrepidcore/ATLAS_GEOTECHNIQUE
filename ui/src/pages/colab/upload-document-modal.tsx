@@ -6,20 +6,14 @@ import {
   MissionListItem,
 } from '../../services/colab-api';
 import { Button, Input, Select } from './ui';
+import CreateMissionModal from './create-mission-modal';
 
 const UploadDocumentModal: React.FC<{
   isOpen: boolean;
   missionId: string | null;
   onClose: () => void;
-  onUploaded: () => void;
-  CreateMissionModal: React.FC<{
-    isOpen: boolean;
-    onClose: () => void;
-    onCreated: () => void;
-    onCreatedMission?: (mission: MissionListItem) => void;
-    onOpenExistingStudent?: (studentId: string) => void;
-  }>;
-}> = ({ isOpen, missionId, onClose, onUploaded, CreateMissionModal }) => {
+  onUploaded: () => void | Promise<void>;
+}> = ({ isOpen, missionId, onClose, onUploaded }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [title, setTitle] = useState('');
