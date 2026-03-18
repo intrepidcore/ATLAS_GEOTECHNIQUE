@@ -99,7 +99,8 @@ function App() {
       try {
         const installed = await inv<boolean>('installer_is_installed')
         if (cancelled) return
-        if (!installed && window.location.pathname !== '/installer.html') {
+        const path = window.location.pathname
+        if (!installed && path !== '/installer.html' && path !== '/db-manager.html') {
           setIsRedirecting(true)
           window.location.href = '/installer.html'
         }

@@ -156,6 +156,7 @@ export default defineConfig(({ mode }) => {
         main: path.resolve(__dirname, 'index.html'),
         mobile: path.resolve(__dirname, 'mobile.html'),
         installer: path.resolve(__dirname, 'installer.html'),
+        dbManager: path.resolve(__dirname, 'db-manager.html'),
       },
       output: {
         manualChunks: {
