@@ -7,9 +7,17 @@
 
 import './index.css'
 import { DbManagerModalComponent } from './db-manager/components-vanilla'
+import { tokenStorage } from './services/token-storage'
 
 // Attendre que le DOM soit prêt
 document.addEventListener('DOMContentLoaded', () => {
+  const token = tokenStorage.getAccessToken()
+  if (!token) {
+    const returnTo = encodeURIComponent('/db-manager.html')
+    window.location.href = `/?returnTo=${returnTo}`
+    return
+  }
+
   // Créer et ouvrir le modal DB Manager
   const dbManager = new DbManagerModalComponent()
   

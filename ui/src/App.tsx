@@ -123,6 +123,23 @@ function App() {
     }
   }, [isAuthenticated])
 
+  // Support "returnTo" (ex: db-manager standalone) après login
+  useEffect(() => {
+    if (authLoading) return
+    if (!isAuthenticated) return
+    try {
+      const u = new URL(window.location.href)
+      const returnTo = (u.searchParams.get('returnTo') || '').trim()
+      if (returnTo && returnTo.startsWith('/')) {
+        u.searchParams.delete('returnTo')
+        window.history.replaceState({}, '', u.pathname + (u.searchParams.toString() ? `?${u.searchParams.toString()}` : '') + u.hash)
+        window.location.href = returnTo
+      }
+    } catch {
+      // ignore
+    }
+  }, [authLoading, isAuthenticated])
+
   const loadNotifications = async () => {
     try {
       const token = tokenStorage.getAccessToken()
