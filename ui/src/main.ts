@@ -929,7 +929,21 @@ function onEachFeature(f: any, layer: any) {
         btnView.onclick = async () => {
           try {
             missionsBox.innerHTML = `<div style="font-size:12px;color:#94a3b8">Chargement…</div>`
-            const mailleId = p.id
+            let mailleId = p.id || p.maille_id || p.mailleId
+            if (!mailleId) {
+              try {
+                const urlResolve = `${API_GEO}/colab/mailles/resolve?lat=${encodeURIComponent(
+                  String(e?.latlng?.lat ?? ''),
+                )}&lon=${encodeURIComponent(String(e?.latlng?.lng ?? ''))}`
+                const resolved = await fetchWithBearerJSON<any>(urlResolve)
+                mailleId = resolved?.id || null
+                if (mailleId) {
+                  p.id = mailleId
+                }
+              } catch {
+                // ignore
+              }
+            }
             if (!mailleId) {
               missionsBox.innerHTML = `<div style="font-size:12px;color:#fca5a5">maille_id indisponible</div>`
               return
