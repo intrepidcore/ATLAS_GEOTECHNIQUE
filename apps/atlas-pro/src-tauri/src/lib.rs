@@ -27,6 +27,16 @@ fn is_installed(data_dir: &std::path::Path) -> bool {
     install_marker_path(data_dir).exists()
 }
 
+fn force_installer_mode() -> bool {
+    std::env::var("ATLAS_FORCE_INSTALLER")
+        .ok()
+        .map(|v| {
+            let v = v.trim();
+            v.eq_ignore_ascii_case("true") || v == "1" || v.eq_ignore_ascii_case("yes")
+        })
+        .unwrap_or(false)
+}
+
 fn port_is_free(port: u16) -> bool {
     std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
 }
@@ -241,7 +251,7 @@ pub fn run() {
 
             // First-run: on n'effectue pas le bootstrap DB/API avant que l'installateur
             // (wizard UI) n'ait validé et déclenché l'installation.
-            if !is_installed(&data_dir) {
+            if force_installer_mode() || !is_installed(&data_dir) {
                 tracing::info!("Installer mode: skipping postgres/api bootstrap (marker missing)");
                 return Ok(());
             }

@@ -36,6 +36,16 @@ fn emit_progress(app: &AppHandle, step: &str, message: &str, percent: u8) {
 
 #[tauri::command]
 pub fn installer_is_installed(paths: State<'_, ManagedPaths>) -> Result<bool, String> {
+    let force = std::env::var("ATLAS_FORCE_INSTALLER")
+        .ok()
+        .map(|v| {
+            let v = v.trim();
+            v.eq_ignore_ascii_case("true") || v == "1" || v.eq_ignore_ascii_case("yes")
+        })
+        .unwrap_or(false);
+    if force {
+        return Ok(false);
+    }
     Ok(install_marker_path(&paths.data_dir).exists())
 }
 
