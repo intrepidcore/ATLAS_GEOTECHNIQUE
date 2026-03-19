@@ -133,10 +133,14 @@ dialog select,
   border: 1px solid #4a4a5e !important;
 }
 
-/* Placeholders dans les inputs des modals */
+/* Placeholders dans les inputs des modals - FIX: plus visible (gris plus foncé) */
+[role="dialog"] ::placeholder,
 [role="dialog"] input::placeholder,
-[role="dialog"] textarea::placeholder {
-  color: #6b7280 !important;
+[role="dialog"] textarea::placeholder,
+.modal-content input::placeholder,
+.modal-content textarea::placeholder {
+  color: #4b5563 !important;  /* Gris plus foncé pour meilleure lisibilité */
+  opacity: 1 !important;
 }
 
 /* Boutons dans les modals */
