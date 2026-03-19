@@ -25,7 +25,7 @@
   "bundle": {
     "active": true,
     "createUpdaterArtifacts": false,
-    "targets": ["nsis"],
+    "targets": ["msi"],
     "externalBin": ["bin/api-geo"],
     "resources": ["pg/**/*"],
     "icon": [

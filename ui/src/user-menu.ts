@@ -4,6 +4,7 @@
  */
 
 import { tokenStorage } from './services/auth-api';
+import { APP_VERSION } from './version';
 import { resetAllPanelSizes } from './components/resizable-panel';
 
 interface UserInfo {
@@ -246,11 +247,11 @@ class UserMenu {
     try {
       if (tokenStorage.isAuthenticated()) {
         // D'abord essayer de récupérer l'utilisateur depuis le localStorage (plus rapide)
-        const cachedUser = tokenStorage.getUser();
+        const cachedUser = tokenStorage.getUser<UserInfo>();
         if (cachedUser) {
           this.user = cachedUser;
           this.updateUI();
-          console.log('[UserMenu] Utilisateur chargé depuis cache:', cachedUser.username);
+          console.log('[UserMenu] Utilisateur chargé depuis cache:', cachedUser.username || cachedUser.email || 'unknown');
           return;
         }
         
@@ -346,7 +347,7 @@ class UserMenu {
     localStorage.removeItem('atlas_token');
     localStorage.removeItem('atlas_access_token');
     localStorage.removeItem('atlas_refresh_token');
-    window.location.href = '/db-manager.html';
+    window.location.href = `/login.html?returnTo=${encodeURIComponent('/index.html')}`;
   }
 
   public render(): HTMLElement {
@@ -356,7 +357,7 @@ class UserMenu {
       loginBtn.className = 'btn-sm';
       loginBtn.style.cssText = 'background:#3b82f6;border-color:#3b82f6;color:white';
       loginBtn.textContent = '🔐 Connexion';
-      loginBtn.onclick = () => window.location.href = '/db-manager.html';
+      loginBtn.onclick = () => window.location.href = `/login.html?returnTo=${encodeURIComponent('/index.html')}`;
       return loginBtn;
     }
 
@@ -414,7 +415,7 @@ class UserMenu {
         
         <div class="user-menu-footer">
           <span>Atlas Géotechnique</span>
-          <span><span class="status-dot"></span>v3.0.0</span>
+          <span><span class="status-dot"></span>${APP_VERSION}</span>
         </div>
       </div>
     `;

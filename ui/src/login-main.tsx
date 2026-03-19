@@ -1,0 +1,41 @@
+import React from 'react'
+import ReactDOM from 'react-dom/client'
+import { AuthProvider } from './contexts/AuthContext'
+import LoginPage from './pages/LoginPage'
+import './index.css'
+
+try {
+  const w = window as any
+  const isTauri = !!(w?.__TAURI__)
+  if (isTauri && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((r) => r.unregister())
+    })
+  }
+} catch {
+  // ignore
+}
+
+function getReturnTo(): string {
+  try {
+    const u = new URL(window.location.href)
+    const v = (u.searchParams.get('returnTo') || '').trim()
+    if (v && v.startsWith('/')) return v
+  } catch {
+    // ignore
+  }
+  return '/index.html'
+}
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    <AuthProvider>
+      <LoginPage
+        onLoginSuccess={() => {
+          window.location.href = getReturnTo()
+        }}
+        variant="desktop"
+      />
+    </AuthProvider>
+  </React.StrictMode>,
+)

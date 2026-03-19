@@ -12,7 +12,7 @@ async function parseErrorMessage(response: Response): Promise<string> {
   const base = `HTTP ${response.status}: ${response.statusText}`
   try {
     const data: any = await response.json()
-    const code = data?.code || data?.error_code
+    const code = data?.code || data?.error_code || data?.error
     if (response.status === 503 && code === 'DB_MANAGER_DISABLED') {
       return (
         data?.message ||
@@ -22,7 +22,9 @@ async function parseErrorMessage(response: Response): Promise<string> {
     if (response.status === 403 && code === 'PERMISSION_DENIED') {
       return data?.error || data?.message || 'Accès administrateur requis.'
     }
-    return data?.message || data?.error || base
+    const msg = data?.message || data?.error || base
+    if (typeof msg === 'string' && msg.trim().length > 0) return msg
+    return base
   } catch {
     return base
   }

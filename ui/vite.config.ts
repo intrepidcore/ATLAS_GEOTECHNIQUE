@@ -27,6 +27,8 @@ function mpaFallbackPlugin(): Plugin {
         // Routes PWA mobile → mobile.html
         if (url.startsWith('/colab/mobile')) {
           req.url = '/mobile.html'
+        } else if (url.startsWith('/login')) {
+          req.url = '/login.html'
         } else if (url.startsWith('/installer')) {
           req.url = '/installer.html'
         } else {
@@ -154,6 +156,8 @@ export default defineConfig(({ mode }) => {
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
+        login: path.resolve(__dirname, 'login.html'),
+        dbManager: path.resolve(__dirname, 'db-manager.html'),
         mobile: path.resolve(__dirname, 'mobile.html'),
         installer: path.resolve(__dirname, 'installer.html'),
       },

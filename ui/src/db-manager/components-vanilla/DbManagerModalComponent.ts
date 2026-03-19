@@ -4,6 +4,7 @@ import { SchemaTreeComponent } from './SchemaTreeComponent'
 import { DataGridComponent } from './DataGridComponent'
 import * as api from '../api-simple'
 import type { DatabaseSchema, TableDataResponse } from '../types'
+import { APP_VERSION } from '../../version'
 
 interface ModalState {
   open: boolean
@@ -218,7 +219,7 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
       <div class="db-modal-header">
         <div class="header-left">
           <h2>🗄️ Gestionnaire de Base de Données</h2>
-          <span class="version-badge">v2.6.0</span>
+          <span class="version-badge">${APP_VERSION}</span>
         </div>
         <div class="header-right">
           <button class="btn-help" title="Aide">❓</button>

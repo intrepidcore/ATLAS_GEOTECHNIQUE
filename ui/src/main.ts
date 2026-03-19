@@ -8,14 +8,27 @@ console.log(
 // ============================================================================
 import { tokenStorage } from './services/auth-api'
 
+// Desktop (Tauri): éviter tout mismatch de versions lié au Service Worker
+try {
+  const w = window as any
+  const isTauri = !!(w?.__TAURI__)
+  if (isTauri && 'serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((r) => r.unregister())
+    })
+  }
+} catch {
+  // ignore
+}
+
 // Vérifier si l'utilisateur est authentifié
 const isAuthenticated = tokenStorage.isAuthenticated()
 console.log('[Auth] boot isAuthenticated=' + isAuthenticated)
 
 if (!isAuthenticated) {
-  // Rediriger vers la page de login (db-manager.html qui contient LoginPage)
+  // Rediriger vers la page de login
   console.log('[Auth] Non authentifié - redirection vers login')
-  window.location.href = '/db-manager.html'
+  window.location.href = `/login.html?returnTo=${encodeURIComponent('/index.html')}`
   // Arrêter l'exécution du reste du script
   throw new Error('Redirection vers login')
 }
@@ -61,6 +74,15 @@ import {
 } from './filters-state'
 
 let currentUserPermissions: string[] = []
+
+try {
+  const el = document.getElementById('appVersion')
+  if (el) {
+    el.textContent = APP_VERSION
+  }
+} catch {
+  // ignore
+}
 
 function getCurrentUserPermissions(): string[] {
   if (Array.isArray(currentUserPermissions) && currentUserPermissions.length > 0) {

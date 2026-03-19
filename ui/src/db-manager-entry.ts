@@ -7,9 +7,15 @@
 
 import './index.css'
 import { DbManagerModalComponent } from './db-manager/components-vanilla'
+import { tokenStorage } from './services/auth-api'
 
 // Attendre que le DOM soit prêt
 document.addEventListener('DOMContentLoaded', () => {
+  if (!tokenStorage.isAuthenticated()) {
+    window.location.href = `/login.html?returnTo=${encodeURIComponent('/db-manager.html')}`
+    return
+  }
+
   // Créer et ouvrir le modal DB Manager
   const dbManager = new DbManagerModalComponent()
   
@@ -21,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const originalClose = dbManager.close.bind(dbManager)
   dbManager.close = () => {
     // Rediriger vers la page principale au lieu de fermer
-    window.location.href = '/'
+    window.location.href = '/index.html'
   }
 })
 
