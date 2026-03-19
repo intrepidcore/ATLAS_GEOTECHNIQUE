@@ -187,40 +187,59 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
     weight = zoom < 10 ? baseWeight : zoom < 12 ? baseWeight * 1.5 : baseWeight * 2;
   }
   
-  // LOGIQUE COULEURS UNIFIÉES (2km ET 28km)
-  // Règle: Violet si attribuée (Colab), sinon Vert si exact, Bleu si random, Gris si vide
-  let fillColor = COLORS.GRID_NO_DATA;
+  // LOGIQUE COULEURS CORRIGÉE - Séparation claire hasActiveMission vs isAssigned
+  // Règle: 
+  // - Violet opaque SEULEMENT si hasActiveMission (mission active en cours)
+  // - Gris clair avec bordure violet si isAssigned sans mission active
+  // - Vert/Bleu/Gris selon données sinon
   
-  if (isColabHighlighted) {
+  let fillColor = COLORS.GRID_NO_DATA;
+  let fillOpacity = OPACITY.GRID_NO_DATA;
+  let strokeColor = COLORS.GRID_BORDER_NO_DATA;
+  let strokeWeight = weight;
+  
+  // Priorité 1: Mission active → violet opaque
+  if (hasActiveMission) {
     fillColor = COLORS.GRID_ASSIGNED;
-  } else if (!hasData) {
-    // Gris: sans données
+    fillOpacity = OPACITY.GRID_WITH_DATA;
+    strokeColor = COLORS.GRID_ASSIGNED;
+    strokeWeight = Math.max(weight, 2);
+  }
+  // Priorité 2: Assignée sans mission active → gris clair, bordure violet
+  else if (isAssigned) {
+    fillColor = '#888888';  // Gris clair (PAS violet)
+    fillOpacity = 0.15;      // Très léger fill
+    strokeColor = COLORS.GRID_ASSIGNED;  // Bordure violet seulement
+    strokeWeight = 2.5;
+  }
+  // Priorité 3: Données existantes
+  else if (!hasData) {
     fillColor = COLORS.GRID_NO_DATA;
-  } else if (hasExact && !hasRandom) {
-    // Vert: seulement exact
+    fillOpacity = OPACITY.GRID_NO_DATA;
+    strokeColor = COLORS.GRID_BORDER_NO_DATA;
+  }
+  else if (hasExact && !hasRandom) {
     fillColor = COLORS.GRID_EXACT;
-  } else if (hasRandom && !hasExact) {
-    // Bleu: seulement random
+    fillOpacity = OPACITY.GRID_WITH_DATA;
+    strokeColor = COLORS.GRID_EXACT;
+  }
+  else if (hasRandom && !hasExact) {
     fillColor = COLORS.GRID_RANDOM;
-  } else if (hasExact && hasRandom) {
+    fillOpacity = OPACITY.GRID_WITH_DATA;
+    strokeColor = COLORS.GRID_RANDOM;
+  }
+  else if (hasExact && hasRandom) {
     // Mix: priorité au vert (exact dominant)
     fillColor = COLORS.GRID_EXACT;
-  } else {
-    // Fallback: gris (ne devrait pas arriver si has_data est correct)
-    fillColor = COLORS.GRID_NO_DATA;
+    fillOpacity = OPACITY.GRID_WITH_DATA;
+    strokeColor = COLORS.GRID_EXACT;
   }
   
   return {
-    color: isVisibleAsData ? fillColor : COLORS.GRID_BORDER_NO_DATA,
-    weight: isColabHighlighted ? Math.max(weight, 2) : weight,
+    color: strokeColor,
+    weight: strokeWeight,
     fillColor,
-    fillOpacity: hasActiveMission
-      ? OPACITY.GRID_WITH_DATA
-      : isAssigned
-        ? OPACITY.GRID_WITH_DATA
-        : isVisibleAsData
-          ? OPACITY.GRID_WITH_DATA
-          : OPACITY.GRID_NO_DATA,
+    fillOpacity,
   };
 }
 

@@ -23,3 +23,76 @@ body{
 .kpi b{
   color:var(--text);
 }
+
+/* =============================================================================
+   FIX MODALS REACT (Portals hors de #app)
+   Les modals React sont rendus dans des portals attachés à document.body,
+   hors de #app. Tailwind preflight leur applique color: black par défaut.
+   Ces overrides ciblent spécifiquement les éléments de modals.
+   ============================================================================= */
+
+/* Overlay et container des modals */
+.modal-overlay,
+.modal-container,
+[role="dialog"],
+[data-radix-dialog-overlay],
+[data-radix-dialog-content] {
+  color: #e0e0e0 !important;
+}
+
+/* Fix fond du modal lui-même */
+[role="dialog"] > div,
+.fixed.inset-0 > div,
+.modal-content {
+  background-color: #1e1e2e !important;
+  color: #e0e0e0 !important;
+}
+
+/* Fix pour les labels et textes dans les modals */
+[role="dialog"] label,
+[role="dialog"] h2,
+[role="dialog"] h3,
+[role="dialog"] h4,
+[role="dialog"] p,
+[role="dialog"] span:not(.badge):not(.status) {
+  color: #e0e0e0 !important;
+}
+
+/* Fix spécifique pour les inputs dans les modals - texte foncé sur fond clair */
+[role="dialog"] input,
+[role="dialog"] textarea,
+[role="dialog"] select,
+dialog input,
+dialog textarea,
+dialog select,
+.modal-content input,
+.modal-content textarea,
+.modal-content select {
+  color: #1a1a2e !important;
+  background-color: #ffffff !important;
+  border: 1px solid #4a4a5e !important;
+}
+
+/* Placeholders dans les inputs des modals */
+[role="dialog"] input::placeholder,
+[role="dialog"] textarea::placeholder {
+  color: #6b7280 !important;
+}
+
+/* Boutons dans les modals */
+[role="dialog"] button:not(.btn-primary):not(.btn-danger):not(.btn-secondary) {
+  color: #e0e0e0 !important;
+}
+
+/* Listbox / Dropdown options dans les modals */
+[role="listbox"] li,
+[role="option"] {
+  color: #e0e0e0 !important;
+}
+
+/* Focused/hover dans dropdowns */
+[role="option"]:hover,
+[role="option"][aria-selected="true"] {
+  background-color: #3b3b4f !important;
+  color: #ffffff !important;
+}

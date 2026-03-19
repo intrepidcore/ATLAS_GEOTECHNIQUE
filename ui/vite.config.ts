@@ -47,12 +47,27 @@ export default defineConfig(({ mode }) => {
   const apiTarget = env.VITE_API_TARGET || 'http://127.0.0.1:8000'
 
   return {
-  plugins: [
+    server: {
+      port: 1420,
+      strictPort: true,
+      hmr: {
+        protocol: 'ws',
+        host: 'localhost',
+        port: 1420,
+      },
+      watch: {
+        ignored: ['**/src-tauri/**']
+      },
+    },
+    plugins: [
     mpaFallbackPlugin(),
     react(),
     VitePWA({
       registerType: 'autoUpdate',
       injectRegister: false,
+      devOptions: {
+        enabled: false  // SW désactivé en dev
+      },
       includeAssets: ['favicon.ico', 'icons/*.png'],
       scope: '/colab/mobile/',
       manifest: {
