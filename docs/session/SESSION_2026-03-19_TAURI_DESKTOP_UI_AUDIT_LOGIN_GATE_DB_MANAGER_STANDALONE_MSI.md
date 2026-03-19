@@ -139,6 +139,23 @@ Artifacts (exemple) :
 - `apps/atlas-pro/src-tauri/target/release/atlas-pro.exe`
 - `apps/atlas-pro/src-tauri/target/release/bundle/msi/atlas-pro_1.0.1_x64_en-US.msi`
 
+## 6.4 Commit + push
+
+```powershell
+git status --porcelain
+git add -A
+git commit -m "Fix desktop UI gate for DB Manager + build MSI"
+git push
+```
+
+- Commit: `d8d28f0`
+- Branche: `atlas_v2_clean`
+
+## 6.5 Artefacts produits (réels)
+
+- `apps/atlas-pro/src-tauri/target/release/atlas-pro.exe`
+- `apps/atlas-pro/src-tauri/target/release/bundle/msi/atlas-pro_1.0.1_x64_en-US.msi`
+
 ## 7) Vérifications attendues (checklist)
 
 - Login :
@@ -157,4 +174,11 @@ Artifacts (exemple) :
 
 - SW/PWA : le build génère encore `sw.js`. En Desktop, on unregister les SW à l’exécution (prévention cache). Si on veut aller plus loin, on peut conditionner la génération SW par mode de build.
 - DB Manager backend : si `ENABLE_DB_MANAGER=false` en environnement Desktop, l’UI doit afficher le message d’activation.
+
+## 9) Dossier non tracké à traiter
+
+- `docs/session/image/SESSION_2026-03-16_API_GEO_SEARCH_PATH_FIX_DOCKER_TAURI_SMOKE/`
+- Décision à prendre :
+  - Soit on commit ces images (si elles font partie de la doc),
+  - Soit on les supprime (si c’est du local temporaire).
 

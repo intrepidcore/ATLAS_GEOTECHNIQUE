@@ -175,8 +175,10 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   const hasData = nSondages > 0 || !!props.has_data;
   const hasExact = !!props.has_exact_location;
   const hasRandom = !!props.has_random_location;
+  const hasActiveMission = !!props.has_active_mission;
   const isAssigned = !!props.is_assigned;
-  const isVisibleAsData = hasData || isAssigned;
+  const isColabHighlighted = hasActiveMission || isAssigned;
+  const isVisibleAsData = hasData || isColabHighlighted;
   
   // Calcul du poids dynamique selon le zoom
   const baseWeight = hasData ? WEIGHT.GRID_WITH_DATA : WEIGHT.GRID_NO_DATA;
@@ -189,7 +191,7 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   // Règle: Violet si attribuée (Colab), sinon Vert si exact, Bleu si random, Gris si vide
   let fillColor = COLORS.GRID_NO_DATA;
   
-  if (isAssigned) {
+  if (isColabHighlighted) {
     fillColor = COLORS.GRID_ASSIGNED;
   } else if (!hasData) {
     // Gris: sans données
@@ -210,9 +212,15 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   
   return {
     color: isVisibleAsData ? fillColor : COLORS.GRID_BORDER_NO_DATA,
-    weight,
+    weight: isColabHighlighted ? Math.max(weight, 2) : weight,
     fillColor,
-    fillOpacity: isVisibleAsData ? OPACITY.GRID_WITH_DATA : OPACITY.GRID_NO_DATA,
+    fillOpacity: hasActiveMission
+      ? OPACITY.GRID_WITH_DATA
+      : isAssigned
+        ? OPACITY.GRID_WITH_DATA
+        : isVisibleAsData
+          ? OPACITY.GRID_WITH_DATA
+          : OPACITY.GRID_NO_DATA,
   };
 }
 

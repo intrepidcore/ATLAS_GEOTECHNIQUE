@@ -307,6 +307,13 @@ pub struct MailleActiveMissionsResponse {
     pub missions: Vec<MailleActiveMissionItem>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MailleStateResponse {
+    pub maille_id: Uuid,
+    pub has_active_mission: bool,
+    pub mission_count: i64,
+}
+
 // ============================================================================
 // Requêtes de création/modification
 // ============================================================================

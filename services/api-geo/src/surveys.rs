@@ -1350,95 +1350,130 @@ pub async fn get_adm_geojson(
         }
     };
     
-    // Construire la requête selon le niveau ADM
-    let query = match level {
-        "adm1" => format!(
-            r#"
-            SELECT json_build_object(
-                'type', 'FeatureCollection',
-                'features', json_agg(
-                    json_build_object(
-                        'type', 'Feature',
-                        'properties', json_build_object(
+    let candidates: Vec<&'static str> = match level {
+        "adm1" => vec!["atlas.adm1_tg", "public.adm1_tg", "adm1_tg", "atlas.adm1", "public.adm1", "adm1"],
+        "adm2" => vec!["atlas.adm2_tg", "public.adm2_tg", "adm2_tg", "atlas.adm2", "public.adm2", "adm2"],
+        "adm3" => vec!["atlas.adm3", "public.adm3", "adm3", "atlas.adm3_tg", "public.adm3_tg", "adm3_tg"],
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(serde_json::json!({"error": "Invalid level. Use adm1, adm2, or adm3"})),
+            )
+                .into_response();
+        }
+    };
+
+    let mut last_error: Option<String> = None;
+
+    for table in candidates {
+        let (sql, bind_name) = match level {
+            "adm1" => (
+                format!(
+                    r#"
+                    SELECT json_build_object(
+                      'type', 'FeatureCollection',
+                      'features', COALESCE(json_agg(
+                        json_build_object(
+                          'type', 'Feature',
+                          'properties', json_build_object(
                             'name', name,
                             'code', code,
                             'level', 'adm1'
-                        ),
-                        'geometry', ST_AsGeoJSON(geom)::json
+                          ),
+                          'geometry', ST_AsGeoJSON(geom)::json
+                        )
+                      ), '[]'::json)
                     )
-                )
-            )
-            FROM adm1_tg
-            WHERE name = '{}'
-            "#,
-            name.replace("'", "''")
-        ),
-        "adm2" => format!(
-            r#"
-            SELECT json_build_object(
-                'type', 'FeatureCollection',
-                'features', json_agg(
-                    json_build_object(
-                        'type', 'Feature',
-                        'properties', json_build_object(
+                    FROM {table}
+                    WHERE name = $1
+                    "#,
+                    table = table
+                ),
+                name,
+            ),
+            "adm2" => (
+                format!(
+                    r#"
+                    SELECT json_build_object(
+                      'type', 'FeatureCollection',
+                      'features', COALESCE(json_agg(
+                        json_build_object(
+                          'type', 'Feature',
+                          'properties', json_build_object(
                             'name', name,
                             'code', code,
                             'adm1', adm1_name,
                             'level', 'adm2'
-                        ),
-                        'geometry', ST_AsGeoJSON(geom)::json
+                          ),
+                          'geometry', ST_AsGeoJSON(geom)::json
+                        )
+                      ), '[]'::json)
                     )
-                )
-            )
-            FROM adm2_tg
-            WHERE name = '{}'
-            "#,
-            name.replace("'", "''")
-        ),
-        "adm3" => format!(
-            r#"
-            SELECT json_build_object(
-                'type', 'FeatureCollection',
-                'features', json_agg(
-                    json_build_object(
-                        'type', 'Feature',
-                        'properties', json_build_object(
+                    FROM {table}
+                    WHERE name = $1
+                    "#,
+                    table = table
+                ),
+                name,
+            ),
+            "adm3" => (
+                format!(
+                    r#"
+                    SELECT json_build_object(
+                      'type', 'FeatureCollection',
+                      'features', COALESCE(json_agg(
+                        json_build_object(
+                          'type', 'Feature',
+                          'properties', json_build_object(
                             'name', adm3_fr,
                             'code', adm3_pcode,
                             'adm2', adm2_fr,
                             'adm1', adm1_fr,
                             'level', 'adm3'
-                        ),
-                        'geometry', ST_AsGeoJSON(geom)::json
+                          ),
+                          'geometry', ST_AsGeoJSON(geom)::json
+                        )
+                      ), '[]'::json)
                     )
-                )
-            )
-            FROM adm3
-            WHERE adm3_fr = '{}'
-            "#,
-            name.replace("'", "''")
-        ),
-        _ => {
-            return (
-                StatusCode::BAD_REQUEST,
-                Json(serde_json::json!({"error": "Invalid level. Use adm1, adm2, or adm3"})),
-            ).into_response();
-        }
-    };
-    
-    let result = sqlx::query_scalar::<_, serde_json::Value>(&query)
-        .fetch_one(pool)
-        .await;
+                    FROM {table}
+                    WHERE adm3_fr = $1
+                    "#,
+                    table = table
+                ),
+                name,
+            ),
+            _ => unreachable!(),
+        };
 
-    match result {
-        Ok(geojson) => Json(geojson).into_response(),
-        Err(e) => {
-            tracing::error!(?e, level, name, "get_adm_geojson error");
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(serde_json::json!({"error": "Database error"})),
-            )
-                .into_response()
+        let result = sqlx::query_scalar::<_, serde_json::Value>(&sql)
+            .bind(bind_name)
+            .fetch_one(pool)
+            .await;
+
+        match result {
+            Ok(geojson) => {
+                let empty = geojson
+                    .get("features")
+                    .and_then(|v| v.as_array())
+                    .map(|a| a.is_empty())
+                    .unwrap_or(true);
+                if empty {
+                    continue;
+                }
+                return Json(geojson).into_response();
+            }
+            Err(e) => {
+                tracing::warn!(?e, level, name, table, "get_adm_geojson candidate failed (trying next)");
+                last_error = Some(format!("{}", e));
+                continue;
+            }
         }
     }
+
+    tracing::warn!(level, name, ?last_error, "get_adm_geojson: no candidate table matched or returned features");
+    let fc = serde_json::json!({
+        "type": "FeatureCollection",
+        "features": []
+    });
+    (StatusCode::OK, Json(fc)).into_response()
 }

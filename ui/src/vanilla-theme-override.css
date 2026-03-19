@@ -1,0 +1,25 @@
+body{
+  background:#0e1525;
+  color:var(--text);
+}
+
+#topbar,#dashboard,#sidebar{
+  color:var(--text);
+}
+
+#dashboard,#sidebar{
+  background:var(--panel);
+}
+
+#topbar{
+  background:var(--bg);
+}
+
+.section h4,
+.legend .row,
+.status,
+.badge,
+.kpi,
+.kpi b{
+  color:var(--text);
+}

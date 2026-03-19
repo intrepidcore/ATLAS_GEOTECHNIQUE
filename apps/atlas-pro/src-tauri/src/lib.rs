@@ -208,7 +208,7 @@ fn greet(name: &str) -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let result = tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .setup(|app| {
             app.manage(ManagedPostgres(std::sync::Mutex::new(None)));
 
@@ -403,8 +403,38 @@ pub fn run() {
                     }
                 }
             }
-        })
-        .plugin(tauri_plugin_updater::Builder::new().build())
+        });
+
+    // Updater: activé uniquement en release (évite les surprises en `tauri dev`).
+    #[cfg(not(debug_assertions))]
+    {
+        let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+        let result = builder
+            .plugin(tauri_plugin_opener::init())
+            .plugin(tauri_plugin_dialog::init())
+            .invoke_handler(tauri::generate_handler![
+                greet,
+                installer::installer_is_installed,
+                installer::installer_check_free_space,
+                installer::installer_run,
+                support::diagnostic_export,
+                support::db_connection_info,
+                support::db_integrity_check,
+                support::db_backup,
+                support::db_restore,
+                support::db_reset,
+                sync::check_for_updates,
+            ])
+            .run(tauri::generate_context!());
+
+        if let Err(e) = result {
+            eprintln!("error while running tauri application: {e}");
+        }
+
+        return;
+    }
+
+    let result = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![

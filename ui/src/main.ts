@@ -61,6 +61,10 @@ import { initRealtime, onWsEvent } from './realtime'
 import { router } from './router'
 import { SondagesManagerPage } from './pages/sondages-manager-page'
 import { getGridFeatureStyle, COLORS, WEIGHT, OPACITY, CELL_SELECTED_STYLE, GRID_HOVER_STYLE } from './map-style'
+import { colabController } from './colab/colab-controller'
+import { mailleStateStore } from './stores/maille-state-store'
+import { bus } from './utils/event-bus'
+import { openMailleDialog } from './modal/maille-dialog-host'
 import { initUserMenu } from './user-menu'
 import { 
   currentFilters, 
@@ -138,54 +142,41 @@ async function fetchWithBearerJSON<T>(url: string, init?: RequestInit): Promise<
   return res.json() as Promise<T>
 }
 
-let gridContextMenuEl: HTMLDivElement | null = null
-function closeGridContextMenu() {
-  if (gridContextMenuEl) {
-    gridContextMenuEl.remove()
-    gridContextMenuEl = null
+async function refreshMailleStateAndStyle(mailleId: string): Promise<void> {
+  try {
+    const st = await colabController.getMailleState(mailleId)
+    mailleStateStore.set(mailleId, { hasActiveMission: st.hasActiveMission, missionCount: st.missionCount })
+    bus.emit('maille:update', { mailleId })
+  } catch (e) {
+    console.warn('[Colab] refreshMailleStateAndStyle failed', e)
   }
 }
 
-function openGridContextMenu(container: HTMLElement, x: number, y: number, content: HTMLElement) {
-  closeGridContextMenu()
-  const el = document.createElement('div')
-  el.style.position = 'absolute'
-  el.style.left = `${x}px`
-  el.style.top = `${y}px`
-  el.style.zIndex = '9999'
-  el.style.minWidth = '260px'
-  el.style.maxWidth = '360px'
-  el.style.background = '#0f172a'
-  el.style.border = '1px solid #334155'
-  el.style.borderRadius = '10px'
-  el.style.boxShadow = '0 8px 20px rgba(0,0,0,0.35)'
-  el.style.padding = '10px'
-  el.style.color = '#e2e8f0'
-  el.appendChild(content)
-  container.appendChild(el)
-  gridContextMenuEl = el
-
-  const onDocClick = (ev: MouseEvent) => {
-    if (!gridContextMenuEl) return
-    if (ev.target && gridContextMenuEl.contains(ev.target as Node)) return
-    closeGridContextMenu()
-    document.removeEventListener('mousedown', onDocClick)
+bus.on('maille:update', ({ mailleId }) => {
+  try {
+    if (!gridLayer) return
+    const s = mailleStateStore.get(mailleId)
+    if (!s) return
+    gridLayer.eachLayer((layer: any) => {
+      const feature = layer?.feature
+      const p = feature?.properties
+      const fid = p?.id || p?.maille_id || p?.mailleId
+      if (!fid) return
+      if (String(fid) !== String(mailleId)) return
+      p.has_active_mission = !!s.hasActiveMission
+      layer.setStyle(styleFeature(feature))
+    })
+  } catch (e) {
+    console.warn('[Colab] maille:update handler failed', e)
   }
-  document.addEventListener('mousedown', onDocClick)
-
-  const onKeyDown = (ev: KeyboardEvent) => {
-    if (ev.key === 'Escape') {
-      closeGridContextMenu()
-      document.removeEventListener('keydown', onKeyDown)
-    }
-  }
-  document.addEventListener('keydown', onKeyDown)
-}
+})
 
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
 import { makeResizable } from './components/resizable-panel'
 import { createProfessionalMetricsControl } from './components/map/ProfessionalMetricsControl'
+import './index.css'
+import './vanilla-theme-override.css'
 import './geotechnical-form.css'
 import './thematic-maps.css'
 import './import-bulk-wizard.css'
@@ -927,120 +918,31 @@ function onEachFeature(f: any, layer: any) {
     contextmenu: async (e: any) => {
       try {
         if (!map) return
-
-        const mapContainer = map.getContainer()
-        const perms = getCurrentUserPermissions()
-        const canView = perms.includes('colab.mailles.view_active')
-        const canUnassign = perms.includes('colab.missions.unassign')
-
-        const content = document.createElement('div')
-        content.innerHTML = `
-          <div style="font-weight:700;margin-bottom:6px">Maille ${p.code || '—'}</div>
-          <div style="font-size:12px;color:#94a3b8;margin-bottom:10px">Actions</div>
-        `
-
-        const btnView = document.createElement('button')
-        btnView.textContent = canView ? 'Voir missions actives' : 'Voir missions actives (interdit)'
-        btnView.className = 'btn secondary btn-sm'
-        btnView.style.width = '100%'
-        ;(btnView as any).disabled = !canView
-
-        const missionsBox = document.createElement('div')
-        missionsBox.style.marginTop = '10px'
-
-        btnView.onclick = async () => {
+        let mailleId = p.id || p.maille_id || p.mailleId
+        if (!mailleId) {
           try {
-            missionsBox.innerHTML = `<div style="font-size:12px;color:#94a3b8">Chargement…</div>`
-            let mailleId = p.id || p.maille_id || p.mailleId
-            if (!mailleId) {
-              try {
-                const urlResolve = `${API_GEO}/colab/mailles/resolve?lat=${encodeURIComponent(
-                  String(e?.latlng?.lat ?? ''),
-                )}&lon=${encodeURIComponent(String(e?.latlng?.lng ?? ''))}`
-                const resolved = await fetchWithBearerJSON<any>(urlResolve)
-                mailleId = resolved?.id || null
-                if (mailleId) {
-                  p.id = mailleId
-                }
-              } catch {
-                // ignore
+            const lat = Number(e?.latlng?.lat)
+            const lon = Number(e?.latlng?.lng)
+            if (!Number.isNaN(lat) && !Number.isNaN(lon)) {
+              const resolved = await colabController.resolveMaille(lat, lon)
+              mailleId = resolved?.id || null
+              if (mailleId) {
+                p.id = mailleId
               }
             }
-            if (!mailleId) {
-              missionsBox.innerHTML = `<div style="font-size:12px;color:#fca5a5">maille_id indisponible</div>`
-              return
-            }
-            const url = `${API_GEO}/colab/mailles/${encodeURIComponent(mailleId)}/missions`
-            const data = await fetchWithBearerJSON<any>(url)
-
-            const missions = Array.isArray(data?.missions) ? data.missions : []
-            if (missions.length === 0) {
-              missionsBox.innerHTML = `<div style="font-size:12px;color:#94a3b8">Aucune mission active</div>`
-              return
-            }
-
-            const table = document.createElement('div')
-            table.style.display = 'flex'
-            table.style.flexDirection = 'column'
-            table.style.gap = '6px'
-
-            missions.forEach((m: any) => {
-              const row = document.createElement('div')
-              row.style.display = 'flex'
-              row.style.alignItems = 'center'
-              row.style.justifyContent = 'space-between'
-              row.style.gap = '8px'
-              row.style.padding = '8px'
-              row.style.border = '1px solid #334155'
-              row.style.borderRadius = '8px'
-              row.style.background = '#0b1220'
-
-              const left = document.createElement('div')
-              left.style.display = 'flex'
-              left.style.flexDirection = 'column'
-              left.style.gap = '2px'
-              left.innerHTML = `
-                <div style="font-size:12px;font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">${m.mission_code || '—'}</div>
-                <div style="font-size:12px;color:#94a3b8">${m.student_name || '—'}</div>
-              `
-
-              row.appendChild(left)
-
-              if (canUnassign && m.mission_id) {
-                const btn = document.createElement('button')
-                btn.textContent = 'Désassigner'
-                btn.className = 'btn danger btn-sm'
-                btn.onclick = async () => {
-                  try {
-                    btn.setAttribute('disabled', 'true')
-                    const delUrl = `${API_GEO}/colab/missions/${encodeURIComponent(m.mission_id)}/maille`
-                    await fetchWithBearerJSON<any>(delUrl, { method: 'DELETE' })
-                    toast('Mission désassignée', 'ok')
-                    btnView.click()
-                  } catch (err: any) {
-                    toast(err?.message || 'Erreur désassignation', 'err')
-                  } finally {
-                    btn.removeAttribute('disabled')
-                  }
-                }
-                row.appendChild(btn)
-              }
-
-              table.appendChild(row)
-            })
-
-            missionsBox.innerHTML = ''
-            missionsBox.appendChild(table)
-          } catch (err: any) {
-            missionsBox.innerHTML = `<div style="font-size:12px;color:#fca5a5">${err?.message || 'Erreur'}</div>`
+          } catch {
+            // ignore
           }
         }
+        if (!mailleId) {
+          toast('maille_id indisponible', 'err')
+          return
+        }
 
-        content.appendChild(btnView)
-        content.appendChild(missionsBox)
-
-        const pt = map.latLngToContainerPoint(e.latlng)
-        openGridContextMenu(mapContainer, pt.x + 8, pt.y + 8, content)
+        openMailleDialog({
+          mailleId: String(mailleId),
+          mailleCode: p.code,
+        })
       } catch (err: any) {
         console.error('[Grid] contextmenu error:', err)
       }

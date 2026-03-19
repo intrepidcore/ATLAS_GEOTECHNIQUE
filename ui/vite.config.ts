@@ -52,7 +52,9 @@ export default defineConfig(({ mode }) => {
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      injectRegister: false,
       includeAssets: ['favicon.ico', 'icons/*.png'],
+      scope: '/colab/mobile/',
       manifest: {
         name: 'Atlas Survey - Terrain',
         short_name: 'Atlas Survey',

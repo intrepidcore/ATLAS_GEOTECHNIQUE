@@ -9,6 +9,8 @@ type Events = {
   'survey:geocoded': { id: string };
   'suggestion:changed': { pending: number };
   'tab:changed': { from: string; to: string };
+  'maille:update': { mailleId: string };
+  'mission:update': { missionId: string; mailleId?: string };
 };
 
 type Handler<T> = (payload: T) => void;

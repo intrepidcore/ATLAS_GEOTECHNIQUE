@@ -272,7 +272,7 @@ async fn create_mission(
         .pool
         .begin()
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
 
     // Garde anti-doublon code (missions non supprimées)
     let existing: Option<Uuid> = sqlx::query_scalar(
@@ -1112,6 +1112,95 @@ async fn get_maille_active_missions(
         .collect();
 
     Ok(Json(MailleActiveMissionsResponse { maille_id, missions }))
+}
+
+async fn get_maille_state(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path(maille_id): Path<Uuid>,
+) -> Result<Json<MailleStateResponse>, (StatusCode, Json<serde_json::Value>)> {
+    require_permission(&state.pool, auth.id, "colab.mailles.view_active").await?;
+
+    // BM-18: un student ne peut consulter que ses propres missions.
+    let student_id: Option<Uuid> = if auth.has_role("student") && !auth.is_admin() {
+        sqlx::query_scalar(
+            r#"
+            SELECT cs.id
+            FROM atlas.colab_students cs
+            WHERE cs.user_id = $1 AND cs.deleted_at IS NULL
+            LIMIT 1
+            "#,
+        )
+        .bind(auth.id)
+        .fetch_optional(&state.pool)
+        .await
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?
+    } else {
+        None
+    };
+
+    // Pas de profil student rattaché => ne rien exposer.
+    if auth.has_role("student") && !auth.is_admin() && student_id.is_none() {
+        return Ok(Json(MailleStateResponse {
+            maille_id,
+            has_active_mission: false,
+            mission_count: 0,
+        }));
+    }
+
+    let row = if let Some(student_id) = student_id {
+        sqlx::query(
+            r#"
+            SELECT
+              COUNT(DISTINCT cm.id)::bigint AS mission_count
+            FROM atlas.colab_missions cm
+            LEFT JOIN atlas.colab_mission_assignments cma
+              ON cma.mission_id = cm.id
+             AND cma.unassigned_at IS NULL
+            WHERE cm.deleted_at IS NULL
+              AND cm.maille_id = $1
+              AND cma.student_id = $2
+            "#,
+        )
+        .bind(maille_id)
+        .bind(student_id)
+        .fetch_one(&state.pool)
+        .await
+    } else {
+        sqlx::query(
+            r#"
+            SELECT
+              COUNT(DISTINCT cm.id)::bigint AS mission_count
+            FROM atlas.colab_missions cm
+            LEFT JOIN atlas.colab_mission_assignments cma
+              ON cma.mission_id = cm.id
+             AND cma.unassigned_at IS NULL
+            WHERE cm.deleted_at IS NULL
+              AND cm.maille_id = $1
+            "#,
+        )
+        .bind(maille_id)
+        .fetch_one(&state.pool)
+        .await
+    }
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
+    let mission_count: i64 = row.try_get("mission_count").unwrap_or(0);
+    Ok(Json(MailleStateResponse {
+        maille_id,
+        has_active_mission: mission_count > 0,
+        mission_count,
+    }))
 }
 
 async fn reassign_mission(
@@ -2494,6 +2583,7 @@ pub fn colab_routes() -> Router<AppState> {
         .route("/colab/missions/:id/resolve-conflict", post(resolve_conflict))
         .route("/colab/missions/stats", get(get_stats))
         .route("/colab/mailles/:id/missions", get(get_maille_active_missions))
+        .route("/colab/mailles/:id/state", get(get_maille_state))
         // Documents
         .route("/colab/documents", get(list_documents).post(upload_document))
         .route("/colab/documents/:id", delete(delete_document))

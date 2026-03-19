@@ -195,7 +195,8 @@ const CreateMissionModal: React.FC<{
   onCreated: () => void;
   onCreatedMission?: (mission: MissionListItem) => void;
   onOpenExistingStudent?: (studentId: string) => void;
-}> = ({ isOpen, onClose, onCreated, onCreatedMission, onOpenExistingStudent }) => {
+  initialMailleQuery?: string;
+}> = ({ isOpen, onClose, onCreated, onCreatedMission, onOpenExistingStudent, initialMailleQuery }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mailleQuery, setMailleQuery] = useState('');
@@ -238,7 +239,7 @@ const CreateMissionModal: React.FC<{
 
   useEffect(() => {
     if (!isOpen) return;
-    setMailleQuery('');
+    setMailleQuery(initialMailleQuery ?? '');
     setMailleSuggestions([]);
     setMailleLat('');
     setMailleLon('');
@@ -254,7 +255,7 @@ const CreateMissionModal: React.FC<{
     setSupervisorQuery('');
     setSupervisorSuggestions([]);
     setSelectedSupervisor(null);
-  }, [isOpen]);
+  }, [isOpen, initialMailleQuery]);
 
   useEffect(() => {
     let cancelled = false;
