@@ -31,21 +31,41 @@ body{
    Ces overrides ciblent spécifiquement les éléments de modals.
    ============================================================================= */
 
-/* Overlay et container des modals */
+/* Overlay/Backdrop - fond semi-transparent DERIERE le modal */
 .modal-overlay,
-.modal-container,
-[role="dialog"],
 [data-radix-dialog-overlay],
-[data-radix-dialog-content] {
+[role="dialog"]::before,
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.6) !important;  /* Noir semi-transparent */
+  color: transparent !important;
+}
+
+/* Conteneur du modal - transparent, laisse voir l'overlay */
+.modal-container,
+[data-radix-dialog-content],
+[role="dialog"] {
+  background-color: transparent !important;
   color: #e0e0e0 !important;
 }
 
-/* Fix fond du modal lui-même */
-[role="dialog"] > div,
-.fixed.inset-0 > div,
-.modal-content {
+/* Fix fond du CONTENU du modal lui-même - SEUL élément opaque */
+[role="dialog"] > div:not(.modal-overlay):not(.modal-backdrop),
+[data-radix-dialog-content] > div,
+.modal-content,
+.modal-card,
+.dialog-panel {
   background-color: #1e1e2e !important;
   color: #e0e0e0 !important;
+  border-radius: 8px !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Scroll dans les modals - max-height et overflow */
+[role="dialog"] > div,
+.modal-content,
+.dialog-panel {
+  max-height: 85vh !important;
+  overflow-y: auto !important;
 }
 
 /* Fix pour les labels et textes dans les modals */
@@ -56,6 +76,46 @@ body{
 [role="dialog"] p,
 [role="dialog"] span:not(.badge):not(.status) {
   color: #e0e0e0 !important;
+}
+
+/* Textes secondaires - IDs, descriptions, petits labels */
+[role="dialog"] .text-xs,
+[role="dialog"] .text-sm,
+[role="dialog"] small,
+[role="dialog"] .description,
+[role="dialog"] .subtitle,
+[role="dialog"] .muted,
+[role="dialog"] .text-muted,
+[role="dialog"] .text-gray-400,
+[role="dialog"] .text-gray-500,
+[role="dialog"] .id-mission,
+[role="dialog"] code,
+[role="dialog"] .code {
+  color: #b0b0b0 !important;
+}
+
+/* Labels de formulaire */
+[role="dialog"] .form-label,
+[role="dialog"] .field-label,
+[role="dialog"] .input-label {
+  color: #e0e0e0 !important;
+  font-weight: 500 !important;
+}
+
+/* Textes "Aucune mission active", états vides */
+[role="dialog"] .empty-state,
+[role="dialog"] .no-data,
+[role="dialog"] .empty-text {
+  color: #9ca3af !important;
+}
+
+/* Liens dans les modals */
+[role="dialog"] a:not(.btn) {
+  color: #60a5fa !important;
+}
+
+[role="dialog"] a:not(.btn):hover {
+  color: #93c5fd !important;
 }
 
 /* Fix spécifique pour les inputs dans les modals - texte foncé sur fond clair */
