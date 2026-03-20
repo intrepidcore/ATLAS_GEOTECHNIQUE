@@ -1,0 +1,135 @@
+name: MSI Test (Windows Self-Hosted)
+
+on:
+  workflow_dispatch:
+    inputs:
+      msi_artifact:
+        description: 'Nom de l artifact MSI (ex: atlas-desktop-msi)'
+        required: true
+        default: 'atlas-desktop-msi'
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'apps/atlas-pro/**'
+      - 'scripts/test-msi-install.ps1'
+      - '.github/workflows/msi-test.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'apps/atlas-pro/**'
+      - 'scripts/test-msi-install.ps1'
+
+jobs:
+  build-msi:
+    runs-on: windows-latest
+    if: github.event_name != 'workflow_dispatch'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          cd ui && npm ci
+
+      - name: Build UI
+        run: |
+          cd ui && npm run build
+
+      - name: Install Tauri CLI
+        run: cargo install tauri-cli --version "^2.0"
+
+      - name: Build MSI
+        run: |
+          cd apps/atlas-pro
+          cargo tauri build
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-desktop-msi
+          path: apps/atlas-pro/src-tauri/target/release/bundle/msi/*.msi
+          retention-days: 7
+
+  test-msi:
+    needs: build-msi
+    runs-on: self-hosted
+    if: always() && (needs.build-msi.result == 'success' || github.event_name == 'workflow_dispatch')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download MSI artifact
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/download-artifact@v4
+        with:
+          name: atlas-desktop-msi
+          path: ./artifacts
+
+      - name: Use provided MSI
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "Using MSI from workflow dispatch: ${{ inputs.msi_artifact }}"
+
+      - name: Find MSI file
+        id: find-msi
+        run: |
+          $msi = Get-ChildItem -Path ./artifacts -Filter "*.msi" -Recurse | Select-Object -First 1
+          if (-not $msi) {
+            # Try alternative location
+            $msi = Get-ChildItem -Path "apps/atlas-pro/src-tauri/target/release/bundle/msi" -Filter "*.msi" -Recurse | Select-Object -First 1
+          }
+          if (-not $msi) {
+            Write-Error "No MSI file found"
+            exit 1
+          }
+          Write-Host "Found MSI: $($msi.FullName)"
+          "msi_path=$($msi.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Run MSI Test
+        run: |
+          $msiPath = "${{ steps.find-msi.outputs.msi_path }}"
+          & scripts/test-msi-install.ps1 -MsiPath $msiPath -ReportPath "msi-test-report.json" -LogDir "msi-test-logs"
+        timeout-minutes: 10
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: msi-test-results
+          path: |
+            msi-test-report.json
+            msi-test-logs/
+          retention-days: 14
+
+      - name: Comment PR on failure
+        if: failure() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ **MSI Test Failed**\n\nLe test d installation MSI a échoué. Voir les artifacts pour les logs détaillés.'
+            });
+
+      - name: Create issue on scheduled failure
+        if: failure() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 MSI Test Failed on main',
+              body: `Le test MSI automatisé a échoué sur la branche main.\n\nRun: ${context.runUrl}\n\nVoir les artifacts attachés au workflow pour les logs.`,
+              labels: ['bug', 'P0-Critique', 'msi-test']
+            });

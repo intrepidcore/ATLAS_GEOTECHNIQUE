@@ -99,6 +99,15 @@ CREATE TABLE IF NOT EXISTS audit_log (
   user_id TEXT DEFAULT 'system'
 );
 
+-- If audit_log already existed from a previous schema, ensure required columns exist
+ALTER TABLE audit_log
+  ADD COLUMN IF NOT EXISTS ts TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS action TEXT,
+  ADD COLUMN IF NOT EXISTS entity TEXT,
+  ADD COLUMN IF NOT EXISTS entity_id UUID,
+  ADD COLUMN IF NOT EXISTS payload JSONB,
+  ADD COLUMN IF NOT EXISTS user_id TEXT DEFAULT 'system';
+
 CREATE INDEX IF NOT EXISTS idx_audit_ts ON audit_log(ts DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_entity ON audit_log(entity, entity_id);
 
@@ -192,11 +201,28 @@ CREATE TRIGGER sondages_auto_code
   EXECUTE FUNCTION generate_sondage_code();
 
 -- 10. Add constraint for depth validation
-ALTER TABLE sondages
-  ADD CONSTRAINT check_depth_order CHECK (depth_m_min IS NULL OR depth_m_max IS NULL OR depth_m_min <= depth_m_max);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'check_depth_order'
+      AND conrelid = 'sondages'::regclass
+  ) THEN
+    ALTER TABLE sondages
+      ADD CONSTRAINT check_depth_order CHECK (depth_m_min IS NULL OR depth_m_max IS NULL OR depth_m_min <= depth_m_max);
+  END IF;
 
-ALTER TABLE essais
-  ADD CONSTRAINT check_depth_positive CHECK (depth_m IS NULL OR depth_m >= 0);
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'check_depth_positive'
+      AND conrelid = 'essais'::regclass
+  ) THEN
+    ALTER TABLE essais
+      ADD CONSTRAINT check_depth_positive CHECK (depth_m IS NULL OR depth_m >= 0);
+  END IF;
+END $$;
 
 COMMIT;
 

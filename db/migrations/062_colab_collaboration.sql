@@ -8,41 +8,53 @@
 -- ============================================================================
 
 -- Type d'entité pour les commentaires
-CREATE TYPE atlas.comment_entity_type AS ENUM (
-    'mission',
-    'sondage',
-    'essai',
-    'document'
-);
+DO $$ BEGIN
+    CREATE TYPE atlas.comment_entity_type AS ENUM (
+        'mission',
+        'sondage',
+        'essai',
+        'document'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Type de notification
-CREATE TYPE atlas.notification_type AS ENUM (
-    'comment_mention',
-    'comment_reply',
-    'comment_entity',
-    'status_change',
-    'mission_assigned',
-    'sondage_validated',
-    'document_uploaded',
-    'deadline_reminder'
-);
+DO $$ BEGIN
+    CREATE TYPE atlas.notification_type AS ENUM (
+        'comment_mention',
+        'comment_reply',
+        'comment_entity',
+        'status_change',
+        'mission_assigned',
+        'sondage_validated',
+        'document_uploaded',
+        'deadline_reminder'
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- Statut de sondage (workflow de validation)
-CREATE TYPE atlas.sondage_validation_status AS ENUM (
-    'draft_field',       -- Brouillon terrain (saisi par étudiant)
-    'pending_sync',      -- En attente de synchronisation
-    'synced',            -- Synchronisé mais non validé
-    'to_validate_lab',   -- À valider par le labo
-    'validated',         -- Validé par encadrant
-    'integrated',        -- Intégré dans la base finale
-    'rejected'           -- Rejeté (à corriger)
-);
+DO $$ BEGIN
+    CREATE TYPE atlas.sondage_validation_status AS ENUM (
+        'draft_field',       -- Brouillon terrain (saisi par étudiant)
+        'pending_sync',      -- En attente de synchronisation
+        'synced',            -- Synchronisé mais non validé
+        'to_validate_lab',   -- À valider par le labo
+        'validated',         -- Validé par encadrant
+        'integrated',        -- Intégré dans la base finale
+        'rejected'           -- Rejeté (à corriger)
+    );
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 -- ============================================================================
 -- 2. TABLE COMMENTAIRES
 -- ============================================================================
 
-CREATE TABLE atlas.colab_comments (
+CREATE TABLE IF NOT EXISTS atlas.colab_comments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Entité liée
@@ -65,16 +77,16 @@ CREATE TABLE atlas.colab_comments (
 );
 
 -- Index pour recherche rapide
-CREATE INDEX idx_colab_comments_entity ON atlas.colab_comments(entity_type, entity_id);
-CREATE INDEX idx_colab_comments_author ON atlas.colab_comments(author_id);
-CREATE INDEX idx_colab_comments_parent ON atlas.colab_comments(parent_comment_id);
-CREATE INDEX idx_colab_comments_created ON atlas.colab_comments(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_colab_comments_entity ON atlas.colab_comments(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_colab_comments_author ON atlas.colab_comments(author_id);
+CREATE INDEX IF NOT EXISTS idx_colab_comments_parent ON atlas.colab_comments(parent_comment_id);
+CREATE INDEX IF NOT EXISTS idx_colab_comments_created ON atlas.colab_comments(created_at DESC);
 
 -- ============================================================================
 -- 3. TABLE MENTIONS
 -- ============================================================================
 
-CREATE TABLE atlas.colab_comment_mentions (
+CREATE TABLE IF NOT EXISTS atlas.colab_comment_mentions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     comment_id UUID NOT NULL REFERENCES atlas.colab_comments(id) ON DELETE CASCADE,
     mentioned_user_id UUID NOT NULL REFERENCES atlas.users(id) ON DELETE CASCADE,
@@ -83,13 +95,13 @@ CREATE TABLE atlas.colab_comment_mentions (
     UNIQUE(comment_id, mentioned_user_id)
 );
 
-CREATE INDEX idx_colab_mentions_user ON atlas.colab_comment_mentions(mentioned_user_id);
+CREATE INDEX IF NOT EXISTS idx_colab_mentions_user ON atlas.colab_comment_mentions(mentioned_user_id);
 
 -- ============================================================================
 -- 4. TABLE NOTIFICATIONS
 -- ============================================================================
 
-CREATE TABLE atlas.colab_notifications (
+CREATE TABLE IF NOT EXISTS atlas.colab_notifications (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Destinataire
@@ -116,14 +128,14 @@ CREATE TABLE atlas.colab_notifications (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_colab_notifications_user ON atlas.colab_notifications(user_id, is_read);
-CREATE INDEX idx_colab_notifications_created ON atlas.colab_notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_colab_notifications_user ON atlas.colab_notifications(user_id, is_read);
+CREATE INDEX IF NOT EXISTS idx_colab_notifications_created ON atlas.colab_notifications(created_at DESC);
 
 -- ============================================================================
 -- 5. HISTORIQUE DES STATUTS DE SONDAGES
 -- ============================================================================
 
-CREATE TABLE atlas.colab_sondage_status_history (
+CREATE TABLE IF NOT EXISTS atlas.colab_sondage_status_history (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     sondage_id UUID NOT NULL,  -- Référence vers sondages (public ou atlas)
     
@@ -136,7 +148,7 @@ CREATE TABLE atlas.colab_sondage_status_history (
     changed_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_sondage_status_history ON atlas.colab_sondage_status_history(sondage_id, changed_at DESC);
+CREATE INDEX IF NOT EXISTS idx_sondage_status_history ON atlas.colab_sondage_status_history(sondage_id, changed_at DESC);
 
 -- ============================================================================
 -- 6. AJOUT COLONNE STATUS SUR SONDAGES (si pas déjà présente)
@@ -172,10 +184,23 @@ END $$;
 -- ============================================================================
 
 -- Trigger updated_at pour comments
-CREATE TRIGGER set_updated_at_colab_comments
-    BEFORE UPDATE ON atlas.colab_comments
-    FOR EACH ROW
-    EXECUTE FUNCTION atlas.update_updated_at_column();
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE t.tgname = 'set_updated_at_colab_comments'
+          AND n.nspname = 'atlas'
+          AND c.relname = 'colab_comments'
+    ) THEN
+        CREATE TRIGGER set_updated_at_colab_comments
+            BEFORE UPDATE ON atlas.colab_comments
+            FOR EACH ROW
+            EXECUTE FUNCTION atlas.update_updated_at_column();
+    END IF;
+END $$;
 
 -- ============================================================================
 -- 8. VUES

@@ -110,6 +110,12 @@ docker cp atlas-db:/tmp/atlas_desktop_seed.dump data/db/backups/atlas_desktop_se
 
 Puis générer/mettre à jour le manifest (SHA256 + size).
 
+Scripts associés (repo) :
+
+- `scripts/create-desktop-seed-dump.ps1` (Windows, `pg_dump` local si disponible sinon fallback Docker)
+- `scripts/generate_seed_manifest.py` (génération manifest SHA256/size)
+- `scripts/validate-dump.ps1` (validation manifest + hash)
+
 ---
 
 ## 8) Historique des seeds

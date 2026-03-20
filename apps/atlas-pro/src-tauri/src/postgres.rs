@@ -3,6 +3,232 @@ use fs2::FileExt;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+#[derive(Debug, Clone)]
+pub enum SeedMismatch {
+    IntegrityViolation { expected: String, actual: String },
+    SchemaMismatch { expected: i32, actual: i32 },
+    InvariantViolation { invariant_id: String, detail: String },
+}
+
+impl SeedMismatch {
+    pub fn is_fatal(&self) -> bool {
+        match self {
+            SeedMismatch::IntegrityViolation { .. } => true,
+            SeedMismatch::SchemaMismatch { expected, actual } => actual > expected,
+            SeedMismatch::InvariantViolation { invariant_id, .. } => invariant_id.starts_with("INV-00"),
+        }
+    }
+
+    pub fn user_message(&self) -> String {
+        match self {
+            SeedMismatch::IntegrityViolation { .. } => {
+                "La base de données locale ne correspond plus au seed attendu (intégrité). Veuillez réinitialiser la base depuis l'écran Support.".to_string()
+            }
+            SeedMismatch::SchemaMismatch { expected, actual } => {
+                format!("Compatibilité seed/schema incohérente (version DB={actual}, attendu={expected}).")
+            }
+            SeedMismatch::InvariantViolation { detail, .. } => {
+                format!("Données incohérentes: {detail}")
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for SeedMismatch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl std::error::Error for SeedMismatch {}
+
+fn compute_sha256_hex(bytes: &[u8]) -> String {
+    use sha2::Digest;
+    let mut h = sha2::Sha256::new();
+    h.update(bytes);
+    format!("{:x}", h.finalize())
+}
+
+fn get_latest_desktop_seed_state(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<Option<(String, i32)>> {
+    let exists_sql = "SELECT 1 FROM information_schema.tables WHERE table_schema='atlas' AND table_name='desktop_seed_state' LIMIT 1;";
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg(exists_sql)
+        .output()
+        .context("failed to check atlas.desktop_seed_state existence")?;
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to check desktop_seed_state existence (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    if String::from_utf8_lossy(&out.stdout).trim() != "1" {
+        return Ok(None);
+    }
+
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg("SELECT seed_sha256 || ' ' || max_migration_applied FROM atlas.desktop_seed_state ORDER BY applied_at DESC LIMIT 1;")
+        .output()
+        .context("failed to query atlas.desktop_seed_state")?;
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to query desktop_seed_state (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if s.is_empty() {
+        return Ok(None);
+    }
+    let mut it = s.split_whitespace();
+    let sha = it.next().unwrap_or("").to_string();
+    let max_mig = it
+        .next()
+        .and_then(|v| v.parse::<i32>().ok())
+        .unwrap_or(0);
+    Ok(Some((sha, max_mig)))
+}
+
+fn verify_seed_state(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    repo_root: &Path,
+) -> Result<Vec<SeedMismatch>> {
+    let mut mismatches: Vec<SeedMismatch> = Vec::new();
+
+    let current_max = max_migration_number(repo_root)?;
+    let current_seed = find_seed_dump(repo_root)
+        .and_then(|p| compute_file_sha256_hex(&p).ok());
+
+    if let Some((db_seed_sha, db_max_mig)) =
+        get_latest_desktop_seed_state(bin_dir, port, db_user, db_password, db_name)?
+    {
+        if let Some(current_seed_sha) = current_seed.as_deref() {
+            if db_seed_sha.trim() != current_seed_sha.trim() {
+                mismatches.push(SeedMismatch::IntegrityViolation {
+                    expected: current_seed_sha.to_string(),
+                    actual: db_seed_sha,
+                });
+            }
+        }
+
+        if db_max_mig != current_max {
+            mismatches.push(SeedMismatch::SchemaMismatch {
+                expected: current_max,
+                actual: db_max_mig,
+            });
+        }
+    }
+
+    Ok(mismatches)
+}
+
+fn verify_invariant_mailles_count(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<()> {
+    let expected: i64 = std::env::var("ATLAS_SMOKE_EXPECT_MAILLES")
+        .ok()
+        .and_then(|v| v.trim().parse::<i64>().ok())
+        .unwrap_or(29407);
+
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-v")
+        .arg("ON_ERROR_STOP=1")
+        .arg("-tAc")
+        .arg("SELECT COUNT(*) FROM atlas.mailles;")
+        .output()
+        .context("failed to run invariant query COUNT(atlas.mailles)")?;
+
+    if !out.status.success() {
+        return Err(anyhow!(
+            "invariant query failed (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+
+    let got_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let got = got_str
+        .parse::<i64>()
+        .with_context(|| format!("failed to parse mailles count: '{got_str}'"))?;
+
+    if got != expected {
+        return Err(SeedMismatch::InvariantViolation {
+            invariant_id: "INV-001_MAILLES_COUNT".to_string(),
+            detail: format!("mailles_count_mismatch expected={expected} got={got}"),
+        }
+        .into());
+    }
+
+    Ok(())
+}
+
+fn ensure_schema_migrations_table(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<()> {
+    run_sql(
+        bin_dir,
+        port,
+        db_user,
+        db_password,
+        db_name,
+        "CREATE SCHEMA IF NOT EXISTS atlas;\n\
+         CREATE TABLE IF NOT EXISTS atlas.schema_migrations (\n\
+           migration_id TEXT PRIMARY KEY,\n\
+           version INTEGER,\n\
+           name TEXT NOT NULL,\n\
+           checksum_sha256 TEXT NOT NULL,\n\
+           applied_at TIMESTAMPTZ NOT NULL DEFAULT now(),\n\
+           execution_ms INTEGER\n\
+         );",
+    )
+}
+
+fn migration_version_from_filename(file: &Path) -> Option<i32> {
+    let name = file.file_name()?.to_str()?;
+    let prefix = name.split('_').next().unwrap_or("");
+    prefix.parse::<i32>().ok()
+}
+
+fn sql_escape_literal(s: &str) -> String {
+    s.replace('"', "").replace('\\', "\\\\").replace('\'', "''")
+}
+
 pub struct PostgresHandle {
     pub port: u16,
     pub data_dir: PathBuf,
@@ -301,6 +527,12 @@ fn database_has_user_objects(bin_dir: &Path, port: u16, db_user: &str, db_passwo
 }
 
 fn desktop_data_dir() -> Result<PathBuf> {
+    if let Ok(p) = std::env::var("ATLAS_DATA_DIR") {
+        let p = p.trim();
+        if !p.is_empty() {
+            return Ok(PathBuf::from(p));
+        }
+    }
     let base = std::env::var("LOCALAPPDATA")
         .or_else(|_| std::env::var("APPDATA"))
         .map_err(|_| anyhow!("LOCALAPPDATA/APPDATA not found"))?;
@@ -555,6 +787,12 @@ fn select_port() -> u16 {
 }
 
 fn data_root_dir() -> Result<PathBuf> {
+    if let Ok(p) = std::env::var("ATLAS_DATA_DIR") {
+        let p = p.trim();
+        if !p.is_empty() {
+            return Ok(PathBuf::from(p));
+        }
+    }
     let base = std::env::var("LOCALAPPDATA")
         .or_else(|_| std::env::var("APPDATA"))
         .map_err(|_| anyhow!("LOCALAPPDATA/APPDATA not found"))?;
@@ -911,6 +1149,54 @@ fn run_migration_file(
     db_name: &str,
     file: &Path,
 ) -> Result<()> {
+    ensure_schema_migrations_table(bin_dir, port, db_user, db_password, db_name)?;
+
+    let file_bytes = std::fs::read(file)
+        .with_context(|| format!("failed to read migration file ({})", file.display()))?;
+    let checksum = compute_sha256_hex(&file_bytes);
+
+    let migration_id = file
+        .file_name()
+        .and_then(|s| s.to_str())
+        .ok_or_else(|| anyhow!("invalid migration filename ({})", file.display()))?
+        .to_string();
+    let migration_id_sql = sql_escape_literal(&migration_id);
+
+    let existing_checksum_sql = format!(
+        "SELECT checksum_sha256 FROM atlas.schema_migrations WHERE migration_id='{}' LIMIT 1;",
+        migration_id_sql
+    );
+    let existing = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg(existing_checksum_sql)
+        .output()
+        .with_context(|| format!("failed to query schema_migrations ({})", file.display()))?;
+    if !existing.status.success() {
+        return Err(anyhow!(
+            "failed to query schema_migrations (exit={}): {}",
+            existing.status,
+            String::from_utf8_lossy(&existing.stderr)
+        ));
+    }
+    let existing_checksum = String::from_utf8_lossy(&existing.stdout).trim().to_string();
+    if !existing_checksum.is_empty() && existing_checksum != checksum {
+        return Err(anyhow!(
+            "migration checksum mismatch (file={}, expected={}, actual={}). The migration file appears to have been modified after being applied.",
+            file.display(),
+            existing_checksum,
+            checksum
+        ));
+    }
+    if !existing_checksum.is_empty() {
+        return Ok(());
+    }
+
+    let start = std::time::Instant::now();
     let psql_out = pg_cmd(bin_dir, "psql.exe")
         .env("PGHOST", "127.0.0.1")
         .env("PGPORT", port.to_string())
@@ -931,6 +1217,22 @@ fn run_migration_file(
             String::from_utf8_lossy(&psql_out.stderr)
         ));
     }
+
+    let exec_ms: i32 = start.elapsed().as_millis().min(i32::MAX as u128) as i32;
+    let version = migration_version_from_filename(file);
+    let version_sql = version.map(|v| v.to_string()).unwrap_or_else(|| "NULL".to_string());
+    let name_sql = sql_escape_literal(&migration_id);
+    let checksum_sql = sql_escape_literal(&checksum);
+    let insert_sql = format!(
+        "INSERT INTO atlas.schema_migrations(migration_id, version, name, checksum_sha256, execution_ms) VALUES ('{}', {}, '{}', '{}', {}) ON CONFLICT (migration_id) DO NOTHING;",
+        migration_id_sql,
+        version_sql,
+        name_sql,
+        checksum_sql,
+        exec_ms
+    );
+    run_sql(bin_dir, port, db_user, db_password, db_name, &insert_sql)
+        .with_context(|| format!("failed to record applied migration ({})", file.display()))?;
 
     Ok(())
 }
@@ -1474,6 +1776,12 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
     // Phase 9: seed-from-dump (v1) on first-run to avoid replaying all historical migrations.
     let repo_root = repo_root_from_tauri();
 
+    let mismatches = verify_seed_state(&bin_dir, pg.port, &db_user, &db_password, &db_name, &repo_root)?;
+    let fatal: Vec<SeedMismatch> = mismatches.into_iter().filter(|m| m.is_fatal()).collect();
+    if !fatal.is_empty() {
+        return Err(anyhow!(fatal[0].clone()));
+    }
+
     let allow_force = std::env::var("ATLAS_FORCE_SEED_RESTORE")
         .map(|v| v.trim() == "1" || v.trim().eq_ignore_ascii_case("true"))
         .unwrap_or(false);
@@ -1563,6 +1871,17 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
     }
 
     apply_repo_migrations(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+
+    if std::env::var("ATLAS_SMOKE_TEST")
+        .ok()
+        .map(|v| {
+            let v = v.trim();
+            v.eq_ignore_ascii_case("true") || v == "1" || v.eq_ignore_ascii_case("yes")
+        })
+        .unwrap_or(false)
+    {
+        verify_invariant_mailles_count(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+    }
 
     // Vérification explicite (bloquante)
     let status = pg_cmd(&bin_dir, psql)

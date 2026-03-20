@@ -218,7 +218,15 @@ declare global {
 // Base URLs with runtime override support
 import { getApiBase } from './api-base'
 
-const API_GEO = getApiBase()
+let API_GEO = getApiBase()
+try {
+  window.addEventListener('atlas:api-base:updated', () => {
+    API_GEO = getApiBase()
+    console.log('[INIT] API_GEO updated:', API_GEO)
+  })
+} catch {
+  // ignore
+}
 console.log('[INIT] API_GEO configuré:', API_GEO)
 void refreshCurrentUserPermissions()
 

@@ -7,7 +7,7 @@
 -- 1. TABLE SYNC QUEUE (actions en attente côté serveur)
 -- ============================================================================
 
-CREATE TABLE atlas.colab_sync_queue (
+CREATE TABLE IF NOT EXISTS atlas.colab_sync_queue (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Utilisateur
@@ -42,14 +42,14 @@ CREATE TABLE atlas.colab_sync_queue (
     UNIQUE(user_id, client_id)
 );
 
-CREATE INDEX idx_sync_queue_user_status ON atlas.colab_sync_queue(user_id, status);
-CREATE INDEX idx_sync_queue_created ON atlas.colab_sync_queue(created_at);
+CREATE INDEX IF NOT EXISTS idx_sync_queue_user_status ON atlas.colab_sync_queue(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_sync_queue_created ON atlas.colab_sync_queue(created_at);
 
 -- ============================================================================
 -- 2. TABLE TRACES GPS
 -- ============================================================================
 
-CREATE TABLE atlas.colab_tracks (
+CREATE TABLE IF NOT EXISTS atlas.colab_tracks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Mission associée
@@ -78,15 +78,15 @@ CREATE TABLE atlas.colab_tracks (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_colab_tracks_mission ON atlas.colab_tracks(mission_id);
-CREATE INDEX idx_colab_tracks_user ON atlas.colab_tracks(user_id);
-CREATE INDEX idx_colab_tracks_geom ON atlas.colab_tracks USING GIST(geom);
+CREATE INDEX IF NOT EXISTS idx_colab_tracks_mission ON atlas.colab_tracks(mission_id);
+CREATE INDEX IF NOT EXISTS idx_colab_tracks_user ON atlas.colab_tracks(user_id);
+CREATE INDEX IF NOT EXISTS idx_colab_tracks_geom ON atlas.colab_tracks USING GIST(geom);
 
 -- ============================================================================
 -- 3. TABLE POINTS DE TRACE (pour stockage détaillé)
 -- ============================================================================
 
-CREATE TABLE atlas.colab_track_points (
+CREATE TABLE IF NOT EXISTS atlas.colab_track_points (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     track_id UUID NOT NULL REFERENCES atlas.colab_tracks(id) ON DELETE CASCADE,
     
@@ -102,14 +102,14 @@ CREATE TABLE atlas.colab_track_points (
     sequence_num INTEGER NOT NULL
 );
 
-CREATE INDEX idx_track_points_track ON atlas.colab_track_points(track_id, sequence_num);
-CREATE INDEX idx_track_points_geom ON atlas.colab_track_points USING GIST(geom);
+CREATE INDEX IF NOT EXISTS idx_track_points_track ON atlas.colab_track_points(track_id, sequence_num);
+CREATE INDEX IF NOT EXISTS idx_track_points_geom ON atlas.colab_track_points USING GIST(geom);
 
 -- ============================================================================
 -- 4. TABLE PHOTOS TERRAIN
 -- ============================================================================
 
-CREATE TABLE atlas.colab_photos (
+CREATE TABLE IF NOT EXISTS atlas.colab_photos (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Liens
@@ -145,15 +145,14 @@ CREATE TABLE atlas.colab_photos (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_colab_photos_mission ON atlas.colab_photos(mission_id);
-CREATE INDEX idx_colab_photos_sondage ON atlas.colab_photos(sondage_id);
-CREATE INDEX idx_colab_photos_geom ON atlas.colab_photos USING GIST(geom);
+CREATE INDEX IF NOT EXISTS idx_colab_photos_mission ON atlas.colab_photos(mission_id);
+CREATE INDEX IF NOT EXISTS idx_colab_photos_sondage ON atlas.colab_photos(sondage_id);
 
 -- ============================================================================
 -- 5. TABLE SESSIONS TERRAIN (pour tracking des sessions de travail)
 -- ============================================================================
 
-CREATE TABLE atlas.colab_field_sessions (
+CREATE TABLE IF NOT EXISTS atlas.colab_field_sessions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Mission
@@ -184,15 +183,16 @@ CREATE TABLE atlas.colab_field_sessions (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_field_sessions_mission ON atlas.colab_field_sessions(mission_id);
-CREATE INDEX idx_field_sessions_user ON atlas.colab_field_sessions(user_id);
-CREATE INDEX idx_field_sessions_active ON atlas.colab_field_sessions(is_active) WHERE is_active = true;
+CREATE INDEX IF NOT EXISTS idx_field_sessions_mission ON atlas.colab_field_sessions(mission_id);
+CREATE INDEX IF NOT EXISTS idx_field_sessions_user ON atlas.colab_field_sessions(user_id);
+CREATE INDEX IF NOT EXISTS idx_field_sessions_active ON atlas.colab_field_sessions(is_active) WHERE is_active = true;
 
 -- ============================================================================
 -- 6. TRIGGERS
 -- ============================================================================
 
 -- Trigger updated_at pour tracks
+DROP TRIGGER IF EXISTS set_updated_at_colab_tracks ON atlas.colab_tracks;
 CREATE TRIGGER set_updated_at_colab_tracks
     BEFORE UPDATE ON atlas.colab_tracks
     FOR EACH ROW
@@ -223,6 +223,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS rebuild_track_on_point_insert ON atlas.colab_track_points;
 CREATE TRIGGER rebuild_track_on_point_insert
     AFTER INSERT ON atlas.colab_track_points
     FOR EACH ROW

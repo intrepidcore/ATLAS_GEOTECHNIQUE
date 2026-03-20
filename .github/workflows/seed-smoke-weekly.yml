@@ -1,0 +1,139 @@
+name: Seed Smoke Test (Weekly)
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  seed-smoke:
+    runs-on: ubuntu-22.04
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.4
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas_clean_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Validate seed manifest (sha256/sha512/size)
+        env:
+          SEED_DUMP: data/db/backups/atlas_desktop_seed.dump
+          SEED_MANIFEST: data/db/backups/atlas_desktop_seed.dump.json
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import hashlib, json, os
+          dump_path = os.environ['SEED_DUMP']
+          manifest_path = os.environ['SEED_MANIFEST']
+          with open(manifest_path, 'r', encoding='utf-8') as f:
+            m = json.load(f)
+          integrity = m.get('integrity') or {}
+          size_expected = integrity.get('size_bytes') or m.get('size_bytes')
+          sha256_expected = integrity.get('sha256') or m.get('sha256')
+          sha512_expected = integrity.get('sha512') or m.get('sha512')
+
+          with open(dump_path, 'rb') as f:
+            data = f.read()
+          size_actual = len(data)
+          if int(size_expected) != int(size_actual):
+            raise SystemExit(f"SIZE_MISMATCH expected={size_expected} actual={size_actual}")
+
+          sha256_actual = hashlib.sha256(data).hexdigest()
+          if sha256_expected and sha256_actual.lower() != str(sha256_expected).lower():
+            raise SystemExit(f"SHA256_MISMATCH expected={sha256_expected} actual={sha256_actual}")
+
+          if sha512_expected:
+            sha512_actual = hashlib.sha512(data).hexdigest()
+            if sha512_actual.lower() != str(sha512_expected).lower():
+              raise SystemExit(f"SHA512_MISMATCH expected={sha512_expected} actual={sha512_actual}")
+
+          print('OK: seed manifest integrity')
+          PY
+
+      - name: Restore seed dump into blank DB
+        env:
+          PGPASSWORD: atlas
+        run: |
+          set -euo pipefail
+          pg_restore \
+            -h localhost -p 5432 -U atlas -d atlas_clean_test \
+            --no-owner --no-privileges \
+            data/db/backups/atlas_desktop_seed.dump | tee seed-restore.log
+
+      - name: Verify invariants
+        env:
+          PGPASSWORD: atlas
+        run: |
+          set -euo pipefail
+
+          psql -h localhost -p 5432 -U atlas -d atlas_clean_test -v ON_ERROR_STOP=1 -c "SELECT extversion FROM pg_extension WHERE extname='postgis';" | tee invariant-postgis.log
+
+          psql -h localhost -p 5432 -U atlas -d atlas_clean_test -v ON_ERROR_STOP=1 -tAc "SELECT COUNT(*) FROM atlas.mailles;" | tee invariant-mailles-count.log
+          grep -E "(^|[^0-9])29407([^0-9]|$)" invariant-mailles-count.log
+
+          psql -h localhost -p 5432 -U atlas -d atlas_clean_test -v ON_ERROR_STOP=1 -tAc "SELECT COUNT(*) FROM atlas.maille_28km;" | tee invariant-maille28-count.log
+          grep -E "(^|[^0-9])[0-9]+([^0-9]|$)" invariant-maille28-count.log
+
+          psql -h localhost -p 5432 -U atlas -d atlas_clean_test -v ON_ERROR_STOP=1 -tAc "SELECT to_regclass('atlas.desktop_seed_state') IS NOT NULL;" | tee invariant-desktop-seed-state.log
+          grep -Ei "(t|true)" invariant-desktop-seed-state.log
+
+      - name: Upload smoke logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seed-smoke-logs
+          path: |
+            seed-restore.log
+            invariant-*.log
+          retention-days: 30
+
+      - name: Notify via email (optional)
+        if: failure() && secrets.SMTP_SERVER != ''
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: ${{ secrets.SMTP_SERVER }}
+          server_port: ${{ secrets.SMTP_PORT }}
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+          subject: "[Atlas] Seed smoke test FAILED (weekly)"
+          body: "Seed smoke test failed. Check GitHub Actions run artifacts (seed-smoke-logs)."
+          to: ${{ secrets.SMTP_TO }}
+          from: ${{ secrets.SMTP_FROM }}
+
+      - name: Open GitHub issue (fallback notification)
+        if: failure() && secrets.SMTP_SERVER == ''
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `[Atlas] Weekly seed smoke test failed`;
+            const body = `The weekly seed smoke test failed.\n\nRun: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const existing = await github.rest.search.issuesAndPullRequests({
+              q: `repo:${context.repo.owner}/${context.repo.repo} is:issue is:open in:title "Weekly seed smoke test failed"`,
+            });
+            if ((existing.data.items || []).length > 0) {
+              core.info('Open issue already exists; skipping creation');
+              return;
+            }
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              body,
+            });

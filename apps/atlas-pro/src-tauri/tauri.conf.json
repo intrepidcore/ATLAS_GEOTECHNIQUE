@@ -12,9 +12,24 @@
   "app": {
     "windows": [
       {
+        "label": "splash",
+        "title": "Atlas – Démarrage",
+        "url": "splash.html",
+        "width": 520,
+        "height": 360,
+        "resizable": false,
+        "fullscreen": false,
+        "decorations": false,
+        "transparent": false,
+        "alwaysOnTop": true
+      },
+      {
+        "label": "main",
         "title": "atlas-pro",
+        "url": "index.html",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "visible": false
       }
     ],
     "withGlobalTauri": true,

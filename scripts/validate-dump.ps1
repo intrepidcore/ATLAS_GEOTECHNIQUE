@@ -15,15 +15,30 @@ if (-not (Test-Path -LiteralPath $manifestFile)) {
 
 $m = Get-Content -LiteralPath $manifestFile -Raw | ConvertFrom-Json
 
+$integrity = $m.integrity
+$mSizeBytes = if ($null -ne $integrity -and $null -ne $integrity.size_bytes) { $integrity.size_bytes } else { $m.size_bytes }
+$mSha256 = if ($null -ne $integrity -and $null -ne $integrity.sha256) { $integrity.sha256 } else { $m.sha256 }
+$mSha512 = if ($null -ne $integrity -and $null -ne $integrity.sha512) { $integrity.sha512 } else { $m.sha512 }
+
 $size = (Get-Item -LiteralPath $DumpFile).Length
-if ([int64]$m.size_bytes -ne [int64]$size) {
-  throw "SIZE_MISMATCH: expected=$($m.size_bytes) actual=$size"
+if ([int64]$mSizeBytes -ne [int64]$size) {
+  throw "SIZE_MISMATCH: expected=$mSizeBytes actual=$size"
 }
 
 $sha = (Get-FileHash -LiteralPath $DumpFile -Algorithm SHA256).Hash.ToLowerInvariant()
-$expected = ([string]$m.sha256).ToLowerInvariant()
+$expected = ([string]$mSha256).ToLowerInvariant()
 if ($sha -ne $expected) {
   throw "SHA256_MISMATCH: expected=$expected actual=$sha"
+}
+
+$expected512 = $mSha512
+if ($null -ne $expected512 -and (-not [string]::IsNullOrWhiteSpace([string]$expected512))) {
+  $sha512 = (Get-FileHash -LiteralPath $DumpFile -Algorithm SHA512).Hash.ToLowerInvariant()
+  $expected512 = ([string]$expected512).ToLowerInvariant()
+  if ($sha512 -ne $expected512) {
+    throw "SHA512_MISMATCH: expected=$expected512 actual=$sha512"
+  }
+  Write-Output "OK: sha512"
 }
 
 Write-Output "OK: sha256/size"
@@ -47,7 +62,7 @@ if ($null -ne $pgRestore) {
     }
 
     if (-not $visible) {
-      Write-Output "WARN: pg_restore introuvable, fallback docker possible mais dump non visible dans le conteneur $DOCKER_DB_CONTAINER: $DumpFile"
+      Write-Output "WARN: pg_restore introuvable, fallback docker possible mais dump non visible dans le conteneur ${DOCKER_DB_CONTAINER}: $DumpFile"
       Write-Output "      -> copier le dump dans le conteneur (docker cp) ou utiliser un chemin monté via volume"
     } else {
       & docker exec -i $DOCKER_DB_CONTAINER pg_restore -l $DumpFile | Out-Null

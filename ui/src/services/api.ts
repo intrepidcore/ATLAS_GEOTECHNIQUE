@@ -13,7 +13,14 @@ export function getApiBaseUrl(): string {
 }
 
 // Compat (certain code expects a string constant)
-export const API_BASE_URL = getApiBaseUrl()
+// IMPORTANT: must stay reactive, because Tauri injects `window.__API_GEO__` at runtime.
+export let API_BASE_URL = getApiBaseUrl()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('atlas:api-base:updated', () => {
+    API_BASE_URL = getApiBaseUrl()
+  })
+}
 
 interface ApiError {
   message: string

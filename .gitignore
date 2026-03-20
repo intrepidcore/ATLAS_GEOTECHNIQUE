@@ -1,4 +1,7 @@
 # Build artifacts
+# Local / heavy rasters (never commit)
+ressource/DSM/rasters_COP30/
+*.tif
 target/
 services/api-geo/target/
 ui/node_modules/

@@ -7,7 +7,7 @@
 -- 1. TABLE TAGS
 -- ============================================================================
 
-CREATE TABLE atlas.colab_tags (
+CREATE TABLE IF NOT EXISTS atlas.colab_tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     name TEXT NOT NULL UNIQUE,
     slug TEXT NOT NULL UNIQUE,  -- Version URL-friendly
@@ -36,7 +36,7 @@ INSERT INTO atlas.colab_tags (name, slug, description, color) VALUES
 -- 2. TABLE QUESTIONS
 -- ============================================================================
 
-CREATE TABLE atlas.colab_questions (
+CREATE TABLE IF NOT EXISTS atlas.colab_questions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Contenu
@@ -66,29 +66,29 @@ CREATE TABLE atlas.colab_questions (
     closed_by UUID REFERENCES atlas.users(id)
 );
 
-CREATE INDEX idx_colab_questions_author ON atlas.colab_questions(author_id);
-CREATE INDEX idx_colab_questions_mission ON atlas.colab_questions(mission_id);
-CREATE INDEX idx_colab_questions_score ON atlas.colab_questions(score DESC);
-CREATE INDEX idx_colab_questions_created ON atlas.colab_questions(created_at DESC);
-CREATE INDEX idx_colab_questions_search ON atlas.colab_questions USING gin(to_tsvector('french', title || ' ' || body));
+CREATE INDEX IF NOT EXISTS idx_colab_questions_author ON atlas.colab_questions(author_id);
+CREATE INDEX IF NOT EXISTS idx_colab_questions_mission ON atlas.colab_questions(mission_id);
+CREATE INDEX IF NOT EXISTS idx_colab_questions_score ON atlas.colab_questions(score DESC);
+CREATE INDEX IF NOT EXISTS idx_colab_questions_created ON atlas.colab_questions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_colab_questions_search ON atlas.colab_questions USING gin(to_tsvector('french', title || ' ' || body));
 
 -- ============================================================================
 -- 3. TABLE QUESTION_TAGS (relation N:N)
 -- ============================================================================
 
-CREATE TABLE atlas.colab_question_tags (
+CREATE TABLE IF NOT EXISTS atlas.colab_question_tags (
     question_id UUID NOT NULL REFERENCES atlas.colab_questions(id) ON DELETE CASCADE,
     tag_id UUID NOT NULL REFERENCES atlas.colab_tags(id) ON DELETE CASCADE,
     PRIMARY KEY (question_id, tag_id)
 );
 
-CREATE INDEX idx_question_tags_tag ON atlas.colab_question_tags(tag_id);
+CREATE INDEX IF NOT EXISTS idx_question_tags_tag ON atlas.colab_question_tags(tag_id);
 
 -- ============================================================================
 -- 4. TABLE RÉPONSES
 -- ============================================================================
 
-CREATE TABLE atlas.colab_answers (
+CREATE TABLE IF NOT EXISTS atlas.colab_answers (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Question parente
@@ -110,15 +110,15 @@ CREATE TABLE atlas.colab_answers (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_colab_answers_question ON atlas.colab_answers(question_id);
-CREATE INDEX idx_colab_answers_author ON atlas.colab_answers(author_id);
-CREATE INDEX idx_colab_answers_best ON atlas.colab_answers(question_id, is_best) WHERE is_best = true;
+CREATE INDEX IF NOT EXISTS idx_colab_answers_question ON atlas.colab_answers(question_id);
+CREATE INDEX IF NOT EXISTS idx_colab_answers_author ON atlas.colab_answers(author_id);
+CREATE INDEX IF NOT EXISTS idx_colab_answers_best ON atlas.colab_answers(question_id, is_best) WHERE is_best = true;
 
 -- ============================================================================
 -- 5. TABLE VOTES
 -- ============================================================================
 
-CREATE TABLE atlas.colab_votes (
+CREATE TABLE IF NOT EXISTS atlas.colab_votes (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- Votant
@@ -136,13 +136,13 @@ CREATE TABLE atlas.colab_votes (
     UNIQUE(user_id, target_type, target_id)
 );
 
-CREATE INDEX idx_colab_votes_target ON atlas.colab_votes(target_type, target_id);
+CREATE INDEX IF NOT EXISTS idx_colab_votes_target ON atlas.colab_votes(target_type, target_id);
 
 -- ============================================================================
 -- 6. TABLE STATISTIQUES UTILISATEUR (Gamification)
 -- ============================================================================
 
-CREATE TABLE atlas.colab_user_stats (
+CREATE TABLE IF NOT EXISTS atlas.colab_user_stats (
     user_id UUID PRIMARY KEY REFERENCES atlas.users(id) ON DELETE CASCADE,
     
     -- Compteurs
@@ -172,7 +172,7 @@ CREATE TABLE atlas.colab_user_stats (
 -- 7. TABLE BADGES
 -- ============================================================================
 
-CREATE TABLE atlas.colab_badges (
+CREATE TABLE IF NOT EXISTS atlas.colab_badges (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
@@ -200,7 +200,7 @@ INSERT INTO atlas.colab_badges (code, name, description, icon, category, points,
 -- 8. TABLE USER_BADGES (relation N:N)
 -- ============================================================================
 
-CREATE TABLE atlas.colab_user_badges (
+CREATE TABLE IF NOT EXISTS atlas.colab_user_badges (
     user_id UUID NOT NULL REFERENCES atlas.users(id) ON DELETE CASCADE,
     badge_id UUID NOT NULL REFERENCES atlas.colab_badges(id) ON DELETE CASCADE,
     earned_at TIMESTAMPTZ DEFAULT NOW(),
@@ -212,18 +212,21 @@ CREATE TABLE atlas.colab_user_badges (
 -- ============================================================================
 
 -- Trigger updated_at pour questions
+DROP TRIGGER IF EXISTS set_updated_at_colab_questions ON atlas.colab_questions;
 CREATE TRIGGER set_updated_at_colab_questions
     BEFORE UPDATE ON atlas.colab_questions
     FOR EACH ROW
     EXECUTE FUNCTION atlas.update_updated_at_column();
 
 -- Trigger updated_at pour answers
+DROP TRIGGER IF EXISTS set_updated_at_colab_answers ON atlas.colab_answers;
 CREATE TRIGGER set_updated_at_colab_answers
     BEFORE UPDATE ON atlas.colab_answers
     FOR EACH ROW
     EXECUTE FUNCTION atlas.update_updated_at_column();
 
 -- Trigger updated_at pour user_stats
+DROP TRIGGER IF EXISTS set_updated_at_colab_user_stats ON atlas.colab_user_stats;
 CREATE TRIGGER set_updated_at_colab_user_stats
     BEFORE UPDATE ON atlas.colab_user_stats
     FOR EACH ROW
@@ -242,6 +245,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_answers_count ON atlas.colab_answers;
 CREATE TRIGGER update_answers_count
     AFTER INSERT OR DELETE ON atlas.colab_answers
     FOR EACH ROW
@@ -260,6 +264,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS update_tag_usage ON atlas.colab_question_tags;
 CREATE TRIGGER update_tag_usage
     AFTER INSERT OR DELETE ON atlas.colab_question_tags
     FOR EACH ROW

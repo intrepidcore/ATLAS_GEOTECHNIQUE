@@ -1,4 +1,4 @@
-.PHONY: up down logs build db-migrate seed fmt lint rebuild-api-geo
+.PHONY: up down logs build db-migrate seed fmt lint rebuild-api-geo stop-atlas tauri-dev tauri-build test-msi
 
 COMPOSE=docker compose
 
@@ -88,3 +88,21 @@ metrics:
 health:
 	@echo "🏥 Vérification de l'endpoint /healthz..."
 	@curl -s http://localhost:8000/healthz | jq .
+
+# DEV-01: Windows build lock prevention
+stop-atlas:
+	@echo "🛑 Arrêt des processus Atlas..."
+	@powershell -ExecutionPolicy Bypass -File scripts/dev/Stop-AtlasProcesses.ps1 -Force -Quiet
+
+tauri-dev: stop-atlas
+	@echo "🚀 Lancement de Tauri en mode dev..."
+	cd apps/atlas-pro && cargo tauri dev
+
+tauri-build: stop-atlas
+	@echo "🔨 Build Tauri..."
+	cd apps/atlas-pro && cargo tauri build
+
+# DESKTOP-4: MSI test automation
+test-msi:
+	@echo "🧪 Test MSI (install/smoke/uninstall)..."
+	@powershell -ExecutionPolicy Bypass -File scripts/test-msi-install.ps1 -MsiPath $(MSI_PATH)

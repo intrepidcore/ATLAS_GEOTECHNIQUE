@@ -5,7 +5,13 @@
 
 import { getApiBase, buildApiUrl } from './api-base'
 
-export const API_GEO = getApiBase()
+export let API_GEO = getApiBase()
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('atlas:api-base:updated', () => {
+    API_GEO = getApiBase()
+  })
+}
 
 /**
  * Construit une URL complète pour l'API

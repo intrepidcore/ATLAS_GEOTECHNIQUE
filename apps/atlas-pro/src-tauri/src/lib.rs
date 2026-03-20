@@ -1,9 +1,11 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 use tauri::Manager;
+use tauri::Emitter;
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::prelude::*;
 use fs2::FileExt;
 use std::io::Write;
+use anyhow::Context;
 
 mod postgres;
 mod support;
@@ -17,6 +19,186 @@ struct ManagedApiPort(u16);
 struct ManagedPaths {
     data_dir: std::path::PathBuf,
     logs_dir: std::path::PathBuf,
+}
+
+fn resolve_data_dir() -> Result<std::path::PathBuf, Box<dyn std::error::Error>> {
+    if let Ok(p) = std::env::var("ATLAS_DATA_DIR") {
+        let p = p.trim();
+        if !p.is_empty() {
+            return Ok(std::path::PathBuf::from(p));
+        }
+    }
+    let base = std::env::var("LOCALAPPDATA")
+        .or_else(|_| std::env::var("APPDATA"))
+        .map_err(|_| "LOCALAPPDATA/APPDATA not found")?;
+    Ok(std::path::PathBuf::from(base).join("IntrepidCore").join("Atlas"))
+}
+
+fn smoke_cleanup(data_dir: &std::path::Path, pg: Option<postgres::PostgresHandle>) {
+    if let Some(pg) = pg {
+        let _ = postgres::stop_postgres(&pg);
+    }
+    if let Ok(root) = std::env::temp_dir().canonicalize() {
+        if let Ok(p) = data_dir.canonicalize() {
+            if p.starts_with(&root) {
+                let _ = std::fs::remove_dir_all(&p);
+            }
+        }
+    }
+}
+
+fn smoke_exit_code_for_error(e: &anyhow::Error) -> i32 {
+    if let Some(m) = e.downcast_ref::<postgres::SeedMismatch>() {
+        match m {
+            postgres::SeedMismatch::IntegrityViolation { .. } => 10,
+            postgres::SeedMismatch::InvariantViolation { .. } => 20,
+            postgres::SeedMismatch::SchemaMismatch { .. } => 30,
+        }
+    } else {
+        99
+    }
+}
+
+fn ensure_smoke_test_isolation() {
+    if !is_smoke_test_mode() {
+        return;
+    }
+
+    // Do not override explicit settings.
+    if std::env::var("ATLAS_DATA_DIR").is_err() {
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis();
+        let pid = std::process::id();
+        let dir = std::env::temp_dir().join(format!("atlas-smoke-{ts}-{pid}"));
+        std::env::set_var("ATLAS_DATA_DIR", dir.to_string_lossy().to_string());
+    }
+
+    if std::env::var("DB_NAME").is_err() {
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        let pid = std::process::id();
+        std::env::set_var("DB_NAME", format!("atlas_smoke_{ts}_{pid}"));
+    }
+}
+
+fn is_smoke_test_mode() -> bool {
+    std::env::var("ATLAS_SMOKE_TEST")
+        .ok()
+        .map(|v| {
+            let v = v.trim();
+            v.eq_ignore_ascii_case("true") || v == "1" || v.eq_ignore_ascii_case("yes")
+        })
+        .unwrap_or(false)
+}
+
+fn smoke_check_healthz(api_port: u16) -> Result<(), anyhow::Error> {
+    let url = format!("http://127.0.0.1:{api_port}/healthz");
+    tauri::async_runtime::block_on(async move {
+        let client = reqwest::Client::builder()
+            .timeout(std::time::Duration::from_secs(8))
+            .build()
+            .context("failed to build reqwest client")?;
+        let res = client
+            .get(&url)
+            .send()
+            .await
+            .context("healthz request failed")?;
+        if !res.status().is_success() {
+            let status = res.status();
+            let body = res.text().await.unwrap_or_default();
+            anyhow::bail!("healthz failed (status={}): {}", status, body);
+        }
+        Ok(())
+    })
+}
+
+fn smoke_check_db_mailles_count(pg_port: u16) -> Result<(), anyhow::Error> {
+    let bin_dir = postgres::pg_tool_path("psql.exe")
+        .parent()
+        .map(|p| p.to_path_buf())
+        .ok_or_else(|| anyhow::anyhow!("psql.exe path invalid"))?;
+
+    let path_env = {
+        let current = std::env::var("PATH").unwrap_or_default();
+        format!("{};{}", bin_dir.display(), current)
+    };
+
+    let db_user = std::env::var("DB_USER").unwrap_or_else(|_| "atlas".to_string());
+    let db_name = std::env::var("DB_NAME").unwrap_or_else(|_| "atlas_clean".to_string());
+    let db_password = postgres::ensure_password().context("ensure_password failed")?;
+
+    let expected: i64 = std::env::var("ATLAS_SMOKE_EXPECT_MAILLES")
+        .ok()
+        .and_then(|v| v.trim().parse::<i64>().ok())
+        .unwrap_or(29407);
+
+    let out = std::process::Command::new("psql.exe")
+        .current_dir(&bin_dir)
+        .env("PATH", path_env)
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", pg_port.to_string())
+        .env("PGUSER", &db_user)
+        .env("PGPASSWORD", &db_password)
+        .env("PGDATABASE", &db_name)
+        .env("PAGER", "")
+        .env("PSQL_PAGER", "")
+        .arg("-v")
+        .arg("ON_ERROR_STOP=1")
+        .arg("-tAc")
+        .arg("SELECT COUNT(*) FROM atlas.mailles;")
+        .output()
+        .context("failed to run psql count atlas.mailles")?;
+
+    if !out.status.success() {
+        anyhow::bail!(
+            "psql mailles count failed (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    let got_str = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    let got = got_str
+        .parse::<i64>()
+        .with_context(|| format!("failed to parse mailles count: '{got_str}'"))?;
+
+    if got != expected {
+        anyhow::bail!("mailles_count_mismatch expected={expected} got={got}");
+    }
+    Ok(())
+}
+
+#[derive(Clone, serde::Serialize)]
+struct StartupProgress {
+    step: String,
+    message: String,
+    percent: u8,
+}
+
+fn emit_startup_progress(app: &tauri::App, step: &str, message: &str, percent: u8) {
+    if let Some(w) = app.get_webview_window("splash") {
+        let _ = w.emit(
+            "startup:progress",
+            StartupProgress {
+                step: step.to_string(),
+                message: message.to_string(),
+                percent,
+            },
+        );
+    }
+}
+
+fn emit_startup_error(app: &tauri::App, message: &str) {
+    if let Some(w) = app.get_webview_window("splash") {
+        let _ = w.emit(
+            "startup:error",
+            serde_json::json!({ "message": message }),
+        );
+    }
 }
 
 fn install_marker_path(data_dir: &std::path::Path) -> std::path::PathBuf {
@@ -224,17 +406,18 @@ pub fn run() {
         .setup(|app| {
             app.manage(ManagedPostgres(std::sync::Mutex::new(None)));
 
+            ensure_smoke_test_isolation();
+
             let api_port: u16 = select_api_port();
             app.manage(ManagedApiPort(api_port));
-            let data_dir = std::env::var("LOCALAPPDATA")
-                .or_else(|_| std::env::var("APPDATA"))
-                .map(|base| std::path::PathBuf::from(base).join("IntrepidCore").join("Atlas"))
-                .map_err(|_| "LOCALAPPDATA/APPDATA not found")?;
+            let data_dir = resolve_data_dir()?;
 
             let logs_dir = data_dir.join("logs");
             init_tauri_logging(&logs_dir);
 
             append_fatal_log(&logs_dir, "startup: begin");
+
+            emit_startup_progress(app, "init", "Initialisation…", 5);
 
             std::fs::create_dir_all(&data_dir)
                 .map_err(|e| format!("failed to create data dir ({}): {e}", data_dir.display()))?;
@@ -268,10 +451,14 @@ pub fn run() {
             try_set_embedded_postgres_bin_dir(app);
             try_set_bundled_seed_dir(app);
 
+            emit_startup_progress(app, "paths", "Résolution runtime PostgreSQL / seed", 12);
+
             // First-run: on n'effectue pas le bootstrap DB/API avant que l'installateur
             // (wizard UI) n'ait validé et déclenché l'installation.
-            if force_installer_mode() || !is_installed(&data_dir) {
+            // EXCEPTION: smoke-test mode must always run the bootstrap and exit 0/1.
+            if !is_smoke_test_mode() && (force_installer_mode() || !is_installed(&data_dir)) {
                 tracing::info!("Installer mode: skipping postgres/api bootstrap (marker missing)");
+                emit_startup_progress(app, "installer", "Installateur requis", 100);
                 return Ok(());
             }
 
@@ -280,21 +467,49 @@ pub fn run() {
                 let msg = "PostgreSQL embarqué indisponible. En dev, définis ATLAS_PG_BIN_DIR vers le dossier contenant pg_ctl.exe/initdb.exe/psql.exe (ex: C:\\Program Files\\EnterpriseDB\\...\\bin), puis relance.";
                 tracing::error!("{msg}");
                 append_fatal_log(&logs_dir, msg);
+                emit_startup_error(app, msg);
                 return Err(msg.into());
             }
+
+            emit_startup_progress(app, "postgres", "Démarrage PostgreSQL…", 25);
 
             let pg = postgres::ensure_postgres_started().map_err(|e| {
                 let msg = format!("PostgreSQL startup failed: {e:#}");
                 tracing::error!("{msg}");
                 append_fatal_log(&logs_dir, &msg);
+                emit_startup_error(app, &msg);
                 Box::<dyn std::error::Error>::from(msg)
             })?;
-            postgres::ensure_database_initialized(&pg).map_err(|e| {
+
+            let pg_port = pg.port;
+
+            emit_startup_progress(app, "database", "Initialisation base / PostGIS / seed…", 45);
+            if let Err(e) = postgres::ensure_database_initialized(&pg) {
+                let e = anyhow::Error::from(e);
+
+                if let Some(m) = e.downcast_ref::<postgres::SeedMismatch>() {
+                    let user_msg = m.user_message();
+                    let msg = format!("SEED_MISMATCH: {m}");
+                    tracing::error!("{msg}");
+                    append_fatal_log(&logs_dir, &msg);
+                    emit_startup_error(app, &user_msg);
+                    if is_smoke_test_mode() {
+                        smoke_cleanup(&data_dir, Some(pg));
+                        std::process::exit(smoke_exit_code_for_error(&e));
+                    }
+                    return Err(user_msg.into());
+                }
+
                 let msg = format!("PostgreSQL/PostGIS initialization failed: {e:#}");
                 tracing::error!("{msg}");
                 append_fatal_log(&logs_dir, &msg);
-                Box::<dyn std::error::Error>::from(msg)
-            })?;
+                emit_startup_error(app, &msg);
+                if is_smoke_test_mode() {
+                    smoke_cleanup(&data_dir, Some(pg));
+                    std::process::exit(smoke_exit_code_for_error(&e));
+                }
+                return Err(msg.into());
+            }
 
             let db_user = std::env::var("DB_USER").unwrap_or_else(|_| "atlas".to_string());
             let db_name = std::env::var("DB_NAME").unwrap_or_else(|_| "atlas_clean".to_string());
@@ -302,6 +517,7 @@ pub fn run() {
                 let msg = format!("PostgreSQL password resolution failed: {e:#}");
                 tracing::error!("{msg}");
                 append_fatal_log(&logs_dir, &msg);
+                emit_startup_error(app, &msg);
                 Box::<dyn std::error::Error>::from(msg)
             })?;
 
@@ -311,12 +527,6 @@ pub fn run() {
             );
             // IMPORTANT: ne pas exporter DATABASE_URL globalement (évite contamination Docker / env externe)
             // et garantit que seul le sidecar reçoit l'URL calculée.
-
-            if let Some(m) = app.try_state::<ManagedPostgres>() {
-                if let Ok(mut guard) = m.0.lock() {
-                    *guard = Some(pg);
-                }
-            }
 
             let exe = app
                 .path()
@@ -369,6 +579,7 @@ pub fn run() {
             let addr = ("127.0.0.1", api_port);
             let backend_already_running = std::net::TcpStream::connect(addr).is_ok();
             if !backend_already_running {
+                emit_startup_progress(app, "backend", "Démarrage backend…", 75);
                 if let Ok(file) = std::fs::OpenOptions::new().create(true).append(true).open(&api_geo_log) {
                     if let Ok(file2) = file.try_clone() {
                         cmd.stdout(std::process::Stdio::from(file));
@@ -380,6 +591,7 @@ pub fn run() {
                         let msg = format!("failed to start backend: {e}");
                         tracing::error!("{msg}");
                         append_fatal_log(&logs_dir, &msg);
+                        emit_startup_error(app, &msg);
                         msg
                     })?;
             }
@@ -398,6 +610,49 @@ pub fn run() {
                 std::thread::sleep(std::time::Duration::from_millis(150));
             }
 
+            if is_smoke_test_mode() {
+                emit_startup_progress(app, "smoke", "Smoke test: /healthz", 92);
+                if let Err(e) = smoke_check_healthz(api_port) {
+                    let msg = format!("SMOKE_FAIL healthz: {e:#}");
+                    tracing::error!("{msg}");
+                    append_fatal_log(&logs_dir, &msg);
+                    emit_startup_error(app, &msg);
+                    smoke_cleanup(&data_dir, Some(pg));
+                    std::process::exit(1);
+                }
+
+                emit_startup_progress(app, "smoke", "Smoke test: invariant DB", 96);
+                if let Err(e) = smoke_check_db_mailles_count(pg_port) {
+                    let msg = format!("SMOKE_FAIL db: {e:#}");
+                    tracing::error!("{msg}");
+                    append_fatal_log(&logs_dir, &msg);
+                    emit_startup_error(app, &msg);
+                    smoke_cleanup(&data_dir, Some(pg));
+                    std::process::exit(1);
+                }
+
+                emit_startup_progress(app, "smoke", "Smoke test OK", 100);
+                smoke_cleanup(&data_dir, Some(pg));
+                std::process::exit(0);
+            }
+
+            // Keep the Postgres handle alive for the lifetime of the app (non-smoke mode).
+            if let Some(m) = app.try_state::<ManagedPostgres>() {
+                if let Ok(mut guard) = m.0.lock() {
+                    *guard = Some(pg);
+                }
+            }
+
+            emit_startup_progress(app, "ui", "Ouverture de l'interface…", 95);
+            if let Some(main) = app.get_webview_window("main") {
+                let _ = main.show();
+                let _ = main.set_focus();
+            }
+            if let Some(splash) = app.get_webview_window("splash") {
+                let _ = splash.close();
+            }
+            emit_startup_progress(app, "done", "Prêt", 100);
+
             Ok(())
         })
         .on_page_load(|window, _| {
@@ -408,6 +663,7 @@ pub fn run() {
                     "window.__API_GEO__ = 'http://127.0.0.1:{}';",
                     p.0
                 ));
+                let _ = window.eval("window.dispatchEvent(new Event('atlas:api-base:updated'));\n");
             }
         })
         .on_window_event(|window, event| {
@@ -424,36 +680,7 @@ pub fn run() {
             }
         });
 
-    // Updater: activé uniquement en release (évite les surprises en `tauri dev`).
-    #[cfg(not(debug_assertions))]
-    {
-        let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
-        let result = builder
-            .plugin(tauri_plugin_opener::init())
-            .plugin(tauri_plugin_dialog::init())
-            .invoke_handler(tauri::generate_handler![
-                greet,
-                installer::installer_is_installed,
-                installer::installer_check_free_space,
-                installer::installer_run,
-                support::diagnostic_export,
-                support::db_connection_info,
-                support::db_integrity_check,
-                support::db_backup,
-                support::db_restore,
-                support::db_reset,
-                sync::check_for_updates,
-            ])
-            .run(tauri::generate_context!());
-
-        if let Err(e) = result {
-            eprintln!("error while running tauri application: {e}");
-        }
-
-        return;
-    }
-
-    let result = builder
+    let builder = builder
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
@@ -468,8 +695,12 @@ pub fn run() {
             support::db_restore,
             support::db_reset,
             sync::check_for_updates,
-        ])
-        .run(tauri::generate_context!());
+        ]);
+
+    #[cfg(not(debug_assertions))]
+    let builder = builder.plugin(tauri_plugin_updater::Builder::new().build());
+
+    let result = builder.run(tauri::generate_context!());
 
     if let Err(e) = result {
         eprintln!("error while running tauri application: {e}");

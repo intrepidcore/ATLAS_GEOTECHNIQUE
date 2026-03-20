@@ -39,12 +39,14 @@ jobs:
       - name: Run migrations
         if: matrix.svc == 'api-geo'
         run: |
-          cd migrations
-          for file in *.sql; do
-            PGPASSWORD=atlas psql -h localhost -U atlas -d atlas_clean -f "$file"
-          done
+          python3 scripts/validate_migrations.py
         env:
           DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
+          DB_HOST: localhost
+          DB_PORT: "5432"
+          DB_USER: atlas
+          DB_NAME: atlas_clean
+          PGPASSWORD: atlas
       
       - name: fmt
         run: |

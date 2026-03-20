@@ -207,6 +207,7 @@ COMMENT ON VIEW atlas.v_colab_students_without_maille IS
 -- ============================================================================
 -- 6. Trigger pour updated_at
 -- ============================================================================
+DROP TRIGGER IF EXISTS update_colab_student_prefs_updated_at ON atlas.colab_student_prefs;
 CREATE TRIGGER update_colab_student_prefs_updated_at
     BEFORE UPDATE ON atlas.colab_student_prefs
     FOR EACH ROW 

@@ -29,6 +29,8 @@ function mpaFallbackPlugin(): Plugin {
           req.url = '/mobile.html'
         } else if (url.startsWith('/login')) {
           req.url = '/login.html'
+        } else if (url.startsWith('/splash')) {
+          req.url = '/splash.html'
         } else if (url.startsWith('/installer')) {
           req.url = '/installer.html'
         } else {
@@ -193,6 +195,7 @@ export default defineConfig(({ mode }) => {
         dbManager: path.resolve(__dirname, 'db-manager.html'),
         mobile: path.resolve(__dirname, 'mobile.html'),
         installer: path.resolve(__dirname, 'installer.html'),
+        splash: path.resolve(__dirname, 'splash.html'),
       },
       output: {
         manualChunks: {

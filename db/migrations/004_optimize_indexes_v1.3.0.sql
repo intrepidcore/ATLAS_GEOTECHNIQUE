@@ -22,21 +22,43 @@ ON sondages USING GIST (ST_Transform(geom, 4326));
 -- 2. Index pour les filtres ADM
 -- ============================================================================
 
-CREATE INDEX IF NOT EXISTS idx_mailles_adm1_name 
-ON mailles (adm1_name) 
-WHERE adm1_name IS NOT NULL;
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm1_name'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mailles_adm1_name ON mailles (adm1_name) WHERE adm1_name IS NOT NULL';
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_mailles_adm2_name 
-ON mailles (adm2_name) 
-WHERE adm2_name IS NOT NULL;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm2_name'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mailles_adm2_name ON mailles (adm2_name) WHERE adm2_name IS NOT NULL';
+  END IF;
 
-CREATE INDEX IF NOT EXISTS idx_mailles_adm3_name 
-ON mailles (adm3_name) 
-WHERE adm3_name IS NOT NULL;
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm3_name'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mailles_adm3_name ON mailles (adm3_name) WHERE adm3_name IS NOT NULL';
+  END IF;
 
--- Index composite pour les filtres combinés
-CREATE INDEX IF NOT EXISTS idx_mailles_adm_composite 
-ON mailles (adm1_name, adm2_name, adm3_name);
+  -- Index composite pour les filtres combinés (optionnel)
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm1_name'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm2_name'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm3_name'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_mailles_adm_composite ON mailles (adm1_name, adm2_name, adm3_name)';
+  END IF;
+END $$;
 
 -- 3. Index pour les essais (profondeur et type)
 -- ============================================================================
@@ -65,12 +87,18 @@ ON audit_log (entity);
 CREATE INDEX IF NOT EXISTS idx_audit_log_entity_id 
 ON audit_log (entity_id);
 
-CREATE INDEX IF NOT EXISTS idx_audit_log_created_at 
-ON audit_log (created_at DESC);
-
--- Index composite pour les requêtes filtrées
-CREATE INDEX IF NOT EXISTS idx_audit_log_entity_created 
-ON audit_log (entity, created_at DESC);
+DO $$
+BEGIN
+  -- 'created_at' n'est pas une colonne standard ici; on indexe le timestamp 'ts' si présent.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'audit_log' AND column_name = 'ts'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_log_ts ON audit_log (ts DESC)';
+    -- Index composite pour les requêtes filtrées
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_audit_log_entity_ts ON audit_log (entity, ts DESC)';
+  END IF;
+END $$;
 
 -- 5. Index pour les sondages
 -- ============================================================================
@@ -101,26 +129,42 @@ ANALYZE audit_log;
 -- 7. Vues matérialisées pour les statistiques (optionnel)
 -- ============================================================================
 
--- Vue matérialisée pour les statistiques par maille
-CREATE MATERIALIZED VIEW IF NOT EXISTS mv_mailles_stats AS
-SELECT 
-    m.code,
-    m.adm1_name,
-    m.adm2_name,
-    m.adm3_name,
-    COUNT(DISTINCT s.id) as n_sondages,
-    COUNT(e.id) as n_essais,
-    AVG(CASE WHEN e.type = 'SPT_N' THEN e.value::numeric ELSE NULL END) as spt_n_avg,
-    AVG(CASE WHEN e.type = 'qc' THEN e.value::numeric ELSE NULL END) as qc_avg,
-    COUNT(CASE WHEN e.depth_m >= 0 AND e.depth_m < 5 THEN 1 END) as n_depth_0_5,
-    COUNT(CASE WHEN e.depth_m >= 5 AND e.depth_m < 10 THEN 1 END) as n_depth_5_10,
-    COUNT(CASE WHEN e.depth_m >= 10 THEN 1 END) as n_depth_10plus,
-    COUNT(CASE WHEN e.type = 'SPT_N' THEN 1 END) as n_spt_n,
-    COUNT(CASE WHEN e.type = 'qc' THEN 1 END) as n_qc
-FROM mailles m
-LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
-LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
-GROUP BY m.code, m.adm1_name, m.adm2_name, m.adm3_name;
+DO $$
+BEGIN
+  -- Optionnel: on ne crée la MV que si les colonnes ADM existent.
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm1_name'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm2_name'
+  ) AND EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'public' AND table_name = 'mailles' AND column_name = 'adm3_name'
+  ) THEN
+    EXECUTE $SQL$
+      CREATE MATERIALIZED VIEW IF NOT EXISTS mv_mailles_stats AS
+      SELECT 
+          m.code,
+          m.adm1_name,
+          m.adm2_name,
+          m.adm3_name,
+          COUNT(DISTINCT s.id) as n_sondages,
+          COUNT(e.id) as n_essais,
+          AVG(CASE WHEN e.type = 'SPT_N' THEN e.value::numeric ELSE NULL END) as spt_n_avg,
+          AVG(CASE WHEN e.type = 'qc' THEN e.value::numeric ELSE NULL END) as qc_avg,
+          COUNT(CASE WHEN e.depth_m >= 0 AND e.depth_m < 5 THEN 1 END) as n_depth_0_5,
+          COUNT(CASE WHEN e.depth_m >= 5 AND e.depth_m < 10 THEN 1 END) as n_depth_5_10,
+          COUNT(CASE WHEN e.depth_m >= 10 THEN 1 END) as n_depth_10plus,
+          COUNT(CASE WHEN e.type = 'SPT_N' THEN 1 END) as n_spt_n,
+          COUNT(CASE WHEN e.type = 'qc' THEN 1 END) as n_qc
+      FROM mailles m
+      LEFT JOIN sondages s ON ST_Within(s.geom, m.geom) AND s.deleted_at IS NULL
+      LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL
+      GROUP BY m.code, m.adm1_name, m.adm2_name, m.adm3_name
+    $SQL$;
+  END IF;
+END $$;
 
 -- Index sur la vue matérialisée
 CREATE UNIQUE INDEX IF NOT EXISTS idx_mv_mailles_stats_code 

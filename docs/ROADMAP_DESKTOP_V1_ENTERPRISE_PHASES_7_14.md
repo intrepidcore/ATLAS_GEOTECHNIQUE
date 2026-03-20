@@ -83,6 +83,13 @@ Décision produit (v1) :
 - **Nom canonique** : `data/db/backups/atlas_desktop_seed.dump`
 - **Format canonique** : `pg_dump -Fc`
 
+Scripts (implémentés dans le repo) :
+
+- Génération seed + manifest : `scripts/create-desktop-seed-dump.ps1`
+- Validation dump/manifest : `scripts/validate-dump.ps1`
+- Génération manifest (utilisé par create-desktop-seed-dump) : `scripts/generate_seed_manifest.py`
+- Vérification pré-build MSI (inputs requis) : `scripts/verify-bundle.ps1`
+
 ## PostgreSQL runtime embarqué (Desktop)
 
 - `ATLAS_PG_BIN_DIR`
@@ -329,9 +336,19 @@ Puis dans `tauri.conf.json` :
 
 ```json
 "resources": [
-  "pg/**/*"
+  "pg/**/*",
+  "data/db/backups/atlas_desktop_seed.dump",
+  "data/db/backups/atlas_desktop_seed.dump.json"
 ]
 ```
+
+État actuel (implémenté) :
+
+- `apps/atlas-pro/src-tauri/tauri.conf.json` embarque :
+  - `pg/**/*`
+  - `data/db/backups/atlas_desktop_seed.dump`
+  - `data/db/backups/atlas_desktop_seed.dump.json`
+- Le bootstrap Desktop résout le seed embarqué via `ATLAS_DESKTOP_SEED_DIR` (chemin resources Tauri).
 
 Test obligatoire :
 
@@ -587,6 +604,11 @@ Pour ressembler à Autodesk :
     - Finalizing configuration
         
 - logs visibles
+
+Décision packaging côté sidecar (implémenté) :
+
+- Le backend `api-geo` (sidecar) ne doit **pas** ouvrir de fenêtre console en release Windows.
+- Implémentation : `services/api-geo/src/main.rs` → `#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]`
 
 Ajout important (dataset complet embarqué) :
 

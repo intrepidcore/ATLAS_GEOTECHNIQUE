@@ -16,11 +16,6 @@ export function getApiBase(): string {
   const runtimeOverride = (window as any).__API_GEO__ as string | undefined;
   if (typeof runtimeOverride === 'string' && runtimeOverride.trim() !== '') {
     const raw = runtimeOverride.trim().replace(/\/+$/, "");
-    if (/^https?:\/\/127\.0\.0\.1:8001(\/|$)/i.test(raw) || /^https?:\/\/localhost:8001(\/|$)/i.test(raw)) {
-      const fixed = 'http://127.0.0.1:8000/api';
-      console.warn('[API-BASE] Runtime override points to :8001 (unreachable). Forcing:', fixed);
-      return fixed;
-    }
     if (/^https?:\/\//i.test(raw)) {
       try {
         const u = new URL(raw);
@@ -40,11 +35,6 @@ export function getApiBase(): string {
   // Si la valeur est déjà absolue → on normalise juste
   if (/^https?:\/\//i.test(RAW_API_GEO)) {
     const raw = RAW_API_GEO.replace(/\/+$/, "");
-    if (/^https?:\/\/127\.0\.0\.1:8001(\/|$)/i.test(raw) || /^https?:\/\/localhost:8001(\/|$)/i.test(raw)) {
-      const fixed = 'http://127.0.0.1:8000/api';
-      console.warn('[API-BASE] VITE_API_GEO points to :8001 (unreachable). Forcing:', fixed);
-      return fixed;
-    }
     try {
       const u = new URL(raw);
       if (u.pathname === '/' || u.pathname === '') {

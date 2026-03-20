@@ -1,9 +1,36 @@
 {
-  "created_at": "2026-03-15T18:45:24.0000000+00:00",
+  "schema_version": "2.0",
+  "identity": {
+    "seed_id": "",
+    "seed_version": "",
+    "environment": "production",
+    "classification": "internal"
+  },
+  "source": {
+    "created_at": "2026-03-20T07:16:26.008967+00:00",
+    "created_by": "prota",
+    "git_commit": "ee3b154",
+    "db_name": "atlas_clean",
+    "format": "pg_dump -Fc"
+  },
+  "integrity": {
+    "sha256": "dbb8f058e85b96984f59ac6770c1e4462d0e3ac8df1015c020a1861c35f56046",
+    "sha512": "cda68dc9a4f4640685be0c86cc1613ca5335090d9768863b8d77e15d7cff7ad1da15836c5af8aab2214fbfa3f003c10c9440967f59809e602b936d37f11aca66",
+    "size_bytes": 667968424
+  },
+  "compatibility": {
+    "postgres_target_major": null,
+    "postgis_version": null,
+    "max_migration_applied": null
+  },
+  "created_at": "2026-03-20T07:16:26.057583+00:00",
   "db_name": "atlas_clean",
-  "source": "docker atlas-db",
   "format": "pg_dump -Fc",
-  "file": "atlas_desktop_seed.dump",
-  "size_bytes": 667946540,
-  "sha256": "9856b33728aea7f7c2c3742b6cbd951ed6852dfa8e7e1cb904c04c09e3e44900"
+  "sha256": "dbb8f058e85b96984f59ac6770c1e4462d0e3ac8df1015c020a1861c35f56046",
+  "sha512": "cda68dc9a4f4640685be0c86cc1613ca5335090d9768863b8d77e15d7cff7ad1da15836c5af8aab2214fbfa3f003c10c9440967f59809e602b936d37f11aca66",
+  "size_bytes": 667968424,
+  "git_commit": "ee3b154",
+  "postgres_target_major": null,
+  "postgis_version": null,
+  "max_migration_applied": null
 }
