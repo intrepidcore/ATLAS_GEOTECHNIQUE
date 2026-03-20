@@ -5,6 +5,7 @@
 
 import { API_BASE_URL } from './api';
 import { tokenStorage } from './auth-api';
+import { authApi } from './auth-api';
 
 // ============================================================================
 // Types
@@ -657,7 +658,6 @@ export const MISSION_STATUSES = [
 // ============================================================================
 
 async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Response> {
-  const token = tokenStorage.getAccessToken();
   const headers: HeadersInit = {
     ...(options.headers || {}),
   };
@@ -673,11 +673,42 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
     (headers as Record<string, string>)['Content-Type'] = 'application/json';
   }
   
-  if (token) {
-    (headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+
+  const doFetch = (token: string | null) => {
+    const h: HeadersInit = { ...headers };
+    if (token) {
+      (h as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+    }
+    return fetch(url, { ...options, headers: h });
+  };
+
+  const token = tokenStorage.getAccessToken();
+  const res = await doFetch(token);
+
+  // Retry 1x sur 401: token expiré -> refresh -> retry
+  if (res.status === 401) {
+    try {
+      const refreshed = await authApi.refresh();
+      if (!refreshed) {
+        tokenStorage.clear();
+        window.dispatchEvent(new Event('atlas:auth:expired'));
+        return res;
+      }
+      const token2 = tokenStorage.getAccessToken();
+      const res2 = await doFetch(token2);
+      if (res2.status === 401) {
+        tokenStorage.clear();
+        window.dispatchEvent(new Event('atlas:auth:expired'));
+      }
+      return res2;
+    } catch {
+      tokenStorage.clear();
+      window.dispatchEvent(new Event('atlas:auth:expired'));
+      return res;
+    }
   }
-  
-  return fetch(url, { ...options, headers });
+
+  return res;
 }
 
 // ============================================================================

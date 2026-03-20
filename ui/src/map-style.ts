@@ -39,7 +39,7 @@ export const COLORS: Record<string, string> = {
 
 export const OPACITY: Record<string, number> = {
   // Remplissage mailles (augmenté pour meilleure lisibilité)
-  GRID_WITH_DATA: 0.55,              // Augmenté de 0.35 à 0.55
+  GRID_WITH_DATA: 0.60,              // Augmenté pour aligner la lisibilité (bleu/violet/vert)
   GRID_NO_DATA: 0.0,                 // Transparent (au lieu de 0.08)
   
   // Sélection

@@ -539,15 +539,30 @@ const ATLAS_DIALOG_STYLES = `
 .atlas-adm-level select {
   width: 100%;
   padding: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
   font-size: 13px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   max-height: 120px;
+}
+
+.atlas-adm-level select option {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.atlas-adm-level select:disabled {
+  opacity: 0.7;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
 }
 
 .atlas-adm-level select[multiple] {
   min-height: 120px;
   max-height: 180px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 /* Amélioration UX: zone de sélection plus grande au focus */
@@ -558,7 +573,7 @@ const ATLAS_DIALOG_STYLES = `
 
 .atlas-adm-level .level-info {
   font-size: 11px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin-top: 4px;
 }
 `;
