@@ -128,12 +128,16 @@ export class ThematicMapManager {
     this.setReady(false)
     
     try {
+      const perfId = `thematic_${Date.now()}_${Math.random().toString(16).slice(2)}`
+      const tStart = performance.now()
       // Audit v3.5.4 - palette reçue
       console.log(`[ThematicMap][Interactive] palette received="${config.style.palette}"`)
       console.log('[ThematicMap] Chargement config:', config)
       
       // 1. Récupérer les données de rendu (selon la grille demandée)
+      const tFetchStart = performance.now()
       const data = await this.fetchThematicData(config, { includeGeometry: true })
+      const tFetchDone = performance.now()
       console.log('[ThematicMap] Données récupérées:', data.features.length, 'features')
 
       // Mode combined (industriel): dual dataset
@@ -142,7 +146,9 @@ export class ThematicMapManager {
       this.currentSecondaryData = null
       if (config.filters.grid === 'combined') {
         try {
+          const tSecondaryStart = performance.now()
           const coverage = await this.fetchCoverageGrid('28km')
+          const tSecondaryDone = performance.now()
           const coverageFeatures = Array.isArray(coverage?.features) ? coverage.features : []
           const withDataCount = coverageFeatures.filter((f: any) => !!f?.properties?.has_data).length
 
@@ -185,6 +191,11 @@ export class ThematicMapManager {
             coverageCount: coverageFeatures.length,
             withDataCount
           })
+
+          console.log('[ThematicPerf][SecondaryCoverage] timings (ms)', {
+            perfId,
+            fetchCoverage28km_ms: Math.round(tSecondaryDone - tSecondaryStart)
+          })
         } catch (e) {
           const err = e as any
           console.warn('[ThematicMap] Combined: secondary 28km coverage failed to load', {
@@ -200,19 +211,26 @@ export class ThematicMapManager {
       // Exigence: ne jamais recalculer les classes séparément pour 28km.
       // Donc en grid=28km, on calcule la classification à partir des valeurs 2km (sans géométrie) et on applique ces classes au rendu 28km.
       const gridLevel = config.filters.grid
-      const classificationSourceData =
-        gridLevel === '28km'
-          ? await this.fetchThematicData(config, {
-              includeGeometry: false,
-              gridOverride: '2km',
-              skipBbox: true
-            })
-          : data
+      let classificationSourceData = data
+      let tClassFetchStart: number | null = null
+      let tClassFetchDone: number | null = null
+      if (gridLevel === '28km') {
+        tClassFetchStart = performance.now()
+        classificationSourceData = await this.fetchThematicData(config, {
+          includeGeometry: false,
+          gridOverride: '2km',
+          skipBbox: true
+        })
+        tClassFetchDone = performance.now()
+      }
 
+      const tClassifyStart = performance.now()
       const classification = await this.classifyData(config, classificationSourceData)
+      const tClassifyDone = performance.now()
       console.log('[ThematicMap] Classification:', classification)
       
       // 3. Afficher sur la carte selon le type
+      const tRenderStart = performance.now()
       this.clearLayers()
       
       if (config.type === 'choropleth') {
@@ -224,12 +242,17 @@ export class ThematicMapManager {
       } else if (config.type === 'heatmap') {
         this.renderHeatmap(data, classification, config)
       }
+      const tRenderDone = performance.now()
       
       // 4. Afficher la légende
+      const tLegendStart = performance.now()
       this.showLegend(classification, data.statistics, config)
+      const tLegendDone = performance.now()
       
       // 5. Afficher le contour ADM sélectionné
+      const tAdmStart = performance.now()
       await this.showAdmOverlay(config)
+      const tAdmDone = performance.now()
       
       // 6. Sauvegarder la config et les données actuelles
       this.currentConfig = config
@@ -244,6 +267,25 @@ export class ThematicMapManager {
       
       // 9. Marquer comme prêt
       this.setReady(true)
+
+      const tEnd = performance.now()
+      console.log('[ThematicPerf][loadThematicMap] timings (ms)', {
+        perfId,
+        parameter: config.parameter,
+        type: config.type,
+        grid: config.filters.grid,
+        features_rendered: data.features.length,
+        fetch_render_data_ms: Math.round(tFetchDone - tFetchStart),
+        fetch_classification_source_ms:
+          tClassFetchStart != null && tClassFetchDone != null
+            ? Math.round(tClassFetchDone - tClassFetchStart)
+            : 0,
+        classify_ms: Math.round(tClassifyDone - tClassifyStart),
+        render_ms: Math.round(tRenderDone - tRenderStart),
+        legend_ms: Math.round(tLegendDone - tLegendStart),
+        adm_overlay_ms: Math.round(tAdmDone - tAdmStart),
+        total_ms: Math.round(tEnd - tStart)
+      })
       
     } catch (error) {
       console.error('[ThematicMap] Erreur:', error)

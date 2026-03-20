@@ -39,6 +39,11 @@ export class ThematicPanel {
   private isOpen: boolean = false
   private currentConfig: ThematicMapConfig
   private exportDialog: ReturnType<typeof createExportQuickDialog> | null = null
+
+  private async waitForNextPaint(): Promise<void> {
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  }
   
   // Cache des éléments DOM
   private elements: {
@@ -1527,14 +1532,37 @@ export class ThematicPanel {
     try {
       const config = this.buildConfigFromUI()
       this.currentConfig = config
+
+      const applyId = `apply_${Date.now()}_${Math.random().toString(16).slice(2)}`
+      const tClick = performance.now()
       
       console.log(`[ThematicUI][Apply] ✅ Palette finale="${config.style.palette}"`)
       console.log('[ThematicPanel] Applying config:', config)
+      console.log('[ThematicPerf] Apply click', {
+        applyId,
+        parameter: config.parameter,
+        type: config.type,
+        grid: config.filters.grid,
+        adm1: config.filters.adm1 ?? null,
+        adm2: config.filters.adm2 ?? null,
+        adm3: config.filters.adm3 ?? null,
+        excludeOutsideAdm: config.filters.exclude_outside_adm ?? false,
+      })
       
       // Show loading
       this.setLoading(true)
       
       await this.manager.loadThematicMap(config)
+      const tLoaded = performance.now()
+
+      await this.waitForNextPaint()
+      const tPaint = performance.now()
+
+      console.log('[ThematicPerf] Apply timings (ms)', {
+        applyId,
+        loadThematicMap_ms: Math.round(tLoaded - tClick),
+        click_to_paint_ms: Math.round(tPaint - tClick),
+      })
       
       // Update summary
       this.updateSummary()
