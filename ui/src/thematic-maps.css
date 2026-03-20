@@ -7,7 +7,8 @@
   right: 20px;
   width: 380px;
   max-height: calc(100vh - 80px);
-  background: white;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
   border-radius: 8px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   z-index: 1000;
@@ -91,7 +92,7 @@
   margin-bottom: 6px;
   font-weight: 500;
   font-size: 13px;
-  color: #333;
+  color: hsl(var(--foreground));
 }
 
 .form-group select,
@@ -99,10 +100,17 @@
 .form-group input[type="text"] {
   width: 100%;
   padding: 8px 12px;
-  border: 1px solid #ddd;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
   font-size: 14px;
   transition: border-color 0.2s;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.form-group select option {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .form-group select:focus,
@@ -115,7 +123,7 @@
   display: block;
   margin-top: 4px;
   font-size: 12px;
-  color: #666;
+  color: hsl(var(--muted-foreground));
   font-style: italic;
 }
 
@@ -155,12 +163,12 @@
 }
 
 .btn-secondary {
-  background: #f0f0f0;
-  color: #333;
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
 }
 
 .btn-secondary:hover {
-  background: #e0e0e0;
+  background: hsl(var(--muted));
 }
 
 /* Stats box */

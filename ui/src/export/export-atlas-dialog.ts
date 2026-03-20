@@ -2327,7 +2327,7 @@ export class ExportAtlasDialog {
           }
           .atlas-confirm-footer {
             padding: 16px 24px;
-            background: #f9fafb;
+            background: hsl(var(--muted));
             display: flex;
             justify-content: flex-end;
             gap: 12px;
@@ -2344,11 +2344,11 @@ export class ExportAtlasDialog {
             gap: 6px;
           }
           .atlas-confirm-footer .atlas-btn-secondary {
-            background: #e5e7eb;
-            color: #374151;
+            background: hsl(var(--secondary));
+            color: hsl(var(--secondary-foreground));
           }
           .atlas-confirm-footer .atlas-btn-secondary:hover {
-            background: #d1d5db;
+            background: hsl(var(--muted));
           }
           .atlas-confirm-footer .atlas-btn-primary {
             background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);

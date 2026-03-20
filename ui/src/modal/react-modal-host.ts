@@ -22,6 +22,8 @@ let root: Root | null = null;
 let openImpl: ((req: ModalRequest) => void) | null = null;
 let closeImpl: (() => void) | null = null;
 
+let pendingRequest: ModalRequest | null = null;
+
 const CreateMissionModal = React.lazy(() => import('../pages/colab/create-mission-modal'));
 const TransferMissionModal = React.lazy(() => import('../pages/colab/transfer-mission-modal'));
 
@@ -95,6 +97,14 @@ const Host: React.FC = () => {
   openImpl = open;
   closeImpl = close;
 
+  // Flush pending request (premier tick après mount)
+  useEffect(() => {
+    if (!pendingRequest) return;
+    const r = pendingRequest;
+    pendingRequest = null;
+    open(r);
+  }, [open]);
+
   if (!req) return null;
 
   if (req.type === 'transfer-mission' && transferMissionLoading) {
@@ -128,12 +138,34 @@ function ensureMounted() {
 
 export function openCreateMissionModal(opts: { mailleCode?: string; onDone?: () => void }) {
   ensureMounted();
-  openImpl?.({ type: 'create-mission', mailleCode: opts.mailleCode, onDone: opts.onDone });
+  const req: ModalRequest = { type: 'create-mission', mailleCode: opts.mailleCode, onDone: opts.onDone };
+  if (openImpl) {
+    openImpl(req);
+  } else {
+    pendingRequest = req;
+    queueMicrotask(() => {
+      if (openImpl && pendingRequest === req) {
+        pendingRequest = null;
+        openImpl(req);
+      }
+    });
+  }
 }
 
 export function openTransferMissionModal(opts: { missionId: string; onDone?: () => void }) {
   ensureMounted();
-  openImpl?.({ type: 'transfer-mission', missionId: opts.missionId, onDone: opts.onDone });
+  const req: ModalRequest = { type: 'transfer-mission', missionId: opts.missionId, onDone: opts.onDone };
+  if (openImpl) {
+    openImpl(req);
+  } else {
+    pendingRequest = req;
+    queueMicrotask(() => {
+      if (openImpl && pendingRequest === req) {
+        pendingRequest = null;
+        openImpl(req);
+      }
+    });
+  }
 }
 
 export function closeReactModalHost() {

@@ -659,6 +659,27 @@ export class ExportProgressModal {
         border-color: #666;
       }
 
+      #download-format {
+        background: #2d2d2d;
+        color: #e0e0e0;
+        border: 1px solid #555;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+      }
+
+      #download-format:focus {
+        outline: none;
+        border-color: #4fc3f7;
+        box-shadow: 0 0 0 2px rgba(79, 195, 247, 0.2);
+      }
+
+      #download-format option {
+        background: #2d2d2d;
+        color: #e0e0e0;
+      }
+
       .export-progress-status {
         padding: 12px 16px;
         background: #252525;

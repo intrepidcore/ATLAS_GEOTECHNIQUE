@@ -538,7 +538,7 @@ const CreateMissionModal: React.FC<{
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Superviseur (autocomplétion)</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Superviseur (autocomplétion)</label>
             {selectedSupervisor && (
               <div className="mb-2 flex items-center justify-between bg-blue-50 text-blue-700 rounded-lg px-3 py-2 text-sm">
                 <div>{selectedSupervisor.label}</div>
@@ -558,14 +558,14 @@ const CreateMissionModal: React.FC<{
               <div className="relative">
                 <Input placeholder="Rechercher un superviseur..." value={supervisorQuery} onChange={e => setSupervisorQuery(e.target.value)} />
                 {(supervisorLoading || supervisorSuggestions.length > 0) && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
-                    {supervisorLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow max-h-48 overflow-auto">
+                    {supervisorLoading && <div className="px-3 py-2 text-sm text-slate-500">Chargement...</div>}
                     {!supervisorLoading &&
                       supervisorSuggestions.map(s => (
                         <button
                           key={s.id}
                           type="button"
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                           onClick={() => {
                             setSelectedSupervisor(s);
                             setSupervisorQuery('');
@@ -583,7 +583,7 @@ const CreateMissionModal: React.FC<{
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Commune</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Commune</label>
               <div className="relative">
                 <Input
                   placeholder="Lomé"
@@ -594,14 +594,14 @@ const CreateMissionModal: React.FC<{
                   }}
                 />
                 {(communeLoading || communeSuggestions.length > 0) && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
-                    {communeLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow max-h-48 overflow-auto">
+                    {communeLoading && <div className="px-3 py-2 text-sm text-slate-500">Chargement...</div>}
                     {!communeLoading &&
                       communeSuggestions.map(c => (
                         <button
                           key={c}
                           type="button"
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                           onClick={() => {
                             setForm({ ...form, commune: c });
                             setCommuneQuery(c);
@@ -616,7 +616,7 @@ const CreateMissionModal: React.FC<{
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Région</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Région</label>
               <div className="relative">
                 <Input
                   placeholder="Maritime"
@@ -627,14 +627,14 @@ const CreateMissionModal: React.FC<{
                   }}
                 />
                 {(regionLoading || regionSuggestions.length > 0) && (
-                  <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
-                    {regionLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                  <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow max-h-48 overflow-auto">
+                    {regionLoading && <div className="px-3 py-2 text-sm text-slate-500">Chargement...</div>}
                     {!regionLoading &&
                       regionSuggestions.map(r => (
                         <button
                           key={r}
                           type="button"
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                          className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                           onClick={() => {
                             setForm({ ...form, region: r });
                             setRegionQuery(r);
@@ -651,7 +651,7 @@ const CreateMissionModal: React.FC<{
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Étudiants assignés (multi-select)</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Étudiants assignés (multi-select)</label>
             <div className="flex flex-wrap gap-2 mb-2">
               {selectedStudents.map(s => (
                 <span key={s.id} className="inline-flex items-center gap-1 px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
@@ -669,14 +669,14 @@ const CreateMissionModal: React.FC<{
             <div className="relative">
               <Input placeholder="Rechercher un étudiant..." value={studentQuery} onChange={e => setStudentQuery(e.target.value)} />
               {(studentLoading || studentSuggestions.length > 0) && (
-                <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
-                  {studentLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow max-h-48 overflow-auto">
+                  {studentLoading && <div className="px-3 py-2 text-sm text-slate-500">Chargement...</div>}
                   {!studentLoading &&
                     studentSuggestions.map(s => (
                       <button
                         key={s.id}
                         type="button"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                         onClick={() => {
                           setSelectedStudents(prev => (prev.some(x => x.id === s.id) ? prev : [...prev, s]));
                           setStudentQuery('');
@@ -721,13 +721,13 @@ const CreateMissionModal: React.FC<{
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Description</label>
             <textarea
               placeholder="Description de la mission..."
               value={form.description || ''}
               onChange={e => setForm({ ...form, description: e.target.value })}
               rows={3}
-              className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400"
             />
           </div>
 

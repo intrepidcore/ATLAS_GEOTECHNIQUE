@@ -102,7 +102,7 @@ const Host: React.FC = () => {
     { className: 'fixed inset-0 z-[9000] flex items-center justify-center' },
     React.createElement('div', {
       className: 'absolute inset-0 bg-black/50',
-      onMouseDown: () => close(),
+      onClick: () => close(),
     }),
     React.createElement(
       'div',
@@ -110,6 +110,7 @@ const Host: React.FC = () => {
         className:
           'relative w-[420px] max-w-[calc(100vw-24px)] max-h-[80vh] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 text-slate-100 shadow-2xl',
         onMouseDown: (e: any) => e.stopPropagation(),
+        onClick: (e: any) => e.stopPropagation(),
       },
       React.createElement(
         'div',
@@ -159,12 +160,14 @@ const Host: React.FC = () => {
                 className: 'btn secondary btn-sm',
                 onClick: () => {
                   close()
-                  openCreateMissionModal({
-                    mailleCode: req.mailleCode,
-                    onDone: () => {
-                      void refreshMailleState()
-                      void load()
-                    },
+                  queueMicrotask(() => {
+                    openCreateMissionModal({
+                      mailleCode: req.mailleCode,
+                      onDone: () => {
+                        void refreshMailleState()
+                        void load()
+                      },
+                    })
                   })
                 },
               },
@@ -209,12 +212,14 @@ const Host: React.FC = () => {
                           className: 'btn secondary btn-sm',
                           onClick: () => {
                             close()
-                            openTransferMissionModal({
-                              missionId: String(id),
-                              onDone: () => {
-                                void refreshMailleState()
-                                void load()
-                              },
+                            queueMicrotask(() => {
+                              openTransferMissionModal({
+                                missionId: String(id),
+                                onDone: () => {
+                                  void refreshMailleState()
+                                  void load()
+                                },
+                              })
                             })
                           },
                         },
