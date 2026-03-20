@@ -363,6 +363,64 @@ Avant d’écrire une migration SQL, toujours :
 
 ---
 
+### 5.1. UI Architecture & Design System (Token-first)
+
+**[UI-06] Design system token-first (source de vérité unique)**
+
+* La palette UI doit être définie dans **un seul fichier de tokens** (ex: `ui/src/design-tokens.css`).
+* Règle : **never use raw colors in components**.
+  * Interdit dans les composants : `#374151`, `rgb(...)`, `bg-white`, `text-gray-700`, etc.
+  * Autorisé : `hsl(var(--foreground))`, `hsl(var(--card))`, et les variables exposées par le design system.
+* Le design system doit contenir : surfaces, texte, muted, border, primary, destructive, focus/ring, etc.
+
+**[UI-07] Ne pas multiplier les overrides CSS (anti `!important`)**
+
+* Les `!important` sont un signal d'architecture fragile.
+* Objectif : **tendre vers 0** sur les overrides globaux.
+* Si un bug visuel est dû à une couleur hardcodée : **corriger le composant** (fix forward), pas un override global.
+
+**[UI-08] Un paradigme de rendu par page**
+
+* Règle : **une page = un seul paradigme** (React **ou** vanilla).
+* Si une page est hybride (legacy), isoler la frontière :
+  * Interfaces TypeScript explicites.
+  * Contrat d'événements documenté (event bus).
+  * Éviter les partages d'état implicites par variables globales.
+
+**[UI-09] Modals centralisés (un seul composant source)**
+
+* Tous les modals doivent partager :
+  * Overlay/backdrop
+  * Container
+  * Header/Close
+  * Focus management
+  * Styles (surface, border, typography)
+* Éviter d'avoir des modals dispersés avec chacun ses propres styles inline/CSS injecté.
+* Objectif : un composant `Modal` (ou wrapper Radix) qui concentre les styles.
+
+**[UI-10] `color-scheme` obligatoire pour les contrôles natifs**
+
+* Pour garantir la cohérence des `<select>` / date pickers natifs selon le thème :
+  * `:root { color-scheme: light; }`
+  * `.dark { color-scheme: dark; }`
+
+**[UI-11] Fix forward, not sideways**
+
+* Quand un composant est incorrect :
+  * Corriger le composant pour utiliser les tokens.
+  * Ne pas ajouter un override qui "contre-balance" l'erreur.
+
+**[UI-12] Tests de régression visuelle (Playwright screenshots)**
+
+* Toute refonte UI non triviale doit ajouter/mettre à jour au moins 1 screenshot test.
+* Minimum recommandé :
+  * Page de login (light + dark)
+  * Un modal clé (create/transfer mission)
+  * Panneau thématique (boutons exports)
+* Objectif : détecter immédiatement les régressions de contraste/couleur/layout.
+
+---
+
 ## 6. Docker & infrastructure
 
 **[INFRA-01] Réutiliser les images officielles si suffisantes**

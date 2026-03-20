@@ -5,6 +5,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import MobileApp from './MobileApp';
+import './design-tokens.css';
 import './index.css';
 import { initTheme } from './theme';
 

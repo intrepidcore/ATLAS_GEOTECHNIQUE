@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { AuthProvider } from './contexts/AuthContext'
 import App from './App'
+import './design-tokens.css'
 import './index.css'
 import { initTheme } from './theme'
 // Feuilles de style Leaflet (nécessaire pour les contrôles et tuiles)

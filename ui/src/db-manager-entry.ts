@@ -5,12 +5,15 @@
  * sans passer par l'application React principale.
  */
 
+import './design-tokens.css'
 import './index.css'
 import { DbManagerModalComponent } from './db-manager/components-vanilla'
 import { tokenStorage } from './services/auth-api'
+import { initTheme } from './theme'
 
 // Attendre que le DOM soit prêt
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme()
   if (!tokenStorage.isAuthenticated()) {
     window.location.href = `/login.html?returnTo=${encodeURIComponent('/db-manager.html')}`
     return
@@ -37,7 +40,8 @@ style.textContent = `
   body {
     margin: 0;
     padding: 0;
-    background: #0f1419;
+    background: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   }
   
