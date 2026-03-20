@@ -1,19 +1,31 @@
-use axum::{routing::{get, post}, Json, Router};
-use serde::{Deserialize, Serialize};
-use std::net::SocketAddr;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use axum::{
+    routing::{get, post},
+    Json, Router,
+};
 use rand::Rng;
 use rayon::prelude::*;
+use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
+use tokio::net::TcpListener;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[derive(Serialize)]
-struct Health { status: &'static str }
+struct Health {
+    status: &'static str,
+}
 
 #[derive(Deserialize)]
-struct Scenario { params: serde_json::Value }
+struct Scenario {
+    params: serde_json::Value,
+}
 
 #[derive(Serialize, Clone)]
-struct FrontPoint { cost: f64, safety: f64, solution_id: u64 }
+struct FrontPoint {
+    cost: f64,
+    safety: f64,
+    solution_id: u64,
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -26,16 +38,28 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/healthz", get(|| async { Json(Health { status: "ok" }) }))
-        .route("/version", get(|| async { Json(serde_json::json!({"git": env!("GIT_HASH"), "built": env!("BUILD_TIME")})) }))
-        .route("/echo", post(|Json(v): Json<serde_json::Value>| async move { Json(v) }))
+        .route(
+            "/version",
+            get(|| async {
+                Json(serde_json::json!({"git": env!("GIT_HASH"), "built": env!("BUILD_TIME")}))
+            }),
+        )
+        .route(
+            "/echo",
+            post(|Json(v): Json<serde_json::Value>| async move { Json(v) }),
+        )
         .route("/pareto", post(pareto))
         .layer(TraceLayer::new_for_http())
         .layer(cors);
 
-    let port: u16 = std::env::var("API_OPTI_PORT").ok().and_then(|s| s.parse().ok()).unwrap_or(8000);
+    let port: u16 = std::env::var("API_OPTI_PORT")
+        .ok()
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(8000);
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     tracing::info!("listening on {}", addr);
-    axum::Server::bind(&addr).serve(app.into_make_service()).await?;
+    let listener = TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
     Ok(())
 }
 
@@ -44,12 +68,17 @@ async fn pareto(Json(_scenario): Json<Scenario>) -> Json<Vec<FrontPoint>> {
     let n = 64usize;
     let mut rng = rand::thread_rng();
     let pop: Vec<u64> = (0..n).map(|_| rng.gen()).collect();
-    let points: Vec<FrontPoint> = pop.par_iter()
+    let points: Vec<FrontPoint> = pop
+        .par_iter()
         .enumerate()
         .map(|(i, _)| {
             let cost = 100.0 - (i as f64);
             let safety = (i as f64) / 100.0;
-            FrontPoint { cost, safety, solution_id: i as u64 }
+            FrontPoint {
+                cost,
+                safety,
+                solution_id: i as u64,
+            }
         })
         .collect();
     Json(points)

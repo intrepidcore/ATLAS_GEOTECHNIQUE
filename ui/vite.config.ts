@@ -58,6 +58,22 @@ export default defineConfig(({ mode }) => {
       watch: {
         ignored: ['**/src-tauri/**']
       },
+      proxy: {
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: false,
+          ws: true,
+          configure: (proxy, _options) => {
+            proxy.on('error', (err, req) => {
+              console.error(`[PROXY ERROR] ${req.method} ${req.url} -> ${err.message}`)
+            })
+            proxy.on('proxyReq', (_proxyReq, req) => {
+              console.log(`[PROXY] ${req.method} ${req.url}`)
+            })
+          },
+        }
+      },
     },
     plugins: [
     mpaFallbackPlugin(),
@@ -187,24 +203,6 @@ export default defineConfig(({ mode }) => {
         },
       },
     },
-  },
-  server: {
-    proxy: {
-      '/api': {
-        target: apiTarget,
-        changeOrigin: true,
-        secure: false,
-        ws: true,
-        configure: (proxy, _options) => {
-          proxy.on('error', (err, req) => {
-            console.error(`[PROXY ERROR] ${req.method} ${req.url} -> ${err.message}`)
-          })
-          proxy.on('proxyReq', (_proxyReq, req) => {
-            console.log(`[PROXY] ${req.method} ${req.url}`)
-          })
-        },
-      }
-    }
   },
   }
 })

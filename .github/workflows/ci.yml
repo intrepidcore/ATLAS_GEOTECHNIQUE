@@ -112,7 +112,11 @@ jobs:
       - name: lint
         run: |
           cd ui
-          npm run lint 2>&1 | tee ui-lint.log || true
+          if npm run | grep -qE '^[[:space:]]+lint$'; then
+            npm run lint 2>&1 | tee ui-lint.log || true
+          else
+            echo "(skip) no npm script named 'lint'" | tee ui-lint.log
+          fi
       
       - name: build
         run: |
