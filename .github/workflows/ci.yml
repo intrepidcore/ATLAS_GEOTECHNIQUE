@@ -31,6 +31,10 @@ jobs:
       - uses: actions/checkout@v4
       
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Init CI logs
+        run: |
+          mkdir -p ci-logs/${{ matrix.svc }}
       
       - name: Run migrations
         if: matrix.svc == 'api-geo'
@@ -45,23 +49,23 @@ jobs:
       - name: fmt
         run: |
           cd services/${{ matrix.svc }}
-          cargo fmt --all -- --check
+          cargo fmt --all -- --check 2>&1 | tee ../../ci-logs/${{ matrix.svc }}/fmt.log
       
       - name: clippy
         run: |
           cd services/${{ matrix.svc }}
-          cargo clippy -- -D warnings
+          cargo clippy -- -D warnings 2>&1 | tee ../../ci-logs/${{ matrix.svc }}/clippy.log
       
       - name: check
         run: |
           cd services/${{ matrix.svc }}
-          cargo check --all-targets
+          cargo check --all-targets 2>&1 | tee ../../ci-logs/${{ matrix.svc }}/check.log
       
       - name: test
         if: matrix.svc == 'api-geo'
         run: |
           cd services/${{ matrix.svc }}
-          cargo test --all-targets
+          cargo test --all-targets -- --nocapture 2>&1 | tee ../../ci-logs/${{ matrix.svc }}/test.log
         env:
           DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
       
@@ -69,7 +73,7 @@ jobs:
         if: matrix.svc == 'api-geo'
         run: |
           cd services/${{ matrix.svc }}
-          cargo test --test db_manager_tests -- --ignored --test-threads=1
+          cargo test --test db_manager_tests -- --ignored --test-threads=1 --nocapture 2>&1 | tee ../../ci-logs/${{ matrix.svc }}/test-integration.log
         env:
           DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
       
@@ -77,9 +81,17 @@ jobs:
         if: matrix.svc == 'api-geo'
         run: |
           cd services/${{ matrix.svc }}
-          cargo sqlx prepare --check
+          cargo sqlx prepare --check 2>&1 | tee ../../ci-logs/${{ matrix.svc }}/sqlx-prepare-check.log
         env:
           DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
+
+      - name: Upload Rust CI logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs-rust-${{ matrix.svc }}
+          path: ci-logs/${{ matrix.svc }}/
+          retention-days: 14
   
   ui:
     runs-on: ubuntu-latest
@@ -100,16 +112,17 @@ jobs:
       - name: lint
         run: |
           cd ui
-          npm run lint || true
+          npm run lint 2>&1 | tee ui-lint.log || true
       
       - name: build
         run: |
           cd ui
-          npm run build
+          npm run build 2>&1 | tee ../ui-build.log
 
       - name: bundle-size
         run: |
           cd ui
+          exec > >(tee ../ui-bundle-size.log) 2>&1
           set -e
           if ls dist/assets/main-*.js >/dev/null 2>&1; then
             MAIN_FILE=$(ls -1 dist/assets/main-*.js | head -n 1)
@@ -133,3 +146,14 @@ jobs:
           fi
 
           echo "✅ Bundle size OK: ${MAIN_GZ} bytes"
+
+      - name: Upload UI CI logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs-ui
+          path: |
+            ui-build.log
+            ui-bundle-size.log
+            ui/ui-lint.log
+          retention-days: 14
