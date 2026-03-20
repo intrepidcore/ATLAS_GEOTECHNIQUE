@@ -3,6 +3,8 @@ console.log(
   new Date().toISOString()
 );
 
+import { initTheme } from './theme'
+
 // ============================================================================
 // GUARD D'AUTHENTIFICATION - Forcer le login à l'entrée
 // ============================================================================
@@ -20,6 +22,8 @@ try {
 } catch {
   // ignore
 }
+
+initTheme()
 
 // Vérifier si l'utilisateur est authentifié
 const isAuthenticated = tokenStorage.isAuthenticated()

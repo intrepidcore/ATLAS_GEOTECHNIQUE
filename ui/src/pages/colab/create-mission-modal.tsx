@@ -411,10 +411,10 @@ const CreateMissionModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between p-4 border-b">
+      <div className="relative bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto border border-slate-200 dark:border-slate-700">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-700">
           <h2 className="text-lg font-semibold">Nouvelle Mission</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -428,26 +428,26 @@ const CreateMissionModal: React.FC<{
           )}
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Maille (autocomplétion)</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Maille (autocomplétion)</label>
             <div className="relative">
               <Input placeholder="TG-0..." value={mailleQuery} onChange={e => setMailleQuery(e.target.value)} />
               {(mailleLoading || mailleSuggestions.length > 0) && (
-                <div className="absolute z-10 mt-1 w-full bg-white border rounded-lg shadow max-h-48 overflow-auto">
-                  {mailleLoading && <div className="px-3 py-2 text-sm text-gray-500">Chargement...</div>}
+                <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow max-h-48 overflow-auto">
+                  {mailleLoading && <div className="px-3 py-2 text-sm text-slate-500">Chargement...</div>}
                   {!mailleLoading &&
                     mailleSuggestions.map(m => (
                       <button
                         key={m.id}
                         type="button"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                         onClick={() => {
                           setForm({ ...form, maille_id: m.id, zone_label: m.code });
                           setMailleQuery(m.code);
                           setMailleSuggestions([]);
                         }}
                       >
-                        <div className="font-medium text-gray-900">{m.code}</div>
-                        <div className="text-xs text-gray-500">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{m.code}</div>
+                        <div className="text-xs text-slate-500">
                           {[m.adm1_name, m.adm2_name, m.adm3_name].filter(Boolean).join(' / ') || '—'}
                         </div>
                       </button>
@@ -456,7 +456,7 @@ const CreateMissionModal: React.FC<{
               )}
             </div>
             {form.maille_id && (
-              <div className="mt-1 text-xs text-gray-500">
+              <div className="mt-1 text-xs text-slate-500">
                 Sélectionné: <span className="font-mono">{form.zone_label || form.maille_id}</span>
               </div>
             )}
@@ -524,7 +524,7 @@ const CreateMissionModal: React.FC<{
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Titre *</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Titre *</label>
             <Input
               placeholder="Mission de reconnaissance..."
               value={form.title}
@@ -533,7 +533,7 @@ const CreateMissionModal: React.FC<{
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Thème *</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Thème *</label>
             <Select value={form.theme} onChange={e => setForm({ ...form, theme: e.target.value })} options={MISSION_THEMES} />
           </div>
 

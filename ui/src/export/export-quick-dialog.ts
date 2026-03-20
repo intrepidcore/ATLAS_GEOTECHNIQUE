@@ -66,7 +66,8 @@ const DIALOG_STYLES = `
 }
 
 .export-dialog {
-  background: white;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
   width: 420px;
@@ -79,8 +80,8 @@ const DIALOG_STYLES = `
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-bottom: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
   border-radius: 8px 8px 0 0;
 }
 
@@ -88,7 +89,7 @@ const DIALOG_STYLES = `
   margin: 0;
   font-size: 16px;
   font-weight: 600;
-  color: #1f2937;
+  color: hsl(var(--foreground));
 }
 
 .export-dialog-close {
@@ -96,14 +97,14 @@ const DIALOG_STYLES = `
   border: none;
   font-size: 20px;
   cursor: pointer;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   padding: 4px 8px;
   border-radius: 4px;
 }
 
 .export-dialog-close:hover {
-  background: #e5e7eb;
-  color: #1f2937;
+  background: hsl(var(--secondary));
+  color: hsl(var(--foreground));
 }
 
 .export-dialog-body {
@@ -121,7 +122,7 @@ const DIALOG_STYLES = `
 .export-section-title {
   font-size: 13px;
   font-weight: 600;
-  color: #374151;
+  color: hsl(var(--foreground));
   margin-bottom: 10px;
   display: flex;
   align-items: center;
@@ -145,7 +146,7 @@ const DIALOG_STYLES = `
 .export-field label {
   display: block;
   font-size: 12px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin-bottom: 4px;
 }
 
@@ -153,10 +154,16 @@ const DIALOG_STYLES = `
 .export-field input[type="text"] {
   width: 100%;
   padding: 8px 10px;
-  border: 1px solid #d1d5db;
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
   font-size: 13px;
-  background: white;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.export-field select option {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .export-field select:focus,
@@ -184,7 +191,7 @@ const DIALOG_STYLES = `
 
 .export-radio span {
   font-size: 13px;
-  color: #374151;
+  color: hsl(var(--foreground));
 }
 
 .export-checkbox {
@@ -193,7 +200,7 @@ const DIALOG_STYLES = `
   gap: 8px;
   cursor: pointer;
   font-size: 13px;
-  color: #374151;
+  color: hsl(var(--foreground));
 }
 
 .export-checkbox input {
@@ -213,8 +220,8 @@ const DIALOG_STYLES = `
   justify-content: flex-end;
   gap: 10px;
   padding: 16px 20px;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
+  border-top: 1px solid hsl(var(--border));
+  background: hsl(var(--muted));
   border-radius: 0 0 8px 8px;
 }
 
@@ -228,13 +235,13 @@ const DIALOG_STYLES = `
 }
 
 .export-btn-secondary {
-  background: white;
-  border: 1px solid #d1d5db;
-  color: #374151;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
 }
 
 .export-btn-secondary:hover {
-  background: #f3f4f6;
+  background: hsl(var(--secondary));
 }
 
 .export-btn-primary {
@@ -274,7 +281,7 @@ const DIALOG_STYLES = `
 
 .export-progress-text {
   font-size: 14px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
 }
 
 .export-error {
@@ -288,7 +295,7 @@ const DIALOG_STYLES = `
 }
 
 .export-collapsible {
-  border: 1px solid #e5e7eb;
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
   overflow: hidden;
 }
@@ -298,15 +305,15 @@ const DIALOG_STYLES = `
   justify-content: space-between;
   align-items: center;
   padding: 10px 12px;
-  background: #f9fafb;
+  background: hsl(var(--muted));
   cursor: pointer;
   font-size: 13px;
   font-weight: 500;
-  color: #374151;
+  color: hsl(var(--foreground));
 }
 
 .export-collapsible-header:hover {
-  background: #f3f4f6;
+  background: hsl(var(--secondary));
 }
 
 .export-collapsible-content {

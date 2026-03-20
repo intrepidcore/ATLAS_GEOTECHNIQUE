@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { AuthProvider } from './contexts/AuthContext'
 import LoginPage from './pages/LoginPage'
 import './index.css'
+import { initTheme } from './theme'
 
 try {
   const w = window as any
@@ -15,6 +16,8 @@ try {
 } catch {
   // ignore
 }
+
+initTheme()
 
 function getReturnTo(): string {
   try {

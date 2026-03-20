@@ -191,7 +191,8 @@ const ATLAS_DIALOG_STYLES = `
 }
 
 .atlas-dialog {
-  background: white;
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
   width: 580px;
@@ -243,7 +244,7 @@ const ATLAS_DIALOG_STYLES = `
 .atlas-section-title {
   font-weight: 600;
   font-size: 13px;
-  color: #374151;
+  color: hsl(var(--foreground));
   margin-bottom: 10px;
   display: flex;
   align-items: center;
@@ -262,11 +263,11 @@ const ATLAS_DIALOG_STYLES = `
   gap: 8px;
   cursor: pointer;
   font-size: 13px;
-  color: #1f2937;
+  color: hsl(var(--foreground));
 }
 
 .atlas-checkbox span {
-  color: #1f2937;
+  color: hsl(var(--foreground));
 }
 
 .atlas-checkbox input {
@@ -277,7 +278,7 @@ const ATLAS_DIALOG_STYLES = `
 
 .atlas-checkbox .adm-count {
   font-size: 11px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin-left: auto;
 }
 
@@ -298,9 +299,10 @@ const ATLAS_DIALOG_STYLES = `
   padding: 4px 6px;
   font-size: 11px;
   font-family: 'Consolas', 'Monaco', monospace;
-  border: 1px solid #d1d5db;
+  border: 1px solid hsl(var(--border));
   border-radius: 4px;
-  background: #f9fafb;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
   cursor: pointer;
 }
 
@@ -338,28 +340,35 @@ const ATLAS_DIALOG_STYLES = `
 .atlas-field label {
   display: block;
   font-size: 12px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   margin-bottom: 4px;
 }
 
 .atlas-field .field-hint {
   display: block;
   font-size: 10px;
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
   margin-top: 4px;
 }
 
 .atlas-field select {
   width: 100%;
   padding: 8px;
-  border: 1px solid #d1d5db;
+  border: 1px solid hsl(var(--border));
   border-radius: 6px;
   font-size: 13px;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+}
+
+.atlas-field select option {
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .atlas-dialog-footer {
   padding: 16px 20px;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid hsl(var(--border));
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -375,12 +384,12 @@ const ATLAS_DIALOG_STYLES = `
 }
 
 .atlas-btn-secondary {
-  background: #f3f4f6;
-  color: #374151;
+  background: hsl(var(--secondary));
+  color: hsl(var(--secondary-foreground));
 }
 
 .atlas-btn-secondary:hover {
-  background: #e5e7eb;
+  background: hsl(var(--muted));
 }
 
 .atlas-btn-primary {
@@ -400,13 +409,13 @@ const ATLAS_DIALOG_STYLES = `
 .atlas-progress {
   margin-top: 16px;
   padding: 16px;
-  background: #f9fafb;
+  background: hsl(var(--muted));
   border-radius: 8px;
 }
 
 .atlas-progress-bar {
   height: 8px;
-  background: #e5e7eb;
+  background: hsl(var(--border));
   border-radius: 4px;
   overflow: hidden;
   margin-bottom: 8px;
@@ -420,29 +429,29 @@ const ATLAS_DIALOG_STYLES = `
 
 .atlas-progress-text {
   font-size: 12px;
-  color: #6b7280;
+  color: hsl(var(--muted-foreground));
   text-align: center;
 }
 
 .atlas-info {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
   padding: 12px;
   font-size: 12px;
-  color: #1e40af;
+  color: hsl(var(--foreground));
   margin-bottom: 16px;
 }
 
 /* Accordéon pour les thématiques */
 .atlas-accordion {
-  border: 1px solid #e5e7eb;
+  border: 1px solid hsl(var(--border));
   border-radius: 8px;
   overflow: hidden;
 }
 
 .atlas-accordion-item {
-  border-bottom: 1px solid #e5e7eb;
+  border-bottom: 1px solid hsl(var(--border));
 }
 
 .atlas-accordion-item:last-child {
@@ -453,14 +462,14 @@ const ATLAS_DIALOG_STYLES = `
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  background: #f9fafb;
+  background: hsl(var(--muted));
   cursor: pointer;
   user-select: none;
   gap: 8px;
 }
 
 .atlas-accordion-header:hover {
-  background: #f3f4f6;
+  background: hsl(var(--secondary));
 }
 
 .atlas-accordion-header .icon {
@@ -476,15 +485,15 @@ const ATLAS_DIALOG_STYLES = `
 
 .atlas-accordion-header .count {
   font-size: 11px;
-  color: #6b7280;
-  background: #e5e7eb;
+  color: hsl(var(--muted-foreground));
+  background: hsl(var(--border));
   padding: 2px 8px;
   border-radius: 10px;
 }
 
 .atlas-accordion-header .chevron {
   font-size: 12px;
-  color: #9ca3af;
+  color: hsl(var(--muted-foreground));
   transition: transform 0.2s;
 }
 
@@ -495,7 +504,7 @@ const ATLAS_DIALOG_STYLES = `
 .atlas-accordion-body {
   display: none;
   padding: 8px 12px 12px 32px;
-  background: white;
+  background: hsl(var(--card));
 }
 
 .atlas-accordion-item.open .atlas-accordion-body {
