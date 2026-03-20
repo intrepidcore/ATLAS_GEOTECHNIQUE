@@ -395,6 +395,20 @@ fn find_seed_dump(repo_root: &Path) -> Option<PathBuf> {
         }
     }
 
+    if let Ok(seed_dir) = std::env::var("ATLAS_DESKTOP_SEED_DIR") {
+        let base = PathBuf::from(seed_dir);
+        for name in [
+            "atlas_desktop_seed.dump",
+            "atlas_desktop_seed.sql",
+            "atlas_desktop_seed.backup",
+        ] {
+            let p = base.join(name);
+            if p.exists() {
+                return Some(p);
+            }
+        }
+    }
+
     // Fallback: pick the newest dump-like file in backups.
     let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
     if let Ok(rd) = std::fs::read_dir(&base) {

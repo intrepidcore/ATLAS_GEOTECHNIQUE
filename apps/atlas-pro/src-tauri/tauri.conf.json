@@ -27,7 +27,11 @@
     "createUpdaterArtifacts": false,
     "targets": ["msi"],
     "externalBin": ["bin/api-geo"],
-    "resources": ["pg/**/*"],
+    "resources": [
+      "pg/**/*",
+      "../../../data/db/backups/atlas_desktop_seed.dump",
+      "../../../data/db/backups/atlas_desktop_seed.dump.json"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

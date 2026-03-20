@@ -133,6 +133,18 @@ fn try_set_embedded_postgres_bin_dir(app: &tauri::App) {
     }
 }
 
+fn try_set_bundled_seed_dir(app: &tauri::App) {
+    if std::env::var("ATLAS_DESKTOP_SEED_DIR").is_ok() {
+        return;
+    }
+    if let Ok(p) = app
+        .path()
+        .resolve("data/db/backups", tauri::path::BaseDirectory::Resource)
+    {
+        std::env::set_var("ATLAS_DESKTOP_SEED_DIR", p.to_string_lossy().to_string());
+    }
+}
+
 fn rotate_log_file(path: &std::path::Path, max_bytes: u64, max_files: usize) {
     let Ok(meta) = std::fs::metadata(path) else { return; };
     if meta.len() < max_bytes {
@@ -229,7 +241,13 @@ pub fn run() {
             std::fs::create_dir_all(&logs_dir)
                 .map_err(|e| format!("failed to create logs dir ({}): {e}", logs_dir.display()))?;
 
-            tracing::info!(data_dir = %data_dir.display(), logs_dir = %logs_dir.display(), "startup");
+            tracing::info!(
+                data_dir = %data_dir.display(),
+                logs_dir = %logs_dir.display(),
+                pg_bin_dir = %std::env::var("ATLAS_PG_BIN_DIR").unwrap_or_default(),
+                seed_dir = %std::env::var("ATLAS_DESKTOP_SEED_DIR").unwrap_or_default(),
+                "startup"
+            );
 
             harden_windows_permissions(&data_dir, &logs_dir);
 
@@ -248,6 +266,7 @@ pub fn run() {
 
             // Embedded Postgres (bundle): auto-résolution du bin dir depuis les resources
             try_set_embedded_postgres_bin_dir(app);
+            try_set_bundled_seed_dir(app);
 
             // First-run: on n'effectue pas le bootstrap DB/API avant que l'installateur
             // (wizard UI) n'ait validé et déclenché l'installation.
