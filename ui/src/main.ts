@@ -228,6 +228,39 @@ try {
   // ignore
 }
 console.log('[INIT] API_GEO configuré:', API_GEO)
+
+// ---- INDICATEUR DE SANTÉ API ----
+function startApiHealthCheck() {
+  const dot = document.getElementById('apiHealthDot');
+  const badge = document.getElementById('apiBadge');
+  if (!dot || !badge) return;
+
+  const check = async () => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+      const res = await fetch(`${API_GEO}/healthz`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      if (res.ok) {
+        dot.style.background = 'var(--ok)';
+        dot.style.boxShadow = '0 0 5px var(--ok)';
+        badge.title = `API: ${API_GEO} (En ligne)`;
+      } else {
+        throw new Error('API ERROR');
+      }
+    } catch {
+      dot.style.background = 'var(--err)';
+      dot.style.boxShadow = '0 0 5px var(--err)';
+      badge.title = `API: ${API_GEO} (Hors ligne)`;
+    }
+  };
+
+  check();
+  setInterval(check, 10000);
+}
+
+startApiHealthCheck();
 void refreshCurrentUserPermissions()
 
 // Helper pour ajouter des event listeners de manière sûre

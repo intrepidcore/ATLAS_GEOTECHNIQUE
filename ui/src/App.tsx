@@ -25,6 +25,7 @@ import { selectionApi } from '@/services/selection-api'
 import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/services/api'
 import { authApi, tokenStorage } from './services/auth-api'
 import { stagingApiV2 } from '@/services/staging-api'
+import { ApiHealthIndicator } from '@/components/ApiHealthIndicator'
 
 const ColabPage = React.lazy(() => import('@/pages/ColabPage'))
 
@@ -653,7 +654,7 @@ function App() {
               <div className="flex items-center gap-3">
                 <MapPin className="h-8 w-8" />
                 <div>
-                  <h1 className="text-xl font-bold">Atlas Survey</h1>
+                  <h1 className="text-xl font-bold flex items-center gap-2">Atlas Survey <ApiHealthIndicator /></h1>
                   <p className="text-sm text-blue-100">Espace Terrain Étudiant</p>
                 </div>
               </div>
@@ -680,8 +681,9 @@ function App() {
             <div className="flex items-center gap-3">
               <Database className="h-8 w-8 text-blue-600" />
               <div>
-                <h1 className="text-xl font-bold text-slate-900">
+                <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                   Atlas Géotechnique - Gestionnaire de Base de Données
+                  <ApiHealthIndicator />
                 </h1>
                 <p className="text-sm text-slate-500">
                   Gestion avancée des données géotechniques
