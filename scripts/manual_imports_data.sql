@@ -1,0 +1,143 @@
+BEGIN;
+-- ===========================================================
+-- IMPORT MANUEL GEOTECHNIQUE
+-- Ce script lie les sondages aux échantillons et aux essais
+-- ===========================================================
+
+-- IMPORT VBS (bleu.xlsx)
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('2ba0d78a-e08c-4582-84b4-cb6e58adcd77', '8c73cf00-ecef-40ca-9b74-bdf37b086d6c', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('2ba0d78a-e08c-4582-84b4-cb6e58adcd77', 3.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('987f76a0-321e-4030-93f2-363cccd4722c', '8c73cf00-ecef-40ca-9b74-bdf37b086d6c', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('987f76a0-321e-4030-93f2-363cccd4722c', 2.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('50f429af-5954-48e7-9468-1ff93c20f506', '8c73cf00-ecef-40ca-9b74-bdf37b086d6c', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('50f429af-5954-48e7-9468-1ff93c20f506', 2.73) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('516f6ded-0d5b-4231-808d-5ced1b846954', '2731964a-0810-474b-b257-d86d4b6707d3', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('516f6ded-0d5b-4231-808d-5ced1b846954', 16.45) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('420af0cc-c42d-4064-8b59-b01199bc9834', '2731964a-0810-474b-b257-d86d4b6707d3', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('420af0cc-c42d-4064-8b59-b01199bc9834', 10.18) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('85d478f4-15de-4e4c-b368-130d95ad5253', '2731964a-0810-474b-b257-d86d4b6707d3', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('85d478f4-15de-4e4c-b368-130d95ad5253', 3.9) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('6fe06c0d-ad3d-4010-b84d-95059dd185ab', 'b9f16a36-8c74-4585-b77a-2a5a978b9e3b', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('6fe06c0d-ad3d-4010-b84d-95059dd185ab', 16.65) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('6f4cf56a-2d71-4114-ba86-7d6e86b6bcb7', 'b9f16a36-8c74-4585-b77a-2a5a978b9e3b', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('6f4cf56a-2d71-4114-ba86-7d6e86b6bcb7', 18.07) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('69ba1a43-88f9-4e7e-bb4b-07e1eb5c0c85', 'b9f16a36-8c74-4585-b77a-2a5a978b9e3b', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('69ba1a43-88f9-4e7e-bb4b-07e1eb5c0c85', 9.47) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('7c265280-80b8-49b1-9624-2cf421fc4266', 'fc1ff1e8-725c-4c37-8aba-c3cececf13fe', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('7c265280-80b8-49b1-9624-2cf421fc4266', 16.65) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('eb4a15fd-6c11-4625-9aad-09f147164f06', 'fc1ff1e8-725c-4c37-8aba-c3cececf13fe', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('eb4a15fd-6c11-4625-9aad-09f147164f06', 18.07) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('d6aa1de5-ac6f-4c6e-b97a-b509ea42c445', 'fc1ff1e8-725c-4c37-8aba-c3cececf13fe', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('d6aa1de5-ac6f-4c6e-b97a-b509ea42c445', 9.47) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('f137a203-6ff2-4b0f-bbca-8d86615f0a14', 'a8c75795-93aa-4c79-b3b0-202cba63058d', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('f137a203-6ff2-4b0f-bbca-8d86615f0a14', 5.71) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('0fb9cd7b-1aab-4887-b3bb-1cd14798287e', 'a8c75795-93aa-4c79-b3b0-202cba63058d', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('0fb9cd7b-1aab-4887-b3bb-1cd14798287e', 6.96) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('d3a5b269-c10c-4b3f-b21b-fb7662fdde94', 'a8c75795-93aa-4c79-b3b0-202cba63058d', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('d3a5b269-c10c-4b3f-b21b-fb7662fdde94', 7.79) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('612ec54b-064e-4986-9456-cd8a16471623', '8280dbc8-c524-4952-a0b1-4b9221b27d01', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('612ec54b-064e-4986-9456-cd8a16471623', 8.46) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('38893bee-1a55-4123-b4ae-9167674100a5', '8280dbc8-c524-4952-a0b1-4b9221b27d01', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('38893bee-1a55-4123-b4ae-9167674100a5', 7.57) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('95a1a309-b1ce-4f27-9f0a-ba93ac1c1c52', '8280dbc8-c524-4952-a0b1-4b9221b27d01', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('95a1a309-b1ce-4f27-9f0a-ba93ac1c1c52', 10.67) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('d1b92ff1-1edd-4ee0-b5c0-65af8dcf7ce7', 'd4e9406f-219c-4dc2-b094-0015e9c2976a', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('d1b92ff1-1edd-4ee0-b5c0-65af8dcf7ce7', 6.69) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('cd0ab6f9-cab1-4f45-82c4-647b219abd52', 'd4e9406f-219c-4dc2-b094-0015e9c2976a', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('cd0ab6f9-cab1-4f45-82c4-647b219abd52', 10.66) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('def5e955-f5ab-46f0-bf15-1fececb5494d', 'd4e9406f-219c-4dc2-b094-0015e9c2976a', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('def5e955-f5ab-46f0-bf15-1fececb5494d', 19.92) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('241cc2c5-bb93-4366-aaba-2c20fe063723', 'b834fec6-e26b-4173-b206-f951c8afb5b0', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('241cc2c5-bb93-4366-aaba-2c20fe063723', 4.83) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('d64e61fe-95b5-43d1-84cb-ba4b49fbd6b0', 'b834fec6-e26b-4173-b206-f951c8afb5b0', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('d64e61fe-95b5-43d1-84cb-ba4b49fbd6b0', 15.48) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('753f74b8-1f08-4628-9577-5e8ba90deadf', '817674e1-4adb-4144-ba26-7cc51cfbcb8e', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('753f74b8-1f08-4628-9577-5e8ba90deadf', 10.9) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('59afd157-3273-422a-93db-af0e58e5797d', '817674e1-4adb-4144-ba26-7cc51cfbcb8e', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('59afd157-3273-422a-93db-af0e58e5797d', 13.95) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('bd56d64c-5eb6-4297-a562-1cabb42e4464', '817674e1-4adb-4144-ba26-7cc51cfbcb8e', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('bd56d64c-5eb6-4297-a562-1cabb42e4464', 5.8) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('f12255b4-cf7b-40df-918d-3c5809ba8bb4', '9671aa7b-7dd4-478b-bbc0-0971c037db08', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('f12255b4-cf7b-40df-918d-3c5809ba8bb4', 8.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('a66c84c5-d7c3-4028-8627-42afcfe12c65', '9671aa7b-7dd4-478b-bbc0-0971c037db08', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('a66c84c5-d7c3-4028-8627-42afcfe12c65', 4.8) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('3678c053-d74e-49ba-8199-a36dfd30f7d5', '9671aa7b-7dd4-478b-bbc0-0971c037db08', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('3678c053-d74e-49ba-8199-a36dfd30f7d5', 7.33) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('c538c9ef-8f5a-49e0-9c79-b91c99047a36', 'e64b667c-f500-4d02-af72-b993dbbf5840', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('c538c9ef-8f5a-49e0-9c79-b91c99047a36', 9.01) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('4a61b061-a8e2-48da-bc50-883b04681b8e', 'e64b667c-f500-4d02-af72-b993dbbf5840', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('4a61b061-a8e2-48da-bc50-883b04681b8e', 11.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('ce7e0fdf-ec51-4bbc-b02d-d136bbedddbb', '63026077-5af1-408f-b9e7-33fc4527a0d5', 1) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('ce7e0fdf-ec51-4bbc-b02d-d136bbedddbb', 5.26) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('8f917d35-07f5-4290-ae69-b41a2c741e8a', '63026077-5af1-408f-b9e7-33fc4527a0d5', 1.5) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('8f917d35-07f5-4290-ae69-b41a2c741e8a', 6.34) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('c9470720-3f6f-45cb-8a43-1698d0bd8113', '63026077-5af1-408f-b9e7-33fc4527a0d5', 2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_vbs (echantillon_id, vbs) VALUES ('c9470720-3f6f-45cb-8a43-1698d0bd8113', 6.74) ON CONFLICT DO NOTHING;
+
+-- IMPORT ATTERBERG (limite.xlsx)
+
+-- IMPORT GONFLEMENT (potentielle_de_gonflement.xlsx)
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('4e7918a9-3300-4b1b-8825-254b207c267c', '8c73cf00-ecef-40ca-9b74-bdf37b086d6c', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('4e7918a9-3300-4b1b-8825-254b207c267c', 5.51) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('987f76a0-321e-4030-93f2-363cccd4722c', 5.75) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('a86ddeb8-b851-44ae-a04f-7203daea9998', '8c73cf00-ecef-40ca-9b74-bdf37b086d6c', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('a86ddeb8-b851-44ae-a04f-7203daea9998', 6.62) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('8482f591-4763-4aa5-ac13-9ecc21fa9d52', '2731964a-0810-474b-b257-d86d4b6707d3', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('8482f591-4763-4aa5-ac13-9ecc21fa9d52', 5.84) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('420af0cc-c42d-4064-8b59-b01199bc9834', 6.58) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('ddaf4c80-b024-4fce-916f-ece23a16978b', '2731964a-0810-474b-b257-d86d4b6707d3', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('ddaf4c80-b024-4fce-916f-ece23a16978b', 6.3) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('bae2dd4e-7238-4748-8d49-4c36038ddb31', 'b9f16a36-8c74-4585-b77a-2a5a978b9e3b', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('bae2dd4e-7238-4748-8d49-4c36038ddb31', 7.29) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('6f4cf56a-2d71-4114-ba86-7d6e86b6bcb7', 6.66) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('1b673513-b124-49ae-8e4a-47b1383a799c', 'b9f16a36-8c74-4585-b77a-2a5a978b9e3b', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('1b673513-b124-49ae-8e4a-47b1383a799c', 7.15) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('1e900c1e-51e3-48c2-861f-ac4ae7f9fd19', 'fc1ff1e8-725c-4c37-8aba-c3cececf13fe', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('1e900c1e-51e3-48c2-861f-ac4ae7f9fd19', 4.07) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('eb4a15fd-6c11-4625-9aad-09f147164f06', 4.17) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('ace8b889-4751-4e58-b335-c7654ba58ecf', 'fc1ff1e8-725c-4c37-8aba-c3cececf13fe', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('ace8b889-4751-4e58-b335-c7654ba58ecf', 3.9) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('70f6143a-e8ae-46cc-bc97-5c79913c1851', 'a8c75795-93aa-4c79-b3b0-202cba63058d', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('70f6143a-e8ae-46cc-bc97-5c79913c1851', 6.47) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('0fb9cd7b-1aab-4887-b3bb-1cd14798287e', 3.87) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('2fe77860-5234-4688-9b0a-3dbed9f0ee94', 'a8c75795-93aa-4c79-b3b0-202cba63058d', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('2fe77860-5234-4688-9b0a-3dbed9f0ee94', 3.28) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('fef3891d-3cc5-46dd-9adb-071a76497f90', '8280dbc8-c524-4952-a0b1-4b9221b27d01', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('fef3891d-3cc5-46dd-9adb-071a76497f90', 4.28) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('38893bee-1a55-4123-b4ae-9167674100a5', 5.15) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('5c77030b-c449-4ce1-bb82-4b49e9bc9730', '8280dbc8-c524-4952-a0b1-4b9221b27d01', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('5c77030b-c449-4ce1-bb82-4b49e9bc9730', 5.93) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('b5f9b05a-9fe4-4403-968a-b34bc212d002', 'd4e9406f-219c-4dc2-b094-0015e9c2976a', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('b5f9b05a-9fe4-4403-968a-b34bc212d002', 6.61) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('cd0ab6f9-cab1-4f45-82c4-647b219abd52', 7.39) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('a311fb35-93f1-4bb7-a72d-76d7a55024ca', 'd4e9406f-219c-4dc2-b094-0015e9c2976a', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('a311fb35-93f1-4bb7-a72d-76d7a55024ca', 7.42) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('66600ccd-e862-4c8a-befc-53ccd2e49df7', 'b834fec6-e26b-4173-b206-f951c8afb5b0', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('66600ccd-e862-4c8a-befc-53ccd2e49df7', 5.7) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('d64e61fe-95b5-43d1-84cb-ba4b49fbd6b0', 6.56) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('56a50a70-f9ee-4e9c-b3d7-3dddff9784b3', 'b834fec6-e26b-4173-b206-f951c8afb5b0', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('56a50a70-f9ee-4e9c-b3d7-3dddff9784b3', 7.72) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('2902fc3e-6462-42f8-a853-4ca658869671', '817674e1-4adb-4144-ba26-7cc51cfbcb8e', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('2902fc3e-6462-42f8-a853-4ca658869671', 4.55) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('59afd157-3273-422a-93db-af0e58e5797d', 5.08) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('e53eff6c-62f7-416c-8ede-a69da02cfbdb', '817674e1-4adb-4144-ba26-7cc51cfbcb8e', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('e53eff6c-62f7-416c-8ede-a69da02cfbdb', 5.2) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('319690cf-beb9-4e51-9c4f-7f6a42dbf2a6', '9671aa7b-7dd4-478b-bbc0-0971c037db08', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('319690cf-beb9-4e51-9c4f-7f6a42dbf2a6', 5.4) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('a66c84c5-d7c3-4028-8627-42afcfe12c65', 5.79) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('dc2d6e20-54bb-485f-af85-30ec6b7dc61d', '9671aa7b-7dd4-478b-bbc0-0971c037db08', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('dc2d6e20-54bb-485f-af85-30ec6b7dc61d', 6.02) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('a6d4e818-237f-4d63-a8fd-6caa1066865f', 'e64b667c-f500-4d02-af72-b993dbbf5840', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('a6d4e818-237f-4d63-a8fd-6caa1066865f', 4.16) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('4a61b061-a8e2-48da-bc50-883b04681b8e', 3.71) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('d160c32d-17ca-4df4-ad10-637adbb956bb', 'e64b667c-f500-4d02-af72-b993dbbf5840', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('d160c32d-17ca-4df4-ad10-637adbb956bb', 4.51) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('0e33442f-35fc-4a65-8153-ed7bda96fa28', '63026077-5af1-408f-b9e7-33fc4527a0d5', 1.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('0e33442f-35fc-4a65-8153-ed7bda96fa28', 4.05) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('8f917d35-07f5-4290-ae69-b41a2c741e8a', 6.35) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.echantillons (id, sondage_id, depth_m) VALUES ('7f5f501e-e125-4b5f-82dd-11d8236dec32', '63026077-5af1-408f-b9e7-33fc4527a0d5', 2.0) ON CONFLICT DO NOTHING;
+INSERT INTO atlas.essais_potentiel_gonflement (echantillon_id, eg) VALUES ('7f5f501e-e125-4b5f-82dd-11d8236dec32', 6.57) ON CONFLICT DO NOTHING;
+
+-- IMPORT CLASSIFICATION (classification.xlsx)
+COMMIT;
+-- FIN
