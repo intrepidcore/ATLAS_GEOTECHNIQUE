@@ -796,3 +796,33 @@ Le fichier `ui/src/config.ts` (ou équivalent) est le **seul endroit** qui conna
 L'application affiche en permanence l'état de la connexion API/DB (ex: dans la barre de header via `ApiHealthIndicator`).
 *   Quand l'API est hors ligne, l'utilisateur voit un message explicite.
 *   Ne jamais laisser une carte muette se charger sans explication sur l'échec réseau.
+
+---
+
+## 18. Qualité et Audit des Données (Géotechnique)
+
+**[DATA-01] — Tout audit de données produit un plan d'action, pas juste un constat**
+
+Un rapport qui dit "85% de VBS manquants" sans dire "importer bleu.xlsx via le script X avec la jointure Y" n'est pas actionnable.
+Format obligatoire pour tout rapport d'audit de données :
+1. Constat (quantifié, par région, par type)
+2. Sources disponibles pour combler les manques
+3. Script d'import avec clé de jointure documentée
+4. Validations physiques (plages admissibles par type d'essai)
+5. Estimation du taux de couverture attendu après import
+
+**[DATA-02] — Les données géotechniques ont des plages physiques connues**
+
+Toute valeur importée est rejetée si elle est hors plage :
+*   VBS : 0-20 g/100g
+*   WL  : 20-120 %
+*   WP  : 10-60 %
+*   IP  : 0-80 % et |IP - (WL-WP)| ≤ 5%
+*   γd max : 14-22 kN/m³
+*   w_opt  : 5-30 %
+
+Ces validations sont dans `scripts/import_missing_geotech_data.py`. Aucun import ne bypasse ces validations.
+
+**[DATA-03] — Le taux de complétude des données est un KPI visible dans l'app**
+
+Le panneau maille (ou sondage) doit afficher le score de qualité (0-100) et la liste des essais manquants (ex: via le composant `DataQualityBadge`). Un ingénieur ne doit jamais avoir à interroger la DB pour savoir quelles données structurantes sont disponibles ou manquantes.

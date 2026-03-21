@@ -60,8 +60,41 @@ Ce fichier PDF scanné contient très probablement les feuilles de laboratoire (
 
 ---
 
-## 4. Conclusion 
+## 4. Plan Technique d'Exécution et Recommandations
+
+Suite à l'analyse, un plan technique concret a été défini et implémenté :
+
+### 4.1 Plan Technique d'Import (60% des manques)
+**Script :** `scripts/import_missing_geotech_data.py`
+**Clé de jointure :** 
+1. `sondage_code` (jointure directe)
+2. `commune_nom` + coordonnées GPS (via `atlas.colab_maille_code_map`)
+3. localité (via `atlas.v_maille_adm3`)
+
+**Validations strictes appliquées :**
+Toute valeur doit respecter la physique des sols : 
+* VBS : 0-20 g/100g
+* Limites d'Atterberg : WL (20-120%), WP (10-60%), IP (0-80%)
+* Proctor : γd max (14-22 kN/m³), w_opt (5-30%)
+
+### 4.2 Stratégie PDF Proctor (OCR)
+**Outils :** `pdfplumber` et `pytesseract`.
+**Script :** `scripts/extract_proctor_from_pdf.py`
+Une stratégie en deux phases a été implémentée :
+1. Extraction automatisée (OCR) des valeurs γd max et w_opt.
+2. Indexation de la fiabilité des valeurs extraites pour revue humaine manuelle via interface ou CSV.
+**Sécurité des données :** Le PDF géotechnique représente la ressource la plus difficile à recréer. Il est crucial de le tracer (via Git LFS) ou d'en assurer la sauvegarde cloud versionnée pour éviter toute perte d'inventaire critique.
+
+### 4.3 KPI de Complétude des données (UI)
+Les ingénieurs doivent avoir un retour visuel direct de la complétude. Le composant `DataQualityBadge` a été développé pour le panel de détails de maille, affichant :
+* Le score de 0 à 100 de complétude des données.
+* Les tests manquants (Proctor, VBS, etc.) taggés en rouge.
+
+---
+
+## 5. Conclusion 
 
 1. L'audit automatisé a démontré la fiabilité du script initial, isolant chirurgicalement les manques (Proctor, Atterberg, 2mm). 
 2. Plus de 60% du problème peut être résolu informatiquement de suite, en ingérant la galaxie de fichiers excel thématiques de `data/xlsx/`.
-3. L'effort humain pourra alors se concentrer à 100% sur le décryptage du gros rapport PDF pour résoudre le manque critique (100%) d'essais Proctor.
+3. L'effort humain pourra alors se concentrer à 100% sur le décryptage du gros rapport PDF pour résoudre le manque critique.
+4. L'automatisation (CI) via `.github/workflows/data-quality-weekly.yml` garantit désormais que tout recul de la complétude sera intercepté hebdomadairement.

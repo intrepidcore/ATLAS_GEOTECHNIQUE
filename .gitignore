@@ -78,3 +78,7 @@ docs/image/
 
 # Local Netlify folder
 .netlify
+
+# Fichiers de données (non-suivis dans git)
+data/**/*.xlsx
+data/**/*.csv

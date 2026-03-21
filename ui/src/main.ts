@@ -1478,6 +1478,8 @@ function renderMailleKpisEmpty() {
   if (kpiEssais) kpiEssais.textContent = '0'
 }
 
+import { mountDataQualityBadge } from './components/DataQualityBadgeMount';
+
 function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
   const ficheCode = document.getElementById('ficheCode')
   const ficheAdm = document.getElementById('ficheAdm')
@@ -1545,6 +1547,9 @@ function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
   } else if (ficheUtm31) {
     ficheUtm31.style.display = 'none'
   }
+
+  // Montage du composant React pour la qualité des données
+  mountDataQualityBadge('dataQualityBadgeContainer', data);
 }
 
 function renderMailleKpis(metrics: CellMetrics) {

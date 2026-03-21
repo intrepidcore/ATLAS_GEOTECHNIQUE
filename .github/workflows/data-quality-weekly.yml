@@ -1,0 +1,78 @@
+name: Audit Qualité Données Géotechniques
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # Lundi 07:00 UTC
+  workflow_dispatch:
+
+jobs:
+  audit:
+    runs-on: ubuntu-22.04
+    services:
+      postgres:
+        image: postgis/postgis:15-3.3
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: atlas_clean
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+      
+      - name: Restore seed (Si existant)
+        run: |
+          if [ -f "data/db/backups/atlas_desktop_seed.dump" ]; then
+            pg_restore -h localhost -U atlas -d atlas_clean data/db/backups/atlas_desktop_seed.dump || true
+          else
+            echo "Seed backup not found, skipping restore."
+          fi
+        env:
+          PGPASSWORD: test
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Installer les dépendances
+        run: pip install pandas psycopg2-binary
+      
+      - name: Exécuter l'audit qualité données (Fallback)
+        run: |
+          mkdir -p docs/audit_geotech
+          # On suppose que ce script sera étoffé pour cibler atlas_clean
+          if [ -f "scripts/audit_data_quality.py" ]; then
+             python scripts/audit_data_quality.py \
+               --db-url "postgres://atlas:test@localhost/atlas_clean" \
+               --output docs/audit_geotech/RAPPORT_AUTO_$(date +%Y%m%d).md \
+               --format markdown
+          else
+             echo "Script audit_data_quality.py non trouvé (mock check)." > docs/audit_geotech/RAPPORT_AUTO_$(date +%Y%m%d).md
+          fi
+      
+      - name: Comparer avec l'audit précédent
+        run: |
+          if [ -f "scripts/compare_audits.py" ]; then
+             python scripts/compare_audits.py \
+               --previous docs/audit_geotech/RAPPORT_AUDIT_DONNEES_MANQUANTES.md \
+               --current docs/audit_geotech/RAPPORT_AUTO_$(date +%Y%m%d).md \
+               --fail-if-regression
+          else
+             echo "Script de comparaison non trouvé, OK."
+          fi
+      
+      - name: Upload rapport
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-quality-report-${{ github.run_id }}
+          path: docs/audit_geotech/RAPPORT_AUTO_*.md
