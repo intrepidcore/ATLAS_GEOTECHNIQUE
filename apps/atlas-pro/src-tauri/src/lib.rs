@@ -660,8 +660,12 @@ pub fn run() {
             // This avoids hardcoding 8000 and works even when a dev Docker stack already binds it.
             if let Some(p) = window.try_state::<ManagedApiPort>() {
                 let _ = window.eval(&format!(
-                    "window.__API_GEO__ = 'http://127.0.0.1:{}';",
-                    p.0
+                    "window.__ATLAS_CONFIG__ = {};",
+                    serde_json::json!({
+                        "apiBase": format!("http://127.0.0.1:{}/api", p.0),
+                        "wsBase": format!("ws://127.0.0.1:{}/api/ws", p.0),
+                        "version": env!("CARGO_PKG_VERSION"),
+                    })
                 ));
                 let _ = window.eval("window.dispatchEvent(new Event('atlas:api-base:updated'));\n");
             }

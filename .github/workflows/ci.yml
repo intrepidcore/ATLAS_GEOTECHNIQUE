@@ -119,6 +119,40 @@ jobs:
           else
             echo "(skip) no npm script named 'lint'" | tee ui-lint.log
           fi
+
+      - name: Détecter les hardcodes de configuration
+        run: |
+          VIOLATIONS=0
+          
+          # Ports hardcodés dans HTML
+          if grep -rn "127\.0\.0\.1:[0-9]\{4\}" ui/src/*.html ui/public/*.html ui/index.html 2>/dev/null; then
+            echo "❌ Port hardcodé trouvé dans un fichier HTML"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          fi
+          
+          # window.__API_GEO__ avec valeur hardcodée
+          if grep -rn 'window\.__API_GEO__\s*=\s*"http' ui/src/ ui/index.html 2>/dev/null; then
+            echo "❌ window.__API_GEO__ hardcodé trouvé"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          fi
+          
+          # URLs localhost hardcodées dans TypeScript (hors tests et config)
+          if grep -rn '"http://127\.0\.0\.1:800[0-9]' ui/src/ \
+              --include="*.ts" --include="*.tsx" \
+              | grep -v "\.spec\." | grep -v "\.test\." \
+              | grep -v "vite.config" 2>/dev/null; then
+            echo "❌ URL localhost hardcodée dans le code TypeScript"
+            VIOLATIONS=$((VIOLATIONS + 1))
+          fi
+          
+          if [ $VIOLATIONS -gt 0 ]; then
+            echo ""
+            echo "Règle [CFG-01] : La configuration ne doit jamais être dans le code source."
+            echo "Utiliser : import.meta.env.VITE_API_BASE ou window.__ATLAS_CONFIG__ injecté par Tauri"
+            exit 1
+          fi
+          
+          echo "✅ Aucun hardcode de configuration détecté"
       
       - name: build
         run: |

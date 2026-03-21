@@ -768,3 +768,31 @@ Pour tout script d'application sur la base de données (migrations, imports, ETL
 *   **Action :** `psql -v ON_ERROR_STOP=1 -f script.sql`
 *   **Comportement :** À la moindre erreur (rouge), arrête tout immédiatement.
 *   **Pourquoi :** Évite les exécutions partielles qui laissent la base dans un état incohérent.
+
+---
+
+## 17. Configuration d'environnement (Anti-Hardcode)
+
+**[CFG-01] — La configuration ne vit jamais dans le code source**
+
+Jamais de port, d'URL, ou de credential hardcodé dans :
+*   `index.html`
+*   `main.ts` / `main.tsx`
+*   Un composant React
+
+La configuration vit uniquement dans :
+*   `.env.local` (développement, non commité)
+*   `window.__ATLAS_CONFIG__` injecté par Tauri (desktop au runtime)
+*   Variables d'environnement CI (ex: GitHub Secrets)
+
+*Enforcement : Le script CI `ci.yml` rejette automatiquement tout merge incluant les chaînes "127.0.0.1:80..." ou "window.__API_GEO__ = ...".*
+
+**[CFG-02] — Une seule source de vérité pour la config API**
+
+Le fichier `ui/src/config.ts` (ou équivalent) est le **seul endroit** qui connaît l'URL de l'API. Tout autre fichier (client, websockets, fetch) importe depuis `config.ts`. Il n'y a jamais deux endroits qui reconstruisent ou override l'URL de l'API indépendamment.
+
+**[CFG-03] — L'indicateur de santé est toujours visible**
+
+L'application affiche en permanence l'état de la connexion API/DB (ex: dans la barre de header via `ApiHealthIndicator`).
+*   Quand l'API est hors ligne, l'utilisateur voit un message explicite.
+*   Ne jamais laisser une carte muette se charger sans explication sur l'échec réseau.
