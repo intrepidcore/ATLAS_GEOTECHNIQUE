@@ -47,15 +47,15 @@ function mpaFallbackPlugin(): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiTarget = env.VITE_API_TARGET || 'http://127.0.0.1:8000'
+  const devPort = Number(env.VITE_DEV_PORT || 1420)
 
   return {
     server: {
-      port: 1420,
-      strictPort: true,
+      port: devPort,
+      strictPort: false,
       hmr: {
         protocol: 'ws',
         host: 'localhost',
-        port: 1420,
       },
       watch: {
         ignored: ['**/src-tauri/**']

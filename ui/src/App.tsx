@@ -28,6 +28,7 @@ import { stagingApiV2 } from '@/services/staging-api'
 import { ApiHealthIndicator } from '@/components/ApiHealthIndicator'
 
 const ColabPage = React.lazy(() => import('@/pages/ColabPage'))
+const LandingPage = React.lazy(() => import('@/pages/landing/LandingPage'))
 
 type TauriInvoke = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>
 
@@ -632,6 +633,15 @@ function App() {
           <p className="text-slate-600">{isRedirecting ? 'Redirection vers la carte...' : 'Chargement...'}</p>
         </div>
       </div>
+    )
+  }
+
+  // Route publique pour la Landing Page
+  if (window.location.pathname === '/' || window.location.pathname === '/landing') {
+    return (
+      <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-slate-900"><Loader2 className="h-12 w-12 text-blue-500 animate-spin" /></div>}>
+        <LandingPage />
+      </Suspense>
     )
   }
 
