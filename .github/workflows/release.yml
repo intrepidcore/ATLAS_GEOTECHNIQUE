@@ -44,17 +44,14 @@ jobs:
           cd ui
           npm ci
 
-      - name: Build api-geo sidecar (release)
+      - name: Build api-geo sidecar (Windows)
         run: |
           cd services/api-geo
           cargo build --release
-
-      - name: Prepare api-geo sidecar for Tauri bundle
+          copy target\release\api-geo.exe ..\..\apps\atlas-pro\src-tauri\bin\api-geo-x86_64-pc-windows-msvc.exe
         shell: pwsh
-        run: |
-          ./scripts/fetch-api-geo-artifact.ps1 -ExePath ./services/api-geo/target/release/api-geo.exe
 
-      - name: Build & publish
+      - name: Build and release Tauri app
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -62,9 +59,3 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/atlas-pro
-          tagName: v__VERSION__
-          releaseName: 'Atlas Géotechnique v__VERSION__'
-          releaseBody: 'Voir les assets pour installer cette version.'
-          releaseDraft: false
-          prerelease: false
-          args: ${{ matrix.args }}
