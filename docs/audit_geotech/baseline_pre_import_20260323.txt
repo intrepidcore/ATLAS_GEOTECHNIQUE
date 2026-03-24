@@ -1,0 +1,6 @@
+  essai_type  | nb_essais | nb_mailles_couvertes 
+--------------+-----------+----------------------
+ vbs          |        88 |                   24
+ atterberg_wl |       122 |                   24
+ gonflement   |       252 |                   69
+(3 rows)

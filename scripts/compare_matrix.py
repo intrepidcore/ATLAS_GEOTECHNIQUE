@@ -1,57 +1,48 @@
-import argparse
+#!/usr/bin/env python3
+"""Compare deux matrices géotechniques et produit un rapport de delta."""
+
 import pandas as pd
+import sys
+from pathlib import Path
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Comparer deux matrices géotechniques")
-    parser.add_argument("--before", required=True, help="Matrice avant import")
-    parser.add_argument("--after", required=True, help="Matrice après import")
-    return parser.parse_args()
-
-def analyze_matrix(df):
-    total = len(df)
-    vbs = df['Has VBS'].sum() if 'Has VBS' in df.columns else 0
-    att = df['Has Atterberg'].sum() if 'Has Atterberg' in df.columns else 0
-    proctor = df['Has Proctor'].sum() if 'Has Proctor' in df.columns else 0
+def compare_matrices(before_path: str, after_path: str):
+    df_before = pd.read_excel(before_path)
+    df_after  = pd.read_excel(after_path)
     
-    return {
-        'total': total,
-        'vbs_cnt': vbs,
-        'vbs_pct': (vbs / total * 100) if total else 0,
-        'att_cnt': att,
-        'att_pct': (att / total * 100) if total else 0,
-        'pro_cnt': proctor,
-        'pro_pct': (proctor / total * 100) if total else 0
-    }
-
-def print_diff(name, before, after):
-    diff = after[f'{name}_cnt'] - before[f'{name}_cnt']
-    print(f"\n{name.upper()} :")
-    print(f"  Avant : {before[f'{name}_cnt']}/{before['total']} mailles couvertes ({before[f'{name}_pct']:.1f}%)")
-    print(f"  Après : {after[f'{name}_cnt']}/{after['total']} mailles couvertes ({after[f'{name}_pct']:.1f}%)")
-    if diff > 0:
-        print(f"  → +{diff} mailles nouvellement couvertes ✅")
-    elif diff < 0:
-        print(f"  → {diff} mailles perdues ❌")
-    else:
-        print(f"  → Aucun changement")
-
-def main():
-    args = parse_args()
+    has_cols = [c for c in df_after.columns if c.startswith('has_data_')]
+    
     print("=== Comparaison Matrice Géotechnique ===")
+    print(f"Avant : {before_path}")
+    print(f"Après : {after_path}")
+    print()
     
-    try:
-        df_before = pd.read_excel(args.before)
-        df_after = pd.read_excel(args.after)
+    total = len(df_after)
+    improved = False
+    
+    for col in has_cols:
+        if col not in df_before.columns:
+            continue
         
-        b = analyze_matrix(df_before)
-        a = analyze_matrix(df_after)
+        before_count = (df_before[col] > 0).sum() if pd.api.types.is_numeric_dtype(df_before[col]) else df_before[col].sum() if col in df_before.columns else 0
+        after_count  = (df_after[col] > 0).sum() if pd.api.types.is_numeric_dtype(df_after[col]) else df_after[col].sum()
+        delta = after_count - before_count
         
-        print_diff("vbs", b, a)
-        print_diff("att", b, a)
-        print_diff("pro", b, a)
+        label = col.replace('has_data_', '').replace('_avg', '').upper()
+        pct_before = before_count / total * 100
+        pct_after  = after_count  / total * 100
         
-    except Exception as e:
-        print("Erreur de comparaison:", e)
+        status = "✅ amélioration" if delta > 0 else ("⚠️  inchangé" if delta == 0 else "❌ régression")
+        print(f"{label:20s} : {before_count:3d}/{total} ({pct_before:5.1f}%) → "
+              f"{after_count:3d}/{total} ({pct_after:5.1f}%) {status} ({delta:+d})")
+        
+        if delta > 0:
+            improved = True
+    
+    print()
+    if improved:
+        print("✅ Import validé — couverture améliorée sur au moins un essai")
+    else:
+        print("⚠️  Aucune amélioration détectée — vérifier l'import")
 
-if __name__ == '__main__':
-    main()
+if __name__ == "__main__":
+    compare_matrices(sys.argv[1], sys.argv[2])

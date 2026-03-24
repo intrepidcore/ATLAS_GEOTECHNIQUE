@@ -43,9 +43,10 @@
     "targets": ["msi"],
     "externalBin": ["bin/api-geo"],
     "resources": [
-      "pg/**/*",
       "../../../data/db/backups/atlas_desktop_seed.dump",
-      "../../../data/db/backups/atlas_desktop_seed.dump.json"
+      "../../../data/db/backups/atlas_desktop_seed.dump.json",
+      "bin/api-geo-x86_64-pc-windows-msvc.exe",
+      "pg/**"
     ],
     "icon": [
       "icons/32x32.png",
