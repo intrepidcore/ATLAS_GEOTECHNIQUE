@@ -4,6 +4,13 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [1.0.2] - 2026-03-24
+
+### Ajouté
+- **[Desktop]** Fix MSI vide (seed dans bundle.resources + config injection WebView)
+- **[Data]** Import données manquantes VBS/Atterberg/Gonflement
+- **[CI]** Fix release pipeline (rebuild api-geo sidecar)
+
 ## [1.0.1] - 2026-03-15
 
 ### Ajouté
