@@ -79,6 +79,15 @@ jobs:
         env:
           DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
       
+      - name: verify-geotech-quality-gates
+        if: matrix.svc == 'api-geo'
+        run: |
+          pip3 install psycopg2-binary
+          python3 scripts/healthcheck_geotech_db.py
+          mv geotech_healthcheck.log ci-logs/${{ matrix.svc }}/
+        env:
+          DATABASE_URL: postgres://atlas:atlas@localhost:5432/atlas_clean
+
       - name: sqlx-prepare-check
         if: matrix.svc == 'api-geo'
         run: |
