@@ -3,11 +3,150 @@ use fs2::FileExt;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum SeedMismatch {
     IntegrityViolation { expected: String, actual: String },
     SchemaMismatch { expected: i32, actual: i32 },
     InvariantViolation { invariant_id: String, detail: String },
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct SeedManifest {
+    compatibility: Option<SeedManifestCompatibility>,
+    max_migration_applied: Option<i32>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+struct SeedManifestCompatibility {
+    max_migration_applied: Option<i32>,
+}
+
+fn read_seed_manifest_max_migration(seed_dump: &Path) -> Result<i32> {
+    let manifest_path = seed_dump.with_extension(format!(
+        "{}{}",
+        seed_dump
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("dump"),
+        ".json"
+    ));
+
+    let bytes = std::fs::read(&manifest_path).with_context(|| {
+        format!(
+            "seed manifest missing/unreadable ({}): the desktop seed must ship with an adjacent .json manifest",
+            manifest_path.display()
+        )
+    })?;
+    let m: SeedManifest = serde_json::from_slice(&bytes)
+        .with_context(|| format!("invalid seed manifest JSON ({})", manifest_path.display()))?;
+
+    let v = m
+        .compatibility
+        .as_ref()
+        .and_then(|c| c.max_migration_applied)
+        .or(m.max_migration_applied)
+        .unwrap_or(0);
+
+    if v <= 0 {
+        return Err(anyhow!(
+            "seed manifest has no max_migration_applied ({}). Regenerate atlas_desktop_seed.dump.json.",
+            manifest_path.display()
+        ));
+    }
+
+    Ok(v)
+}
+
+fn get_desktop_seed_state_max_migration_if_any(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<Option<i32>> {
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg("SELECT max_migration_applied FROM atlas.desktop_seed_state ORDER BY applied_at DESC LIMIT 1;")
+        .output()
+        .context("failed to query atlas.desktop_seed_state max_migration_applied")?;
+
+    if !out.status.success() {
+        return Ok(None);
+    }
+
+    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
+    if s.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(s.parse::<i32>().ok())
+}
+
+fn baseline_schema_migrations_upto(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    repo_root: &Path,
+    baseline: i32,
+) -> Result<()> {
+    ensure_schema_migrations_table(bin_dir, port, db_user, db_password, db_name)?;
+
+    let migrations_dir = repo_root.join("db").join("migrations");
+    if !migrations_dir.exists() {
+        return Err(anyhow!("migrations dir missing ({})", migrations_dir.display()));
+    }
+
+    let mut entries: Vec<PathBuf> = std::fs::read_dir(&migrations_dir)
+        .with_context(|| format!("failed to read migrations dir ({})", migrations_dir.display()))?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().and_then(|s| s.to_str()).unwrap_or("") == "sql")
+        .collect();
+    entries.sort();
+
+    for file in entries {
+        let Some(v) = migration_version_from_filename(&file) else {
+            continue;
+        };
+        if v > baseline {
+            break;
+        }
+
+        let file_bytes = std::fs::read(&file)
+            .with_context(|| format!("failed to read migration file ({})", file.display()))?;
+        let checksum = compute_sha256_hex(&file_bytes);
+        let migration_id = file
+            .file_name()
+            .and_then(|s| s.to_str())
+            .ok_or_else(|| anyhow!("invalid migration filename ({})", file.display()))?
+            .to_string();
+
+        let migration_id_sql = sql_escape_literal(&migration_id);
+        let checksum_sql = sql_escape_literal(&checksum);
+        let name_sql = sql_escape_literal(&migration_id);
+        let insert_sql = format!(
+            "INSERT INTO atlas.schema_migrations(migration_id, version, name, checksum_sha256, execution_ms) VALUES ('{}', {}, '{}', '{}', 0) ON CONFLICT (migration_id) DO NOTHING;",
+            migration_id_sql,
+            v,
+            name_sql,
+            checksum_sql
+        );
+        run_sql(bin_dir, port, db_user, db_password, db_name, &insert_sql)
+            .with_context(|| format!("failed to baseline schema_migrations ({})", file.display()))?;
+    }
+
+    Ok(())
 }
 
 impl SeedMismatch {
@@ -134,7 +273,7 @@ fn verify_seed_state(
             }
         }
 
-        if db_max_mig != current_max {
+        if db_max_mig > current_max {
             mismatches.push(SeedMismatch::SchemaMismatch {
                 expected: current_max,
                 actual: db_max_mig,
@@ -379,6 +518,7 @@ fn compute_file_sha256_hex(path: &Path) -> Result<String> {
     Ok(format!("{:x}", h.finalize()))
 }
 
+#[allow(dead_code)]
 fn max_migration_number(repo_root: &Path) -> Result<i32> {
     let dir = repo_root.join("migrations");
     if !dir.exists() {
@@ -681,6 +821,113 @@ fn database_looks_initialized(bin_dir: &Path, port: u16, db_user: &str, db_passw
     database_has_user_objects(bin_dir, port, db_user, db_password, db_name)
 }
 
+fn atlas_schema_exists(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<bool> {
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg("SELECT 1 FROM information_schema.schemata WHERE schema_name='atlas' LIMIT 1;")
+        .output()
+        .context("failed to check atlas schema existence")?;
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to check atlas schema existence (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim() == "1")
+}
+
+fn atlas_table_exists(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+    table: &str,
+) -> Result<bool> {
+    let sql = format!(
+        "SELECT 1 FROM information_schema.tables WHERE table_schema='atlas' AND table_name='{}' LIMIT 1;",
+        table.replace('"', "").replace('\'', "''")
+    );
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        .arg(sql)
+        .output()
+        .context("failed to check atlas table existence")?;
+    if !out.status.success() {
+        return Err(anyhow!(
+            "failed to check atlas table existence (exit={}): {}",
+            out.status,
+            String::from_utf8_lossy(&out.stderr)
+        ));
+    }
+    Ok(String::from_utf8_lossy(&out.stdout).trim() == "1")
+}
+
+fn atlas_has_user_data(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<bool> {
+    // Heuristique sûre: si les tables n'existent pas, on considère qu'il n'y a pas de données.
+    if !atlas_table_exists(bin_dir, port, db_user, db_password, db_name, "sondages")? {
+        return Ok(false);
+    }
+
+    let out = pg_cmd(bin_dir, "psql.exe")
+        .env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", db_user)
+        .env("PGPASSWORD", db_password)
+        .env("PGDATABASE", db_name)
+        .arg("-tAc")
+        // `source` peut ne pas exister dans de vieux schémas: on évite de filter trop.
+        .arg("SELECT COUNT(*) FROM atlas.sondages;")
+        .output()
+        .context("failed to query atlas user data")?;
+    if !out.status.success() {
+        return Ok(false);
+    }
+    let got = String::from_utf8_lossy(&out.stdout).trim().parse::<i64>().unwrap_or(0);
+    Ok(got > 0)
+}
+
+fn drop_atlas_schema(
+    bin_dir: &Path,
+    port: u16,
+    db_user: &str,
+    db_password: &str,
+    db_name: &str,
+) -> Result<()> {
+    run_sql(
+        bin_dir,
+        port,
+        db_user,
+        db_password,
+        db_name,
+        "DROP SCHEMA IF EXISTS atlas CASCADE; CREATE SCHEMA IF NOT EXISTS atlas;",
+    )
+    .context("failed to drop atlas schema")
+}
+
 fn restore_seed_dump(
     bin_dir: &Path,
     port: u16,
@@ -926,8 +1173,8 @@ fn apply_repo_migrations(
     // Repo root from src-tauri is ../../..
     let repo_root = repo_root_from_tauri();
 
-    // Seeded baseline mode (v1): the database is restored from a known-good dump and must not
-    // replay the full historical migrations. Only apply post-v1 migrations.
+    // Seeded baseline mode (v2): the database is restored from a known-good dump.
+    // We must not replay historical migrations, only the ones after the seed baseline.
     let seed_hash = get_desktop_state_value(
         bin_dir,
         port,
@@ -939,11 +1186,7 @@ fn apply_repo_migrations(
 
     let seeded_baseline = seed_hash.as_deref().map(|s| !s.trim().is_empty()).unwrap_or(false);
 
-    let current_fingerprint = if seeded_baseline {
-        compute_post_v1_migrations_fingerprint(&repo_root)?
-    } else {
-        compute_migrations_fingerprint(&repo_root)?
-    };
+    let current_fingerprint = compute_migrations_fingerprint(&repo_root)?;
     let applied = get_desktop_state_value(
         bin_dir,
         port,
@@ -957,6 +1200,36 @@ fn apply_repo_migrations(
     }
 
     if seeded_baseline {
+        let seed_path = find_seed_dump(&repo_root)
+            .ok_or_else(|| anyhow!("seed dump not found"))?;
+        let manifest_baseline = read_seed_manifest_max_migration(&seed_path)?;
+        let db_baseline = get_desktop_seed_state_max_migration_if_any(
+            bin_dir,
+            port,
+            db_user,
+            db_password,
+            db_name,
+        )?
+        .unwrap_or(manifest_baseline);
+
+        if db_baseline != manifest_baseline {
+            return Err(anyhow!(
+                "seed baseline mismatch: manifest max_migration_applied={} but DB desktop_seed_state.max_migration_applied={}. Please reinstall/reset local DB.",
+                manifest_baseline,
+                db_baseline
+            ));
+        }
+
+        baseline_schema_migrations_upto(
+            bin_dir,
+            port,
+            db_user,
+            db_password,
+            db_name,
+            &repo_root,
+            manifest_baseline,
+        )?;
+
         // Safety: automatic backup + rollback for post-v1 upgrades.
         // We only do this when we actually need to apply migrations.
         let (backup_path, backup_sha256) = backup_database_dump(bin_dir, port, db_user, db_password, db_name)?;
@@ -979,25 +1252,26 @@ fn apply_repo_migrations(
             &backup_sha256,
         )?;
 
-        // Only apply future migrations (post baseline v1).
-        let post_dir = repo_root.join("migrations_post_v1");
-        if post_dir.exists() {
-            let mut entries: Vec<PathBuf> = std::fs::read_dir(&post_dir)
-                .with_context(|| {
-                    format!("failed to read migrations_post_v1 dir ({})", post_dir.display())
-                })?
+        // Apply only migrations newer than the seed baseline.
+        let migrations_dir = repo_root.join("db").join("migrations");
+        if migrations_dir.exists() {
+            let mut entries: Vec<PathBuf> = std::fs::read_dir(&migrations_dir)
+                .with_context(|| format!("failed to read migrations dir ({})", migrations_dir.display()))?
                 .flatten()
                 .map(|e| e.path())
                 .filter(|p| p.extension().and_then(|s| s.to_str()).unwrap_or("") == "sql")
                 .collect();
-
             entries.sort();
+
             for file in entries {
+                let v = migration_version_from_filename(&file).unwrap_or(0);
+                if v <= manifest_baseline {
+                    continue;
+                }
                 if let Err(e) = run_migration_file(bin_dir, port, db_user, db_password, db_name, &file) {
-                    // Rollback: restore the pre-migration backup.
                     let _ = restore_database_dump(bin_dir, port, db_user, db_password, db_name, &backup_path);
                     return Err(anyhow!(
-                        "post-v1 migration failed and rollback was attempted (file={}, backup={}): {:#}",
+                        "migration failed and rollback was attempted (file={}, backup={}): {:#}",
                         file.display(),
                         backup_path.display(),
                         e
@@ -1109,6 +1383,7 @@ fn compute_migrations_fingerprint(repo_root: &Path) -> Result<String> {
     Ok(hasher.finalize().to_hex().to_string())
 }
 
+#[allow(dead_code)]
 fn compute_post_v1_migrations_fingerprint(repo_root: &Path) -> Result<String> {
     let mut hasher = blake3::Hasher::new();
 
@@ -1397,7 +1672,73 @@ fn pg_cmd(bin_dir: &Path, exe: &str) -> std::process::Command {
         // which is not available on Windows.
         .env("PAGER", "")
         .env("PSQL_PAGER", "");
+
+    // Windows (release): prevent helper tools (psql/pg_ctl/initdb/pg_restore/createdb...)
+    // from opening extra console windows.
+    #[cfg(windows)]
+    {
+        if !cfg!(debug_assertions) {
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+    }
     cmd
+}
+
+fn stop_postgres_by_data_dir_best_effort(data_dir: &Path) {
+    let Some(bin_dir) = pg_bin_dir().as_ref() else {
+        return;
+    };
+    let _ = pg_cmd(bin_dir, "pg_ctl.exe")
+        .arg("-D")
+        .arg(data_dir)
+        .arg("stop")
+        .arg("-m")
+        .arg("fast")
+        .status();
+}
+
+pub fn reset_local_postgres_data_dir() -> Result<PathBuf> {
+    let root = data_root_dir()?;
+    let data_dir = root.join("postgres");
+
+    // Stop cluster if it's up (best-effort) before deleting files.
+    stop_postgres_by_data_dir_best_effort(&data_dir);
+
+    // Remove data directory and state files.
+    if data_dir.exists() {
+        if let Err(e) = std::fs::remove_dir_all(&data_dir) {
+            // Windows peut refuser la suppression si un process tient encore des handles.
+            // Dans ce cas, on met en quarantaine pour permettre une ré-init propre au prochain run.
+            let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S").to_string();
+            let quarantine = root.join(format!("postgres.reset.{ts}"));
+            std::fs::rename(&data_dir, &quarantine).with_context(|| {
+                format!(
+                    "failed to remove postgres data dir ({}): {e}; also failed to quarantine ({} -> {})",
+                    data_dir.display(),
+                    data_dir.display(),
+                    quarantine.display()
+                )
+            })?;
+        }
+    }
+
+    for f in [
+        root.join("postgres.port"),
+        root.join("postgres.password"),
+        root.join("postgres.pwfile"),
+    ] {
+        if f.exists() {
+            let _ = std::fs::remove_file(&f);
+        }
+    }
+
+    let locks_dir = root.join("locks");
+    if locks_dir.exists() {
+        let _ = std::fs::remove_dir_all(&locks_dir);
+    }
+
+    Ok(root)
 }
 
 fn pg_ctl_status(data_dir: &Path) -> Result<bool> {
@@ -1806,12 +2147,51 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
     if seed_hash_existing.is_some() || seed_already_applied {
         // DB seed already recorded (legacy key/value or new desktop_seed_state).
     } else {
+        let seed_path_opt = find_seed_dump(&repo_root);
+        if seed_path_opt.is_none() {
+            return Err(anyhow!(
+                "Seed dump introuvable dans le bundle (atlas_desktop_seed.dump). Le MSI est probablement incomplet. Réinstalle l'application ou contacte le support."
+            ));
+        }
+
+        let seed_path = seed_path_opt.expect("seed_path already checked");
+
+        // Déterminer si l'on est dans un cluster fraîchement initialisé ou un état partiel.
+        let atlas_exists = atlas_schema_exists(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+        let has_mailles = if atlas_exists {
+            atlas_table_exists(&bin_dir, pg.port, &db_user, &db_password, &db_name, "mailles").unwrap_or(false)
+        } else {
+            false
+        };
         let looks_init = database_looks_initialized(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+        let has_user_data = if atlas_exists && has_mailles {
+            atlas_has_user_data(&bin_dir, pg.port, &db_user, &db_password, &db_name).unwrap_or(false)
+        } else {
+            false
+        };
+
+        if looks_init && !allow_force && has_user_data {
+            // DB utilisateur probable: on ne l'écrase jamais implicitement.
+            return Err(anyhow!(
+                "Base de données existante détectée. Atlas ne peut pas appliquer automatiquement le seed sans risquer d'écraser vos données. Utilisez l'écran Support pour sauvegarder puis réinitialiser la base, ou définissez ATLAS_FORCE_SEED_RESTORE=true (expert)."
+            ));
+        }
+
+        // Cas installation ratée: objets présents mais pas de seed, et pas de données utilisateur.
+        // On répare automatiquement en drop+reseed.
         if looks_init && !allow_force {
-            // Never destroy an existing user DB implicitly.
-        } else if let Some(seed_path) = find_seed_dump(&repo_root) {
+            tracing::warn!(
+                atlas_schema = %atlas_exists,
+                has_mailles = %has_mailles,
+                has_user_data = %has_user_data,
+                "database partially initialized without seed: attempting automatic repair"
+            );
+            let _ = drop_atlas_schema(&bin_dir, pg.port, &db_user, &db_password, &db_name);
+        }
+
+        {
             let seed_sha256 = compute_file_sha256_hex(&seed_path)?;
-            let max_mig = max_migration_number(&repo_root)?;
+            let baseline_mig = read_seed_manifest_max_migration(&seed_path)?;
 
             restore_seed_dump(&bin_dir, pg.port, &db_user, &db_password, &db_name, &seed_path)?;
 
@@ -1826,7 +2206,7 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
                 &db_password,
                 &db_name,
                 &seed_sha256,
-                max_mig,
+                baseline_mig,
                 "seed restore",
             )?;
 
@@ -1865,7 +2245,7 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
                 &db_password,
                 &db_name,
                 "seed_max_migration_applied",
-                &max_mig.to_string(),
+                &baseline_mig.to_string(),
             )?;
         }
     }

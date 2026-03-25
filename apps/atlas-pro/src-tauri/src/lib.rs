@@ -287,15 +287,25 @@ fn try_set_embedded_postgres_bin_dir(app: &tauri::App) {
         return;
     }
 
-    // Layout cible v1.0 : resources/pg/bin/{pg_ctl.exe, initdb.exe, psql.exe}
     let candidate = app
         .path()
         .resolve("pg/bin/pg_ctl.exe", tauri::path::BaseDirectory::Resource)
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()))
         .or_else(|| {
-            // Dev mode (cargo tauri dev): resources directory is not the same as the bundle.
-            // We accept the artifact layout directly under the tauri project.
+            app.path()
+                .resource_dir()
+                .ok()
+                .map(|rd| rd.join("pg").join("bin"))
+                .and_then(|bin| {
+                    if bin.join("pg_ctl.exe").exists() {
+                        Some(bin)
+                    } else {
+                        None
+                    }
+                })
+        })
+        .or_else(|| {
             let local = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
                 .join("pg")
                 .join("bin");
@@ -308,10 +318,30 @@ fn try_set_embedded_postgres_bin_dir(app: &tauri::App) {
 
     if let Some(bin_dir) = candidate {
         let bin_dir = normalize_windows_bin_dir(&bin_dir);
-        if bin_dir.join("initdb.exe").exists() && bin_dir.join("psql.exe").exists() {
+        let ok = bin_dir.join("pg_ctl.exe").exists()
+            && bin_dir.join("initdb.exe").exists()
+            && bin_dir.join("psql.exe").exists();
+        if ok {
             std::env::set_var("ATLAS_PG_BIN_DIR", bin_dir.to_string_lossy().to_string());
             prepend_to_path(&bin_dir);
+        } else {
+            tracing::warn!(
+                bin_dir = %bin_dir.display(),
+                has_pg_ctl = %bin_dir.join("pg_ctl.exe").exists(),
+                has_initdb = %bin_dir.join("initdb.exe").exists(),
+                has_psql = %bin_dir.join("psql.exe").exists(),
+                "try_set_embedded_postgres_bin_dir: candidate found but missing required tools"
+            );
         }
+    } else {
+        let resource_dir = app.path().resource_dir().ok();
+        tracing::warn!(
+            resource_dir = %resource_dir
+                .as_ref()
+                .map(|p| p.display().to_string())
+                .unwrap_or_default(),
+            "try_set_embedded_postgres_bin_dir: no candidate resolved"
+        );
     }
 }
 
@@ -319,11 +349,27 @@ fn try_set_bundled_seed_dir(app: &tauri::App) {
     if std::env::var("ATLAS_DESKTOP_SEED_DIR").is_ok() {
         return;
     }
-    if let Ok(p) = app
+    let candidate = app
         .path()
         .resolve("data/db/backups", tauri::path::BaseDirectory::Resource)
-    {
+        .ok()
+        .or_else(|| {
+            app.path()
+                .resource_dir()
+                .ok()
+                .map(|rd| rd.join("data").join("db").join("backups"))
+        });
+    if let Some(p) = candidate {
         std::env::set_var("ATLAS_DESKTOP_SEED_DIR", p.to_string_lossy().to_string());
+    } else {
+        let resource_dir = app.path().resource_dir().ok();
+        tracing::warn!(
+            resource_dir = %resource_dir
+                .as_ref()
+                .map(|p| p.display().to_string())
+                .unwrap_or_default(),
+            "try_set_bundled_seed_dir: no candidate resolved"
+        );
     }
 }
 
@@ -424,14 +470,6 @@ pub fn run() {
             std::fs::create_dir_all(&logs_dir)
                 .map_err(|e| format!("failed to create logs dir ({}): {e}", logs_dir.display()))?;
 
-            tracing::info!(
-                data_dir = %data_dir.display(),
-                logs_dir = %logs_dir.display(),
-                pg_bin_dir = %std::env::var("ATLAS_PG_BIN_DIR").unwrap_or_default(),
-                seed_dir = %std::env::var("ATLAS_DESKTOP_SEED_DIR").unwrap_or_default(),
-                "startup"
-            );
-
             harden_windows_permissions(&data_dir, &logs_dir);
 
             // Logs postgres (rotation avant start)
@@ -451,6 +489,45 @@ pub fn run() {
             try_set_embedded_postgres_bin_dir(app);
             try_set_bundled_seed_dir(app);
 
+            let pg_bin_dir = std::env::var("ATLAS_PG_BIN_DIR").unwrap_or_default();
+            let seed_dir = std::env::var("ATLAS_DESKTOP_SEED_DIR").unwrap_or_default();
+            let resource_dir = app
+                .path()
+                .resource_dir()
+                .ok()
+                .map(|p| p.display().to_string())
+                .unwrap_or_default();
+            tracing::info!(
+                data_dir = %data_dir.display(),
+                logs_dir = %logs_dir.display(),
+                resource_dir = %resource_dir,
+                pg_bin_dir = %pg_bin_dir,
+                seed_dir = %seed_dir,
+                "startup"
+            );
+
+            if !pg_bin_dir.is_empty() {
+                let bin = std::path::PathBuf::from(&pg_bin_dir);
+                tracing::info!(
+                    pg_ctl = %bin.join("pg_ctl.exe").exists(),
+                    initdb = %bin.join("initdb.exe").exists(),
+                    psql = %bin.join("psql.exe").exists(),
+                    pg_restore = %bin.join("pg_restore.exe").exists(),
+                    "startup: pg tool existence"
+                );
+            }
+            if !seed_dir.is_empty() {
+                let base = std::path::PathBuf::from(&seed_dir);
+                let seed = base.join("atlas_desktop_seed.dump");
+                let manifest = base.join("atlas_desktop_seed.dump.json");
+                tracing::info!(
+                    seed = %seed.exists(),
+                    manifest = %manifest.exists(),
+                    seed_bytes = %seed.metadata().map(|m| m.len()).unwrap_or(0),
+                    "startup: seed existence"
+                );
+            }
+
             emit_startup_progress(app, "paths", "Résolution runtime PostgreSQL / seed", 12);
 
             // First-run: on n'effectue pas le bootstrap DB/API avant que l'installateur
@@ -459,6 +536,16 @@ pub fn run() {
             if !is_smoke_test_mode() && (force_installer_mode() || !is_installed(&data_dir)) {
                 tracing::info!("Installer mode: skipping postgres/api bootstrap (marker missing)");
                 emit_startup_progress(app, "installer", "Installateur requis", 100);
+                if let Some(main) = app.get_webview_window("main") {
+                    let _ = main.show();
+                    let _ = main.set_focus();
+                    let _ = main.eval(
+                        "try { if (window.location.pathname !== '/installer.html') window.location.replace('/installer.html'); } catch {}",
+                    );
+                }
+                if let Some(splash) = app.get_webview_window("splash") {
+                    let _ = splash.close();
+                }
                 return Ok(());
             }
 
@@ -692,12 +779,17 @@ pub fn run() {
             installer::installer_is_installed,
             installer::installer_check_free_space,
             installer::installer_run,
+            installer::installer_preflight,
+            installer::installer_reset_local_db,
+            installer::installer_backup_local_db,
+            installer::installer_cleanup_quarantines,
+            installer::installer_open_data_dir,
+            installer::installer_open_backups_dir,
             support::diagnostic_export,
             support::db_connection_info,
             support::db_integrity_check,
             support::db_backup,
             support::db_restore,
-            support::db_reset,
             sync::check_for_updates,
         ]);
 

@@ -6,7 +6,9 @@ param(
     
     [int]$StartupTimeoutSeconds = 120,
     [string]$ReportPath = "msi-test-report.json",
-    [string]$LogDir = "msi-test-logs"
+    [string]$LogDir = "msi-test-logs",
+    [bool]$CleanAppData = $true,
+    [string]$BackupDir = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -63,6 +65,12 @@ New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $installLog = Join-Path $LogDir "msi-install.log"
 $appLog = Join-Path $LogDir "atlas-pro.log"
 
+$installDir = "$env:LOCALAPPDATA\IntrepidCore\Atlas"
+
+if ($BackupDir) {
+    New-Item -ItemType Directory -Force -Path $BackupDir | Out-Null
+}
+
 $process = $null
 try {
     # ─── PHASE 1 : Validation & Installation ─────────────────────────────────────
@@ -81,6 +89,15 @@ try {
     }
     
     Step "Installation silencieuse MSI" {
+        if ($CleanAppData) {
+            if (Test-Path $installDir) {
+                $ts = (Get-Date -Format "yyyyMMdd_HHmmss")
+                $backupRoot = if ($BackupDir) { $BackupDir } else { $LogDir }
+                $backupPath = Join-Path $backupRoot ("appdata-backup-" + $ts)
+                Copy-Item -Path $installDir -Destination $backupPath -Recurse -Force
+                Remove-Item -Path $installDir -Recurse -Force
+            }
+        }
         $proc = Start-Process msiexec.exe `
             -ArgumentList "/i `"$MsiPath`" /qn /log `"$installLog`"" `
             -Wait -PassThru
@@ -90,7 +107,6 @@ try {
     }
     
     Step "Binaire installé présent" {
-        $installDir = "$env:LOCALAPPDATA\IntrepidCore\Atlas"
         $exe = Join-Path $installDir "atlas-pro.exe"
         if (!(Test-Path $exe)) { throw "Binaire absent: $exe" }
     }
@@ -102,7 +118,7 @@ try {
         $env:ATLAS_SMOKE_TEST = "1"
         $env:ATLAS_LOG_LEVEL = "debug"
         
-        $exePath = "$env:LOCALAPPDATA\IntrepidCore\Atlas\atlas-pro.exe"
+        $exePath = "$installDir\atlas-pro.exe"
         
         # Create log file for stdout/stderr
         $process = Start-Process $exePath `

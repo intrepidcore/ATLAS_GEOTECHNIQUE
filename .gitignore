@@ -49,6 +49,10 @@ data/db/**
 !data/db/backups/atlas_desktop_seed.dump
 !data/db/backups/atlas_desktop_seed.dump.json
 
+# Archived seed versions are local artifacts (not tracked)
+data/db/backups/versions/*.dump
+data/db/backups/versions/*.dump.json
+
 # ===========================================
 # ARTEFACTS LOURDS / LOCAUX (ne pas versionner)
 # ===========================================

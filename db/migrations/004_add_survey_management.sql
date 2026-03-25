@@ -4,6 +4,8 @@
 
 BEGIN;
 
+SET search_path = atlas, public;
+
 -- 1. Extend sondages table
 ALTER TABLE sondages
   ADD COLUMN IF NOT EXISTS code TEXT UNIQUE,

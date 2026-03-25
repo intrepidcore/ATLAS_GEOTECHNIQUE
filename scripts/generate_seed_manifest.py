@@ -8,6 +8,60 @@ import subprocess
 from pathlib import Path
 
 
+def next_semver_patch(version: str) -> str:
+    parts = (version or "").strip().split(".")
+    if len(parts) != 3:
+        return "1.0.0"
+
+    try:
+        major = int(parts[0])
+        minor = int(parts[1])
+        patch = int(parts[2])
+    except ValueError:
+        return "1.0.0"
+    return f"{major}.{minor}.{patch + 1}"
+
+
+def _find_repo_root(start: Path) -> Path | None:
+    p = start.resolve()
+    for _ in range(10):
+        if (p / "db" / "migrations").exists():
+            return p
+        if p.parent == p:
+            break
+        p = p.parent
+    return None
+
+
+def _max_migration_applied(repo_root: Path) -> int:
+    mig_dir = repo_root / "db" / "migrations"
+    if not mig_dir.exists():
+        return 0
+    max_v = 0
+    for f in mig_dir.glob("*.sql"):
+        name = f.name
+        prefix = name.split("_")[0]
+        try:
+            v = int(prefix)
+        except ValueError:
+            continue
+        if v > max_v:
+            max_v = v
+    return max_v
+
+
+def infer_seed_version(out_path: Path) -> str:
+    if out_path.exists():
+        try:
+            m = json.loads(out_path.read_text(encoding="utf-8"))
+            v = (m.get("identity") or {}).get("seed_version") or m.get("seed_version")
+            if isinstance(v, str) and v.strip():
+                return next_semver_patch(v)
+        except Exception:
+            return "1.0.0"
+    return "1.0.0"
+
+
 def sha256_file(path: Path) -> str:
     h = hashlib.sha256()
     with path.open("rb") as f:
@@ -63,6 +117,16 @@ def main() -> int:
     created_at = dt.datetime.now(dt.timezone.utc).isoformat()
     git_commit = git_commit_short()
 
+    if not seed_version.strip():
+        seed_version = infer_seed_version(out_path)
+
+    if not max_migration_applied or str(max_migration_applied).strip() == "":
+        repo_root = _find_repo_root(dump_path.parent)
+        if repo_root is not None:
+            max_migration_applied = str(_max_migration_applied(repo_root))
+        else:
+            max_migration_applied = "0"
+
     manifest = {
         "schema_version": "2.0",
         "identity": {
@@ -84,9 +148,9 @@ def main() -> int:
             "size_bytes": size_bytes,
         },
         "compatibility": {
-            "postgres_target_major": int(postgres_target_major) if postgres_target_major else None,
+            "postgres_target_major": postgres_target_major,
             "postgis_version": postgis_version,
-            "max_migration_applied": int(max_migration_applied) if max_migration_applied else None,
+            "max_migration_applied": int(max_migration_applied),
         },
         "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "db_name": args.db_name,

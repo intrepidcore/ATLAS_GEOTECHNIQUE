@@ -2,6 +2,9 @@
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS postgis_topology;
 
+CREATE SCHEMA IF NOT EXISTS atlas;
+SET search_path = atlas, public;
+
 -- Schema and tables
 CREATE TABLE IF NOT EXISTS sondages (
   id UUID PRIMARY KEY,

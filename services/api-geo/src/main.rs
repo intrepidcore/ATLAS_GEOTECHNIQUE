@@ -408,7 +408,7 @@ async fn main() -> anyhow::Result<()> {
         // Sondages individuels (géocodage unitaire)
         .route("/sondages", get(sondages::list_sondages))
         .route("/sondages/stats", get(sondages::get_sondages_stats))
-        .route("/sondages/:id", get(sondages::get_sondage))
+        .route("/sondages/:id", get(sondages::get_sondage).delete(sondages::delete_sondage))
         .route("/sondages/:id/details", get(sondages::get_sondage_details))
         .route(
             "/sondages/:id/geometry",

@@ -722,3 +722,35 @@ pub async fn update_sondage_geometry(
 
     Ok(Json(updated))
 }
+
+/// DELETE /sondages/:id - Suppression soft d'un sondage
+pub async fn delete_sondage(
+    State(state): State<AppState>,
+    Path(id): Path<Uuid>,
+) -> Result<StatusCode, (StatusCode, String)> {
+    let pool = &state.pool;
+
+    let res = sqlx::query(
+        r#"
+        UPDATE sondages 
+        SET deleted_at = NOW() 
+        WHERE id = $1 AND deleted_at IS NULL
+        "#,
+    )
+    .bind(id)
+    .execute(pool)
+    .await
+    .map_err(|e| {
+        eprintln!("Error deleting sondage: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
+
+    if res.rows_affected() == 0 {
+        return Err((
+            StatusCode::NOT_FOUND,
+            "Sondage not found or already deleted".to_string(),
+        ));
+    }
+
+    Ok(StatusCode::NO_CONTENT)
+}

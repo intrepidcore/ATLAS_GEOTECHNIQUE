@@ -1,0 +1,14 @@
+{
+  "exports": [
+    {"thematic": "eg_avg"},
+    {"thematic": "gamma_d_max_avg"},
+    {"thematic": "ip_avg"},
+    {"thematic": "n_sondages"},
+    {"thematic": "passant_2mm_avg"},
+    {"thematic": "passant_80um_avg"},
+    {"thematic": "vbs_avg"},
+    {"thematic": "w_opt_avg"},
+    {"thematic": "wl_avg"},
+    {"thematic": "wp_avg"}
+  ]
+}

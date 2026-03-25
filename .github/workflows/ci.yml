@@ -103,6 +103,19 @@ jobs:
           name: ci-logs-rust-${{ matrix.svc }}
           path: ci-logs/${{ matrix.svc }}/
           retention-days: 14
+
+  bundle-validation:
+    name: Validation Bundle Desktop
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Verify bundle inputs
+        shell: pwsh
+        run: |
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\verify-bundle.ps1
   
   ui:
     runs-on: ubuntu-latest

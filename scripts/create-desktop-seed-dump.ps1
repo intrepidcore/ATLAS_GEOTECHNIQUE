@@ -48,6 +48,18 @@ if ((Test-Path -LiteralPath $outPath) -and (-not $Force)) {
   throw "Refusing to overwrite existing seed dump: $outPath (use -Force)"
 }
 
+if ((Test-Path -LiteralPath $outPath) -and $Force) {
+  try {
+    LogInfo 'Archivage du seed actuel (rétention: 3)'
+    & python (Join-Path $repoRoot 'scripts/archive_seed.py') `
+      --seed $outPath `
+      --versions-dir (Join-Path $repoRoot 'data/db/backups/versions') `
+      --keep 3 | Out-Null
+  } catch {
+    LogWarn 'Archivage seed skipped (archive_seed.py failed)'
+  }
+}
+
 $pgDump = Get-Command pg_dump -ErrorAction SilentlyContinue
 $docker = Get-Command docker -ErrorAction SilentlyContinue
 

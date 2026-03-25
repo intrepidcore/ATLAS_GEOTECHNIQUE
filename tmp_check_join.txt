@@ -1,0 +1,28 @@
+--- 5 Sondages DB ---
+('APEHEME', None, 'Maritime', 'Zio', 'Abobo', 'TG-0487-0223-01', None)
+('DZOGBECOPE', None, 'Plateaux', 'Kpele', 'Adeta', 'TG-0556-0181-01', None)
+('TEKPO', None, 'Plateaux', 'Kpele', 'Adeta', 'TG-0555-0174-01', None)
+('AKEPE', None, 'Maritime', 'Ave', 'Akepe', 'TG-0486-0203-01', None)
+('TOVEGAN', None, 'Maritime', 'Ave', 'Tovegan', 'TG-0519-0190-01', None)
+
+--- FICHIERS XLSX ---
+
+[bleu.xlsx] Colonnes:
+['Unnamed: 0', 'N', 'Localités', 1, 1.5, 2, '1.1', '1.5.1', '2.1']
+[{'Unnamed: 0': nan, 'N': 1, 'Localités': 'Adjengré ( Pounpoun)', 1: 3.0, 1.5: 2.5, 2: 2.73, '1.1': 'Moyen', '1.5.1': 'Moyen', '2.1': 'Moyen'}, {'Unnamed: 0': nan, 'N': 2, 'Localités': 'Agotivé', 1: 16.45, 1.5: 10.18, 2: 3.9, '1.1': 'Très forte', '1.5.1': 'Très forte', '2.1': 'Moyen'}]
+
+[limite.xlsx] Colonnes:
+['N°', 'Localité', 'Profondeur', 'Limite de liquidité (WL)', 'Limite de plasticité (WP)', 'Indice de plasticité (IP)', 'Analyse WI', 'Type de sol']
+[{'N°': 1, 'Localité': 'Adjengré (Pounpouni)', 'Profondeur': '1m', 'Limite de liquidité (WL)': '50,34', 'Limite de plasticité (WP)': '22,64', 'Indice de plasticité (IP)': '27,70', 'Analyse WI': 'Elevé', 'Type de sol': 'vertisols et paravertisols'}, {'N°': 1, 'Localité': 'Adjengré (Pounpouni)', 'Profondeur': '1,5m', 'Limite de liquidité (WL)': '65,68', 'Limite de plasticité (WP)': '36,64', 'Indice de plasticité (IP)': '29,04', 'Analyse WI': 'Elevé', 'Type de sol': 'vertisols et paravertisols'}]
+
+[classification.xlsx] Colonnes:
+['Localité', 'Profondeur', 'Classification CHASSAGNEUX D. et al. 1996', 'Classification Dakshanamurthy et Raman 1973', 'Classification SEED H. et al 1962', 'Classification VIJAYVERGIYA et GHAZZALY 1973', 'Type de sol']
+[{'Localité': 'Adjengré (Pounpouni)', 'Profondeur': '1m', 'Classification CHASSAGNEUX D. et al. 1996': 'Moyen', 'Classification Dakshanamurthy et Raman 1973': 'Elevé', 'Classification SEED H. et al 1962': 'Elevé', 'Classification VIJAYVERGIYA et GHAZZALY 1973': 'Non gonflant', 'Type de sol': 'Vertisols et Paravertisols'}, {'Localité': 'Adjengré (Pounpouni)', 'Profondeur': '1,5m', 'Classification CHASSAGNEUX D. et al. 1996': 'Moyen', 'Classification Dakshanamurthy et Raman 1973': 'Elevé', 'Classification SEED H. et al 1962': 'Elevé', 'Classification VIJAYVERGIYA et GHAZZALY 1973': 'Gonflant', 'Type de sol': 'Vertisols et Paravertisols'}]
+
+[Granulométrie.xlsx] Colonnes:
+['N', 'Localités', 1, 1.5, 2]
+[{'N': 1, 'Localités': 'Adjengré (Pounpouni)', 1: 77.73, 1.5: 81.8, 2: 74.85}, {'N': 2, 'Localités': 'Agotivé', 1: 60.61, 1.5: 52.23, 2: 47.15}]
+
+[potentielle_de_gonflement.xlsx] Colonnes:
+['Localité', 'Potentiel gonflement (cg) 1m', 'Potentiel gonflement (cg) 1,5m', 'Potentiel gonflement (cg) 2m', 'Analyse 1m', 'Analyse 1,5m', 'Analyse 2m', 'Type de sol']
+[{'Localité': 'Adjengré (Pounpouni)', 'Potentiel gonflement (cg) 1m': '5,51', 'Potentiel gonflement (cg) 1,5m': '5,75', 'Potentiel gonflement (cg) 2m': '6,62', 'Analyse 1m': 'Elevé', 'Analyse 1,5m': 'Elevé', 'Analyse 2m': 'Elevé', 'Type de sol': 'Vertisols et Paravertisols'}, {'Localité': 'Agotivé', 'Potentiel gonflement (cg) 1m': '5,84', 'Potentiel gonflement (cg) 1,5m': '6,58', 'Potentiel gonflement (cg) 2m': '6,30', 'Analyse 1m': 'Elevé', 'Analyse 1,5m': 'Elevé', 'Analyse 2m': 'Elevé', 'Type de sol': 'Vertisols et Paravertisols'}]

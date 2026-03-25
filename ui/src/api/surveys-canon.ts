@@ -94,6 +94,17 @@ export async function apiPatch<T>(path: string, body: any): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export async function apiDelete(path: string): Promise<void> {
+  const urlString = buildApiUrl(path);
+  const res = await fetch(urlString, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const error = await res.text();
+    throw new Error(`HTTP ${res.status}: ${error}`);
+  }
+}
+
 export async function listSurveysCanon(query?: SurveyCanonQuery): Promise<SurveyCanon[]> {
   return apiGet<SurveyCanon[]>('/surveys-canon', query);
 }

@@ -307,6 +307,7 @@ pub fn db_restore(
     Ok(())
 }
 
+#[allow(dead_code)]
 #[tauri::command]
 pub fn db_reset(paths: State<'_, ManagedPaths>, pg: State<'_, ManagedPostgres>) -> Result<String, String> {
     // Arrêt postgres best-effort

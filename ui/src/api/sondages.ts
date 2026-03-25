@@ -1,6 +1,6 @@
 // API client pour les sondages individuels (géocodage unitaire)
 
-import { apiGet, apiPatch } from './surveys-canon';
+import { apiGet, apiPatch, apiDelete } from './surveys-canon';
 import type { Survey } from '../types/survey';
 
 // ============================================================================
@@ -76,6 +76,13 @@ export async function listSondages(params?: {
  */
 export async function getSondagesStats(): Promise<SondagesStats> {
   return apiGet<SondagesStats>('/sondages/stats');
+}
+
+/**
+ * Supprime un sondage par son ID (soft delete côté serveur)
+ */
+export async function deleteSondage(id: string): Promise<void> {
+  return apiDelete(`/sondages/${id}`);
 }
 
 /**

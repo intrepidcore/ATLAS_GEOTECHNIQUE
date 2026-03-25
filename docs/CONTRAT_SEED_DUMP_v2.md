@@ -1,6 +1,8 @@
 # Contrat technique — Seed Dump Desktop Atlas
-# Version 2.0 — Mars 2026
-# Inspiré des pratiques : Supabase, PlanetScale, AWS RDS, Temporal.io
+
+## Version 2.0 — Mars 2026
+
+Inspiré des pratiques : Supabase, PlanetScale, AWS RDS, Temporal.io
 
 **Portée** : Ce contrat définit le cycle de vie complet du seed dump
 utilisé par Atlas Pro Desktop (Tauri). Il est contraignant — tout
@@ -16,8 +18,8 @@ publiquement. Voir section 9 pour la politique de distribution.
 ## 1) Artefacts canoniques
 
 | Artefact | Chemin | Format | Versionnement |
-|----------|--------|--------|---------------|
-| Dump | `data/db/backups/atlas_desktop_seed.dump` | pg_dump -Fc | Git LFS |
+| --- | --- | --- | --- |
+| Dump | `data/db/backups/atlas_desktop_seed.dump` | `pg_dump -Fc` | Git LFS |
 | Manifest | `data/db/backups/atlas_desktop_seed.dump.json` | JSON | Git normal |
 | Signature | `data/db/backups/atlas_desktop_seed.dump.sig` | minisign | Git normal |
 
@@ -134,7 +136,7 @@ Tout champ `required` manquant rend le manifest invalide.
     }
   ]
 }
-````
+```
 
 **Règle INV-006 expliquée** : le seed ne doit jamais contenir de comptes utilisateurs. L'admin par défaut est créé au premier démarrage par `lib.rs`, pas depuis le seed. Cela évite de distribuer des credentials dans le bundle MSI.
 
@@ -144,7 +146,7 @@ Tout champ `required` manquant rend le manifest invalide.
 
 Le seed suit un versionnement indépendant du code :
 
-```
+```text
 MAJOR.MINOR.PATCH
 
 MAJOR : changement incompatible de schéma (ex: 136 → 200)
@@ -154,7 +156,7 @@ PATCH : correction de données existantes
 
 Règle de nommage du seed_id :
 
-```
+```text
 atlas-seed-{date}-{git_short}[-{patch}]
 
 Exemples :
@@ -162,6 +164,28 @@ Exemples :
   atlas-seed-20260313-b07b917-p1   ← patch le même jour
   atlas-seed-20260401-3f9a2cd      ← nouvelle version
 ```
+
+### Principe
+
+Chaque seed a une version SemVer indépendante du code de l'application.
+Un seed n'est JAMAIS écrasé — il est archivé avant d'être remplacé.
+
+### Incrémentation
+
+MAJOR : changement incompatible de schéma (ex: migration 136 → 200)
+MINOR : ajout de données (nouvelles mailles, nouveaux sondages)
+PATCH : correction de données existantes
+
+### Rétention locale
+
+- 3 dernières versions conservées dans data/db/backups/versions/
+- Les versions plus anciennes sont supprimées automatiquement
+- Le seed courant (atlas_desktop_seed.dump) pointe toujours vers la dernière version
+
+### Historique obligatoire dans le manifest
+
+Le champ identity.seed_version doit être incrémenté à chaque génération.
+Le champ retention.superseded_by doit pointer vers le seed qui remplace celui-ci.
 
 ---
 
@@ -181,7 +205,7 @@ Les géants de la tech (AWS RDS, Supabase) documentent explicitement chaque cas 
 
 **Règle critique** : avant tout restore sur une DB non vide, créer un snapshot automatique :
 
-```
+```text
 data/db/snapshots/pre-restore-{timestamp}.dump
 ```
 
@@ -351,7 +375,7 @@ Le seed ne contient pas de données utilisateurs (`INV-006`), mais contient des 
 
 À exécuter via `scripts/verify-bundle.ps1` :
 
-```
+```text
 □ SHA256 recalculé et correspond au manifest
 □ Signature vérifiée avec la clé publique release
 □ Tous les invariants passent sur une DB vierge
@@ -362,5 +386,3 @@ Le seed ne contient pas de données utilisateurs (`INV-006`), mais contient des 
 □ Git LFS : vérifier que le dump est bien stocké en LFS (pas inline)
 □ Bundle MSI : vérifier que le dump est dans bundle.resources
 ```
-
-

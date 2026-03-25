@@ -56,9 +56,9 @@ def main() -> int:
 
     select_exprs = [
         "s.code AS maille_code",
-        "COALESCE(a2.adm1_name, m.adm1_name) AS adm1_name",
-        "m.adm2_name AS adm2_name",
-        "m.adm3_name AS adm3_name",
+        "s.adm1_name AS adm1_name",
+        "s.adm2_name AS adm2_name",
+        "s.adm3_name AS adm3_name",
     ]
 
     has_any_exprs: List[str] = []
@@ -72,14 +72,12 @@ def main() -> int:
 
     where_parts = ["(" + " OR ".join(has_any_exprs) + ")"]
     if args.min_sondages is not None:
-        where_parts.append("COALESCE(m.n_sondages, 0) >= :min_sondages")
+        where_parts.append("COALESCE(s.n_sondages, 0) >= :min_sondages")
 
     sql = f"""
         SELECT
             {',\n            '.join(select_exprs)}
         FROM mailles_geotechnique_stats_wgs84 s
-        JOIN atlas.mailles m ON m.code = s.code
-        LEFT JOIN adm2_tg a2 ON a2.name = m.adm2_name
         WHERE {' AND '.join(where_parts)}
         ORDER BY s.code
     """

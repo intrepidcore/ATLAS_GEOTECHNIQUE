@@ -1,13 +1,191 @@
 use serde::Serialize;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, State};
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+use tracing;
+
 use crate::{install_marker_path, postgres, ManagedApiPort, ManagedPaths, ManagedPostgres};
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct InstallerProgress {
     pub step: String,
     pub message: String,
     pub percent: u8,
+}
+
+fn find_file_recursive(root: &Path, file_name: &str, max_entries: usize) -> Option<PathBuf> {
+    let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
+    let mut seen: usize = 0;
+
+    while let Some(dir) = stack.pop() {
+        let Ok(it) = std::fs::read_dir(&dir) else {
+            continue;
+        };
+        for e in it.flatten() {
+            seen += 1;
+            if seen > max_entries {
+                return None;
+            }
+            let path = e.path();
+            if path.is_file() {
+                if path.file_name().and_then(|s| s.to_str()).unwrap_or("") == file_name {
+                    return Some(path);
+                }
+            } else if path.is_dir() {
+                stack.push(path);
+            }
+        }
+    }
+    None
+}
+
+fn list_postgres_quarantines(paths: &ManagedPaths) -> Vec<std::path::PathBuf> {
+    let Ok(it) = std::fs::read_dir(&paths.data_dir) else {
+        return vec![];
+    };
+    let mut out = vec![];
+    for e in it.flatten() {
+        if let Some(name) = e.file_name().to_str() {
+            if name.starts_with("postgres.reset.") {
+                out.push(e.path());
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
+fn maintenance_lock(paths: &ManagedPaths) -> Result<std::fs::File, String> {
+    use fs2::FileExt;
+
+    let locks_dir = paths.data_dir.join("locks");
+    std::fs::create_dir_all(&locks_dir)
+        .map_err(|e| format!("failed to create locks dir ({}): {e}", locks_dir.display()))?;
+    let lock_path = locks_dir.join("maintenance.lock");
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .open(&lock_path)
+        .map_err(|e| format!("failed to open maintenance lock ({}): {e}", lock_path.display()))?;
+    file.try_lock_exclusive()
+        .map_err(|_| "Une opération maintenance est déjà en cours".to_string())?;
+    Ok(file)
+}
+
+#[cfg(windows)]
+fn kill_postgres_from_pid_file_best_effort(data_dir: &std::path::Path) {
+    let pid_file = data_dir.join("postmaster.pid");
+    let Ok(content) = std::fs::read_to_string(&pid_file) else {
+        return;
+    };
+    let Some(first) = content.lines().next() else {
+        return;
+    };
+    let pid = first.trim();
+    if pid.is_empty() {
+        return;
+    }
+    let mut cmd = std::process::Command::new("taskkill");
+    cmd.arg("/PID").arg(pid).arg("/T").arg("/F");
+    if !cfg!(debug_assertions) {
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    let _ = cmd.status();
+}
+
+#[cfg(not(windows))]
+fn kill_postgres_from_pid_file_best_effort(_data_dir: &std::path::Path) {}
+
+fn compute_file_sha256_hex(path: &std::path::Path) -> Result<String, String> {
+    use sha2::Digest;
+    let bytes = std::fs::read(path)
+        .map_err(|e| format!("failed to read file for sha256 ({}): {e}", path.display()))?;
+    let mut h = sha2::Sha256::new();
+    h.update(&bytes);
+    Ok(format!("{:x}", h.finalize()))
+}
+
+#[cfg(windows)]
+fn open_folder_windows(path: &std::path::Path) -> Result<(), String> {
+    let mut cmd = std::process::Command::new("explorer.exe");
+    cmd.arg(path);
+    if !cfg!(debug_assertions) {
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    cmd.spawn().map_err(|e| format!("failed to open folder ({}): {e}", path.display()))?;
+    Ok(())
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct InstallerBackupArgs {
+    #[serde(rename = "stopAfter")]
+    pub stop_after: bool,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct BackupReport {
+    pub path: String,
+    pub bytes: u64,
+    #[serde(rename = "sha256")]
+    pub sha256_hex: String,
+    #[serde(rename = "manifestPath")]
+    pub manifest_path: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ResetReport {
+    pub outcome: String,
+    #[serde(rename = "dataRoot")]
+    pub data_root: String,
+    #[serde(rename = "markerRemoved")]
+    pub marker_removed: bool,
+    #[serde(rename = "quarantinePath")]
+    pub quarantine_path: Option<String>,
+    pub warnings: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct CleanupQuarantinesReport {
+    #[serde(rename = "deleted")]
+    pub deleted: Vec<String>,
+    #[serde(rename = "kept")]
+    pub kept: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct InstallerPreflight {
+    #[serde(rename = "needsReset")]
+    pub needs_reset: bool,
+    #[serde(rename = "hasQuarantine")]
+    pub has_quarantine: bool,
+    #[serde(rename = "quarantineCount")]
+    pub quarantine_count: u32,
+    // Expert diagnostics (non-bloquant)
+    #[serde(rename = "seedPresent")]
+    pub seed_present: bool,
+    #[serde(rename = "seedPath")]
+    pub seed_path: Option<String>,
+    #[serde(rename = "seedBytes")]
+    pub seed_bytes: u64,
+    #[serde(rename = "seedManifestPresent")]
+    pub seed_manifest_present: bool,
+    #[serde(rename = "pgBinPresent")]
+    pub pg_bin_present: bool,
+    #[serde(rename = "pgBinDir")]
+    pub pg_bin_dir: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct InstallerResetArgs {
+    #[serde(rename = "alsoRemoveMarker")]
+    pub also_remove_marker: bool,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -32,6 +210,345 @@ fn emit_progress(app: &AppHandle, step: &str, message: &str, percent: u8) {
             percent,
         },
     );
+}
+
+fn postgres_dir_looks_non_empty(paths: &ManagedPaths) -> bool {
+    let pg_dir = paths.data_dir.join("postgres");
+    if !pg_dir.exists() {
+        return false;
+    }
+    if let Ok(mut it) = std::fs::read_dir(&pg_dir) {
+        return it.next().is_some();
+    }
+    false
+}
+
+fn has_postgres_quarantine(paths: &ManagedPaths) -> bool {
+    let Ok(it) = std::fs::read_dir(&paths.data_dir) else {
+        return false;
+    };
+    for e in it.flatten() {
+        if let Some(name) = e.file_name().to_str() {
+            if name.starts_with("postgres.reset.") {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+#[tauri::command]
+pub fn installer_preflight(app: AppHandle, paths: State<'_, ManagedPaths>) -> Result<InstallerPreflight, String> {
+    let marker_exists = install_marker_path(&paths.data_dir).exists();
+    let needs_reset = !marker_exists && postgres_dir_looks_non_empty(&paths);
+    let quarantines = list_postgres_quarantines(&paths);
+    let has_quarantine = !quarantines.is_empty() || has_postgres_quarantine(&paths);
+
+    // Seed / runtime: best-effort (ne bloque jamais l'UI)
+    let seed_dir = std::env::var("ATLAS_DESKTOP_SEED_DIR").unwrap_or_default();
+    let mut seed_path = if !seed_dir.trim().is_empty() {
+        Some(std::path::PathBuf::from(seed_dir.trim()).join("atlas_desktop_seed.dump"))
+    } else {
+        None
+    };
+    if seed_path.as_ref().is_none_or(|p| !p.exists()) {
+        let resolved = app
+            .path()
+            .resolve("data/db/backups/atlas_desktop_seed.dump", tauri::path::BaseDirectory::Resource)
+            .ok();
+        if let Some(p) = resolved {
+            if p.exists() {
+                seed_path = Some(p);
+            }
+        }
+
+        if seed_path.as_ref().is_none_or(|p| !p.exists()) {
+            if let Ok(rd) = app.path().resource_dir() {
+                let p2 = rd.join("data").join("db").join("backups").join("atlas_desktop_seed.dump");
+                if p2.exists() {
+                    seed_path = Some(p2);
+                } else {
+                    seed_path = find_file_recursive(&rd, "atlas_desktop_seed.dump", 8000);
+                }
+            }
+        }
+    }
+    let (seed_present, seed_bytes) = match &seed_path {
+        Some(p) if p.exists() => (true, std::fs::metadata(p).map(|m| m.len()).unwrap_or(0)),
+        _ => (false, 0),
+    };
+    let seed_manifest_present = match &seed_path {
+        Some(p) => {
+            if p.with_extension("dump.json").exists() {
+                true
+            } else {
+                p.parent()
+                    .and_then(|dir| find_file_recursive(dir, "atlas_desktop_seed.dump.json", 2000))
+                    .is_some()
+            }
+        }
+        None => false,
+    };
+
+    let pg_bin_dir = std::env::var("ATLAS_PG_BIN_DIR").unwrap_or_default();
+    let mut pg_bin_path = if !pg_bin_dir.trim().is_empty() {
+        Some(std::path::PathBuf::from(pg_bin_dir.trim()))
+    } else {
+        None
+    };
+    let pg_bin_present = match &pg_bin_path {
+        Some(p) => p.join("pg_ctl.exe").exists() && p.join("initdb.exe").exists() && p.join("psql.exe").exists(),
+        None => false,
+    };
+    if !pg_bin_present {
+        if let Ok(p) = app
+            .path()
+            .resolve("pg/bin/pg_ctl.exe", tauri::path::BaseDirectory::Resource)
+        {
+            if let Some(parent) = p.parent() {
+                pg_bin_path = Some(parent.to_path_buf());
+            }
+        } else if let Ok(rd) = app.path().resource_dir() {
+            let p2 = rd.join("pg").join("bin");
+            if p2.join("pg_ctl.exe").exists() {
+                pg_bin_path = Some(p2);
+            }
+        }
+    }
+    let pg_bin_present = match &pg_bin_path {
+        Some(p) => p.join("pg_ctl.exe").exists() && p.join("initdb.exe").exists() && p.join("psql.exe").exists(),
+        None => false,
+    };
+    Ok(InstallerPreflight {
+        needs_reset,
+        has_quarantine,
+        quarantine_count: quarantines.len().min(u32::MAX as usize) as u32,
+        seed_present,
+        seed_path: seed_path.map(|p| p.to_string_lossy().to_string()),
+        seed_bytes,
+        seed_manifest_present,
+        pg_bin_present,
+        pg_bin_dir: pg_bin_path.map(|p| p.to_string_lossy().to_string()),
+    })
+}
+
+#[tauri::command]
+pub fn installer_reset_local_db(
+    app: AppHandle,
+    paths: State<'_, ManagedPaths>,
+    pg_state: State<'_, ManagedPostgres>,
+    args: InstallerResetArgs,
+) -> Result<ResetReport, String> {
+    let _lock = maintenance_lock(&paths)?;
+
+    let warnings: Vec<String> = vec![];
+
+    emit_progress(&app, "reset", "Arrêt PostgreSQL (si actif)…", 5);
+    if let Ok(mut guard) = pg_state.0.lock() {
+        if let Some(pg) = guard.as_ref() {
+            let _ = postgres::stop_postgres(pg);
+        }
+        *guard = None;
+    }
+
+    // Best-effort kill (Windows) based on PID file if still locked.
+    let data_dir = paths.data_dir.join("postgres");
+    kill_postgres_from_pid_file_best_effort(&data_dir);
+
+    emit_progress(&app, "reset", "Suppression base locale…", 35);
+    let root = postgres::reset_local_postgres_data_dir().map_err(|e| e.to_string())?;
+    tracing::info!(data_root = %root.display(), "installer_reset_local_db: postgres data reset");
+
+    // Vérification post-reset (éviter boucle UI si la suppression n'a pas eu lieu)
+    let pg_dir_after = root.join("postgres");
+    if pg_dir_after.exists() {
+        return Err(format!(
+            "Réinitialisation incomplète: le dossier postgres existe encore ({})",
+            pg_dir_after.display()
+        ));
+    }
+
+    let quarantine_path = list_postgres_quarantines(&paths)
+        .last()
+        .map(|p| p.to_string_lossy().to_string());
+
+    let mut marker_removed = false;
+    if args.also_remove_marker {
+        emit_progress(&app, "reset", "Réinitialisation état installateur…", 70);
+        let marker = install_marker_path(&paths.data_dir);
+        if marker.exists() {
+            if std::fs::remove_file(&marker).is_ok() {
+                marker_removed = true;
+            }
+        }
+    }
+
+    emit_progress(&app, "reset", "Réinitialisation terminée", 100);
+
+    Ok(ResetReport {
+        outcome: "ok".to_string(),
+        data_root: root.to_string_lossy().to_string(),
+        marker_removed,
+        quarantine_path,
+        warnings,
+    })
+}
+
+#[tauri::command]
+pub fn installer_backup_local_db(
+    app: AppHandle,
+    paths: State<'_, ManagedPaths>,
+    pg_state: State<'_, ManagedPostgres>,
+    args: InstallerBackupArgs,
+) -> Result<BackupReport, String> {
+    let _lock = maintenance_lock(&paths)?;
+
+    if !postgres::postgres_available() {
+        return Err("PostgreSQL embarqué indisponible (ATLAS_PG_BIN_DIR)".to_string());
+    }
+
+    emit_progress(&app, "backup", "Préparation sauvegarde…", 5);
+
+    let mut started_for_backup = false;
+    let port_opt = pg_state
+        .0
+        .lock()
+        .ok()
+        .and_then(|g| g.as_ref().map(|h| h.port));
+
+    let port = if let Some(p) = port_opt {
+        p
+    } else {
+        emit_progress(&app, "backup", "Démarrage PostgreSQL (pour sauvegarde)…", 15);
+        let pg = postgres::ensure_postgres_started().map_err(|e| e.to_string())?;
+        started_for_backup = true;
+        if let Ok(mut guard) = pg_state.0.lock() {
+            *guard = Some(pg);
+        }
+        pg_state
+            .0
+            .lock()
+            .ok()
+            .and_then(|g| g.as_ref().map(|h| h.port))
+            .unwrap_or(5432)
+    };
+
+    let db_user = std::env::var("DB_USER").unwrap_or_else(|_| "atlas".to_string());
+    let db_name = std::env::var("DB_NAME").unwrap_or_else(|_| "atlas_clean".to_string());
+    let db_password = postgres::ensure_password().map_err(|e| e.to_string())?;
+
+    let backup_dir = paths.data_dir.join("backups");
+    std::fs::create_dir_all(&backup_dir)
+        .map_err(|e| format!("failed to create backup dir ({}): {e}", backup_dir.display()))?;
+
+    let ts = chrono::Utc::now().format("%Y%m%d_%H%M%S").to_string();
+    let out = backup_dir.join(format!("atlas_{db_name}_{ts}.dump"));
+
+    emit_progress(&app, "backup", "Sauvegarde en cours (pg_dump)…", 40);
+
+    let pg_dump = postgres::pg_tool_path("pg_dump.exe");
+    let mut cmd = std::process::Command::new(&pg_dump);
+    cmd.env("PGHOST", "127.0.0.1")
+        .env("PGPORT", port.to_string())
+        .env("PGUSER", &db_user)
+        .env("PGPASSWORD", &db_password)
+        .arg("-Fc")
+        .arg("-f")
+        .arg(&out)
+        .arg(&db_name);
+
+    #[cfg(windows)]
+    if !cfg!(debug_assertions) {
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
+    let status = cmd.status().map_err(|e| format!("failed to run pg_dump: {e}"))?;
+    if !status.success() {
+        return Err("pg_dump failed".to_string());
+    }
+
+    let meta = std::fs::metadata(&out)
+        .map_err(|e| format!("failed to read backup metadata ({}): {e}", out.display()))?;
+    if meta.len() == 0 {
+        return Err("Sauvegarde invalide: fichier dump vide".to_string());
+    }
+
+    let sha256_hex = compute_file_sha256_hex(&out)?;
+
+    let manifest = serde_json::json!({
+        "created_at": chrono::Utc::now().to_rfc3339(),
+        "app_version": env!("CARGO_PKG_VERSION"),
+        "db_name": db_name,
+        "bytes": meta.len(),
+        "sha256": sha256_hex,
+    });
+    let manifest_path = std::path::PathBuf::from(format!("{}.json", out.to_string_lossy()));
+    std::fs::write(&manifest_path, serde_json::to_string_pretty(&manifest).unwrap_or_default())
+        .map_err(|e| format!("failed to write backup manifest ({}): {e}", manifest_path.display()))?;
+
+    emit_progress(&app, "backup", "Sauvegarde terminée", 90);
+
+    if args.stop_after && started_for_backup {
+        emit_progress(&app, "backup", "Arrêt PostgreSQL…", 95);
+        if let Ok(mut guard) = pg_state.0.lock() {
+            if let Some(pg) = guard.as_ref() {
+                let _ = postgres::stop_postgres(pg);
+            }
+            *guard = None;
+        }
+    }
+
+    emit_progress(&app, "backup", "OK", 100);
+    Ok(BackupReport {
+        path: out.to_string_lossy().to_string(),
+        bytes: meta.len(),
+        sha256_hex,
+        manifest_path: manifest_path.to_string_lossy().to_string(),
+    })
+}
+
+#[tauri::command]
+pub fn installer_cleanup_quarantines(
+    paths: State<'_, ManagedPaths>,
+    keep_latest: u32,
+) -> Result<CleanupQuarantinesReport, String> {
+    let _lock = maintenance_lock(&paths)?;
+
+    let mut quarantines = list_postgres_quarantines(&paths);
+    quarantines.sort();
+    let keep = keep_latest as usize;
+    let split = quarantines.len().saturating_sub(keep);
+    let (to_delete, to_keep) = quarantines.split_at(split);
+    let mut deleted = vec![];
+    let mut kept = vec![];
+    for p in to_keep {
+        kept.push(p.to_string_lossy().to_string());
+    }
+    for p in to_delete {
+        if p.exists() {
+            if std::fs::remove_dir_all(p).is_ok() {
+                deleted.push(p.to_string_lossy().to_string());
+            }
+        }
+    }
+    Ok(CleanupQuarantinesReport { deleted, kept })
+}
+
+#[tauri::command]
+pub fn installer_open_data_dir(paths: State<'_, ManagedPaths>) -> Result<(), String> {
+    #[cfg(windows)]
+    return open_folder_windows(&paths.data_dir);
+    #[cfg(not(windows))]
+    Err("open_data_dir not implemented on this platform".to_string())
+}
+
+#[tauri::command]
+pub fn installer_open_backups_dir(paths: State<'_, ManagedPaths>) -> Result<(), String> {
+    let dir = paths.data_dir.join("backups");
+    #[cfg(windows)]
+    return open_folder_windows(&dir);
+    #[cfg(not(windows))]
+    Err("open_backups_dir not implemented on this platform".to_string())
 }
 
 #[tauri::command]
@@ -132,6 +649,14 @@ pub async fn installer_run(
         cmd.env_remove("DATABASE_URL");
         cmd.env("DATABASE_URL", &database_url);
         cmd.env("DATABASE_URL_ADMIN", &database_url);
+
+        #[cfg(windows)]
+        {
+            if !cfg!(debug_assertions) {
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                cmd.creation_flags(CREATE_NO_WINDOW);
+            }
+        }
 
         let _ = cmd.spawn().map_err(|e| format!("failed to start backend: {e}"))?;
 

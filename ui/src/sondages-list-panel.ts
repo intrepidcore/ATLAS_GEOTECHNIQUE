@@ -2,7 +2,7 @@
  * Panel Liste complète des sondages avec recherche et filtres
  */
 
-import { getMailleFeature, listSondages, getSondagesStats, legacyLookupGridCode, MailleFeature, Sondage, SondagesStats } from './api/sondages';
+import { getMailleFeature, listSondages, getSondagesStats, legacyLookupGridCode, deleteSondage, MailleFeature, Sondage, SondagesStats } from './api/sondages';
 import { toast } from './ui/toast';
 import { computeGeocodeBadgeFromSurvey, GeocodeBadgeType } from './types/survey-details';
 
@@ -652,6 +652,9 @@ export class SondagesListPanel {
               <button class="view-btn" data-id="${s.id}" style="flex: 1; padding: 8px; background: #22304d; color: #ecf2f8; border: none; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;">
                 👁️ Voir détails
               </button>
+              <button class="delete-btn" data-id="${s.id}" style="flex: 0 0 auto; padding: 8px 12px; background: transparent; color: #ff6b6b; border: 1px solid #ff6b6b; border-radius: 4px; font-size: 12px; font-weight: 600; cursor: pointer;" title="Supprimer">
+                🗑️
+              </button>
             </div>
           </div>
         `;
@@ -785,13 +788,56 @@ export class SondagesListPanel {
       });
     });
 
+    // Delete buttons
+    document.querySelectorAll('.delete-btn').forEach((btn) => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const id = (e.currentTarget as HTMLElement).dataset.id!;
+        this.handleDelete(id);
+      });
+    });
+
     // Card click
     document.querySelectorAll('.sondage-card').forEach((card) => {
       card.addEventListener('click', (e) => {
+        // Prevent click if we were clicking details or delete or geocode
+        if ((e.target as Element).closest('button')) {
+            return;
+        }
         const id = (e.currentTarget as HTMLElement).dataset.id!;
         this.handleView(id);
       });
     });
+  }
+
+  private async handleDelete(id: string) {
+    const sondage = this.sondages.find((s) => s.id === id);
+    if (!sondage) return;
+
+    if (!window.confirm(`Voulez-vous vraiment supprimer le sondage ${sondage.code} ?`)) {
+      return;
+    }
+
+    try {
+      await deleteSondage(id);
+      toast.success(`Sondage ${sondage.code} supprimé avec succès`);
+      
+      // Remove from memory then re-render fast without full refresh
+      this.sondages = this.sondages.filter((s) => s.id !== id);
+      if (this.stats && this.stats.total > 0) {
+        this.stats.total--;
+        if (sondage.is_geocoded) this.stats.with_geom--;
+      }
+      this.rerenderList();
+      
+      // Update the main UI stats banner gently (if needed we can trigger a full refresh but this is faster)
+      if (this.currentContainerId && this.onSuccessCallback && this.onErrorCallback) {
+         this.renderUI(this.currentContainerId, this.onSuccessCallback, this.onErrorCallback);
+      }
+    } catch (e: any) {
+      console.error('[SONDAGES LIST] Error deleting sondage:', e);
+      toast.error(`Erreur lors de la suppression : ${e.message}`);
+    }
   }
 
   private handleGeocode(id: string) {

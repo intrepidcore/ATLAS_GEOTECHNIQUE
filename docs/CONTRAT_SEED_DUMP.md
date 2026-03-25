@@ -121,3 +121,9 @@ Scripts associés (repo) :
 ## 8) Historique des seeds
 
 - 2026-03-13 — `b07b917` — `atlas_desktop_seed.dump` (sha256 dans le manifest)
+
+## 9) Politique de versionnement des seeds (v2)
+
+- Chaque génération met à jour `identity.seed_version` (SemVer) dans le manifest.
+- Avant d'écraser le seed courant, l'ancien dump est archivé dans `data/db/backups/versions/`.
+- Politique de rétention locale : conserver les 3 dernières versions (les plus anciennes sont supprimées).
