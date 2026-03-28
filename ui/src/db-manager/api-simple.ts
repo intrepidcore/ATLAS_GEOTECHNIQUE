@@ -113,3 +113,44 @@ export async function getTableData(
     throw new Error('Invalid JSON response from server')
   }
 }
+
+async function postJson<T>(path: string, body: any = {}): Promise<T> {
+  const response = await fetch(`${API_GEO}${path}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(body)
+  })
+  if (!response.ok) throw new Error(await parseErrorMessage(response))
+  return await response.json()
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const response = await fetch(`${API_GEO}${path}`, {
+    headers: getAuthHeaders()
+  })
+  if (!response.ok) throw new Error(await parseErrorMessage(response))
+  return await response.json()
+}
+
+export async function aiRecomputeKriging(): Promise<any> {
+  return await postJson('/ai/kriging/recompute', {})
+}
+
+export async function aiTrainSupervised(): Promise<any> {
+  return await postJson('/ai/infer/train-supervised', {})
+}
+
+export async function aiRefreshSources(): Promise<any> {
+  return await postJson('/ai/recompute/sources', {})
+}
+
+export async function aiJobsRecent(): Promise<any> {
+  return await getJson('/ai/jobs/recent')
+}
+
+export async function aiJobsRunOnce(maxJobs = 1): Promise<any> {
+  return await postJson('/ai/jobs/run-once', { max_jobs: maxJobs })
+}

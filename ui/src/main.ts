@@ -64,11 +64,20 @@ import { httpJSON } from './utils/http'
 import { initRealtime, onWsEvent } from './realtime'
 import { router } from './router'
 import { SondagesManagerPage } from './pages/sondages-manager-page'
-import { getGridFeatureStyle, COLORS, WEIGHT, OPACITY, CELL_SELECTED_STYLE, GRID_HOVER_STYLE } from './map-style'
+import {
+  getGridFeatureStyle,
+  setLamaMailleMetadata,
+  COLORS,
+  WEIGHT,
+  OPACITY,
+  CELL_SELECTED_STYLE,
+  GRID_HOVER_STYLE,
+} from './map-style'
 import { colabController } from './colab/colab-controller'
 import { mailleStateStore } from './stores/maille-state-store'
 import { bus } from './utils/event-bus'
 import { openMailleDialog } from './modal/maille-dialog-host'
+import { openZoneEtudeModal } from './modal/react-modal-host'
 import { initUserMenu } from './user-menu'
 import { 
   currentFilters, 
@@ -212,8 +221,17 @@ declare global {
 ;(window as any).ATLAS_FLAGS = {
   showClassificationTab: true,
   showSparklines: true,
-  enableAuditLog: false
+  enableAuditLog: false,
 }
+
+/**
+ * ARCHIVE — À REVOIR PLUS TARD
+ * Bandeau plein (lamaBackgroundPane, remplissage orange #F59E0B) sous la Dépression de la Lama.
+ * Doublon visuel possible avec la couche polygone « zones d'étude » sous la grille.
+ * Désactivé par défaut pour éviter deux couches orange superposées.
+ * Pour réactiver : passer à true (puis rebuild UI).
+ */
+const ENABLE_LAMA_ORANGE_BACKGROUND_BAND = false
 
 // Base URLs with runtime override support
 import { getApiBase } from './api-base'
@@ -221,8 +239,20 @@ import { getApiBase } from './api-base'
 let API_GEO = getApiBase()
 try {
   window.addEventListener('atlas:api-base:updated', () => {
+    const previous = API_GEO
     API_GEO = getApiBase()
-    console.log('[INIT] API_GEO updated:', API_GEO)
+    console.log('[INIT] API_GEO updated:', { previous, next: API_GEO })
+    try {
+      ;(window as any).__atlasRunApiHealthCheck?.('api-base-updated')
+    } catch {
+      // ignore
+    }
+    loadLamaMailleCodes()
+    if (ENABLE_LAMA_ORANGE_BACKGROUND_BAND) {
+      ensureLamaBandVisible().catch(() => {
+        // best-effort
+      })
+    }
   })
 } catch {
   // ignore
@@ -233,30 +263,52 @@ console.log('[INIT] API_GEO configuré:', API_GEO)
 function startApiHealthCheck() {
   const dot = document.getElementById('apiHealthDot');
   const badge = document.getElementById('apiBadge');
-  if (!dot || !badge) return;
+  if (!dot || !badge) {
+    console.error('[health] api badge elements missing', { hasDot: !!dot, hasBadge: !!badge });
+    return;
+  }
 
-  const check = async () => {
+  let attempts = 0;
+
+  const setApiBadge = (state: 'warn' | 'ok' | 'err', title: string) => {
+    if (state === 'ok') {
+      dot.style.background = 'var(--ok)';
+      dot.style.boxShadow = '0 0 5px var(--ok)';
+    } else if (state === 'err') {
+      dot.style.background = 'var(--err)';
+      dot.style.boxShadow = '0 0 5px var(--err)';
+    } else {
+      dot.style.background = 'var(--warn)';
+      dot.style.boxShadow = '0 0 5px var(--warn)';
+    }
+    badge.title = title;
+  };
+
+  const check = async (reason = 'interval') => {
+    attempts += 1;
+    const startedAt = performance.now();
+    setApiBadge('warn', `API: ${API_GEO} (vérification en cours, tentative ${attempts})`);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 2000);
       const res = await fetch(`${API_GEO}/healthz`, { signal: controller.signal });
       clearTimeout(timeoutId);
-      
+
       if (res.ok) {
-        dot.style.background = 'var(--ok)';
-        dot.style.boxShadow = '0 0 5px var(--ok)';
-        badge.title = `API: ${API_GEO} (En ligne)`;
+        const elapsed = Math.round(performance.now() - startedAt);
+        setApiBadge('ok', `API: ${API_GEO} (En ligne, ${elapsed}ms, reason=${reason})`);
+        console.info('[health] API OK', { api: API_GEO, elapsedMs: elapsed, reason, attempts });
       } else {
-        throw new Error('API ERROR');
+        throw new Error(`HTTP ${res.status}`);
       }
-    } catch {
-      dot.style.background = 'var(--err)';
-      dot.style.boxShadow = '0 0 5px var(--err)';
-      badge.title = `API: ${API_GEO} (Hors ligne)`;
+    } catch (error: any) {
+      setApiBadge('err', `API: ${API_GEO} (Hors ligne: ${error?.message || 'unknown'})`);
+      console.error('[health] API KO', { api: API_GEO, reason, attempts, error: error?.message || String(error) });
     }
   };
 
-  check();
+  ;(window as any).__atlasRunApiHealthCheck = check;
+  check('startup');
   setInterval(check, 10000);
 }
 
@@ -282,6 +334,11 @@ const map = L.map('map', { preferCanvas: true, attributionControl: false }).setV
 const contextPane = map.createPane('contextPane')
 contextPane.style.zIndex = '440'
 
+// zoneStudyFillPane: polygones zones d'étude (remplissage léger) — sous la grille, au-dessus du contexte
+const zoneStudyFillPane = map.createPane('zoneStudyFillPane')
+zoneStudyFillPane.style.zIndex = '445'
+zoneStudyFillPane.style.pointerEvents = 'none'
+
 const gridPane = map.createPane('gridPane')
 gridPane.style.zIndex = '450'
 
@@ -298,10 +355,398 @@ const highlightPane = map.createPane('highlightPane')
 highlightPane.style.zIndex = '470'
 highlightPane.style.pointerEvents = 'none'
 
-// Exposer les panes globalement pour les autres modules
-;(window as any).atlasMapPanes = { gridPane, contextPane, gridOverlayPane, dsmPane, highlightPane }
+// zoneEtudePane: focus zone (modal / détail) — au-dessus de la grille
+const zoneEtudePane = map.createPane('zoneEtudePane')
+zoneEtudePane.style.zIndex = '468'
+zoneEtudePane.style.pointerEvents = 'none'
 
-console.log('[INIT] Leaflet panes created: contextPane(440), gridPane(450), gridOverlayPane(455), dsmPane(460), highlightPane(470)')
+// lamaBackgroundPane: fond orange des mailles Lama (en dessous des contours)
+const lamaBackgroundPane = map.createPane('lamaBackgroundPane')
+lamaBackgroundPane.style.zIndex = '467'
+lamaBackgroundPane.style.pointerEvents = 'none'
+
+// Exposer les panes globalement pour les autres modules
+;(window as any).atlasMapPanes = {
+  gridPane,
+  contextPane,
+  gridOverlayPane,
+  dsmPane,
+  highlightPane,
+  zoneEtudePane,
+  lamaBackgroundPane,
+  zoneStudyFillPane,
+}
+
+console.log(
+  '[INIT] Leaflet panes: context(440), zoneStudyFill(445), grid(450), gridOverlay(455), dsm(460), lamaBg(467), zoneEtude(468), highlight(470)',
+)
+
+// ============================================================================
+// Zones d'étude (dépression de la Lama) - overlay Leaflet
+// ============================================================================
+type RisqueRga = 'faible' | 'moyen' | 'fort' | 'tres_fort'
+
+const ZONE_RISK_COLORS: Record<RisqueRga, string> = {
+  faible: '#388e3c',
+  moyen: '#fbc02d',
+  fort: '#f57c00',
+  tres_fort: '#d32f2f',
+}
+
+const PRIORITE_COLORS: Record<number, string> = {
+  1: '#d32f2f',
+  2: '#f57c00',
+  3: '#fbc02d',
+  4: '#66bb6a',
+}
+
+let zoneBoundaryLayer: L.GeoJSON | null = null
+let zoneMaillesLayer: L.GeoJSON | null = null
+let zoneMailleLayerByCode: Map<string, L.Path> = new Map()
+let zoneHighlightTimer: ReturnType<typeof setTimeout> | null = null
+let lamaBandLayer: L.GeoJSON | null = null
+let publishedZonesLayer: L.GeoJSON | null = null
+let depressionsLegendControl: L.Control | null = null
+let lamaZoneGeojsonCache: GeoJSON.Geometry | null = null
+
+const LAMA_BACKGROUND_FILL = '#F59E0B'
+const LAMA_BACKGROUND_FILL_OPACITY = 0.1
+
+/** Remplissage des polygones « zones d'étude » sous la grille (SIG : contexte continu vs carroyage). */
+const ZONE_STUDY_FILL_OPACITY = 0.15
+const ZONE_STUDY_STROKE_OPACITY = 0.28
+
+const LAMA_STROKE_FROM = { r: 0xFE, g: 0xD7, b: 0xAA }
+const LAMA_STROKE_TO = { r: 0x7C, g: 0x2D, b: 0x12 }
+
+function clamp01(v: number) {
+  return Math.max(0, Math.min(1, v))
+}
+
+function interpolateLamaStrokeColor(pct: number): string {
+  const t = clamp01((pct || 0) / 100)
+  const lerp = (a: number, b: number) => Math.round(a + (b - a) * t)
+  const r = lerp(LAMA_STROKE_FROM.r, LAMA_STROKE_TO.r)
+  const g = lerp(LAMA_STROKE_FROM.g, LAMA_STROKE_TO.g)
+  const b = lerp(LAMA_STROKE_FROM.b, LAMA_STROKE_TO.b)
+  return `#${[r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')}`
+}
+
+/** L'API renvoie `{ geojson: Geometry }` (voir `ZoneGeoJsonResponse`). */
+function parseZoneGeoJsonBody(body: unknown): GeoJSON.Geometry | null {
+  if (!body || typeof body !== 'object') return null
+  const o = body as Record<string, unknown>
+  const g = o.geojson
+  if (g && typeof g === 'object' && (g as GeoJSON.Geometry).type) {
+    return g as GeoJSON.Geometry
+  }
+  const t = (body as GeoJSON.Geometry)?.type
+  if (t === 'Polygon' || t === 'MultiPolygon' || t === 'GeometryCollection') {
+    return body as GeoJSON.Geometry
+  }
+  return null
+}
+
+async function ensureLamaBandVisible(): Promise<void> {
+  if (!ENABLE_LAMA_ORANGE_BACKGROUND_BAND) {
+    return
+  }
+  if (lamaBandLayer) return
+  try {
+    const res = await fetch(`${API_GEO}/zones-etude/DEPRESSION_LAMA_TG/geojson`)
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const gj = await res.json()
+    const geom = parseZoneGeoJsonBody(gj)
+    if (!geom) throw new Error('geojson Lama vide ou invalide')
+    lamaZoneGeojsonCache = geom
+    lamaBandLayer = L.geoJSON(geom as any, {
+      pane: 'lamaBackgroundPane',
+      interactive: false,
+      style: {
+        color: 'transparent',
+        weight: 0,
+        opacity: 0,
+        fillColor: LAMA_BACKGROUND_FILL,
+        fillOpacity: LAMA_BACKGROUND_FILL_OPACITY,
+      },
+    })
+    lamaBandLayer.addTo(map)
+  } catch (e) {
+    console.warn("[Lama] Impossible d'initialiser le fond orange:", e)
+  }
+}
+
+async function ensurePublishedZonesVisible(): Promise<void> {
+  if (publishedZonesLayer) return
+  try {
+    // Liste + geojson publics (pas besoin de JWT ; évite échec silencieux avant login)
+    const listRes = await fetch(`${API_GEO}/zones-etude`)
+    if (!listRes.ok) throw new Error(`zones-etude HTTP ${listRes.status}`)
+    const zones = (await listRes.json()) as Array<{
+      code: string
+      risque_rga?: string
+      carte_overlay_order?: number
+    }>
+    const sorted = [...(zones || [])].sort((a, b) => {
+      const oa = Number(a.carte_overlay_order ?? 100)
+      const ob = Number(b.carte_overlay_order ?? 100)
+      if (oa !== ob) return oa - ob
+      return String(a.code).localeCompare(String(b.code))
+    })
+    const features: GeoJSON.Feature[] = []
+    for (const z of sorted) {
+      const code = String(z?.code || '').trim()
+      if (!code) continue
+      try {
+        const gRes = await fetch(`${API_GEO}/zones-etude/${encodeURIComponent(code)}/geojson`)
+        if (!gRes.ok) continue
+        const raw = await gRes.json()
+        const geom = parseZoneGeoJsonBody(raw)
+        if (!geom) {
+          console.warn('[ZonesEtude] geojson vide pour', code)
+          continue
+        }
+        features.push({
+          type: 'Feature',
+          geometry: geom as any,
+          properties: {
+            code,
+            risque_rga: z?.risque_rga || null,
+          },
+        })
+      } catch (e) {
+        console.warn('[ZonesEtude] geojson unavailable for zone:', code, e)
+      }
+    }
+
+    publishedZonesLayer = L.geoJSON(
+      { type: 'FeatureCollection', features } as any,
+      {
+        pane: 'zoneStudyFillPane',
+        interactive: false,
+        style: (feature: any) => {
+          const code = String(feature?.properties?.code || '').toUpperCase()
+          const c = getDepressionColorByCode(code) || getZoneRiskColor(feature?.properties?.risque_rga)
+          return {
+            color: c,
+            opacity: ZONE_STUDY_STROKE_OPACITY,
+            weight: 1,
+            fillColor: c,
+            fillOpacity: ZONE_STUDY_FILL_OPACITY,
+          }
+        },
+      }
+    )
+    publishedZonesLayer.addTo(map)
+    ensureDepressionsLegendVisible()
+  } catch (e) {
+    console.warn('[ZonesEtude] Impossible d afficher les zones publiees:', e)
+  }
+}
+
+async function loadLamaMailleCodes(): Promise<void> {
+  try {
+    const mailles = await fetchWithBearerJSON<Array<{ maille_code: string; pct_intersection?: number; priorite_recherche?: number }>>(
+      `${API_GEO}/zones-etude/DEPRESSION_LAMA_TG/mailles?limit=5000`
+    )
+    setLamaMailleMetadata(mailles || [])
+    if (gridLayer) {
+      gridLayer.setStyle((feature: any) => styleFeature(feature))
+    }
+  } catch (e) {
+    console.warn('[ZonesEtude] Lama mailles unavailable:', e)
+  }
+}
+
+function clearZoneEtudeOnMap() {
+  try {
+    if (zoneBoundaryLayer) map.removeLayer(zoneBoundaryLayer)
+    if (zoneMaillesLayer) map.removeLayer(zoneMaillesLayer)
+  } catch {
+    // best-effort
+  }
+  zoneBoundaryLayer = null
+  zoneMaillesLayer = null
+  zoneMailleLayerByCode.clear()
+  if (zoneHighlightTimer) {
+    clearTimeout(zoneHighlightTimer)
+    zoneHighlightTimer = null
+  }
+}
+
+function getZoneRiskColor(risk: string | undefined | null): string {
+  const r = (risk || '').toLowerCase() as RisqueRga
+  return ZONE_RISK_COLORS[r] || '#9c27b0'
+}
+
+function getDepressionColorByCode(zoneCode: string): string {
+  const code = String(zoneCode || '').toUpperCase()
+  if (code === 'DEPRESSION_LAMA_TG') return '#D97706'
+  if (code === 'DEPRESSION_BADO_TG') return '#FB923C'
+  if (code === 'PLAINE_MONO_TG') return '#059669'
+  if (code === 'PLAINE_OTI_TG') return '#0284C7'
+  if (code === 'FOSSE_LIONS_TG') return '#7C3AED'
+  return '#EA580C'
+}
+
+function ensureDepressionsLegendVisible(): void {
+  if (depressionsLegendControl) return
+  const ctl = (L as unknown as { control: (o: { position: string }) => L.Control }).control({
+    position: 'bottomleft',
+  })
+  ctl.onAdd = () => {
+    const div = L.DomUtil.create('div', 'leaflet-control')
+    div.style.background = '#0b1220'
+    div.style.color = '#e5e7eb'
+    div.style.border = '1px solid #1f2937'
+    div.style.borderRadius = '8px'
+    div.style.padding = '8px 10px'
+    div.style.fontSize = '11px'
+    div.innerHTML = `
+      <div style="font-weight:700;margin-bottom:6px">Zones d'étude Atlas</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;background:#D97706;border-radius:50%;flex-shrink:0"></span>Lama</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;background:#FB923C;border-radius:50%;flex-shrink:0"></span>Bado</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;background:#059669;border-radius:50%;flex-shrink:0"></span>Mono</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;background:#0284C7;border-radius:50%;flex-shrink:0"></span>Oti</div>
+      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;background:#7C3AED;border-radius:50%;flex-shrink:0"></span>Fosse aux Lions</div>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f2937;font-size:10px;line-height:1.35;color:#94a3b8;font-weight:400">
+        Sur la carte, les zones apparaissent en <strong>surface semi-transparente sous la grille</strong> (~15&nbsp;%). Les couleurs des <strong>mailles</strong> indiquent uniquement le <strong>statut des données</strong> (GPS, aléatoire, sans données, etc.).
+      </div>
+      <div style="margin-top:6px;font-size:10px;line-height:1.35;color:#94a3b8;font-weight:400">
+        Chevauchements (ex. Lama / Mono) : unités géotechniques limitrophes ; une maille peut intersecter plusieurs zones (règle ≥10&nbsp;%). Kriging calculé par zone. Pour une synthèse à zone unique, utiliser la zone de plus forte intersection.
+      </div>
+    `
+    return div
+  }
+  ctl.addTo(map)
+  depressionsLegendControl = ctl
+}
+
+function getPrioriteColor(priorite: number | undefined | null): string {
+  if (!Number.isFinite(priorite as any)) return '#9c27b0'
+  return PRIORITE_COLORS[priorite as number] || '#9c27b0'
+}
+
+function renderZoneEtudeOnMap(payload: {
+  zone: { code?: string; risque_rga: string }
+  zoneGeojson: GeoJSON.Geometry
+  mailles: Array<{ maille_code: string; priorite_recherche: number; pct_intersection?: number; geojson: GeoJSON.Geometry; statut_donnees?: string }>
+}) {
+  clearZoneEtudeOnMap()
+
+  const zoneColor = getZoneRiskColor(payload.zone?.risque_rga)
+  const isLama = String(payload.zone?.code || '').toUpperCase() === 'DEPRESSION_LAMA_TG'
+  const lamaAccent = '#D97706'
+
+  if (!isLama) {
+    zoneBoundaryLayer = L.geoJSON(payload.zoneGeojson as any, {
+      pane: 'zoneEtudePane',
+      style: {
+        color: zoneColor,
+        weight: 2.5,
+        opacity: 0.95,
+        fillColor: zoneColor,
+        fillOpacity: 0.06,
+        dashArray: '6 4',
+      },
+      interactive: false,
+    })
+    zoneBoundaryLayer.addTo(map)
+  }
+
+  // Mailles
+  const features: GeoJSON.Feature[] = payload.mailles.map(m => ({
+    type: 'Feature',
+    geometry: m.geojson as any,
+    properties: {
+      maille_code: m.maille_code,
+      priorite_recherche: m.priorite_recherche,
+      pct_intersection: m.pct_intersection,
+    },
+  }))
+
+  zoneMaillesLayer = L.geoJSON(
+    {
+      type: 'FeatureCollection',
+      features,
+    } as any,
+    {
+      pane: 'zoneEtudePane',
+      style: (feature: any) => {
+        const pr = Number(feature?.properties?.priorite_recherche)
+        const c = getPrioriteColor(pr)
+        const pct = Number(feature?.properties?.pct_intersection || 0)
+        if (isLama) {
+          return {
+            fillColor: 'transparent',
+            fillOpacity: 0,
+            // Le rendu des contours Lama est géré par la couche de grille (map-style.ts),
+            // pour garder l'épaisseur identique aux autres mailles.
+            color: 'transparent',
+            weight: 0,
+            opacity: 0,
+          }
+        }
+        return {
+          fillColor: c,
+          fillOpacity: 0.35,
+          color: c,
+          weight: 1.5,
+          opacity: 0.95,
+        }
+      },
+      onEachFeature: (feature: any, layer: any) => {
+        const code = feature?.properties?.maille_code
+        if (typeof code === 'string' && code) {
+          zoneMailleLayerByCode.set(code, layer as L.Path)
+        }
+      },
+      interactive: false,
+    }
+  )
+
+  zoneMaillesLayer.addTo(map)
+}
+
+function highlightZoneMaille(mailleCode: string) {
+  const layer = zoneMailleLayerByCode.get(mailleCode)
+  if (!layer) return
+
+  if (zoneHighlightTimer) {
+    clearTimeout(zoneHighlightTimer)
+    zoneHighlightTimer = null
+  }
+
+  const feature: any = (layer as any).feature
+  const pr = Number(feature?.properties?.priorite_recherche)
+  const baseColor = getPrioriteColor(pr)
+
+  layer.setStyle({
+    color: '#ffd600',
+    fillColor: '#ffd600',
+    fillOpacity: 0.55,
+    weight: 3,
+  } as any)
+
+  zoneHighlightTimer = setTimeout(() => {
+    layer.setStyle({
+      color: baseColor,
+      fillColor: baseColor,
+      fillOpacity: 0.35,
+      weight: 1.5,
+    } as any)
+    zoneHighlightTimer = null
+  }, 5000)
+}
+
+;(window as any).__atlasRenderZoneEtudeOnMap = renderZoneEtudeOnMap
+;(window as any).__atlasClearZoneEtudeOnMap = clearZoneEtudeOnMap
+;(window as any).__atlasHighlightZoneMaille = highlightZoneMaille
+
+// Point d'entrée UI: appelé par ThematicPanel
+;(window as any).openZoneEtudePanel = (zoneCode: string) => {
+  openZoneEtudeModal({ zoneCode })
+}
 
 // Initialiser les tuiles avec gestion online/offline automatique
 // 1) D'abord configurer le tileserver (async), puis initialiser les layers
@@ -326,6 +771,17 @@ initOfflineTiles().then(() => {
       )
     },
   }).addTo(map)
+
+  // Fond orange Lama + contours de mailles (dégradés par % intersection).
+  loadLamaMailleCodes()
+  if (ENABLE_LAMA_ORANGE_BACKGROUND_BAND) {
+    ensureLamaBandVisible().catch(() => {
+      // best-effort
+    })
+  }
+  ensurePublishedZonesVisible().catch(() => {
+    // best-effort
+  })
   
   console.log('[INIT] Tile layers + basemap control initialized')
 })
@@ -626,7 +1082,7 @@ function handleSearchSelection(result: SearchResult) {
     const c = result.centroid
     if (c) {
       map.setView([c[1], c[0]], 16)
-      toast('📍 Sondage localisé', 'ok')
+      toast('Sondage localisé', 'ok')
     } else {
       toast('Localisation indisponible', 'err')
     }
@@ -665,7 +1121,7 @@ function handleSearchSelection(result: SearchResult) {
       ;(document.getElementById('filterAdm3') as HTMLSelectElement | null)?.dispatchEvent(new Event('change'))
     }
 
-    toast('📌 Zone sélectionnée', 'ok')
+    toast('Zone sélectionnée', 'ok')
     return
   }
 }
@@ -707,8 +1163,8 @@ function renderMailleAssignmentInfo() {
   container.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
       <div style="font-size:11px;color:#cbd5e1;line-height:1.4">
-        <div><strong style="color:#a855f7">👤 Opérateur:</strong> ${name} <span style="color:#94a3b8">(${id})</span></div>
-        <div><strong style="color:#a855f7">🕒 Attribution:</strong> ${at}</div>
+        <div><strong style="color:#a855f7">Opérateur</strong> ${name} <span style="color:#94a3b8">(${id})</span></div>
+        <div><strong style="color:#a855f7">Attribution</strong> ${at}</div>
       </div>
       <button id="copyAssignment" class="btn" style="font-size:11px;padding:6px 10px;white-space:nowrap">Copier</button>
     </div>
@@ -877,8 +1333,8 @@ function buildEnrichedTooltip(p: any): string {
   
   // Statistiques de base (toujours affichées)
   if (p.n_sondages != null) {
-    const exactIcon = p.has_exact_location ? '📍' : ''
-    const randomIcon = p.has_random_location ? '🎲' : ''
+    const exactIcon = p.has_exact_location ? '[exact] ' : ''
+    const randomIcon = p.has_random_location ? '[ADM] ' : ''
     content += `<div><strong>Sondages:</strong> ${p.n_sondages} ${exactIcon}${randomIcon}</div>`
   }
   if (p.n_echantillons != null && p.n_echantillons > 0) {
@@ -890,7 +1346,7 @@ function buildEnrichedTooltip(p: any): string {
     content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
     const name = p.assigned_student_name || '—'
     const sid = p.assigned_student_id ? ` (${p.assigned_student_id})` : ''
-    content += `<div><strong>👤 Opérateur:</strong> ${name}${sid}</div>`
+    content += `<div><strong>Opérateur</strong> ${name}${sid}</div>`
   }
   
   // --- Données contextuelles (selon couches cochées) ---
@@ -902,7 +1358,7 @@ function buildEnrichedTooltip(p: any): string {
       content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
       hasContextData = true
     }
-    content += `<div><strong>🪨 Géologie:</strong> ${p.geologie_unite}</div>`
+    content += `<div><strong>Géologie</strong> ${p.geologie_unite}</div>`
   }
   
   // Pédologie (si couche active)
@@ -911,7 +1367,7 @@ function buildEnrichedTooltip(p: any): string {
       content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
       hasContextData = true
     }
-    content += `<div><strong>🌱 Pédologie:</strong> ${p.pedologie_unite}</div>`
+    content += `<div><strong>Pédologie</strong> ${p.pedologie_unite}</div>`
   }
   
   // Risque de gonflement (si couche active)
@@ -921,7 +1377,7 @@ function buildEnrichedTooltip(p: any): string {
       hasContextData = true
     }
     const risqueColor = p.risque_gonflement === 'Faible' ? '#22c55e' : p.risque_gonflement === 'Moyen' ? '#f59e0b' : '#ef4444'
-    content += `<div><strong>⚠️ Risque:</strong> <span style="color:${risqueColor};font-weight:600">${p.risque_gonflement}</span></div>`
+    content += `<div><strong>Risque</strong> <span style="color:${risqueColor};font-weight:600">${p.risque_gonflement}</span></div>`
   }
   
   // DSM / Altitude (si couche active)
@@ -930,7 +1386,7 @@ function buildEnrichedTooltip(p: any): string {
       content += `<div style="border-top:1px solid #334155;margin-top:4px;padding-top:4px"></div>`
       hasContextData = true
     }
-    content += `<div><strong>🏔️ Altitude:</strong> ${p.altitude_mean.toFixed(0)} m</div>`
+    content += `<div><strong>Altitude</strong> ${p.altitude_mean.toFixed(0)} m</div>`
   }
   
   // Eg moyen (données géotechniques)
@@ -1034,14 +1490,14 @@ function onEachFeature(f: any, layer: any) {
             container.classList.add('active')
           }
           
-          toast(`✅ Maille ${p.code} sélectionnée pour le sondage`, 'ok')
+          toast(`Maille ${p.code} sélectionnée pour le sondage`, 'ok')
         }, 300)
         
         return // Ne pas charger les détails de la maille
       }
       
       // Toast de confirmation
-      toast(`📍 Maille sélectionnée: ${p.code}`, 'ok')
+      toast(`Maille sélectionnée : ${p.code}`, 'ok')
       
       // Si c'est une maille 28km, afficher bouton "Gérer" pour filtrer sondages
       if (currentGridLevel === '28km') {
@@ -1085,8 +1541,8 @@ function showMaille28kmActions(props: any) {
   if (ficheAdm) {
     // Afficher les badges
     const badges = []
-    if (props.n_sondages > 0) badges.push('<span class="badge-data">✅ avec données</span>')
-    if (props.has_random_location) badges.push('<span class="badge-adm">🎲 ADM random</span>')
+    if (props.n_sondages > 0) badges.push('<span class="badge-data">Avec données</span>')
+    if (props.has_random_location) badges.push('<span class="badge-adm">ADM aléatoire</span>')
     ficheAdm.innerHTML = `Maille 28km (profil régional) ${badges.join(' ')}`
   }
   if (kpiSondages) kpiSondages.textContent = props.n_sondages || '0'
@@ -1103,15 +1559,15 @@ function showMaille28kmActions(props: any) {
     sondagesList.innerHTML = `
       <div style="padding:12px;background:#0f172a;border-radius:6px;margin-bottom:8px">
         <div style="font-size:13px;font-weight:600;color:#e2e8f0;margin-bottom:8px">
-          📊 Profil régional (28km)
+          Profil régional (28 km)
         </div>
         <div style="font-size:12px;color:#94a3b8;line-height:1.6">
-          <div>🗺️ Mailles 2km couvertes: <strong>${nMaillesWithData}</strong> / ${nMailles2km}</div>
-          <div>📍 Sondages totaux: <strong>${nSondages}</strong></div>
+          <div>Mailles 2 km avec données : <strong>${nMaillesWithData}</strong> / ${nMailles2km}</div>
+          <div>Sondages totaux : <strong>${nSondages}</strong></div>
         </div>
         <button class="btn secondary btn-sm" style="margin-top:10px;width:100%" 
                 onclick="window.location.hash='#/sondages?m28=${encodeURIComponent(props.code)}'">
-          📋 Détail - Voir les sondages
+          Détail — Voir les sondages
         </button>
       </div>
     `
@@ -1143,7 +1599,8 @@ async function loadNeighbors(mailleCode: string) {
     }
     
     const html = neighbors.map((n: any) => {
-      const directionIcon = n.direction === 'Nord' ? '⬆️' : n.direction === 'Sud' ? '⬇️' : n.direction === 'Est' ? '➡️' : '⬅️'
+      const directionIcon =
+        n.direction === 'Nord' ? 'N' : n.direction === 'Sud' ? 'S' : n.direction === 'Est' ? 'E' : 'O'
       const distance = n.distance_m ? `${(n.distance_m / 1000).toFixed(1)} km` : '—'
       
       return `
@@ -1197,7 +1654,7 @@ function renderSondagesList(sondages: any[]) {
   }
   
   listContainer.innerHTML = sondages.map((s, idx) => {
-    const modeIcon = s.mode === 'real' ? '📍' : '📊'
+    const modeIcon = s.mode === 'real' ? '' : ''
     const modeBadge = s.mode === 'real' 
       ? '<span class="badge-geo">GPS</span>' 
       : '<span class="badge-adm">Spread</span>'
@@ -1221,8 +1678,8 @@ function renderSondagesList(sondages: any[]) {
             <tr><td style="color:var(--muted)">Mode:</td><td>${s.mode || 'N/A'}</td></tr>
           </table>
           <div style="display:flex;gap:6px">
-            <button class="btn-sm" onclick="viewSondageDetails('${s.id}')">👁️ Détails</button>
-            <button class="btn-sm" onclick="editSondage('${s.id}')">✏️ Modifier</button>
+            <button class="btn-sm" onclick="viewSondageDetails('${s.id}')">Détails</button>
+            <button class="btn-sm" onclick="editSondage('${s.id}')">Modifier</button>
           </div>
         </div>
       </div>
@@ -1498,7 +1955,7 @@ function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
   // Badges
   const hasData = metrics.nSondages > 0
   if (ficheDataBadge) {
-    ficheDataBadge.textContent = hasData ? '✅ avec données' : '— sans données'
+    ficheDataBadge.textContent = hasData ? 'Avec données' : 'Sans données'
     ficheDataBadge.style.display = 'inline-block'
     ficheDataBadge.style.background = hasData ? '#22c55e22' : '#64748b22'
     ficheDataBadge.style.color = hasData ? '#22c55e' : '#64748b'
@@ -1511,11 +1968,11 @@ function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
   const locMode = data.surveys?.[0]?.mode || 'unknown'
   if (ficheLocBadge) {
     if (locMode === 'exact') {
-      ficheLocBadge.textContent = '📍 exact'
+      ficheLocBadge.textContent = 'Localisation exacte'
       ficheLocBadge.style.background = '#22c55e22'
       ficheLocBadge.style.color = '#22c55e'
     } else if (locMode === 'adm_random_cell') {
-      ficheLocBadge.textContent = '🎲 ADM random'
+      ficheLocBadge.textContent = 'ADM approximatif'
       ficheLocBadge.style.background = '#f9731622'
       ficheLocBadge.style.color = '#f97316'
     } else {
@@ -1654,7 +2111,7 @@ function renderMailleSondages(data: any, gridCode: string) {
       <div style="padding:6px 8px;background:#0a1018;border-radius:4px;margin-bottom:4px">
         <div style="font-weight:600;color:var(--text)">${s.code_site || 'N/A'}</div>
         <div style="display:flex;gap:8px;margin-top:2px;color:var(--muted);font-size:10px">
-          <span>${s.mode === 'exact' ? '📍 exact' : '🎲 random'}</span>
+          <span>${s.mode === 'exact' ? 'Exact' : 'ADM'}</span>
           <span>•</span>
           <span>${s.samples || 0} éch.</span>
           <span>•</span>
@@ -1704,7 +2161,7 @@ function renderEssais(samples: any[], pctSpread: number, sourceSurveys: any[]) {
     const emptyMessage = pctSpread > 99 
       ? `
         <div style="padding:20px;text-align:center;color:var(--muted)">
-          <div style="font-size:40px;margin-bottom:10px">📊</div>
+          <div style="font-size:11px;margin-bottom:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Granulo</div>
           <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">
             Aucun essai dans cette maille
           </div>
@@ -1716,7 +2173,7 @@ function renderEssais(samples: any[], pctSpread: number, sourceSurveys: any[]) {
       `
       : `
         <div style="padding:20px;text-align:center;color:var(--muted)">
-          <div style="font-size:40px;margin-bottom:10px">🔬</div>
+          <div style="font-size:11px;margin-bottom:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em">Essais</div>
           <div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">
             Aucun essai disponible
           </div>
@@ -1818,7 +2275,7 @@ function renderEssaiDetails(sample: any): string {
           ${g.indices && g.indices.cu ? `<tr><td>Cu:</td><td>${g.indices.cu.toFixed(2)}</td></tr>` : ''}
           ${g.indices && g.indices.cc ? `<tr><td>Cc:</td><td>${g.indices.cc.toFixed(2)}</td></tr>` : ''}
         </table>
-        ${g.points && g.points.length > 0 ? `<button class="mini-chart-btn" onclick="window.showGranuloChart(${JSON.stringify(g.points).replace(/"/g, '&quot;')})">📊 Voir courbe</button>` : ''}
+        ${g.points && g.points.length > 0 ? `<button class="mini-chart-btn" onclick="window.showGranuloChart(${JSON.stringify(g.points).replace(/"/g, '&quot;')})">Voir courbe</button>` : ''}
       </div>
     `
   }
@@ -1927,7 +2384,7 @@ function renderSondages(surveys: any[], sourceSurveys: any[]) {
   // Sondages de la maille
   if (surveys.length > 0) {
     html += surveys.map((s, idx) => {
-      const modeIcon = s.mode === 'real' ? '🟢' : '⚪'
+      const modeIcon = s.mode === 'real' ? '●' : '○'
       const modeBadge = s.mode === 'real'
         ? '<span class="badge-geo">GPS</span>'
         : '<span class="badge-adm">Spread</span>'
@@ -1951,8 +2408,8 @@ function renderSondages(surveys: any[], sourceSurveys: any[]) {
               <tr><td style="color:var(--muted)">Mode:</td><td>${s.mode || 'N/A'}</td></tr>
             </table>
             <div style="display:flex;gap:6px">
-              <button class="btn-sm" onclick="window.viewSondageDetails('${s.id}')">👁️ Détails</button>
-              <button class="btn-sm" onclick="window.editSondage('${s.id}')">✏️ Modifier</button>
+              <button class="btn-sm" onclick="window.viewSondageDetails('${s.id}')">Détails</button>
+              <button class="btn-sm" onclick="window.editSondage('${s.id}')">Modifier</button>
             </div>
           </div>
         </div>
@@ -1969,7 +2426,7 @@ function renderSondages(surveys: any[], sourceSurveys: any[]) {
           <div class="sondage-item">
             <div class="sondage-header">
               <div>
-                <strong>🔄 ${s.code_site || 'N/A'}</strong>
+                <strong>${s.code_site || 'N/A'}</strong>
                 <span class="badge-geo">Source</span>
               </div>
               <div style="font-size:11px;color:var(--muted)">
@@ -2404,9 +2861,9 @@ function renderCharts(sondages: any[]) {
 function locateSurvey(lon: number | null, lat: number | null, hasCoords: boolean) {
   if (hasCoords && lon && lat) {
     map.setView([lat, lon], 16)
-    toast('📍 Sondage localisé', 'ok')
+    toast('Sondage localisé', 'ok')
   } else {
-    toast('⚠️ Sondage ADM-only (pas de coordonnées précises)', 'err')
+    toast('Sondage ADM-only (sans coordonnées précises)', 'err')
   }
 }
 (window as any).locateSurvey = locateSurvey
@@ -2423,7 +2880,7 @@ async function exportMailleGeoJSON(code: string) {
     a.download = `maille_${code}.geojson`
     a.click()
     URL.revokeObjectURL(url)
-    toast('✅ GeoJSON exporté', 'ok')
+    toast('GeoJSON exporté', 'ok')
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
   }
@@ -2434,7 +2891,7 @@ async function recomputeIdw(code: string) {
   try {
     const res = await fetch(`${API_GEO}/grid/recompute/${code}`, { method: 'POST' })
     if (res.ok) {
-      toast('✅ IDW recalculé', 'ok')
+      toast('IDW recalculé', 'ok')
       loadMailleDetails(code)
     } else {
       toast('Erreur recalcul IDW', 'err')
@@ -2478,7 +2935,7 @@ async function checkNearbyDuplicates(lon: number, lat: number, alertsEl: HTMLEle
       
       alertsEl.innerHTML = `
         <div style="color:var(--warn);background:#f4b74022;padding:8px;border-radius:4px;margin-top:8px">
-          <div style="font-weight:600;margin-bottom:4px">⚠️ ${nearby.length} sondage(s) à proximité :</div>
+          <div style="font-weight:600;margin-bottom:4px">Attention — ${nearby.length} sondage(s) à proximité :</div>
           ${list}
         </div>
       `
@@ -2687,6 +3144,9 @@ async function loadGrid(useBbox = false) {
     if (!res.ok) {
       toast(`HTTP ${res.status}`, 'err')
       setStatus('Erreur de chargement')
+      const b = document.getElementById('gridBadge')
+      if (b) b.innerHTML = `<span class="dot" style="background:var(--err)"></span> Grille`
+      console.error('[loadGrid] HTTP error', { status: res.status, statusText: res.statusText, url })
       isLoadingGrid = false
       return
     }
@@ -2701,6 +3161,11 @@ async function loadGrid(useBbox = false) {
     })
 
     setKpis(gj.features.length, withData, assigned)
+    if ((gj.features?.length ?? 0) === 0) {
+      const b = document.getElementById('gridBadge')
+      if (b) b.innerHTML = `<span class="dot" style="background:var(--warn)"></span> Grille`
+      console.warn('[loadGrid] Empty grid payload received', { url, gridForRequest, useBbox })
+    }
     console.log('[loadGrid] KPIs mis à jour -', gj.features.length, 'mailles,', withData, 'avec données')
     setStatus(`Grille chargée: ${gj.features.length.toLocaleString()} mailles (${withData} avec données)`)
     
@@ -2797,6 +3262,14 @@ async function loadGrid(useBbox = false) {
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
     setStatus('Erreur de chargement')
+    const b = document.getElementById('gridBadge')
+    if (b) b.innerHTML = `<span class="dot" style="background:var(--err)"></span> Grille`
+    console.error('[loadGrid] Exception', {
+      message: e?.message || String(e),
+      api: API_GEO,
+      level: currentGridLevel,
+      useBbox
+    })
   } finally {
     isLoadingGrid = false
   }
@@ -3362,7 +3835,7 @@ safeAddEventListener('exportAuditCSV', 'click', async () => {
   try {
     const url = `${API_GEO}/audit/export/csv?limit=10000`
     window.open(url, '_blank')
-    toast('📊 Export historique lancé')
+    toast('Export historique lancé')
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
   }
@@ -3388,7 +3861,7 @@ safeAddEventListener('exportGeoPackage', 'click', async () => {
     if (adm3) url += `&adm3=${encodeURIComponent(adm3)}`
     
     window.open(url, '_blank')
-    toast('📦 Export GeoPackage lancé')
+    toast('Export GeoPackage lancé')
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
   }
@@ -3414,7 +3887,7 @@ safeAddEventListener('exportPDFPro', 'click', async () => {
     if (adm3) url += `&adm3=${encodeURIComponent(adm3)}`
     
     window.open(url, '_blank')
-    toast('📄 Export PDF professionnel lancé')
+    toast('Export PDF professionnel lancé')
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
   }
@@ -3443,7 +3916,7 @@ safeAddEventListener('confirmPrint', 'click', async () => {
   
   const modal = document.getElementById('printModal')
   if (modal) modal.style.display = 'none'
-  toast('🖨️ Génération de la carte en cours...', 'ok')
+  toast('Génération de la carte en cours…', 'ok')
   
   try {
     // Calculer les dimensions en pixels selon le format et DPI
@@ -3577,7 +4050,7 @@ safeAddEventListener('confirmPrint', 'click', async () => {
         a.download = `atlas_carte_${format}_${orientation}_${dpi}dpi.png`
         a.click()
         URL.revokeObjectURL(url)
-        toast('✅ Carte exportée avec succès', 'ok')
+        toast('Carte exportée avec succès', 'ok')
       }
     }, 'image/png')
     
@@ -3699,7 +4172,7 @@ function openDrawer(mode: 'create' | 'list' | 'import') {
     if (importView) importView.style.display = 'none'
     resetSurveyForm()
   } else if (mode === 'import') {
-    if (drawerTitle) drawerTitle.textContent = '📥 Import CSV/Bulk'
+    if (drawerTitle) drawerTitle.textContent = 'Import CSV / bulk'
     if (surveyForm) surveyForm.style.display = 'none'
     if (surveyListView) surveyListView.style.display = 'none'
     if (importView) importView.style.display = 'block'
@@ -3775,7 +4248,7 @@ function renderTestsTable() {
         <td style="padding:8px">${t.value}</td>
         <td style="padding:8px">${t.depth_m}</td>
         <td style="padding:8px;text-align:center">
-          <button onclick="window.deleteTest(${i})" style="background:transparent;border:1px solid #6b1b2c;color:var(--err);padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px">🗑️</button>
+          <button onclick="window.deleteTest(${i})" style="background:transparent;border:1px solid #6b1b2c;color:var(--err);padding:4px 8px;font-size:11px;cursor:pointer;border-radius:4px" title="Supprimer">Suppr.</button>
         </td>
       </tr>
     `).join('')
@@ -3832,13 +4305,13 @@ function updateSummary() {
         .catch(() => {
           const mailleEl = document.getElementById('summaryMaille')
           if (mailleEl) mailleEl.textContent = '—'
-          if (alerts) alerts.innerHTML = '<div style="color:var(--err)">⚠️ Point hors grille</div>'
+          if (alerts) alerts.innerHTML = '<div style="color:var(--err)">Point hors grille</div>'
         })
     }
   } else {
     const mailleEl = document.getElementById('summaryMaille')
     if (mailleEl) mailleEl.textContent = mode === 'unknown' ? 'N/A' : '(calculé après création)'
-    if (alerts) alerts.innerHTML = mode === 'unknown' ? '<div style="color:var(--warn)">ℹ️ Sondage sans coordonnées</div>' : ''
+    if (alerts) alerts.innerHTML = mode === 'unknown' ? '<div style="color:var(--warn)">Sondage sans coordonnées</div>' : ''
   }
 }
 
@@ -3908,7 +4381,7 @@ safeAddEventListener('saveSurveyBtn', 'click', async () => {
     }
     
     const data = await res.json()
-    toast(`✅ Sondage créé: ${data.sondage_id.substring(0, 8)}... (${data.essais_count} essais, maille: ${data.maille_code || 'N/A'})`)
+    toast(`Sondage créé : ${data.sondage_id.substring(0, 8)}… (${data.essais_count} essais, maille : ${data.maille_code || 'N/A'})`)
     
     // NE PAS fermer le drawer, juste réinitialiser le formulaire
     resetSurveyForm()
@@ -3918,7 +4391,7 @@ safeAddEventListener('saveSurveyBtn', 'click', async () => {
     const summaryDiv = document.getElementById('surveySummary')
     if (summaryDiv) summaryDiv.innerHTML = `
       <div style="background: var(--ok); color: white; padding: 12px; border-radius: 6px; margin-top: 12px;">
-        <div style="font-weight: bold; margin-bottom: 6px;">✅ Sondage enregistré avec succès !</div>
+        <div style="font-weight: bold; margin-bottom: 6px;">Sondage enregistré avec succès</div>
         <div style="font-size: 0.9em; opacity: 0.9;">
           ID: ${data.sondage_id.substring(0, 13)}...<br>
           Maille: ${data.maille_code || 'N/A'}<br>
@@ -4091,7 +4564,7 @@ const geotechForm = new GeotechnicalFormManager(
   API_GEO,
   (response) => {
     console.log('[GEOTECH] Sondage créé:', response)
-    toast(`✅ Sondage ${response.code} créé avec succès! (${response.n_essais} essais, ${response.n_classifications} classifications)`, 'ok')
+    toast(`Sondage ${response.code} créé (${response.n_essais} essais, ${response.n_classifications} classifications)`, 'ok')
     // Recharger la grille si on est sur une maille
     if (codeInput.value) {
       setTimeout(() => {
@@ -4125,7 +4598,7 @@ safeAddEventListener('geocodeSurveysBtn', 'click', () => {
     'geocodeContainer',
     (result) => {
       console.log('[GEOCODE] Sondage géocodé:', result)
-      toast(`✅ Sondage ${result.code} géocodé avec succès!`, 'ok')
+      toast(`Sondage ${result.code} géocodé`, 'ok')
       // Recharger la grille
       loadGrid()
       // Recharger la fiche si on est sur une maille
@@ -4256,7 +4729,7 @@ safeAddEventListener('processCsvBtn', 'click', async () => {
     const resultsDiv = document.getElementById('importResults')!
     resultsDiv.innerHTML = `
       <div style="background: var(--ok); color: white; padding: 12px; border-radius: 6px;">
-        <div style="font-weight: bold;">✅ Import terminé !</div>
+        <div style="font-weight: bold;">Import terminé</div>
         <div style="margin-top: 8px;">
           Créés: ${data.created}<br>
           Rejetés: ${data.rejected}
@@ -4273,7 +4746,7 @@ safeAddEventListener('processCsvBtn', 'click', async () => {
       `
     }
     
-    toast(`✅ Import: ${data.created} créés, ${data.rejected} rejetés`)
+    toast(`Import : ${data.created} créés, ${data.rejected} rejetés`)
     loadGrid()
   } catch (e: any) {
     toast(`Erreur: ${e.message}`, 'err')
@@ -4319,15 +4792,15 @@ function renderSurveyList(surveys: Survey[]) {
           <div style="font-size:11px;color:var(--muted)">${maille}</div>
         </div>
         <div class="survey-card-meta">
-          📍 ${lon}, ${lat}<br>
-          📏 ${depthMin} – ${depthMax} m<br>
-          ${region ? `📌 ${region}` : ''}<br>
-          🏷️ ${localite}
+          ${lon}, ${lat}<br>
+          Prof. ${depthMin} – ${depthMax} m<br>
+          ${region ? `${region}` : ''}<br>
+          ${localite}
         </div>
         <div class="survey-card-tags">${badges}</div>
         <div style="display:flex;gap:4px;margin-top:8px">
-          <button onclick="window.editSurvey('${s.id}')" style="flex:1;padding:6px;background:var(--accent);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">✏️ Modifier</button>
-          <button onclick="window.deleteSurvey('${s.id}', '${code}')" style="flex:1;padding:6px;background:var(--err);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">🗑️ Supprimer</button>
+          <button onclick="window.editSurvey('${s.id}')" style="flex:1;padding:6px;background:var(--accent);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">Modifier</button>
+          <button onclick="window.deleteSurvey('${s.id}', '${code}')" style="flex:1;padding:6px;background:var(--err);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:11px">Supprimer</button>
         </div>
       </div>
     `
@@ -4352,7 +4825,7 @@ function renderSurveyList(surveys: Survey[]) {
           className: 'survey-marker-pulse'
         }).addTo(map)
         
-        tempMarker.bindPopup(`<b>${survey.code}</b><br>📏 ${survey.depth_m_min || 0}-${survey.depth_m_max || 0}m<br>📌 ${survey.adm1_name || 'N/A'}`).openPopup()
+        tempMarker.bindPopup(`<b>${survey.code}</b><br>Prof. ${survey.depth_m_min || 0}–${survey.depth_m_max || 0} m<br>${survey.adm1_name || 'N/A'}`).openPopup()
         
         // Retirer après 5s
         setTimeout(() => {
@@ -4388,7 +4861,7 @@ async function editSurvey(surveyId: string) {
     
     openDrawer('create')
     currentSurveyId = surveyId
-    if (drawerTitle) drawerTitle.textContent = '✏️ Modifier le sondage'
+    if (drawerTitle) drawerTitle.textContent = 'Modifier le sondage'
     
     ;(document.getElementById('surveyCode') as HTMLInputElement).value = survey.code || ''
     ;(document.getElementById('surveyDate') as HTMLInputElement).value = survey.date || ''
@@ -4424,7 +4897,7 @@ async function deleteSurvey(surveyId: string, surveyCode: string) {
   try {
     const res = await fetch(`${API_GEO}/surveys/${surveyId}`, { method: 'DELETE' })
     if (res.ok || res.status === 204) {
-      toast(`✅ Sondage ${surveyCode} supprimé`)
+      toast(`Sondage ${surveyCode} supprimé`)
       loadSurveyList()
       
       // Recharger la grille pour mettre à jour les couleurs
@@ -4478,7 +4951,7 @@ async function updateSurveySubmit() {
       return
     }
     
-    toast(`✅ Sondage mis à jour`)
+    toast('Sondage mis à jour')
     closeDrawer()
     loadGrid()
     loadSurveyList()
@@ -4535,7 +5008,7 @@ map.on('click', async (e: L.LeafletMouseEvent) => {
             if (distance < 50) {
               finalLng = centerLng
               finalLat = centerLat
-              toast('📍 Sondage aimanté au centre de la maille', 'ok')
+              toast('Sondage positionné au centre de la maille', 'ok')
               
               // Animation visuelle du snapping
               if (snapMarker) map.removeLayer(snapMarker)
@@ -4696,7 +5169,7 @@ function applyFilters() {
 
 // --- Vues thématiques (OBSOLÈTE - Remplacé par le panneau Cartes Thématiques) ---
 // Le code ci-dessous est conservé pour compatibilité mais n'est plus utilisé
-// Utilisez le bouton flottant 🗺️ pour accéder aux cartes thématiques
+// Cartes thématiques : bouton dans le panneau droit (filtres)
 
 // document.getElementById('thematicView')?.addEventListener('change', (e) => {
 //   currentView = (e.target as HTMLSelectElement).value
@@ -4752,7 +5225,7 @@ map.on('thematicmap:cellclick', async (e: any) => {
   }
   
   // Toast de confirmation
-  toast(`📍 Maille sélectionnée: ${code}`, 'ok')
+  toast(`Maille sélectionnée : ${code}`, 'ok')
   
   // Charger les détails complets de la maille
   await loadMailleDetails(code)
@@ -4988,31 +5461,31 @@ function initTabsPanel() {
         {
           id: 'nouveau' as const,
           label: 'Nouveau',
-          icon: '📝',
+          icon: '',
           component: tabNouveau.createTabNouveau(API_GEO),
         },
         {
           id: 'import' as const,
           label: 'Import',
-          icon: '📥',
+          icon: '',
           component: tabImport.createTabImportWizard(),
         },
         {
           id: 'liste' as const,
           label: 'Liste',
-          icon: '📋',
+          icon: '',
           component: tabListe.createTabListeSondages(API_GEO),
         },
         {
           id: 'geocode' as const,
           label: 'Géocoder',
-          icon: '🗺️',
+          icon: '',
           component: tabGeocode.createTabGeocode(API_GEO),
         },
         {
           id: 'database' as const,
           label: 'Base de données',
-          icon: '🗄️',
+          icon: '',
           component: tabDatabase.createTabDatabase(),
         },
       ]
@@ -5080,7 +5553,7 @@ function initWebSocket() {
   // Écouter les événements de géocodage
   onWsEvent('sondage.geocoded', (data: any) => {
     console.log('[WS] Sondage géocodé:', data)
-    toast(`✅ Sondage ${data.code || data.id} géocodé`, 'ok')
+    toast(`Sondage ${data.code || data.id} géocodé`, 'ok')
     
     // Rafraîchir la grille si nécessaire
     if (gridLayer) {
@@ -5095,7 +5568,7 @@ function initWebSocket() {
   // Écouter les événements de suggestions
   onWsEvent('suggestion.accepted', (data: any) => {
     console.log('[WS] Suggestion acceptée:', data)
-    toast(`✅ Suggestion acceptée pour sondage ${data.sondage_id}`, 'ok')
+    toast(`Suggestion acceptée pour sondage ${data.sondage_id}`, 'ok')
     
     // Rafraîchir les stats
     window.dispatchEvent(new CustomEvent('atlas:refresh-stats'))

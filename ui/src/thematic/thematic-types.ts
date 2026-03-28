@@ -12,12 +12,14 @@ export type ObjectifMetier =
   | 'compacite'       // Compacité / portance (Proctor)
   | 'granulometrie'   // Granulométrie
   | 'contexte'        // Contexte géographique
+  | 'ia_ag'           // IA / Interpolation / AG
   | 'personnalise'    // Power user - tous les paramètres
 
 export interface ObjectifConfig {
   id: ObjectifMetier
   label: string
   description: string
+  /** @deprecated Ancien champ emoji — l’UI utilise des icônes Lucide dans thematic-panel */
   icon: string
   parameters: string[]  // IDs des paramètres associés
   defaultParameter: string
@@ -29,7 +31,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     id: 'couverture',
     label: 'Couverture & instrumentation',
     description: 'Densité de sondages et essais par maille',
-    icon: '📍',
+    icon: '',
     parameters: ['n_sondages', 'n_echantillons', 'n_essais_total'],
     defaultParameter: 'n_sondages',
     defaultPalette: 'Greens'
@@ -38,7 +40,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     id: 'argilosite',
     label: 'Argilosité / plasticité',
     description: 'Caractérisation de la fraction argileuse',
-    icon: '🧱',
+    icon: '',
     parameters: ['vbs_avg', 'ip_avg', 'wl_avg', 'wp_avg'],
     defaultParameter: 'vbs_avg',
     defaultPalette: 'YlOrRd'
@@ -47,7 +49,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     id: 'gonflement',
     label: 'Potentiel de gonflement',
     description: 'Risque de gonflement des argiles',
-    icon: '⚠️',
+    icon: '',
     parameters: ['eg_avg', 'eg_max', 'eg_min'],
     defaultParameter: 'eg_avg',
     defaultPalette: 'Blues'
@@ -56,7 +58,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     id: 'compacite',
     label: 'Compacité / portance (Proctor)',
     description: 'Caractéristiques de compactage',
-    icon: '🔨',
+    icon: '',
     parameters: ['gamma_d_max_avg', 'w_opt_avg'],
     defaultParameter: 'gamma_d_max_avg',
     defaultPalette: 'Oranges'
@@ -65,7 +67,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     id: 'granulometrie',
     label: 'Granulométrie',
     description: 'Distribution granulométrique',
-    icon: '📊',
+    icon: '',
     parameters: ['passant_80um_avg', 'passant_2mm_avg', 'passant_20mm_avg'],
     defaultParameter: 'passant_80um_avg',
     defaultPalette: 'BrBG'
@@ -74,16 +76,25 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     id: 'contexte',
     label: 'Contexte géographique',
     description: 'Paramètres géographiques et topographiques',
-    icon: '🗺️',
+    icon: '',
     parameters: ['altitude_mean'],
     defaultParameter: 'altitude_mean',
     defaultPalette: 'Terrain'
   },
   {
+    id: 'ia_ag',
+    label: 'IA / Interpolation / AG',
+    description: 'Sources de donnees derivees: IA infer, kriging proxy, AG fondation',
+    icon: '',
+    parameters: ['ai_rga_score_infer', 'ai_portance_kpa_infer', 'kriging_ip', 'kriging_vbs', 'ag_safety_factor', 'ag_cout_millions'],
+    defaultParameter: 'ai_rga_score_infer',
+    defaultPalette: 'Viridis'
+  },
+  {
     id: 'personnalise',
     label: 'Personnalisé',
     description: 'Accès à tous les paramètres disponibles',
-    icon: '⚙️',
+    icon: '',
     parameters: [], // Tous les paramètres
     defaultParameter: 'n_sondages',
     defaultPalette: 'Greens'
@@ -94,7 +105,8 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
 // PARAMÈTRES THÉMATIQUES
 // ============================================================================
 
-export type ParameterCategory = 'density' | 'granulo' | 'atterberg' | 'vbs' | 'proctor' | 'gonflement' | 'contexte'
+export type ParameterCategory = 'density' | 'granulo' | 'atterberg' | 'vbs' | 'proctor' | 'gonflement' | 'contexte' | 'ai'
+export type ThematicSource = 'base' | 'interpolation' | 'ia'
 
 export interface ThematicParameter {
   id: string
@@ -285,6 +297,54 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     description: 'Fraction graviers + fines (< 20mm)',
     defaultPalette: 'YlGnBu',
     minEssaisField: 'n_essais_granulo'
+  },
+  {
+    id: 'ai_rga_score_infer',
+    label: 'Score RGA IA (infer)',
+    unit: 'score',
+    category: 'ai',
+    description: 'Score de risque RGA predit par modele IA supervisé-like',
+    defaultPalette: 'YlOrRd'
+  },
+  {
+    id: 'ai_portance_kpa_infer',
+    label: 'Portance IA estimee',
+    unit: 'kPa',
+    category: 'ai',
+    description: 'Capacite portante estimee par le modele IA',
+    defaultPalette: 'Blues'
+  },
+  {
+    id: 'kriging_ip',
+    label: 'IP interpole (kriging proxy)',
+    unit: '%',
+    category: 'ai',
+    description: 'Interpolation intra-maille de l indice de plasticite',
+    defaultPalette: 'PuRd'
+  },
+  {
+    id: 'kriging_vbs',
+    label: 'VBS interpole (kriging proxy)',
+    unit: 'g/100g',
+    category: 'ai',
+    description: 'Interpolation intra-maille de la VBS',
+    defaultPalette: 'YlOrRd'
+  },
+  {
+    id: 'ag_safety_factor',
+    label: 'Facteur securite AG',
+    unit: 'FS',
+    category: 'ai',
+    description: 'Facteur de securite de la strategie fondation AG',
+    defaultPalette: 'Greens'
+  },
+  {
+    id: 'ag_cout_millions',
+    label: 'Cout AG',
+    unit: 'M FCFA',
+    category: 'ai',
+    description: 'Cout estime de la strategie fondation AG',
+    defaultPalette: 'Oranges'
   }
 ]
 
@@ -306,25 +366,25 @@ export const MAP_TYPES: MapTypeConfig[] = [
     id: 'choropleth',
     label: 'Choroplèthe (aplats)',
     description: 'Coloration des mailles selon la valeur',
-    icon: '🗺️'
+    icon: ''
   },
   {
     id: 'bubble',
     label: 'Cercles proportionnels',
     description: 'Taille des cercles proportionnelle à la valeur',
-    icon: '⭕'
+    icon: ''
   },
   {
     id: 'binary',
     label: 'Binaire (présence/absence)',
     description: 'Zones couvertes vs non couvertes',
-    icon: '✓✗'
+    icon: ''
   },
   {
     id: 'heatmap',
     label: 'Carte de chaleur (heatmap)',
     description: 'Densité de chaleur continue',
-    icon: '🔥'
+    icon: ''
   }
 ]
 
@@ -623,7 +683,13 @@ export const THEMATIC_PALETTE_MAP: Record<string, ThematicPaletteConfig> = {
   // Granulométrie - palette divergente (fines vs grossiers)
   'passant_80um_avg': { palette: 'BrBG', diverging: true, midpoint: 50, rationale: 'Fines vs sables (divergent)' },
   'passant_2mm_avg': { palette: 'YlGnBu', rationale: 'Granulométrie' },
-  'passant_20mm_avg': { palette: 'YlGnBu', rationale: 'Granulométrie' }
+  'passant_20mm_avg': { palette: 'YlGnBu', rationale: 'Granulométrie' },
+  'ai_rga_score_infer': { palette: 'YlOrRd', rationale: 'Risque IA croissant' },
+  'ai_portance_kpa_infer': { palette: 'Blues', rationale: 'Portance estimee IA' },
+  'kriging_ip': { palette: 'PuRd', rationale: 'IP interpole (kriging proxy)' },
+  'kriging_vbs': { palette: 'YlOrRd', rationale: 'VBS interpolee (kriging proxy)' },
+  'ag_safety_factor': { palette: 'Greens', rationale: 'Securite strategie AG' },
+  'ag_cout_millions': { palette: 'Oranges', rationale: 'Cout strategie AG' }
 }
 
 /**
@@ -787,6 +853,16 @@ export function getParametersForObjectif(objectifId: ObjectifMetier): ThematicPa
   return THEMATIC_PARAMETERS.filter(p => objectif.parameters.includes(p.id))
 }
 
+export function getParametersBySource(source: ThematicSource): ThematicParameter[] {
+  if (source === 'base') {
+    return THEMATIC_PARAMETERS.filter((p) => p.category !== 'ai')
+  }
+  if (source === 'interpolation') {
+    return THEMATIC_PARAMETERS.filter((p) => p.id.startsWith('kriging_'))
+  }
+  return THEMATIC_PARAMETERS.filter((p) => p.id.startsWith('ai_') || p.id.startsWith('ag_'))
+}
+
 export function getDefaultConfig(): ThematicMapConfig {
   return {
     name: 'Nouvelle carte',
@@ -804,7 +880,7 @@ export function getDefaultConfig(): ThematicMapConfig {
       stroke_color: '#333333'
     },
     filters: {
-      min_sondages: 1,
+      min_sondages: 0,
       exclude_no_data: true
     },
     contextLayers: {

@@ -97,6 +97,30 @@ Cette section formalise des habitudes “anti dette technique” spécifiques au
 
 Cette discipline évite des itérations “fantômes” où l’on teste une version différente de celle patchée.
 
+---
+
+## 9. Déploiement / Packaging (MSI, ressources, seed)
+
+Cette section formalise le **contrat de packaging** et les garde-fous CI pour éviter les erreurs de bundle (seed manquant, runtime PG incomplet, chemins ambigus).
+
+**[DEPLOY-01] Contrat de packaging documenté et versionné**
+
+* Le layout canonique des ressources MSI (structure sous `resource_dir()`) doit être documenté dans `docs/CONTRAT_PACKAGING.md`.
+* Toute modification de `bundle.resources` (Tauri) doit mettre à jour ce contrat.
+
+**[DEPLOY-02] Smoke test MSI dans le CI (pas seulement local)**
+
+* Le CI doit construire un MSI (pour les branches/tags de release) et vérifier son contenu via `scripts/verify-bundle.ps1 -MsiPath`.
+* Le job doit échouer si le MSI ne contient pas :
+  * `pg/bin/pg_ctl.exe`
+  * `atlas_desktop_seed.dump` + manifest
+
+**[DEPLOY-03] Un seul point de résolution des ressources runtime (fail-fast)**
+
+* Le Desktop doit résoudre `pg_bin_dir` et `seed_dump` via un **resolver unique** exécuté **au startup** (ex: `AtlasResources::resolve()`), puis stocker le résultat en `State`.
+* Les commandes Tauri (ex: `installer_preflight`) ne doivent **jamais** rescanner récursivement les ressources ni tenter de “deviner” les chemins.
+* En cas d'échec de résolution, la fonction doit **fail-fast with context** (log du `resource_dir` + message actionnable).
+
 ## 2. Base de données & migrations (PostGIS)
 
 ### 2.1. Conception & SRID

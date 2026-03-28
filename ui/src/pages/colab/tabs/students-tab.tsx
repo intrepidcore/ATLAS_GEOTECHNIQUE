@@ -74,7 +74,7 @@ const StudentsTab: React.FC<{
           />
           <StatsCard
             title="Étudiants"
-            value={stats.total_students}
+            value={filteredStudents.length}
             icon={<Users className="w-6 h-6" />}
             color="bg-green-50 text-green-900"
           />

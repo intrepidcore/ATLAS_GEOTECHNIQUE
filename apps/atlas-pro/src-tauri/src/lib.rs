@@ -6,11 +6,105 @@ use tracing_subscriber::prelude::*;
 use fs2::FileExt;
 use std::io::Write;
 use anyhow::Context;
+use std::time::{Duration, Instant};
 
 mod postgres;
 mod support;
 mod sync;
 mod installer;
+
+#[derive(Debug, Clone)]
+struct AtlasResources {
+    resource_dir: std::path::PathBuf,
+    pg_bin_dir: std::path::PathBuf,
+    seed_dump: std::path::PathBuf,
+}
+
+#[derive(Debug)]
+struct ManagedAtlasResources(std::sync::Mutex<ManagedAtlasResourcesInner>);
+
+#[derive(Debug)]
+struct ManagedAtlasResourcesInner {
+    resources: Option<AtlasResources>,
+    error: Option<String>,
+}
+
+impl AtlasResources {
+    fn resolve(app: &tauri::App) -> Result<Self, String> {
+        let resource_dir = app
+            .path()
+            .resource_dir()
+            .map_err(|e| format!("resource_dir() failed: {e}"))?;
+
+        tracing::info!(resource_dir = %resource_dir.display(), "atlas resources: resource_dir");
+
+        let candidates = [resource_dir.clone(), resource_dir.join("resources")];
+
+        let mut selected_base: Option<std::path::PathBuf> = None;
+        let mut selected_pg_bin_dir: Option<std::path::PathBuf> = None;
+        let mut selected_seed_dump: Option<std::path::PathBuf> = None;
+
+        for base in candidates.iter() {
+            let pg_bin_dir = base.join("pg").join("bin");
+            let seed_dump = base.join("atlas_desktop_seed.dump");
+            if pg_bin_dir.join("pg_ctl.exe").exists() && seed_dump.exists() {
+                selected_base = Some(base.clone());
+                selected_pg_bin_dir = Some(pg_bin_dir);
+                selected_seed_dump = Some(seed_dump);
+                break;
+            }
+        }
+
+        if selected_pg_bin_dir.is_none() {
+            Self::log_resource_tree(&resource_dir);
+            let tested: Vec<String> = candidates
+                .iter()
+                .map(|b| b.join("pg").join("bin").display().to_string())
+                .collect();
+            return Err(format!(
+                "pg_ctl.exe introuvable (bundle MSI incomplet). Chemins testés: {}",
+                tested.join(" ; ")
+            ));
+        }
+
+        if selected_seed_dump.is_none() {
+            Self::log_resource_tree(&resource_dir);
+            let tested: Vec<String> = candidates
+                .iter()
+                .map(|b| b.join("atlas_desktop_seed.dump").display().to_string())
+                .collect();
+            return Err(format!(
+                "atlas_desktop_seed.dump introuvable (bundle MSI incomplet). Chemins testés: {}",
+                tested.join(" ; ")
+            ));
+        }
+
+        let resource_dir = selected_base.unwrap_or(resource_dir);
+        Ok(Self {
+            resource_dir,
+            pg_bin_dir: selected_pg_bin_dir.expect("pg bin already checked"),
+            seed_dump: selected_seed_dump.expect("seed already checked"),
+        })
+    }
+
+    fn log_resource_tree(dir: &std::path::Path) {
+        tracing::warn!(resource_dir = %dir.display(), "=== CONTENU RESOURCE_DIR (diagnostic) ===");
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let p = entry.path();
+                tracing::warn!(path = %p.display(), "resource_dir entry");
+                if p.is_dir() {
+                    if let Ok(sub) = std::fs::read_dir(&p) {
+                        for sub_entry in sub.flatten() {
+                            let sp = sub_entry.path();
+                            tracing::warn!(path = %sp.display(), "resource_dir entry (depth=1)");
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
 
 struct ManagedPostgres(std::sync::Mutex<Option<postgres::PostgresHandle>>);
 #[allow(dead_code)]
@@ -179,25 +273,46 @@ struct StartupProgress {
     percent: u8,
 }
 
+fn emit_startup_progress_handle(handle: &tauri::AppHandle, step: &str, message: &str, percent: u8) {
+    let payload = StartupProgress {
+        step: step.to_string(),
+        message: message.to_string(),
+        percent,
+    };
+    let _ = handle.emit("startup:progress", payload);
+}
+
+fn emit_startup_error_handle(handle: &tauri::AppHandle, message: &str) {
+    let payload = serde_json::json!({ "message": message });
+    let _ = handle.emit("startup:error", payload);
+}
+
 fn emit_startup_progress(app: &tauri::App, step: &str, message: &str, percent: u8) {
+    let payload = StartupProgress {
+        step: step.to_string(),
+        message: message.to_string(),
+        percent,
+    };
+
+    // Important: during early `setup()`, the splash window may not be ready yet.
+    // We broadcast to all existing windows to make delivery robust.
+    for w in app.webview_windows().values() {
+        let _ = w.emit("startup:progress", payload.clone());
+    }
+
+    // Best-effort direct emit for older runtimes / safety.
     if let Some(w) = app.get_webview_window("splash") {
-        let _ = w.emit(
-            "startup:progress",
-            StartupProgress {
-                step: step.to_string(),
-                message: message.to_string(),
-                percent,
-            },
-        );
+        let _ = w.emit("startup:progress", payload);
     }
 }
 
 fn emit_startup_error(app: &tauri::App, message: &str) {
+    let payload = serde_json::json!({ "message": message });
+    for w in app.webview_windows().values() {
+        let _ = w.emit("startup:error", payload.clone());
+    }
     if let Some(w) = app.get_webview_window("splash") {
-        let _ = w.emit(
-            "startup:error",
-            serde_json::json!({ "message": message }),
-        );
+        let _ = w.emit("startup:error", payload);
     }
 }
 
@@ -257,120 +372,27 @@ fn acquire_single_instance_lock(data_dir: &std::path::Path) -> Result<std::fs::F
         .write(true)
         .open(&lock_path)
         .map_err(|e| format!("failed to open instance lock ({}): {e}", lock_path.display()))?;
-    file.try_lock_exclusive()
-        .map_err(|e| format!("Atlas Desktop is already running (lock {}): {e}", lock_path.display()))?;
-    Ok(file)
-}
-
-fn prepend_to_path(dir: &std::path::Path) {
-    let current = std::env::var("PATH").unwrap_or_default();
-    let mut parts: Vec<String> = Vec::new();
-    parts.push(dir.to_string_lossy().to_string());
-    parts.push(current);
-    std::env::set_var("PATH", parts.join(";"));
-}
-
-fn normalize_windows_bin_dir(p: &std::path::Path) -> std::path::PathBuf {
-    let canon = std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
-    let mut s = canon.to_string_lossy().to_string();
-    // Some Windows tooling (and Node libs) represent extended-length paths as `//?/C:/...`.
-    // `initdb` fails to spawn `postgres.exe` when invoked from such a path.
-    if s.starts_with("//?/") {
-        s = format!("\\\\?\\{}", &s[4..]);
-    }
-    s = s.replace('/', "\\");
-    std::path::PathBuf::from(s)
-}
-
-fn try_set_embedded_postgres_bin_dir(app: &tauri::App) {
-    if std::env::var("ATLAS_PG_BIN_DIR").is_ok() {
-        return;
-    }
-
-    let candidate = app
-        .path()
-        .resolve("pg/bin/pg_ctl.exe", tauri::path::BaseDirectory::Resource)
-        .ok()
-        .and_then(|p| p.parent().map(|d| d.to_path_buf()))
-        .or_else(|| {
-            app.path()
-                .resource_dir()
-                .ok()
-                .map(|rd| rd.join("pg").join("bin"))
-                .and_then(|bin| {
-                    if bin.join("pg_ctl.exe").exists() {
-                        Some(bin)
-                    } else {
-                        None
-                    }
-                })
-        })
-        .or_else(|| {
-            let local = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-                .join("pg")
-                .join("bin");
-            if local.join("pg_ctl.exe").exists() {
-                Some(local)
-            } else {
-                None
+    let timeout = Duration::from_secs(3);
+    let deadline = Instant::now() + timeout;
+    loop {
+        match file.try_lock_exclusive() {
+            Ok(()) => {
+                tracing::info!(lock_path = %lock_path.display(), "single-instance lock acquired");
+                break;
             }
-        });
-
-    if let Some(bin_dir) = candidate {
-        let bin_dir = normalize_windows_bin_dir(&bin_dir);
-        let ok = bin_dir.join("pg_ctl.exe").exists()
-            && bin_dir.join("initdb.exe").exists()
-            && bin_dir.join("psql.exe").exists();
-        if ok {
-            std::env::set_var("ATLAS_PG_BIN_DIR", bin_dir.to_string_lossy().to_string());
-            prepend_to_path(&bin_dir);
-        } else {
-            tracing::warn!(
-                bin_dir = %bin_dir.display(),
-                has_pg_ctl = %bin_dir.join("pg_ctl.exe").exists(),
-                has_initdb = %bin_dir.join("initdb.exe").exists(),
-                has_psql = %bin_dir.join("psql.exe").exists(),
-                "try_set_embedded_postgres_bin_dir: candidate found but missing required tools"
-            );
+            Err(e) => {
+                if Instant::now() >= deadline {
+                    return Err(format!(
+                        "Atlas Desktop is already running or lock is busy ({}): {e}",
+                        lock_path.display()
+                    )
+                    .into());
+                }
+                std::thread::sleep(Duration::from_millis(100));
+            }
         }
-    } else {
-        let resource_dir = app.path().resource_dir().ok();
-        tracing::warn!(
-            resource_dir = %resource_dir
-                .as_ref()
-                .map(|p| p.display().to_string())
-                .unwrap_or_default(),
-            "try_set_embedded_postgres_bin_dir: no candidate resolved"
-        );
     }
-}
-
-fn try_set_bundled_seed_dir(app: &tauri::App) {
-    if std::env::var("ATLAS_DESKTOP_SEED_DIR").is_ok() {
-        return;
-    }
-    let candidate = app
-        .path()
-        .resolve("data/db/backups", tauri::path::BaseDirectory::Resource)
-        .ok()
-        .or_else(|| {
-            app.path()
-                .resource_dir()
-                .ok()
-                .map(|rd| rd.join("data").join("db").join("backups"))
-        });
-    if let Some(p) = candidate {
-        std::env::set_var("ATLAS_DESKTOP_SEED_DIR", p.to_string_lossy().to_string());
-    } else {
-        let resource_dir = app.path().resource_dir().ok();
-        tracing::warn!(
-            resource_dir = %resource_dir
-                .as_ref()
-                .map(|p| p.display().to_string())
-                .unwrap_or_default(),
-            "try_set_bundled_seed_dir: no candidate resolved"
-        );
-    }
+    Ok(file)
 }
 
 fn rotate_log_file(path: &std::path::Path, max_bytes: u64, max_files: usize) {
@@ -441,6 +463,23 @@ fn append_fatal_log(logs_dir: &std::path::Path, msg: &str) {
     }
 }
 
+fn show_installer_for_repair(app: &tauri::App, reason: &str) {
+    if let Some(main) = app.get_webview_window("main") {
+        let _ = main.show();
+        let _ = main.set_focus();
+        let _ = main.eval(
+            "try { if (window.location.pathname !== '/installer.html') window.location.replace('/installer.html'); } catch {}",
+        );
+    }
+    if let Some(splash) = app.get_webview_window("splash") {
+        let _ = splash.eval(&format!(
+            "try {{ window.__ATLAS_STARTUP_FATAL__ = {}; }} catch {{}}",
+            serde_json::to_string(reason).unwrap_or_else(|_| "\"Erreur\"".to_string())
+        ));
+        let _ = splash.close();
+    }
+}
+
 #[tauri::command]
 fn greet(name: &str) -> String {
     format!("Hello, {}! You've been greeted from Rust!", name)
@@ -451,6 +490,12 @@ pub fn run() {
     let builder = tauri::Builder::default()
         .setup(|app| {
             app.manage(ManagedPostgres(std::sync::Mutex::new(None)));
+            app.manage(ManagedAtlasResources(std::sync::Mutex::new(
+                ManagedAtlasResourcesInner {
+                    resources: None,
+                    error: None,
+                },
+            )));
 
             ensure_smoke_test_isolation();
 
@@ -465,12 +510,18 @@ pub fn run() {
 
             emit_startup_progress(app, "init", "Initialisation…", 5);
 
+            tracing::info!("setup: before create data/log dirs");
+            append_fatal_log(&logs_dir, "setup: before create data/log dirs");
             std::fs::create_dir_all(&data_dir)
                 .map_err(|e| format!("failed to create data dir ({}): {e}", data_dir.display()))?;
             std::fs::create_dir_all(&logs_dir)
                 .map_err(|e| format!("failed to create logs dir ({}): {e}", logs_dir.display()))?;
+            tracing::info!("setup: after create data/log dirs");
+            append_fatal_log(&logs_dir, "setup: after create data/log dirs");
 
+            tracing::info!("setup: before harden_windows_permissions");
             harden_windows_permissions(&data_dir, &logs_dir);
+            tracing::info!("setup: after harden_windows_permissions");
 
             // Logs postgres (rotation avant start)
             let postgres_log = logs_dir.join("postgres.log");
@@ -482,12 +533,61 @@ pub fn run() {
             });
 
             // Single-instance: lock global conservé en state
-            let app_lock = acquire_single_instance_lock(&data_dir)?;
+            tracing::info!("setup: before single-instance lock");
+            append_fatal_log(&logs_dir, "setup: before single-instance lock");
+            let app_lock = match acquire_single_instance_lock(&data_dir) {
+                Ok(lock) => lock,
+                Err(e) => {
+                    let msg = format!("Single-instance lock unavailable: {e}");
+                    tracing::warn!("{msg}");
+                    append_fatal_log(&logs_dir, &msg);
+                    emit_startup_error(app, "Atlas Desktop est déjà ouvert (ou verrou occupé). Fermez l'autre instance puis réessayez.");
+                    show_installer_for_repair(
+                        app,
+                        "Atlas Desktop est deja ouvert (ou verrou occupé). Fermez l'autre instance puis relancez.",
+                    );
+                    return Ok(());
+                }
+            };
+            tracing::info!("setup: after single-instance lock");
+            append_fatal_log(&logs_dir, "setup: after single-instance lock");
             app.manage(ManagedAppLock(app_lock));
 
-            // Embedded Postgres (bundle): auto-résolution du bin dir depuis les resources
-            try_set_embedded_postgres_bin_dir(app);
-            try_set_bundled_seed_dir(app);
+            // Contrat de packaging: résolution unique au startup
+            tracing::info!("setup: before AtlasResources::resolve");
+            let resolved = AtlasResources::resolve(app);
+            match resolved {
+                Ok(r) => {
+                    if std::env::var("ATLAS_PG_BIN_DIR").is_err() {
+                        std::env::set_var("ATLAS_PG_BIN_DIR", r.pg_bin_dir.to_string_lossy().to_string());
+                    }
+                    if std::env::var("ATLAS_DESKTOP_SEED_DUMP_PATH").is_err() {
+                        std::env::set_var(
+                            "ATLAS_DESKTOP_SEED_DUMP_PATH",
+                            r.seed_dump.to_string_lossy().to_string(),
+                        );
+                    }
+                    if std::env::var("ATLAS_DESKTOP_SEED_DIR").is_err() {
+                        std::env::set_var(
+                            "ATLAS_DESKTOP_SEED_DIR",
+                            r.resource_dir.to_string_lossy().to_string(),
+                        );
+                    }
+
+                    if let Ok(mut guard) = app.state::<ManagedAtlasResources>().0.lock() {
+                        guard.resources = Some(r);
+                        guard.error = None;
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("atlas resources resolve failed: {}", e);
+                    if let Ok(mut guard) = app.state::<ManagedAtlasResources>().0.lock() {
+                        guard.resources = None;
+                        guard.error = Some(e);
+                    }
+                }
+            }
+            tracing::info!("setup: after AtlasResources::resolve");
 
             let pg_bin_dir = std::env::var("ATLAS_PG_BIN_DIR").unwrap_or_default();
             let seed_dir = std::env::var("ATLAS_DESKTOP_SEED_DIR").unwrap_or_default();
@@ -530,11 +630,13 @@ pub fn run() {
 
             emit_startup_progress(app, "paths", "Résolution runtime PostgreSQL / seed", 12);
 
-            // First-run: on n'effectue pas le bootstrap DB/API avant que l'installateur
-            // (wizard UI) n'ait validé et déclenché l'installation.
+            // Installer mode: allow forcing the installer UI without starting services.
+            // IMPORTANT: In production we must be robust even if installed.marker is missing
+            // (e.g. partial cleanup, roaming profiles, or installer wizard not completed).
+            // Therefore we only skip bootstrap when explicitly forced.
             // EXCEPTION: smoke-test mode must always run the bootstrap and exit 0/1.
-            if !is_smoke_test_mode() && (force_installer_mode() || !is_installed(&data_dir)) {
-                tracing::info!("Installer mode: skipping postgres/api bootstrap (marker missing)");
+            if !is_smoke_test_mode() && force_installer_mode() {
+                tracing::info!("Installer mode: skipping postgres/api bootstrap (forced)");
                 emit_startup_progress(app, "installer", "Installateur requis", 100);
                 if let Some(main) = app.get_webview_window("main") {
                     let _ = main.show();
@@ -549,29 +651,73 @@ pub fn run() {
                 return Ok(());
             }
 
+            if !is_smoke_test_mode() && !is_installed(&data_dir) {
+                tracing::warn!(
+                    marker = %install_marker_path(&data_dir).display(),
+                    "installed.marker missing: continuing bootstrap for robustness"
+                );
+            }
+
             // Postgres embarqué (dev: détection auto; prod: resources Tauri)
             if !postgres::postgres_available() {
                 let msg = "PostgreSQL embarqué indisponible. En dev, définis ATLAS_PG_BIN_DIR vers le dossier contenant pg_ctl.exe/initdb.exe/psql.exe (ex: C:\\Program Files\\EnterpriseDB\\...\\bin), puis relance.";
                 tracing::error!("{msg}");
                 append_fatal_log(&logs_dir, msg);
                 emit_startup_error(app, msg);
-                return Err(msg.into());
+                show_installer_for_repair(app, msg);
+                return Ok(());
             }
 
             emit_startup_progress(app, "postgres", "Démarrage PostgreSQL…", 25);
 
-            let pg = postgres::ensure_postgres_started().map_err(|e| {
-                let msg = format!("PostgreSQL startup failed: {e:#}");
-                tracing::error!("{msg}");
-                append_fatal_log(&logs_dir, &msg);
-                emit_startup_error(app, &msg);
-                Box::<dyn std::error::Error>::from(msg)
-            })?;
+            tracing::info!("setup: before ensure_postgres_started");
+            append_fatal_log(&logs_dir, "setup: before ensure_postgres_started");
+            let pg = match postgres::ensure_postgres_started() {
+                Ok(pg) => pg,
+                Err(e) => {
+                    let msg = format!("PostgreSQL startup failed: {e:#}");
+                    tracing::error!("{msg}");
+                    append_fatal_log(&logs_dir, &msg);
+                    emit_startup_error(app, &msg);
+                    show_installer_for_repair(app, &msg);
+                    return Ok(());
+                }
+            };
+            tracing::info!("setup: after ensure_postgres_started");
+            append_fatal_log(&logs_dir, "setup: after ensure_postgres_started");
 
             let pg_port = pg.port;
 
             emit_startup_progress(app, "database", "Initialisation base / PostGIS / seed…", 45);
-            if let Err(e) = postgres::ensure_database_initialized(&pg) {
+
+            // Heartbeat: `ensure_database_initialized()` (seed restore) can take several minutes.
+            // We keep updating the splash to avoid the impression of a frozen app.
+            let handle = app.handle().clone();
+            let stop_hb = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let stop_hb2 = stop_hb.clone();
+            let hb_start = std::time::Instant::now();
+            let hb = std::thread::spawn(move || {
+                while !stop_hb2.load(std::sync::atomic::Ordering::Relaxed) {
+                    let secs = hb_start.elapsed().as_secs();
+                    emit_startup_progress_handle(
+                        &handle,
+                        "database",
+                        &format!("Initialisation base / seed en cours… ({}s)", secs),
+                        45,
+                    );
+                    std::thread::sleep(std::time::Duration::from_secs(2));
+                }
+            });
+
+            tracing::info!("setup: before ensure_database_initialized");
+            append_fatal_log(&logs_dir, "setup: before ensure_database_initialized");
+            let init_result = postgres::ensure_database_initialized(&pg);
+            stop_hb.store(true, std::sync::atomic::Ordering::Relaxed);
+            let _ = hb.join();
+            tracing::info!("setup: after ensure_database_initialized");
+            append_fatal_log(&logs_dir, "setup: after ensure_database_initialized");
+
+            if let Err(e) = init_result {
                 let e = anyhow::Error::from(e);
 
                 if let Some(m) = e.downcast_ref::<postgres::SeedMismatch>() {
@@ -584,7 +730,11 @@ pub fn run() {
                         smoke_cleanup(&data_dir, Some(pg));
                         std::process::exit(smoke_exit_code_for_error(&e));
                     }
-                    return Err(user_msg.into());
+
+                    // Fail-safe: do not quit. Bring the installer/maintenance UI so the user can reset.
+                    let _ = postgres::stop_postgres(&pg);
+                    show_installer_for_repair(app, &user_msg);
+                    return Ok(());
                 }
 
                 let msg = format!("PostgreSQL/PostGIS initialization failed: {e:#}");
@@ -595,18 +745,27 @@ pub fn run() {
                     smoke_cleanup(&data_dir, Some(pg));
                     std::process::exit(smoke_exit_code_for_error(&e));
                 }
-                return Err(msg.into());
+
+                // Fail-safe: do not quit. Bring the installer/maintenance UI so the user can reset.
+                let _ = postgres::stop_postgres(&pg);
+                show_installer_for_repair(app, &msg);
+                return Ok(());
             }
 
             let db_user = std::env::var("DB_USER").unwrap_or_else(|_| "atlas".to_string());
             let db_name = std::env::var("DB_NAME").unwrap_or_else(|_| "atlas_clean".to_string());
-            let db_password = postgres::ensure_password().map_err(|e| {
-                let msg = format!("PostgreSQL password resolution failed: {e:#}");
-                tracing::error!("{msg}");
-                append_fatal_log(&logs_dir, &msg);
-                emit_startup_error(app, &msg);
-                Box::<dyn std::error::Error>::from(msg)
-            })?;
+            let db_password = match postgres::ensure_password() {
+                Ok(v) => v,
+                Err(e) => {
+                    let msg = format!("PostgreSQL password resolution failed: {e:#}");
+                    tracing::error!("{msg}");
+                    append_fatal_log(&logs_dir, &msg);
+                    emit_startup_error(app, &msg);
+                    let _ = postgres::stop_postgres(&pg);
+                    show_installer_for_repair(app, &msg);
+                    return Ok(());
+                }
+            };
 
             let database_url = format!(
                 "postgres://{}:{}@127.0.0.1:{}/{}",
@@ -673,20 +832,27 @@ pub fn run() {
                         cmd.stderr(std::process::Stdio::from(file2));
                     }
                 }
-                cmd.spawn()
-                    .map_err(|e| {
-                        let msg = format!("failed to start backend: {e}");
-                        tracing::error!("{msg}");
-                        append_fatal_log(&logs_dir, &msg);
-                        emit_startup_error(app, &msg);
-                        msg
-                    })?;
+                tracing::info!("setup: before api-geo spawn");
+                append_fatal_log(&logs_dir, "setup: before api-geo spawn");
+                if let Err(e) = cmd.spawn() {
+                    let msg = format!("failed to start backend: {e}");
+                    tracing::error!("{msg}");
+                    append_fatal_log(&logs_dir, &msg);
+                    emit_startup_error(app, &msg);
+                    let _ = postgres::stop_postgres(&pg);
+                    show_installer_for_repair(app, &msg);
+                    return Ok(());
+                }
+                tracing::info!("setup: after api-geo spawn");
+                append_fatal_log(&logs_dir, "setup: after api-geo spawn");
             }
 
             // Attendre que le backend écoute, pour éviter les erreurs au premier rendu UI.
             // Best-effort (ne bloque pas indéfiniment).
             let start = std::time::Instant::now();
             let timeout = std::time::Duration::from_secs(10);
+            tracing::info!("setup: before backend readiness wait");
+            append_fatal_log(&logs_dir, "setup: before backend readiness wait");
             loop {
                 if std::net::TcpStream::connect(addr).is_ok() {
                     break;
@@ -696,6 +862,8 @@ pub fn run() {
                 }
                 std::thread::sleep(std::time::Duration::from_millis(150));
             }
+            tracing::info!("setup: after backend readiness wait");
+            append_fatal_log(&logs_dir, "setup: after backend readiness wait");
 
             if is_smoke_test_mode() {
                 emit_startup_progress(app, "smoke", "Smoke test: /healthz", 92);
@@ -759,11 +927,15 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { .. } = event {
-                if let Some(m) = window.try_state::<ManagedPostgres>() {
-                    if let Ok(mut guard) = m.0.lock() {
-                        if let Some(pg) = guard.take() {
-                            if let Err(e) = postgres::stop_postgres(&pg) {
-                                eprintln!("PostgreSQL stop failed: {e:#}");
+                // Important: we close the splash window during normal startup.
+                // Never stop Postgres on splash close, otherwise the DB shuts down right after bootstrap.
+                if window.label() == "main" {
+                    if let Some(m) = window.try_state::<ManagedPostgres>() {
+                        if let Ok(mut guard) = m.0.lock() {
+                            if let Some(pg) = guard.take() {
+                                if let Err(e) = postgres::stop_postgres(&pg) {
+                                    eprintln!("PostgreSQL stop failed: {e:#}");
+                                }
                             }
                         }
                     }

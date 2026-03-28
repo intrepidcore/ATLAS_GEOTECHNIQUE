@@ -76,6 +76,14 @@ pub async fn get_global_stats(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
+    tracing::info!(
+        adm1 = ?params.adm1,
+        adm2 = ?params.adm2,
+        adm3 = ?params.adm3,
+        min_sondages = ?params.min_sondages,
+        min_essais = ?params.min_essais,
+        "stats_global: begin"
+    );
 
     // 1) Compteurs de mailles (depuis mv_mailles_geotech pour les compteurs mailles)
     // Note: On utilise une CTE pour simplifier les filtres
@@ -160,9 +168,9 @@ pub async fn get_global_stats(
             SELECT s.id
             FROM mailles m
             JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
-            WHERE ($1::text IS NULL OR m.adm1_name = $1)
-              AND ($2::text IS NULL OR m.adm2_name = $2)
-              AND ($3::text IS NULL OR m.adm3_name = $3)
+            WHERE ($1::text IS NULL OR s.adm1_name = $1)
+              AND ($2::text IS NULL OR s.adm2_name = $2)
+              AND ($3::text IS NULL OR s.adm3_name = $3)
         )
         SELECT 
             MIN(e.depth_m)::float8 AS min_m,
@@ -240,9 +248,9 @@ pub async fn get_global_stats(
             FROM mailles m
             JOIN sondages s ON st_contains(m.geom, st_transform(s.geom, 25231)) AND s.deleted_at IS NULL AND s.geom IS NOT NULL
             JOIN echantillons e ON e.sondage_id = s.id
-            WHERE ($1::text IS NULL OR m.adm1_name = $1)
-              AND ($2::text IS NULL OR m.adm2_name = $2)
-              AND ($3::text IS NULL OR m.adm3_name = $3)
+            WHERE ($1::text IS NULL OR s.adm1_name = $1)
+              AND ($2::text IS NULL OR s.adm2_name = $2)
+              AND ($3::text IS NULL OR s.adm3_name = $3)
         )
         SELECT 
             (SELECT AVG(vbs)::float8 FROM essais_vbs WHERE vbs IS NOT NULL AND echantillon_id IN (SELECT id FROM filtered_echantillons)) AS vbs_moyen,
@@ -279,6 +287,16 @@ pub async fn get_global_stats(
     } else {
         0.0
     };
+
+    tracing::info!(
+        mailles_total,
+        mailles_filtrees,
+        mailles_avec_donnees,
+        sondages,
+        echantillons,
+        essais,
+        "stats_global: success"
+    );
 
     Json(GlobalStatsResponse {
         mailles_total,

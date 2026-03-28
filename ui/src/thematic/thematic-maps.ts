@@ -1064,8 +1064,10 @@ export class ThematicMapManager {
         return {
           fillColor: color,
           fillOpacity: config.style.opacity,
-          color: config.style.stroke_color || '#333',
-          weight: config.style.stroke_width || 1
+          // Lisibilité métier: éviter les contours sombres qui masquent la variation.
+          color: (config.style.stroke_width || 0) > 0 ? (config.style.stroke_color || color) : color,
+          weight: config.style.stroke_width || 0,
+          opacity: (config.style.stroke_width || 0) > 0 ? 0.8 : 0
         }
       },
       onEachFeature: (feature, layer) => {
@@ -1377,9 +1379,11 @@ export class ThematicMapManager {
     ;(layer as any).on({
       mouseover: (e: any) => {
         const target = e.target
+        const currentFill = target?.options?.fillColor || '#111827'
         target.setStyle({
-          weight: 3,
-          color: '#000',
+          weight: Math.max((target?.options?.weight ?? 0), 0.8),
+          color: currentFill,
+          opacity: 0.9,
           fillOpacity: Math.min(config.style.opacity + 0.2, 1)
         })
         target.bringToFront()

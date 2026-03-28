@@ -64,6 +64,20 @@ pub enum ThematicParameter {
     // Contexte géographique (DSM COP30)
     #[serde(alias = "altitude_mean")]
     AltitudeMean,
+
+    // IA / Interpolation / AG
+    #[serde(alias = "ai_rga_score_infer")]
+    AiRgaScoreInfer,
+    #[serde(alias = "ai_portance_kpa_infer")]
+    AiPortanceKpaInfer,
+    #[serde(alias = "kriging_ip")]
+    KrigingIp,
+    #[serde(alias = "kriging_vbs")]
+    KrigingVbs,
+    #[serde(alias = "ag_safety_factor")]
+    AgSafetyFactor,
+    #[serde(alias = "ag_cout_millions")]
+    AgCoutMillions,
 }
 
 impl ThematicParameter {
@@ -94,6 +108,12 @@ impl ThematicParameter {
             Self::EgMin => "eg_min",
             Self::EgMax => "eg_max",
             Self::AltitudeMean => "altitude_mean",
+            Self::AiRgaScoreInfer => "ai_rga_score_infer",
+            Self::AiPortanceKpaInfer => "ai_portance_kpa_infer",
+            Self::KrigingIp => "kriging_ip",
+            Self::KrigingVbs => "kriging_vbs",
+            Self::AgSafetyFactor => "ag_safety_factor",
+            Self::AgCoutMillions => "ag_cout_millions",
         }
     }
 
@@ -124,6 +144,12 @@ impl ThematicParameter {
             Self::EgMin => "eg minimum",
             Self::EgMax => "eg maximum",
             Self::AltitudeMean => "Altitude moyenne (DSM COP30)",
+            Self::AiRgaScoreInfer => "Score RGA IA (infer)",
+            Self::AiPortanceKpaInfer => "Portance estimee IA (kPa)",
+            Self::KrigingIp => "IP interpole (kriging proxy)",
+            Self::KrigingVbs => "VBS interpole (kriging proxy)",
+            Self::AgSafetyFactor => "Facteur de securite AG",
+            Self::AgCoutMillions => "Cout AG (millions FCFA)",
         }
     }
 
@@ -143,6 +169,12 @@ impl ThematicParameter {
             Self::WOptAvg | Self::WOptStddev => "%",
             Self::EgAvg | Self::EgStddev | Self::EgMin | Self::EgMax => "%",
             Self::AltitudeMean => "m",
+            Self::AiRgaScoreInfer => "score",
+            Self::AiPortanceKpaInfer => "kPa",
+            Self::KrigingIp => "%",
+            Self::KrigingVbs => "g/100g",
+            Self::AgSafetyFactor => "FS",
+            Self::AgCoutMillions => "M FCFA",
         }
     }
 
@@ -163,6 +195,12 @@ impl ThematicParameter {
             }
             Self::EgAvg | Self::EgStddev | Self::EgMin | Self::EgMax => "gonflement",
             Self::AltitudeMean => "contexte",
+            Self::AiRgaScoreInfer
+            | Self::AiPortanceKpaInfer
+            | Self::KrigingIp
+            | Self::KrigingVbs
+            | Self::AgSafetyFactor
+            | Self::AgCoutMillions => "ai",
         }
     }
 }

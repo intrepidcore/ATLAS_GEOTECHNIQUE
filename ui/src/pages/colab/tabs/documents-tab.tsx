@@ -74,7 +74,7 @@ const DocumentsTab: React.FC<{
           />
           <StatsCard
             title="Documents"
-            value={stats.total_documents}
+            value={filteredDocuments.length}
             icon={<FileText className="w-6 h-6" />}
             color="bg-orange-50 text-orange-900"
           />

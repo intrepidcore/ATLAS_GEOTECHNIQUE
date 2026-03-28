@@ -12,6 +12,18 @@ use super::colors::*;
 use super::statistics::*;
 use super::types::*;
 
+fn is_ai_parameter(column: &str) -> bool {
+    matches!(
+        column,
+        "ai_rga_score_infer"
+            | "ai_portance_kpa_infer"
+            | "kriging_ip"
+            | "kriging_vbs"
+            | "ag_safety_factor"
+            | "ag_cout_millions"
+    )
+}
+
 /// Calculer le nombre total de mailles dans l'ADM (sans filtre min_sondages)
 async fn calculate_count_total(pool: &PgPool, req: &ThematicDataRequest) -> Option<usize> {
     let grid = req.grid.as_deref().unwrap_or("2km");
@@ -220,6 +232,7 @@ pub async fn get_thematic_data(
 ) -> Result<Json<ThematicDataResponse>, (StatusCode, String)> {
     let pool = &state.pool;
     let column = req.parameter.sql_column();
+    let ai_parameter = is_ai_parameter(column);
     let tolerance = simplify_tolerance(req.zoom);
 
     let grid = req.grid.as_deref().unwrap_or("2km");
@@ -238,7 +251,38 @@ pub async fn get_thematic_data(
     let mut param_index = 1;
 
     // Cas spécial pour altitude_mean : utiliser les vues DSM
-    let base_query = if column == "altitude_mean" {
+    let base_query = if ai_parameter {
+        if req.include_geometry {
+            format!(
+                "SELECT
+                    code,
+                    ST_AsGeoJSON(geom)::text as geom,
+                    CAST({} AS DOUBLE PRECISION) as value,
+                    CAST(n_sondages AS INTEGER) as n_sondages,
+                    CAST(n_essais_geo AS INTEGER) as n_essais_geo,
+                    adm1_name,
+                    adm2_name,
+                    adm3_name
+                 FROM atlas.v_thematic_ai_geotech
+                 WHERE {} IS NOT NULL",
+                column, column
+            )
+        } else {
+            format!(
+                "SELECT
+                    code,
+                    CAST({} AS DOUBLE PRECISION) as value,
+                    CAST(n_sondages AS INTEGER) as n_sondages,
+                    CAST(n_essais_geo AS INTEGER) as n_essais_geo,
+                    adm1_name,
+                    adm2_name,
+                    adm3_name
+                 FROM atlas.v_thematic_ai_geotech
+                 WHERE {} IS NOT NULL",
+                column, column
+            )
+        }
+    } else if column == "altitude_mean" {
         if req.include_geometry {
             format!(
                 "SELECT 
@@ -295,8 +339,8 @@ pub async fn get_thematic_data(
                         SUM(CAST(m2.metric_value AS DOUBLE PRECISION) * ST_Area(ST_Intersection(m2.geom, m28.geom)))
                         / NULLIF(SUM(ST_Area(ST_Intersection(m2.geom, m28.geom))), 0)
                     ) as value,
-                    SUM(m2.n_sondages)::bigint as n_sondages,
-                    SUM(m2.n_essais_geo)::bigint as n_essais_geo,
+                    CAST(SUM(m2.n_sondages) AS INTEGER) as n_sondages,
+                    CAST(SUM(m2.n_essais_geo) AS INTEGER) as n_essais_geo,
                     NULL::text as adm1_name,
                     NULL::text as adm2_name,
                     NULL::text as adm3_name
@@ -324,8 +368,8 @@ pub async fn get_thematic_data(
                 code,
                 ST_AsGeoJSON({})::text as geom,
                 CAST({} AS DOUBLE PRECISION) as value,
-                n_sondages,
-                n_essais_geo,
+                CAST(n_sondages AS INTEGER) as n_sondages,
+                CAST(n_essais_geo AS INTEGER) as n_essais_geo,
                 adm1_name,
                 adm2_name,
                 adm3_name
@@ -338,8 +382,8 @@ pub async fn get_thematic_data(
             "SELECT 
                 code,
                 CAST({} AS DOUBLE PRECISION) as value,
-                n_sondages,
-                n_essais_geo,
+                CAST(n_sondages AS INTEGER) as n_sondages,
+                CAST(n_essais_geo AS INTEGER) as n_essais_geo,
                 adm1_name,
                 adm2_name,
                 adm3_name
@@ -352,7 +396,10 @@ pub async fn get_thematic_data(
     let mut query = base_query;
 
     // Filtre min_sondages
-    if req.min_sondages.is_some() {
+    // Important: pour les paramètres IA/Interpolation/AG, les valeurs sont déjà
+    // pré-calculées pour toutes les mailles; on ne doit pas exclure les mailles
+    // sur un critère de sondages.
+    if req.min_sondages.is_some() && !ai_parameter {
         if grid == "28km" {
             query.push_str(&format!(" AND m2.n_sondages >= ${}", param_index));
         } else {
@@ -491,8 +538,10 @@ pub async fn get_thematic_data(
             let properties = serde_json::json!({
                 "code": row.get::<String, _>("code"),
                 "value": v,
-                "n_sondages": row.get::<i64, _>("n_sondages"),
-                "n_essais_geo": row.get::<i64, _>("n_essais_geo"),
+                // Dans la vue `atlas.v_thematic_ai_geotech`, ces compteurs sont typés en INT4 (integer).
+                // Utiliser i32 évite les panics sqlx sur mismatch de type.
+                "n_sondages": row.get::<i32, _>("n_sondages"),
+                "n_essais_geo": row.get::<i32, _>("n_essais_geo"),
             });
 
             if req.include_geometry {

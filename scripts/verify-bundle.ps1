@@ -56,19 +56,58 @@ if (Test-Path $sidecar) {
   Check 'api-geo sidecar size > 5MB' ((Get-Item $sidecar).Length -gt 5MB) ("size=" + (Get-Item $sidecar).Length)
 }
 
-$resources = @()
-try { $resources = @($conf.bundle.resources) } catch { $resources = @() }
+$resources = $null
+try { $resources = $conf.bundle.resources } catch { $resources = $null }
 
-$hasSeedDump = $resources -contains '../../../data/db/backups/atlas_desktop_seed.dump'
-$hasSeedJson = $resources -contains '../../../data/db/backups/atlas_desktop_seed.dump.json'
+$resourcesIsMap = $resources -is [System.Management.Automation.PSCustomObject]
 
-$hasSidecar = ($resources -contains 'bin/api-geo-x86_64-pc-windows-msvc.exe') -or ($conf.bundle.externalBin -contains 'bin/api-geo')
-$hasPg = $resources | Where-Object { $_ -eq 'pg/**' -or $_ -eq 'pg/**/*' }
+$hasSeedDump = $false
+$hasSeedJson = $false
+$hasSidecarResource = $false
+$hasPg = $false
+
+if ($resourcesIsMap) {
+  $hasSeedDump = ($resources.PSObject.Properties.Name -contains '../../../data/db/backups/atlas_desktop_seed.dump')
+  $hasSeedJson = ($resources.PSObject.Properties.Name -contains '../../../data/db/backups/atlas_desktop_seed.dump.json')
+  $hasSidecarResource = ($resources.PSObject.Properties.Name -contains 'bin/api-geo-x86_64-pc-windows-msvc.exe')
+  $hasPg = $null -ne ($resources.PSObject.Properties.Name | Where-Object { $_ -eq 'pg' -or $_ -eq 'pg/' -or $_ -eq 'pg/**' -or $_ -eq 'pg/**/*' } | Select-Object -First 1)
+
+  $seedDumpDest = $null
+  $seedJsonDest = $null
+  $pgDest = $null
+  if ($hasSeedDump) { $seedDumpDest = $resources.'../../../data/db/backups/atlas_desktop_seed.dump' }
+  if ($hasSeedJson) { $seedJsonDest = $resources.'../../../data/db/backups/atlas_desktop_seed.dump.json' }
+  if ($resources.PSObject.Properties.Name -contains 'pg') { $pgDest = $resources.'pg' }
+  elseif ($resources.PSObject.Properties.Name -contains 'pg/') { $pgDest = $resources.'pg/' }
+  elseif ($resources.PSObject.Properties.Name -contains 'pg/**/*') { $pgDest = $resources.'pg/**/*' }
+  elseif ($resources.PSObject.Properties.Name -contains 'pg/**') { $pgDest = $resources.'pg/**' }
+
+  $seedDumpDestOk = ($seedDumpDest -eq 'atlas_desktop_seed.dump') -or ($seedDumpDest -eq './atlas_desktop_seed.dump') -or ($seedDumpDest -eq '.\\atlas_desktop_seed.dump')
+  $seedJsonDestOk = ($seedJsonDest -eq 'atlas_desktop_seed.dump.json') -or ($seedJsonDest -eq './atlas_desktop_seed.dump.json') -or ($seedJsonDest -eq '.\\atlas_desktop_seed.dump.json')
+  $pgDestOk = ($pgDest -eq 'pg') -or ($pgDest -eq 'pg/') -or ($pgDest -eq 'pg\\')
+} else {
+  $arr = @()
+  try { $arr = @($resources) } catch { $arr = @() }
+  $hasSeedDump = $arr -contains '../../../data/db/backups/atlas_desktop_seed.dump'
+  $hasSeedJson = $arr -contains '../../../data/db/backups/atlas_desktop_seed.dump.json'
+  $hasSidecarResource = $arr -contains 'bin/api-geo-x86_64-pc-windows-msvc.exe'
+  $hasPg = $null -ne ($arr | Where-Object { $_ -eq 'pg' -or $_ -eq 'pg/**' -or $_ -eq 'pg/**/*' } | Select-Object -First 1)
+
+  $seedDumpDestOk = $true
+  $seedJsonDestOk = $true
+  $pgDestOk = $true
+}
+
+$hasSidecar = $hasSidecarResource -or ($conf.bundle.externalBin -contains 'bin/api-geo')
 
 Check 'bundle.resources includes seed dump' $hasSeedDump 'Expected ../../../data/db/backups/atlas_desktop_seed.dump'
 Check 'bundle.resources includes seed dump json' $hasSeedJson 'Expected ../../../data/db/backups/atlas_desktop_seed.dump.json'
 Check 'bundle includes api-geo sidecar' $hasSidecar 'Expected bin/api-geo-x86_64-pc-windows-msvc.exe or externalBin bin/api-geo'
-Check 'bundle.resources includes pg runtime' ($null -ne $hasPg) 'Expected pg/**/*'
+Check 'bundle.resources includes pg runtime' $hasPg 'Expected pg/**/*'
+
+Check 'bundle.resources seed dump destination (contract)' $seedDumpDestOk 'Expected destination atlas_desktop_seed.dump'
+Check 'bundle.resources seed json destination (contract)' $seedJsonDestOk 'Expected destination atlas_desktop_seed.dump.json'
+Check 'bundle.resources pg destination (contract)' $pgDestOk 'Expected destination pg/'
 
 $pgCtl = Join-Path $RepoRoot 'apps\atlas-pro\src-tauri\pg\bin\pg_ctl.exe'
 Check 'embedded pg runtime present' (Test-Path $pgCtl) $pgCtl

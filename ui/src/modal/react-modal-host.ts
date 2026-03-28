@@ -3,7 +3,7 @@ import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'reac
 
 import { missionsApi } from '../services/colab-api';
 
-type ModalType = 'create-mission' | 'transfer-mission';
+type ModalType = 'create-mission' | 'transfer-mission' | 'zone-etude';
 
 type ModalRequest =
   | {
@@ -15,6 +15,10 @@ type ModalRequest =
       type: 'transfer-mission';
       missionId: string;
       onDone?: () => void;
+    }
+  | {
+      type: 'zone-etude';
+      zoneCode: string;
     };
 
 let container: HTMLDivElement | null = null;
@@ -26,6 +30,7 @@ let pendingRequest: ModalRequest | null = null;
 
 const CreateMissionModal = React.lazy(() => import('../pages/colab/create-mission-modal'));
 const TransferMissionModal = React.lazy(() => import('../pages/colab/transfer-mission-modal'));
+const ZoneEtudeModal = React.lazy(() => import('../pages/zones/zone-etude-modal'));
 
 const Host: React.FC = () => {
   const [req, setReq] = useState<ModalRequest | null>(null);
@@ -94,6 +99,15 @@ const Host: React.FC = () => {
     };
   }, [close, req, transferMission]);
 
+  const zoneEtudeProps = useMemo(() => {
+    if (!req || req.type !== 'zone-etude') return null;
+    return {
+      isOpen: true,
+      zoneCode: req.zoneCode,
+      onClose: close,
+    };
+  }, [close, req]);
+
   openImpl = open;
   closeImpl = close;
 
@@ -119,6 +133,9 @@ const Host: React.FC = () => {
       : null,
     req.type === 'transfer-mission' && transferMissionProps
       ? React.createElement(TransferMissionModal as any, transferMissionProps as any)
+      : null,
+    req.type === 'zone-etude' && zoneEtudeProps
+      ? React.createElement(ZoneEtudeModal as any, zoneEtudeProps as any)
       : null,
   );
 };
@@ -155,6 +172,22 @@ export function openCreateMissionModal(opts: { mailleCode?: string; onDone?: () 
 export function openTransferMissionModal(opts: { missionId: string; onDone?: () => void }) {
   ensureMounted();
   const req: ModalRequest = { type: 'transfer-mission', missionId: opts.missionId, onDone: opts.onDone };
+  if (openImpl) {
+    openImpl(req);
+  } else {
+    pendingRequest = req;
+    queueMicrotask(() => {
+      if (openImpl && pendingRequest === req) {
+        pendingRequest = null;
+        openImpl(req);
+      }
+    });
+  }
+}
+
+export function openZoneEtudeModal(opts: { zoneCode: string }) {
+  ensureMounted();
+  const req: ModalRequest = { type: 'zone-etude', zoneCode: opts.zoneCode };
   if (openImpl) {
     openImpl(req);
   } else {

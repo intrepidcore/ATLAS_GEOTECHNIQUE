@@ -40,6 +40,11 @@ services:
       API_BIND: 0.0.0.0:8000
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       EXPORT_DIR: /data/exports
+      ATLAS_SCRIPTS_DIR: /opt/atlas/scripts
+      # Microservices IA (optionnel) : laisser vide = exécution locale dans api-geo
+      ATLAS_API_INFER_URL: ${ATLAS_API_INFER_URL:-}
+      ATLAS_API_OPTI_URL: ${ATLAS_API_OPTI_URL:-}
+      ATLAS_INTERNAL_SERVICE_TOKEN: ${ATLAS_INTERNAL_SERVICE_TOKEN:-}
     depends_on:
       db:
         condition: service_healthy
@@ -48,6 +53,7 @@ services:
       - "8000:8000"  # Exposé pour accès direct depuis l'UI
     volumes:
       - ./exports:/data/exports
+      - ./scripts:/opt/atlas/scripts:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
       interval: 30s
@@ -60,13 +66,21 @@ services:
   api-infer:
     build: ./services/api-infer
     container_name: atlas-api-infer
-    profiles: ["infer"]
+    restart: unless-stopped
     env_file:
       - ./.env
       - ./.env.example
     environment:
-      MODEL_PATH: ${MODEL_PATH}
-      RUST_LOG: ${RUST_LOG}
+      DATABASE_URL: postgres://atlas_etl_user:${ATLAS_DB_ETL_PASSWORD}@db:5432/atlas_clean
+      RUST_LOG: ${RUST_LOG:-info}
+      API_INFER_PORT: 8000
+      ATLAS_SCRIPTS_DIR: /opt/atlas/scripts
+      ATLAS_INTERNAL_SERVICE_TOKEN: ${ATLAS_INTERNAL_SERVICE_TOKEN:-dev-atlas-internal-token}
+    volumes:
+      - ./scripts:/opt/atlas/scripts:ro
+    depends_on:
+      db:
+        condition: service_healthy
     ports:
       - "127.0.0.1:8002:8000"
     healthcheck:
@@ -80,12 +94,14 @@ services:
   api-opti:
     build: ./services/api-opti
     container_name: atlas-api-opti
-    profiles: ["opti"]
+    restart: unless-stopped
     env_file:
       - ./.env
       - ./.env.example
     environment:
-      RUST_LOG: ${RUST_LOG}
+      RUST_LOG: ${RUST_LOG:-info}
+      API_OPTI_PORT: 8000
+      ATLAS_INTERNAL_SERVICE_TOKEN: ${ATLAS_INTERNAL_SERVICE_TOKEN:-dev-atlas-internal-token}
     ports:
       - "127.0.0.1:8003:8000"
     healthcheck:

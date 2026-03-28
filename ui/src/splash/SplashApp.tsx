@@ -36,6 +36,14 @@ export function SplashApp() {
   }, [fatal, percent])
 
   useEffect(() => {
+    const w = window as any
+    const preFatal = w?.__ATLAS_STARTUP_FATAL__
+    if (preFatal) {
+      const msg = String(preFatal)
+      setFatal(msg)
+      setLogs((prev) => [...prev, { ts: new Date().toLocaleTimeString(), msg: `❌ ${msg}` }])
+    }
+
     const unlisten1 = listenEvent<ProgressEvent>('startup:progress', (ev) => {
       if (typeof ev.percent === 'number') {
         setProgress(ev)

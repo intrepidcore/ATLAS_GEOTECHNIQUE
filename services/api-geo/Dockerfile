@@ -29,6 +29,7 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl fonts-dejavu-core fonts-liberation \
+    python3 python3-pip python3-numpy python3-sklearn python3-psycopg2 \
     && ln -sf /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf /usr/share/fonts/truetype/dejavu/DejaVuSans-Regular.ttf \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app

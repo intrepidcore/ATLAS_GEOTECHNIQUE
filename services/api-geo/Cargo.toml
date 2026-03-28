@@ -53,6 +53,7 @@ rpassword = "7"
 rust_xlsxwriter = "0.92.4"
 handlebars = "6.4.0"
 genpdf = "0.2"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 
 [build-dependencies]
 chrono = "0.4"

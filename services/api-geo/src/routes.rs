@@ -884,6 +884,12 @@ pub async fn get_coverage_mailles(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     let grid_type = params.get("grid").map(|s| s.as_str()).unwrap_or("2km");
+    tracing::info!(
+        grid_type = %grid_type,
+        has_bbox = params.contains_key("bbox"),
+        bbox = ?params.get("bbox").cloned(),
+        "coverage/mailles begin"
+    );
 
     if grid_type == "28km" {
         return get_coverage_mailles_28km(params, state).await.into_response();
@@ -945,7 +951,16 @@ pub async fn get_coverage_mailles(
                 .into_response();
         }
     };
+    tracing::info!(
+        grid_type = %grid_type,
+        row_count = rows.len(),
+        "coverage/mailles rows fetched"
+    );
+
     let mut features = Vec::new();
+    let mut geom_ok = 0usize;
+    let mut geom_parse_fail = 0usize;
+    let mut with_data_rows = 0usize;
     for r in rows {
         let code: String = r.get("code");
         let g: String = r.get("g");
@@ -969,6 +984,7 @@ pub async fn get_coverage_mailles(
         let assigned_source: Option<String> = r.try_get("assigned_source").ok();
         let is_assigned = assigned_student_id.is_some();
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
+            geom_ok += 1;
             let mut props = serde_json::json!({
                 "code": code,
                 "has_data": has_data,
@@ -1002,8 +1018,22 @@ pub async fn get_coverage_mailles(
                 "geometry": geom,
                 "properties": props
             }));
+            if has_data {
+                with_data_rows += 1;
+            }
+        }
+        else {
+            geom_parse_fail += 1;
         }
     }
+    tracing::info!(
+        grid_type = %grid_type,
+        features = features.len(),
+        geom_ok = geom_ok,
+        geom_parse_fail = geom_parse_fail,
+        with_data_rows = with_data_rows,
+        "coverage/mailles done"
+    );
     Json(serde_json::json!({"type":"FeatureCollection","features": features})).into_response()
 }
 
@@ -1013,6 +1043,11 @@ async fn get_coverage_mailles_28km(
     state: AppState,
 ) -> impl IntoResponse {
     let pool = &state.pool;
+    tracing::info!(
+        has_bbox = params.contains_key("bbox"),
+        bbox = ?params.get("bbox").cloned(),
+        "coverage/mailles(28km) begin"
+    );
     
     // Requête sur atlas.v_coverage_mailles_28km_clip (geom clipée ADM0 + colonnes compatibles)
     let mut query = r#"
@@ -1055,7 +1090,15 @@ async fn get_coverage_mailles_28km(
         }
     };
 
+    tracing::info!(
+        row_count = rows.len(),
+        "coverage/mailles(28km) rows fetched"
+    );
+
     let mut features = Vec::new();
+    let mut geom_ok = 0usize;
+    let mut geom_parse_fail = 0usize;
+    let mut has_data_rows = 0usize;
     for r in rows {
         let code_m28: i32 = r.try_get("code_m28").unwrap_or(0);
         let code_lisible: String = r.try_get("code_lisible").unwrap_or_else(|_| format!("TG-28KM-{:03}", code_m28));
@@ -1075,6 +1118,7 @@ async fn get_coverage_mailles_28km(
         let has_random_location = n_sondages_random > 0;
 
         if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&g) {
+            geom_ok += 1;
             let props = serde_json::json!({
                 "code_m28": code_m28,
                 "code": code_lisible.clone(), // Code lisible (ex: TG-28KM-030)
@@ -1096,9 +1140,22 @@ async fn get_coverage_mailles_28km(
                 "geometry": geom,
                 "properties": props
             }));
+            if has_data {
+                has_data_rows += 1;
+            }
+        }
+        else {
+            geom_parse_fail += 1;
         }
     }
     
+    tracing::info!(
+        features = features.len(),
+        geom_ok = geom_ok,
+        geom_parse_fail = geom_parse_fail,
+        has_data_rows = has_data_rows,
+        "coverage/mailles(28km) done"
+    );
     Json(serde_json::json!({"type":"FeatureCollection","features": features})).into_response()
 }
 

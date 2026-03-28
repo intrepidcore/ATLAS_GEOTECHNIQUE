@@ -63,7 +63,7 @@ const SupervisorsTab: React.FC<{
           />
           <StatsCard
             title="Superviseurs"
-            value={stats.total_supervisors}
+            value={filteredSupervisors.length}
             icon={<Users className="w-6 h-6" />}
             color="bg-purple-50 text-purple-900"
           />

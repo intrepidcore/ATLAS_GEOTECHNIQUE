@@ -13,8 +13,8 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["fmt", "env-filter"] }
 tower-http = { version = "0.5", features = ["cors", "trace"] }
-rayon = "1.8"
-rand = "0.8"
+uuid = { version = "1", features = ["serde"] }
+dotenvy = "0.15"
 
 [build-dependencies]
 chrono = "0.4"

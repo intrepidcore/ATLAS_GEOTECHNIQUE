@@ -1,0 +1,9 @@
+# Pipeline géostat + ML Atlas (installer dans venv ou image api-infer)
+numpy>=1.24
+scipy>=1.11
+pandas>=2.0
+scikit-learn>=1.3
+psycopg2-binary>=2.9
+PyKrige>=1.7.0
+gstools>=1.5.0
+catboost>=1.2.0

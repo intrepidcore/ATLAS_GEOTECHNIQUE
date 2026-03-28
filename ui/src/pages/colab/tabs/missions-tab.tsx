@@ -109,7 +109,7 @@ const MissionsTab: React.FC<{
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatsCard
             title="Total Missions"
-            value={stats.total_missions}
+            value={total}
             icon={<BarChart3 className="w-6 h-6" />}
             color="bg-blue-50 text-blue-900"
           />

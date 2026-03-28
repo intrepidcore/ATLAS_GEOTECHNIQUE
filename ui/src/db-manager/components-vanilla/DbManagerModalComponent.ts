@@ -12,6 +12,8 @@ interface ModalState {
   error: string | null
   currentSchema: string | null
   currentTable: string | null
+  activeTab: 'data' | 'infer_opti'
+  aiStatus: string | null
 }
 
 export class DbManagerModalComponent extends BaseComponent<ModalState> {
@@ -30,7 +32,9 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
       loading: false,
       error: null,
       currentSchema: null,
-      currentTable: null
+      currentTable: null,
+      activeTab: 'data',
+      aiStatus: null
     })
   }
   
@@ -253,12 +257,84 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
       `
     }
     
+    const isData = this.state.activeTab === 'data'
     return `
       <div class="db-modal-body">
-        <div class="db-sidebar" id="schema-tree-container"></div>
-        <div class="db-main" id="data-grid-container"></div>
+        <div class="db-sidebar">
+          <div class="db-tabs">
+            <button class="db-tab ${isData ? 'active' : ''}" data-tab="data">Données</button>
+            <button class="db-tab ${!isData ? 'active' : ''}" data-tab="infer_opti">Infer/Opti</button>
+          </div>
+          <div id="schema-tree-container" style="${isData ? '' : 'display:none'}"></div>
+          <div id="infer-opti-container" style="${!isData ? '' : 'display:none'}">
+            ${this.renderInferOptiPanel()}
+          </div>
+        </div>
+        <div class="db-main" id="data-grid-container" style="${isData ? '' : 'display:none'}"></div>
+        <div class="db-main" id="infer-opti-main" style="${!isData ? '' : 'display:none'}">
+          ${this.renderInferOptiMain()}
+        </div>
       </div>
     `
+  }
+
+  private renderInferOptiPanel(): string {
+    const status = this.state.aiStatus
+    return `
+      <div class="infer-opti-sidebar">
+        <div class="infer-opti-title">IA / Optimisation</div>
+        <div class="infer-opti-sub">Pilotage V1 (jobs, métriques, recalculs)</div>
+        <div class="infer-opti-actions">
+          <button class="btn-ai" data-action="refresh-sources">Recalculer sources IA/AG</button>
+          <button class="btn-ai" data-action="kriging">Recalculer Kriging (GP)</button>
+          <button class="btn-ai primary" data-action="train">Entraîner + Inférer (supervisé)</button>
+          <button class="btn-ai" data-action="jobs-run">Exécuter 1 job en file</button>
+          <button class="btn-ai" data-action="jobs-refresh">Rafraîchir jobs</button>
+        </div>
+        <div class="infer-opti-status">
+          <div class="label">Statut</div>
+          <pre class="status-box">${status ? this.escapeHtml(status) : '—'}</pre>
+        </div>
+      </div>
+    `
+  }
+
+  private renderInferOptiMain(): string {
+    return `
+      <div class="infer-opti-main">
+        <div class="infer-opti-main-header">
+          <div>
+            <div class="infer-opti-h1">Infer/Opti</div>
+            <div class="infer-opti-h2">Derniers jobs IA (queue) + exécution + logs.</div>
+          </div>
+          <div class="infer-opti-main-cta">
+            <button class="btn-ai small" data-action="jobs-refresh">Rafraîchir</button>
+          </div>
+        </div>
+        <div class="infer-opti-jobs">
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th>Demandé</th>
+                <th>Cible</th>
+                <th>Statut</th>
+                <th>Raison</th>
+              </tr>
+            </thead>
+            <tbody id="ai-jobs-tbody">
+              <tr><td colspan="4" style="color:#94a3b8">Charge les jobs…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+  }
+
+  private escapeHtml(s: string): string {
+    return s
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
   }
   
   private renderStyles(): string {
@@ -371,6 +447,87 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
           background: #252d3a;
           overflow-y: auto;
         }
+
+        .db-tabs {
+          display: flex;
+          gap: 8px;
+          padding: 12px;
+          border-bottom: 1px solid #2d3748;
+          position: sticky;
+          top: 0;
+          background: #252d3a;
+          z-index: 2;
+        }
+        .db-tab {
+          flex: 1;
+          padding: 10px 12px;
+          border-radius: 10px;
+          border: 1px solid #2d3748;
+          background: #1e2530;
+          color: #cbd5e1;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 13px;
+        }
+        .db-tab.active {
+          border-color: #3b82f6;
+          background: rgba(59, 130, 246, 0.14);
+          color: #e2e8f0;
+        }
+
+        /* Infer/Opti UI */
+        .infer-opti-sidebar { padding: 12px; }
+        .infer-opti-title { color:#e2e8f0; font-weight:800; font-size:14px; letter-spacing:0.2px; }
+        .infer-opti-sub { color:#94a3b8; font-size:12px; margin-top:4px; margin-bottom:12px; }
+        .infer-opti-actions { display:flex; flex-direction:column; gap:8px; }
+        .btn-ai {
+          padding: 10px 10px;
+          border-radius: 10px;
+          border: 1px solid #2d3748;
+          background: #111827;
+          color: #e2e8f0;
+          cursor: pointer;
+          font-weight: 600;
+          font-size: 12px;
+          text-align:left;
+        }
+        .btn-ai.primary { border-color:#3b82f6; background: rgba(59,130,246,0.18); }
+        .btn-ai.small { padding: 8px 10px; font-size: 12px; }
+        .btn-ai:hover { background:#0b1220; }
+        .infer-opti-status { margin-top:12px; }
+        .infer-opti-status .label { color:#94a3b8; font-size:12px; margin-bottom:6px; }
+        .status-box {
+          background:#0b1220;
+          border:1px solid #2d3748;
+          border-radius:10px;
+          padding:10px;
+          color:#e2e8f0;
+          font-size:11px;
+          max-height:160px;
+          overflow:auto;
+          white-space:pre-wrap;
+        }
+        .infer-opti-main { padding: 16px; overflow:auto; }
+        .infer-opti-main-header { display:flex; justify-content:space-between; align-items:flex-end; gap:16px; }
+        .infer-opti-h1 { color:#e2e8f0; font-weight:900; font-size:18px; }
+        .infer-opti-h2 { color:#94a3b8; font-size:12px; margin-top:4px; }
+        .jobs-table {
+          width:100%;
+          border-collapse:collapse;
+          margin-top:14px;
+          background:#0b1220;
+          border:1px solid #2d3748;
+          border-radius:12px;
+          overflow:hidden;
+        }
+        .jobs-table th, .jobs-table td {
+          padding: 10px 10px;
+          border-bottom: 1px solid #1f2937;
+          color:#e2e8f0;
+          font-size: 12px;
+        }
+        .jobs-table th { color:#94a3b8; font-weight:700; text-transform:uppercase; font-size:11px; letter-spacing:0.08em; }
+        .jobs-table tr:last-child td { border-bottom:none; }
         
         .db-main {
           flex: 1;
@@ -454,6 +611,23 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
     this.addEventListener('.btn-retry', 'click', () => {
       this.open()
     })
+
+    // Tabs
+    this.addEventListener('.db-tab', 'click', (e) => {
+      const el = e.currentTarget as HTMLElement
+      const tab = (el.getAttribute('data-tab') || 'data') as 'data' | 'infer_opti'
+      this.setState({ activeTab: tab })
+      if (tab === 'infer_opti') {
+        this.refreshAiJobs()
+      }
+    })
+
+    // Infer/Opti actions
+    this.addEventListener('.btn-ai', 'click', async (e) => {
+      const el = e.currentTarget as HTMLElement
+      const action = el.getAttribute('data-action') || ''
+      await this.handleAiAction(action)
+    })
     
     // Escape key to close
     const handleEscape = (e: KeyboardEvent) => {
@@ -469,6 +643,59 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
     this.destroy = () => {
       document.removeEventListener('keydown', handleEscape)
       originalDestroy()
+    }
+  }
+
+  private async handleAiAction(action: string): Promise<void> {
+    try {
+      this.setState({ aiStatus: `⏳ ${action}…` })
+      if (action === 'refresh-sources') {
+        const r = await api.aiRefreshSources()
+        this.setState({ aiStatus: JSON.stringify(r, null, 2) })
+      } else if (action === 'kriging') {
+        const r = await api.aiRecomputeKriging()
+        this.setState({ aiStatus: JSON.stringify(r, null, 2) })
+      } else if (action === 'train') {
+        const r = await api.aiTrainSupervised()
+        this.setState({ aiStatus: JSON.stringify(r, null, 2) })
+      } else if (action === 'jobs-run') {
+        const r = await api.aiJobsRunOnce(1)
+        this.setState({ aiStatus: JSON.stringify(r, null, 2) })
+        await this.refreshAiJobs()
+      } else if (action === 'jobs-refresh') {
+        await this.refreshAiJobs()
+      } else {
+        this.setState({ aiStatus: `Action inconnue: ${action}` })
+      }
+    } catch (err: any) {
+      this.setState({ aiStatus: `❌ ${err?.message || String(err)}` })
+    }
+  }
+
+  private async refreshAiJobs(): Promise<void> {
+    try {
+      const data = await api.aiJobsRecent()
+      const tbody = this.container.querySelector('#ai-jobs-tbody') as HTMLElement | null
+      if (!tbody) return
+      const jobs = data?.jobs || []
+      if (!Array.isArray(jobs) || jobs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#94a3b8">Aucun job.</td></tr>`
+        return
+      }
+      tbody.innerHTML = jobs.slice(0, 30).map((j: any) => {
+        const req = (j.requested_at || '').replace('T', ' ').slice(0, 19)
+        const status = (j.status || '—')
+        const target = (j.model_target || '—')
+        const reason = (j.trigger_reason || '—')
+        return `<tr>
+          <td>${this.escapeHtml(req)}</td>
+          <td>${this.escapeHtml(target)}</td>
+          <td>${this.escapeHtml(status)}</td>
+          <td>${this.escapeHtml(reason)}</td>
+        </tr>`
+      }).join('')
+    } catch (err: any) {
+      this.setState({ aiStatus: `❌ jobs: ${err?.message || String(err)}` })
     }
   }
 }

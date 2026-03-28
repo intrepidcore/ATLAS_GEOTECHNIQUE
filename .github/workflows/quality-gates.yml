@@ -12,6 +12,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -39,9 +41,100 @@ jobs:
         shell: pwsh
         run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-bundle.ps1 -RepoRoot .
 
+      - name: "Smoke: seed restore on fresh cluster"
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          $repo = (Get-Location).Path
+          $pgBin = Join-Path $repo 'apps/atlas-pro/src-tauri/pg/bin'
+          $seed = Join-Path $repo 'data/db/backups/atlas_desktop_seed.dump'
+
+          if (-not (Test-Path $pgBin)) { throw "pg/bin not found: $pgBin" }
+          if (-not (Test-Path (Join-Path $pgBin 'pg_ctl.exe'))) { throw "pg_ctl.exe missing in: $pgBin" }
+          if (-not (Test-Path (Join-Path $pgBin 'initdb.exe'))) { throw "initdb.exe missing in: $pgBin" }
+          if (-not (Test-Path (Join-Path $pgBin 'psql.exe'))) { throw "psql.exe missing in: $pgBin" }
+          if (-not (Test-Path (Join-Path $pgBin 'createdb.exe'))) { throw "createdb.exe missing in: $pgBin" }
+          if (-not (Test-Path (Join-Path $pgBin 'pg_restore.exe'))) { throw "pg_restore.exe missing in: $pgBin" }
+          if (-not (Test-Path $seed)) { throw "seed dump missing: $seed" }
+
+          $root = Join-Path $env:RUNNER_TEMP ('atlas-smoke-' + [guid]::NewGuid().ToString('N'))
+          $data = Join-Path $root 'pgdata'
+          $log = Join-Path $root 'postgres.log'
+          New-Item -ItemType Directory -Force -Path $data | Out-Null
+
+          & (Join-Path $pgBin 'initdb.exe') -D $data | Out-Null
+
+          $port = 54329
+          & (Join-Path $pgBin 'pg_ctl.exe') -D $data -o "-p $port" -l $log start | Out-Null
+
+          try {
+            & (Join-Path $pgBin 'createdb.exe') -h 127.0.0.1 -p $port -U atlas atlas_clean | Out-Null
+          } catch {
+            # createdb may fail if role/db defaults differ; fallback via psql
+            & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p $port -U atlas -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE atlas_clean;" | Out-Null
+          }
+
+          & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p $port -U atlas -d atlas_clean -v ON_ERROR_STOP=1 -c "CREATE EXTENSION IF NOT EXISTS postgis;" | Out-Null
+          & (Join-Path $pgBin 'pg_restore.exe') -h 127.0.0.1 -p $port -U atlas -d atlas_clean --no-owner --no-privileges --single-transaction --exit-on-error $seed | Out-Null
+
+          $count = & (Join-Path $pgBin 'psql.exe') -h 127.0.0.1 -p $port -U atlas -d atlas_clean -tAc "SELECT COUNT(*) FROM atlas.mailles;"
+          $count = ($count | Out-String).Trim()
+          if (-not $count) { throw 'mailles count query returned empty output' }
+          if ($count -ne '29407') { throw "mailles count mismatch: expected 29407 got $count" }
+          Write-Host "Smoke seed restore OK (mailles=$count)"
+
+          & (Join-Path $pgBin 'pg_ctl.exe') -D $data stop -m fast | Out-Null
+
       - name: Upload verify script
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: verify-bundle-ps1
           path: scripts/verify-bundle.ps1
+
+  bundle-contract:
+    runs-on: windows-latest
+    if: startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/atlas_v2_clean'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: Install UI deps
+        run: npm ci
+        working-directory: ui
+
+      - name: Build UI
+        run: npm run build
+        working-directory: ui
+
+      - name: Build MSI (Tauri)
+        run: cargo tauri build
+        working-directory: apps/atlas-pro/src-tauri
+
+      - name: Verify packaging contract in MSI
+        shell: pwsh
+        run: |
+          $msi = Get-ChildItem "apps/atlas-pro/src-tauri/target/release/bundle/msi/*.msi" | Select-Object -First 1
+          if (-not $msi) { throw "MSI not found under target/release/bundle/msi" }
+          powershell -NoProfile -ExecutionPolicy Bypass -File scripts/verify-bundle.ps1 -RepoRoot . -MsiPath $msi.FullName
+
+      - name: Upload MSI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: atlas-pro-msi-${{ github.sha }}
+          path: apps/atlas-pro/src-tauri/target/release/bundle/msi/*.msi
+          retention-days: 14

@@ -16,8 +16,13 @@ use tower_http::set_header::SetResponseHeaderLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod audit;
+mod ai_infer;
+mod ai_jobs;
+mod ai_opti;
+mod internal_services;
 pub mod auth;
 mod routes;
+mod zones_etude;
 mod colab;
 mod export;
 mod cells_labs;
@@ -216,6 +221,10 @@ async fn main() -> anyhow::Result<()> {
         auth_config,
     };
 
+    // Background worker: process ai_training_jobs queued by sondages trigger or manual requests.
+    // Runs in-process (V1) with SKIP LOCKED claim to avoid double-processing.
+    ai_jobs::spawn_job_worker(state.clone());
+
     // NOTE: On expose les routes à la racine ET sous /api pour rester compatible
     // avec le frontend (fallback API_BASE_URL = origin + /api) et les reverse proxies.
     let mut base_api = Router::new()
@@ -261,6 +270,16 @@ async fn main() -> anyhow::Result<()> {
         .route("/layers/geologie", get(layers::get_geologie))
         .route("/layers/pedologie", get(layers::get_pedologie))
         .route("/layers/risque-gonflement", get(layers::get_risque_gonflement))
+        // Zones d'étude (ex: Dépression de la Lama)
+        .route("/zones-etude", get(zones_etude::list_zones_etude))
+        .route(
+            "/zones-etude/:code/mailles",
+            get(zones_etude::get_zone_mailles),
+        )
+        .route(
+            "/zones-etude/:code/geojson",
+            get(zones_etude::get_zone_geojson),
+        )
         // Layer styles endpoints (from database catalog)
         .route("/layers/styles", get(layers::get_all_layer_styles))
         .route("/layers/:layer_type/styles", get(layers::get_layer_styles))
@@ -337,6 +356,10 @@ async fn main() -> anyhow::Result<()> {
         .route("/export/jobs/:id", get(exports::get_export_job))
         // Export endpoints
         .route("/exports/geopackage", get(exports::export_geopackage))
+        .route(
+            "/exports/geopackage/zone/:code",
+            get(exports::export_geopackage_zone),
+        )
         .route("/exports/pdf", get(exports::export_pdf))
         // Import bulk endpoints
         .merge(import_bulk::configure())
@@ -410,6 +433,18 @@ async fn main() -> anyhow::Result<()> {
         .route("/sondages/stats", get(sondages::get_sondages_stats))
         .route("/sondages/:id", get(sondages::get_sondage).delete(sondages::delete_sondage))
         .route("/sondages/:id/details", get(sondages::get_sondage_details))
+        // IA/AG decision stack (roadmap phases 2-4)
+        .route("/ai/infer/maille", post(ai_infer::infer_maille))
+        .route("/ai/infer/maille/:code", get(ai_infer::infer_maille_by_code))
+        .route("/ai/features/maille/:code", get(ai_infer::get_features_by_code))
+        .route("/ai/validate/maille", post(ai_infer::validate_maille_prediction))
+        .route("/ai/opti/strategie", post(ai_opti::optimize_strategy))
+        .route("/ai/retrain", post(ai_opti::request_retrain))
+        .route("/ai/recompute/sources", post(ai_opti::recompute_geotech_sources))
+        .route("/ai/kriging/recompute", post(ai_opti::recompute_kriging_global_gp))
+        .route("/ai/infer/train-supervised", post(ai_opti::train_supervised_infer_rga))
+        .route("/ai/ml/refresh-prereqs", post(ai_opti::refresh_ml_prereqs))
+        .merge(ai_jobs::ai_jobs_routes())
         .route(
             "/sondages/:id/geometry",
             patch(sondages::update_sondage_geometry),

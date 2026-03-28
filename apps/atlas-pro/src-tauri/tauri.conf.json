@@ -42,12 +42,12 @@
     "createUpdaterArtifacts": false,
     "targets": ["msi"],
     "externalBin": ["bin/api-geo"],
-    "resources": [
-      "../../../data/db/backups/atlas_desktop_seed.dump",
-      "../../../data/db/backups/atlas_desktop_seed.dump.json",
-      "bin/api-geo-x86_64-pc-windows-msvc.exe",
-      "pg/**/*"
-    ],
+    "resources": {
+      "../../../data/db/backups/atlas_desktop_seed.dump": "atlas_desktop_seed.dump",
+      "../../../data/db/backups/atlas_desktop_seed.dump.json": "atlas_desktop_seed.dump.json",
+      "bin/api-geo-x86_64-pc-windows-msvc.exe": "api-geo-x86_64-pc-windows-msvc.exe",
+      "pg": "pg"
+    },
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

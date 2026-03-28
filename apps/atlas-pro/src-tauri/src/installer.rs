@@ -1,5 +1,4 @@
 use serde::Serialize;
-use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 #[cfg(windows)]
@@ -7,7 +6,7 @@ use std::os::windows::process::CommandExt;
 
 use tracing;
 
-use crate::{install_marker_path, postgres, ManagedApiPort, ManagedPaths, ManagedPostgres};
+use crate::{install_marker_path, postgres, ManagedApiPort, ManagedAtlasResources, ManagedPaths, ManagedPostgres};
 
 #[cfg(windows)]
 const CREATE_NO_WINDOW: u32 = 0x08000000;
@@ -17,32 +16,6 @@ pub struct InstallerProgress {
     pub step: String,
     pub message: String,
     pub percent: u8,
-}
-
-fn find_file_recursive(root: &Path, file_name: &str, max_entries: usize) -> Option<PathBuf> {
-    let mut stack: Vec<PathBuf> = vec![root.to_path_buf()];
-    let mut seen: usize = 0;
-
-    while let Some(dir) = stack.pop() {
-        let Ok(it) = std::fs::read_dir(&dir) else {
-            continue;
-        };
-        for e in it.flatten() {
-            seen += 1;
-            if seen > max_entries {
-                return None;
-            }
-            let path = e.path();
-            if path.is_file() {
-                if path.file_name().and_then(|s| s.to_str()).unwrap_or("") == file_name {
-                    return Some(path);
-                }
-            } else if path.is_dir() {
-                stack.push(path);
-            }
-        }
-    }
-    None
 }
 
 fn list_postgres_quarantines(paths: &ManagedPaths) -> Vec<std::path::PathBuf> {
@@ -238,83 +211,41 @@ fn has_postgres_quarantine(paths: &ManagedPaths) -> bool {
 }
 
 #[tauri::command]
-pub fn installer_preflight(app: AppHandle, paths: State<'_, ManagedPaths>) -> Result<InstallerPreflight, String> {
+pub fn installer_preflight(
+    _app: AppHandle,
+    paths: State<'_, ManagedPaths>,
+    atlas_resources: State<'_, ManagedAtlasResources>,
+) -> Result<InstallerPreflight, String> {
     let marker_exists = install_marker_path(&paths.data_dir).exists();
     let needs_reset = !marker_exists && postgres_dir_looks_non_empty(&paths);
     let quarantines = list_postgres_quarantines(&paths);
     let has_quarantine = !quarantines.is_empty() || has_postgres_quarantine(&paths);
 
-    // Seed / runtime: best-effort (ne bloque jamais l'UI)
-    let seed_dir = std::env::var("ATLAS_DESKTOP_SEED_DIR").unwrap_or_default();
-    let mut seed_path = if !seed_dir.trim().is_empty() {
-        Some(std::path::PathBuf::from(seed_dir.trim()).join("atlas_desktop_seed.dump"))
+    // Seed / runtime: contract-based only (ne bloque jamais l'UI)
+    let (seed_path, pg_bin_path) = if let Ok(guard) = atlas_resources.0.lock() {
+        if let Some(r) = guard.resources.as_ref() {
+            (Some(r.seed_dump.clone()), Some(r.pg_bin_dir.clone()))
+        } else {
+            (None, None)
+        }
     } else {
-        None
-    };
-    if seed_path.as_ref().is_none_or(|p| !p.exists()) {
-        let resolved = app
-            .path()
-            .resolve("data/db/backups/atlas_desktop_seed.dump", tauri::path::BaseDirectory::Resource)
-            .ok();
-        if let Some(p) = resolved {
-            if p.exists() {
-                seed_path = Some(p);
-            }
-        }
-
-        if seed_path.as_ref().is_none_or(|p| !p.exists()) {
-            if let Ok(rd) = app.path().resource_dir() {
-                let p2 = rd.join("data").join("db").join("backups").join("atlas_desktop_seed.dump");
-                if p2.exists() {
-                    seed_path = Some(p2);
-                } else {
-                    seed_path = find_file_recursive(&rd, "atlas_desktop_seed.dump", 8000);
-                }
-            }
-        }
-    }
-    let (seed_present, seed_bytes) = match &seed_path {
-        Some(p) if p.exists() => (true, std::fs::metadata(p).map(|m| m.len()).unwrap_or(0)),
-        _ => (false, 0),
-    };
-    let seed_manifest_present = match &seed_path {
-        Some(p) => {
-            if p.with_extension("dump.json").exists() {
-                true
-            } else {
-                p.parent()
-                    .and_then(|dir| find_file_recursive(dir, "atlas_desktop_seed.dump.json", 2000))
-                    .is_some()
-            }
-        }
-        None => false,
+        (None, None)
     };
 
-    let pg_bin_dir = std::env::var("ATLAS_PG_BIN_DIR").unwrap_or_default();
-    let mut pg_bin_path = if !pg_bin_dir.trim().is_empty() {
-        Some(std::path::PathBuf::from(pg_bin_dir.trim()))
-    } else {
-        None
-    };
-    let pg_bin_present = match &pg_bin_path {
-        Some(p) => p.join("pg_ctl.exe").exists() && p.join("initdb.exe").exists() && p.join("psql.exe").exists(),
-        None => false,
-    };
-    if !pg_bin_present {
-        if let Ok(p) = app
-            .path()
-            .resolve("pg/bin/pg_ctl.exe", tauri::path::BaseDirectory::Resource)
-        {
-            if let Some(parent) = p.parent() {
-                pg_bin_path = Some(parent.to_path_buf());
-            }
-        } else if let Ok(rd) = app.path().resource_dir() {
-            let p2 = rd.join("pg").join("bin");
-            if p2.join("pg_ctl.exe").exists() {
-                pg_bin_path = Some(p2);
-            }
+    let seed_path = seed_path
+        .or_else(|| std::env::var("ATLAS_DESKTOP_SEED_DUMP_PATH").ok().map(std::path::PathBuf::from));
+    let pg_bin_path = pg_bin_path
+        .or_else(|| std::env::var("ATLAS_PG_BIN_DIR").ok().map(std::path::PathBuf::from));
+
+    let (seed_present, seed_bytes, seed_manifest_present) = match &seed_path {
+        Some(p) if p.exists() => {
+            let bytes = std::fs::metadata(p).map(|m| m.len()).unwrap_or(0);
+            let manifest = p.with_file_name("atlas_desktop_seed.dump.json").exists();
+            (true, bytes, manifest)
         }
-    }
+        _ => (false, 0, false),
+    };
+
     let pg_bin_present = match &pg_bin_path {
         Some(p) => p.join("pg_ctl.exe").exists() && p.join("initdb.exe").exists() && p.join("psql.exe").exists(),
         None => false,

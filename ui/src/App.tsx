@@ -91,6 +91,9 @@ function App() {
   const [lastDiagnosticDir, setLastDiagnosticDir] = useState<string | null>(null)
   const [lastResetQuarantine, setLastResetQuarantine] = useState<string | null>(null)
   const [dbConnectionInfo, setDbConnectionInfo] = useState<DbConnectionInfo | null>(null)
+  const [aiStatus, setAiStatus] = useState<string>('Prêt')
+  const [aiBusy, setAiBusy] = useState(false)
+  const [aiJobsRows, setAiJobsRows] = useState<any[]>([])
 
   // Desktop first-run: si le marker d'installation n'existe pas, on bascule sur l'installateur
   useEffect(() => {
@@ -169,6 +172,46 @@ function App() {
       }
     } catch (err) {
       console.error('Erreur chargement notifications:', err)
+    }
+  }
+
+  const callAiApi = async (path: string, method: 'GET' | 'POST' = 'GET', body?: any) => {
+    const token = tokenStorage.getAccessToken()
+    if (!token) throw new Error('Token manquant')
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: method === 'POST' ? JSON.stringify(body ?? {}) : undefined,
+    })
+    if (!response.ok) {
+      const txt = await response.text()
+      throw new Error(txt || `HTTP ${response.status}`)
+    }
+    return await response.json()
+  }
+
+  const refreshAiJobs = async () => {
+    const data = await callAiApi('/ai/jobs/recent', 'GET')
+    setAiJobsRows(Array.isArray(data?.jobs) ? data.jobs : [])
+    return data
+  }
+
+  const runAiAction = async (label: string, fn: () => Promise<any>) => {
+    if (aiBusy) return
+    setAiBusy(true)
+    setAiStatus(`⏳ ${label}...`)
+    try {
+      const out = await fn()
+      setAiStatus(JSON.stringify(out, null, 2))
+      return out
+    } catch (e: any) {
+      setAiStatus(`❌ ${e?.message || String(e)}`)
+      return null
+    } finally {
+      setAiBusy(false)
     }
   }
 
@@ -781,6 +824,10 @@ function App() {
               <Database className="h-4 w-4 mr-2" />
               Base de données
             </TabsTrigger>
+            <TabsTrigger value="infer-opti">
+              <Activity className="h-4 w-4 mr-2" />
+              Infer/Opti
+            </TabsTrigger>
             {/* Colab Studio - Gestion des missions terrain */}
             <TabsTrigger value="colab-studio">
               <Users className="h-4 w-4 mr-2" />
@@ -1091,6 +1138,77 @@ function App() {
                 {lastBackupPath ? <div>Dernier backup: {lastBackupPath}</div> : null}
                 {lastDiagnosticDir ? <div>Dernier export diagnostic: {lastDiagnosticDir}</div> : null}
                 {lastResetQuarantine ? <div>Dernier reset (quarantaine): {lastResetQuarantine}</div> : null}
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="infer-opti" className="space-y-6">
+            <div className="bg-white rounded-lg shadow p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-semibold">Infer/Opti</h2>
+                  <p className="text-sm text-slate-500">Pilotage IA: kriging, entraînement supervisé, jobs queue, sources thématiques.</p>
+                </div>
+                {aiBusy ? (
+                  <div className="flex items-center text-sm text-gray-500">
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Exécution...
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+                <Button disabled={aiBusy} onClick={() => runAiAction('Recalcul sources IA/AG', () => callAiApi('/ai/recompute/sources', 'POST', {}))} variant="outline">
+                  Recalcul sources
+                </Button>
+                <Button disabled={aiBusy} onClick={() => runAiAction('Kriging GP', () => callAiApi('/ai/kriging/recompute', 'POST', {}))} variant="outline">
+                  Kriging
+                </Button>
+                <Button disabled={aiBusy} onClick={() => runAiAction('Train supervisé', () => callAiApi('/ai/infer/train-supervised', 'POST', {}))}>
+                  Train supervisé
+                </Button>
+                <Button disabled={aiBusy} onClick={() => runAiAction('Run job queue', () => callAiApi('/ai/jobs/run-once', 'POST', { max_jobs: 1 }))} variant="outline">
+                  Run 1 job
+                </Button>
+                <Button disabled={aiBusy} onClick={() => runAiAction('Refresh jobs', refreshAiJobs)} variant="outline">
+                  Rafraîchir jobs
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div>
+                  <div className="text-sm font-medium text-slate-700 mb-2">Statut</div>
+                  <pre className="rounded-md border bg-slate-50 p-3 text-xs overflow-auto max-h-72">{aiStatus}</pre>
+                </div>
+                <div>
+                  <div className="text-sm font-medium text-slate-700 mb-2">Derniers jobs</div>
+                  <div className="rounded-md border overflow-hidden">
+                    <table className="min-w-full text-xs">
+                      <thead className="bg-slate-50 text-slate-600">
+                        <tr>
+                          <th className="text-left px-2 py-2">Demandé</th>
+                          <th className="text-left px-2 py-2">Cible</th>
+                          <th className="text-left px-2 py-2">Statut</th>
+                          <th className="text-left px-2 py-2">Raison</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {aiJobsRows.length === 0 ? (
+                          <tr><td className="px-2 py-2 text-slate-500" colSpan={4}>Aucun job chargé</td></tr>
+                        ) : (
+                          aiJobsRows.slice(0, 20).map((j: any) => (
+                            <tr key={j.id} className="border-t">
+                              <td className="px-2 py-2">{String(j.requested_at || '').replace('T', ' ').slice(0, 19)}</td>
+                              <td className="px-2 py-2">{j.model_target || '—'}</td>
+                              <td className="px-2 py-2">{j.status || '—'}</td>
+                              <td className="px-2 py-2">{j.trigger_reason || '—'}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
               </div>
             </div>
           </TabsContent>

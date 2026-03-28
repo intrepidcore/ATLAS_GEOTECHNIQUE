@@ -9,6 +9,38 @@
 
 import L from 'leaflet';
 
+type LamaMailleMeta = {
+  pct_intersection: number
+  priorite_recherche: number
+}
+
+let lamaMailleCodes: Set<string> = new Set();
+let lamaMailleMetaByCode: Map<string, LamaMailleMeta> = new Map();
+
+export function setLamaMailleCodes(codes: string[]): void {
+  lamaMailleCodes = new Set((codes || []).map(c => String(c).trim()).filter(Boolean));
+}
+
+export function setLamaMailleMetadata(
+  mailles: Array<{ maille_code: string; pct_intersection?: number; priorite_recherche?: number }>
+): void {
+  const m = new Map<string, LamaMailleMeta>();
+  const codes: string[] = [];
+  for (const item of mailles || []) {
+    const code = String(item?.maille_code || '').trim();
+    if (!code) continue;
+    const pct = Number(item?.pct_intersection ?? 0);
+    const pr = Number(item?.priorite_recherche ?? 4);
+    m.set(code, {
+      pct_intersection: Number.isFinite(pct) ? pct : 0,
+      priorite_recherche: Number.isFinite(pr) ? pr : 4,
+    });
+    codes.push(code);
+  }
+  lamaMailleMetaByCode = m;
+  setLamaMailleCodes(codes);
+}
+
 // =============================================================================
 // COULEURS DE BASE
 // =============================================================================
@@ -19,7 +51,7 @@ export const COLORS: Record<string, string> = {
   GRID_EXACT: '#51cf66',             // Vert - sondages GPS exact
   GRID_RANDOM: '#4c6ef5',            // Bleu - sondages position aléatoire
   GRID_NO_GEOM: '#e85d68',           // Rouge - données sans géométrie
-  GRID_ASSIGNED: '#a855f7',          // Violet - maille attribuée à un étudiant (Colab)
+  GRID_ASSIGNED: '#ff5fa2',          // Rose - maille attribuée à un étudiant (Colab)
   
   // Contours
   GRID_BORDER_NO_DATA: '#6b778c55',  // Gris transparent pour sans données
@@ -69,6 +101,15 @@ export const WEIGHT: Record<string, number> = {
   // ADM3
   ADM3_DEFAULT: 1.5,
 };
+
+// Petites helpers pour interpolations couleurs rapides (Leaflet styling)
+const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
+const lerpInt = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
+const rgbToHex = (r: number, g: number, b: number) => `#${[r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')}`;
+
+const LAMA_STROKE_FROM_RGB = { r: 0xFE, g: 0xD7, b: 0xAA };
+// Max tone volontairement moins sombre pour rester lisible sur fond clair + bordures grises.
+const LAMA_STROKE_TO_RGB = { r: 0xB4, g: 0x53, b: 0x09 };
 
 // =============================================================================
 // STYLES PRÉDÉFINIS
@@ -179,6 +220,14 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   const isAssigned = !!props.is_assigned;
   const isColabHighlighted = hasActiveMission || isAssigned;
   const isVisibleAsData = hasData || isColabHighlighted;
+  const cellCode =
+    props.code ||
+    props.maille_code ||
+    props.code_m28 ||
+    props.code_28km_lisible ||
+    props.grid_code ||
+    null;
+  const isLamaMaille = !!cellCode && lamaMailleCodes.has(String(cellCode));
   
   // Calcul du poids dynamique selon le zoom
   const baseWeight = hasData ? WEIGHT.GRID_WITH_DATA : WEIGHT.GRID_NO_DATA;
@@ -187,16 +236,16 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
     weight = zoom < 10 ? baseWeight : zoom < 12 ? baseWeight * 1.5 : baseWeight * 2;
   }
   
-  // LOGIQUE COULEURS CORRIGÉE - Séparation claire hasActiveMission vs isAssigned
-  // Règle: 
-  // - Violet opaque SEULEMENT si hasActiveMission (mission active en cours)
-  // - Gris clair avec bordure violet si isAssigned sans mission active
-  // - Vert/Bleu/Gris selon données sinon
+  // Règle métier/UX:
+  // - Maille attribuée (isAssigned) visible en ROSE
+  // - Opacité des mailles attribuées alignée avec les mailles avec données (bleu/vert)
+  // - Mission active conserve une bordure plus marquée
   
   let fillColor = COLORS.GRID_NO_DATA;
   let fillOpacity = OPACITY.GRID_NO_DATA;
   let strokeColor = COLORS.GRID_BORDER_NO_DATA;
   let strokeWeight = weight;
+  let strokeOpacity: number | undefined = undefined;
   
   // Priorité 1: Mission active → violet opaque
   if (hasActiveMission) {
@@ -205,12 +254,12 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
     strokeColor = COLORS.GRID_ASSIGNED;
     strokeWeight = Math.max(weight, 2);
   }
-  // Priorité 2: Assignée sans mission active → gris clair, bordure violet
+  // Priorité 2: Assignée sans mission active → rose (même opacité que bleu)
   else if (isAssigned) {
-    fillColor = '#888888';  // Gris clair (PAS violet)
-    fillOpacity = 0.15;      // Très léger fill
-    strokeColor = COLORS.GRID_ASSIGNED;  // Bordure violet seulement
-    strokeWeight = 2.5;
+    fillColor = COLORS.GRID_ASSIGNED;
+    fillOpacity = OPACITY.GRID_WITH_DATA;
+    strokeColor = COLORS.GRID_ASSIGNED;
+    strokeWeight = Math.max(weight, 1.5);
   }
   // Priorité 3: Données existantes
   else if (!hasData) {
@@ -234,10 +283,34 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
     fillOpacity = OPACITY.GRID_WITH_DATA;
     strokeColor = COLORS.GRID_EXACT;
   }
+
+  // Les zones d'étude (Lama, Bado, …) sont rendues comme polygones sous la grille (main.ts) ;
+  // ici on ne mélange plus la teinte « zone » au remplissage pour garder la légende statut données lisible.
+
+  // Accent Lama harmonisé: bordure graduée par % intersection,
+  // sans toucher au remplissage (pour conserver la légende des catégories).
+  if (isLamaMaille) {
+    const meta = cellCode ? lamaMailleMetaByCode.get(String(cellCode)) : undefined;
+    const pct = Number(meta?.pct_intersection ?? 0);
+    const t = clamp01(pct / 100);
+    const lerp = (a: number, b: number) => Math.round(a + (b - a) * t);
+    const stroke = rgbToHex(
+      lerp(LAMA_STROKE_FROM_RGB.r, LAMA_STROKE_TO_RGB.r),
+      lerp(LAMA_STROKE_FROM_RGB.g, LAMA_STROKE_TO_RGB.g),
+      lerp(LAMA_STROKE_FROM_RGB.b, LAMA_STROKE_TO_RGB.b),
+    );
+    strokeColor = stroke;
+    // Garder l'épaisseur identique aux autres mailles (grid-with-data / no-data),
+    // pour éviter que les contours Lama paraissent trop "épais".
+    strokeWeight = weight;
+    // Légèrement translucide pour éviter un rendu "trop sombre" quand la grille est dense.
+    strokeOpacity = 0.75;
+  }
   
   return {
     color: strokeColor,
     weight: strokeWeight,
+    ...(Number.isFinite(strokeOpacity as any) ? { opacity: strokeOpacity } : {}),
     fillColor,
     fillOpacity,
   };

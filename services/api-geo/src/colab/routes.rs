@@ -1502,7 +1502,7 @@ async fn get_stats(
         ));
     }
 
-    let total_missions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_missions")
+    let total_missions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_missions WHERE deleted_at IS NULL")
     .fetch_one(&state.pool)
     .await
     .unwrap_or(0);
@@ -1511,6 +1511,7 @@ async fn get_stats(
         r#"
         SELECT status::text AS status, COUNT(*)::bigint AS count
         FROM atlas.colab_missions
+        WHERE deleted_at IS NULL
         GROUP BY status
         ORDER BY count DESC
         "#,
@@ -1536,6 +1537,7 @@ async fn get_stats(
         r#"
         SELECT theme::text AS theme, COUNT(*)::bigint AS count
         FROM atlas.colab_missions
+        WHERE deleted_at IS NULL
         GROUP BY theme
         ORDER BY count DESC
         "#,
@@ -1557,13 +1559,29 @@ async fn get_stats(
         })
         .collect();
 
-    let total_students: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_students")
+    let total_students: i64 = sqlx::query_scalar(
+        r#"
+        SELECT COUNT(*)
+        FROM atlas.colab_students s
+        JOIN atlas.users u ON u.id = s.user_id
+        WHERE s.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+          AND u.is_active = TRUE
+        "#,
+    )
     .fetch_one(&state.pool)
     .await
     .unwrap_or(0);
 
     let total_supervisors: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_supervisors s JOIN atlas.users u ON u.id = s.user_id WHERE u.deleted_at IS NULL",
+        r#"
+        SELECT COUNT(*)
+        FROM atlas.colab_supervisors s
+        JOIN atlas.users u ON u.id = s.user_id
+        WHERE s.deleted_at IS NULL
+          AND u.deleted_at IS NULL
+          AND u.is_active = TRUE
+        "#,
     )
     .fetch_one(&state.pool)
     .await
@@ -1576,7 +1594,7 @@ async fn get_stats(
     .await
     .unwrap_or(0);
 
-    let total_documents: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_documents")
+    let total_documents: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_documents WHERE deleted_at IS NULL")
     .fetch_one(&state.pool)
     .await
     .unwrap_or(0);
@@ -1616,6 +1634,7 @@ async fn list_supervisors(
         FROM atlas.colab_supervisors s
         JOIN atlas.users u ON s.user_id = u.id
         WHERE u.deleted_at IS NULL
+          AND s.deleted_at IS NULL
         ORDER BY full_name
         "#,
     )
@@ -3670,7 +3689,7 @@ async fn get_student(
             s.age,
             (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.student_id = s.id AND a.unassigned_at IS NULL) as active_missions,
             (
-                SELECT COUNT(DISTINCT cm.maille_id)
+                SELECT LEAST(1, COUNT(DISTINCT cm.maille_id))
                 FROM atlas.colab_mission_assignments a
                 JOIN atlas.colab_missions cm ON cm.id = a.mission_id
                 WHERE a.student_id = s.id
@@ -3753,7 +3772,7 @@ async fn list_students(
             u.is_active,
             (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.student_id = s.id AND a.unassigned_at IS NULL) as active_missions,
             (
-                SELECT COUNT(DISTINCT cm.maille_id)
+                SELECT LEAST(1, COUNT(DISTINCT cm.maille_id))
                 FROM atlas.colab_mission_assignments a
                 JOIN atlas.colab_missions cm ON cm.id = a.mission_id
                 WHERE a.student_id = s.id
@@ -3833,7 +3852,7 @@ async fn list_student_duplicates(
             u.is_active,
             (SELECT COUNT(*) FROM atlas.colab_mission_assignments a WHERE a.student_id = s.id AND a.unassigned_at IS NULL) as active_missions,
             (
-                SELECT COUNT(DISTINCT cm.maille_id)
+                SELECT LEAST(1, COUNT(DISTINCT cm.maille_id))
                 FROM atlas.colab_mission_assignments a
                 JOIN atlas.colab_missions cm ON cm.id = a.mission_id
                 WHERE a.student_id = s.id

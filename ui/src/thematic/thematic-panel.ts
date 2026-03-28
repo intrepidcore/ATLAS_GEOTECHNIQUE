@@ -6,6 +6,7 @@ import {
   OBJECTIFS_METIER, 
   type ThematicMapConfig,
   type ObjectifMetier,
+  type ThematicSource,
   type ThematicParameter,
   type MapType,
   type ClassificationMethod,
@@ -17,10 +18,13 @@ import {
   CLASSIFICATION_METHODS,
   ADM1_OPTIONS,
   getParametersForObjectif,
+  getParametersBySource,
   getParameterById,
   getObjectifById,
   getDefaultConfig
 } from './thematic-types'
+import { tokenStorage } from '../services/auth-api'
+import { icons } from '../icons/lucide-inline'
 import {
   type ThematicState,
   detectObjectif,
@@ -144,8 +148,8 @@ export class ThematicPanel {
   private renderPanel(): void {
     this.panelElement.innerHTML = `
       <div class="thematic-panel-header">
-        <h3>🗺️ Cartes Thématiques</h3>
-        <button id="closeThematicPanel" class="btn-close" title="Fermer">×</button>
+        <h3 class="thematic-panel-title">${icons.layers()} Cartes thématiques</h3>
+        <button id="closeThematicPanel" class="btn-close" title="Fermer" aria-label="Fermer">×</button>
       </div>
       
       <div class="thematic-panel-body">
@@ -155,6 +159,15 @@ export class ThematicPanel {
         <div class="thematic-section">
           <div class="section-label">Catégorie</div>
           <select id="thematicObjectif" class="thematic-select"></select>
+        </div>
+
+        <div class="thematic-section" id="thematicSourceSection">
+          <div class="section-label">Source de données</div>
+          <select id="thematicAiSource" class="thematic-select">
+            <option value="base">Base (mailles avec sondages)</option>
+            <option value="interpolation">Interpolation (Kriging)</option>
+            <option value="ia">IA / Opti (prédiction)</option>
+          </select>
         </div>
         
         <div class="thematic-section">
@@ -229,8 +242,8 @@ export class ThematicPanel {
         
         <div id="admFilterSummary" class="adm-filter-summary" style="display:none;"></div>
         
-        <button id="clearAdmFilters" class="btn-small full-width" style="margin-bottom:12px;">
-          🧹 Effacer filtres géographiques
+        <button id="clearAdmFilters" class="btn-small full-width btn-clear-adm" style="margin-bottom:12px;">
+          ${icons.rotateCcw()}<span>Effacer filtres géographiques</span>
         </button>
         
         <div class="thematic-divider">
@@ -239,32 +252,32 @@ export class ThematicPanel {
         
         <div class="thematic-section">
           <div class="section-label">Sondages minimum</div>
-          <input type="number" id="minSondages" class="thematic-input" value="1" min="0" max="10">
+          <input type="number" id="minSondages" class="thematic-input" value="0" min="0" max="10">
         </div>
         
         <div class="thematic-section checkbox-section">
-          <label class="checkbox-label">
-            <input type="checkbox" id="excludeNoData" checked>
+          <label class="checkbox-label thematic-toggle-label">
+            <input type="checkbox" class="atlas-switch" id="excludeNoData" checked>
             <span>Exclure mailles sans données</span>
           </label>
         </div>
         
         <div class="thematic-section checkbox-section">
-          <label class="checkbox-label">
-            <input type="checkbox" id="excludeOutsideAdm">
+          <label class="checkbox-label thematic-toggle-label">
+            <input type="checkbox" class="atlas-switch" id="excludeOutsideAdm">
             <span>Exclure mailles hors sélection ADM</span>
           </label>
         </div>
         
         <!-- Filtres avancés (repliables) -->
         <details class="advanced-filters">
-          <summary>⚙️ Filtres avancés</summary>
+          <summary>Filtres avancés</summary>
           <div class="advanced-content">
             <div class="thematic-section">
               <div class="section-label">Profondeur (m)</div>
               <div class="range-inputs">
                 <input type="number" id="depthMin" class="thematic-input small" placeholder="Min" min="0" step="0.5">
-                <span class="range-separator">—</span>
+                <span class="range-separator" aria-hidden="true">→</span>
                 <input type="number" id="depthMax" class="thematic-input small" placeholder="Max" min="0" step="0.5">
               </div>
             </div>
@@ -272,8 +285,8 @@ export class ThematicPanel {
         </details>
         
         <div class="thematic-section checkbox-section">
-          <label class="checkbox-label">
-            <input type="checkbox" id="toggleGridLayer" checked>
+          <label class="checkbox-label thematic-toggle-label">
+            <input type="checkbox" class="atlas-switch" id="toggleGridLayer" checked>
             <span>Afficher la grille de fond</span>
           </label>
         </div>
@@ -300,7 +313,7 @@ export class ThematicPanel {
         </div>
         
         <div class="thematic-divider">
-          <span>🗺️ Couches de contexte (QGIS)</span>
+          <span>Couches de contexte (QGIS)</span>
         </div>
         
         <!-- Panneau QGIS-like pour couches contextuelles avec légendes dépliables -->
@@ -311,7 +324,7 @@ export class ThematicPanel {
             <summary style="padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none">
               <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="toggleGeologie">
-                <span style="font-weight:600">🪨 Géologie</span>
+                <span style="font-weight:600">Géologie</span>
               </label>
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="layer-badge" style="font-size:10px;background:#8B451333;color:#D2691E;padding:2px 6px;border-radius:4px">vecteur</span>
@@ -335,7 +348,7 @@ export class ThematicPanel {
             <summary style="padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none">
               <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="togglePedologie">
-                <span style="font-weight:600">🌱 Pédologie</span>
+                <span style="font-weight:600">Pédologie</span>
               </label>
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="layer-badge" style="font-size:10px;background:#FFB6C133;color:#FF69B4;padding:2px 6px;border-radius:4px">vecteur</span>
@@ -359,7 +372,7 @@ export class ThematicPanel {
             <summary style="padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none">
               <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="toggleRisqueGonflement">
-                <span style="font-weight:600">⚠️ Risque gonflement</span>
+                <span style="font-weight:600">Risque gonflement</span>
               </label>
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="layer-badge" style="font-size:10px;background:#ff993333;color:#ff9933;padding:2px 6px;border-radius:4px">vecteur</span>
@@ -383,7 +396,7 @@ export class ThematicPanel {
             <summary style="padding:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;list-style:none">
               <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
                 <input type="checkbox" id="toggleDsm">
-                <span style="font-weight:600">🏔️ Relief (Altitude)</span>
+                <span style="font-weight:600">Relief (Altitude)</span>
               </label>
               <div style="display:flex;align-items:center;gap:6px">
                 <span class="layer-badge" style="font-size:10px;background:#4682B433;color:#87CEEB;padding:2px 6px;border-radius:4px">raster</span>
@@ -397,14 +410,51 @@ export class ThematicPanel {
                 <span id="dsmOpacityValue">60%</span>
               </div>
               <div style="font-size:10px;color:#64748b;padding:4px;background:#1e293b;border-radius:4px">
-                ⓘ Utilise <strong>togo_map</strong> comme fond relief (dsm-cop30 non configuré sur tileserver)
+                Info : utilise <strong>togo_map</strong> comme fond relief (dsm-cop30 non configuré sur tileserver)
               </div>
             </div>
           </details>
           
           <div style="font-size:10px;color:#64748b;margin-top:8px;text-align:center">
-            ℹ️ Cliquez sur ▼ pour voir la légende • Les données apparaissent dans les tooltips
+            Cliquez sur ▼ pour la légende — données dans les infobulles.
           </div>
+        </div>
+
+        <div class="thematic-divider">
+          <span>Zones d'étude (data gap)</span>
+        </div>
+        <p class="thematic-zone-hint">
+          Ouvrir le panneau d'analyse par zone. Les mailles concernées sont colorées sur la grille (légende ci‑dessous).
+        </p>
+        <div class="zone-etude-btn-grid">
+          <button type="button" id="openZoneEtudeLamaBtn" class="btn-secondary zone-etude-btn" title="Dépression de la Lama — data gap RGA">
+            <span class="zone-dot zone-dot--lama" aria-hidden="true"></span><span>Lama</span>
+          </button>
+          <button type="button" id="openZoneEtudeBadoBtn" class="btn-secondary zone-etude-btn" title="Dépression du Bado — data gap">
+            <span class="zone-dot zone-dot--bado" aria-hidden="true"></span><span>Bado</span>
+          </button>
+          <button type="button" id="openZoneEtudeMonoBtn" class="btn-secondary zone-etude-btn" title="Plaine du Mono — data gap">
+            <span class="zone-dot zone-dot--mono" aria-hidden="true"></span><span>Mono</span>
+          </button>
+          <button type="button" id="openZoneEtudeOtiBtn" class="btn-secondary zone-etude-btn" title="Plaine de l'Oti — data gap">
+            <span class="zone-dot zone-dot--oti" aria-hidden="true"></span><span>Oti</span>
+          </button>
+          <button type="button" id="openZoneEtudeFosseBtn" class="btn-secondary zone-etude-btn zone-etude-btn--wide" title="Fosse aux Lions — data gap">
+            <span class="zone-dot zone-dot--fosse" aria-hidden="true"></span><span>Fosse aux Lions</span>
+          </button>
+        </div>
+        <div class="thematic-actions">
+          <button id="refreshAiSourcesBtn" class="btn-secondary full-width" title="Recalcule infer / interpolation / fondation">
+            ${icons.refreshCw()}<span>Recalculer sources IA/AG</span>
+          </button>
+        </div>
+        <div class="thematic-actions export-grid-2">
+          <button id="runKrigingThematicBtn" class="btn-small" title="Lancer interpolation kriging globale">
+            ${icons.flaskConical()}<span>Kriging</span>
+          </button>
+          <button id="runTrainInferThematicBtn" class="btn-small" title="Lancer entraînement + inférence supervisée">
+            ${icons.brain()}<span>Train IA</span>
+          </button>
         </div>
         
         <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -414,16 +464,16 @@ export class ThematicPanel {
         
         <div class="thematic-actions">
           <button id="applyThematic" class="btn-primary">
-            <span class="btn-icon">📊</span> Appliquer
+            ${icons.check()}<span>Appliquer</span>
           </button>
           <button id="autoAOI" class="btn-secondary">
-            <span class="btn-icon">🎯</span> Auto-Zoom
+            ${icons.crosshair()}<span>Auto-Zoom</span>
           </button>
         </div>
         
         <div class="thematic-actions">
-          <button id="resetThematic" class="btn-outline">
-            <span class="btn-icon">♻️</span> Réinitialiser
+          <button id="resetThematic" class="btn-reset-subtle" type="button">
+            ${icons.rotateCcw()}<span>Réinitialiser</span>
           </button>
         </div>
         
@@ -433,31 +483,31 @@ export class ThematicPanel {
         
         <div class="thematic-actions">
           <button id="exportThematicPro" class="btn-primary full-width" title="Export cartographique professionnel avec grille, titre, légende">
-            <span class="btn-icon">📤</span> Export Pro (PNG/PDF)
+            ${icons.upload()}<span>Export Pro (PNG/PDF)</span>
           </button>
         </div>
         
         <div class="thematic-actions">
           <button id="exportThematicAtlas" class="btn-secondary full-width" title="Exporter toutes les cartes thématiques pour tous les ADM">
-            <span class="btn-icon">📚</span> Export Atlas complet
+            ${icons.bookOpen()}<span>Export Atlas complet</span>
           </button>
         </div>
         
-        <div class="thematic-actions export-grid">
+        <div class="thematic-actions export-grid-2">
           <button id="exportThematicPNG" class="btn-small" title="Capture rapide de la carte">
-            <span class="btn-icon">🖼️</span> PNG rapide
+            ${icons.image()}<span>PNG rapide</span>
           </button>
           <button id="exportThematicQGIS" class="btn-small" title="GeoJSON + style QML pour QGIS">
-            <span class="btn-icon">🗺️</span> QGIS
+            ${icons.layers()}<span>QGIS</span>
           </button>
         </div>
         
-        <div class="thematic-actions">
+        <div class="thematic-actions export-grid-2">
           <button id="exportThematicGeoJSON" class="btn-small">
-            <span class="btn-icon">📥</span> GeoJSON brut
+            ${icons.fileJson()}<span>GeoJSON brut</span>
           </button>
           <button id="saveThematicConfig" class="btn-small">
-            <span class="btn-icon">💾</span> Sauvegarder config
+            ${icons.save()}<span>Sauvegarder config</span>
           </button>
         </div>
       </div>
@@ -545,7 +595,11 @@ export class ThematicPanel {
     const descEl = this.elements.parameterDescription
     if (!select) return
     
-    const params = getParametersForObjectif(objectifId)
+    const sourceSelect = document.getElementById('thematicAiSource') as HTMLSelectElement | null
+    const source = (sourceSelect?.value || 'base') as ThematicSource
+    const params = source === 'base'
+      ? getParametersForObjectif(objectifId)
+      : getParametersBySource(source)
     const objectif = getObjectifById(objectifId)
     
     select.innerHTML = params.map(p => {
@@ -665,7 +719,7 @@ export class ThematicPanel {
           <div class="palette-option ${p.value === currentPalette.value ? 'selected' : ''}" data-value="${p.value}">
             <span class="palette-gradient" style="background: ${this.createGradientStyle(p.colors)}"></span>
             <span class="palette-name">${p.label}</span>
-            ${p.colorblindSafe ? '<span class="palette-badge">♿</span>' : ''}
+            ${p.colorblindSafe ? '<span class="palette-badge" title="Palette adaptée daltonisme">CB</span>' : ''}
           </div>
         `).join('')}
       </div>
@@ -781,6 +835,16 @@ export class ThematicPanel {
         border: 1px solid rgba(255,255,255,0.15);
       }
       
+      .palette-badge {
+        font-size: 9px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        color: #94a3b8;
+        border: 1px solid #475569;
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+
       .palette-name {
         flex: 1;
         font-size: 13px;
@@ -1028,17 +1092,33 @@ export class ThematicPanel {
       closeBtn.addEventListener('click', () => this.close())
     }
     
-    // Open button
-    const openBtn = document.getElementById('openThematicPanel')
-    if (openBtn) {
-      openBtn.addEventListener('click', () => this.open())
-    }
+    // Ouvrir panneau (bouton carte retiré par défaut + entrée barre latérale)
+    ;['openThematicPanel', 'openThematicPanelSidebar'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('click', () => this.open())
+    })
     
     // Objectif change -> update parameters
     this.elements.objectifSelect?.addEventListener('change', (e) => {
       const objectifId = (e.target as HTMLSelectElement).value as ObjectifMetier
       this.updateParameterList(objectifId)
       this.currentConfig.objectif = objectifId
+      const source = ((document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value || 'base') as ThematicSource
+      if (this.elements.minSondagesInput && source !== 'base') this.elements.minSondagesInput.value = '0'
+    })
+
+    const sourceSelect = document.getElementById('thematicAiSource') as HTMLSelectElement | null
+    sourceSelect?.addEventListener('change', () => {
+      const source = (sourceSelect.value || 'base') as ThematicSource
+      if (source === 'interpolation' || source === 'ia') {
+        if (this.elements.objectifSelect) this.elements.objectifSelect.value = 'ia_ag'
+      } else if (this.elements.objectifSelect?.value === 'ia_ag') {
+        this.elements.objectifSelect.value = 'couverture'
+      }
+      const objectifId = (this.elements.objectifSelect?.value || 'couverture') as ObjectifMetier
+      this.updateParameterList(objectifId)
+      if (this.elements.minSondagesInput) {
+        this.elements.minSondagesInput.value = source === 'base' ? (this.elements.minSondagesInput.value || '1') : '0'
+      }
     })
     
     // Parameter change -> update description & palette
@@ -1224,6 +1304,107 @@ export class ThematicPanel {
     document.getElementById('clearAdmFilters')?.addEventListener('click', () => {
       this.clearAdmFilters()
     })
+
+    // Zone d'étude (data gap) - Dépression de la Lama
+    const bindZoneBtn = (id: string, zoneCode: string) => {
+      const el = document.getElementById(id)
+      if (el) {
+        el.addEventListener('click', () => {
+          const openFn = (window as any).openZoneEtudePanel as undefined | ((zoneCode: string) => void)
+          if (!openFn) {
+            console.warn('[ThematicPanel] openZoneEtudePanel not defined')
+            return
+          }
+          openFn(zoneCode)
+        })
+      }
+    }
+    bindZoneBtn('openZoneEtudeLamaBtn', 'DEPRESSION_LAMA_TG')
+    bindZoneBtn('openZoneEtudeBadoBtn', 'DEPRESSION_BADO_TG')
+    bindZoneBtn('openZoneEtudeMonoBtn', 'PLAINE_MONO_TG')
+    bindZoneBtn('openZoneEtudeOtiBtn', 'PLAINE_OTI_TG')
+    bindZoneBtn('openZoneEtudeFosseBtn', 'FOSSE_LIONS_TG')
+
+    const refreshAiBtn = document.getElementById('refreshAiSourcesBtn')
+    if (refreshAiBtn) {
+      refreshAiBtn.addEventListener('click', async () => {
+        try {
+          const token = tokenStorage.getAccessToken()
+          if (!token) throw new Error('Session expirée: reconnectez-vous')
+          const base = (window as any).__API_GEO__ || 'http://localhost:8000'
+          const res = await fetch(`${base}/ai/recompute/sources`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({}),
+          })
+          if (!res.ok) {
+            const txt = await res.text().catch(() => '')
+            throw new Error(`${res.status} ${txt}`)
+          }
+          const payload = await res.json()
+          this.toast(`IA OK: infer ${payload.infer_count}, kriging ${payload.interpolation_count}, AG ${payload.foundation_count}`, 'success')
+        } catch (e: any) {
+          this.toast(`Recalcul IA/AG impossible: ${e?.message || e}`, 'error')
+        }
+      })
+    }
+
+    const runKrigingBtn = document.getElementById('runKrigingThematicBtn')
+    if (runKrigingBtn) {
+      runKrigingBtn.addEventListener('click', async () => {
+        try {
+          const token = tokenStorage.getAccessToken()
+          if (!token) throw new Error('Session expirée: reconnectez-vous')
+          const base = (window as any).__API_GEO__ || 'http://localhost:8000'
+          const res = await fetch(`${base}/ai/kriging/recompute`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({}),
+          })
+          if (!res.ok) {
+            const txt = await res.text().catch(() => '')
+            throw new Error(`${res.status} ${txt}`)
+          }
+          const payload = await res.json()
+          this.toast(`Kriging OK: ${payload?.n_predictions ?? 'n/a'} mailles`, 'success')
+        } catch (e: any) {
+          this.toast(`Kriging impossible: ${e?.message || e}`, 'error')
+        }
+      })
+    }
+
+    const runTrainBtn = document.getElementById('runTrainInferThematicBtn')
+    if (runTrainBtn) {
+      runTrainBtn.addEventListener('click', async () => {
+        try {
+          const token = tokenStorage.getAccessToken()
+          if (!token) throw new Error('Session expirée: reconnectez-vous')
+          const base = (window as any).__API_GEO__ || 'http://localhost:8000'
+          const res = await fetch(`${base}/ai/infer/train-supervised`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            },
+            body: JSON.stringify({}),
+          })
+          if (!res.ok) {
+            const txt = await res.text().catch(() => '')
+            throw new Error(`${res.status} ${txt}`)
+          }
+          const payload = await res.json()
+          this.toast(`Train IA OK: ${payload?.n_predictions ?? 'n/a'} mailles`, 'success')
+        } catch (e: any) {
+          this.toast(`Train IA impossible: ${e?.message || e}`, 'error')
+        }
+      })
+    }
   }
   
   /**
@@ -1340,7 +1521,7 @@ export class ThematicPanel {
     if (adm2) parts.push(`Préfecture: <strong>${adm2}</strong>`)
     if (adm3) parts.push(`Commune: <strong>${adm3}</strong>`)
     
-    summary.innerHTML = `<div class="filter-badge">📍 ${parts.join(' → ')}</div>`
+    summary.innerHTML = `<div class="filter-badge">${parts.join(' → ')}</div>`
     summary.style.display = 'block'
   }
   
@@ -1481,7 +1662,9 @@ export class ThematicPanel {
     const adm2 = this.elements.adm2Select?.value || undefined
     const adm3 = this.elements.adm3Select?.value || undefined
     console.log('[ThematicPanel] ADM filters:', { adm1, adm2, adm3, adm1El: this.elements.adm1Select })
-    const minSondages = parseInt(this.elements.minSondagesInput?.value || '1')
+    const source = ((document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value || 'base') as ThematicSource
+    let minSondages = parseInt(this.elements.minSondagesInput?.value || '0')
+    if (objectif === 'ia_ag' || source !== 'base') minSondages = 0
     const excludeNoData = this.elements.excludeNoDataCheckbox?.checked ?? true
     const excludeOutsideAdm = this.elements.excludeOutsideAdmCheckbox?.checked ?? false
     const depthMin = this.elements.depthMinInput?.value ? parseFloat(this.elements.depthMinInput.value) : undefined
@@ -1508,8 +1691,8 @@ export class ThematicPanel {
       style: {
         palette,
         opacity,
-        stroke_width: 1,
-        stroke_color: '#333333'
+        stroke_width: 0,
+        stroke_color: '#00000000'
       },
       filters: {
         adm1,
@@ -2083,9 +2266,9 @@ export class ThematicPanel {
     const applyBtn = document.getElementById('applyThematic') as HTMLButtonElement
     if (applyBtn) {
       applyBtn.disabled = loading
-      applyBtn.innerHTML = loading 
-        ? '<span class="btn-icon">⏳</span> Chargement...'
-        : '<span class="btn-icon">📊</span> Appliquer'
+      applyBtn.innerHTML = loading
+        ? `${icons.refreshCw()}<span>Chargement…</span>`
+        : `${icons.check()}<span>Appliquer</span>`
     }
   }
   

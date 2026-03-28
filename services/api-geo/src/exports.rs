@@ -216,8 +216,8 @@ pub async fn export_geopackage(
             m.adm3_name,
             COALESCE(COUNT(DISTINCT s.id), 0)::bigint as n_sondages,
             COALESCE(COUNT(e.id), 0)::bigint as n_essais,
-            AVG(CASE WHEN e.type_essai = 'SPT_N' THEN e.valeur_numerique ELSE NULL END) as spt_n_avg,
-            AVG(CASE WHEN e.type_essai = 'qc' THEN e.valeur_numerique ELSE NULL END) as qc_avg,
+            AVG(CASE WHEN e.type = 'SPT_N' THEN e.value ELSE NULL END) as spt_n_avg,
+            AVG(CASE WHEN e.type = 'qc' THEN e.value ELSE NULL END) as qc_avg,
             MIN(e.depth_m) as depth_min,
             MAX(e.depth_m) as depth_max
         FROM atlas.mv_mailles_geotech m
@@ -348,8 +348,8 @@ pub async fn export_geopackage(
                     e.id::text,
                     e.sondage_id::text,
                     s.code as sondage_code,
-                    e.type_essai as type,
-                    e.valeur_numerique as value,
+                    e.type as type,
+                    e.value as value,
                     e.unit,
                     e.depth_m,
                     NULL::text as created_at
@@ -457,6 +457,346 @@ pub async fn export_geopackage(
     }
 }
 
+fn validate_zone_code(code: &str) -> bool {
+    let c = code.trim();
+    !c.is_empty()
+        && c.len() <= 64
+        && c.chars().all(|ch| {
+            ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_' || ch == '-'
+        })
+}
+
+/// GET /exports/geopackage/zone/:code
+/// Export “GeoPackage-like” JSON pour une zone d'étude.
+pub async fn export_geopackage_zone(
+    Path(code): Path<String>,
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let zone_code = code.trim().to_string();
+    if !validate_zone_code(&zone_code) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "zone_code invalide",
+                "error_code": "INVALID_ZONE_CODE"
+            })),
+        )
+            .into_response();
+    }
+
+    let pool = &state.pool;
+
+    // 1) Mailles zone (recalcul à la volée, SANS dépendre de mv_mailles_geotech)
+    let mailles_rows = match sqlx::query(
+        r#"
+        WITH target AS (
+          SELECT
+            mze.maille_id,
+            mze.pct_intersection,
+            mze.priorite_recherche
+          FROM atlas.mailles_zones_etude mze
+          JOIN atlas.zones_etude ze ON ze.id = mze.zone_id
+          WHERE ze.code = $1 AND ze.is_published = TRUE
+        )
+        SELECT
+          m.code,
+          m.spatial_id,
+          ST_AsGeoJSON(ST_Transform(m.geom, 4326)) AS geom_json,
+          m.pref_name AS adm1_name,
+          m.adm2_name,
+          NULL::text AS adm3_name,
+          COALESCE(COUNT(DISTINCT s.id), 0)::bigint AS n_sondages,
+          COALESCE(COUNT(e.id), 0)::bigint AS n_essais,
+          target.pct_intersection::float8 as pct_intersection,
+          target.priorite_recherche::int as priorite_recherche
+        FROM atlas.mailles m
+        JOIN target ON target.maille_id = m.id
+        LEFT JOIN atlas.sondages s
+          ON s.deleted_at IS NULL
+         AND (
+            (s.geom IS NOT NULL AND ST_Within(s.geom, ST_Transform(m.geom, 4326)))
+            OR
+            (s.geom IS NULL AND s.maille_code = m.code)
+         )
+        LEFT JOIN atlas.essais e
+          ON e.sondage_id = s.id
+         AND e.deleted_at IS NULL
+        GROUP BY
+          m.code, m.spatial_id, m.geom, m.pref_name, m.adm2_name,
+          target.pct_intersection, target.priorite_recherche
+        ORDER BY target.priorite_recherche, target.pct_intersection DESC
+        "#
+    )
+    .bind(&zone_code)
+    .fetch_all(pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "db error", "details": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let mut mailles_features = Vec::new();
+    for r in &mailles_rows {
+        let code: String = r.try_get("code").unwrap_or_default();
+        let spatial_id: Option<String> = r.try_get("spatial_id").ok();
+        let geom_json: String = r.try_get("geom_json").unwrap_or_default();
+        let adm1: Option<String> = r.try_get("adm1_name").ok();
+        let adm2: Option<String> = r.try_get("adm2_name").ok();
+        let adm3: Option<String> = r.try_get("adm3_name").ok();
+        let n_sondages: i64 = r.try_get("n_sondages").unwrap_or(0);
+        let n_essais: i64 = r.try_get("n_essais").unwrap_or(0);
+        let pct_intersection: f64 = r.try_get("pct_intersection").unwrap_or(0.0);
+        let priorite_recherche: i32 = r.try_get("priorite_recherche").unwrap_or(4);
+
+        if let Ok(geom) = serde_json::from_str::<serde_json::Value>(&geom_json) {
+            mailles_features.push(serde_json::json!({
+                "type": "Feature",
+                "geometry": geom,
+                "properties": {
+                    "code": code,
+                    "spatial_id": spatial_id,
+                    "adm1_name": adm1,
+                    "adm2_name": adm2,
+                    "adm3_name": adm3,
+                    "n_sondages": n_sondages,
+                    "n_essais": n_essais,
+                    "pct_intersection": pct_intersection,
+                    "priorite_recherche": priorite_recherche
+                }
+            }));
+        }
+    }
+
+    // 2) Sondages zone (avec fallback maille_code quand geom null)
+    let sondages_rows = match sqlx::query(
+        r#"
+        WITH target_maille AS (
+          SELECT mze.maille_id
+          FROM atlas.mailles_zones_etude mze
+          JOIN atlas.zones_etude ze ON ze.id = mze.zone_id
+          WHERE ze.code = $1 AND ze.is_published = TRUE
+        ),
+        target_codes AS (
+          SELECT DISTINCT m.code
+          FROM atlas.mailles m
+          JOIN target_maille tm ON tm.maille_id = m.id
+        )
+        SELECT DISTINCT ON (s.id)
+          s.id::text AS id,
+          s.code,
+          ST_X(ST_Transform(s.geom, 4326)) as lon,
+          ST_Y(ST_Transform(s.geom, 4326)) as lat,
+          s.maille_code,
+          s.adm1_name,
+          s.adm2_name,
+          s.adm3_name,
+          s.date::text AS date_text,
+          s.source,
+          s.operator,
+          s.depth_m_min,
+          s.depth_m_max,
+          s.location_accuracy,
+          s.created_at
+        FROM atlas.sondages s
+        LEFT JOIN target_codes tc ON tc.code = s.maille_code
+        WHERE s.deleted_at IS NULL
+          AND (
+            tc.code IS NOT NULL
+            OR EXISTS (
+              SELECT 1
+              FROM atlas.mailles m
+              JOIN target_maille tm ON tm.maille_id = m.id
+              WHERE s.geom IS NOT NULL
+                AND ST_Within(s.geom, ST_Transform(m.geom, 4326))
+            )
+          )
+        ORDER BY s.id, s.code
+        "#
+    )
+    .bind(&zone_code)
+    .fetch_all(pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "db error", "details": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let mut sondages_features = Vec::new();
+    for r in &sondages_rows {
+        let id: String = r.try_get("id").unwrap_or_default();
+        let code: String = r.try_get("code").unwrap_or_default();
+
+        let lon: Option<f64> = r.try_get("lon").ok();
+        let lat: Option<f64> = r.try_get("lat").ok();
+        let maille_code: Option<String> = r.try_get("maille_code").ok();
+        let adm1: Option<String> = r.try_get("adm1_name").ok();
+        let adm2: Option<String> = r.try_get("adm2_name").ok();
+        let adm3: Option<String> = r.try_get("adm3_name").ok();
+        let date_txt: Option<String> = r.try_get("date_text").ok();
+        let source: Option<String> = r.try_get("source").ok();
+        let operator: Option<String> = r.try_get("operator").ok();
+        let depth_min: Option<sqlx::types::BigDecimal> = r.try_get("depth_m_min").ok();
+        let depth_max: Option<sqlx::types::BigDecimal> = r.try_get("depth_m_max").ok();
+        let location_accuracy: Option<String> = r.try_get("location_accuracy").ok();
+
+        if let (Some(lng), Some(lt)) = (lon, lat) {
+            sondages_features.push(serde_json::json!({
+                "type": "Feature",
+                "geometry": { "type": "Point", "coordinates": [lng, lt] },
+                "properties": {
+                    "id": id,
+                    "code": code,
+                    "maille_code": maille_code,
+                    "adm1_name": adm1,
+                    "adm2_name": adm2,
+                    "adm3_name": adm3,
+                    "date": date_txt,
+                    "source": source,
+                    "operator": operator,
+                    "depth_m_min": depth_min.map(|v| v.to_string()),
+                    "depth_m_max": depth_max.map(|v| v.to_string()),
+                    "location_accuracy": location_accuracy
+                }
+            }));
+        }
+    }
+
+    // 3) Essais zone (via sondages)
+    let essais_rows = match sqlx::query(
+        r#"
+        WITH target_maille AS (
+          SELECT mze.maille_id
+          FROM atlas.mailles_zones_etude mze
+          JOIN atlas.zones_etude ze ON ze.id = mze.zone_id
+          WHERE ze.code = $1 AND ze.is_published = TRUE
+        ),
+        target_codes AS (
+          SELECT DISTINCT m.code
+          FROM atlas.mailles m
+          JOIN target_maille tm ON tm.maille_id = m.id
+        ),
+        target_sondage AS (
+          SELECT DISTINCT s.id
+          FROM atlas.sondages s
+          LEFT JOIN target_codes tc ON tc.code = s.maille_code
+          WHERE s.deleted_at IS NULL
+            AND (
+              tc.code IS NOT NULL
+              OR EXISTS (
+                SELECT 1
+                FROM atlas.mailles m
+                JOIN target_maille tm ON tm.maille_id = m.id
+                WHERE s.geom IS NOT NULL
+                  AND ST_Within(s.geom, ST_Transform(m.geom, 4326))
+              )
+            )
+        )
+        SELECT
+          e.id::text AS id,
+          e.sondage_id::text AS sondage_id,
+          s.code as sondage_code,
+          e.type as type,
+          e.value as value,
+          e.unit,
+          e.depth_m
+        FROM atlas.essais e
+        JOIN atlas.sondages s ON e.sondage_id = s.id
+        JOIN target_sondage ts ON ts.id = s.id
+        ORDER BY s.code, e.depth_m
+        "#
+    )
+    .bind(&zone_code)
+    .fetch_all(pool)
+    .await
+    {
+        Ok(r) => r,
+        Err(e) => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({ "error": "db error", "details": e.to_string() })),
+            )
+                .into_response();
+        }
+    };
+
+    let mut essais_data = Vec::new();
+    for r in &essais_rows {
+        essais_data.push(serde_json::json!({
+            "id": r.try_get::<String,_>("id").ok(),
+            "sondage_id": r.try_get::<String,_>("sondage_id").ok(),
+            "sondage_code": r.try_get::<String,_>("sondage_code").ok(),
+            "type": r.try_get::<String,_>("type").ok(),
+            "value": r.try_get::<Option<sqlx::types::BigDecimal>,_>("value").ok().flatten().map(|v| v.to_string()),
+            "unit": r.try_get::<Option<String>,_>("unit").ok().flatten(),
+            "depth_m": r.try_get::<Option<sqlx::types::BigDecimal>,_>("depth_m").ok().flatten().map(|v| v.to_string()),
+        }));
+    }
+
+    // Package JSON
+    let package = serde_json::json!({
+      "type": "GeoPackage",
+      "version": "1.3.0",
+      "generator": "Atlas Géotechnique API",
+      "generated_at": chrono::Utc::now().to_rfc3339(),
+      "layers": {
+        "mailles": {
+          "type": "FeatureCollection",
+          "name": "Mailles",
+          "crs": { "type": "name", "properties": { "name": "EPSG:4326" } },
+          "features": mailles_features
+        },
+        "sondages": {
+          "type": "FeatureCollection",
+          "name": "Sondages",
+          "crs": { "type": "name", "properties": { "name": "EPSG:4326" } },
+          "features": sondages_features
+        },
+        "essais": {
+          "type": "Table",
+          "name": "Essais",
+          "data": essais_data
+        }
+      },
+      "metadata": {
+        "zone_code": zone_code,
+        "n_mailles": mailles_features.len(),
+        "n_sondages": sondages_features.len(),
+        "n_essais": essais_data.len()
+      }
+    });
+
+    let json_str = serde_json::to_string_pretty(&package).unwrap();
+    let content_disposition =
+        format!("attachment; filename=\"atlas_zone_{}_export.gpkg.json\"", zone_code);
+    (
+        StatusCode::OK,
+        [
+            (
+                header::CONTENT_TYPE,
+                axum::http::HeaderValue::from_static("application/geopackage+json"),
+            ),
+            (
+                header::CONTENT_DISPOSITION,
+                axum::http::HeaderValue::from_str(&content_disposition).unwrap(),
+            ),
+        ],
+        json_str,
+    )
+        .into_response()
+}
+
 /// GET /exports/pdf - Export PDF structuré avec carte et statistiques
 pub async fn export_pdf(
     Query(q): Query<ExportQuery>,
@@ -493,12 +833,12 @@ pub async fn export_pdf(
             COUNT(DISTINCT m.code) as n_mailles,
             COUNT(DISTINCT s.id) as n_sondages,
             COUNT(e.id) as n_essais,
-            AVG(CASE WHEN e.type_essai = 'SPT_N' THEN e.valeur_numerique::numeric ELSE NULL END) as spt_n_avg,
-            AVG(CASE WHEN e.type_essai = 'qc' THEN e.valeur_numerique::numeric ELSE NULL END) as qc_avg,
+            AVG(CASE WHEN e.type = 'SPT_N' THEN e.value::numeric ELSE NULL END) as spt_n_avg,
+            AVG(CASE WHEN e.type = 'qc' THEN e.value::numeric ELSE NULL END) as qc_avg,
             MIN(e.depth_m) as depth_min,
             MAX(e.depth_m) as depth_max,
-            COUNT(DISTINCT CASE WHEN e.type_essai = 'SPT_N' THEN e.id END) as n_spt,
-            COUNT(DISTINCT CASE WHEN e.type_essai = 'qc' THEN e.id END) as n_qc
+            COUNT(DISTINCT CASE WHEN e.type = 'SPT_N' THEN e.id END) as n_spt,
+            COUNT(DISTINCT CASE WHEN e.type = 'qc' THEN e.id END) as n_qc
         FROM mailles m
         LEFT JOIN sondages s ON ST_Within(s.geom, m.geom)
         LEFT JOIN essais e ON e.sondage_id = s.id AND e.deleted_at IS NULL

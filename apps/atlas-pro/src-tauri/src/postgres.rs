@@ -253,13 +253,21 @@ fn verify_seed_state(
     db_user: &str,
     db_password: &str,
     db_name: &str,
-    repo_root: &Path,
 ) -> Result<Vec<SeedMismatch>> {
     let mut mismatches: Vec<SeedMismatch> = Vec::new();
 
-    let current_max = max_migration_number(repo_root)?;
-    let current_seed = find_seed_dump(repo_root)
-        .and_then(|p| compute_file_sha256_hex(&p).ok());
+    let seed_path = find_seed_dump();
+    let current_seed = seed_path.as_ref().and_then(|p| compute_file_sha256_hex(p).ok());
+
+    let current_max: i32 = if cfg!(debug_assertions) {
+        let repo_root = repo_root_from_tauri();
+        max_migration_number(&repo_root).unwrap_or(0)
+    } else {
+        seed_path
+            .as_ref()
+            .and_then(|p| read_seed_manifest_max_migration(p).ok())
+            .unwrap_or(0)
+    };
 
     if let Some((db_seed_sha, db_max_mig)) =
         get_latest_desktop_seed_state(bin_dir, port, db_user, db_password, db_name)?
@@ -505,16 +513,36 @@ fn set_desktop_state_value(
 
 #[allow(dead_code)]
 fn compute_file_blake3(path: &Path) -> Result<String> {
-    let bytes = std::fs::read(path).with_context(|| format!("failed to read file ({})", path.display()))?;
-    Ok(blake3::hash(&bytes).to_hex().to_string())
+    let f = std::fs::File::open(path).with_context(|| format!("failed to open file ({})", path.display()))?;
+    let mut r = std::io::BufReader::with_capacity(8 * 1024 * 1024, f);
+    let mut buf = vec![0u8; 8 * 1024 * 1024];
+    let mut h = blake3::Hasher::new();
+    loop {
+        let n = std::io::Read::read(&mut r, &mut buf)
+            .with_context(|| format!("failed to read file ({})", path.display()))?;
+        if n == 0 {
+            break;
+        }
+        h.update(&buf[..n]);
+    }
+    Ok(h.finalize().to_hex().to_string())
 }
 
 fn compute_file_sha256_hex(path: &Path) -> Result<String> {
     use sha2::Digest;
 
-    let bytes = std::fs::read(path).with_context(|| format!("failed to read file ({})", path.display()))?;
+    let f = std::fs::File::open(path).with_context(|| format!("failed to open file ({})", path.display()))?;
+    let mut r = std::io::BufReader::with_capacity(8 * 1024 * 1024, f);
+    let mut buf = vec![0u8; 8 * 1024 * 1024];
     let mut h = sha2::Sha256::new();
-    h.update(&bytes);
+    loop {
+        let n = std::io::Read::read(&mut r, &mut buf)
+            .with_context(|| format!("failed to read file ({})", path.display()))?;
+        if n == 0 {
+            break;
+        }
+        h.update(&buf[..n]);
+    }
     Ok(format!("{:x}", h.finalize()))
 }
 
@@ -747,7 +775,7 @@ fn repo_root_from_tauri() -> PathBuf {
         .join("..")
 }
 
-fn find_seed_dump(repo_root: &Path) -> Option<PathBuf> {
+fn find_seed_dump() -> Option<PathBuf> {
     if let Ok(p) = std::env::var("ATLAS_DESKTOP_SEED_DUMP_PATH") {
         let p = PathBuf::from(p);
         if p.exists() {
@@ -755,15 +783,22 @@ fn find_seed_dump(repo_root: &Path) -> Option<PathBuf> {
         }
     }
 
-    let base = repo_root.join("data").join("db").join("backups");
-    for name in [
-        "atlas_desktop_seed.dump",
-        "atlas_desktop_seed.sql",
-        "atlas_desktop_seed.backup",
-    ] {
-        let p = base.join(name);
-        if p.exists() {
-            return Some(p);
+    // In release builds, never attempt to read from the source repository.
+    // The seed must come from bundled resources (ATLAS_DESKTOP_SEED_DUMP_PATH or ATLAS_DESKTOP_SEED_DIR)
+    // or explicit expert overrides.
+    #[cfg(debug_assertions)]
+    {
+        let repo_root = repo_root_from_tauri();
+        let base = repo_root.join("data").join("db").join("backups");
+        for name in [
+            "atlas_desktop_seed.dump",
+            "atlas_desktop_seed.sql",
+            "atlas_desktop_seed.backup",
+        ] {
+            let p = base.join(name);
+            if p.exists() {
+                return Some(p);
+            }
         }
     }
 
@@ -779,41 +814,16 @@ fn find_seed_dump(repo_root: &Path) -> Option<PathBuf> {
                 return Some(p);
             }
         }
-    }
 
-    // Fallback: pick the newest dump-like file in backups.
-    let mut best: Option<(std::time::SystemTime, PathBuf)> = None;
-    if let Ok(rd) = std::fs::read_dir(&base) {
-        for e in rd.flatten() {
-            let p = e.path();
-            if !p.is_file() {
-                continue;
-            }
-            let ext = p
-                .extension()
-                .and_then(|s| s.to_str())
-                .unwrap_or("")
-                .to_ascii_lowercase();
-            if ext != "dump" && ext != "backup" && ext != "sql" {
-                continue;
-            }
-            let mt = e
-                .metadata()
-                .ok()
-                .and_then(|m| m.modified().ok())
-                .unwrap_or(std::time::SystemTime::UNIX_EPOCH);
-            let replace = match &best {
-                None => true,
-                Some((best_mt, _)) => mt > *best_mt,
-            };
-            if replace {
-                best = Some((mt, p));
-            }
+        // If a file was placed directly under resource_dir() (contract packaging),
+        // ATLAS_DESKTOP_SEED_DIR may point to a parent folder containing it.
+        let direct = base.join("atlas_desktop_seed.dump");
+        if direct.exists() {
+            return Some(direct);
         }
     }
-    if let Some((_, p)) = best {
-        return Some(p);
-    }
+
+    // No heuristic selection in release: fail-fast with explicit error upstream.
     None
 }
 
@@ -923,7 +933,7 @@ fn drop_atlas_schema(
         db_user,
         db_password,
         db_name,
-        "DROP SCHEMA IF EXISTS atlas CASCADE; CREATE SCHEMA IF NOT EXISTS atlas;",
+        "DROP SCHEMA IF EXISTS atlas CASCADE;",
     )
     .context("failed to drop atlas schema")
 }
@@ -962,23 +972,94 @@ fn restore_seed_dump(
     }
 
     // Assume pg_restore compatible format (custom/tar/directory/backup).
-    let status = pg_cmd(bin_dir, "pg_restore.exe")
+    // IMPORTANT: avoid `--clean` here.
+    // In practice it can drop extensions (ex: PostGIS) mid-restore and make objects
+    // that reference `public.geometry` fail to create.
+    //
+    // Robustness: pg_restore can legitimately take a long time on slower disks.
+    // We stream stdout/stderr to a dedicated log file and enforce a timeout to avoid
+    // indefinite splash hangs.
+    let logs_dir = data_root_dir()?.join("logs");
+    let pid = std::process::id();
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis();
+    let restore_log = logs_dir.join(format!("pg-restore-{}-{}.log", ts, pid));
+
+    let timeout_secs: u64 = std::env::var("ATLAS_PG_RESTORE_TIMEOUT_SECS")
+        .ok()
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .unwrap_or(15 * 60);
+    let timeout = std::time::Duration::from_secs(timeout_secs);
+
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&restore_log)
+        .with_context(|| format!("failed to create pg_restore log ({})", restore_log.display()))?;
+    let file2 = file
+        .try_clone()
+        .with_context(|| format!("failed to clone pg_restore log ({})", restore_log.display()))?;
+
+    let mut child = pg_cmd(bin_dir, "pg_restore.exe")
         .env("PGHOST", "127.0.0.1")
         .env("PGPORT", port.to_string())
         .env("PGUSER", db_user)
         .env("PGPASSWORD", db_password)
         .arg("--no-owner")
         .arg("--no-privileges")
-        .arg("--clean")
-        .arg("--if-exists")
+        .arg("--single-transaction")
+        .arg("--exit-on-error")
         .arg("-d")
         .arg(db_name)
         .arg(dump_path)
-        .status()
-        .with_context(|| format!("failed to restore seed dump ({})", dump_path.display()))?;
+        .stdout(std::process::Stdio::from(file))
+        .stderr(std::process::Stdio::from(file2))
+        .spawn()
+        .with_context(|| format!("failed to spawn pg_restore ({})", dump_path.display()))?;
 
-    if !status.success() {
-        return Err(anyhow!("seed dump restore failed ({})", dump_path.display()));
+    let start = std::time::Instant::now();
+    loop {
+        if let Some(status) = child
+            .try_wait()
+            .context("failed to poll pg_restore process")?
+        {
+            if !status.success() {
+                tracing::error!(
+                    exit = %status,
+                    dump = %dump_path.display(),
+                    log = %restore_log.display(),
+                    "pg_restore failed"
+                );
+                return Err(anyhow!(
+                    "seed dump restore failed (exit={}, dump={}). Consultez le log: {}",
+                    status,
+                    dump_path.display(),
+                    restore_log.display(),
+                ));
+            }
+            break;
+        }
+
+        if start.elapsed() > timeout {
+            let _ = child.kill();
+            let _ = child.wait();
+            tracing::error!(
+                dump = %dump_path.display(),
+                log = %restore_log.display(),
+                timeout_secs = %timeout_secs,
+                "pg_restore timeout"
+            );
+            return Err(anyhow!(
+                "Restauration seed trop longue (>{}s). Le process pg_restore a été arrêté. Consultez le log: {}",
+                timeout_secs,
+                restore_log.display(),
+            ));
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(250));
     }
     Ok(())
 }
@@ -1200,8 +1281,11 @@ fn apply_repo_migrations(
     }
 
     if seeded_baseline {
-        let seed_path = find_seed_dump(&repo_root)
-            .ok_or_else(|| anyhow!("seed dump not found"))?;
+        let seed_dir = std::env::var("ATLAS_DESKTOP_SEED_DIR").unwrap_or_default();
+        tracing::info!(seed_dir = %seed_dir, "desktop seed dir");
+
+        let seed_path = find_seed_dump()
+            .ok_or_else(|| anyhow!("Seed dump introuvable (ATLAS_DESKTOP_SEED_DUMP_PATH/ATLAS_DESKTOP_SEED_DIR)"))?;
         let manifest_baseline = read_seed_manifest_max_migration(&seed_path)?;
         let db_baseline = get_desktop_seed_state_max_migration_if_any(
             bin_dir,
@@ -2056,24 +2140,6 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
         }
     }
 
-    // Schéma applicatif attendu par les migrations (ex: atlas.*)
-    let status = pg_cmd(&bin_dir, psql)
-        .env("PGHOST", "127.0.0.1")
-        .env("PGPORT", pg.port.to_string())
-        .env("PGUSER", &db_user)
-        .env("PGPASSWORD", &db_password)
-        .arg("-d")
-        .arg(&db_name)
-        .arg("-v")
-        .arg("ON_ERROR_STOP=1")
-        .arg("-c")
-        .arg("CREATE SCHEMA IF NOT EXISTS atlas;")
-        .status()
-        .with_context(|| format!("failed to ensure schema atlas exists ({psql})"))?;
-    if !status.success() {
-        return Err(anyhow!("failed to ensure schema atlas exists"));
-    }
-
     // Forcer le search_path pour que les migrations non qualifiées créent leurs objets sous `atlas`.
     // (Sinon, elles finissent en `public` et le schéma diverge du runtime attendu.)
     let status = pg_cmd(&bin_dir, psql)
@@ -2115,9 +2181,7 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
     }
 
     // Phase 9: seed-from-dump (v1) on first-run to avoid replaying all historical migrations.
-    let repo_root = repo_root_from_tauri();
-
-    let mismatches = verify_seed_state(&bin_dir, pg.port, &db_user, &db_password, &db_name, &repo_root)?;
+    let mismatches = verify_seed_state(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
     let fatal: Vec<SeedMismatch> = mismatches.into_iter().filter(|m| m.is_fatal()).collect();
     if !fatal.is_empty() {
         return Err(anyhow!(fatal[0].clone()));
@@ -2128,7 +2192,7 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
         .unwrap_or(false);
 
     let mut seed_already_applied = false;
-    if let Some(seed_path) = find_seed_dump(&repo_root) {
+    if let Some(seed_path) = find_seed_dump() {
         if let Ok(seed_sha256) = compute_file_sha256_hex(&seed_path) {
             if desktop_seed_state_has_hash(&bin_dir, pg.port, &db_user, &db_password, &db_name, &seed_sha256)? {
                 seed_already_applied = true;
@@ -2147,7 +2211,7 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
     if seed_hash_existing.is_some() || seed_already_applied {
         // DB seed already recorded (legacy key/value or new desktop_seed_state).
     } else {
-        let seed_path_opt = find_seed_dump(&repo_root);
+        let seed_path_opt = find_seed_dump();
         if seed_path_opt.is_none() {
             return Err(anyhow!(
                 "Seed dump introuvable dans le bundle (atlas_desktop_seed.dump). Le MSI est probablement incomplet. Réinstalle l'application ou contacte le support."
@@ -2252,16 +2316,11 @@ pub fn ensure_database_initialized(pg: &PostgresHandle) -> Result<()> {
 
     apply_repo_migrations(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
 
-    if std::env::var("ATLAS_SMOKE_TEST")
-        .ok()
-        .map(|v| {
-            let v = v.trim();
-            v.eq_ignore_ascii_case("true") || v == "1" || v.eq_ignore_ascii_case("yes")
-        })
-        .unwrap_or(false)
-    {
-        verify_invariant_mailles_count(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
-    }
+    // Production hardening: always verify mailles invariant after migrations/restore.
+    // If it fails, bootstrap switches to maintenance mode instead of showing a half-broken UI.
+    tracing::info!("postgres init: verifying INV-001_MAILLES_COUNT");
+    verify_invariant_mailles_count(&bin_dir, pg.port, &db_user, &db_password, &db_name)?;
+    tracing::info!("postgres init: INV-001_MAILLES_COUNT OK");
 
     // Vérification explicite (bloquante)
     let status = pg_cmd(&bin_dir, psql)

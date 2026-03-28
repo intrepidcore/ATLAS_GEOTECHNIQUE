@@ -95,6 +95,42 @@ function formatBytes(bytes: number): string {
   return `${gb.toFixed(1)} Go`
 }
 
+function translateFatal(fatal: string): { title: string; message: string } {
+  const msg = (fatal || '').toLowerCase()
+  if (msg.includes('geometry') || msg.includes('postgis') || msg.includes('create extension postgis')) {
+    return {
+      title: "Erreur d'initialisation de la base de données",
+      message:
+        "Les extensions géographiques (PostGIS) n'ont pas pu être installées. Lance la maintenance DB (reset), puis réessaie. Si le problème persiste, exporte un diagnostic.",
+    }
+  }
+  if (msg.includes('seed dump restore failed') || msg.includes('seed sql restore failed')) {
+    return {
+      title: 'Impossible de charger les données initiales',
+      message:
+        "Atlas n'a pas pu charger les données embarquées (seed). Lance la maintenance DB (reset), puis réessaie. Si le problème persiste, exporte un diagnostic.",
+    }
+  }
+  if (msg.includes('seed dump introuvable') || msg.includes('bundle msi incomplet') || msg.includes('pg_ctl.exe introuvable')) {
+    return {
+      title: "Installation incomplète",
+      message:
+        "Les fichiers nécessaires à l'installation (seed ou PostgreSQL) sont introuvables. Réinstalle l'application ou contacte le support.",
+    }
+  }
+  if (msg.includes('postgresql') && msg.includes('failed')) {
+    return {
+      title: 'Erreur de démarrage de la base de données',
+      message:
+        "La base de données locale n'a pas pu démarrer. Lance la maintenance DB (reset), puis réessaie. Si le problème persiste, exporte un diagnostic.",
+    }
+  }
+  return {
+    title: "Erreur d'installation",
+    message: "Une erreur inattendue s'est produite. Tu peux exporter un diagnostic pour le support.",
+  }
+}
+
 export function InstallerApp() {
   const [step, setStep] = useState<InstallerStep>('welcome')
   const [installPath, setInstallPath] = useState('')
@@ -230,6 +266,11 @@ export function InstallerApp() {
     const msg = (fatal || '').toLowerCase()
     return msg.includes('seed non appliqué') || msg.includes('seed non applique') || msg.includes('état partiel') || msg.includes('etat partiel')
   }, [fatal, preflightNeedsReset])
+
+  const fatalUi = useMemo(() => {
+    if (!fatal) return null
+    return translateFatal(fatal)
+  }, [fatal])
 
   const canInstallSimple = useMemo(() => {
     if (!inv) return false
@@ -449,7 +490,12 @@ export function InstallerApp() {
 
           {fatal ? (
             <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-              {fatal}
+              <div className="font-semibold">{fatalUi?.title || "Erreur d'installation"}</div>
+              <div className="mt-1">{fatalUi?.message || fatal}</div>
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs underline">Détails techniques</summary>
+                <pre className="mt-2 whitespace-pre-wrap text-xs">{fatal}</pre>
+              </details>
             </div>
           ) : null}
 
@@ -729,7 +775,12 @@ export function InstallerApp() {
               </div>
               {fatal ? (
                 <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
-                  {fatal}
+                  <div className="font-semibold">{fatalUi?.title || "Erreur d'installation"}</div>
+                  <div className="mt-1">{fatalUi?.message || fatal}</div>
+                  <details className="mt-2">
+                    <summary className="cursor-pointer text-xs underline">Détails techniques</summary>
+                    <pre className="mt-2 whitespace-pre-wrap text-xs">{fatal}</pre>
+                  </details>
                 </div>
               ) : null}
 
