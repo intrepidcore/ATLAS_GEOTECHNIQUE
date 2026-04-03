@@ -60,26 +60,26 @@ export function StagingPanel({
     switch (type) {
       case 'INSERT':
       case 'ADD_COLUMN':
-        return 'bg-green-100 text-green-700 border-green-200'
+        return 'bg-emerald-500/10 text-emerald-900 dark:text-emerald-100 border-emerald-500/25'
       case 'UPDATE':
-        return 'bg-blue-100 text-blue-700 border-blue-200'
+        return 'bg-sky-500/10 text-sky-900 dark:text-sky-100 border-sky-500/25'
       case 'DELETE':
       case 'DROP_COLUMN':
-        return 'bg-red-100 text-red-700 border-red-200'
+        return 'bg-red-500/10 text-red-900 dark:text-red-100 border-red-500/25'
       default:
-        return 'bg-slate-100 text-slate-700 border-slate-200'
+        return 'bg-muted text-muted-foreground border-border'
     }
   }
 
   return (
-    <div className="h-full flex flex-col bg-white border-l">
+    <div className="h-full flex flex-col bg-card border-l border-border text-card-foreground">
       {/* Header */}
-      <div className="p-4 border-b">
-        <h3 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+      <div className="p-4 border-b border-border">
+        <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
           <GitCompare className="h-4 w-4" />
           Modifications en attente
         </h3>
-        <p className="text-xs text-slate-500 mt-1">
+        <p className="text-xs text-muted-foreground mt-1">
           {changes.length} changement{changes.length > 1 ? 's' : ''}
         </p>
       </div>
@@ -87,7 +87,7 @@ export function StagingPanel({
       {/* Changes List */}
       <ScrollArea className="flex-1 p-4">
         {changes.length === 0 ? (
-          <div className="text-center py-8 text-slate-500">
+          <div className="text-center py-8 text-muted-foreground">
             <GitCompare className="h-12 w-12 mx-auto mb-3 opacity-30" />
             <p className="text-sm">Aucune modification</p>
           </div>
@@ -132,8 +132,8 @@ export function StagingPanel({
 
       {/* SQL Preview Section */}
       {changes.length > 0 && (
-        <div className="p-4 border-t bg-slate-50">
-          <div className="text-xs font-medium text-slate-700 mb-2">
+        <div className="p-4 border-t border-border bg-muted/30">
+          <div className="text-xs font-medium text-foreground mb-2">
             Preview SQL
           </div>
           <pre className="text-xs bg-slate-900 text-slate-100 p-3 rounded-md overflow-x-auto max-h-32">
@@ -143,7 +143,7 @@ export function StagingPanel({
       )}
 
       {/* Actions */}
-      <div className="p-4 border-t bg-white space-y-2">
+      <div className="p-4 border-t border-border bg-card space-y-2">
         <Button
           onClick={onPreview}
           variant="outline"
@@ -173,7 +173,7 @@ export function StagingPanel({
           </Button>
         </div>
         {changes.length > 0 && (
-          <div className="flex items-center gap-2 text-xs text-amber-600 bg-amber-50 p-2 rounded">
+          <div className="flex items-center gap-2 text-xs text-amber-900 dark:text-amber-100 bg-amber-500/15 border border-amber-500/25 p-2 rounded">
             <AlertTriangle className="h-3.5 w-3.5" />
             <span>Vérifiez les modifications avant commit</span>
           </div>

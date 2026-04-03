@@ -1,0 +1,3 @@
+# Optionnel : reproduction science AG (DEAP) — api-opti utilise un AG natif Rust par défaut.
+numpy>=1.24
+deap>=1.4.1

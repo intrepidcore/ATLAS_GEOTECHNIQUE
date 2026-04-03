@@ -24,10 +24,20 @@ from pathlib import Path
 import sys
 import argparse
 import pandas as pd
+import typing as _typing
 
 # Import du module de normalisation centralisé
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils.normalize import normalize_localite
+
+# Windows console peut utiliser cp1252 et planter sur certains emojis.
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
 
 try:
     import psycopg2
@@ -253,9 +263,11 @@ def import_missing_vbs(conn, localite_norm: str, sondage_id: str, dry_run: bool)
                 imported += 1
             else:
                 cur.execute(f"""
-                    INSERT INTO {DB_SCHEMA}.essais_vbs (echantillon_id, vbs, source, created_at)
+                    INSERT INTO {DB_SCHEMA}.essais_vbs (echantillon_id, vbs, source_reference, created_at)
                     VALUES (%s, %s, %s, now())
-                    ON CONFLICT (echantillon_id) DO UPDATE SET vbs = EXCLUDED.vbs
+                    ON CONFLICT (echantillon_id) DO UPDATE SET
+                        vbs = EXCLUDED.vbs,
+                        source_reference = EXCLUDED.source_reference
                     RETURNING id
                 """, (ech_id, float(vbs), AMESSEFE_SOURCE))
                 if cur.fetchone():
@@ -295,23 +307,25 @@ def import_missing_limites(conn, localite_norm: str, sondage_id: str, dry_run: b
                 continue
             
             if dry_run:
-                print(f"      [DRY-RUN] INSERT/UPDATE limites: depth={depth}m, wl={wl}, wp={wp}, ip={ip}")
+                print(f"      [DRY-RUN] INSERT/UPDATE limites (Atterberg): depth={depth}m, wl={wl}, wp={wp}, ip={ip}")
                 imported += 1
             else:
                 cur.execute(f"""
-                    INSERT INTO {DB_SCHEMA}.essais_geotechniques (echantillon_id, wl, wp, ip, source, created_at, updated_at)
-                    VALUES (%s, %s, %s, %s, %s, now(), now())
+                    INSERT INTO {DB_SCHEMA}.essais_atterberg (echantillon_id, wl, wp, ip_generated, source_reference, created_at)
+                    VALUES (%s, %s, %s, %s, %s, now())
                     ON CONFLICT (echantillon_id) DO UPDATE SET 
-                        wl = COALESCE(EXCLUDED.wl, {DB_SCHEMA}.essais_geotechniques.wl),
-                        wp = COALESCE(EXCLUDED.wp, {DB_SCHEMA}.essais_geotechniques.wp),
-                        ip = COALESCE(EXCLUDED.ip, {DB_SCHEMA}.essais_geotechniques.ip),
-                        updated_at = now()
+                        wl = COALESCE(EXCLUDED.wl, {DB_SCHEMA}.essais_atterberg.wl),
+                        wp = COALESCE(EXCLUDED.wp, {DB_SCHEMA}.essais_atterberg.wp),
+                        ip_generated = COALESCE(EXCLUDED.ip_generated, {DB_SCHEMA}.essais_atterberg.ip_generated),
+                        source_reference = EXCLUDED.source_reference
                     RETURNING id
-                """, (ech_id, 
-                      float(wl) if not pd.isna(wl) else None,
-                      float(wp) if not pd.isna(wp) else None,
-                      float(ip) if not pd.isna(ip) else None,
-                      AMESSEFE_SOURCE))
+                """, (
+                    ech_id,
+                    float(wl) if not pd.isna(wl) else None,
+                    float(wp) if not pd.isna(wp) else None,
+                    float(ip) if not pd.isna(ip) else None,
+                    AMESSEFE_SOURCE,
+                ))
                 if cur.fetchone():
                     imported += 1
     
@@ -351,11 +365,15 @@ def import_missing_gonflement(conn, localite_norm: str, sondage_id: str, dry_run
                 imported += 1
             else:
                 cur.execute(f"""
-                    INSERT INTO {DB_SCHEMA}.essais_potentiel_gonflement (echantillon_id, potentiel, source, created_at)
-                    VALUES (%s, %s, %s, now())
-                    ON CONFLICT (echantillon_id) DO UPDATE SET potentiel = EXCLUDED.potentiel
+                    INSERT INTO {DB_SCHEMA}.essais_potentiel_gonflement
+                        (echantillon_id, cg, cg_qual, source_reference, created_at)
+                    VALUES (%s, %s, NULL, %s, now())
+                    ON CONFLICT (echantillon_id) DO UPDATE SET
+                        cg = EXCLUDED.cg,
+                        cg_qual = COALESCE(EXCLUDED.cg_qual, {DB_SCHEMA}.essais_potentiel_gonflement.cg_qual),
+                        source_reference = EXCLUDED.source_reference
                     RETURNING id
-                """, (ech_id, str(potentiel), AMESSEFE_SOURCE))
+                """, (ech_id, float(potentiel), AMESSEFE_SOURCE))
                 if cur.fetchone():
                     imported += 1
     

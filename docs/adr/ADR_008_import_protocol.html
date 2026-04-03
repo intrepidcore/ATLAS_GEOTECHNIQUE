@@ -1,0 +1,169 @@
+<style>
+*{box-sizing:border-box}
+.adr{font-family:var(--font-sans);color:var(--color-text-primary);padding:1.5rem 2rem}
+.adr-header{border-bottom:1px solid var(--color-border-secondary);padding-bottom:1rem;margin-bottom:1.5rem}
+.adr-id{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.25rem}
+.adr-title{font-size:20px;font-weight:500;margin:0 0 .75rem}
+.badges{display:flex;gap:.5rem;flex-wrap:wrap}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px}
+.ba{background:var(--color-background-success);color:var(--color-text-success)}
+.bd{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.bi{background:var(--color-background-info);color:var(--color-text-info)}
+.br{background:var(--color-background-danger);color:var(--color-text-danger)}
+h2{font-size:14px;font-weight:500;margin:1.5rem 0 .5rem;border-left:3px solid var(--color-border-primary);padding-left:.75rem}
+h3{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin:1rem 0 .3rem}
+p,li{font-size:13px;line-height:1.7;color:var(--color-text-secondary);margin:.2rem 0}
+ul,ol{margin:.25rem 0;padding-left:1.25rem}
+code{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+pre{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:.75rem 1rem;border-radius:6px;margin:.5rem 0;overflow-x:auto;line-height:1.6;color:var(--color-text-primary)}
+.db{border:1px solid var(--color-border-tertiary);border-radius:8px;padding:1rem 1.25rem;margin:.75rem 0}
+.rule{border-left:3px solid var(--color-border-danger);padding:.5rem .75rem;margin:.5rem 0;background:var(--color-background-danger);border-radius:0 6px 6px 0}
+.rule p{color:var(--color-text-danger);font-weight:500}
+.gate{border:1px solid var(--color-border-tertiary);border-radius:6px;margin:.4rem 0;padding:.6rem .9rem}
+.gate-title{font-size:12px;font-weight:500;color:var(--color-text-primary)}
+.gate-desc{font-size:12px;color:var(--color-text-secondary)}
+.gate-fail{font-size:11px;color:var(--color-text-danger);margin-top:.2rem}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:.5rem 0}
+.ccard{border:1px solid var(--color-border-tertiary);border-radius:6px;padding:.75rem}
+.cr{display:flex;gap:.5rem;align-items:baseline;margin:.2rem 0}
+.ci{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary);min-width:55px}
+hr{border:none;border-top:1px solid var(--color-border-tertiary);margin:1.5rem 0}
+.flow{display:flex;flex-direction:column;gap:.3rem;margin:.5rem 0}
+.fstep{display:flex;align-items:center;gap:.5rem}
+.fnum{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--color-text-tertiary);min-width:28px}
+.fbox{flex:1;font-size:12px;padding:.4rem .7rem;border-radius:5px;border:1px solid var(--color-border-tertiary);background:var(--color-background-secondary);color:var(--color-text-primary)}
+.farrow{font-size:14px;color:var(--color-text-tertiary);text-align:center;margin:.1rem 0 .1rem 36px}
+.fbox.gate-ok{border-color:var(--color-border-success);background:var(--color-background-success);color:var(--color-text-success)}
+.fbox.gate-block{border-color:var(--color-border-danger);background:var(--color-background-danger);color:var(--color-text-danger)}
+</style>
+<div class="adr">
+<div class="adr-header">
+  <div class="adr-id">ADR-006 · Atlas Géotechnique</div>
+  <div class="adr-title">Protocole d'import données géotechniques terrain — garantie de qualité pipeline ML</div>
+  <div class="badges">
+    <span class="badge ba">Accepté</span>
+    <span class="badge bd">2026-03-30</span>
+    <span class="badge bi">Import / ETL</span>
+    <span class="badge bi">Qualité données</span>
+    <span class="badge br">Anti-régression obligatoire</span>
+  </div>
+</div>
+
+<h2>Contexte</h2>
+<p>L'incident AMESSEFE a révélé trois classes de défaillances d'import silencieuses : <code>localite_key</code> tronqué causant des collisions de clés, <code>depth_m</code> pollué par des valeurs CG, et des essais VBS/Atterberg non rattachés malgré leur présence dans les fichiers raw. Ces défaillances ont réduit le support kriging de ~200 points attendus à 27 points exploitables, sans aucune alerte.</p>
+<div class="rule"><p>Règle fondamentale : tout import sans gate de validation automatique est interdit. Un import silencieux qui réussit mais corrompt les données est pire qu'un import qui échoue.</p></div>
+
+<hr/>
+<h2>Décision 1 — Pipeline d'import en 5 gates obligatoires</h2>
+
+<div class="flow">
+  <div class="fstep"><span class="fnum">G-01</span><div class="fbox gate-ok">Validation structure fichier source (colonnes obligatoires, types, plages)</div></div>
+  <div class="farrow">↓</div>
+  <div class="fstep"><span class="fnum">G-02</span><div class="fbox gate-ok">Normalisation identifiants (localite_key, sondage_code, source_label)</div></div>
+  <div class="farrow">↓</div>
+  <div class="fstep"><span class="fnum">G-03</span><div class="fbox gate-ok">Validation plages physiques (depth_m, IP, VBS, WL, WP, CG)</div></div>
+  <div class="farrow">↓</div>
+  <div class="fstep"><span class="fnum">G-04</span><div class="fbox gate-ok">Rattachement géospatial (sondage → maille, vérification geom valide)</div></div>
+  <div class="farrow">↓</div>
+  <div class="fstep"><span class="fnum">G-05</span><div class="fbox gate-ok">Rapport de couverture pré/post import (delta VBS, IP, WL, WP, CG)</div></div>
+  <div class="farrow">↓ si tous gates OK</div>
+  <div class="fstep"><span class="fnum">✓</span><div class="fbox">Commit en base + trigger recalcul feature store</div></div>
+  <div class="farrow">↓ si un gate échoue</div>
+  <div class="fstep"><span class="fnum">✗</span><div class="fbox gate-block">ROLLBACK total + rapport d'erreur détaillé — aucun écrit partiel</div></div>
+</div>
+
+<hr/>
+<h2>Décision 2 — Règles de validation par champ (gate G-01 et G-03)</h2>
+<div class="gate">
+  <div class="gate-title">depth_m — profondeur échantillon</div>
+  <div class="gate-desc">Plage valide : 0.0 ≤ depth_m ≤ 15.0 m. Valeurs > 10 m → warning + flag <code>depth_unusual</code>. Valeurs > 15 m → rejet.</div>
+  <div class="gate-fail">Contrôle croisé : si depth_m > 3.5 ET paramètre associé dans plage CG → alerte collision probable, blocage import de la ligne.</div>
+</div>
+<div class="gate">
+  <div class="gate-title">IP — indice de plasticité</div>
+  <div class="gate-desc">Plage valide : 0 ≤ IP ≤ 100. IP > 80 → warning (vertisol/bentonite, à documenter). IP > 100 → rejet.</div>
+  <div class="gate-fail">Contrôle cohérence : IP doit être ≤ WL − WP si les trois sont présents (sinon erreur de calcul ou saisie).</div>
+</div>
+<div class="gate">
+  <div class="gate-title">localite_key — clé de rattachement localité</div>
+  <div class="gate-desc">Généré systématiquement par : <code>LOWER(REGEXP_REPLACE(UNACCENT(TRIM(localite_libelle)), '[^a-z0-9]+', '_', 'g'))</code>. Jamais saisi manuellement. Unicité vérifiée avant insert.</div>
+  <div class="gate-fail">Si collision détectée (même localite_key, libellés différents) → rejet avec liste des conflits.</div>
+</div>
+<div class="gate">
+  <div class="gate-title">VBS — valeur de bleu de méthylène</div>
+  <div class="gate-desc">Plage valide : 0.0 ≤ VBS ≤ 15.0 g/100g. VBS > 10 → warning. Corrélation attendue avec IP : si IP > 30 et VBS < 0.5 → alerte incohérence.</div>
+</div>
+<div class="gate">
+  <div class="gate-title">CG — potentiel de gonflement</div>
+  <div class="gate-desc">Plage valide : 0.0 ≤ CG ≤ 20.0 %. Stocké exclusivement dans <code>essais_potentiel_gonflement</code>. Jamais dans <code>echantillons.depth_m</code>.</div>
+</div>
+
+<hr/>
+<h2>Décision 3 — Normalisation localite_key (non négociable)</h2>
+<pre>-- Fonction canonique de génération localite_key
+-- À utiliser dans TOUS les parsers d'import, sans exception
+CREATE OR REPLACE FUNCTION atlas.normalize_localite_key(libelle text)
+RETURNS text AS $$
+  SELECT LOWER(
+    REGEXP_REPLACE(
+      UNACCENT(TRIM(libelle)),
+      '[^a-z0-9]+', '_', 'g'
+    )
+  );
+$$ LANGUAGE SQL IMMUTABLE;
+
+-- Contrainte d'unicité en base
+ALTER TABLE public.sondages
+  ADD CONSTRAINT uq_localite_source 
+  UNIQUE (localite_key, source);</pre>
+<p>Tout parser d'import doit appeler <code>atlas.normalize_localite_key()</code>. Un parser qui génère localite_key autrement est considéré non conforme et bloqué en CI.</p>
+
+<hr/>
+<h2>Décision 4 — Rapport de couverture obligatoire post-import (gate G-05)</h2>
+<pre>-- Généré automatiquement après chaque import réussi
+-- Stocké dans atlas.import_coverage_log
+INSERT INTO atlas.import_coverage_log (
+  import_id, source_label, run_at,
+  n_sondages_before, n_sondages_after,
+  n_vbs_before, n_vbs_after,
+  n_ip_before, n_ip_after,
+  n_wl_wp_before, n_wl_wp_after,
+  n_eg_before, n_eg_after,
+  n_maille_linked_before, n_maille_linked_after,
+  delta_vbs, delta_ip, delta_eg
+) VALUES (...);</pre>
+<p>Si <code>delta_vbs < 0</code> ou <code>delta_ip < 0</code> après import : l'import est rejeté automatiquement — un import ne peut jamais faire régresser la couverture.</p>
+
+<hr/>
+<h2>Décision 5 — Trigger automatique pipeline après import validé</h2>
+<pre>-- Après commit import réussi :
+1. atlas.refresh_feature_store()           -- mise à jour feature store mailles
+2. POST /ai/recompute/sources              -- recalcul sources IA
+3. Enqueue job 'kriging_recompute'         -- kriging stratifié par domaine
+4. Enqueue job 'regression_kriging'        -- RK si n_support suffisant
+5. Enqueue job 'ml_train_supervised'       -- retrain si delta_points > seuil
+
+-- Les jobs sont en queue (SKIP LOCKED), non bloquants
+-- Notification UI : "Import validé — 3 jobs enqueués"</pre>
+
+<hr/>
+<h2>Décision 6 — Tests de non-régression obligatoires en CI</h2>
+<pre>tests/import/
+  test_localite_key_no_collision.py      -- unicité garantie
+  test_depth_m_range.py                  -- 0–15m strict
+  test_no_cg_in_depth_column.py          -- contrôle croisé CG/depth
+  test_ip_wl_wp_coherence.py             -- IP ≤ WL - WP
+  test_coverage_delta_positive.py        -- delta VBS/IP/EG ≥ 0
+  test_rollback_on_gate_failure.py       -- aucun écrit partiel</pre>
+<p>Ces tests tournent sur des fixtures de données synthétiques incluant les cas d'échec AMESSEFE documentés. Ils font partie du CI obligatoire — un PR qui les casse est bloqué.</p>
+
+<hr/>
+<h2>Critères d'acceptation</h2>
+<div class="cr"><span class="ci">AC-01</span><span>Tout import sans les 5 gates est rejeté au niveau CI — aucun parser non conforme en production</span></div>
+<div class="cr"><span class="ci">AC-02</span><span>Zéro collision <code>localite_key</code> après import — vérifiable par <code>COUNT(DISTINCT localite_key) = COUNT(DISTINCT libelle)</code> par source</span></div>
+<div class="cr"><span class="ci">AC-03</span><span>Zéro valeur CG dans la colonne <code>echantillons.depth_m</code> — vérifiable par requête de contrôle automatique</span></div>
+<div class="cr"><span class="ci">AC-04</span><span><code>delta_vbs ≥ 0</code> et <code>delta_ip ≥ 0</code> après tout import — sinon rollback automatique</span></div>
+<div class="cr"><span class="ci">AC-05</span><span>Rapport <code>import_coverage_log</code> produit et consultable en UI Admin dans les 30s post-import</span></div>
+<div class="cr"><span class="ci">AC-06</span><span>Jobs kriging/RK/ML enqueués automatiquement après import validé — aucun retrain manuel requis</span></div>
+<div class="cr"><span class="ci">AC-07</span><span>6 tests de non-régression passent sur les fixtures AMESSEFE en CI</span></div>
+</div>

@@ -5,6 +5,7 @@ pub mod classifier;
 pub mod colors;
 pub mod export;
 pub mod routes;
+pub mod source_type;
 pub mod statistics;
 pub mod types;
 

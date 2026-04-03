@@ -71,15 +71,15 @@ export function DataGrid<TData>({
           onChange={(e) => setGlobalFilter(e.target.value)}
           className="max-w-sm"
         />
-        <div className="ml-auto text-sm text-slate-500">
+        <div className="ml-auto text-sm text-muted-foreground">
           {table.getFilteredRowModel().rows.length} lignes
         </div>
       </div>
 
       {/* Table */}
-      <div className="rounded-md border overflow-x-auto">
+      <div className="rounded-md border border-border overflow-x-auto bg-card">
         <table className="min-w-full table-auto">
-          <thead className="bg-slate-50">
+          <thead className="bg-muted/50">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {showSelection && (
@@ -90,7 +90,7 @@ export function DataGrid<TData>({
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 text-left text-sm font-medium text-slate-900 whitespace-nowrap"
+                    className="px-4 py-3 text-left text-sm font-medium text-foreground whitespace-nowrap"
                   >
                     {header.isPlaceholder ? null : (
                       <div
@@ -120,7 +120,7 @@ export function DataGrid<TData>({
               <tr>
                 <td
                   colSpan={columns.length + (showSelection ? 1 : 0)}
-                  className="px-4 py-8 text-center text-slate-500"
+                  className="px-4 py-8 text-center text-muted-foreground"
                 >
                   Aucune donnée
                 </td>
@@ -129,7 +129,7 @@ export function DataGrid<TData>({
               table.getRowModel().rows.map((row) => (
                 <tr
                   key={row.id}
-                  className="border-t hover:bg-slate-50 transition-colors"
+                  className="border-t border-border hover:bg-muted/40 transition-colors"
                 >
                   {showSelection && (
                     <td className="px-2 align-middle">
@@ -196,7 +196,7 @@ export function DataGrid<TData>({
 
       {/* Pagination */}
       <div className="flex items-center justify-between">
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-muted-foreground">
           Page {table.getState().pagination.pageIndex + 1} sur{" "}
           {table.getPageCount()}
         </div>

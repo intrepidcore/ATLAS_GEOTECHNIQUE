@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { AuthProvider } from './contexts/AuthContext'
+import { ThemeProvider } from './contexts/ThemeContext'
 import LoginPage from './pages/LoginPage'
 import './design-tokens.css'
 import './index.css'
@@ -33,13 +34,15 @@ function getReturnTo(): string {
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AuthProvider>
-      <LoginPage
-        onLoginSuccess={() => {
-          window.location.href = getReturnTo()
-        }}
-        variant="desktop"
-      />
-    </AuthProvider>
+    <ThemeProvider>
+      <AuthProvider>
+        <LoginPage
+          onLoginSuccess={() => {
+            window.location.href = getReturnTo()
+          }}
+          variant="desktop"
+        />
+      </AuthProvider>
+    </ThemeProvider>
   </React.StrictMode>,
 )

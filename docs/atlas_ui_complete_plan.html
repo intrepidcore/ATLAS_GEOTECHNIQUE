@@ -1,0 +1,171 @@
+
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);padding:1.5rem 2rem;color:var(--color-text-primary)}
+h2{font-size:14px;font-weight:500;margin:1.1rem 0 .5rem;border-left:3px solid var(--color-border-primary);padding-left:.75rem}
+h3{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin:.75rem 0 .3rem}
+p,li{font-size:12px;line-height:1.7;color:var(--color-text-secondary);margin:.15rem 0}
+ul{margin:.2rem 0;padding-left:1.2rem}
+code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+.block{border:1px solid var(--color-border-tertiary);border-radius:8px;margin:.5rem 0;overflow:hidden}
+.bh{display:flex;align-items:center;gap:.5rem;padding:.6rem 1rem;background:var(--color-background-secondary)}
+.bnum{font-family:var(--font-mono);font-size:11px;min-width:40px;color:var(--color-text-tertiary)}
+.bt{font-size:13px;font-weight:500;flex:1;color:var(--color-text-primary)}
+.bdur{font-size:11px;color:var(--color-text-secondary)}
+.badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px}
+.b-ok{background:var(--color-background-success);color:var(--color-text-success)}
+.b-warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.b-crit{background:var(--color-background-danger);color:var(--color-text-danger)}
+.b-info{background:var(--color-background-info);color:var(--color-text-info)}
+.b-new{background:#EEEDFE;color:#3C3489}
+.bp{padding:.65rem 1rem}
+.task{display:flex;gap:.5rem;align-items:baseline;margin:.2rem 0;font-size:12px}
+.tid{font-family:var(--font-mono);font-size:11px;min-width:64px;color:var(--color-text-tertiary)}
+.tl{flex:1;color:var(--color-text-secondary)}
+.tl.crit{color:var(--color-text-danger)}
+.tl.add{color:#534AB7}
+.ac{font-size:11px;color:var(--color-text-success);margin:.3rem 0 0;display:block}
+.dep{font-size:11px;color:var(--color-text-tertiary)}
+hr{border:none;border-top:1px solid var(--color-border-tertiary);margin:.75rem 0}
+.file{font-family:var(--font-mono);font-size:11px;color:var(--color-text-info);background:var(--color-background-info);padding:1px 5px;border-radius:3px}
+</style>
+<div class="w">
+
+<!-- AXE 1 -->
+<div class="block">
+  <div class="bh"><span class="bnum">AXE 1</span><span class="bt">Panneau thématique — catalogue + sélecteur horizon + badge source</span><span class="bdur">~1.5 sessions</span><span class="badge b-crit">Priorité 1</span></div>
+  <div class="bp">
+
+    <h3>T1.1 — Architecture catalogue : paramètre + horizon séparés (amélioration du plan)</h3>
+    <div class="task"><span class="tid">T1.1-a</span><span class="tl add">Au lieu de 12 entrées séparées (vbs_ked_h1, vbs_ked_h2...), structurer le catalogue avec un champ <code>horizons: string[]</code> par paramètre. L'UI génère le sélecteur H1/H2/H3 dynamiquement.</span></div>
+    <div class="task"><span class="tid">T1.1-b</span><span class="tl">Dans <span class="file">thematic-types.ts</span> : ajouter <code>THEMATIC_PARAMETERS</code> pour EG, VBS, IP, WL, WP, passant_2mm, passant_80um, ip_derived avec <code>horizons: ['H1','H2','H3']</code> et <code>source: 'interpolation'</code></span></div>
+    <div class="task"><span class="tid">T1.1-c</span><span class="tl">Le <code>parameter_id</code> envoyé à l'API est construit dynamiquement : <code>`${param.id}_ked_${horizonSelected.toLowerCase()}`</code> — jamais hardcodé dans le catalogue</span></div>
+    <span class="ac">AC : 7 paramètres dans le catalogue (pas 40 entrées) · sélecteur H1/H2/H3 apparaît dynamiquement · valeur envoyée à l'API = vbs_ked_h2</span>
+
+    <h3>T1.2 — Filtrage par source et objectif métier</h3>
+    <div class="task"><span class="tid">T1.2-a</span><span class="tl">Dans <span class="file">thematic-types.ts</span> : <code>getParametersBySource('interpolation')</code> retourne EG, VBS, IP, WL, WP, passant_2mm, passant_80um, ip_derived</span></div>
+    <div class="task"><span class="tid">T1.2-b</span><span class="tl">Dans <code>OBJECTIFS_METIER</code> : <code>granulometrie</code> → passant_2mm, passant_80um · <code>argilosite_plasticite</code> → VBS, IP, WL, WP, ip_derived · <code>gonflement</code> → EG · <code>classification</code> → ag_safety_factor</span></div>
+    <div class="task"><span class="tid">T1.2-c</span><span class="tl">Préserver le comportement existant <code>kriging_vbs</code>, <code>kriging_ip</code> (anciens) — les marquer <code>deprecated: true</code> dans le catalogue pour ne pas les afficher par défaut mais garder la rétrocompatibilité</span></div>
+    <span class="ac">AC : tests <span class="file">thematic-types-source.spec.ts</span> : interpolation+granulometrie → passant_*_ked_h* · interpolation+argilosite → ip_derived, vbs_ked · source=mesure → sondages ponctuels uniquement</span>
+
+    <h3>T1.3 — Badge source_type (AJOUT CRITIQUE manquant dans le plan original)</h3>
+    <div class="task"><span class="tid">T1.3-a</span><span class="tl crit">Dans la popup de maille (<span class="file">thematic-maps.ts</span>) : afficher un badge coloré selon <code>source_type</code> retourné par l'API. Couleurs : mesure=vert, ked_pedologie=bleu, kriging_global=gris, ml_infer=violet, deterministic=orange</span></div>
+    <div class="task"><span class="tid">T1.3-b</span><span class="tl crit">L'API <code>/thematic/data</code> doit retourner <code>source_type</code> dans chaque feature. Vérifier que <code>v_latest_ai_interpolation</code> expose ce champ et que routes.rs le sélectionne.</span></div>
+    <div class="task"><span class="tid">T1.3-c</span><span class="tl">Dans la légende de la carte : note de bas "Les valeurs interpolées (KED/kriging) sont estimées à partir de N sondages. Voir le badge source pour la provenance."</span></div>
+    <span class="ac">AC : clic sur une maille → popup avec badge vert "Mesure terrain" ou bleu "KED pédologique" · jamais de valeur sans indication de source</span>
+
+    <h3>T1.4 — Carte de densité de données (AJOUT manquant dans le plan)</h3>
+    <div class="task"><span class="tid">T1.4-a</span><span class="tl add">Nouveau paramètre thématique <code>n_sondages_20km</code> : nombre de sondages dans un rayon de 20km de chaque maille. Calculé via requête PostGIS ST_DWithin.</span></div>
+    <div class="task"><span class="tid">T1.4-b</span><span class="tl add">Overlay optionnel "Fiabilité" : hachure légère sur les mailles avec <code>n_sondages_20km < 3</code> pour signaler les zones d'extrapolation à faible confiance</span></div>
+    <div class="task"><span class="tid">T1.4-c</span><span class="tl">Endpoint backend : <code>GET /thematic/data?parameter=data_density&grid=2km</code> — requête SQL ST_DWithin pré-calculée ou à la volée avec cache</span></div>
+    <span class="ac">AC : carte de densité visible en mode expert · overlay hachure sur zones < 3 sondages à 20km</span>
+
+    <h3>T1.5 — Tests unitaires</h3>
+    <div class="task"><span class="tid">T1.5-a</span><span class="tl">Mettre à jour <span class="file">thematic-types-source.spec.ts</span> avec les cas : interpolation+granulometrie, interpolation+argilosite, interpolation+gonflement, source_type badge rendering</span></div>
+    <div class="task"><span class="tid">T1.5-b</span><span class="tl">Ajouter test : construction du <code>parameter_id</code> dynamique (paramètre + horizon) → valeur attendue API</span></div>
+    <span class="ac">AC : <code>npm run test:unit</code> vert · zéro test cassé existant</span>
+  </div>
+</div>
+
+<!-- AXE 2 -->
+<div class="block">
+  <div class="bh"><span class="bnum">AXE 2</span><span class="bt">Drawer scientifique — UX push + variogramme + EDA connecté</span><span class="bdur">~1 session</span><span class="badge b-warn">Priorité 2</span></div>
+  <div class="bp">
+
+    <h3>T2.1 — Correction UX push layout (problème Leaflet)</h3>
+    <div class="task"><span class="tid">T2.1-a</span><span class="tl">Dans <span class="file">scientific-drawer.ts</span> : à l'ouverture du drawer, réduire <code>#map</code> de 30vh via CSS class toggle → appeler <code>map.invalidateSize()</code> après transition CSS (setTimeout 300ms)</span></div>
+    <div class="task"><span class="tid">T2.1-b</span><span class="tl">Dans <span class="file">index.html</span> : ajouter transition CSS <code>height: transition 0.3s ease</code> sur <code>#map</code> · le drawer est en <code>position: absolute; bottom: 0</code> avec z-index approprié, PAS en fixed</span></div>
+    <div class="task"><span class="tid">T2.1-c</span><span class="tl">À la fermeture : remettre <code>#map</code> à sa hauteur originale → <code>invalidateSize()</code> à nouveau</span></div>
+    <span class="ac">AC : ouverture drawer → carte se réduit (pas masquée) · les tuiles Leaflet se rechargent correctement · pas de zone grise en bas de carte</span>
+
+    <h3>T2.2 — Variogramme backend connecté au paramètre thématique actif</h3>
+    <div class="task"><span class="tid">T2.2-a</span><span class="tl crit">Corriger le mismatch de casse : <code>ai_variograms</code> stocke <code>horizon_label='H1'</code> (majuscule). L'appel UI doit envoyer <code>horizon: 'H1'</code> (pas <code>h1</code>). Aligner backend ou frontend, pas les deux.</span></div>
+    <div class="task"><span class="tid">T2.2-b</span><span class="tl">Connecter le sélecteur variogramme au paramètre thématique actif : si l'utilisateur affiche <code>vbs_ked_h2</code>, l'onglet Variogrammes charge automatiquement le variogramme VBS H2</span></div>
+    <div class="task"><span class="tid">T2.2-c</span><span class="tl">Interface de sélection manuelle : dropdown paramètre + dropdown horizon dans l'onglet Variogrammes (pour le mode expert indépendant du panneau thématique)</span></div>
+    <div class="task"><span class="tid">T2.2-d</span><span class="tl">Fallback JS : si l'endpoint retourne 404 (aucun variogramme pour ce couple param/horizon) → message "Aucun variogramme calculé pour ce paramètre" plutôt qu'erreur générique</span></div>
+    <span class="ac">AC : onglet Variogrammes affiche le SVG backend · second appel cached=true · fallback propre si run_id inexistant</span>
+
+    <h3>T2.3 — EDA connecté aux données réelles</h3>
+    <div class="task"><span class="tid">T2.3-a</span><span class="tl">L'onglet EDA doit utiliser les données de <code>/thematic/data</code> du paramètre actif (pas des données hardcodées). Plotly.js histogramme sur les valeurs de la réponse API.</span></div>
+    <div class="task"><span class="tid">T2.3-b</span><span class="tl">Onglet Corrélations : scatter plot VBS vs IP, WL vs WP depuis l'API. Utiliser <code>include_geometry=false</code> pour les deux paramètres en parallèle.</span></div>
+    <div class="task"><span class="tid">T2.3-c</span><span class="tl add">Onglet Validation : tableau LOO RMSE par paramètre et horizon, lu depuis <code>atlas.ai_variograms</code> via un endpoint <code>GET /ai/variograms/summary</code> à créer</span></div>
+    <span class="ac">AC : histogramme EDA se met à jour quand on change de paramètre dans le panneau thématique · corrélations visibles sur données nationales</span>
+
+    <h3>T2.4 — Onglet Comparaison méthodes</h3>
+    <div class="task"><span class="tid">T2.4-a</span><span class="tl add">Tableau comparatif kriging_global vs ked_pedologie vs kriging_stratifie sur GEO_008 (VBS/IP). Données depuis <code>atlas.ai_variograms</code> (LOO RMSE par méthode). Plotly bar chart.</span></div>
+    <span class="ac">AC : graphique de comparaison visible · démontrer que KED améliore le kriging global → argument jury</span>
+  </div>
+</div>
+
+<!-- AXE 3 -->
+<div class="block">
+  <div class="bh"><span class="bnum">AXE 3</span><span class="bt">DB Manager — onglet expert scientifique + migration ai_job_queue</span><span class="bdur">~1 session</span><span class="badge b-info">Priorité 3</span></div>
+  <div class="bp">
+
+    <h3>T3.1 — Migration backend ai_jobs.rs vers ai_job_queue</h3>
+    <div class="task"><span class="tid">T3.1-a</span><span class="tl crit">Dans <span class="file">ai_jobs.rs</span> : <code>GET /ai/jobs/recent</code> lire depuis <code>atlas.ai_job_queue</code> au lieu de <code>atlas.ai_training_jobs</code>. Réponse JSON : <code>{id, parameter_id, job_type, status, payload, created_at, started_at, finished_at}</code></span></div>
+    <div class="task"><span class="tid">T3.1-b</span><span class="tl crit">Rétrocompatibilité : ne pas supprimer <code>atlas.ai_training_jobs</code> immédiatement. Ajouter un champ <code>source_table: "ai_job_queue"</code> dans la réponse JSON pour que l'UI sache quelle table est lue.</span></div>
+    <div class="task"><span class="tid">T3.1-c</span><span class="tl">Dans <span class="file">ai_jobs.rs</span> : <code>POST /ai/jobs/run-once</code> déclenche le traitement d'un job depuis <code>ai_job_queue</code> (SELECT ... FOR UPDATE SKIP LOCKED)</span></div>
+    <span class="ac">AC : curl <code>GET /ai/jobs/recent</code> → JSON avec champs ai_job_queue · <code>POST /ai/jobs/run-once</code> consomme un job · pas de régression sur l'existant</span>
+
+    <h3>T3.2 — Nouvel onglet "Expert scientifique" dans DB Manager</h3>
+    <div class="task"><span class="tid">T3.2-a</span><span class="tl">Dans <span class="file">DbManagerModalComponent.ts</span> : ajouter onglet <code>expert_scientifique</code> avec 3 sous-sections</span></div>
+    <div class="task"><span class="tid">T3.2-b</span><span class="tl">Sous-section 1 — Catalog paramètres : tableau de <code>atlas.ai_parameter_catalog</code> avec colonnes parameter_id, source_column, domain_type_pref, min_pts_stratified, min_pts_rk, physical_min/max. Filtrable par paramètre.</span></div>
+    <div class="task"><span class="tid">T3.2-c</span><span class="tl">Sous-section 2 — File de jobs : tableau de <code>atlas.ai_job_queue</code> avec statuts colorés (queued=orange, running=bleu, finished=vert, failed=rouge). Bouton "Déclencher un job" → POST /ai/jobs/run-once.</span></div>
+    <div class="task"><span class="tid">T3.2-d</span><span class="tl">Sous-section 3 — Cache graphiques : tableau de <code>atlas.ai_plot_cache</code> avec parameter_id, horizon, cache_key, hit/miss, created_at. Bouton "Vider le cache" pour un paramètre donné.</span></div>
+    <div class="task"><span class="tid">T3.2-e</span><span class="tl add">Sous-section 4 (ajout) — Tableau LOO RMSE : vue synthétique de <code>atlas.ai_variograms</code> — un tableau par paramètre/horizon montrant nugget, sill, range, loo_rmse, block_rmse. Exportable CSV.</span></div>
+    <span class="ac">AC : les 4 sous-sections chargent des données réelles de la DB · bouton job déclenche bien un run · tableau RMSE exportable</span>
+
+    <h3>T3.3 — Sous-onglet Audit Pipeline (existant à compléter)</h3>
+    <div class="task"><span class="tid">T3.3-a</span><span class="tl">Dans l'onglet Audit existant : ajouter vue <code>atlas.import_coverage_log</code> — tableau des imports avec delta_vbs, delta_ip, delta_eg et statut fuzzy_match</span></div>
+    <div class="task"><span class="tid">T3.3-b</span><span class="tl">Vue <code>atlas.ai_interpolation_runs</code> : historique des runs kriging/KED avec méthode, paramètre, mailles produites, LOO RMSE, statut. Lien vers le variogramme correspondant.</span></div>
+    <span class="ac">AC : traçabilité complète visible dans l'UI · un run KED est traçable de l'import jusqu'à la carte</span>
+  </div>
+</div>
+
+<!-- AXE 4 — AJOUT -->
+<div class="block">
+  <div class="bh"><span class="bnum">AXE 4</span><span class="bt">Backend — endpoints manquants pour l'UI (AJOUT non présent dans le plan original)</span><span class="bdur">~0.5 session</span><span class="badge b-new">Ajout</span></div>
+  <div class="bp">
+
+    <h3>T4.1 — Endpoint résumé variogrammes</h3>
+    <div class="task"><span class="tid">T4.1-a</span><span class="tl">Créer <code>GET /ai/variograms/summary</code> → retourne <code>[{parameter_id, horizon, loo_rmse, block_rmse, model_type, range_m, nugget, sill, run_id}]</code> triés par created_at DESC. Sans auth pour l'UI publique.</span></div>
+    <span class="ac">AC : curl → JSON avec entrées pour tous les paramètres KED calculés · utilisé par onglet Validation du drawer</span>
+
+    <h3>T4.2 — Endpoint densité de données</h3>
+    <div class="task"><span class="tid">T4.2-a</span><span class="tl add">Créer <code>GET /thematic/data?parameter=data_density&grid=2km</code> → pour chaque maille, retourne <code>n_sondages_20km</code> via <code>ST_DWithin(maille.centroid, sondage.geom, 20000)</code>. Résultat mis en cache MV.</span></div>
+    <span class="ac">AC : count=29407 · valeurs entières [0, N] · utilisé par overlay "fiabilité" en mode expert</span>
+
+    <h3>T4.3 — source_type dans /thematic/data</h3>
+    <div class="task"><span class="tid">T4.3-a</span><span class="tl crit">Dans <span class="file">routes.rs</span> : pour les paramètres KED, ajouter <code>source_type</code> dans les propriétés GeoJSON retournées. Actuellement absent → badge source impossible côté UI.</span></div>
+    <div class="task"><span class="tid">T4.3-b</span><span class="tl">Pour les paramètres classiques (kriging_vbs) : <code>source_type = 'kriging_global'</code>. Pour les KED : <code>source_type</code> lu depuis <code>v_latest_ai_interpolation</code>.</span></div>
+    <span class="ac">AC : chaque feature GeoJSON contient <code>properties.source_type</code> · l'UI peut afficher le badge sans appel supplémentaire</span>
+  </div>
+</div>
+
+<!-- CI/CD -->
+<div class="block">
+  <div class="bh"><span class="bnum">CI/CD</span><span class="bt">Tests automatisés — niveau 1 (rapide) + niveau 2 (gates données)</span><span class="bdur">~0.5 session</span><span class="badge b-ok">Compléter</span></div>
+  <div class="bp">
+    <h3>Niveau 1 — Chaque commit (< 5 min)</h3>
+    <div class="task"><span class="tid">CI-1a</span><span class="tl"><code>cargo check -p api-geo</code> · <code>npm run test:unit</code> · migrations SQL apply proprement sur DB vide · <code>py_compile</code> sur tous les scripts</span></div>
+    <div class="task"><span class="tid">CI-1b</span><span class="tl">Vérifier que <code>THEMATIC_PARAMETERS</code> dans le catalogue UI a tous ses IDs présents dans l'enum Rust <code>ThematicParameter</code> — test de cohérence cross-langage</span></div>
+
+    <h3>Niveau 2 — Chaque release (< 15 min, sans relancer KED)</h3>
+    <div class="task"><span class="tid">CI-2a</span><span class="tl">Gates SQL sur données existantes : couverture 29407 mailles, ip_derived >= 0, RGA distribution multi-classes, ai_job_queue dédup</span></div>
+    <div class="task"><span class="tid">CI-2b</span><span class="tl">Smoke curl : 1 endpoint par paramètre (EG, VBS, IP_derived, passant_2mm, ag_safety_factor, data_density) + variogramme backend cached=true</span></div>
+    <span class="ac">AC : CI niveau 1 < 5 min · CI niveau 2 < 15 min · pas de runner KED en CI</span>
+  </div>
+</div>
+
+<!-- Ordre d'exécution -->
+<hr/>
+<h2>Ordre d'exécution recommandé</h2>
+<div class="task"><span class="tid">Étape 1</span><span class="tl crit">T4.3 (source_type dans l'API) → T1.3 (badge source UI) — ce bloc est scientifiquement non négociable</span></div>
+<div class="task"><span class="tid">Étape 2</span><span class="tl">T1.1 + T1.2 (catalogue UI restructuré + sélecteur horizon) → T1.5 (tests)</span></div>
+<div class="task"><span class="tid">Étape 3</span><span class="tl">T2.1 (push layout Leaflet) → T2.2 (variogramme connecté) → T2.3 (EDA réel)</span></div>
+<div class="task"><span class="tid">Étape 4</span><span class="tl">T3.1 (migration ai_job_queue backend) → T3.2 (onglet expert UI)</span></div>
+<div class="task"><span class="tid">Étape 5</span><span class="tl">T1.4 + T4.2 (carte densité données) — mode expert uniquement</span></div>
+<div class="task"><span class="tid">Étape 6</span><span class="tl">T4.1 (endpoint variogrammes summary) → T2.4 (comparaison méthodes) → CI/CD niveau 1+2</span></div>
+
+</div>

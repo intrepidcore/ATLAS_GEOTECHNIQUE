@@ -47,6 +47,9 @@ import { GeocodeManager } from './geocode-manager'
 import { SuggestionsPanel } from './suggestions-panel'
 import { ThematicMapManager } from './thematic/thematic-maps'
 import { ThematicPanel } from './thematic/thematic-panel'
+import { initInferOptiCommandCenter } from './infer-opti/command-center'
+import { initScientificDrawer } from './scientific-drawer'
+import { initCampaignPlanner } from './mission/campaign-planner'
 import { createSearchController, type SearchResult } from './search-controller'
 // import { ImportBulkWizard } from './import-bulk-wizard' // V2 - désactivé
 import { bootImportWizardV3 } from './import-bulk-wizard_v3'
@@ -5190,8 +5193,19 @@ const thematicManager = new ThematicMapManager(map, API_GEO)
 const thematicPanel = new ThematicPanel(thematicManager)
 console.log('[INIT] ✅ Cartes thématiques initialisées (Export Pro intégré dans le panneau)')
 
+initInferOptiCommandCenter({
+  getApiBase: () => API_GEO,
+  canUseAiJobs: () => can('colab.missions.read'),
+})
+
 ;(window as any).thematicManager = thematicManager
 ;(window as any).thematicPanel = thematicPanel
+
+initCampaignPlanner({
+  map,
+  getApiBase: () => API_GEO,
+  getAccessToken: () => tokenStorage.getAccessToken?.() ?? null,
+})
 
 // Écouter les clics sur les mailles thématiques pour propager vers la grille
 map.on('thematicmap:cellclick', async (e: any) => {
@@ -5795,6 +5809,8 @@ if (document.readyState === 'loading') {
     // Panneau droit (feature flag)
     initRightPanel()
     initUnifiedSearch()
+    // Drawer analyse scientifique (Bloc UI)
+    initScientificDrawer()
     // v2.5.0: Modal Sondages
     initSondagesModal()
     // v2.6.0: DB Manager
@@ -5815,6 +5831,8 @@ if (document.readyState === 'loading') {
   // Panneau droit (feature flag)
   initRightPanel()
   initUnifiedSearch()
+  // Drawer analyse scientifique (Bloc UI)
+  initScientificDrawer()
   // v2.5.0: Modal Sondages
   initSondagesModal()
   // v2.6.0: DB Manager

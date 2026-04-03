@@ -1,0 +1,188 @@
+<style>
+*{box-sizing:border-box}
+body{margin:0}
+.adr{font-family:var(--font-sans);color:var(--color-text-primary);padding:1.5rem 2rem;max-width:860px}
+.adr-header{border-bottom:1px solid var(--color-border-secondary);padding-bottom:1rem;margin-bottom:1.5rem}
+.adr-id{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.25rem}
+.adr-title{font-size:20px;font-weight:500;color:var(--color-text-primary);margin:0 0 .75rem}
+.badges{display:flex;gap:.5rem;flex-wrap:wrap}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px}
+.badge-accepted{background:var(--color-background-success);color:var(--color-text-success)}
+.badge-date{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.badge-domain{background:var(--color-background-info);color:var(--color-text-info)}
+h2{font-size:14px;font-weight:500;color:var(--color-text-primary);margin:1.5rem 0 .5rem;border-left:3px solid var(--color-border-primary);padding-left:.75rem;border-radius:0}
+h3{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin:1rem 0 .4rem}
+p,li{font-size:13px;line-height:1.7;color:var(--color-text-secondary);margin:.25rem 0}
+ul{margin:.25rem 0;padding-left:1.25rem}
+code{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+pre{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:.75rem 1rem;border-radius:6px;margin:.5rem 0;overflow-x:auto;line-height:1.6;color:var(--color-text-primary)}
+.decision-block{border:1px solid var(--color-border-tertiary);border-radius:8px;padding:1rem 1.25rem;margin:.75rem 0}
+.decision-title{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:.5rem}
+.alt-table{width:100%;border-collapse:collapse;font-size:12px;margin:.5rem 0}
+.alt-table th{font-weight:500;color:var(--color-text-secondary);border-bottom:1px solid var(--color-border-tertiary);padding:.4rem .5rem;text-align:left}
+.alt-table td{padding:.4rem .5rem;border-bottom:1px solid var(--color-border-tertiary);color:var(--color-text-secondary);vertical-align:top}
+.alt-table tr.chosen td{color:var(--color-text-primary);background:var(--color-background-secondary)}
+.chosen-label{font-size:10px;font-weight:500;background:var(--color-background-success);color:var(--color-text-success);padding:1px 5px;border-radius:3px;margin-left:.4rem}
+.eq{font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);background:var(--color-background-secondary);padding:.5rem .75rem;border-radius:6px;margin:.4rem 0;display:block}
+.consequence-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:.5rem 0}
+.consequence-card{border:1px solid var(--color-border-tertiary);border-radius:6px;padding:.75rem}
+.consequence-card .clabel{font-size:11px;font-weight:500;margin-bottom:.4rem}
+.consequence-card.pos .clabel{color:var(--color-text-success)}
+.consequence-card.neg .clabel{color:var(--color-text-warning)}
+.divider{border:none;border-top:1px solid var(--color-border-tertiary);margin:1.5rem 0}
+.criteria-row{display:flex;gap:.5rem;align-items:baseline;margin:.2rem 0}
+.criteria-id{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary);min-width:50px}
+.todo-badge{font-size:10px;background:var(--color-background-warning);color:var(--color-text-warning);padding:1px 5px;border-radius:3px;margin-left:.4rem}
+</style>
+<div class="adr">
+  <div class="adr-header">
+    <div class="adr-id">ADR-004 · Atlas Géotechnique</div>
+    <div class="adr-title">Stratégie d'interpolation géostatistique hybride et pipeline ML/ONNX</div>
+    <div class="badges">
+      <span class="badge badge-accepted">Accepté</span>
+      <span class="badge badge-date">2026-03-30</span>
+      <span class="badge badge-domain">Plateforme scientifique</span>
+      <span class="badge badge-domain">Pipeline IA</span>
+    </div>
+  </div>
+
+  <h2>Contexte</h2>
+  <p>Atlas produit des cartes géotechniques nationales (Togo) à partir de sondages discontinus. Le pipeline actuel réalise un kriging global national sur quelques paramètres (IP, VBS), avec une logique d'inférence rule-based. Deux problèmes bloquent la maturité scientifique de la plateforme :</p>
+  <ul>
+    <li>Le kriging viole la stationnarité en mélangeant des formations géologiques hétérogènes dans un même variogramme.</li>
+    <li>L'endpoint <code>/ai/infer/maille</code> n'est pas apprenant — il dérive des règles déterministes, non d'un modèle entraîné.</li>
+  </ul>
+  <p>Cet ADR formalise les décisions architecturales pour corriger ces deux limitations et établir un pipeline défendable à niveau publication/mémoire.</p>
+
+  <hr class="divider"/>
+  <h2>Décision 1 — Domaine d'interpolation : géologie/pédologie, pas les dépressions</h2>
+  <div class="decision-block">
+    <div class="decision-title">Problème</div>
+    <p>Le kriging suppose une stationnarité intrinsèque : <span class="eq">Z(s) = μ + ε(s),   Var[Z(s₁) − Z(s₂)] = 2γ(h)</span> où γ(h) ne dépend que de la distance h, pas de la position absolue. Les dépressions morphologiques ne couvrent pas 100 % du territoire et ne définissent pas des domaines physiquement homogènes — le variogramme calculé sur une telle partition est statistiquement invalide.</p>
+  </div>
+  <table class="alt-table">
+    <tr><th>Alternative</th><th>Couverture</th><th>Stationnarité</th><th>Verdict</th></tr>
+    <tr><td>Kriging national unique</td><td>100 %</td><td>Non — mélange formations</td><td>Biais fort, RMSE élevé</td></tr>
+    <tr><td>Kriging par dépressions</td><td>Partielle</td><td>Non — discontinuités spatiales</td><td>Zones blanches + variogramme invalide</td></tr>
+    <tr class="chosen"><td>Kriging stratifié géologie/pédologie <span class="chosen-label">retenu</span></td><td>100 %</td><td>Oui — domaines physiquement homogènes</td><td>Conforme BRGM / AFSIS / USGS</td></tr>
+  </table>
+
+  <hr class="divider"/>
+  <h2>Décision 2 — Architecture des domaines : table <code>atlas.kriging_domains</code></h2>
+  <div class="decision-block">
+    <div class="decision-title">Schéma cible</div>
+    <pre>CREATE TABLE atlas.kriging_domains (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  domain_type   text NOT NULL CHECK (domain_type IN ('geologie','pedologie','risque_gonflement')),
+  domain_code   text NOT NULL,
+  geom          geometry(MultiPolygon, 4326) NOT NULL,
+  created_at    timestamptz DEFAULT now(),
+  UNIQUE (domain_type, domain_code)
+);
+CREATE INDEX ON atlas.kriging_domains USING GIST (geom);</pre>
+    <p>Le pipeline assigne chaque maille à son domaine via <code>ST_Contains(kd.geom, maille.centroid)</code>. Un maille sans domaine tombe en fallback <em>domaine national</em> (comportement dégradé documenté, non silencieux).</p>
+  </div>
+
+  <hr class="divider"/>
+  <h2>Décision 3 — Pipeline kriging scientifique avec traçabilité obligatoire</h2>
+  <div class="decision-block">
+    <div class="decision-title">Pipeline officiel</div>
+    <pre>extract stats maille par domaine
+→ compute variogram auto-fit (nugget, sill, range, anisotropy)
+→ cross-validation LOO + block (k=5)
+→ kriging ordinaire par domaine
+→ régression kriging ML (niveau 2, optionnel)
+→ fusion mosaïque nationale
+→ store run metadata (atlas.ai_variograms)
+→ update vue thématique (v_latest_ai_interpolation)</pre>
+  </div>
+  <h3>Table de traçabilité <code>atlas.ai_variograms</code> — champs obligatoires</h3>
+  <pre>range_m       float   -- portée (mètres)
+sill          float   -- palier
+nugget        float   -- effet pépite (ratio nugget/sill recommandé < 0.25)
+model_type    text    -- spherical | exponential | gaussian | matern
+anisotropy    jsonb   -- {ratio, direction_deg}
+fit_score     float   -- R² ajustement variogramme empirique
+loo_rmse      float   -- LOO cross-validation RMSE (critère acceptation)
+block_rmse    float   -- block CV RMSE k=5
+support_points int    -- nb points utilisés
+domain_code   text    -- domaine parent
+parameter_id  text    -- paramètre interpolé
+run_id        uuid    -- lien atlas.ai_model_registry</pre>
+  <p>Critère d'acceptation : <code>loo_rmse &lt; sill × 0.35</code> — sinon le run est marqué <code>quality_flag = 'degraded'</code> et non publié par défaut.</p>
+
+  <hr class="divider"/>
+  <h2>Décision 4 — Inférence ML temps réel via microservice ONNX</h2>
+  <div class="decision-block">
+    <div class="decision-title">Problème</div>
+    <p>L'endpoint <code>/ai/infer/maille</code> dérive actuellement des règles déterministes. Ces règles sont non-apprenantes, non-auditables, et exposent une fausse promesse "IA" à l'utilisateur.</p>
+  </div>
+  <table class="alt-table">
+    <tr><th>Alternative</th><th>Latence</th><th>Maintenabilité</th><th>Verdict</th></tr>
+    <tr><td>Rule-based conservé</td><td>< 5 ms</td><td>Forte — SQL/Rust pur</td><td>Non apprenant, dette scientifique</td></tr>
+    <tr><td>Inférence Python inline (subprocess)</td><td>200–500 ms</td><td>Faible — couplage fort</td><td>Fragile, non scalable</td></tr>
+    <tr class="chosen"><td>Microservice <code>atlas-api-infer</code> + ONNX <span class="chosen-label">retenu</span></td><td>10–30 ms</td><td>Forte — découplé, versionné</td><td>Standard industrie, fallback possible</td></tr>
+  </table>
+  <h3>Logique de fallback obligatoire</h3>
+  <pre>if atlas_api_infer.health() == OK and model_registry.has_valid_model():
+    prediction = onnx_inference(features)
+    source_type = "ml_infer"
+else:
+    prediction = rule_based_fallback(features)
+    source_type = "deterministic"
+    log.warn("ONNX unavailable, fallback activated")</pre>
+  <p>Le champ <code>source_type</code> est propagé jusqu'à l'UI — l'utilisateur voit toujours la provenance de la valeur.</p>
+
+  <hr class="divider"/>
+  <h2>Décision 5 — Architecture UI : mode standard + mode expert domaines</h2>
+  <div class="decision-block">
+    <div class="decision-title">Principe</div>
+    <p>Le kriging stratifié produit N surfaces partielles fusionnées en une mosaïque nationale. L'utilisateur standard voit une carte unique. L'expert accède aux domaines individuels pour validation scientifique.</p>
+  </div>
+  <h3>Règle d'affichage <code>source_type</code> (non négociable)</h3>
+  <pre>mesure        → point plein, symbologie primaire
+kriging       → point semi-transparent + hachure légère
+ml_infer      → point semi-transparent + badge "IA"
+deterministic → point semi-transparent + badge "Est."</pre>
+  <p>Aucune valeur interpolée ou inférée ne s'affiche sans indicateur visuel de sa provenance. C'est une règle de sécurité métier, pas une option UX.</p>
+
+  <hr class="divider"/>
+  <h2>Conséquences</h2>
+  <div class="consequence-grid">
+    <div class="consequence-card pos">
+      <div class="clabel">Gains</div>
+      <ul>
+        <li>Variogrammes scientifiquement valides par domaine</li>
+        <li>Reproductibilité publication / mémoire</li>
+        <li>Inférence apprenante et auditable</li>
+        <li>UI : transparence source pour l'ingénieur terrain</li>
+        <li>Couverture 100 % territoire garantie</li>
+      </ul>
+    </div>
+    <div class="consequence-card neg">
+      <div class="clabel">Coûts et risques</div>
+      <ul>
+        <li>Migration DB : table <code>kriging_domains</code> + <code>ai_variograms</code></li>
+        <li>Mismatch UI/source à corriger (<code>v_latest_ai_interpolation</code>)</li>
+        <li>Nouveau service <code>atlas-api-infer</code> à déployer et maintenir</li>
+        <li>Charge pipeline x3–x5 (N domaines vs 1 national)</li>
+        <li>Risque : mailles aux frontières de domaines (à tester)</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr class="divider"/>
+  <h2>Critères d'acceptation mesurables</h2>
+  <div class="criteria-row"><span class="criteria-id">AC-01</span><span>Kriging exécuté uniquement sur domaines géologiques/pédologiques — zéro run national non stratifié</span></div>
+  <div class="criteria-row"><span class="criteria-id">AC-02</span><span>Chaque run stocke <code>loo_rmse</code>, <code>block_rmse</code>, <code>nugget</code>, <code>sill</code>, <code>range_m</code> dans <code>ai_variograms</code></span></div>
+  <div class="criteria-row"><span class="criteria-id">AC-03</span><span><code>loo_rmse &lt; sill × 0.35</code> pour publication — sinon <code>quality_flag = 'degraded'</code></span></div>
+  <div class="criteria-row"><span class="criteria-id">AC-04</span><span>Couverture mosaïque nationale ≥ 99,9 % des mailles (fallback domaine national pour le reste)</span></div>
+  <div class="criteria-row"><span class="criteria-id">AC-05</span><span>Toute valeur affichée en UI porte un <code>source_type</code> visible — zéro valeur sans indicateur de provenance</span></div>
+  <div class="criteria-row"><span class="criteria-id">AC-06</span><span><code>atlas-api-infer</code> health check OK avant chaque inférence — fallback rule-based loggé si indisponible</span></div>
+  <div class="criteria-row"><span class="criteria-id">AC-07</span><span>WL, WP, passant_2mm, passant_20mm activés dans <code>ai_parameter_catalog</code> avec mapping <code>PARAM_TO_STATS_COL</code> validé</span></div>
+
+  <hr class="divider"/>
+  <h2>ADR suivant recommandé</h2>
+  <p><strong>ADR-005</strong> — Régression kriging hybride ML (niveau laboratoire géosciences) : stratégie résidus kriging + CatBoost + export ONNX, critères R² par domaine, gestion incertitude prédiction. <span class="todo-badge">À rédiger</span></p>
+</div>
+

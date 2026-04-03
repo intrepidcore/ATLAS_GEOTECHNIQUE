@@ -12,7 +12,7 @@ interface ModalState {
   error: string | null
   currentSchema: string | null
   currentTable: string | null
-  activeTab: 'data' | 'infer_opti'
+  activeTab: 'data' | 'infer_opti' | 'audit' | 'expert_scientifique'
   aiStatus: string | null
 }
 
@@ -258,21 +258,38 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
     }
     
     const isData = this.state.activeTab === 'data'
+    const isInferOpti = this.state.activeTab === 'infer_opti'
+    const isAudit = this.state.activeTab === 'audit'
+    const isExpertScientific = this.state.activeTab === 'expert_scientifique'
     return `
       <div class="db-modal-body">
         <div class="db-sidebar">
           <div class="db-tabs">
             <button class="db-tab ${isData ? 'active' : ''}" data-tab="data">Données</button>
-            <button class="db-tab ${!isData ? 'active' : ''}" data-tab="infer_opti">Infer/Opti</button>
+            <button class="db-tab ${isInferOpti ? 'active' : ''}" data-tab="infer_opti">Pipeline</button>
+            <button class="db-tab ${isAudit ? 'active' : ''}" data-tab="audit">Audit</button>
+            <button class="db-tab ${isExpertScientific ? 'active' : ''}" data-tab="expert_scientifique">Expert scientifique avancé</button>
           </div>
           <div id="schema-tree-container" style="${isData ? '' : 'display:none'}"></div>
-          <div id="infer-opti-container" style="${!isData ? '' : 'display:none'}">
+          <div id="infer-opti-container" style="${isInferOpti ? '' : 'display:none'}">
             ${this.renderInferOptiPanel()}
           </div>
+          <div id="audit-container" style="${isAudit ? '' : 'display:none'}">
+            <div style="padding:16px;color:#94a3b8;font-size:12px">
+              Audit: métriques (LOO / CV) à partir des tables <code style="color:#e2e8f0">atlas.ai_variograms</code>.
+            </div>
+          </div>
+          <div id="expert-scientifique-container" style="${isExpertScientific ? '' : 'display:none'}"></div>
         </div>
         <div class="db-main" id="data-grid-container" style="${isData ? '' : 'display:none'}"></div>
-        <div class="db-main" id="infer-opti-main" style="${!isData ? '' : 'display:none'}">
+        <div class="db-main" id="infer-opti-main" style="${isInferOpti ? '' : 'display:none'}">
           ${this.renderInferOptiMain()}
+        </div>
+        <div class="db-main" id="audit-main" style="${isAudit ? '' : 'display:none'}">
+          ${this.renderAuditMain()}
+        </div>
+        <div class="db-main" id="expert-scientifique-main" style="${isExpertScientific ? '' : 'display:none'}">
+          ${this.renderExpertScientificMain()}
         </div>
       </div>
     `
@@ -282,8 +299,8 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
     const status = this.state.aiStatus
     return `
       <div class="infer-opti-sidebar">
-        <div class="infer-opti-title">IA / Optimisation</div>
-        <div class="infer-opti-sub">Pilotage V1 (jobs, métriques, recalculs)</div>
+        <div class="infer-opti-title">Pipeline</div>
+        <div class="infer-opti-sub">Pilotage IA (recalculs, jobs) + historique runs.</div>
         <div class="infer-opti-actions">
           <button class="btn-ai" data-action="refresh-sources">Recalculer sources IA/AG</button>
           <button class="btn-ai" data-action="kriging">Recalculer Kriging (GP)</button>
@@ -304,14 +321,15 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
       <div class="infer-opti-main">
         <div class="infer-opti-main-header">
           <div>
-            <div class="infer-opti-h1">Infer/Opti</div>
-            <div class="infer-opti-h2">Derniers jobs IA (queue) + exécution + logs.</div>
+            <div class="infer-opti-h1">Pipeline</div>
+            <div class="infer-opti-h2">Jobs récents + historique des runs d'interpolation.</div>
           </div>
           <div class="infer-opti-main-cta">
             <button class="btn-ai small" data-action="jobs-refresh">Rafraîchir</button>
           </div>
         </div>
         <div class="infer-opti-jobs">
+          <div class="infer-opti-subtitle" style="margin:10px 0 6px;color:#94a3b8;font-size:12px">Jobs récents</div>
           <table class="jobs-table">
             <thead>
               <tr>
@@ -323,6 +341,123 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
             </thead>
             <tbody id="ai-jobs-tbody">
               <tr><td colspan="4" style="color:#94a3b8">Charge les jobs…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="infer-opti-run-history" style="margin-top:18px">
+          <div class="infer-opti-subtitle" style="margin:10px 0 6px;color:#94a3b8;font-size:12px">Historique interpolation (runs)</div>
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th>run_id</th>
+                <th>parameter</th>
+                <th>zone</th>
+                <th>statut</th>
+              </tr>
+            </thead>
+            <tbody id="pipeline-runs-tbody">
+              <tr><td colspan="4" style="color:#94a3b8">Charge les runs…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+  }
+
+  private renderAuditMain(): string {
+    return `
+      <div class="infer-opti-main">
+        <div class="infer-opti-main-header">
+          <div>
+            <div class="infer-opti-h1">Audit</div>
+            <div class="infer-opti-h2">Métriques variogrammes (ai_variograms) — LOO / CV.</div>
+          </div>
+          <div class="infer-opti-main-cta">
+            <button class="btn-ai small" data-action="jobs-refresh">Rafraîchir</button>
+          </div>
+        </div>
+
+        <div id="audit-status" style="margin:10px 0 8px 0;color:#94a3b8;font-size:12px">Prêt.</div>
+
+        <div class="infer-opti-run-history">
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th>parameter_id</th>
+                <th>kriging_domain_id</th>
+                <th>loo_rmse</th>
+                <th>block_cv_rmse</th>
+                <th>spatial_kfold_rmse</th>
+              </tr>
+            </thead>
+            <tbody id="audit-variograms-tbody">
+              <tr><td colspan="5" style="color:#94a3b8">Charge les variogrammes…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `
+  }
+
+  private renderExpertScientificMain(): string {
+    return `
+      <div class="infer-opti-main">
+        <div class="infer-opti-main-header">
+          <div>
+            <div class="infer-opti-h1">Expert scientifique avancé</div>
+            <div class="infer-opti-h2">P8: catalogue de paramètres, file de jobs et cache des plots.</div>
+          </div>
+          <div class="infer-opti-main-cta">
+            <button class="btn-ai small" data-action="expert-refresh">Rafraîchir</button>
+          </div>
+        </div>
+
+        <div id="expert-scientifique-status" style="margin:10px 0 8px 0;color:#94a3b8;font-size:12px">Prêt.</div>
+
+        <div class="infer-opti-run-history" style="margin-top:12px">
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th>parameter_id</th>
+                <th>category</th>
+                <th>source</th>
+                <th>min_pts_strat</th>
+              </tr>
+            </thead>
+            <tbody id="expert-parameter-catalog-tbody">
+              <tr><td colspan="4" style="color:#94a3b8">Charge les paramètres…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="infer-opti-run-history" style="margin-top:14px">
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th>requested_at</th>
+                <th>parameter_id</th>
+                <th>job_type</th>
+                <th>status</th>
+              </tr>
+            </thead>
+            <tbody id="expert-job-queue-tbody">
+              <tr><td colspan="4" style="color:#94a3b8">Charge la file de jobs…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="infer-opti-run-history" style="margin-top:14px">
+          <table class="jobs-table">
+            <thead>
+              <tr>
+                <th>updated_at</th>
+                <th>cache_key</th>
+                <th>parameter_id</th>
+                <th>horizon_label</th>
+              </tr>
+            </thead>
+            <tbody id="expert-plot-cache-tbody">
+              <tr><td colspan="4" style="color:#94a3b8">Charge le cache des plots…</td></tr>
             </tbody>
           </table>
         </div>
@@ -615,11 +750,12 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
     // Tabs
     this.addEventListener('.db-tab', 'click', (e) => {
       const el = e.currentTarget as HTMLElement
-      const tab = (el.getAttribute('data-tab') || 'data') as 'data' | 'infer_opti'
+      const tab = (el.getAttribute('data-tab') || 'data') as 'data' | 'infer_opti' | 'audit' | 'expert_scientifique'
       this.setState({ activeTab: tab })
-      if (tab === 'infer_opti') {
-        this.refreshAiJobs()
-      }
+      if (tab === 'infer_opti') void this.refreshAiJobs()
+      if (tab === 'infer_opti') void this.refreshPipelineRuns()
+      if (tab === 'audit') void this.refreshAuditVariograms()
+      if (tab === 'expert_scientifique') void this.refreshExpertScientific()
     })
 
     // Infer/Opti actions
@@ -662,8 +798,14 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
         const r = await api.aiJobsRunOnce(1)
         this.setState({ aiStatus: JSON.stringify(r, null, 2) })
         await this.refreshAiJobs()
+        await this.refreshPipelineRuns()
+        await this.refreshAuditVariograms()
       } else if (action === 'jobs-refresh') {
         await this.refreshAiJobs()
+        await this.refreshPipelineRuns()
+        await this.refreshAuditVariograms()
+      } else if (action === 'expert-refresh') {
+        await this.refreshExpertScientific()
       } else {
         this.setState({ aiStatus: `Action inconnue: ${action}` })
       }
@@ -696,6 +838,189 @@ export class DbManagerModalComponent extends BaseComponent<ModalState> {
       }).join('')
     } catch (err: any) {
       this.setState({ aiStatus: `❌ jobs: ${err?.message || String(err)}` })
+    }
+  }
+
+  private async refreshPipelineRuns(): Promise<void> {
+    try {
+      const data = await api.getTableData('atlas', 'ai_interpolation_runs', {
+        limit: 30,
+        offset: 0,
+        // ordering best-effort: may fail if column name differs
+        order_by: 'created_at',
+        order_dir: 'DESC',
+      })
+
+      const tbody = this.container.querySelector('#pipeline-runs-tbody') as HTMLElement | null
+      if (!tbody) return
+
+      const rows = data?.rows || []
+      if (!Array.isArray(rows) || rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#94a3b8">Aucun run.</td></tr>`
+        return
+      }
+
+      const toStr = (v: any) => (v === null || v === undefined || v === '' ? '—' : String(v))
+
+      tbody.innerHTML = rows
+        .slice(0, 30)
+        .map((r: any) => {
+          const runId = r.id ?? r.run_id ?? '—'
+          const param = r.parameter_id ?? '—'
+          const zone = r.zone_id ?? r.kriging_domain_id ?? '—'
+          const status = r.status ?? '—'
+
+          return `
+            <tr>
+              <td>${this.escapeHtml(toStr(runId))}</td>
+              <td>${this.escapeHtml(toStr(param))}</td>
+              <td>${this.escapeHtml(toStr(zone))}</td>
+              <td>${this.escapeHtml(toStr(status))}</td>
+            </tr>
+          `
+        })
+        .join('')
+    } catch (err: any) {
+      this.setState({ aiStatus: `❌ runs: ${err?.message || String(err)}` })
+    }
+  }
+
+  private async refreshAuditVariograms(): Promise<void> {
+    try {
+      const data = await api.getTableData('atlas', 'ai_variograms', {
+        limit: 40,
+        offset: 0,
+      })
+
+      const tbody = this.container.querySelector('#audit-variograms-tbody') as HTMLElement | null
+      if (!tbody) return
+
+      const rows = data?.rows || []
+      if (!Array.isArray(rows) || rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="color:#94a3b8">Aucun résultat.</td></tr>`
+        return
+      }
+
+      const fmt = (v: any) => {
+        if (v === null || v === undefined || v === '') return '—'
+        const n = typeof v === 'number' ? v : Number(v)
+        if (!Number.isFinite(n)) return String(v)
+        return n.toFixed(3)
+      }
+
+      tbody.innerHTML = rows
+        .slice(0, 40)
+        .map((r: any) => {
+          const param = r.parameter_id ?? '—'
+          const domain = r.kriging_domain_id ?? '—'
+          return `
+            <tr>
+              <td>${this.escapeHtml(String(param))}</td>
+              <td>${this.escapeHtml(String(domain))}</td>
+              <td>${fmt(r.loo_rmse)}</td>
+              <td>${fmt(r.block_cv_rmse)}</td>
+              <td>${fmt(r.spatial_kfold_rmse)}</td>
+            </tr>
+          `
+        })
+        .join('')
+    } catch (err: any) {
+      this.setState({ aiStatus: `❌ audit: ${err?.message || String(err)}` })
+    }
+  }
+
+  private async refreshExpertScientific(): Promise<void> {
+    try {
+      const statusEl = this.container.querySelector('#expert-scientifique-status') as HTMLElement | null
+      if (statusEl) statusEl.textContent = 'Chargement…'
+
+      const [catalog, jobQueue, plotCache] = await Promise.all([
+        api.getTableData('atlas', 'ai_parameter_catalog', {
+          limit: 40,
+          offset: 0,
+          order_by: 'parameter_id',
+          order_dir: 'ASC',
+        }),
+        api.getTableData('atlas', 'ai_job_queue', {
+          limit: 40,
+          offset: 0,
+          order_by: 'requested_at',
+          order_dir: 'DESC',
+        }),
+        api.getTableData('atlas', 'ai_plot_cache', {
+          limit: 40,
+          offset: 0,
+          order_by: 'updated_at',
+          order_dir: 'DESC',
+        }),
+      ])
+
+      const catalogTbody = this.container.querySelector('#expert-parameter-catalog-tbody') as HTMLElement | null
+      if (catalogTbody) {
+        const rows = catalog?.rows || []
+        catalogTbody.innerHTML =
+          !Array.isArray(rows) || rows.length === 0
+            ? `<tr><td colspan="4" style="color:#94a3b8">Aucun param.</td></tr>`
+            : rows
+                .slice(0, 40)
+                .map((r: any) => {
+                  return `
+                    <tr>
+                      <td>${this.escapeHtml(String(r.parameter_id ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.category ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.source ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.min_pts_stratified ?? '—'))}</td>
+                    </tr>
+                  `
+                })
+                .join('')
+      }
+
+      const jobTbody = this.container.querySelector('#expert-job-queue-tbody') as HTMLElement | null
+      if (jobTbody) {
+        const rows = jobQueue?.rows || []
+        jobTbody.innerHTML =
+          !Array.isArray(rows) || rows.length === 0
+            ? `<tr><td colspan="4" style="color:#94a3b8">Aucun job.</td></tr>`
+            : rows
+                .slice(0, 40)
+                .map((r: any) => {
+                  return `
+                    <tr>
+                      <td>${this.escapeHtml(String(r.requested_at ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.parameter_id ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.job_type ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.status ?? '—'))}</td>
+                    </tr>
+                  `
+                })
+                .join('')
+      }
+
+      const cacheTbody = this.container.querySelector('#expert-plot-cache-tbody') as HTMLElement | null
+      if (cacheTbody) {
+        const rows = plotCache?.rows || []
+        cacheTbody.innerHTML =
+          !Array.isArray(rows) || rows.length === 0
+            ? `<tr><td colspan="4" style="color:#94a3b8">Cache vide.</td></tr>`
+            : rows
+                .slice(0, 40)
+                .map((r: any) => {
+                  return `
+                    <tr>
+                      <td>${this.escapeHtml(String(r.updated_at ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.cache_key ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.parameter_id ?? '—'))}</td>
+                      <td>${this.escapeHtml(String(r.horizon_label ?? '—'))}</td>
+                    </tr>
+                  `
+                })
+                .join('')
+      }
+
+      if (statusEl) statusEl.textContent = 'Chargé.'
+    } catch (err: any) {
+      this.setState({ aiStatus: `❌ expert_scientifique: ${err?.message || String(err)}` })
     }
   }
 }

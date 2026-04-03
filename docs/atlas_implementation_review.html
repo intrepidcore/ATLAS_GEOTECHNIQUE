@@ -1,0 +1,118 @@
+
+<style>
+*{box-sizing:border-box}
+.wrap{font-family:var(--font-sans);padding:1.5rem 2rem;color:var(--color-text-primary)}
+h2{font-size:14px;font-weight:500;margin:1.25rem 0 .5rem;border-left:3px solid var(--color-border-primary);padding-left:.75rem}
+h3{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin:.9rem 0 .3rem}
+p,li{font-size:12px;line-height:1.7;color:var(--color-text-secondary);margin:.15rem 0}
+ul{margin:.2rem 0;padding-left:1.2rem}
+code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+.block{border:1px solid var(--color-border-tertiary);border-radius:8px;margin:.6rem 0;overflow:hidden}
+.bh{display:flex;align-items:center;gap:.6rem;padding:.65rem 1rem;background:var(--color-background-secondary)}
+.bnum{font-family:var(--font-mono);font-size:11px;font-weight:500;min-width:32px;color:var(--color-text-tertiary)}
+.btitle{font-size:13px;font-weight:500;flex:1;color:var(--color-text-primary)}
+.badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px}
+.b-ok{background:var(--color-background-success);color:var(--color-text-success)}
+.b-warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.b-crit{background:var(--color-background-danger);color:var(--color-text-danger)}
+.b-info{background:var(--color-background-info);color:var(--color-text-info)}
+.bp{padding:.75rem 1rem}
+.row{display:flex;gap:.75rem;align-items:baseline;margin:.25rem 0;font-size:12px}
+.rlabel{min-width:80px;font-weight:500;color:var(--color-text-secondary)}
+.rval{flex:1;color:var(--color-text-secondary)}
+.pro{color:var(--color-text-success)}
+.con{color:var(--color-text-danger)}
+.warn{color:var(--color-text-warning)}
+hr{border:none;border-top:1px solid var(--color-border-tertiary);margin:.75rem 0}
+.metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:.5rem 0}
+.metric{border:1px solid var(--color-border-tertiary);border-radius:6px;padding:.5rem .7rem;text-align:center}
+.mval{font-size:18px;font-weight:500;color:var(--color-text-primary)}
+.mlabel{font-size:11px;color:var(--color-text-secondary);margin-top:.1rem}
+.mdelta{font-size:11px;margin-top:.1rem}
+.pos{color:var(--color-text-success)}
+.neg{color:var(--color-text-danger)}
+</style>
+<div class="wrap">
+
+<h2>Métriques de progression — avant / après session</h2>
+<div class="metric-row">
+  <div class="metric"><div class="mval">85</div><div class="mlabel">Sondages VBS</div><div class="mdelta pos">+34 (était 51)</div></div>
+  <div class="metric"><div class="mval">87</div><div class="mlabel">Sondages IP</div><div class="mdelta pos">+39 (était 48)</div></div>
+  <div class="metric"><div class="mval">76</div><div class="mlabel">Localités WL/WP</div><div class="mdelta pos">+76 (était 0)</div></div>
+  <div class="metric"><div class="mval">29407</div><div class="mlabel">Mailles EG KED</div><div class="mdelta pos">Première carte nationale</div></div>
+</div>
+
+<hr/>
+
+<!-- P0 -->
+<div class="block">
+  <div class="bh"><span class="bnum">P0</span><span class="btitle">Import WL/WP — résolu, un anti-pattern à corriger</span><span class="badge b-warn">Attention</span></div>
+  <div class="bp">
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">WL/WP importés pour 76 localités · ip_generated recalculé · couverture AC dépassée</span></div>
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">Correction du bug commit SQLAlchemy (transaction non fermée) — c'était la cause racine du blocage de plusieurs heures</span></div>
+    <div class="row"><span class="rlabel con">Risque</span><span class="rval">Le correctif <code>wp='-'</code> → <code>0.0</code> dans <code>_parse_float</code> est scientifiquement dangereux. Dans limite.xlsx, <code>'-'</code> signifie "non mesuré", pas "zéro". WP=0.0 donne IP = WL - 0 = WL, ce qui est physiquement faux (un sol avec IP = WL serait entièrement liquide à la limite de plasticité). Il faut garder <code>None</code> pour ces cas et ne pas les insérer.</span></div>
+    <div class="row"><span class="rlabel con">Dette</span><span class="rval">ip_generated = wl - wp calculé en Python avant insert, mais pas garanti par un trigger DB. Si WP est mis à jour ultérieurement, ip_generated dérive silencieusement.</span></div>
+    <h3>Correction recommandée</h3>
+    <ul>
+      <li>Remettre <code>'-'</code> → <code>None</code> dans <code>_parse_float</code></li>
+      <li>N'insérer que si <code>wl IS NOT NULL OR wp IS NOT NULL</code> (pas les deux nuls)</li>
+      <li>Ajouter trigger PostgreSQL : <code>ip_generated = CASE WHEN wl IS NOT NULL AND wp IS NOT NULL THEN wl - wp END</code></li>
+    </ul>
+  </div>
+</div>
+
+<!-- P0b -->
+<div class="block">
+  <div class="bh"><span class="bnum">P0b</span><span class="btitle">Fuzzy matching — correct mais nécessite un audit</span><span class="badge b-warn">Vérifier</span></div>
+  <div class="bp">
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">difflib cutoff=0.82 implémenté · logging dans import_coverage_log · score min observé ≈ 0.857</span></div>
+    <div class="row"><span class="rlabel con">Risque</span><span class="rval">Cutoff 0.82 peut produire de faux positifs sur des localités proches. Ex : "Tchalo" → "Tchamba" a un score ~0.80 (sous le seuil, OK), mais "Kpimé Séva" → "Kpimé Séva " avec espace trailing a score 0.96 et fusionne correctement. À vérifier : aucun match croisé entre deux localités géographiquement distinctes mais phonétiquement proches (Dimouri / Dimou, Komah / Komba).</span></div>
+    <div class="row"><span class="rlabel warn">Action</span><span class="rval">Produire un CSV des matchs fuzzy avec (excel_key, db_key, score, distance_km) et valider manuellement les 5 scores les plus bas (entre 0.82 et 0.86)</span></div>
+  </div>
+</div>
+
+<!-- P1 -->
+<div class="block">
+  <div class="bh"><span class="bnum">P1</span><span class="btitle">Catalog paramètres — bien structuré, un gap dans le seed</span><span class="badge b-ok">Solide</span></div>
+  <div class="bp">
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">Migration idempotente · pipeline lit depuis catalog · zéro hardcode dans atlas_geostat_ml_pipeline.py</span></div>
+    <div class="row"><span class="rlabel con">Gap</span><span class="rval">Le seed contient eg_ked_h1/h2/h3 comme paramètres distincts. C'est une décision d'architecture à assumer : soit les horizons sont des paramètres séparés (ce qui multiplie les entrées catalog pour chaque paramètre × 3 horizons), soit l'horizon est une dimension orthogonale au paramètre. La deuxième option est plus scalable : un seul <code>eg_avg</code> dans le catalog avec un champ <code>depth_horizons: ['H1','H2','H3']</code>.</span></div>
+    <div class="row"><span class="rlabel warn">Suggestion</span><span class="rval">Garder l'approche actuelle pour EG (déjà livré), mais ne pas reproduire ce pattern pour VBS/IP/WL/WP. Pour P3, utiliser un seul <code>vbs_avg</code> avec un champ <code>horizons</code> et générer dynamiquement les couches H1/H2/H3 dans le runner.</span></div>
+  </div>
+</div>
+
+<!-- Feature store -->
+<div class="block">
+  <div class="bh"><span class="bnum">P0-T6</span><span class="btitle">Feature store — débloqué mais architecture à consolider</span><span class="badge b-warn">Attention</span></div>
+  <div class="bp">
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">feature_version (1=lightweight, 2=full) · fonction resiliente avec fallback · commit batch par batch</span></div>
+    <div class="row"><span class="rlabel con">Risque</span><span class="rval">Le pipeline KED P2 utilise <code>mailles_geotechnique_stats_wgs84</code> (la MV) comme source de vérité, PAS <code>ai_maille_features_fast</code>. Le feature store vide n'a donc pas bloqué P2 — mais le pipeline ML supervisé (Tier 3) en aura besoin. Risque : croire que le feature store est opérationnel parce que les cartes KED fonctionnent, alors qu'il l'est seulement en feature_version=1 (sans DSM).</span></div>
+    <div class="row"><span class="rlabel warn">Action</span><span class="rval">Documenter explicitement dans le README pipeline : "Le pipeline KED lit depuis mv_mailles_geotech. Le pipeline ML lit depuis ai_maille_features_fast. Ces deux sources sont distinctes."</span></div>
+    <div class="row"><span class="rlabel con">Dette</span><span class="rval">La fonction <code>refresh_ai_maille_features_fast_for_codes</code> originale (migration 147) avec ST_Clip n'a pas été corrigée — seulement contournée. La dette est documentée mais pas résolue.</span></div>
+  </div>
+</div>
+
+<!-- P2 -->
+<div class="block">
+  <div class="bh"><span class="bnum">P2</span><span class="btitle">KED EG H1/H2/H3 — excellent résultat scientifique</span><span class="badge b-ok">Solide</span></div>
+  <div class="bp">
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">29407 mailles couvertes × 3 horizons · LOO RMSE cohérents (~1.67-1.69) · ai_variograms peuplés · pedological_drift_priors créés et seedés · API validée</span></div>
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">LOO RMSE ~1.67 % pour EG (qui varie de 0 à 10 %) = erreur relative ~17 % — acceptable pour un kriging avec 76 points sur domaine national. Défendable scientifiquement.</span></div>
+    <div class="row"><span class="rlabel con">Gap API</span><span class="rval">La route force <code>grid=2km</code> même si <code>grid=28km</code> est demandé. C'est un workaround documenté mais non résolu. Si l'UI propose une vue "nationale" en 28km, EG KED ne s'affichera pas correctement.</span></div>
+    <div class="row"><span class="rlabel con">Gap scientifique</span><span class="rval">Les priors pédologiques sont calculés depuis les données AMESSEFE uniquement (76 localités). Ils ne représentent pas la distribution nationale complète. Il faudra les recalculer quand d'autres sources seront intégrées.</span></div>
+    <div class="row"><span class="rlabel warn">Critique clé</span><span class="rval">La vue <code>v_latest_ai_interpolation</code> n'a pas été mise à jour avec la logique de priorité (kriging_stratifie > ked_pedologie > kriging_global). Le workaround <code>is_eg_ked</code> dans routes.rs contourne le problème, mais ne règle pas la source de vérité pour l'UI et le pipeline aval.</span></div>
+  </div>
+</div>
+
+<!-- Architecture globale -->
+<div class="block">
+  <div class="bh"><span class="bnum">ARCH</span><span class="btitle">Architecture globale — cohérente mais quelques dettes à adresser</span><span class="badge b-info">Info</span></div>
+  <div class="bp">
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">Séparation claire runner KED (run_ked_eg_horizons.py) / pipeline ML (atlas_geostat_ml_pipeline.py) / import (repair_amessefe...)</span></div>
+    <div class="row"><span class="rlabel pro">Bien</span><span class="rval">Traçabilité : ai_interpolation_runs + ai_variograms + pedological_drift_priors + import_coverage_log = audit trail complet</span></div>
+    <div class="row"><span class="rlabel con">Dette</span><span class="rval">6 migrations en 1 session (162→167) sans seeds de test ni rollback SQL documenté. En cas de corruption DB, rejouer les migrations dans l'ordre sans données de test est risqué.</span></div>
+    <div class="row"><span class="rlabel con">Dette</span><span class="rval">Le pattern <code>is_eg_ked</code> dans routes.rs est un cas spécial hardcodé. Quand P3 ajoutera vbs_ked_h1/h2/h3 et ip_ked_h1/h2/h3, ce pattern va proliférer. Il faut abstraire en une liste de paramètres "ked" lus depuis le catalog.</span></div>
+  </div>
+</div>
+
+</div>

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest src/lcpi/hydrodrain/tests/test_assainissement_guardrails.py src/lcpi/hydrodrain/tests/test_swmm_components.py src/lcpi/hydrodrain/tests/test_workflow_swmm_scaffold.py src/lcpi/hydrodrain/tests/test_canonize_gpkg.py -v --tb=short)",
+      "Bash(xargs rm:*)",
+      "Bash(ls C:/PROJET_DIMENTIONEMENT_2/docker*)",
+      "Bash(ls C:/PROJET_DIMENTIONEMENT_2/Dockerfile*)",
+      "Bash(docker info:*)",
+      "Bash(docker system:*)",
+      "Bash(docker version:*)"
+    ]
+  }
+}

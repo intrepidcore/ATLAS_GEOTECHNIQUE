@@ -1,0 +1,470 @@
+/**
+ * Command Center Infer/Opti — thème SaaS sombre (spec wireframe).
+ */
+
+.infer-opti-cc-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(4px);
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.infer-opti-cc-overlay[hidden] {
+  display: none !important;
+}
+
+.infer-opti-cc-panel {
+  width: min(1100px, 100%);
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+  color: #f8fafc;
+  font-family: Inter, Roboto, system-ui, Segoe UI, sans-serif;
+}
+
+.infer-opti-cc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid #334155;
+  background: #0f172a;
+}
+
+.infer-opti-cc-title-row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.infer-opti-cc-title-row svg {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  stroke: #94a3b8;
+}
+
+.infer-opti-cc-title-text h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.infer-opti-cc-title-text p {
+  margin: 6px 0 0 0;
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.45;
+  max-width: 520px;
+}
+
+.infer-opti-cc-close {
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 22px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.infer-opti-cc-close:hover {
+  border-color: #94a3b8;
+  background: #253548;
+}
+
+.infer-opti-cc-body {
+  padding: 18px 20px 22px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.infer-opti-cc-perm-warn {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #b45309;
+  background: rgba(180, 83, 9, 0.15);
+  color: #fdba74;
+  font-size: 12px;
+}
+
+.infer-opti-cc-actions {
+  margin-bottom: 20px;
+}
+
+.infer-opti-cc-action-zone {
+  margin-bottom: 16px;
+}
+
+.infer-opti-cc-zone-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.infer-opti-cc-btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: stretch;
+}
+
+.infer-opti-cc-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  transition: border-color 0.15s, background 0.15s, opacity 0.15s;
+}
+
+.infer-opti-cc-btn svg {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+
+.infer-opti-cc-btn:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.infer-opti-cc-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.infer-opti-cc-btn--primary {
+  background: #2563eb;
+  border-color: transparent;
+  color: #f8fafc;
+}
+
+.infer-opti-cc-btn--primary:hover:not(:disabled) {
+  background: #1d4ed8;
+  border-color: transparent;
+}
+
+.infer-opti-cc-btn--ghost {
+  background: transparent;
+  border-color: #334155;
+}
+
+.infer-opti-cc-btn--ghost:hover:not(:disabled) {
+  border-color: #64748b;
+  background: rgba(30, 41, 59, 0.5);
+}
+
+.infer-opti-cc-btn .infer-opti-cc-spin {
+  animation: infer-opti-cc-spin 0.9s linear infinite;
+}
+
+@keyframes infer-opti-cc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.infer-opti-cc-split {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .infer-opti-cc-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+.infer-opti-cc-col-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.infer-opti-cc-col-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.infer-opti-cc-terminal-wrap {
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #1e293b;
+  overflow: hidden;
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+}
+
+.infer-opti-cc-terminal-bar {
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  border-bottom: 1px solid #334155;
+  background: #0b0f19;
+}
+
+.infer-opti-cc-terminal {
+  flex: 1;
+  min-height: 240px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding: 12px 14px;
+  margin: 0;
+  font-family: 'Fira Code', 'Roboto Mono', Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.55;
+  color: #e2e8f0;
+  background: #000000;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.infer-opti-cc-log-line {
+  display: block;
+  margin: 0 0 2px 0;
+}
+
+.infer-opti-cc-log-tag {
+  font-weight: 600;
+}
+
+.infer-opti-cc-log-info {
+  color: #38bdf8;
+}
+
+.infer-opti-cc-log-warn {
+  color: #fb923c;
+}
+
+.infer-opti-cc-log-err {
+  color: #f87171;
+}
+
+.infer-opti-cc-log-action {
+  color: #a78bfa;
+}
+
+.infer-opti-cc-table-wrap {
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: #1e293b;
+  overflow: auto;
+  max-height: 400px;
+}
+
+.infer-opti-cc-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.infer-opti-cc-table th {
+  text-align: left;
+  padding: 10px 12px;
+  color: #94a3b8;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 11px;
+  border-bottom: 1px solid #334155;
+  background: #1e293b;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.infer-opti-cc-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #334155;
+  color: #f8fafc;
+  vertical-align: middle;
+}
+
+.infer-opti-cc-table tr:hover td {
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.infer-opti-cc-table-actions {
+  width: 48px;
+  text-align: right;
+}
+
+.infer-opti-cc-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #1e293b;
+  color: #f8fafc;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.infer-opti-cc-refresh:hover:not(:disabled) {
+  border-color: #94a3b8;
+}
+
+.infer-opti-cc-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.infer-opti-cc-refresh svg {
+  width: 16px;
+  height: 16px;
+}
+
+.infer-opti-cc-refresh .infer-opti-cc-spin {
+  animation: infer-opti-cc-spin 0.9s linear infinite;
+}
+
+.infer-opti-cc-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.infer-opti-cc-pill svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.infer-opti-cc-pill--ok {
+  background: #064e3b;
+  color: #34d399;
+}
+
+.infer-opti-cc-pill--err {
+  background: #7f1d1d;
+  color: #fca5a5;
+}
+
+.infer-opti-cc-pill--run {
+  background: #1e3a8a;
+  color: #60a5fa;
+}
+
+.infer-opti-cc-pill--queue {
+  background: #422006;
+  color: #fdba74;
+}
+
+.infer-opti-cc-pill--unk {
+  background: #1e293b;
+  color: #94a3b8;
+  border: 1px solid #334155;
+}
+
+.infer-opti-cc-menu-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.infer-opti-cc-menu-btn:hover {
+  background: rgba(51, 65, 85, 0.5);
+  color: #f8fafc;
+}
+
+.infer-opti-cc-menu-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.infer-opti-cc-dropdown {
+  position: fixed;
+  z-index: 4100;
+  min-width: 220px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  padding: 6px;
+}
+
+.infer-opti-cc-dropdown[hidden] {
+  display: none !important;
+}
+
+.infer-opti-cc-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #f8fafc;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.infer-opti-cc-dropdown button:hover {
+  background: #1e293b;
+}
+
+.infer-opti-cc-dropdown button svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}

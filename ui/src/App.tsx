@@ -6,7 +6,7 @@ import { FieldCalculator } from '@/components/FieldCalculator'
 import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
-import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut, Bell } from 'lucide-react'
+import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut, Bell, Moon, Sun } from 'lucide-react'
 import { UserProfileMenu } from '@/components/UserProfileMenu'
 import { RBACManager } from '@/components/RBACManager'
 import { SchemaTableSelector } from '@/components/SchemaTableSelector'
@@ -21,6 +21,8 @@ import { MapPanel } from '@/components/MapPanel'
 import ColabStudentPage from '@/pages/ColabStudentPage'
 import LoginPage from '@/pages/LoginPage'
 import { useAuth } from '@/contexts/AuthContext'
+import { useAtlasTheme } from '@/contexts/ThemeContext'
+import { InferOptiCommandCenterDbPanel } from '@/components/InferOptiCommandCenterDbPanel'
 import { selectionApi } from '@/services/selection-api'
 import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/services/api'
 import { authApi, tokenStorage } from './services/auth-api'
@@ -51,7 +53,8 @@ function getTauriInvoke(): TauriInvoke | null {
 }
 
 function App() {
-  const { isAuthenticated, isLoading: authLoading, user, logout } = useAuth()
+  const { isAuthenticated, isLoading: authLoading, user, logout, hasPermission } = useAuth()
+  const { theme, toggleTheme } = useAtlasTheme()
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<string>('sondages')
@@ -91,10 +94,6 @@ function App() {
   const [lastDiagnosticDir, setLastDiagnosticDir] = useState<string | null>(null)
   const [lastResetQuarantine, setLastResetQuarantine] = useState<string | null>(null)
   const [dbConnectionInfo, setDbConnectionInfo] = useState<DbConnectionInfo | null>(null)
-  const [aiStatus, setAiStatus] = useState<string>('Prêt')
-  const [aiBusy, setAiBusy] = useState(false)
-  const [aiJobsRows, setAiJobsRows] = useState<any[]>([])
-
   // Desktop first-run: si le marker d'installation n'existe pas, on bascule sur l'installateur
   useEffect(() => {
     const inv = getTauriInvoke()
@@ -172,46 +171,6 @@ function App() {
       }
     } catch (err) {
       console.error('Erreur chargement notifications:', err)
-    }
-  }
-
-  const callAiApi = async (path: string, method: 'GET' | 'POST' = 'GET', body?: any) => {
-    const token = tokenStorage.getAccessToken()
-    if (!token) throw new Error('Token manquant')
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      method,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: method === 'POST' ? JSON.stringify(body ?? {}) : undefined,
-    })
-    if (!response.ok) {
-      const txt = await response.text()
-      throw new Error(txt || `HTTP ${response.status}`)
-    }
-    return await response.json()
-  }
-
-  const refreshAiJobs = async () => {
-    const data = await callAiApi('/ai/jobs/recent', 'GET')
-    setAiJobsRows(Array.isArray(data?.jobs) ? data.jobs : [])
-    return data
-  }
-
-  const runAiAction = async (label: string, fn: () => Promise<any>) => {
-    if (aiBusy) return
-    setAiBusy(true)
-    setAiStatus(`⏳ ${label}...`)
-    try {
-      const out = await fn()
-      setAiStatus(JSON.stringify(out, null, 2))
-      return out
-    } catch (e: any) {
-      setAiStatus(`❌ ${e?.message || String(e)}`)
-      return null
-    } finally {
-      setAiBusy(false)
     }
   }
 
@@ -670,10 +629,10 @@ function App() {
   // Afficher le loader pendant le chargement de l'auth ou la redirection
   if (authLoading || isRedirecting) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-          <p className="text-slate-600">{isRedirecting ? 'Redirection vers la carte...' : 'Chargement...'}</p>
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">{isRedirecting ? 'Redirection vers la carte...' : 'Chargement...'}</p>
         </div>
       </div>
     )
@@ -700,7 +659,7 @@ function App() {
   // Rediriger les étudiants vers leur interface dédiée
   if (isStudentOnly) {
     return (
-      <div className="min-h-screen bg-slate-50">
+      <div className="min-h-screen bg-background">
         <header className="bg-gradient-to-r from-blue-600 to-blue-700 text-white sticky top-0 z-50">
           <div className="w-full px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between h-16">
@@ -726,31 +685,40 @@ function App() {
 
   // Interface Gestionnaire BDD pour admin/supervisor/data_manager/etc.
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <header className="bg-white border-b border-slate-200 sticky top-0 z-50">
+      <header className="bg-card border-b border-border sticky top-0 z-50">
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
-              <Database className="h-8 w-8 text-blue-600" />
+              <Database className="h-8 w-8 text-primary" />
               <div>
-                <h1 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <h1 className="text-xl font-bold flex items-center gap-2">
                   Atlas Géotechnique - Gestionnaire de Base de Données
                   <ApiHealthIndicator />
                 </h1>
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-muted-foreground">
                   Gestion avancée des données géotechniques
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={toggleTheme}
+                title={theme === 'dark' ? 'Passer en thème clair' : 'Passer en thème sombre'}
+                className="text-muted-foreground"
+              >
+                {theme === 'dark' ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </Button>
               {/* Notifications */}
               <div className="relative">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setShowNotifications(!showNotifications)}
-                  className="relative text-slate-500 hover:text-slate-700"
+                  className="relative text-muted-foreground hover:text-foreground"
                   title="Notifications"
                 >
                   <Bell className="h-5 w-5" />
@@ -763,16 +731,16 @@ function App() {
                 
                 {/* Dropdown notifications */}
                 {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-lg border z-50">
-                    <div className="p-3 border-b flex items-center justify-between">
-                      <h3 className="font-semibold text-slate-900">Notifications</h3>
+                  <div className="absolute right-0 mt-2 w-80 bg-card rounded-xl shadow-lg border border-border z-50">
+                    <div className="p-3 border-b border-border flex items-center justify-between">
+                      <h3 className="font-semibold">Notifications</h3>
                       {unreadCount > 0 && (
-                        <span className="text-xs text-slate-500">{unreadCount} non lues</span>
+                        <span className="text-xs text-muted-foreground">{unreadCount} non lues</span>
                       )}
                     </div>
                     <div className="max-h-80 overflow-y-auto">
                       {notifications.length === 0 ? (
-                        <div className="p-4 text-center text-slate-500 text-sm">
+                        <div className="p-4 text-center text-muted-foreground text-sm">
                           Aucune notification
                         </div>
                       ) : (
@@ -780,13 +748,13 @@ function App() {
                           <div
                             key={notif.id}
                             onClick={() => markNotificationRead(notif.id)}
-                            className={`p-3 border-b hover:bg-slate-50 cursor-pointer ${
-                              !notif.read_at ? 'bg-blue-50' : ''
+                            className={`p-3 border-b border-border hover:bg-muted/60 cursor-pointer ${
+                              !notif.read_at ? 'bg-accent/40' : ''
                             }`}
                           >
-                            <p className="text-sm text-slate-900">{notif.title}</p>
-                            <p className="text-xs text-slate-500 mt-1">{notif.message}</p>
-                            <p className="text-xs text-slate-400 mt-1">
+                            <p className="text-sm">{notif.title}</p>
+                            <p className="text-xs text-muted-foreground mt-1">{notif.message}</p>
+                            <p className="text-xs text-muted-foreground/80 mt-1">
                               {new Date(notif.created_at).toLocaleDateString('fr-FR')}
                             </p>
                           </div>
@@ -847,7 +815,7 @@ function App() {
                 />
               }
               centerPanel={
-                <div className="h-full flex flex-col bg-white">
+                <div className="h-full flex flex-col bg-card border border-border rounded-lg overflow-hidden">
                   {/* Header avec sélecteurs et mode édition */}
                   <div className="p-4 border-b space-y-3">
                     <div className="flex items-center justify-between">
@@ -923,7 +891,7 @@ function App() {
               }
               rightPanel={
                 editMode ? (
-                  <div className="h-full bg-white">
+                  <div className="h-full bg-card border border-border rounded-lg overflow-hidden">
                     <StagingPanel
                       changes={stagingChanges}
                       onPreview={handlePreviewDryRun}
@@ -946,13 +914,13 @@ function App() {
 
           {/* Staging Tab */}
           <TabsContent value="staging" className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-6">
               <h2 className="text-lg font-semibold mb-6">Gestion du Staging</h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                <div className="border rounded-lg p-4">
+                <div className="border border-border rounded-lg p-4 bg-muted/20">
                   <h3 className="font-medium mb-2">Staging Actif</h3>
-                  <p className="text-sm text-slate-500 mb-4">
+                  <p className="text-sm text-muted-foreground mb-4">
                     Aucun staging en cours
                   </p>
                   <Button onClick={() => setActiveModal('staging')}>
@@ -960,9 +928,9 @@ function App() {
                   </Button>
                 </div>
 
-                <div className="border rounded-lg p-4">
+                <div className="border border-border rounded-lg p-4 bg-muted/20">
                   <h3 className="font-medium mb-2">Historique</h3>
-                  <p className="text-sm text-slate-500">
+                  <p className="text-sm text-muted-foreground">
                     3 commits aujourd'hui
                   </p>
                 </div>
@@ -975,7 +943,7 @@ function App() {
           {/* Tools Tab */}
           <TabsContent value="tools" className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-card rounded-lg shadow-sm border border-border p-6">
                 <Calculator className="h-12 w-12 text-blue-600 mb-4" />
                 <h3 className="font-semibold mb-2">Calculatrice de Champs</h3>
                 <p className="text-sm text-slate-500 mb-4">
@@ -990,7 +958,7 @@ function App() {
                 </Button>
               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-card rounded-lg shadow-sm border border-border p-6">
                 <Upload className="h-12 w-12 text-green-600 mb-4" />
                 <h3 className="font-semibold mb-2">Import/Export</h3>
                 <p className="text-sm text-slate-500 mb-4">
@@ -1005,7 +973,7 @@ function App() {
                 </Button>
               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-card rounded-lg shadow-sm border border-border p-6">
                 <GitCompare className="h-12 w-12 text-purple-600 mb-4" />
                 <h3 className="font-semibold mb-2">Comparateur</h3>
                 <p className="text-sm text-slate-500 mb-4">
@@ -1016,7 +984,7 @@ function App() {
                 </Button>
               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-card rounded-lg shadow-sm border border-border p-6">
                 <Shield className="h-12 w-12 text-orange-600 mb-4" />
                 <h3 className="font-semibold mb-2">RBAC - Permissions</h3>
                 <p className="text-sm text-slate-500 mb-4">
@@ -1031,7 +999,7 @@ function App() {
                 </Button>
               </div>
 
-              <div className="bg-white rounded-lg shadow p-6">
+              <div className="bg-card rounded-lg shadow-sm border border-border p-6">
                 <Activity className="h-12 w-12 text-red-600 mb-4" />
                 <h3 className="font-semibold mb-2">Monitoring</h3>
                 <p className="text-sm text-slate-500 mb-4">
@@ -1049,7 +1017,7 @@ function App() {
           </TabsContent>
 
           <TabsContent value="database" className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6 space-y-4">
+            <div className="bg-card rounded-lg shadow-sm border border-border p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold">Base de données (Desktop)</h2>
                 {dbBusy ? (
@@ -1094,7 +1062,7 @@ function App() {
 
               {dbConnectionInfo?.database_url ? (
                 <div className="space-y-2">
-                  <div className="text-sm text-gray-600">DATABASE_URL</div>
+                  <div className="text-sm text-muted-foreground">DATABASE_URL</div>
                   <div className="flex gap-2">
                     <input
                       className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm font-mono"
@@ -1119,7 +1087,7 @@ function App() {
               ) : null}
 
               <div className="space-y-2">
-                <div className="text-sm text-gray-600">Restore (chemin du backup)</div>
+                <div className="text-sm text-muted-foreground">Restore (chemin du backup)</div>
                 <div className="flex gap-2">
                   <input
                     className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm"
@@ -1134,7 +1102,7 @@ function App() {
                 </div>
               </div>
 
-              <div className="text-sm text-gray-600 space-y-1">
+              <div className="text-sm text-muted-foreground space-y-1">
                 {lastBackupPath ? <div>Dernier backup: {lastBackupPath}</div> : null}
                 {lastDiagnosticDir ? <div>Dernier export diagnostic: {lastDiagnosticDir}</div> : null}
                 {lastResetQuarantine ? <div>Dernier reset (quarantaine): {lastResetQuarantine}</div> : null}
@@ -1143,74 +1111,10 @@ function App() {
           </TabsContent>
 
           <TabsContent value="infer-opti" className="space-y-6">
-            <div className="bg-white rounded-lg shadow p-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-lg font-semibold">Infer/Opti</h2>
-                  <p className="text-sm text-slate-500">Pilotage IA: kriging, entraînement supervisé, jobs queue, sources thématiques.</p>
-                </div>
-                {aiBusy ? (
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Exécution...
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-                <Button disabled={aiBusy} onClick={() => runAiAction('Recalcul sources IA/AG', () => callAiApi('/ai/recompute/sources', 'POST', {}))} variant="outline">
-                  Recalcul sources
-                </Button>
-                <Button disabled={aiBusy} onClick={() => runAiAction('Kriging GP', () => callAiApi('/ai/kriging/recompute', 'POST', {}))} variant="outline">
-                  Kriging
-                </Button>
-                <Button disabled={aiBusy} onClick={() => runAiAction('Train supervisé', () => callAiApi('/ai/infer/train-supervised', 'POST', {}))}>
-                  Train supervisé
-                </Button>
-                <Button disabled={aiBusy} onClick={() => runAiAction('Run job queue', () => callAiApi('/ai/jobs/run-once', 'POST', { max_jobs: 1 }))} variant="outline">
-                  Run 1 job
-                </Button>
-                <Button disabled={aiBusy} onClick={() => runAiAction('Refresh jobs', refreshAiJobs)} variant="outline">
-                  Rafraîchir jobs
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <div>
-                  <div className="text-sm font-medium text-slate-700 mb-2">Statut</div>
-                  <pre className="rounded-md border bg-slate-50 p-3 text-xs overflow-auto max-h-72">{aiStatus}</pre>
-                </div>
-                <div>
-                  <div className="text-sm font-medium text-slate-700 mb-2">Derniers jobs</div>
-                  <div className="rounded-md border overflow-hidden">
-                    <table className="min-w-full text-xs">
-                      <thead className="bg-slate-50 text-slate-600">
-                        <tr>
-                          <th className="text-left px-2 py-2">Demandé</th>
-                          <th className="text-left px-2 py-2">Cible</th>
-                          <th className="text-left px-2 py-2">Statut</th>
-                          <th className="text-left px-2 py-2">Raison</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {aiJobsRows.length === 0 ? (
-                          <tr><td className="px-2 py-2 text-slate-500" colSpan={4}>Aucun job chargé</td></tr>
-                        ) : (
-                          aiJobsRows.slice(0, 20).map((j: any) => (
-                            <tr key={j.id} className="border-t">
-                              <td className="px-2 py-2">{String(j.requested_at || '').replace('T', ' ').slice(0, 19)}</td>
-                              <td className="px-2 py-2">{j.model_target || '—'}</td>
-                              <td className="px-2 py-2">{j.status || '—'}</td>
-                              <td className="px-2 py-2">{j.trigger_reason || '—'}</td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <InferOptiCommandCenterDbPanel
+              apiBase={API_BASE_URL}
+              hasJobsPermission={hasPermission('colab.missions.read')}
+            />
           </TabsContent>
 
           {/* Colab Studio Tab - Gestion des missions terrain */}

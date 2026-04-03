@@ -195,6 +195,43 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
   },
 
   // ─────────────────────────────────────────────────────────────────────────
+  // IP dérivé (P5): WL_ked - WP_ked par horizon
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'ip_derived_h1',
+    label: 'IP dérivé H1 (0.5m)',
+    unit: '%',
+    category: 'atterberg',
+    description: 'Indice de plasticité dérivé: WL_ked - WP_ked (clipping négatif à 0)',
+    formula: 'IP_derived = max(0, WL_ked - WP_ked)',
+    defaultBreaks: [7, 12, 25, 40],
+    defaultPalette: 'PuRd',
+    minEssaisField: 'n_essais_atterberg'
+  },
+  {
+    id: 'ip_derived_h2',
+    label: 'IP dérivé H2 (1.5m)',
+    unit: '%',
+    category: 'atterberg',
+    description: 'Indice de plasticité dérivé: WL_ked - WP_ked (clipping négatif à 0)',
+    formula: 'IP_derived = max(0, WL_ked - WP_ked)',
+    defaultBreaks: [7, 12, 25, 40],
+    defaultPalette: 'PuRd',
+    minEssaisField: 'n_essais_atterberg'
+  },
+  {
+    id: 'ip_derived_h3',
+    label: 'IP dérivé H3 (2.0m)',
+    unit: '%',
+    category: 'atterberg',
+    description: 'Indice de plasticité dérivé: WL_ked - WP_ked (clipping négatif à 0)',
+    formula: 'IP_derived = max(0, WL_ked - WP_ked)',
+    defaultBreaks: [7, 12, 25, 40],
+    defaultPalette: 'PuRd',
+    minEssaisField: 'n_essais_atterberg'
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
   // POTENTIEL DE GONFLEMENT
   // ─────────────────────────────────────────────────────────────────────────
   {
@@ -267,6 +304,41 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     defaultPalette: 'BrBG',
     minEssaisField: 'n_essais_granulo'
   },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Passant (P4 KED granulométrie) par horizon
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'passant_80um_ked_h1',
+    label: '% Passant 80µm KED H1 (0.5m)',
+    unit: '%',
+    category: 'granulo',
+    description: 'Fraction argileuse + limoneuse (< 80µm) interpolée KED via résiduels par horizon',
+    defaultBreaks: [12, 35, 50, 70],
+    defaultPalette: 'BrBG',
+    minEssaisField: 'n_essais_granulo'
+  },
+  {
+    id: 'passant_80um_ked_h2',
+    label: '% Passant 80µm KED H2 (1.5m)',
+    unit: '%',
+    category: 'granulo',
+    description: 'Fraction argileuse + limoneuse (< 80µm) interpolée KED via résiduels par horizon',
+    defaultBreaks: [12, 35, 50, 70],
+    defaultPalette: 'BrBG',
+    minEssaisField: 'n_essais_granulo'
+  },
+  {
+    id: 'passant_80um_ked_h3',
+    label: '% Passant 80µm KED H3 (2.0m)',
+    unit: '%',
+    category: 'granulo',
+    description: 'Fraction argileuse + limoneuse (< 80µm) interpolée KED via résiduels par horizon',
+    defaultBreaks: [12, 35, 50, 70],
+    defaultPalette: 'BrBG',
+    minEssaisField: 'n_essais_granulo'
+  },
+
   // ─────────────────────────────────────────────────────────────────────────
   // CONTEXTE GÉOGRAPHIQUE
   // ─────────────────────────────────────────────────────────────────────────
@@ -286,6 +358,34 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: '%',
     category: 'granulo',
     description: 'Fraction sable + fines (< 2mm)',
+    defaultPalette: 'YlGnBu',
+    minEssaisField: 'n_essais_granulo'
+  },
+
+  {
+    id: 'passant_2mm_ked_h1',
+    label: '% Passant 2mm KED H1 (0.5m)',
+    unit: '%',
+    category: 'granulo',
+    description: 'Fraction sable + fines (< 2mm) interpolée KED via résiduels par horizon',
+    defaultPalette: 'YlGnBu',
+    minEssaisField: 'n_essais_granulo'
+  },
+  {
+    id: 'passant_2mm_ked_h2',
+    label: '% Passant 2mm KED H2 (1.5m)',
+    unit: '%',
+    category: 'granulo',
+    description: 'Fraction sable + fines (< 2mm) interpolée KED via résiduels par horizon',
+    defaultPalette: 'YlGnBu',
+    minEssaisField: 'n_essais_granulo'
+  },
+  {
+    id: 'passant_2mm_ked_h3',
+    label: '% Passant 2mm KED H3 (2.0m)',
+    unit: '%',
+    category: 'granulo',
+    description: 'Fraction sable + fines (< 2mm) interpolée KED via résiduels par horizon',
     defaultPalette: 'YlGnBu',
     minEssaisField: 'n_essais_granulo'
   },
@@ -668,6 +768,9 @@ export const THEMATIC_PALETTE_MAP: Record<string, ThematicPaletteConfig> = {
   // Argilosité / plasticité - palettes chaudes (risque argileux)
   'vbs_avg': { palette: 'YlOrRd', rationale: 'Risque argileux croissant (jaune→rouge)' },
   'ip_avg': { palette: 'PuRd', rationale: 'Plasticité (mauve/rose)' },
+  'ip_derived_h1': { palette: 'PuRd', rationale: 'IP dérivé H1 (WL_ked - WP_ked)' },
+  'ip_derived_h2': { palette: 'PuRd', rationale: 'IP dérivé H2 (WL_ked - WP_ked)' },
+  'ip_derived_h3': { palette: 'PuRd', rationale: 'IP dérivé H3 (WL_ked - WP_ked)' },
   'wl_avg': { palette: 'PuBu', rationale: 'Limite de liquidité (bleu)' },
   'wp_avg': { palette: 'BuPu', rationale: 'Limite de plasticité (violet)' },
   
@@ -684,6 +787,12 @@ export const THEMATIC_PALETTE_MAP: Record<string, ThematicPaletteConfig> = {
   'passant_80um_avg': { palette: 'BrBG', diverging: true, midpoint: 50, rationale: 'Fines vs sables (divergent)' },
   'passant_2mm_avg': { palette: 'YlGnBu', rationale: 'Granulométrie' },
   'passant_20mm_avg': { palette: 'YlGnBu', rationale: 'Granulométrie' },
+  'passant_80um_ked_h1': { palette: 'BrBG', diverging: true, midpoint: 50, rationale: 'Fines (<80µm) KED H1' },
+  'passant_80um_ked_h2': { palette: 'BrBG', diverging: true, midpoint: 50, rationale: 'Fines (<80µm) KED H2' },
+  'passant_80um_ked_h3': { palette: 'BrBG', diverging: true, midpoint: 50, rationale: 'Fines (<80µm) KED H3' },
+  'passant_2mm_ked_h1': { palette: 'YlGnBu', rationale: 'Sables + fines (<2mm) KED H1' },
+  'passant_2mm_ked_h2': { palette: 'YlGnBu', rationale: 'Sables + fines (<2mm) KED H2' },
+  'passant_2mm_ked_h3': { palette: 'YlGnBu', rationale: 'Sables + fines (<2mm) KED H3' },
   'ai_rga_score_infer': { palette: 'YlOrRd', rationale: 'Risque IA croissant' },
   'ai_portance_kpa_infer': { palette: 'Blues', rationale: 'Portance estimee IA' },
   'kriging_ip': { palette: 'PuRd', rationale: 'IP interpole (kriging proxy)' },
@@ -853,12 +962,101 @@ export function getParametersForObjectif(objectifId: ObjectifMetier): ThematicPa
   return THEMATIC_PARAMETERS.filter(p => objectif.parameters.includes(p.id))
 }
 
+/**
+ * Équivalence paramètre maille « base » → colonne kriging (mailles_geotechnique_stats_wgs84).
+ * Seuls IP et VBS sont exposés côté API thématique pour l’instant — pas de kriging EG / WL / WP.
+ */
+const BASE_PARAM_TO_KRIGING_ID: Record<string, string> = {
+  vbs_avg: 'kriging_vbs',
+  ip_avg: 'kriging_ip',
+}
+
+/**
+ * Paramètres affichés selon la catégorie métier ET la source (base / interpolation / IA).
+ * Évite de forcer la catégorie « IA / Interpolation / AG » quand l’utilisateur choisit Argilosité + Kriging.
+ */
+export function getParametersForObjectifAndSource(
+  objectifId: ObjectifMetier,
+  source: ThematicSource,
+): ThematicParameter[] {
+  if (source === 'base') {
+    return getParametersForObjectif(objectifId)
+  }
+
+  if (source === 'interpolation') {
+    if (objectifId === 'personnalise' || objectifId === 'ia_ag') {
+      return getParametersBySource('interpolation')
+    }
+
+    // Dans l'UI, la source "interpolation" expose notamment:
+    // - P4 KED granulométrie par horizon: passant_*_ked_h*
+    // - P5 IP dérivé: ip_derived_h*
+    // - proxies kriging: kriging_vbs (VBS)
+    if (objectifId === 'granulometrie') {
+      const orderedIds = [
+        'passant_2mm_ked_h2',
+        'passant_2mm_ked_h1',
+        'passant_2mm_ked_h3',
+        'passant_80um_ked_h2',
+        'passant_80um_ked_h1',
+        'passant_80um_ked_h3',
+      ]
+      return orderedIds
+        .map((id) => THEMATIC_PARAMETERS.find((p) => p.id === id))
+        .filter((p): p is ThematicParameter => Boolean(p))
+    }
+
+    if (objectifId === 'argilosite') {
+      const orderedIds = [
+        'ip_derived_h2',
+        'ip_derived_h1',
+        'ip_derived_h3',
+        'kriging_vbs',
+      ]
+      return orderedIds
+        .map((id) => THEMATIC_PARAMETERS.find((p) => p.id === id))
+        .filter((p): p is ThematicParameter => Boolean(p))
+    }
+
+    // Autres objectifs: pas d'interpolation spécifique exposée côté UI pour l'instant.
+    return []
+  }
+
+  // source === 'ia'
+  if (objectifId === 'personnalise' || objectifId === 'ia_ag') {
+    return getParametersBySource('ia')
+  }
+  const generalIa = THEMATIC_PARAMETERS.filter(
+    (p) =>
+      p.id === 'ai_rga_score_infer' ||
+      p.id === 'ai_portance_kpa_infer' ||
+      p.id === 'ag_safety_factor' ||
+      p.id === 'ag_cout_millions',
+  )
+  if (
+    objectifId === 'argilosite' ||
+    objectifId === 'gonflement' ||
+    objectifId === 'couverture' ||
+    objectifId === 'compacite' ||
+    objectifId === 'granulometrie' ||
+    objectifId === 'contexte'
+  ) {
+    return generalIa
+  }
+  return getParametersBySource('ia')
+}
+
 export function getParametersBySource(source: ThematicSource): ThematicParameter[] {
   if (source === 'base') {
     return THEMATIC_PARAMETERS.filter((p) => p.category !== 'ai')
   }
   if (source === 'interpolation') {
-    return THEMATIC_PARAMETERS.filter((p) => p.id.startsWith('kriging_'))
+    return THEMATIC_PARAMETERS.filter(
+      (p) =>
+        p.id.startsWith('kriging_') ||
+        p.id.includes('_ked_h') ||
+        p.id.startsWith('ip_derived_h'),
+    )
   }
   return THEMATIC_PARAMETERS.filter((p) => p.id.startsWith('ai_') || p.id.startsWith('ag_'))
 }

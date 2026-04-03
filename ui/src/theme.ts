@@ -46,7 +46,10 @@ export function initTheme() {
   if (!stored) {
     try {
       const mq = window.matchMedia('(prefers-color-scheme: dark)')
-      const handler = () => applyTheme(mq.matches ? 'dark' : 'light')
+      const handler = () => {
+        if (getStoredTheme()) return
+        applyTheme(mq.matches ? 'dark' : 'light')
+      }
       mq.addEventListener?.('change', handler)
       ;(mq as any).addListener?.(handler)
     } catch {

@@ -1,18 +1,29 @@
 //! Service **api-opti** : optimisation / aide à la décision (charge CPU) hors façade api-geo.
-//! Reçoit les features maille déjà calculées par api-geo (pas d’accès DB requis en V1).
+//! - **Campagne** : scores SQL + AG (nécessite `DATABASE_URL`).
+//! - **Stratégie fondations** : entrée features JSON (inchangé).
+
+mod campaign;
 
 use axum::body::Body;
+use axum::extract::State;
 use axum::http::{Request, Response, StatusCode};
 use axum::middleware::{self, Next};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
+use sqlx::postgres::PgPoolOptions;
+use sqlx::PgPool;
 use std::net::SocketAddr;
 use tokio::net::TcpListener;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 use uuid::Uuid;
+
+#[derive(Clone)]
+pub struct AppState {
+    pub pool: PgPool,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct OptiCandidate {
@@ -123,7 +134,7 @@ async fn verify_internal(req: Request<Body>, next: Next) -> Result<Response<Body
     Ok(next.run(req).await)
 }
 
-async fn opti_strategie(Json(payload): Json<OptiStratIn>) -> Json<OptiResponse> {
+async fn opti_strategie(State(_state): State<AppState>, Json(payload): Json<OptiStratIn>) -> Json<OptiResponse> {
     let f = FeatSlice::from_value(&payload.features);
     let mut candidates = build_candidates(&f, payload.charge_kpa, payload.budget_fcfa);
     candidates.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(std::cmp::Ordering::Equal));
@@ -153,8 +164,19 @@ async fn main() -> anyhow::Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
+    let db_url = std::env::var("DATABASE_URL")
+        .map_err(|_| anyhow::anyhow!("DATABASE_URL requis (vue atlas.v_campaign_candidate_scores)"))?;
+    let pool = PgPoolOptions::new()
+        .max_connections(8)
+        .connect(&db_url)
+        .await?;
+    let state = AppState { pool };
+
     let internal = Router::new()
         .route("/internal/opti/strategie", post(opti_strategie))
+        .route("/internal/opti/campaign/simple", post(campaign::campaign_simple))
+        .route("/internal/opti/campaign", post(campaign::campaign_ga))
+        .with_state(state.clone())
         .layer(middleware::from_fn(verify_internal));
 
     let app = Router::new()

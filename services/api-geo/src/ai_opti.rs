@@ -10,6 +10,50 @@ use std::process::Command;
 
 use crate::{ai_infer, auth::AuthUser, internal_services, state::AppState};
 
+/// POST `/ai/opti/campaign/simple` — classement heuristique (passe par api-opti si configuré).
+pub async fn optimize_campaign_simple(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.read") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+    match internal_services::forward_opti_campaign_simple(payload).await {
+        Ok(Some(v)) => Ok(Json(v)),
+        Ok(None) => Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "error": "api_opti_required",
+                "detail": "Configurer ATLAS_API_OPTI_URL et démarrer api-opti avec DATABASE_URL (migration 159)."
+            })),
+        )),
+        Err(e) => Err((StatusCode::BAD_GATEWAY, Json(json!({ "error": "api-opti", "detail": e })))),
+    }
+}
+
+/// POST `/ai/opti/campaign` — AG bitmask sous contrainte budget + dépression.
+pub async fn optimize_campaign_ga(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.read") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+    match internal_services::forward_opti_campaign_ga(payload).await {
+        Ok(Some(v)) => Ok(Json(v)),
+        Ok(None) => Err((
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({
+                "error": "api_opti_required",
+                "detail": "Configurer ATLAS_API_OPTI_URL et démarrer api-opti avec DATABASE_URL."
+            })),
+        )),
+        Err(e) => Err((StatusCode::BAD_GATEWAY, Json(json!({ "error": "api-opti", "detail": e })))),
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct OptiRequest {
     pub maille_code: Option<String>,

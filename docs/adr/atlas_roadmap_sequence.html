@@ -1,0 +1,142 @@
+
+<style>
+*{box-sizing:border-box}
+.rm{font-family:var(--font-sans);padding:1.5rem 2rem;color:var(--color-text-primary)}
+.phase{border:1px solid var(--color-border-tertiary);border-radius:8px;margin:.75rem 0;overflow:hidden}
+.phase-header{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;background:var(--color-background-secondary)}
+.phase-num{font-family:var(--font-mono);font-size:11px;font-weight:500;color:var(--color-text-tertiary);min-width:32px}
+.phase-title{font-size:13px;font-weight:500;color:var(--color-text-primary);flex:1}
+.phase-duration{font-size:11px;color:var(--color-text-secondary)}
+.phase-badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px}
+.pb-block{background:var(--color-background-danger);color:var(--color-text-danger)}
+.pb-data{background:var(--color-background-warning);color:var(--color-text-warning)}
+.pb-pipe{background:var(--color-background-info);color:var(--color-text-info)}
+.pb-ui{background:var(--color-background-success);color:var(--color-text-success)}
+.phase-body{padding:.75rem 1rem}
+.task{display:flex;gap:.5rem;align-items:baseline;margin:.25rem 0;font-size:12px;color:var(--color-text-secondary)}
+.task-id{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary);min-width:50px}
+.dep{font-size:11px;color:var(--color-text-tertiary);margin-left:.3rem}
+.blocker{color:var(--color-text-danger);font-size:11px;margin-left:.3rem}
+hr{border:none;border-top:1px solid var(--color-border-tertiary);margin:1rem 0}
+</style>
+<div class="rm">
+
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-num">P0</span>
+    <span class="phase-title">Remédiation données AMESSEFE</span>
+    <span class="phase-duration">~1 session</span>
+    <span class="phase-badge pb-block">BLOQUANT</span>
+  </div>
+  <div class="phase-body">
+    <div class="task"><span class="task-id">P0-T1</span>Snapshot DB pré-remédiation + audit CSV</div>
+    <div class="task"><span class="task-id">P0-T2</span>Correction localite_key (fonction normalize + contrainte unicité)</div>
+    <div class="task"><span class="task-id">P0-T3</span>Isolation et correction depth_m corrompus (CG dans depth)</div>
+    <div class="task"><span class="task-id">P0-T4</span>Recalcul couverture — objectif : VBS ≥ 150, IP ≥ 150 pour AMESSEFE</div>
+    <div class="task"><span class="task-id">P0-T5</span>Recalcul feature store + sources IA</div>
+    <div class="task"><span class="task-id">P0-AC</span><span style="color:var(--color-text-success)">AC : n_vbs ≥ 150 ET n_ip ≥ 150 ET zéro collision localite_key</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-num">P1</span>
+    <span class="phase-title">Protocole import + tests CI (ADR-006)</span>
+    <span class="phase-duration">~1 session</span>
+    <span class="phase-badge pb-data">Données</span>
+  </div>
+  <div class="phase-body">
+    <div class="task"><span class="task-id">P1-T1</span>Fonction atlas.normalize_localite_key() + contrainte DB <span class="dep">← P0 fini</span></div>
+    <div class="task"><span class="task-id">P1-T2</span>Table atlas.import_coverage_log + trigger post-import</div>
+    <div class="task"><span class="task-id">P1-T3</span>5 gates de validation dans parsers (amessefe_excel.py + futurs)</div>
+    <div class="task"><span class="task-id">P1-T4</span>6 tests CI sur fixtures AMESSEFE</div>
+    <div class="task"><span class="task-id">P1-T5</span>Trigger auto-enqueue jobs après import validé</div>
+    <div class="task"><span class="task-id">P1-AC</span><span style="color:var(--color-text-success)">AC : 6 tests CI verts — import AMESSEFE replay sans régression</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-num">P2</span>
+    <span class="phase-title">Pipeline kriging stratifié par domaine (ADR-004 complet)</span>
+    <span class="phase-duration">~2 sessions</span>
+    <span class="phase-badge pb-pipe">Pipeline</span>
+  </div>
+  <div class="phase-body">
+    <div class="task"><span class="task-id">P2-T1</span>Table atlas.kriging_domains + seed géologie/pédologie Togo <span class="dep">← P0 fini</span></div>
+    <div class="task"><span class="task-id">P2-T2</span>Migration atlas.ai_variograms (nugget/sill/range/loo_rmse/block_rmse)</div>
+    <div class="task"><span class="task-id">P2-T3</span>Script Python kriging stratifié par domaine (remplace kriging global)</div>
+    <div class="task"><span class="task-id">P2-T4</span>Critère qualité : loo_rmse &#60; sill×0.35 → quality_flag</div>
+    <div class="task"><span class="task-id">P2-T5</span>Vue v_latest_ai_interpolation alignée sur ai_interpolation_values</div>
+    <div class="task"><span class="task-id">P2-AC</span><span style="color:var(--color-text-success)">AC : variogramme par domaine en base + quality_flag fonctionnel</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-num">P3</span>
+    <span class="phase-title">Kriging par horizon de profondeur dynamique (ADR-005)</span>
+    <span class="phase-duration">~1 session</span>
+    <span class="phase-badge pb-pipe">Pipeline</span>
+  </div>
+  <div class="phase-body">
+    <div class="task"><span class="task-id">P3-T1</span>Table atlas.kriging_depth_horizons <span class="dep">← P2 fini</span></div>
+    <div class="task"><span class="task-id">P3-T2</span>Algorithme calcul horizons dynamiques par quartiles</div>
+    <div class="task"><span class="task-id">P3-T3</span>Fusion horizons si n &#60; 15 (fallback 2D)</div>
+    <div class="task"><span class="task-id">P3-T4</span>Propagation horizon dans source_type et feature store</div>
+    <div class="task"><span class="task-id">P3-AC</span><span style="color:var(--color-text-success)">AC : horizons H1-H4 en base pour paramètres AMESSEFE</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-num">P4</span>
+    <span class="phase-title">Régression kriging hybride ML (ADR-005 suite)</span>
+    <span class="phase-duration">~2 sessions</span>
+    <span class="phase-badge pb-pipe">Pipeline</span>
+  </div>
+  <div class="phase-body">
+    <div class="task"><span class="task-id">P4-T1</span>Features DSM étendues (slope, TWI, aspect) <span class="dep">← P3 fini</span></div>
+    <div class="task"><span class="task-id">P4-T2</span>Script RK : tendance CatBoost + kriging résidus</div>
+    <div class="task"><span class="task-id">P4-T3</span>Table ai_interpolation_residuals</div>
+    <div class="task"><span class="task-id">P4-T4</span>Export ONNX modèle tendance + versioning registry</div>
+    <div class="task"><span class="task-id">P4-T5</span>Sélection automatique niveau pipeline (1/2/3)</div>
+    <div class="task"><span class="task-id">P4-AC</span><span style="color:var(--color-text-success)">AC : RMSE RK ≤ RMSE kriging × 0.9 sur domaines n ≥ 30</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-num">P5</span>
+    <span class="phase-title">UI — mode expert + panneau bas graphiques</span>
+    <span class="phase-duration">~2 sessions</span>
+    <span class="phase-badge pb-ui">UI</span>
+  </div>
+  <div class="phase-body">
+    <div class="task"><span class="task-id">P5-T1</span>Toggle mode expert panneau thématique (overlay contours + filtres) <span class="dep">← P2 fini</span></div>
+    <div class="task"><span class="task-id">P5-T2</span>Filtre horizon de profondeur (apparaît si données multi-profondeur) <span class="dep">← P3 fini</span></div>
+    <div class="task"><span class="task-id">P5-T3</span>Badge source_type sur maille (mesure/kriging/RK/ML)</div>
+    <div class="task"><span class="task-id">P5-T4</span>Panneau bas glissant (30vh) — onglets EDA/Corrélations/ML en Plotly.js</div>
+    <div class="task"><span class="task-id">P5-T5</span>Endpoint Python /ai/plots/variogram + /ai/plots/crossval → SVG cached</div>
+    <div class="task"><span class="task-id">P5-AC</span><span style="color:var(--color-text-success)">AC : figures JS &#60; 300ms, figures Python &#60; 5s avec loader visible</span></div>
+  </div>
+</div>
+
+<div class="phase">
+  <div class="phase-header">
+    <span class="phase-num">P6</span>
+    <span class="phase-title">Admin DB Manager — onglet IA/Opti refondu + audit complet</span>
+    <span class="phase-duration">~2 sessions</span>
+    <span class="phase-badge pb-ui">UI Admin</span>
+  </div>
+  <div class="phase-body">
+    <div class="task"><span class="task-id">P6-T1</span>Sous-onglet Données : couverture, gates status, log imports <span class="dep">← P1 fini</span></div>
+    <div class="task"><span class="task-id">P6-T2</span>Sous-onglet Pipeline : pilotage kriging/RK/ML, queue jobs, historique runs</div>
+    <div class="task"><span class="task-id">P6-T3</span>Sous-onglet Audit : tous graphiques scientifiques (accordéon par catégorie)</div>
+    <div class="task"><span class="task-id">P6-T4</span>Comparaison deux runs côte à côte (sélecteur run_id × 2)</div>
+    <div class="task"><span class="task-id">P6-T5</span>Tableaux statistiques exportables CSV + tableau comparaison méthodes</div>
+    <div class="task"><span class="task-id">P6-AC</span><span style="color:var(--color-text-success)">AC : tous graphiques de la liste disponibles dans Audit, filtrables par run_id</span></div>
+  </div>
+</div>
+
+</div>

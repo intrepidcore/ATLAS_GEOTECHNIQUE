@@ -2,17 +2,51 @@
  * Icônes vectorielles minimalistes (style Lucide : viewBox 24×24, stroke 2, round caps).
  * Usage : innerHTML ou template strings dans le panneau vanilla.
  */
-const svgWrap = (path: string, attrs = '') =>
-  `<svg class="btn-icon-svg" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${attrs}>${path}</svg>`
+const svgWrap = (path: string, extraClass = '') => {
+  const cls = extraClass.trim() ? `btn-icon-svg ${extraClass.trim()}` : 'btn-icon-svg'
+  return `<svg class="${cls}" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${path}</svg>`
+}
+
+export type IconOpts = { className?: string }
+
+const optClass = (o?: IconOpts) => (o?.className ? String(o.className) : '')
 
 export const icons = {
+  cpu: () =>
+    svgWrap(
+      '<rect width="16" height="16" x="4" y="4" rx="2" ry="2"/><rect width="6" height="6" x="9" y="9" rx="1" ry="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/>'
+    ),
+  database: () =>
+    svgWrap(
+      '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5V19A9 3 0 0 0 21 19V5"/><path d="M3 12A9 3 0 0 0 21 12"/>'
+    ),
+  playCircle: () =>
+    svgWrap('<circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/>'),
+  loader2: (o?: IconOpts) =>
+    svgWrap('<path d="M21 12a9 9 0 1 1-6.219-8.56"/>', optClass(o)),
+  moreVertical: () =>
+    svgWrap('<circle cx="12" cy="12" r="1"/><circle cx="12" cy="5" r="1"/><circle cx="12" cy="19" r="1"/>'),
+  fileText: () =>
+    svgWrap(
+      '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>'
+    ),
+  download: () =>
+    svgWrap(
+      '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>'
+    ),
+  checkCircle: () =>
+    svgWrap('<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/>'),
+  xCircle: () =>
+    svgWrap('<circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>'),
+  clock: () => svgWrap('<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>'),
   map: () =>
     svgWrap(
       '<path d="M14.106 5.553a2 2 0 0 0-1.788 0l-7.447 3.724a1 1 0 0 0-.553.894v6.758a1 1 0 0 0 .553.894l7.447 3.724a2 2 0 0 0 1.788 0l7.447-3.724a1 1 0 0 0 .553-.894V10.17a1 1 0 0 0-.553-.894z"/><path d="M15 6.51l-6-3"/><path d="M3.51 9.5 12 13.5l8.49-4"/>'
     ),
-  refreshCw: () =>
+  refreshCw: (o?: IconOpts) =>
     svgWrap(
-      '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>'
+      '<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+      optClass(o)
     ),
   flaskConical: () =>
     svgWrap(

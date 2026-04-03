@@ -17,6 +17,30 @@ type LamaMailleMeta = {
 let lamaMailleCodes: Set<string> = new Set();
 let lamaMailleMetaByCode: Map<string, LamaMailleMeta> = new Map();
 
+/** Priorité campagne reconnaissance (api-opti / AG) — rang 1 = plus prioritaire */
+let campaignPriorityByCode: Map<string, number> = new Map();
+
+export function setCampaignPriorities(
+  entries: Array<{ maille_code: string; rank: number }> | null | undefined
+): void {
+  if (!entries?.length) {
+    campaignPriorityByCode = new Map();
+    return;
+  }
+  const m = new Map<string, number>();
+  for (const e of entries) {
+    const c = String(e?.maille_code || '').trim();
+    if (!c) continue;
+    const r = Number(e?.rank);
+    m.set(c, Number.isFinite(r) && r > 0 ? Math.floor(r) : 1);
+  }
+  campaignPriorityByCode = m;
+}
+
+export function clearCampaignPriorities(): void {
+  campaignPriorityByCode = new Map();
+}
+
 export function setLamaMailleCodes(codes: string[]): void {
   lamaMailleCodes = new Set((codes || []).map(c => String(c).trim()).filter(Boolean));
 }
@@ -305,6 +329,15 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
     strokeWeight = weight;
     // Légèrement translucide pour éviter un rendu "trop sombre" quand la grille est dense.
     strokeOpacity = 0.75;
+  }
+
+  const campRank = cellCode ? campaignPriorityByCode.get(String(cellCode)) : undefined;
+  if (campRank !== undefined && !hasActiveMission) {
+    const intensity = 1 / (1 + (campRank - 1) * 0.28);
+    fillColor = '#9333ea';
+    fillOpacity = Math.max(fillOpacity, 0.22 + 0.42 * intensity);
+    strokeColor = '#581c87';
+    strokeWeight = Math.max(strokeWeight, 2.4);
   }
   
   return {

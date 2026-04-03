@@ -1,0 +1,70 @@
+
+<style>
+*{box-sizing:border-box}
+.w{font-family:var(--font-sans);padding:1.5rem 2rem;color:var(--color-text-primary)}
+h2{font-size:14px;font-weight:500;margin:1.1rem 0 .5rem;border-left:3px solid var(--color-border-primary);padding-left:.75rem}
+h3{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin:.75rem 0 .3rem}
+p,li{font-size:12px;line-height:1.7;color:var(--color-text-secondary);margin:.15rem 0}
+ul{margin:.2rem 0;padding-left:1.2rem}
+code{font-family:var(--font-mono);font-size:11px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+.block{border:1px solid var(--color-border-tertiary);border-radius:8px;margin:.5rem 0;overflow:hidden}
+.bh{display:flex;align-items:center;gap:.5rem;padding:.6rem 1rem;background:var(--color-background-secondary)}
+.bnum{font-family:var(--font-mono);font-size:11px;min-width:36px;color:var(--color-text-tertiary)}
+.bt{font-size:13px;font-weight:500;flex:1;color:var(--color-text-primary)}
+.badge{font-size:10px;font-weight:500;padding:2px 7px;border-radius:3px}
+.b-ok{background:var(--color-background-success);color:var(--color-text-success)}
+.b-warn{background:var(--color-background-warning);color:var(--color-text-warning)}
+.b-crit{background:var(--color-background-danger);color:var(--color-text-danger)}
+.b-info{background:var(--color-background-info);color:var(--color-text-info)}
+.bp{padding:.65rem 1rem}
+.row{display:flex;gap:.5rem;align-items:baseline;margin:.2rem 0;font-size:12px}
+.rl{min-width:72px;font-weight:500}
+.rv{flex:1;color:var(--color-text-secondary)}
+.pro{color:var(--color-text-success)}
+.con{color:var(--color-text-danger)}
+.warn{color:var(--color-text-warning)}
+.metric-row{display:grid;grid-template-columns:repeat(4,1fr);gap:.4rem;margin:.5rem 0}
+.metric{border:1px solid var(--color-border-tertiary);border-radius:6px;padding:.5rem .7rem;text-align:center}
+.mval{font-size:18px;font-weight:500;color:var(--color-text-primary)}
+.mlabel{font-size:11px;color:var(--color-text-secondary);margin-top:.1rem}
+.mdelta{font-size:11px;margin-top:.1rem;color:var(--color-text-success)}
+hr{border:none;border-top:1px solid var(--color-border-tertiary);margin:.75rem 0}
+</style>
+<div class="w">
+
+<h2>Métriques finales P3</h2>
+<div class="metric-row">
+  <div class="metric"><div class="mval">12</div><div class="mlabel">Nouvelles couches KED</div><div class="mdelta">VBS/IP/WL/WP × H1/H2/H3</div></div>
+  <div class="metric"><div class="mval">29407</div><div class="mlabel">Mailles par couche</div><div class="mdelta">null_count = 0</div></div>
+  <div class="metric"><div class="mval">0</div><div class="mlabel">Divergences WL/WP/IP</div><div class="mdelta">Gate strict passé</div></div>
+  <div class="metric"><div class="mval">3</div><div class="mlabel">Filtres ADM OK</div><div class="mdelta">adm1 / adm2 / adm3</div></div>
+</div>
+
+<hr/>
+
+<div class="block">
+  <div class="bh"><span class="bnum">FIX-1</span><span class="bt">parse_float '-' → None — corrigé et validé</span><span class="badge b-ok">Solide</span></div>
+  <div class="bp">
+    <div class="row"><span class="rl pro">Bien</span><span class="rv">La correction est scientifiquement correcte. WP=None pour les non-mesurés signifie que ces localités n'auront pas d'IP calculé — ce qui est honnête plutôt que de propager un IP faux.</span></div>
+    <div class="row"><span class="rl warn">Attention</span><span class="rv">Vérifier que pour Kpadapé (WP='-' dans Excel) la DB a bien <code>wp IS NULL</code> et <code>ip_generated IS NULL</code> et pas wp=0. La requête de vérification est : <code>SELECT wl, wp, ip_generated FROM essais_atterberg ea JOIN echantillons e ON e.id=ea.echantillon_id JOIN sondages s ON s.id=e.sondage_id WHERE s.code ILIKE '%kpadap%'</code></span></div>
+  </div>
+</div>
+
+<div class="block">
+  <div class="bh"><span class="bnum">FIX-2</span><span class="bt">sync_amessefe_wl_wp_ip — robuste après plusieurs itérations</span><span class="badge b-ok">Solide</span></div>
+  <div class="bp">
+    <div class="row"><span class="rl pro">Bien</span><span class="rv">Le script gère maintenant les doublons echantillons par depth_m (mise à NULL des profondeurs hors Excel). Le health check par profondeur (verify_amessefe_wl_wp_ip_health.py) est la bonne approche — évite le biais des moyennes.</span></div>
+    <div class="row"><span class="rl warn">Dette</span><span class="rv">Le flag <code>--clear-non-excel-depths</code> est puissant mais dangereux pour les futurs imports (il NULLifie des données légitimes d'autres sources). Ajouter un filtre <code>WHERE source_reference = 'AMESSEFE'</code> dans le clearing pour ne toucher que les données AMESSEFE.</span></div>
+  </div>
+</div>
+
+<div class="block">
+  <div class="bh"><span class="bnum">FIX-3</span><span class="bt">is_ked_parameter() + v_latest_ai_interpolation — architecturalement correct</span><span class="badge b-ok">Solide</span></div>
+  <div class="bp">
+    <div class="row"><span class="rl pro">Bien</span><span class="rv"><code>is_ked_parameter</code> basé sur le suffixe <code>_ked_h*</code> est extensible sans modification pour P4/P5. Migration 168 avec <code>is_superseded</code> et priorité explicite est le bon pattern.</span></div>
+    <div class="row"><span class="rl con">Risque</span><span class="rv">La vue <code>v_latest_ai_interpolation</code> utilise <code>ROW_NUMBER() OVER (PARTITION BY maille_id, parameter_id ORDER BY priority, created_at DESC)</code>. Si deux runs KED existent pour le même paramètre/maille (ex: re-run après correction), les deux auront <code>is_superseded=false</code> et le tie-breaker sera <code>created_at DESC</code>. Il faut s'assurer que chaque nouveau run KED met <code>is_superseded=true</code> sur les valeurs précédentes du même paramètre avant d'insérer.</span></div>
+    <div class="row"><span class="rl con">Gap ADM</span><span class="rv">Le workaround pour <code>ms.adm2_name</code> dans routes.rs a nécessité 4 itérations — signe que la construction dynamique de SQL par string concatenation dans ce handler est fragile. À terme, migrer vers sqlx <code>QueryBuilder</code> avec paramètres typés.</span></div>
+  </div>
+</div>
+
+</div>

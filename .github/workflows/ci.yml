@@ -132,6 +132,11 @@ jobs:
         run: |
           cd ui
           npm ci
+
+      - name: unit tests (UI)
+        run: |
+          cd ui
+          npm run test:unit
       
       - name: lint
         run: |

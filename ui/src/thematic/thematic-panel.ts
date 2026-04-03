@@ -17,8 +17,7 @@ import {
   MAP_TYPES,
   CLASSIFICATION_METHODS,
   ADM1_OPTIONS,
-  getParametersForObjectif,
-  getParametersBySource,
+  getParametersForObjectifAndSource,
   getParameterById,
   getObjectifById,
   getDefaultConfig
@@ -76,6 +75,11 @@ export class ThematicPanel {
     togglePedologieCheckbox?: HTMLInputElement
     toggleRisqueGonflementCheckbox?: HTMLInputElement
     toggleDsmCheckbox?: HTMLInputElement
+
+    // Mode expert (roadmap)
+    toggleExpertModeCheckbox?: HTMLInputElement
+    expertContextLayersContainer?: HTMLElement
+    expertHorizonFilterContainer?: HTMLElement
   } = {}
 
   private setSelectValueByOptionText(select: HTMLSelectElement | undefined, optionText: string | undefined): void {
@@ -128,6 +132,9 @@ export class ThematicPanel {
     // Initialize with default values
     this.applyConfigToUI(this.currentConfig)
 
+    // Mode expert (hide/show overlays + horizon selection)
+    void this.applyExpertMode(false)
+
     // Synchroniser visuellement le niveau de grille avec le panneau droit (source de vérité: main.ts)
     const getLevel = (window as any).getCurrentGridLevel
     const currentLevel = typeof getLevel === 'function' ? getLevel() : '2km'
@@ -136,6 +143,52 @@ export class ThematicPanel {
     }
     
     console.log('[ThematicPanel] ✅ Initialisation terminée')
+  }
+
+  /**
+   * Mode expert (roadmap)
+   * - Standard: aucune UI/couche visuelle liée aux domaines géologiques
+   * - Expert: affiche sélection domaine (layers) + filtre horizon (profondeur)
+   */
+  private async applyExpertMode(enabled: boolean): Promise<void> {
+    if (this.elements.expertContextLayersContainer) {
+      this.elements.expertContextLayersContainer.style.display = enabled ? '' : 'none'
+    }
+    if (this.elements.expertHorizonFilterContainer) {
+      this.elements.expertHorizonFilterContainer.style.display = enabled ? '' : 'none'
+    }
+
+    if (!enabled) {
+      // Garantir "zéro élément visuel lié aux domaines" en standard mode
+      if (this.elements.toggleGeologieCheckbox) this.elements.toggleGeologieCheckbox.checked = false
+      if (this.elements.togglePedologieCheckbox) this.elements.togglePedologieCheckbox.checked = false
+      if (this.elements.toggleRisqueGonflementCheckbox) this.elements.toggleRisqueGonflementCheckbox.checked = false
+      if (this.elements.toggleDsmCheckbox) this.elements.toggleDsmCheckbox.checked = false
+
+      // Couper les overlays côté Leaflet (idempotent)
+      await this.manager.toggleContextLayer('geologie', false)
+      await this.manager.toggleContextLayer('pedologie', false)
+      await this.manager.toggleContextLayer('risque-gonflement', false)
+      await this.manager.toggleContextLayer('dsm', false)
+    } else {
+      // Mode expert activé:
+      // - afficher par défaut la couche géologie (contours domaines) pour satisfaire la spec roadmap
+      // - laisser les autres couches contextuelles désactivées par défaut
+      if (this.elements.toggleGeologieCheckbox) this.elements.toggleGeologieCheckbox.checked = true
+      if (this.elements.togglePedologieCheckbox) this.elements.togglePedologieCheckbox.checked = false
+      if (this.elements.toggleRisqueGonflementCheckbox) this.elements.toggleRisqueGonflementCheckbox.checked = false
+      if (this.elements.toggleDsmCheckbox) this.elements.toggleDsmCheckbox.checked = false
+
+      if (this.elements.toggleGeologieCheckbox) {
+        await this.manager.toggleContextLayer('geologie', true)
+        if ((window as any).setActiveContextLayer) (window as any).setActiveContextLayer('geologie', true)
+        await this.loadLegend('geologie', 'geologieLegend')
+      }
+
+      await this.manager.toggleContextLayer('pedologie', false)
+      await this.manager.toggleContextLayer('risque-gonflement', false)
+      await this.manager.toggleContextLayer('dsm', false)
+    }
   }
 
   public async reloadFromUI(): Promise<void> {
@@ -153,14 +206,16 @@ export class ThematicPanel {
       </div>
       
       <div class="thematic-panel-body">
+        <div class="thematic-section checkbox-section">
+          <label class="checkbox-label thematic-toggle-label">
+            <input type="checkbox" class="atlas-switch" id="toggleExpertMode">
+            <span>Mode expert</span>
+          </label>
+        </div>
+
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <!-- BLOC A : Objectif métier -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <div class="thematic-section">
-          <div class="section-label">Catégorie</div>
-          <select id="thematicObjectif" class="thematic-select"></select>
-        </div>
-
         <div class="thematic-section" id="thematicSourceSection">
           <div class="section-label">Source de données</div>
           <select id="thematicAiSource" class="thematic-select">
@@ -168,6 +223,11 @@ export class ThematicPanel {
             <option value="interpolation">Interpolation (Kriging)</option>
             <option value="ia">IA / Opti (prédiction)</option>
           </select>
+        </div>
+
+        <div class="thematic-section">
+          <div class="section-label">Catégorie</div>
+          <select id="thematicObjectif" class="thematic-select"></select>
         </div>
         
         <div class="thematic-section">
@@ -269,20 +329,23 @@ export class ThematicPanel {
           </label>
         </div>
         
-        <!-- Filtres avancés (repliables) -->
-        <details class="advanced-filters">
-          <summary>Filtres avancés</summary>
-          <div class="advanced-content">
-            <div class="thematic-section">
-              <div class="section-label">Profondeur (m)</div>
-              <div class="range-inputs">
-                <input type="number" id="depthMin" class="thematic-input small" placeholder="Min" min="0" step="0.5">
-                <span class="range-separator" aria-hidden="true">→</span>
-                <input type="number" id="depthMax" class="thematic-input small" placeholder="Max" min="0" step="0.5">
+        <!-- Filtres horizon (expert-only) -->
+        <div id="expertHorizonFilter" style="display:none;">
+          <!-- Filtres avancés (repliables) -->
+          <details class="advanced-filters">
+            <summary>Filtres avancés</summary>
+            <div class="advanced-content">
+              <div class="thematic-section">
+                <div class="section-label">Profondeur (m)</div>
+                <div class="range-inputs">
+                  <input type="number" id="depthMin" class="thematic-input small" placeholder="Min" min="0" step="0.5">
+                  <span class="range-separator" aria-hidden="true">→</span>
+                  <input type="number" id="depthMax" class="thematic-input small" placeholder="Max" min="0" step="0.5">
+                </div>
               </div>
             </div>
-          </div>
-        </details>
+          </details>
+        </div>
         
         <div class="thematic-section checkbox-section">
           <label class="checkbox-label thematic-toggle-label">
@@ -312,12 +375,13 @@ export class ThematicPanel {
           </div>
         </div>
         
-        <div class="thematic-divider">
-          <span>Couches de contexte (QGIS)</span>
-        </div>
-        
-        <!-- Panneau QGIS-like pour couches contextuelles avec légendes dépliables -->
-        <div class="context-layers-panel" style="background:#0a1018;border-radius:8px;padding:10px;margin-bottom:10px">
+        <div id="expertContextLayers" style="display:none;">
+          <div class="thematic-divider">
+            <span>Couches de contexte (QGIS)</span>
+          </div>
+          
+          <!-- Panneau QGIS-like pour couches contextuelles avec légendes dépliables -->
+          <div class="context-layers-panel" style="background:#0a1018;border-radius:8px;padding:10px;margin-bottom:10px">
           
           <!-- Géologie - Accordéon -->
           <details class="context-layer-accordion" style="margin-bottom:8px;background:#0f172a;border-radius:6px;border-left:3px solid #8B4513">
@@ -418,6 +482,7 @@ export class ThematicPanel {
           <div style="font-size:10px;color:#64748b;margin-top:8px;text-align:center">
             Cliquez sur ▼ pour la légende — données dans les infobulles.
           </div>
+          </div>
         </div>
 
         <div class="thematic-divider">
@@ -449,11 +514,11 @@ export class ThematicPanel {
           </button>
         </div>
         <div class="thematic-actions export-grid-2">
-          <button id="runKrigingThematicBtn" class="btn-small" title="Lancer interpolation kriging globale">
-            ${icons.flaskConical()}<span>Kriging</span>
-          </button>
           <button id="runTrainInferThematicBtn" class="btn-small" title="Lancer entraînement + inférence supervisée">
             ${icons.brain()}<span>Train IA</span>
+          </button>
+          <button id="runKrigingThematicBtn" class="btn-small" title="Lancer interpolation kriging globale">
+            ${icons.flaskConical()}<span>Kriging</span>
           </button>
         </div>
         
@@ -543,7 +608,11 @@ export class ThematicPanel {
       toggleGeologieCheckbox: document.getElementById('toggleGeologie') as HTMLInputElement,
       togglePedologieCheckbox: document.getElementById('togglePedologie') as HTMLInputElement,
       toggleRisqueGonflementCheckbox: document.getElementById('toggleRisqueGonflement') as HTMLInputElement,
-      toggleDsmCheckbox: document.getElementById('toggleDsm') as HTMLInputElement
+      toggleDsmCheckbox: document.getElementById('toggleDsm') as HTMLInputElement,
+
+      toggleExpertModeCheckbox: document.getElementById('toggleExpertMode') as HTMLInputElement,
+      expertContextLayersContainer: document.getElementById('expertContextLayers') as HTMLElement,
+      expertHorizonFilterContainer: document.getElementById('expertHorizonFilter') as HTMLElement
     }
   }
 
@@ -597,11 +666,22 @@ export class ThematicPanel {
     
     const sourceSelect = document.getElementById('thematicAiSource') as HTMLSelectElement | null
     const source = (sourceSelect?.value || 'base') as ThematicSource
-    const params = source === 'base'
-      ? getParametersForObjectif(objectifId)
-      : getParametersBySource(source)
+    const params = getParametersForObjectifAndSource(objectifId, source)
     const objectif = getObjectifById(objectifId)
     
+    if (params.length === 0) {
+      const hint =
+        source === 'interpolation'
+          ? 'Aucune couche kriging pour cette catégorie (seuls IP et VBS sont interpolés côté API).'
+          : source === 'ia'
+            ? 'Aucune sortie IA disponible pour cette catégorie.'
+            : 'Aucun paramètre disponible.'
+      select.innerHTML = `<option value="" data-description="${hint.replace(/"/g, '&quot;')}">— ${hint} —</option>`
+      select.value = ''
+      this.updateParameterDescription()
+      return
+    }
+
     select.innerHTML = params.map(p => {
       const unitSuffix = p.unit ? ` (${p.unit})` : ''
       return `<option value="${p.id}" 
@@ -612,10 +692,11 @@ export class ThematicPanel {
       >${p.label}${unitSuffix}</option>`
     }).join('')
     
-    // Select default parameter for this objectif
-    if (objectif?.defaultParameter) {
-      select.value = objectif.defaultParameter
-    }
+    const preferred =
+      objectif?.defaultParameter && params.some((p) => p.id === objectif.defaultParameter)
+        ? objectif.defaultParameter
+        : params[0]!.id
+    select.value = preferred
     
     // Update description
     this.updateParameterDescription()
@@ -1109,11 +1190,6 @@ export class ThematicPanel {
     const sourceSelect = document.getElementById('thematicAiSource') as HTMLSelectElement | null
     sourceSelect?.addEventListener('change', () => {
       const source = (sourceSelect.value || 'base') as ThematicSource
-      if (source === 'interpolation' || source === 'ia') {
-        if (this.elements.objectifSelect) this.elements.objectifSelect.value = 'ia_ag'
-      } else if (this.elements.objectifSelect?.value === 'ia_ag') {
-        this.elements.objectifSelect.value = 'couverture'
-      }
       const objectifId = (this.elements.objectifSelect?.value || 'couverture') as ObjectifMetier
       this.updateParameterList(objectifId)
       if (this.elements.minSondagesInput) {
@@ -1216,6 +1292,12 @@ export class ThematicPanel {
     // Toggle grid layer
     this.elements.toggleGridCheckbox?.addEventListener('change', (e) => {
       this.toggleGridLayer((e.target as HTMLInputElement).checked)
+    })
+
+    // Mode expert (roadmap)
+    this.elements.toggleExpertModeCheckbox?.addEventListener('change', async (e) => {
+      const enabled = (e.target as HTMLInputElement).checked
+      await this.applyExpertMode(enabled)
     })
     
     // Grid level radio buttons
@@ -1664,7 +1746,7 @@ export class ThematicPanel {
     console.log('[ThematicPanel] ADM filters:', { adm1, adm2, adm3, adm1El: this.elements.adm1Select })
     const source = ((document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value || 'base') as ThematicSource
     let minSondages = parseInt(this.elements.minSondagesInput?.value || '0')
-    if (objectif === 'ia_ag' || source !== 'base') minSondages = 0
+    if (source !== 'base') minSondages = 0
     const excludeNoData = this.elements.excludeNoDataCheckbox?.checked ?? true
     const excludeOutsideAdm = this.elements.excludeOutsideAdmCheckbox?.checked ?? false
     const depthMin = this.elements.depthMinInput?.value ? parseFloat(this.elements.depthMinInput.value) : undefined
@@ -1713,6 +1795,15 @@ export class ThematicPanel {
    */
   private async applyThematic(): Promise<void> {
     try {
+      const paramVal = this.elements.parameterSelect?.value?.trim() ?? ''
+      if (!paramVal) {
+        this.toast(
+          'Aucun paramètre disponible pour cette source et cette catégorie — change de catégorie ou reviens à « Base ».',
+          'error',
+        )
+        return
+      }
+
       const config = this.buildConfigFromUI()
       this.currentConfig = config
 

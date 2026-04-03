@@ -83,7 +83,7 @@ const SupervisorsTab: React.FC<{
         </div>
       )}
 
-      <div className="bg-white rounded-xl border p-4 mb-6">
+      <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mb-6">
         <div className="flex flex-col lg:flex-row gap-3">
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
@@ -123,7 +123,7 @@ const SupervisorsTab: React.FC<{
           <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
         </div>
       ) : (
-        <div className="bg-white rounded-xl border">
+        <div className="bg-card text-card-foreground rounded-xl border border-border">
           <div className="px-4 py-3 border-b text-sm text-gray-600">
             {filteredSupervisors.length} affichés / {total} au total
           </div>

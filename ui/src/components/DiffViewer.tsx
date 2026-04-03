@@ -81,7 +81,7 @@ function ChangeItem({ change }: { change: Change }) {
   }
 
   return (
-    <div className="rounded-lg border p-4 space-y-2">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-2">
       <div className="flex items-center gap-2">
         <Badge variant={getBadgeVariant(change.operation)}>
           {change.operation}
@@ -92,14 +92,14 @@ function ChangeItem({ change }: { change: Change }) {
       {change.operation === "UPDATE" && (
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div className="space-y-1">
-            <div className="text-slate-500">Ancienne valeur</div>
-            <div className="rounded bg-red-50 p-2 text-red-900 font-mono">
+            <div className="text-muted-foreground">Ancienne valeur</div>
+            <div className="rounded bg-red-500/10 border border-red-500/20 p-2 text-red-900 dark:text-red-100 font-mono">
               {formatValue(change.old_value)}
             </div>
           </div>
           <div className="space-y-1">
-            <div className="text-slate-500">Nouvelle valeur</div>
-            <div className="rounded bg-green-50 p-2 text-green-900 font-mono">
+            <div className="text-muted-foreground">Nouvelle valeur</div>
+            <div className="rounded bg-emerald-500/10 border border-emerald-500/20 p-2 text-emerald-900 dark:text-emerald-100 font-mono">
               {formatValue(change.new_value)}
             </div>
           </div>
@@ -108,8 +108,8 @@ function ChangeItem({ change }: { change: Change }) {
 
       {change.operation === "INSERT" && (
         <div className="text-sm">
-          <div className="text-slate-500">Valeur</div>
-          <div className="rounded bg-green-50 p-2 text-green-900 font-mono mt-1">
+          <div className="text-muted-foreground">Valeur</div>
+          <div className="rounded bg-emerald-500/10 border border-emerald-500/20 p-2 text-emerald-900 dark:text-emerald-100 font-mono mt-1">
             {formatValue(change.new_value)}
           </div>
         </div>
@@ -117,8 +117,8 @@ function ChangeItem({ change }: { change: Change }) {
 
       {change.operation === "DELETE" && (
         <div className="text-sm">
-          <div className="text-slate-500">Valeur supprimée</div>
-          <div className="rounded bg-red-50 p-2 text-red-900 font-mono mt-1">
+          <div className="text-muted-foreground">Valeur supprimée</div>
+          <div className="rounded bg-red-500/10 border border-red-500/20 p-2 text-red-900 dark:text-red-100 font-mono mt-1">
             {formatValue(change.old_value)}
           </div>
         </div>

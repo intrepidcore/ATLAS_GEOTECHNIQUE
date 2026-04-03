@@ -116,8 +116,15 @@ def _parse_float(val: Any) -> Optional[float]:
         # Si c'est déjà un nombre
         if isinstance(val, (int, float)):
             return float(val)
-        # Sinon, convertir en string et gérer la virgule
-        s = str(val).strip().replace(",", ".")
+
+        # Sinon, convertir en string et gérer la virgule.
+        # NOTE: dans limite.xlsx, certains champs peuvent contenir '-' / '–' / '—'
+        # pour représenter "non mesuré / non renseigné", pas une valeur numérique.
+        s = str(val).strip()
+        if s in {"-", "–", "—"}:
+            return None
+
+        s = s.replace(",", ".")
         return float(s)
     except (ValueError, TypeError):
         return None

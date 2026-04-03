@@ -43,7 +43,7 @@ export function DataGridToolbar({
   hasSelection,
 }: DataGridToolbarProps) {
   return (
-    <div className="flex items-center gap-2 p-3 bg-slate-50 border-b">
+    <div className="flex items-center gap-2 p-3 bg-muted/40 border-b border-border">
       {/* Édition */}
       {editMode && (
         <>

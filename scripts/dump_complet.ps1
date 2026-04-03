@@ -1,6 +1,9 @@
 #!/usr/bin/env pwsh
 # Script de dump complet avec vérifications
 
+# Évite les warnings Docker liés à DATABASE_URL (sorties parasites dans la chaîne de résultat)
+$env:DATABASE_URL = "ignore"
+
 $timestamp = Get-Date -Format "yyyyMMdd_HHmmss"
 $dumpDir = "dumps"
 $dumpFile = "$dumpDir/full_atlas_${timestamp}.sql"
@@ -15,8 +18,9 @@ Write-Host "DUMP COMPLET ATLAS - Avec vérifications"
 Write-Host "="*70
 
 Write-Host "`n🔍 Vérification pré-dump..."
-$preCheck = docker exec atlas-db-1 psql -U atlas -d atlas -t -c "SELECT COUNT(*) FROM atlas.maille_28km;"
-$maille28kmCount = [int]$preCheck.Trim()
+$preCheckRaw = docker compose exec -T db psql -U atlas -d atlas_clean -t -c "SELECT COUNT(*) FROM atlas.maille_28km;"
+$preCheckText = ($preCheckRaw | Out-String).Trim()
+$maille28kmCount = [int](([regex]::Match($preCheckText, '\d+')).Value)
 Write-Host "   Mailles 28km dans la base: $maille28kmCount"
 
 if ($maille28kmCount -eq 0) {
@@ -31,7 +35,7 @@ if ($maille28kmCount -eq 0) {
 }
 
 Write-Host "`n💾 Création du dump..."
-docker exec -t atlas-db-1 pg_dump -U atlas -d atlas --clean --if-exists > $dumpFile
+docker compose exec -T db pg_dump -U atlas -d atlas_clean --clean --if-exists > $dumpFile
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ Erreur lors de la création du dump"
@@ -60,6 +64,6 @@ Write-Host "`n" + "="*70
 Write-Host "✅ DUMP TERMINÉ"
 Write-Host "="*70
 Write-Host "`nPour restaurer ce dump:"
-Write-Host "   docker exec -i atlas-db-1 psql -U atlas -d atlas < $dumpFile"
+Write-Host "   docker compose exec -T db psql -U atlas -d atlas_clean < $dumpFile"
 Write-Host "`nPuis vérifier:"
 Write-Host "   python atlas/scripts/check_28km.py"

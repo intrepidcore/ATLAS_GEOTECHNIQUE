@@ -1,0 +1,38 @@
+{
+  "model_key": "maille_rga_onnx",
+  "model_version": "catboost_onnx_mailles_v1",
+  "feature_order": [
+    "n_sondages",
+    "vbs_moyen",
+    "ip_moyen",
+    "gonflement_cg_moyen",
+    "profondeur_max_m",
+    "pct_in_lama",
+    "dsm_altitude_moy_m",
+    "dist_riviere_m",
+    "dist_surface_eau_m",
+    "data_confidence_score"
+  ],
+  "n_features": 10,
+  "onnx_file": "maille_risk.onnx",
+  "training_metrics": {
+    "n_total": 29407,
+    "n_train": 23525,
+    "n_test": 5882,
+    "rmse_holdout": 0.5354015272661568,
+    "r2_holdout": 0.947710827563356,
+    "feature_order": [
+      "n_sondages",
+      "vbs_moyen",
+      "ip_moyen",
+      "gonflement_cg_moyen",
+      "profondeur_max_m",
+      "pct_in_lama",
+      "dsm_altitude_moy_m",
+      "dist_riviere_m",
+      "dist_surface_eau_m",
+      "data_confidence_score"
+    ],
+    "target": "rule_based_risk_v0_clone"
+  }
+}

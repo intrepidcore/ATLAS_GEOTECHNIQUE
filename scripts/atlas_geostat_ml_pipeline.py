@@ -54,32 +54,55 @@ def vlog(msg: str) -> None:
     if VERBOSE:
         print(msg, file=sys.stderr)
 
-PARAM_TO_STATS_COL = {
-    "vbs_avg": "vbs_avg",
-    "ip_avg": "ip_avg",
-    "eg_avg": "eg_avg",
-    "passant_80um_avg": "passant_80um_avg",
-    "gamma_d_max_avg": "gamma_d_max_avg",
-    "wl_avg": "wl_avg",
-    "wp_avg": "wp_avg",
-    "passant_2mm_avg": "passant_2mm_avg",
-    "passant_20mm_avg": "passant_20mm_avg",
-}
 
-# Colonne stats pour l'entraînement vs id catalogue de sortie (interpolation « métier »)
-KRIGING_OUTPUT_TO_STATS_COL = {
-    "kriging_vbs": "vbs_avg",
-    "kriging_ip": "ip_avg",
-}
+def json_for_db(obj: Any, indent: Optional[int] = None) -> str:
+    """JSON strict (pas de NaN / Infinity) pour json/jsonb PostgreSQL ou sortie console."""
+
+    def scrub(x: Any) -> Any:
+        if isinstance(x, float):
+            return None if math.isnan(x) or math.isinf(x) else x
+        if isinstance(x, np.generic):
+            return scrub(x.item())
+        if isinstance(x, dict):
+            return {k: scrub(v) for k, v in x.items()}
+        if isinstance(x, (list, tuple)):
+            return [scrub(v) for v in x]
+        return x
+
+    kw: Dict[str, Any] = {"allow_nan": False}
+    if indent is not None:
+        kw["indent"] = indent
+    return json.dumps(scrub(obj), **kw)
 
 
-def resolve_kriging_columns(parameter_id: str) -> Tuple[Optional[str], str]:
-    """Retourne (colonne mailles_geotechnique_stats_wgs84, parameter_id à persister en base)."""
-    if parameter_id in PARAM_TO_STATS_COL:
-        return PARAM_TO_STATS_COL[parameter_id], parameter_id
-    if parameter_id in KRIGING_OUTPUT_TO_STATS_COL:
-        return KRIGING_OUTPUT_TO_STATS_COL[parameter_id], parameter_id
-    return None, parameter_id
+def resolve_training_stats_col_from_catalog(cur, parameter_id: str) -> Optional[str]:
+    """
+    Résout la colonne source à entraîner (stats_col de mailles_geotechnique_stats_wgs84)
+    uniquement depuis atlas.ai_parameter_catalog.
+    """
+    cur.execute(
+        """
+        SELECT source_table, source_column
+        FROM atlas.ai_parameter_catalog
+        WHERE parameter_id = %s
+        LIMIT 1
+        """,
+        (parameter_id,),
+    )
+    row = cur.fetchone()
+    if not row:
+        return None
+
+    source_table = row[0]
+    source_column = row[1]
+    if not source_column:
+        return None
+
+    # Cette pipeline se base actuellement sur mailles_geotechnique_stats_wgs84 pour l'entraînement.
+    if source_table and source_table != "mailles_geotechnique_stats_wgs84":
+        return None
+
+    return str(source_column)
 
 
 def loo_is_scientifically_usable(loo: Dict[str, Any], n_train: int) -> Tuple[bool, str]:
@@ -522,9 +545,12 @@ def catboost_quantiles(
         return pred, pred, pred
 
 
-def load_ml_features(cur, maille_ids: Sequence[str]) -> Dict[str, np.ndarray]:
+def load_ml_features(
+    cur, maille_ids: Sequence[uuid.UUID | str]
+) -> Dict[str, np.ndarray]:
     if not maille_ids:
         return {}
+    ids = [str(x) for x in maille_ids]
     cur.execute(
         """
         SELECT
@@ -540,7 +566,7 @@ def load_ml_features(cur, maille_ids: Sequence[str]) -> Dict[str, np.ndarray]:
         LEFT JOIN atlas.ai_context_features_maille cf ON cf.maille_code = m.code
         WHERE m.id = ANY(%s::uuid[])
         """,
-        ([uuid.UUID(str(x)) for x in maille_ids],),
+        (ids,),
     )
     out: Dict[str, np.ndarray] = {}
     for row in cur.fetchall():
@@ -666,7 +692,7 @@ def run_zone(
             zone_id_db,
             domain_id_db,
             parameter_id,
-            json.dumps(metrics_run),
+            json_for_db(metrics_run),
         ),
     )
 
@@ -710,7 +736,7 @@ def run_zone(
             loo_rmse_col,
             blk_rmse_col,
             skf_rmse_col,
-            json.dumps(fit_quality),
+            json_for_db(fit_quality),
         ),
     )
 
@@ -719,21 +745,21 @@ def run_zone(
         INSERT INTO atlas.ai_spatial_validation_runs (validation_type, parameter_id, train_zone_code, test_zone_code, metrics)
         VALUES ('loo_kriging', %s, %s, NULL, %s::jsonb)
         """,
-        (parameter_id, train_label, json.dumps(loo)),
+        (parameter_id, train_label, json_for_db(loo)),
     )
     cur.execute(
         """
         INSERT INTO atlas.ai_spatial_validation_runs (validation_type, parameter_id, train_zone_code, test_zone_code, metrics)
         VALUES ('block_kriging', %s, %s, NULL, %s::jsonb)
         """,
-        (parameter_id, train_label, json.dumps(blk)),
+        (parameter_id, train_label, json_for_db(blk)),
     )
     cur.execute(
         """
         INSERT INTO atlas.ai_spatial_validation_runs (validation_type, parameter_id, train_zone_code, test_zone_code, metrics)
         VALUES ('spatial_kfold_kriging', %s, %s, NULL, %s::jsonb)
         """,
-        (parameter_id, train_label, json.dumps(skf)),
+        (parameter_id, train_label, json_for_db(skf)),
     )
 
     rows_iv = []
@@ -836,7 +862,7 @@ def run_zone(
             zone_id_db,
             domain_id_db,
             parameter_id,
-            json.dumps(rk_metrics),
+            json_for_db(rk_metrics),
         ),
     )
 
@@ -895,7 +921,7 @@ def run_zone(
             "regression_kriging_catboost",
             parameter_id,
             "catboost_quantile_residual_ok_v1",
-            json.dumps(ml_run_metrics),
+            json_for_db(ml_run_metrics),
         ),
     )
 
@@ -915,7 +941,7 @@ def run_zone(
                 float(p50[i]),
                 float(p90[i]),
                 ml_model_version,
-                json.dumps(row_m),
+                json_for_db(row_m),
             )
         )
 
@@ -1004,8 +1030,10 @@ def main() -> int:
             jobs = list_kriging_domain_jobs(cur, limit=args.domain_job_limit)
             cur.close()
             summary_d: List[Optional[Dict[str, Any]]] = []
+            cur2 = conn.cursor()
             for dom_id, pid in jobs:
-                sc, pkey = resolve_kriging_columns(pid)
+                sc = resolve_training_stats_col_from_catalog(cur2, pid)
+                # NOTE: on n'utilise pas pkey (l'output parameter_id reste pid).
                 if not sc:
                     summary_d.append(
                         {
@@ -1019,7 +1047,7 @@ def main() -> int:
                 out = run_zone(
                     conn,
                     "",
-                    pkey,
+                    pid,
                     sc,
                     use_gpu=args.gpu,
                     kriging_only=args.kriging_only,
@@ -1028,8 +1056,9 @@ def main() -> int:
                 summary_d.append(out)
             n_ok_d = sum(1 for s in summary_d if s and s.get("ok"))
             n_loo_d = sum(1 for s in summary_d if s and s.get("ok") and s.get("loo_valid"))
+            cur2.close()
             print(
-                json.dumps(
+                json_for_db(
                     {
                         "mode": "stratified_domains",
                         "jobs_total": len(jobs),
@@ -1046,8 +1075,9 @@ def main() -> int:
             jobs = list_kriging_jobs(cur)
             cur.close()
             summary: List[Optional[Dict[str, Any]]] = []
+            cur2 = conn.cursor()
             for zone_code, pid in jobs:
-                sc, _ = resolve_kriging_columns(pid)
+                sc = resolve_training_stats_col_from_catalog(cur2, pid)
                 if not sc:
                     summary.append(
                         {
@@ -1071,8 +1101,9 @@ def main() -> int:
             n_loo = sum(
                 1 for s in summary if s and s.get("ok") and s.get("loo_valid")
             )
+            cur2.close()
             print(
-                json.dumps(
+                json_for_db(
                     {
                         "jobs_total": len(jobs),
                         "runs_attempted": len(summary),
@@ -1084,20 +1115,22 @@ def main() -> int:
                 )
             )
         else:
-            stats_col, param_key = resolve_kriging_columns(args.parameter)
+            cur = conn.cursor()
+            stats_col = resolve_training_stats_col_from_catalog(cur, args.parameter)
+            cur.close()
             if not stats_col:
-                sys.exit(f"Paramètre non mappé (stats): {args.parameter}")
+                sys.exit(f"Paramètre non supporté via ai_parameter_catalog: {args.parameter}")
             dom_opt = (args.kriging_domain_id or "").strip() or None
             out = run_zone(
                 conn,
                 args.zone,
-                param_key,
+                args.parameter,
                 stats_col,
                 use_gpu=args.gpu,
                 kriging_only=args.kriging_only,
                 kriging_domain_id=dom_opt,
             )
-            print(json.dumps(out, indent=2))
+            print(json_for_db(out, indent=2))
     finally:
         conn.close()
     return 0

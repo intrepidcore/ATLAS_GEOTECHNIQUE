@@ -1,0 +1,185 @@
+<style>
+*{box-sizing:border-box}
+.adr{font-family:var(--font-sans);color:var(--color-text-primary);padding:1.5rem 2rem}
+.adr-header{border-bottom:1px solid var(--color-border-secondary);padding-bottom:1rem;margin-bottom:1.5rem}
+.adr-id{font-size:11px;font-weight:500;color:var(--color-text-secondary);letter-spacing:.05em;text-transform:uppercase;margin-bottom:.25rem}
+.adr-title{font-size:20px;font-weight:500;margin:0 0 .75rem}
+.badges{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.5rem}
+.badge{display:inline-block;font-size:11px;font-weight:500;padding:3px 8px;border-radius:4px}
+.ba{background:var(--color-background-success);color:var(--color-text-success)}
+.bd{background:var(--color-background-secondary);color:var(--color-text-secondary)}
+.bi{background:var(--color-background-info);color:var(--color-text-info)}
+.bw{background:var(--color-background-warning);color:var(--color-text-warning)}
+h2{font-size:14px;font-weight:500;margin:1.5rem 0 .5rem;border-left:3px solid var(--color-border-primary);padding-left:.75rem}
+h3{font-size:13px;font-weight:500;color:var(--color-text-secondary);margin:1rem 0 .3rem}
+p,li{font-size:13px;line-height:1.7;color:var(--color-text-secondary);margin:.2rem 0}
+ul,ol{margin:.25rem 0;padding-left:1.25rem}
+code{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:1px 5px;border-radius:3px;color:var(--color-text-primary)}
+pre{font-family:var(--font-mono);font-size:12px;background:var(--color-background-secondary);padding:.75rem 1rem;border-radius:6px;margin:.5rem 0;overflow-x:auto;line-height:1.6;color:var(--color-text-primary)}
+.db{border:1px solid var(--color-border-tertiary);border-radius:8px;padding:1rem 1.25rem;margin:.75rem 0}
+.alt-table{width:100%;border-collapse:collapse;font-size:12px;margin:.5rem 0}
+.alt-table th{font-weight:500;color:var(--color-text-secondary);border-bottom:1px solid var(--color-border-tertiary);padding:.4rem .5rem;text-align:left}
+.alt-table td{padding:.4rem .5rem;border-bottom:1px solid var(--color-border-tertiary);color:var(--color-text-secondary);vertical-align:top}
+.alt-table tr.chosen td{color:var(--color-text-primary);background:var(--color-background-secondary)}
+.cl{font-size:10px;font-weight:500;background:var(--color-background-success);color:var(--color-text-success);padding:1px 5px;border-radius:3px;margin-left:.4rem}
+.eq{font-family:var(--font-mono);font-size:12px;color:var(--color-text-primary);background:var(--color-background-secondary);padding:.5rem .75rem;border-radius:6px;margin:.4rem 0;display:block}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin:.5rem 0}
+.ccard{border:1px solid var(--color-border-tertiary);border-radius:6px;padding:.75rem}
+.ccard .cl2{font-size:11px;font-weight:500;margin-bottom:.4rem}
+.pos .cl2{color:var(--color-text-success)}
+.neg .cl2{color:var(--color-text-warning)}
+.cr{display:flex;gap:.5rem;align-items:baseline;margin:.2rem 0}
+.ci{font-family:var(--font-mono);font-size:11px;color:var(--color-text-tertiary);min-width:55px}
+hr{border:none;border-top:1px solid var(--color-border-tertiary);margin:1.5rem 0}
+</style>
+<div class="adr">
+<div class="adr-header">
+  <div class="adr-id">ADR-005 · Atlas Géotechnique</div>
+  <div class="adr-title">Régression kriging hybride ML et kriging stratifié par profondeur</div>
+  <div class="badges">
+    <span class="badge ba">Accepté</span>
+    <span class="badge bd">2026-03-30</span>
+    <span class="badge bi">Pipeline scientifique</span>
+    <span class="badge bi">ML/ONNX</span>
+    <span class="badge bw">Dépend ADR-004</span>
+  </div>
+</div>
+
+<h2>Contexte</h2>
+<p>ADR-004 établit le kriging stratifié par domaine géologique. Ce document étend l'architecture sur deux axes :</p>
+<ul>
+  <li>La <strong>régression kriging</strong> (RK) combine une tendance ML avec une interpolation des résidus, produisant des cartes plus précises que le kriging ordinaire seul.</li>
+  <li>Le <strong>kriging par horizon de profondeur</strong> traite la variabilité verticale des sols, inexploitée dans le pipeline actuel.</li>
+</ul>
+<p>Ces deux extensions sont interdépendantes et partagent la même infrastructure de features, de traçabilité et d'export ONNX.</p>
+
+<hr/>
+<h2>Décision 1 — Régression kriging : architecture à trois niveaux</h2>
+<div class="db">
+  <p>La régression kriging décompose la variable cible en deux composantes :</p>
+  <span class="eq">Z(s) = m(s) + ε(s)</span>
+  <p>où <code>m(s)</code> est la tendance déterministe estimée par ML (CatBoost), et <code>ε(s)</code> est le résidu spatial interpolé par kriging ordinaire. La prédiction finale est :</p>
+  <span class="eq">Ẑ_RK(s₀) = m̂(s₀) + ε̂(s₀)</span>
+</div>
+<h3>Trois niveaux de pipeline officiels</h3>
+<pre>Niveau 1 — Kriging ordinaire stratifié (ADR-004)
+  → sortie : ip_kriging, vbs_kriging par domaine géologique
+  → source_type = 'kriging'
+
+Niveau 2 — Régression kriging hybride ML
+  → features : élévation DSM, pente, indice TWI, domaine géologique/pédologique
+  → modèle tendance : CatBoost (export ONNX)
+  → résidus : kriging ordinaire sur Z(sᵢ) - m̂(sᵢ)
+  → source_type = 'regression_kriging'
+
+Niveau 3 — Inférence ML directe (atlas-api-infer)
+  → fallback si résidus non convergents
+  → source_type = 'ml_infer'</pre>
+
+<table class="alt-table">
+  <tr><th>Méthode</th><th>Données requises</th><th>Précision attendue</th><th>Interprétabilité</th></tr>
+  <tr><td>Kriging ordinaire</td><td>≥ 15 pts/domaine</td><td>Bonne localement</td><td>Haute (variogramme)</td></tr>
+  <tr><td>ML direct (CatBoost)</td><td>≥ 50 pts global</td><td>Bonne globalement</td><td>Moyenne (SHAP)</td></tr>
+  <tr class="chosen"><td>Régression kriging <span class="cl">retenu niveau 2</span></td><td>≥ 30 pts/domaine</td><td>Meilleure des deux</td><td>Haute (résidus traçables)</td></tr>
+</table>
+
+<hr/>
+<h2>Décision 2 — Kriging par horizon de profondeur dynamique</h2>
+<div class="db">
+  <p>Les paramètres géotechniques varient verticalement. Un kriging ignorant la profondeur mélange des horizons physiquement distincts, produisant des valeurs sans réalité physique.</p>
+  <p>Les horizons sont définis <strong>dynamiquement</strong> par analyse des percentiles de la distribution des <code>depth_m</code> disponibles par paramètre et par domaine, plutôt que par des seuils fixes.</p>
+</div>
+<h3>Algorithme de calcul des horizons dynamiques</h3>
+<pre>Pour chaque (paramètre, domaine_géologique) :
+  1. Extraire la distribution des depth_m avec valeurs non nulles
+  2. Si n_points < 15 → pas de stratification, kriging 2D uniquement
+  3. Sinon : découper en quartiles Q1/Q2/Q3 de depth_m
+     → Horizon H1 : depth_m ≤ Q1   (typiquement 0–0.5m Togo)
+     → Horizon H2 : Q1 < depth_m ≤ Q2  (typiquement 0.5–1.5m)
+     → Horizon H3 : Q2 < depth_m ≤ Q3  (typiquement 1.5–3m)
+     → Horizon H4 : depth_m > Q3   (typiquement > 3m)
+  4. Vérifier n_points ≥ 15 par horizon avant kriging
+     → Sinon : fusionner avec horizon adjacent</pre>
+<p>Les seuils calculés sont stockés dans <code>atlas.kriging_depth_horizons</code> et tracés par run.</p>
+
+<h3>Table de stockage des horizons</h3>
+<pre>CREATE TABLE atlas.kriging_depth_horizons (
+  id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  run_id        uuid REFERENCES atlas.ai_model_registry(id),
+  parameter_id  text NOT NULL,
+  domain_code   text NOT NULL,
+  horizon_label text NOT NULL,  -- 'H1','H2','H3','H4'
+  depth_min_m   float NOT NULL,
+  depth_max_m   float,          -- NULL = ouvert vers le bas
+  n_points      int NOT NULL,
+  created_at    timestamptz DEFAULT now()
+);</pre>
+
+<hr/>
+<h2>Décision 3 — Feature store pour RK (extension ADR-004)</h2>
+<div class="db">
+  <p>La régression kriging nécessite des features spatiales continues pour calculer la tendance <code>m(s)</code>. Ces features doivent être pré-calculées et versionnées pour reproductibilité.</p>
+</div>
+<h3>Features obligatoires par maille</h3>
+<pre>-- Features DSM/topographiques (déjà partiellement en base)
+elevation_m          -- depuis atlas.dsm_flat_cache
+slope_deg            -- calculé via PostGIS ST_Slope ou précompilé
+twi                  -- Topographic Wetness Index = ln(a / tan(β))
+aspect_deg           -- exposition versant
+
+-- Features contextuelles
+domain_geologie      -- clé FK vers atlas.kriging_domains
+domain_pedologie     -- clé FK vers atlas.kriging_domains
+risque_gonflement    -- catégorie 1-4
+
+-- Features de voisinage (optionnelles niveau 2)
+n_sondages_5km       -- densité locale de mesures
+dist_nearest_sondage_m  -- distance au plus proche point de support</pre>
+
+<hr/>
+<h2>Décision 4 — Critères de sélection automatique du niveau pipeline</h2>
+<pre>function select_pipeline_level(parameter, domain, horizon):
+  n = count_support_points(parameter, domain, horizon)
+
+  if n >= 30:
+    run_level_2_regression_kriging()   → source_type = 'regression_kriging'
+  elif n >= 15:
+    run_level_1_kriging_only()         → source_type = 'kriging'
+  elif n >= 5:
+    run_level_3_ml_infer()             → source_type = 'ml_infer'
+  else:
+    run_deterministic_fallback()       → source_type = 'deterministic'
+    emit WARNING(f"{domain}/{horizon}: n={n}, fallback activé")</pre>
+<p>Ce choix est loggé dans <code>atlas.ai_run_log</code> avec le motif explicite — aucune sélection silencieuse.</p>
+
+<hr/>
+<h2>Conséquences</h2>
+<div class="cgrid">
+  <div class="ccard pos"><div class="cl2">Gains</div>
+    <ul>
+      <li>Précision accrue sur zones à tendance géologique forte</li>
+      <li>Variabilité verticale capturée (fondations, pieux)</li>
+      <li>Résidus traçables et auditables</li>
+      <li>Comparaison kriging / RK / ML dans UI graphiques</li>
+    </ul>
+  </div>
+  <div class="ccard neg"><div class="cl2">Coûts</div>
+    <ul>
+      <li>Complexité pipeline x2 (horizons × domaines)</li>
+      <li>Données insuffisantes actuellement pour H3/H4 AMESSEFE</li>
+      <li>TWI et slope nécessitent DEM haute résolution Togo</li>
+      <li>Temps de run pipeline : x5–x10 vs kriging simple</li>
+    </ul>
+  </div>
+</div>
+
+<hr/>
+<h2>Critères d'acceptation</h2>
+<div class="cr"><span class="ci">AC-01</span><span>Horizons dynamiques calculés et stockés dans <code>kriging_depth_horizons</code> avant chaque run RK</span></div>
+<div class="cr"><span class="ci">AC-02</span><span>RK améliore le RMSE vs kriging ordinaire d'au moins 10 % sur les domaines avec n ≥ 30</span></div>
+<div class="cr"><span class="ci">AC-03</span><span>Résidus kriging stockés dans <code>ai_interpolation_residuals</code> avec <code>run_id</code> traçable</span></div>
+<div class="cr"><span class="ci">AC-04</span><span>Sélection automatique du niveau pipeline loggée et visible dans le panneau Admin</span></div>
+<div class="cr"><span class="ci">AC-05</span><span>Export ONNX du modèle tendance CatBoost versionné dans <code>ai_model_registry</code></span></div>
+<div class="cr"><span class="ci">AC-06</span><span>Horizons avec n < 15 refusés pour kriging et marqués <code>insufficient_data</code> — jamais publiés silencieusement</span></div>
+<div class="cr"><span class="ci">AC-07</span><span>Graphique "Comparaison kriging vs RK vs ML" disponible en UI Admin pour chaque run</span></div>
+</div>

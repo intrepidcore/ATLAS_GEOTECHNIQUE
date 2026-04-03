@@ -24,6 +24,16 @@ import sys
 import subprocess
 import pandas as pd
 
+# Windows console peut utiliser cp1252 et planter sur certains emojis.
+# On force stdout/stderr en utf-8 pour rendre le script robuste.
+try:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 # Import des modules centralisés
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils.normalize import normalize_localite, find_best_display_name

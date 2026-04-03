@@ -115,3 +115,51 @@ pub async fn forward_opti_strategie(body: Value) -> Result<Option<Value>, String
     let v: Value = resp.json().await.map_err(|e| e.to_string())?;
     Ok(Some(v))
 }
+
+/// Classement heuristique des mailles à sonder (api-opti campagne, indépendant de api-infer).
+pub async fn forward_opti_campaign_simple(body: Value) -> Result<Option<Value>, String> {
+    let Some(base) = opti_base() else {
+        return Ok(None);
+    };
+    let token = internal_token().ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-opti".to_string())?;
+    let client = http_client()?;
+    let url = format!("{}/internal/opti/campaign/simple", base);
+    let resp = client
+        .post(&url)
+        .header("X-Internal-Token", token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("opti campaign simple http: {e}"))?;
+    let status = resp.status();
+    if !status.is_success() {
+        let txt = resp.text().await.unwrap_or_default();
+        return Err(format!("opti campaign simple status {status}: {txt}"));
+    }
+    let v: Value = resp.json().await.map_err(|e| e.to_string())?;
+    Ok(Some(v))
+}
+
+/// Optimisation génétique (sous-ensemble de mailles sous budget + contrainte dépression).
+pub async fn forward_opti_campaign_ga(body: Value) -> Result<Option<Value>, String> {
+    let Some(base) = opti_base() else {
+        return Ok(None);
+    };
+    let token = internal_token().ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-opti".to_string())?;
+    let client = http_client()?;
+    let url = format!("{}/internal/opti/campaign", base);
+    let resp = client
+        .post(&url)
+        .header("X-Internal-Token", token)
+        .json(&body)
+        .send()
+        .await
+        .map_err(|e| format!("opti campaign ga http: {e}"))?;
+    let status = resp.status();
+    if !status.is_success() {
+        let txt = resp.text().await.unwrap_or_default();
+        return Err(format!("opti campaign ga status {status}: {txt}"));
+    }
+    let v: Value = resp.json().await.map_err(|e| e.to_string())?;
+    Ok(Some(v))
+}

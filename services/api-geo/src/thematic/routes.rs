@@ -9,6 +9,7 @@ use uuid::Uuid;
 
 use super::classifier::*;
 use super::colors::*;
+use super::source_type::map_source_type;
 use super::statistics::*;
 use super::types::*;
 
@@ -19,6 +20,30 @@ fn is_ai_parameter(column: &str) -> bool {
             | "ai_portance_kpa_infer"
             | "kriging_ip"
             | "kriging_vbs"
+            | "eg_ked_h1"
+            | "eg_ked_h2"
+            | "eg_ked_h3"
+            | "passant_2mm_ked_h1"
+            | "passant_2mm_ked_h2"
+            | "passant_2mm_ked_h3"
+            | "passant_80um_ked_h1"
+            | "passant_80um_ked_h2"
+            | "passant_80um_ked_h3"
+            | "vbs_ked_h1"
+            | "vbs_ked_h2"
+            | "vbs_ked_h3"
+            | "ip_ked_h1"
+            | "ip_ked_h2"
+            | "ip_ked_h3"
+            | "wl_ked_h1"
+            | "wl_ked_h2"
+            | "wl_ked_h3"
+            | "wp_ked_h1"
+            | "wp_ked_h2"
+            | "wp_ked_h3"
+            | "ip_derived_h1"
+            | "ip_derived_h2"
+            | "ip_derived_h3"
             | "ag_safety_factor"
             | "ag_cout_millions"
     )
@@ -152,6 +177,9 @@ async fn calculate_parent_context(
     }
 
     let column = req.parameter.sql_column();
+    if column == "n_sondages_20km" {
+        return None;
+    }
 
     // Déterminer le niveau parent
     let (parent_level, parent_name, parent_filter) = if req.adm3.is_some() {
@@ -225,6 +253,162 @@ fn simplify_tolerance(zoom: Option<u8>) -> f64 {
     }
 }
 
+/// Densité de données : sondages dans 20 km (MV) — grille 2 km forcée.
+pub async fn get_thematic_data_density(
+    State(state): State<AppState>,
+    Query(mut req): Query<ThematicDataRequest>,
+) -> Result<Json<ThematicDataResponse>, (StatusCode, String)> {
+    req.grid = Some("2km".to_string());
+    let pool = &state.pool;
+    let tolerance = simplify_tolerance(req.zoom);
+    let geom_column = if tolerance > 1000.0 {
+        "geom_simplified"
+    } else {
+        "geom"
+    };
+    let mut param_index = 1_i32;
+    let geom_sel = if req.include_geometry {
+        format!("ST_AsGeoJSON(ms.{geom_column})::text as geom")
+    } else {
+        "NULL::text as geom".to_string()
+    };
+
+    let mut query = format!(
+        "SELECT ms.code,
+                {geom_sel},
+                CAST(COALESCE(d.n_sondages_20km, 0) AS DOUBLE PRECISION) as value,
+                CAST(ms.n_sondages AS INTEGER) as n_sondages,
+                CAST(ms.n_essais_geo AS INTEGER) as n_essais_geo,
+                ms.adm1_name,
+                ms.adm2_name,
+                ms.adm3_name,
+                NULL::text as interp_method
+         FROM mailles_geotechnique_stats_wgs84 ms
+         INNER JOIN atlas.mv_maille_n_sondages_20km d ON d.code = ms.code
+         WHERE 1=1"
+    );
+
+    if req.min_sondages.is_some() {
+        query.push_str(&format!(" AND ms.n_sondages >= ${}", param_index));
+        param_index += 1;
+    }
+    if req.bbox.is_some() {
+        query.push_str(&format!(
+            " AND ms.{geom_column} && ST_MakeEnvelope(${},${},${},${},4326)",
+            param_index,
+            param_index + 1,
+            param_index + 2,
+            param_index + 3
+        ));
+        param_index += 4;
+    }
+    if req.adm1.is_some() {
+        query.push_str(&format!(
+            " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = ms.adm2_name AND a2.adm1_name = ${})",
+            param_index
+        ));
+        param_index += 1;
+    }
+    if req.adm2.is_some() {
+        query.push_str(&format!(" AND ms.adm2_name = ${}", param_index));
+        param_index += 1;
+    }
+    if req.adm3.is_some() {
+        query.push_str(&format!(" AND ms.adm3_name = ${}", param_index));
+    }
+
+    query.push_str(" ORDER BY ms.code");
+
+    let mut qb = sqlx::query(&query);
+    if let Some(min_s) = req.min_sondages {
+        qb = qb.bind(min_s);
+    }
+    if let Some(bbox) = req.bbox {
+        qb = qb
+            .bind(bbox[0])
+            .bind(bbox[1])
+            .bind(bbox[2])
+            .bind(bbox[3]);
+    }
+    if let Some(a) = &req.adm1 {
+        qb = qb.bind(a);
+    }
+    if let Some(a) = &req.adm2 {
+        qb = qb.bind(a);
+    }
+    if let Some(a) = &req.adm3 {
+        qb = qb.bind(a);
+    }
+
+    let rows = qb.fetch_all(pool).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Erreur densité 20km: {}", e),
+        )
+    })?;
+
+    let mut features = Vec::new();
+    let mut values = Vec::new();
+    let column = "n_sondages_20km";
+    for row in rows {
+        let value: Option<f64> = row.try_get("value").ok();
+        if let Some(v) = value {
+            values.push(v);
+            let st = map_source_type(column, false, false, None);
+            let properties = serde_json::json!({
+                "code": row.get::<String, _>("code"),
+                "value": v,
+                "n_sondages": row.get::<i32, _>("n_sondages"),
+                "n_essais_geo": row.get::<i32, _>("n_essais_geo"),
+                "source_type": st,
+            });
+            if req.include_geometry {
+                if let Ok(Some(geom_str)) = row.try_get::<Option<String>, _>("geom") {
+                    let feature = serde_json::json!({
+                        "type": "Feature",
+                        "geometry": serde_json::from_str::<serde_json::Value>(&geom_str)
+                            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("GeoJSON: {}", e)))?,
+                        "properties": properties
+                    });
+                    features.push(feature);
+                }
+            } else {
+                features.push(serde_json::json!({
+                    "type": "Feature",
+                    "geometry": serde_json::Value::Null,
+                    "properties": properties
+                }));
+            }
+        }
+    }
+
+    let count_total = calculate_count_total(pool, &req).await;
+    let parent_context = calculate_parent_context(pool, &req).await;
+    let stats = calculate_statistics_extended(&values, count_total, parent_context);
+    let metadata = ResponseMetadata {
+        parameter: column.to_string(),
+        parameter_label: req.parameter.label().to_string(),
+        unit: req.parameter.unit().to_string(),
+        category: req.parameter.category().to_string(),
+        generated_at: chrono::Utc::now().to_rfc3339(),
+        filters_applied: FiltersApplied {
+            grid: req.grid,
+            bbox: req.bbox,
+            adm1: req.adm1,
+            adm2: req.adm2,
+            adm3: req.adm3,
+            min_sondages: req.min_sondages,
+        },
+    };
+
+    Ok(Json(ThematicDataResponse {
+        feature_type: "FeatureCollection".to_string(),
+        features,
+        statistics: stats,
+        metadata,
+    }))
+}
+
 /// GET /thematic/data - Récupérer les données pour une carte thématique
 pub async fn get_thematic_data(
     State(state): State<AppState>,
@@ -232,11 +416,28 @@ pub async fn get_thematic_data(
 ) -> Result<Json<ThematicDataResponse>, (StatusCode, String)> {
     let pool = &state.pool;
     let column = req.parameter.sql_column();
+    if column == "n_sondages_20km" {
+        return get_thematic_data_density(State(state), Query(req)).await;
+    }
     let ai_parameter = is_ai_parameter(column);
+    // KED (EG/P3/P4) et dérivés P5 sont stockés au 2km via `v_latest_ai_interpolation`.
+    // Donc on force une logique "ked-like" (sinon 28km => SQL / agrégation incohérente).
+    // - KED : suffixe `_ked_h{1,2,3}` (contient `_ked_h`)
+    // - P5 : `ip_derived_h{1,2,3}`
+    let is_ked_parameter = column.contains("_ked_h") || column.starts_with("ip_derived_h");
     let tolerance = simplify_tolerance(req.zoom);
 
     let grid = req.grid.as_deref().unwrap_or("2km");
-    let grid = if grid == "28km" { "28km" } else { "2km" };
+    // Les couches EG KED sont disponibles via `v_latest_ai_interpolation` (mailles 2km),
+    // et ne sont pas cohérentes avec la logique “28km” de group-by de `mailles_geotechnique_stats_wgs84`.
+    // Pour éviter les SQL invalides / mismatches, on force la grille 2km côté API.
+    let grid = if is_ked_parameter {
+        "2km"
+    } else if grid == "28km" {
+        "28km"
+    } else {
+        "2km"
+    };
 
     // Construire la requête SQL dynamiquement
     // 2km: MV WGS84 (géométries déjà en 4326)
@@ -250,8 +451,96 @@ pub async fn get_thematic_data(
     // Construire la requête avec paramètres sécurisés
     let mut param_index = 1;
 
-    // Cas spécial pour altitude_mean : utiliser les vues DSM
-    let base_query = if ai_parameter {
+    // Cas spécial pour les EG KED (stockés dans atlas.ai_interpolation_values via atlas.v_latest_ai_interpolation)
+    let base_query = if ai_parameter && is_ked_parameter {
+        if grid == "28km" {
+            // Construit un CTE “base” compatible avec la logique d’agrégation 28km plus bas (group by + select final).
+            let geom_expr = if req.include_geometry {
+                if tolerance > 1000.0 {
+                    "ST_AsGeoJSON(ST_SimplifyPreserveTopology(ST_Transform(m28.geom, 4326), 0.001))::text as geom"
+                } else {
+                    "ST_AsGeoJSON(ST_Transform(m28.geom, 4326))::text as geom"
+                }
+            } else {
+                "NULL::text as geom"
+            };
+
+            format!(
+                "WITH base AS (
+                    SELECT
+                        ('TG-28KM-' || LPAD(m28.code_m28::text, 3, '0')) as code,
+                        {},
+                        (
+                            SUM(CAST(m2.metric_value AS DOUBLE PRECISION) * ST_Area(ST_Intersection(m2.geom, m28.geom)))
+                            / NULLIF(SUM(ST_Area(ST_Intersection(m2.geom, m28.geom))), 0)
+                        ) as value,
+                        CAST(SUM(m2.n_sondages) AS INTEGER) as n_sondages,
+                        CAST(SUM(m2.n_essais_geo) AS INTEGER) as n_essais_geo,
+                        NULL::text as adm1_name,
+                        NULL::text as adm2_name,
+                        NULL::text as adm3_name,
+                        MAX(m2.interp_method)::text as interp_method
+                    FROM atlas.maille_28km m28
+                    JOIN (
+                        SELECT
+                            code,
+                            n_sondages,
+                            n_essais_geo,
+                            adm1_name,
+                            adm2_name,
+                            adm3_name,
+                            ST_Transform(geom, 25231) as geom,
+                            li.value as metric_value,
+                            li.method::text as interp_method
+                        FROM mailles_geotechnique_stats_wgs84
+                        JOIN atlas.v_latest_ai_interpolation li ON li.maille_id::text = mailles_geotechnique_stats_wgs84.id
+                        WHERE li.parameter_id = '{}'
+                          AND li.value IS NOT NULL
+                    ) m2
+                      ON ST_Intersects(m2.geom, m28.geom)
+                    WHERE m2.metric_value IS NOT NULL",
+                geom_expr,
+                column
+            )
+        } else if req.include_geometry {
+            format!(
+                "SELECT
+                    m.code,
+                    ST_AsGeoJSON(ST_Transform(m.geom, 4326))::text as geom,
+                    CAST(li.value AS DOUBLE PRECISION) as value,
+                    CAST(COALESCE(ms.n_sondages, 0) AS INTEGER) as n_sondages,
+                    CAST(COALESCE(ms.n_essais_total, 0) AS INTEGER) as n_essais_geo,
+                    ms.adm1_name,
+                    ms.adm2_name,
+                    ms.adm3_name,
+                    li.method::text as interp_method
+                 FROM atlas.mailles m
+                 JOIN atlas.v_latest_ai_interpolation li ON li.maille_id = m.id
+                 LEFT JOIN mailles_geotechnique_stats_wgs84 ms ON ms.code = m.code
+                 WHERE li.parameter_id = '{}'
+                   AND li.value IS NOT NULL",
+                column
+            )
+        } else {
+            format!(
+                "SELECT
+                    m.code,
+                    CAST(li.value AS DOUBLE PRECISION) as value,
+                    CAST(COALESCE(ms.n_sondages, 0) AS INTEGER) as n_sondages,
+                    CAST(COALESCE(ms.n_essais_total, 0) AS INTEGER) as n_essais_geo,
+                    ms.adm1_name,
+                    ms.adm2_name,
+                    ms.adm3_name,
+                    li.method::text as interp_method
+                 FROM atlas.mailles m
+                 JOIN atlas.v_latest_ai_interpolation li ON li.maille_id = m.id
+                 LEFT JOIN mailles_geotechnique_stats_wgs84 ms ON ms.code = m.code
+                 WHERE li.parameter_id = '{}'
+                   AND li.value IS NOT NULL",
+                column
+            )
+        }
+    } else if ai_parameter {
         if req.include_geometry {
             format!(
                 "SELECT
@@ -262,7 +551,8 @@ pub async fn get_thematic_data(
                     CAST(n_essais_geo AS INTEGER) as n_essais_geo,
                     adm1_name,
                     adm2_name,
-                    adm3_name
+                    adm3_name,
+                    'kriging_global'::text as interp_method
                  FROM atlas.v_thematic_ai_geotech
                  WHERE {} IS NOT NULL",
                 column, column
@@ -276,7 +566,8 @@ pub async fn get_thematic_data(
                     CAST(n_essais_geo AS INTEGER) as n_essais_geo,
                     adm1_name,
                     adm2_name,
-                    adm3_name
+                    adm3_name,
+                    'kriging_global'::text as interp_method
                  FROM atlas.v_thematic_ai_geotech
                  WHERE {} IS NOT NULL",
                 column, column
@@ -293,7 +584,8 @@ pub async fn get_thematic_data(
                     0 as n_essais_geo,
                     NULL::text as adm1_name,
                     m.adm2_name,
-                    NULL::text as adm3_name
+                    NULL::text as adm3_name,
+                    NULL::text as interp_method
                  FROM atlas.mailles m
                  JOIN atlas.v_maille_dsm_2km_flat d ON d.code = m.code
                  WHERE d.altitude_mean IS NOT NULL"
@@ -307,7 +599,8 @@ pub async fn get_thematic_data(
                     0 as n_essais_geo,
                     NULL::text as adm1_name,
                     m.adm2_name,
-                    NULL::text as adm3_name
+                    NULL::text as adm3_name,
+                    NULL::text as interp_method
                  FROM atlas.mailles m
                  JOIN atlas.v_maille_dsm_2km_flat d ON d.code = m.code
                  WHERE d.altitude_mean IS NOT NULL"
@@ -343,7 +636,8 @@ pub async fn get_thematic_data(
                     CAST(SUM(m2.n_essais_geo) AS INTEGER) as n_essais_geo,
                     NULL::text as adm1_name,
                     NULL::text as adm2_name,
-                    NULL::text as adm3_name
+                    NULL::text as adm3_name,
+                    MAX(m2.interp_method)::text as interp_method
                 FROM atlas.maille_28km m28
                 JOIN (
                     SELECT
@@ -354,7 +648,8 @@ pub async fn get_thematic_data(
                         adm2_name,
                         adm3_name,
                         ST_Transform(geom, 25231) as geom,
-                        {} as metric_value
+                        {} as metric_value,
+                        NULL::text as interp_method
                     FROM mailles_geotechnique_stats_wgs84
                 ) m2
                   ON ST_Intersects(m2.geom, m28.geom)
@@ -372,7 +667,8 @@ pub async fn get_thematic_data(
                 CAST(n_essais_geo AS INTEGER) as n_essais_geo,
                 adm1_name,
                 adm2_name,
-                adm3_name
+                adm3_name,
+                NULL::text as interp_method
              FROM mailles_geotechnique_stats_wgs84
              WHERE {} IS NOT NULL",
             geom_column, column, column
@@ -386,7 +682,8 @@ pub async fn get_thematic_data(
                 CAST(n_essais_geo AS INTEGER) as n_essais_geo,
                 adm1_name,
                 adm2_name,
-                adm3_name
+                adm3_name,
+                NULL::text as interp_method
              FROM mailles_geotechnique_stats_wgs84
              WHERE {} IS NOT NULL",
             column, column
@@ -442,10 +739,19 @@ pub async fn get_thematic_data(
                 param_index
             ));
         } else {
-            query.push_str(&format!(
-                " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = adm2_name AND a2.adm1_name = ${})",
-                param_index
-            ));
+            // Pour les couches KED, le FROM inclut `mailles_geotechnique_stats_wgs84 ms`, donc il faut
+            // qualifier `adm2_name` (sinon Postgres le voit ambigu).
+            if is_ked_parameter {
+                query.push_str(&format!(
+                    " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = ms.adm2_name AND a2.adm1_name = ${})",
+                    param_index
+                ));
+            } else {
+                query.push_str(&format!(
+                    " AND EXISTS (SELECT 1 FROM adm2_tg a2 WHERE a2.name = adm2_name AND a2.adm1_name = ${})",
+                    param_index
+                ));
+            }
         }
         param_index += 1;
     }
@@ -453,7 +759,13 @@ pub async fn get_thematic_data(
         if grid == "28km" {
             query.push_str(&format!(" AND m2.adm2_name = ${}", param_index));
         } else {
-            query.push_str(&format!(" AND adm2_name = ${}", param_index));
+            // Pour le chemin KED 2km, le FROM inclut `mailles_geotechnique_stats_wgs84 ms`,
+            // et `adm2_name` non qualifié peut devenir ambigu.
+            if is_ked_parameter {
+                query.push_str(&format!(" AND ms.adm2_name = ${}", param_index));
+            } else {
+                query.push_str(&format!(" AND adm2_name = ${}", param_index));
+            }
         }
         param_index += 1;
     }
@@ -461,7 +773,12 @@ pub async fn get_thematic_data(
         if grid == "28km" {
             query.push_str(&format!(" AND m2.adm3_name = ${}", param_index));
         } else {
-            query.push_str(&format!(" AND adm3_name = ${}", param_index));
+            // Même raisonnement que pour `adm2_name`.
+            if is_ked_parameter {
+                query.push_str(&format!(" AND ms.adm3_name = ${}", param_index));
+            } else {
+                query.push_str(&format!(" AND adm3_name = ${}", param_index));
+            }
         }
         param_index += 1;
     }
@@ -470,7 +787,7 @@ pub async fn get_thematic_data(
         query.push_str(
             " GROUP BY m28.code_m28, m28.geom
             )
-            SELECT code, geom, CAST(value AS DOUBLE PRECISION) as value, n_sondages, n_essais_geo, adm1_name, adm2_name, adm3_name
+            SELECT code, geom, CAST(value AS DOUBLE PRECISION) as value, n_sondages, n_essais_geo, adm1_name, adm2_name, adm3_name, interp_method
             FROM base
             WHERE value IS NOT NULL"
         );
@@ -488,8 +805,12 @@ pub async fn get_thematic_data(
     let mut query_builder = sqlx::query(&query);
 
     // Bind parameters
-    if let Some(min_s) = req.min_sondages {
-        query_builder = query_builder.bind(min_s);
+    // Pour les paramètres IA/Interpolation/AG, le filtre min_sondages n'est pas injecté dans le SQL
+    // (les valeurs sont déjà pré-calculées). Donc on ne doit bind que si le filtre existe réellement.
+    if !ai_parameter {
+        if let Some(min_s) = req.min_sondages {
+            query_builder = query_builder.bind(min_s);
+        }
     }
 
     if let Some(bbox) = req.bbox {
@@ -535,6 +856,13 @@ pub async fn get_thematic_data(
         if let Some(v) = value {
             values.push(v);
 
+            let interp_method: Option<String> = row.try_get("interp_method").ok();
+            let source_type = map_source_type(
+                column,
+                ai_parameter,
+                is_ked_parameter,
+                interp_method.as_deref(),
+            );
             let properties = serde_json::json!({
                 "code": row.get::<String, _>("code"),
                 "value": v,
@@ -542,6 +870,7 @@ pub async fn get_thematic_data(
                 // Utiliser i32 évite les panics sqlx sur mismatch de type.
                 "n_sondages": row.get::<i32, _>("n_sondages"),
                 "n_essais_geo": row.get::<i32, _>("n_essais_geo"),
+                "source_type": source_type,
             });
 
             if req.include_geometry {

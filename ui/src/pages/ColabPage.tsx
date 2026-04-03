@@ -152,7 +152,7 @@ const UpdateStudentPrefsModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">Compléter ADM</h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
@@ -187,16 +187,16 @@ const UpdateStudentPrefsModal: React.FC<{
             </div>
           )}
 
-          <div className="text-sm text-gray-700">
+          <div className="text-sm text-foreground">
             <div className="font-medium">{student.full_name}</div>
-            <div className="text-gray-500">{student.email}</div>
+            <div className="text-muted-foreground">{student.email}</div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">ADM code (préférence 1)</label>
+            <label className="block text-sm font-medium text-foreground mb-1">ADM code (préférence 1)</label>
             <Input value={admCode} onChange={e => setAdmCode(e.target.value)} />
             {prefs && (
-              <div className="mt-1 text-xs text-gray-500">student_id: <span className="font-mono">{prefs.student_id}</span></div>
+              <div className="mt-1 text-xs text-muted-foreground">student_id: <span className="font-mono">{prefs.student_id}</span></div>
             )}
           </div>
 
@@ -235,14 +235,14 @@ const ConfirmDeactivateModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4">
+      <div className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4">
         <div className="flex items-center justify-between p-4 border-b">
           <h2 className="text-lg font-semibold">{title}</h2>
           <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-4 text-sm text-gray-700">{description}</div>
+        <div className="p-4 text-sm text-foreground">{description}</div>
         <div className="p-4 pt-0 flex justify-end gap-3">
           <Button variant="outline" onClick={onClose} disabled={loading}>
             Annuler
@@ -977,25 +977,25 @@ const ColabPage: React.FC = () => {
 
   if (!isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
         <div className="text-center">
           <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Authentification requise</h2>
-          <p className="text-gray-600">Veuillez vous connecter pour accéder à Atlas Colab Studio</p>
+          <h2 className="text-xl font-semibold text-foreground mb-2">Authentification requise</h2>
+          <p className="text-muted-foreground">Veuillez vous connecter pour accéder à Atlas Colab Studio</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background text-foreground">
       {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
+      <div className="bg-card border-border border-b sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Atlas Colab Studio</h1>
-              <p className="text-sm text-gray-500 mt-1">Gestion des missions terrain & partage de connaissances</p>
+              <h1 className="text-2xl font-bold text-foreground">Atlas Colab Studio</h1>
+              <p className="text-sm text-muted-foreground mt-1">Gestion des missions terrain & partage de connaissances</p>
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" onClick={loadData} disabled={loading}>
@@ -1010,9 +1010,9 @@ const ColabPage: React.FC = () => {
                 </Button>
 
                 {showActionMenu && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white border rounded-xl shadow-lg overflow-hidden z-20">
+                  <div className="absolute right-0 mt-2 w-64 bg-card text-card-foreground border border-border rounded-xl shadow-lg overflow-hidden z-20">
                     <button
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-muted/60"
                       onClick={() => {
                         setShowActionMenu(false);
                         setShowCreateModal(true);
@@ -1021,7 +1021,7 @@ const ColabPage: React.FC = () => {
                       Nouvelle mission
                     </button>
                     <button
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-muted/60"
                       onClick={() => {
                         setShowActionMenu(false);
                         setShowCreateStudentModal(true);
@@ -1030,7 +1030,7 @@ const ColabPage: React.FC = () => {
                       Nouvel étudiant
                     </button>
                     <button
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-muted/60"
                       onClick={() => {
                         setShowActionMenu(false);
                         setShowCreateSupervisorModal(true);
@@ -1039,7 +1039,7 @@ const ColabPage: React.FC = () => {
                       Nouveau superviseur
                     </button>
                     <button
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50"
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-muted/60"
                       onClick={() => {
                         setShowActionMenu(false);
                         setActiveTab('documents');
@@ -1049,7 +1049,7 @@ const ColabPage: React.FC = () => {
                       Uploader un document
                     </button>
                     <button
-                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-50 text-gray-400 cursor-not-allowed"
+                      className="w-full text-left px-4 py-2 text-sm hover:bg-muted/40 text-muted-foreground cursor-not-allowed"
                       disabled
                     >
                       Nouveau document (bientôt)
@@ -1066,8 +1066,8 @@ const ColabPage: React.FC = () => {
               onClick={() => setActiveTab('missions')}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
                 activeTab === 'missions'
-                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-background text-primary border-t border-x border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
               <ClipboardList className="w-4 h-4" />
@@ -1077,8 +1077,8 @@ const ColabPage: React.FC = () => {
               onClick={() => setActiveTab('students')}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
                 activeTab === 'students'
-                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-background text-primary border-t border-x border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
               <Users className="w-4 h-4" />
@@ -1088,8 +1088,8 @@ const ColabPage: React.FC = () => {
               onClick={() => setActiveTab('supervisors')}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
                 activeTab === 'supervisors'
-                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-background text-primary border-t border-x border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
               <Users className="w-4 h-4" />
@@ -1099,8 +1099,8 @@ const ColabPage: React.FC = () => {
               onClick={() => setActiveTab('documents')}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
                 activeTab === 'documents'
-                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-background text-primary border-t border-x border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
               <FileText className="w-4 h-4" />
@@ -1110,8 +1110,8 @@ const ColabPage: React.FC = () => {
               onClick={() => setActiveTab('exports')}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
                 activeTab === 'exports'
-                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-background text-primary border-t border-x border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
               <FileText className="w-4 h-4" />
@@ -1121,8 +1121,8 @@ const ColabPage: React.FC = () => {
               onClick={() => setActiveTab('attributions')}
               className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
                 activeTab === 'attributions'
-                  ? 'bg-gray-50 text-blue-600 border-t border-x border-gray-200'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'bg-background text-primary border-t border-x border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
               <Users className="w-4 h-4" />
@@ -1305,11 +1305,11 @@ const ColabPage: React.FC = () => {
               </div>
             )}
 
-            <div className="bg-white rounded-xl border p-4 mb-6">
-              <div className="text-lg font-semibold text-gray-900 mb-4">Exporter des données</div>
+            <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mb-6">
+              <div className="text-lg font-semibold text-foreground mb-4">Exporter des données</div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Source</div>
                   <select
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={exportSource}
@@ -1323,7 +1323,7 @@ const ColabPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Format</div>
                   <select
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={exportFormat}
@@ -1338,7 +1338,7 @@ const ColabPage: React.FC = () => {
 
                 {exportFormat === 'pdf' && (
                   <div>
-                    <div className="text-sm font-medium text-gray-700 mb-1">Orientation</div>
+                    <div className="text-sm font-medium text-foreground mb-1">Orientation</div>
                     <select
                       className="w-full px-3 py-2 border rounded-lg text-sm"
                       value={exportPdfOrientation}
@@ -1351,7 +1351,7 @@ const ColabPage: React.FC = () => {
                 )}
 
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Template (optionnel)</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Template (optionnel)</div>
                   <select
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={exportTemplateId || ''}
@@ -1409,7 +1409,7 @@ const ColabPage: React.FC = () => {
                 <div className="mt-4 border-t pt-4">
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div>
-                      <div className="text-sm font-medium text-gray-700 mb-1">Preset Missions</div>
+                      <div className="text-sm font-medium text-foreground mb-1">Preset Missions</div>
                       <select
                         className="w-full px-3 py-2 border rounded-lg text-sm"
                         value={exportMissionsPreset}
@@ -1422,7 +1422,7 @@ const ColabPage: React.FC = () => {
                     </div>
 
                     <div className="md:col-span-3">
-                      <div className="text-sm font-medium text-gray-700 mb-2">Colonnes</div>
+                      <div className="text-sm font-medium text-foreground mb-2">Colonnes</div>
                       <div className="flex flex-wrap gap-3">
                         <Button
                           variant="outline"
@@ -1439,7 +1439,7 @@ const ColabPage: React.FC = () => {
                         {missionsColumnsAll.map(c => {
                           const checked = exportMissionsColumns.includes(c.key);
                           return (
-                            <label key={c.key} className="flex items-center gap-2 text-sm text-gray-700">
+                            <label key={c.key} className="flex items-center gap-2 text-sm text-foreground">
                               <input
                                 type="checkbox"
                                 checked={checked}
@@ -1460,14 +1460,14 @@ const ColabPage: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-white rounded-xl border p-4 mb-6">
-              <div className="text-lg font-semibold text-gray-900 mb-4">Historique des exports</div>
+            <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mb-6">
+              <div className="text-lg font-semibold text-foreground mb-4">Historique des exports</div>
               {exportJobs.length === 0 ? (
-                <div className="text-sm text-gray-600">Aucun export.</div>
+                <div className="text-sm text-muted-foreground">Aucun export.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50 text-gray-600">
+                    <thead className="bg-muted/50 text-muted-foreground">
                       <tr>
                         <th className="text-left font-medium px-4 py-3">Date</th>
                         <th className="text-left font-medium px-4 py-3">Source</th>
@@ -1479,10 +1479,10 @@ const ColabPage: React.FC = () => {
                     <tbody>
                       {exportJobs.map(j => (
                         <tr key={j.job_id} className="border-t">
-                          <td className="px-4 py-3 text-gray-600">{formatDateTime(j.created_at)}</td>
-                          <td className="px-4 py-3 text-gray-900">{j.source}</td>
-                          <td className="px-4 py-3 text-gray-900">{j.format}</td>
-                          <td className="px-4 py-3 text-gray-600">{j.status}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{formatDateTime(j.created_at)}</td>
+                          <td className="px-4 py-3 text-foreground">{j.source}</td>
+                          <td className="px-4 py-3 text-foreground">{j.format}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{j.status}</td>
                           <td className="px-4 py-3">
                             <div className="flex gap-2">
                               <Button
@@ -1517,22 +1517,22 @@ const ColabPage: React.FC = () => {
               )}
             </div>
 
-            <div className="bg-white rounded-xl border p-4 mb-6">
-              <div className="text-lg font-semibold text-gray-900 mb-4">Créer un template d’export</div>
+            <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mb-6">
+              <div className="text-lg font-semibold text-foreground mb-4">Créer un template d’export</div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div className="md:col-span-2">
-                  <div className="text-sm font-medium text-gray-700 mb-1">Nom</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Nom</div>
                   <Input value={newTemplate.name} onChange={e => setNewTemplate({ ...newTemplate, name: e.target.value })} />
                 </div>
                 <div className="md:col-span-2">
-                  <div className="text-sm font-medium text-gray-700 mb-1">Description</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Description</div>
                   <Input
                     value={newTemplate.description || ''}
                     onChange={e => setNewTemplate({ ...newTemplate, description: e.target.value })}
                   />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Source</div>
                   <select
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={newTemplate.source}
@@ -1545,7 +1545,7 @@ const ColabPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Format</div>
                   <select
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={newTemplate.format}
@@ -1558,7 +1558,7 @@ const ColabPage: React.FC = () => {
                   </select>
                 </div>
                 <div className="md:col-span-2">
-                  <div className="text-sm font-medium text-gray-700 mb-1">SQL</div>
+                  <div className="text-sm font-medium text-foreground mb-1">SQL</div>
                   <textarea
                     value={newTemplate.template_sql || ''}
                     onChange={e => setNewTemplate({ ...newTemplate, template_sql: e.target.value })}
@@ -1567,7 +1567,7 @@ const ColabPage: React.FC = () => {
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <div className="text-sm font-medium text-gray-700 mb-1">Handlebars</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Handlebars</div>
                   <textarea
                     value={newTemplate.template_handlebars || ''}
                     onChange={e => setNewTemplate({ ...newTemplate, template_handlebars: e.target.value })}
@@ -1605,22 +1605,22 @@ const ColabPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-white rounded-xl border p-4 mb-6">
-              <div className="text-lg font-semibold text-gray-900 mb-4">Planifications</div>
+            <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mb-6">
+              <div className="text-lg font-semibold text-foreground mb-4">Planifications</div>
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
                 <div className="md:col-span-2">
-                  <div className="text-sm font-medium text-gray-700 mb-1">Nom</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Nom</div>
                   <Input value={newSchedule.name} onChange={e => setNewSchedule({ ...newSchedule, name: e.target.value })} />
                 </div>
                 <div className="md:col-span-2">
-                  <div className="text-sm font-medium text-gray-700 mb-1">Description</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Description</div>
                   <Input
                     value={newSchedule.description || ''}
                     onChange={e => setNewSchedule({ ...newSchedule, description: e.target.value })}
                   />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Source</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Source</div>
                   <select
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={newSchedule.source}
@@ -1633,7 +1633,7 @@ const ColabPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Format</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Format</div>
                   <select
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={newSchedule.format}
@@ -1646,7 +1646,7 @@ const ColabPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Template</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Template</div>
                   <select
                     className="w-full px-3 py-2 border rounded-lg text-sm"
                     value={newSchedule.template_id || ''}
@@ -1662,11 +1662,11 @@ const ColabPage: React.FC = () => {
                   </select>
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">CRON</div>
+                  <div className="text-sm font-medium text-foreground mb-1">CRON</div>
                   <Input value={newSchedule.cron} onChange={e => setNewSchedule({ ...newSchedule, cron: e.target.value })} />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Timezone</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Timezone</div>
                   <Input
                     value={newSchedule.timezone || ''}
                     onChange={e => setNewSchedule({ ...newSchedule, timezone: e.target.value })}
@@ -1704,11 +1704,11 @@ const ColabPage: React.FC = () => {
               </div>
 
               {exportSchedules.length === 0 ? (
-                <div className="text-sm text-gray-600">Aucune planification.</div>
+                <div className="text-sm text-muted-foreground">Aucune planification.</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="min-w-full text-sm">
-                    <thead className="bg-gray-50 text-gray-600">
+                    <thead className="bg-muted/50 text-muted-foreground">
                       <tr>
                         <th className="text-left font-medium px-4 py-3">Nom</th>
                         <th className="text-left font-medium px-4 py-3">Source</th>
@@ -1720,11 +1720,11 @@ const ColabPage: React.FC = () => {
                     <tbody>
                       {exportSchedules.map(s => (
                         <tr key={s.id} className="border-t">
-                          <td className="px-4 py-3 text-gray-900">{s.name}</td>
-                          <td className="px-4 py-3 text-gray-900">{s.source}</td>
-                          <td className="px-4 py-3 text-gray-900">{s.format}</td>
-                          <td className="px-4 py-3 text-gray-600 font-mono">{s.cron}</td>
-                          <td className="px-4 py-3 text-gray-600">{s.is_active ? 'Oui' : 'Non'}</td>
+                          <td className="px-4 py-3 text-foreground">{s.name}</td>
+                          <td className="px-4 py-3 text-foreground">{s.source}</td>
+                          <td className="px-4 py-3 text-foreground">{s.format}</td>
+                          <td className="px-4 py-3 text-muted-foreground font-mono">{s.cron}</td>
+                          <td className="px-4 py-3 text-muted-foreground">{s.is_active ? 'Oui' : 'Non'}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1780,10 +1780,10 @@ const ColabPage: React.FC = () => {
               </div>
             )}
 
-            <div className="bg-white rounded-xl border p-4 mb-6">
+            <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div className="md:col-span-2">
-                  <div className="text-sm font-medium text-gray-700 mb-1">Filtrer (étudiant/email/matricule)</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Filtrer (étudiant/email/matricule)</div>
                   <input
                     value={attrStudentFilter}
                     onChange={e => setAttrStudentFilter(e.target.value)}
@@ -1792,7 +1792,7 @@ const ColabPage: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-gray-700 mb-1">Statut notification</div>
+                  <div className="text-sm font-medium text-foreground mb-1">Statut notification</div>
                   <select
                     value={attrNotifStatusFilter}
                     onChange={e => setAttrNotifStatusFilter(e.target.value)}
@@ -1847,7 +1847,7 @@ const ColabPage: React.FC = () => {
               <div className="max-h-[65vh] overflow-auto">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
-                    <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                    <thead className="bg-muted/50 text-muted-foreground sticky top-0">
                       <tr>
                         <th className="text-left px-4 py-3">
                           <input
@@ -1884,7 +1884,7 @@ const ColabPage: React.FC = () => {
                     </thead>
                     <tbody>
                       {attrItems.map(i => (
-                        <tr key={i.mission_id} className="border-t hover:bg-gray-50">
+                        <tr key={i.mission_id} className="border-t hover:bg-muted/50">
                           <td className="px-4 py-3">
                             <input
                               type="checkbox"
@@ -1896,10 +1896,10 @@ const ColabPage: React.FC = () => {
                               }}
                             />
                           </td>
-                          <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.mission_code}</td>
-                          <td className="px-4 py-3 font-mono text-xs text-gray-700">{i.maille_code}</td>
-                          <td className="px-4 py-3 text-gray-900">{i.full_name || '-'}</td>
-                          <td className="px-4 py-3 text-gray-700">{i.email || '-'}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-foreground">{i.mission_code}</td>
+                          <td className="px-4 py-3 font-mono text-xs text-foreground">{i.maille_code}</td>
+                          <td className="px-4 py-3 text-foreground">{i.full_name || '-'}</td>
+                          <td className="px-4 py-3 text-foreground">{i.email || '-'}</td>
                           <td className="px-4 py-3">
                             <Badge
                               className={
@@ -1909,13 +1909,13 @@ const ColabPage: React.FC = () => {
                                     ? 'bg-blue-100 text-blue-800'
                                     : i.attribution_status === 'error'
                                       ? 'bg-red-100 text-red-800'
-                                      : 'bg-gray-100 text-gray-800'
+                                      : 'bg-muted text-foreground'
                               }
                             >
                               {i.attribution_status}
                             </Badge>
                           </td>
-                          <td className="px-4 py-3 text-gray-600" title={i.status_reason || ''}>
+                          <td className="px-4 py-3 text-muted-foreground" title={i.status_reason || ''}>
                             {i.status_reason || '-'}
                           </td>
                           <td className="px-4 py-3">
@@ -1927,13 +1927,13 @@ const ColabPage: React.FC = () => {
                                     ? 'bg-orange-100 text-orange-800'
                                     : i.notification_status === 'failed'
                                       ? 'bg-red-100 text-red-800'
-                                      : 'bg-gray-100 text-gray-800'
+                                      : 'bg-muted text-foreground'
                               }
                             >
                               {i.notification_status}
                             </Badge>
                           </td>
-                          <td className="px-4 py-3 text-gray-600">
+                          <td className="px-4 py-3 text-muted-foreground">
                             {i.notification_sent_at ? new Date(i.notification_sent_at).toLocaleString('fr-FR') : '-'}
                           </td>
                           <td className="px-4 py-3 text-right">
@@ -1971,7 +1971,7 @@ const ColabPage: React.FC = () => {
                       ))}
                       {attrItems.length === 0 && (
                         <tr>
-                          <td className="px-4 py-6 text-center text-gray-500" colSpan={10}>
+                          <td className="px-4 py-6 text-center text-muted-foreground" colSpan={10}>
                             Aucune attribution
                           </td>
                         </tr>
@@ -2011,7 +2011,7 @@ const ColabPage: React.FC = () => {
                 <div className="max-h-[50vh] overflow-auto">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                      <thead className="bg-muted/50 text-muted-foreground sticky top-0">
                         <tr>
                           <th className="text-left px-4 py-3">Job</th>
                           <th className="text-left px-4 py-3">Type</th>
@@ -2023,9 +2023,9 @@ const ColabPage: React.FC = () => {
                       </thead>
                       <tbody>
                         {notifyJobs.map(j => (
-                          <tr key={j.id} className="border-t hover:bg-gray-50">
-                            <td className="px-4 py-3 font-mono text-xs text-gray-700">{j.id}</td>
-                            <td className="px-4 py-3 text-gray-700">{j.job_type}</td>
+                          <tr key={j.id} className="border-t hover:bg-muted/50">
+                            <td className="px-4 py-3 font-mono text-xs text-foreground">{j.id}</td>
+                            <td className="px-4 py-3 text-foreground">{j.job_type}</td>
                             <td className="px-4 py-3">
                               <Badge
                                 className={
@@ -2036,15 +2036,15 @@ const ColabPage: React.FC = () => {
                                       : j.status === 'running'
                                         ? 'bg-blue-100 text-blue-800'
                                         : j.status === 'cancelled'
-                                          ? 'bg-gray-200 text-gray-800'
-                                          : 'bg-gray-100 text-gray-800'
+                                          ? 'bg-amber-500/15 text-amber-900 dark:text-amber-100'
+                                          : 'bg-muted text-foreground'
                                 }
                               >
                                 {j.status}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3 text-gray-600">{new Date(j.created_at).toLocaleString('fr-FR')}</td>
-                            <td className="px-4 py-3 text-gray-600">{j.error || '-'}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{new Date(j.created_at).toLocaleString('fr-FR')}</td>
+                            <td className="px-4 py-3 text-muted-foreground">{j.error || '-'}</td>
                             <td className="px-4 py-3 text-right">
                               <Button
                                 variant="outline"
@@ -2070,7 +2070,7 @@ const ColabPage: React.FC = () => {
                         ))}
                         {notifyJobs.length === 0 && (
                           <tr>
-                            <td className="px-4 py-6 text-center text-gray-500" colSpan={6}>
+                            <td className="px-4 py-6 text-center text-muted-foreground" colSpan={6}>
                               Aucun job
                             </td>
                           </tr>
@@ -2087,7 +2087,7 @@ const ColabPage: React.FC = () => {
                 <div className="max-h-[50vh] overflow-auto">
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
-                      <thead className="bg-gray-50 text-gray-600 sticky top-0">
+                      <thead className="bg-muted/50 text-muted-foreground sticky top-0">
                         <tr>
                           <th className="text-left px-4 py-3">Date</th>
                           <th className="text-left px-4 py-3">Étudiant</th>
@@ -2098,10 +2098,10 @@ const ColabPage: React.FC = () => {
                       </thead>
                       <tbody>
                         {attrHistory.map(h => (
-                          <tr key={h.id} className="border-t hover:bg-gray-50">
-                            <td className="px-4 py-3 text-gray-600">{new Date(h.requested_at).toLocaleString('fr-FR')}</td>
-                            <td className="px-4 py-3 text-gray-900">{h.full_name}</td>
-                            <td className="px-4 py-3 font-mono text-xs text-gray-700">{h.maille_code}</td>
+                          <tr key={h.id} className="border-t hover:bg-muted/50">
+                            <td className="px-4 py-3 text-muted-foreground">{new Date(h.requested_at).toLocaleString('fr-FR')}</td>
+                            <td className="px-4 py-3 text-foreground">{h.full_name}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-foreground">{h.maille_code}</td>
                             <td className="px-4 py-3">
                               <Badge
                                 className={
@@ -2111,18 +2111,18 @@ const ColabPage: React.FC = () => {
                                       ? 'bg-orange-100 text-orange-800'
                                       : h.status === 'failed'
                                         ? 'bg-red-100 text-red-800'
-                                        : 'bg-gray-100 text-gray-800'
+                                        : 'bg-muted text-foreground'
                                 }
                               >
                                 {h.status}
                               </Badge>
                             </td>
-                            <td className="px-4 py-3 font-mono text-xs text-gray-700">{h.email_job_id || '-'}</td>
+                            <td className="px-4 py-3 font-mono text-xs text-foreground">{h.email_job_id || '-'}</td>
                           </tr>
                         ))}
                         {attrHistory.length === 0 && (
                           <tr>
-                            <td className="px-4 py-6 text-center text-gray-500" colSpan={5}>
+                            <td className="px-4 py-6 text-center text-muted-foreground" colSpan={5}>
                               Aucun historique
                             </td>
                           </tr>
@@ -2136,20 +2136,20 @@ const ColabPage: React.FC = () => {
 
             {attrConfirmOpen && (
               <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-                <div className="bg-white w-full max-w-lg rounded-xl shadow-lg border overflow-hidden">
+                <div className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-lg border border-border overflow-hidden">
                   <div className="px-5 py-4 border-b">
-                    <div className="text-lg font-semibold text-gray-900">Confirmer l’envoi des notifications</div>
-                    <div className="text-sm text-gray-600 mt-1">
+                    <div className="text-lg font-semibold text-foreground">Confirmer l’envoi des notifications</div>
+                    <div className="text-sm text-muted-foreground mt-1">
                       Vous êtes sur le point de notifier <span className="font-semibold">{Object.values(attrSelected).filter(Boolean).length}</span> attribution(s).
                     </div>
                   </div>
 
                   <div className="px-5 py-4 space-y-3">
-                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <label className="flex items-center gap-2 text-sm text-foreground">
                       <input type="checkbox" checked={attrIncludeBbox} onChange={e => setAttrIncludeBbox(e.target.checked)} />
                       Inclure la BBox des mailles
                     </label>
-                    <label className="flex items-center gap-2 text-sm text-gray-700">
+                    <label className="flex items-center gap-2 text-sm text-foreground">
                       <input
                         type="checkbox"
                         checked={attrIncludeInstructions}
@@ -2157,7 +2157,7 @@ const ColabPage: React.FC = () => {
                       />
                       Inclure les instructions standard
                     </label>
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       Les emails seront envoyés automatiquement via le worker local. Cette action écrit uniquement en base.
                     </div>
                   </div>
@@ -2212,16 +2212,16 @@ const ColabPage: React.FC = () => {
 
             {attrAssignOpen && attrAssignMission && (
               <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-                <div className="bg-white w-full max-w-lg rounded-xl shadow-lg border overflow-hidden">
+                <div className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-lg border border-border overflow-hidden">
                   <div className="px-5 py-4 border-b">
-                    <div className="text-lg font-semibold text-gray-900">
+                    <div className="text-lg font-semibold text-foreground">
                       {attrAssignMode === 'assign_student'
                         ? 'Assigner un étudiant'
                         : attrAssignMode === 'assign_holder'
                           ? 'Assigner le détenteur'
                           : 'Changer l’étudiant'}
                     </div>
-                    <div className="text-sm text-gray-600 mt-1">
+                    <div className="text-sm text-muted-foreground mt-1">
                       Mission <span className="font-mono">{attrAssignMission.mission_code}</span> — maille{' '}
                       <span className="font-mono">{attrAssignMission.maille_code}</span>
                     </div>
@@ -2229,7 +2229,7 @@ const ColabPage: React.FC = () => {
 
                   <div className="px-5 py-4 space-y-3">
                     <div>
-                      <div className="text-sm font-medium text-gray-700 mb-1">Étudiant (recherche)</div>
+                      <div className="text-sm font-medium text-foreground mb-1">Étudiant (recherche)</div>
                       <input
                         value={attrAssignStudentQuery}
                         onChange={async e => {
@@ -2257,7 +2257,7 @@ const ColabPage: React.FC = () => {
                             <button
                               key={s.id}
                               type="button"
-                              className={`w-full text-left px-3 py-2 text-sm hover:bg-gray-50 ${
+                              className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 ${
                                 attrAssignSelectedStudentId === s.id ? 'bg-blue-50' : ''
                               }`}
                               onClick={() => {
@@ -2274,7 +2274,7 @@ const ColabPage: React.FC = () => {
                     </div>
 
                     {attrAssignError && <div className="text-sm text-red-600">{attrAssignError}</div>}
-                    <div className="text-xs text-gray-500">
+                    <div className="text-xs text-muted-foreground">
                       Cette action rend la mission notifiable par email.
                     </div>
                   </div>
@@ -2342,17 +2342,17 @@ const ColabPage: React.FC = () => {
 
             {takeoverOpen && takeoverMission && (
               <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-                <div className="bg-white w-full max-w-lg rounded-xl shadow-lg border overflow-hidden">
+                <div className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-lg border border-border overflow-hidden">
                   <div className="px-5 py-4 border-b">
-                    <div className="text-lg font-semibold text-gray-900">Reprendre la maille</div>
-                    <div className="text-sm text-gray-600 mt-1">
+                    <div className="text-lg font-semibold text-foreground">Reprendre la maille</div>
+                    <div className="text-sm text-muted-foreground mt-1">
                       Mission <span className="font-mono">{takeoverMission.code}</span>
                     </div>
                   </div>
 
                   <div className="p-5 space-y-3">
                     {takeoverError && <div className="text-sm text-red-600">{takeoverError}</div>}
-                    <div className="text-sm text-gray-700">
+                    <div className="text-sm text-foreground">
                       Cette action va résoudre le conflit en transférant la maille à cette mission.
                     </div>
                   </div>

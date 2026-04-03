@@ -134,18 +134,18 @@ const MissionsTab: React.FC<{
         </div>
       )}
 
-      <div className="bg-white rounded-xl border p-4 mb-6">
+      <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mb-6">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 flex gap-2">
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Rechercher (titre, code maille, thème, opérateur...)"
                 value={searchInput}
                 onChange={e => onSearchInputChange(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && onSearch()}
-                className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full pl-10 pr-4 py-2 border border-border rounded-lg text-sm bg-background text-foreground focus:border-primary focus:ring-1 focus:ring-ring"
               />
             </div>
             <Button variant="secondary" onClick={onSearch}>
@@ -161,7 +161,7 @@ const MissionsTab: React.FC<{
         {showFilters && (
           <div className="mt-4 pt-4 border-t grid grid-cols-2 md:grid-cols-4 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Thème</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Thème</label>
               <Select
                 value={filters.theme || ''}
                 onChange={e => onFilterChange('theme', e.target.value)}
@@ -170,7 +170,7 @@ const MissionsTab: React.FC<{
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Statut</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Statut</label>
               <Select
                 value={filters.status || ''}
                 onChange={e => onFilterChange('status', e.target.value)}
@@ -179,7 +179,7 @@ const MissionsTab: React.FC<{
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Commune</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Commune</label>
               <div className="relative">
                 <Input
                   placeholder="Filtrer par commune"
@@ -191,17 +191,17 @@ const MissionsTab: React.FC<{
                   }}
                 />
                 {filtersCommuneLoading && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                     <Loader2 className="w-4 h-4 animate-spin" />
                   </div>
                 )}
                 {filtersCommuneSuggestions.length > 0 && (
-                  <div className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                  <div className="absolute z-20 left-0 right-0 mt-1 bg-card text-card-foreground border border-border rounded-lg shadow max-h-48 overflow-auto">
                     {filtersCommuneSuggestions.slice(0, 20).map(c => (
                       <button
                         key={c}
                         type="button"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
                         onClick={() => onSelectCommune(c)}
                       >
                         {c}
@@ -212,7 +212,7 @@ const MissionsTab: React.FC<{
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">Région</label>
+              <label className="block text-xs font-medium text-muted-foreground mb-1">Région</label>
               <div className="relative">
                 <Input
                   placeholder="Filtrer par région"
@@ -224,17 +224,17 @@ const MissionsTab: React.FC<{
                   }}
                 />
                 {filtersRegionLoading && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400">
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground">
                     <Loader2 className="w-4 h-4 animate-spin" />
                   </div>
                 )}
                 {filtersRegionSuggestions.length > 0 && (
-                  <div className="absolute z-20 left-0 right-0 mt-1 bg-white border rounded-lg shadow max-h-48 overflow-auto">
+                  <div className="absolute z-20 left-0 right-0 mt-1 bg-card text-card-foreground border border-border rounded-lg shadow max-h-48 overflow-auto">
                     {filtersRegionSuggestions.slice(0, 20).map(r => (
                       <button
                         key={r}
                         type="button"
-                        className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted/60"
                         onClick={() => onSelectRegion(r)}
                       >
                         {r}
@@ -291,15 +291,15 @@ const MissionsTab: React.FC<{
             ))}
           </div>
 
-          <div className="flex items-center justify-between bg-white rounded-xl border p-4">
-            <p className="text-sm text-gray-600">
+          <div className="flex items-center justify-between bg-card text-card-foreground rounded-xl border border-border p-4">
+            <p className="text-sm text-muted-foreground">
               {total} mission{total > 1 ? 's' : ''} trouvée{total > 1 ? 's' : ''}
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" disabled={(filters.page || 1) === 1} onClick={onPrevPage}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-muted-foreground">
                 Page {filters.page || 1} / {totalPages}
               </span>
               <Button variant="outline" size="sm" disabled={(filters.page || 1) >= totalPages} onClick={onNextPage}>
@@ -312,9 +312,9 @@ const MissionsTab: React.FC<{
 
       {!loading && missions.length === 0 && !error && (
         <div className="text-center py-12">
-          <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune mission trouvée</h3>
-          <p className="text-gray-500 mb-4">
+          <MapPin className="w-16 h-16 text-muted-foreground/40 mx-auto mb-4" />
+          <h3 className="text-lg font-medium text-foreground mb-2">Aucune mission trouvée</h3>
+          <p className="text-muted-foreground mb-4">
             {filters.search || filters.theme || filters.status ? 'Essayez de modifier vos filtres' : 'Créez votre première mission terrain'}
           </p>
           <Button onClick={onOpenCreateMission}>

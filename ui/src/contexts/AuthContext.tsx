@@ -183,8 +183,23 @@ async function apiLogin(credentials: LoginCredentials): Promise<LoginResponse> {
   }, 10_000);
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ error: 'Erreur de connexion' }));
-    throw new Error(error.error || error.message || 'Identifiants incorrects');
+    const text = await response.text().catch(() => '');
+    let msg: string | undefined;
+    try {
+      const parsed = text ? JSON.parse(text) : null;
+      if (parsed && typeof parsed === 'object') {
+        msg = (parsed as { error?: string; message?: string }).error || (parsed as { message?: string }).message;
+      }
+    } catch {
+      // réponse non-JSON (proxy 502, HTML nginx, etc.)
+    }
+    if (!msg) {
+      const hint =
+        text.trim().slice(0, 180) ||
+        `HTTP ${response.status} — vérifier que api-geo répond (ex. /healthz) et que le proxy /api cible le bon port.`;
+      msg = hint;
+    }
+    throw new Error(msg);
   }
 
   return response.json();

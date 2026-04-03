@@ -244,14 +244,14 @@ pub async fn load_features(
 pub async fn prediction_with_ml_fallback(
     features: &MailleFeatures,
     charge_kpa: Option<f64>,
-) -> (serde_json::Value, &'static str) {
+) -> (serde_json::Value, String) {
     let base = std::env::var("ATLAS_API_INFER_URL").unwrap_or_default();
     let token = std::env::var("ATLAS_INTERNAL_SERVICE_TOKEN").unwrap_or_default();
     let base = base.trim();
     if base.is_empty() || token.trim().is_empty() {
         return (
             build_prediction(features, charge_kpa),
-            "api-infer-v0-rule-based",
+            "api-infer-v0-rule-based".to_string(),
         );
     }
     let url = format!("{}/internal/infer/maille", base.trim_end_matches('/'));
@@ -270,14 +270,14 @@ pub async fn prediction_with_ml_fallback(
         Err(_) => {
             return (
                 build_prediction(features, charge_kpa),
-                "api-infer-v0-rule-based",
+                "api-infer-v0-rule-based".to_string(),
             );
         }
     };
     if !resp.status().is_success() {
         return (
             build_prediction(features, charge_kpa),
-            "api-infer-v0-rule-based",
+            "api-infer-v0-rule-based".to_string(),
         );
     }
     let v: serde_json::Value = match resp.json().await {
@@ -285,20 +285,22 @@ pub async fn prediction_with_ml_fallback(
         Err(_) => {
             return (
                 build_prediction(features, charge_kpa),
-                "api-infer-v0-rule-based",
+                "api-infer-v0-rule-based".to_string(),
             );
         }
     };
     if v.get("error").is_some() {
         return (
             build_prediction(features, charge_kpa),
-            "api-infer-v0-rule-based",
+            "api-infer-v0-rule-based".to_string(),
         );
     }
-    (
-        v,
-        "api-infer-onnx-v1",
-    )
+    let mv = v
+        .get("model_version")
+        .and_then(|x| x.as_str())
+        .unwrap_or("api-infer-onnx-v1")
+        .to_string();
+    (v, mv)
 }
 
 fn build_prediction(features: &MailleFeatures, charge_kpa: Option<f64>) -> serde_json::Value {

@@ -18,6 +18,7 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 mod audit;
 mod ai_infer;
 mod ai_jobs;
+mod ai_plots;
 mod ai_opti;
 mod internal_services;
 pub mod auth;
@@ -439,11 +440,14 @@ async fn main() -> anyhow::Result<()> {
         .route("/ai/features/maille/:code", get(ai_infer::get_features_by_code))
         .route("/ai/validate/maille", post(ai_infer::validate_maille_prediction))
         .route("/ai/opti/strategie", post(ai_opti::optimize_strategy))
+        .route("/ai/opti/campaign/simple", post(ai_opti::optimize_campaign_simple))
+        .route("/ai/opti/campaign", post(ai_opti::optimize_campaign_ga))
         .route("/ai/retrain", post(ai_opti::request_retrain))
         .route("/ai/recompute/sources", post(ai_opti::recompute_geotech_sources))
         .route("/ai/kriging/recompute", post(ai_opti::recompute_kriging_global_gp))
         .route("/ai/infer/train-supervised", post(ai_opti::train_supervised_infer_rga))
         .route("/ai/ml/refresh-prereqs", post(ai_opti::refresh_ml_prereqs))
+        .merge(ai_plots::ai_plots_routes())
         .merge(ai_jobs::ai_jobs_routes())
         .route(
             "/sondages/:id/geometry",

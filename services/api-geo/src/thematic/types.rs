@@ -8,6 +8,9 @@ pub enum ThematicParameter {
     // Densité et couverture
     NSondages,
     NEssaisGeo,
+    /// Nombre de sondages dans un rayon de 20 km (postgis) — MV `mv_maille_n_sondages_20km`
+    #[serde(alias = "data_density", alias = "n_sondages_20km")]
+    DataDensity,
 
     // Granulométrie - avec alias pour compatibilité UI (avec et sans underscore)
     #[serde(alias = "passant80um_avg", alias = "passant_80um_avg")]
@@ -74,6 +77,71 @@ pub enum ThematicParameter {
     KrigingIp,
     #[serde(alias = "kriging_vbs")]
     KrigingVbs,
+    #[serde(alias = "eg_ked_h1")]
+    EgKedH1,
+    #[serde(alias = "eg_ked_h2")]
+    EgKedH2,
+    #[serde(alias = "eg_ked_h3")]
+    EgKedH3,
+
+    // KED national (VBS/IP/WL/WP) — horizon H1/H2/H3
+    #[serde(alias = "vbs_ked_h1")]
+    VbsKedH1,
+    #[serde(alias = "vbs_ked_h2")]
+    VbsKedH2,
+    #[serde(alias = "vbs_ked_h3")]
+    VbsKedH3,
+
+    #[serde(alias = "ip_ked_h1")]
+    IpKedH1,
+    #[serde(alias = "ip_ked_h2")]
+    IpKedH2,
+    #[serde(alias = "ip_ked_h3")]
+    IpKedH3,
+
+    #[serde(alias = "wl_ked_h1")]
+    WlKedH1,
+    #[serde(alias = "wl_ked_h2")]
+    WlKedH2,
+    #[serde(alias = "wl_ked_h3")]
+    WlKedH3,
+
+    #[serde(alias = "wp_ked_h1")]
+    WpKedH1,
+    #[serde(alias = "wp_ked_h2")]
+    WpKedH2,
+    #[serde(alias = "wp_ked_h3")]
+    WpKedH3,
+
+    // P4 KED national (granulométrie) — passant_2mm / passant_80um
+    #[serde(alias = "passant_2mm_ked_h1")]
+    #[serde(alias = "passant2mm_ked_h1")]
+    Passant2mmKedH1,
+    #[serde(alias = "passant_2mm_ked_h2")]
+    #[serde(alias = "passant2mm_ked_h2")]
+    Passant2mmKedH2,
+    #[serde(alias = "passant_2mm_ked_h3")]
+    #[serde(alias = "passant2mm_ked_h3")]
+    Passant2mmKedH3,
+
+    #[serde(alias = "passant_80um_ked_h1")]
+    #[serde(alias = "passant80um_ked_h1")]
+    Passant80umKedH1,
+    #[serde(alias = "passant_80um_ked_h2")]
+    #[serde(alias = "passant80um_ked_h2")]
+    Passant80umKedH2,
+    #[serde(alias = "passant_80um_ked_h3")]
+    #[serde(alias = "passant80um_ked_h3")]
+    Passant80umKedH3,
+
+    // P5 dérivé : IP = WL_ked - WP_ked
+    #[serde(alias = "ip_derived_h1")]
+    IpDerivedH1,
+    #[serde(alias = "ip_derived_h2")]
+    IpDerivedH2,
+    #[serde(alias = "ip_derived_h3")]
+    IpDerivedH3,
+
     #[serde(alias = "ag_safety_factor")]
     AgSafetyFactor,
     #[serde(alias = "ag_cout_millions")]
@@ -86,6 +154,7 @@ impl ThematicParameter {
         match self {
             Self::NSondages => "n_sondages",
             Self::NEssaisGeo => "n_essais_geo",
+            Self::DataDensity => "n_sondages_20km",
             Self::Passant80umAvg => "passant_80um_avg",
             Self::Passant2mmAvg => "passant_2mm_avg",
             Self::Passant20mmAvg => "passant_20mm_avg",
@@ -112,6 +181,38 @@ impl ThematicParameter {
             Self::AiPortanceKpaInfer => "ai_portance_kpa_infer",
             Self::KrigingIp => "kriging_ip",
             Self::KrigingVbs => "kriging_vbs",
+            Self::EgKedH1 => "eg_ked_h1",
+            Self::EgKedH2 => "eg_ked_h2",
+            Self::EgKedH3 => "eg_ked_h3",
+
+            Self::VbsKedH1 => "vbs_ked_h1",
+            Self::VbsKedH2 => "vbs_ked_h2",
+            Self::VbsKedH3 => "vbs_ked_h3",
+
+            Self::IpKedH1 => "ip_ked_h1",
+            Self::IpKedH2 => "ip_ked_h2",
+            Self::IpKedH3 => "ip_ked_h3",
+
+            Self::WlKedH1 => "wl_ked_h1",
+            Self::WlKedH2 => "wl_ked_h2",
+            Self::WlKedH3 => "wl_ked_h3",
+
+            Self::WpKedH1 => "wp_ked_h1",
+            Self::WpKedH2 => "wp_ked_h2",
+            Self::WpKedH3 => "wp_ked_h3",
+
+            Self::Passant2mmKedH1 => "passant_2mm_ked_h1",
+            Self::Passant2mmKedH2 => "passant_2mm_ked_h2",
+            Self::Passant2mmKedH3 => "passant_2mm_ked_h3",
+
+            Self::Passant80umKedH1 => "passant_80um_ked_h1",
+            Self::Passant80umKedH2 => "passant_80um_ked_h2",
+            Self::Passant80umKedH3 => "passant_80um_ked_h3",
+
+            Self::IpDerivedH1 => "ip_derived_h1",
+            Self::IpDerivedH2 => "ip_derived_h2",
+            Self::IpDerivedH3 => "ip_derived_h3",
+
             Self::AgSafetyFactor => "ag_safety_factor",
             Self::AgCoutMillions => "ag_cout_millions",
         }
@@ -122,6 +223,7 @@ impl ThematicParameter {
         match self {
             Self::NSondages => "Nombre de sondages",
             Self::NEssaisGeo => "Nombre d'essais géotechniques",
+            Self::DataDensity => "Densité sondages 20 km (fiabilité)",
             Self::Passant80umAvg => "% Passant 80µm (moyen)",
             Self::Passant2mmAvg => "% Passant 2mm (moyen)",
             Self::Passant20mmAvg => "% Passant 20mm (moyen)",
@@ -148,6 +250,38 @@ impl ThematicParameter {
             Self::AiPortanceKpaInfer => "Portance estimee IA (kPa)",
             Self::KrigingIp => "IP interpole (kriging proxy)",
             Self::KrigingVbs => "VBS interpole (kriging proxy)",
+            Self::EgKedH1 => "EG KED H1 (1.0m)",
+            Self::EgKedH2 => "EG KED H2 (1.5m)",
+            Self::EgKedH3 => "EG KED H3 (2.0m)",
+
+            Self::VbsKedH1 => "VBS KED H1 (1.0m)",
+            Self::VbsKedH2 => "VBS KED H2 (1.5m)",
+            Self::VbsKedH3 => "VBS KED H3 (2.0m)",
+
+            Self::IpKedH1 => "IP KED H1 (1.0m)",
+            Self::IpKedH2 => "IP KED H2 (1.5m)",
+            Self::IpKedH3 => "IP KED H3 (2.0m)",
+
+            Self::WlKedH1 => "WL KED H1 (1.0m)",
+            Self::WlKedH2 => "WL KED H2 (1.5m)",
+            Self::WlKedH3 => "WL KED H3 (2.0m)",
+
+            Self::WpKedH1 => "WP KED H1 (1.0m)",
+            Self::WpKedH2 => "WP KED H2 (1.5m)",
+            Self::WpKedH3 => "WP KED H3 (2.0m)",
+
+            Self::Passant2mmKedH1 => "Passant 2mm KED H1 (1.0m)",
+            Self::Passant2mmKedH2 => "Passant 2mm KED H2 (1.5m)",
+            Self::Passant2mmKedH3 => "Passant 2mm KED H3 (2.0m)",
+
+            Self::Passant80umKedH1 => "Passant 80µm KED H1 (1.0m)",
+            Self::Passant80umKedH2 => "Passant 80µm KED H2 (1.5m)",
+            Self::Passant80umKedH3 => "Passant 80µm KED H3 (2.0m)",
+
+            Self::IpDerivedH1 => "IP dérivé WL-WP H1 (1.0m)",
+            Self::IpDerivedH2 => "IP dérivé WL-WP H2 (1.5m)",
+            Self::IpDerivedH3 => "IP dérivé WL-WP H3 (2.0m)",
+
             Self::AgSafetyFactor => "Facteur de securite AG",
             Self::AgCoutMillions => "Cout AG (millions FCFA)",
         }
@@ -157,6 +291,7 @@ impl ThematicParameter {
     pub fn unit(&self) -> &str {
         match self {
             Self::NSondages | Self::NEssaisGeo => "",
+            Self::DataDensity => "nb",
             Self::Passant80umAvg | Self::Passant2mmAvg | Self::Passant20mmAvg => "%",
             Self::WlAvg
             | Self::WpAvg
@@ -173,6 +308,14 @@ impl ThematicParameter {
             Self::AiPortanceKpaInfer => "kPa",
             Self::KrigingIp => "%",
             Self::KrigingVbs => "g/100g",
+            Self::EgKedH1 | Self::EgKedH2 | Self::EgKedH3 => "%",
+            Self::IpKedH1 | Self::IpKedH2 | Self::IpKedH3 => "%",
+            Self::WlKedH1 | Self::WlKedH2 | Self::WlKedH3 => "%",
+            Self::WpKedH1 | Self::WpKedH2 | Self::WpKedH3 => "%",
+            Self::VbsKedH1 | Self::VbsKedH2 | Self::VbsKedH3 => "g/100g",
+            Self::Passant2mmKedH1 | Self::Passant2mmKedH2 | Self::Passant2mmKedH3 => "%",
+            Self::Passant80umKedH1 | Self::Passant80umKedH2 | Self::Passant80umKedH3 => "%",
+            Self::IpDerivedH1 | Self::IpDerivedH2 | Self::IpDerivedH3 => "%",
             Self::AgSafetyFactor => "FS",
             Self::AgCoutMillions => "M FCFA",
         }
@@ -181,7 +324,7 @@ impl ThematicParameter {
     /// Catégorie du paramètre
     pub fn category(&self) -> &str {
         match self {
-            Self::NSondages | Self::NEssaisGeo => "density",
+            Self::NSondages | Self::NEssaisGeo | Self::DataDensity => "density",
             Self::Passant80umAvg | Self::Passant2mmAvg | Self::Passant20mmAvg => "granulo",
             Self::WlAvg
             | Self::WpAvg
@@ -199,6 +342,30 @@ impl ThematicParameter {
             | Self::AiPortanceKpaInfer
             | Self::KrigingIp
             | Self::KrigingVbs
+            | Self::EgKedH1
+            | Self::EgKedH2
+            | Self::EgKedH3
+            | Self::VbsKedH1
+            | Self::VbsKedH2
+            | Self::VbsKedH3
+            | Self::IpKedH1
+            | Self::IpKedH2
+            | Self::IpKedH3
+            | Self::WlKedH1
+            | Self::WlKedH2
+            | Self::WlKedH3
+            | Self::WpKedH1
+            | Self::WpKedH2
+            | Self::WpKedH3
+            | Self::Passant2mmKedH1
+            | Self::Passant2mmKedH2
+            | Self::Passant2mmKedH3
+            | Self::Passant80umKedH1
+            | Self::Passant80umKedH2
+            | Self::Passant80umKedH3
+            | Self::IpDerivedH1
+            | Self::IpDerivedH2
+            | Self::IpDerivedH3
             | Self::AgSafetyFactor
             | Self::AgCoutMillions => "ai",
         }

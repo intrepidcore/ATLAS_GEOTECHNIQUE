@@ -1,0 +1,215 @@
+use axum::{extract::State, http::StatusCode, routing::{get, post}, Json, Router};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use sqlx::Row;
+use std::process::Command;
+
+use crate::{auth::AuthUser, state::AppState};
+
+#[derive(Debug, Deserialize)]
+pub struct VariogramPlotRequest {
+    pub parameter_id: String,
+    pub horizon: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct VariogramPlotResponse {
+    pub svg: String,
+    pub cached: bool,
+    pub cache_key: String,
+    pub parameter_id: String,
+    pub horizon: Option<String>,
+    pub rows: i32,
+}
+
+pub fn ai_plots_routes() -> Router<AppState> {
+    Router::new()
+        .route("/ai/plots/variogram", post(post_variogram_plot))
+        .route("/ai/variograms/summary", get(get_variograms_summary))
+}
+
+/// GET /ai/variograms/summary — synthèse LOO / métriques (UI validation / drawer).
+async fn get_variograms_summary(
+    State(state): State<AppState>,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            id,
+            parameter_id,
+            COALESCE(fit_quality->>'horizon_label', '') AS horizon,
+            loo_rmse,
+            block_cv_rmse,
+            model_type,
+            range_m,
+            nugget,
+            sill,
+            fit_quality,
+            created_at
+        FROM atlas.ai_variograms
+        ORDER BY created_at DESC
+        LIMIT 500
+        "#,
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    let mut out = Vec::new();
+    for r in rows {
+        let fit_quality: serde_json::Value = r.try_get("fit_quality").unwrap_or(json!({}));
+        let horizon = r.get::<String, _>("horizon");
+        out.push(json!({
+            "parameter_id": r.get::<String, _>("parameter_id"),
+            "horizon": if horizon.is_empty() { serde_json::Value::Null } else { json!(horizon) },
+            "loo_rmse": r.try_get::<Option<f64>, _>("loo_rmse").ok().flatten(),
+            "block_rmse": r.try_get::<Option<f64>, _>("block_cv_rmse").ok().flatten(),
+            "model_type": r.try_get::<Option<String>, _>("model_type").ok().flatten(),
+            "range_m": r.try_get::<Option<f64>, _>("range_m").ok().flatten(),
+            "nugget": r.try_get::<Option<f64>, _>("nugget").ok().flatten(),
+            "sill": r.try_get::<Option<f64>, _>("sill").ok().flatten(),
+            "variogram_id": r.get::<uuid::Uuid, _>("id"),
+            "run_id": serde_json::Value::Null,
+            "fit_quality": fit_quality,
+            "created_at": r.get::<chrono::DateTime<chrono::Utc>, _>("created_at").to_rfc3339(),
+        }));
+    }
+
+    let n = out.len();
+    Ok(Json(json!({ "success": true, "items": out, "count": n })))
+}
+
+fn require_database_url() -> Result<String, String> {
+    std::env::var("DATABASE_URL").map_err(|_| "DATABASE_URL missing".to_string())
+}
+
+fn script_path(relative_from_manifest_dir: &str) -> String {
+    if let Ok(dir) = std::env::var("ATLAS_SCRIPTS_DIR") {
+        let script_name = std::path::Path::new(relative_from_manifest_dir)
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or(relative_from_manifest_dir);
+        return format!("{}/{}", dir.trim_end_matches('/'), script_name);
+    }
+    format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative_from_manifest_dir)
+}
+
+fn python_candidates() -> Vec<&'static str> {
+    if cfg!(windows) {
+        vec!["python", "py"]
+    } else {
+        vec!["python", "python3"]
+    }
+}
+
+fn run_python_json(args: &[&str]) -> Result<serde_json::Value, String> {
+    let mut last_err = String::new();
+    let mut out_opt = None;
+    for exe in python_candidates() {
+        match Command::new(exe).args(args).output() {
+            Ok(out) => {
+                out_opt = Some(out);
+                break;
+            }
+            Err(e) => {
+                last_err = format!("{exe}: {e}");
+            }
+        }
+    }
+    let out = out_opt.ok_or_else(|| format!("python execution failed: {last_err}"))?;
+    let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+    let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+    if !out.status.success() {
+        return Err(format!("python failed: {stderr}\n{stdout}"));
+    }
+    serde_json::from_str(&stdout).map_err(|e| format!("invalid json from python: {e}: {stdout}"))
+}
+
+async fn post_variogram_plot(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Json(payload): Json<VariogramPlotRequest>,
+) -> Result<Json<VariogramPlotResponse>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.read") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+    let parameter_id = payload.parameter_id.trim().to_string();
+    if parameter_id.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, Json(json!({"error":"parameter_id requis"}))));
+    }
+    let horizon = payload
+        .horizon
+        .as_ref()
+        .map(|h| h.trim().to_uppercase())
+        .filter(|h| !h.is_empty());
+    let cache_key = format!("variogram:{}:{}", parameter_id, horizon.clone().unwrap_or_else(|| "ALL".to_string()));
+
+    // Cache hit
+    if let Ok(Some(row)) = sqlx::query(
+        r#"
+        SELECT svg, COALESCE((payload->>'rows')::int, 0) AS rows
+        FROM atlas.ai_plot_cache
+        WHERE cache_key = $1
+        LIMIT 1
+        "#,
+    )
+    .bind(&cache_key)
+    .fetch_optional(&state.pool)
+    .await
+    {
+        let svg: String = row.get("svg");
+        let rows: i32 = row.try_get("rows").unwrap_or(0);
+        return Ok(Json(VariogramPlotResponse {
+            svg,
+            cached: true,
+            cache_key,
+            parameter_id,
+            horizon,
+            rows,
+        }));
+    }
+
+    let db_url = require_database_url().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+    let script = script_path("../../scripts/generate_variogram_plot.py");
+    let mut args = vec![script.as_str(), "--database-url", db_url.as_str(), "--parameter-id", parameter_id.as_str()];
+    if let Some(h) = &horizon {
+        args.push("--horizon");
+        args.push(h.as_str());
+    }
+    let py = run_python_json(&args).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+    let svg = py
+        .get("svg")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error":"svg missing in python output"}))))?
+        .to_string();
+    let rows = py.get("rows").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
+
+    let payload_cache = json!({"rows": rows});
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO atlas.ai_plot_cache(cache_key, plot_type, parameter_id, horizon_label, svg, payload, updated_at)
+        VALUES ($1, 'variogram', $2, $3, $4, $5::jsonb, now())
+        ON CONFLICT (cache_key) DO UPDATE SET
+          svg = EXCLUDED.svg,
+          payload = EXCLUDED.payload,
+          updated_at = now()
+        "#,
+    )
+    .bind(&cache_key)
+    .bind(&parameter_id)
+    .bind(horizon.clone())
+    .bind(&svg)
+    .bind(payload_cache.to_string())
+    .execute(&state.pool)
+    .await;
+
+    Ok(Json(VariogramPlotResponse {
+        svg,
+        cached: false,
+        cache_key,
+        parameter_id,
+        horizon,
+        rows,
+    }))
+}
+
