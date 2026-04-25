@@ -1,0 +1,44 @@
+# CI rapide (< ~5 min) : compile Rust api-geo, tests unitaires UI, cohérence TS/Rust, scripts Python.
+name: CI Fast
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  workflow_dispatch:
+
+jobs:
+  fast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: cargo check api-geo
+        run: |
+          cd services/api-geo
+          cargo check --all-targets
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: py_compile scripts + thematic consistency
+        run: |
+          python3 -m compileall -q scripts
+          python3 scripts/ci/check_thematic_params_consistency.py
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: ui/package-lock.json
+
+      - name: npm test:unit + build
+        run: |
+          cd ui
+          npm ci
+          npm run test:unit
+          npm run build

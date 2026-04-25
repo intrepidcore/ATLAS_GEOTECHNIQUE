@@ -1,35 +1,72 @@
+Voici l'intégralité des résultats géotechniques extraits du rapport pour le projet de construction du château d'eau à **Akparé** (Région des Plateaux), présenté sous forme de tableaux bruts.
 
-| Catégorie | Paramètre / Essai | Profondeur / Niveau | Valeurs extraites | Remarques / Références |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. POSITIONNEMENT (SIG)** | **Coordonnées GPS** | - | Lat: **07° 27’ 45,81’’ N** ; Long: **01° 19’ 10,04’’ E** | Préfecture de l'OGOU |
-| **2. STRATIGRAPHIE** | **Coupe lithologique** | 0,00 – 0,10 m | Terre végétale | |
-| | (Tarière & Puits) | 0,10 – 0,80 m | **Sable argileux** | Épaisseur : 0,70 m |
-| | | Dès **0,80 m** | **Gravier sablo-argileux rouge** | Jusqu'à la fin du sondage |
-| **3. HYDROLOGIE** | **Nappe phréatique** | Jusqu'à 3,00 m | **Non identifiée** | Site non inondable |
-| **4. ESSAIS IN-SITU** | **Pénétromètre Léger** (PDL type B) | P1 : **2,10 m** | **Refus** | Matériel : Chute 50cm, Mouton 10kg |
-| | (Refus par point) | P2 : **2,70 m** | **Refus** | |
-| | | P3 : **2,60 m** | **Refus** | |
-| | | P4 : **2,50 m** | **Refus** | |
-| | | P5 : **3,00 m** | **Refus** | |
-| | **Résistance de rupture (qu)** | À 1,20 m | **0,626 MPa** (6,26 bars) | Valeur minimale de calcul |
-| **5. LABORATOIRE** | **Analyse Granulométrique** | **Puits (-1,00 m)** | < 2 mm : 37,80 % ; < 0,080 mm : **7,7 %** | Gravier dominant |
-| | | **Puits (-2,00 m)** | < 2 mm : 48,10 % ; < 0,080 mm : **18,19 %** | Plus fin en profondeur |
-| | **Limites d’Atterberg** | Puits (-1,00 m) | LL : 27,75 % ; LP : 13,12 % ; **IP : 10,94 %** | |
-| | | Puits (-2,00 m) | LL : 43,50 % ; LP : 21,44 % ; **IP : 9,71 %** | |
-| | **Indices d'État** | Puits (-1,00 m) | $I_c$ : 1,58 | Sol de consistance très dure |
-| | | Puits (-2,00 m) | $I_c$ : 3,27 | |
-| | **Densité & Proctor** | Puits (-1,00 m) | $\gamma_{dn}$ : 1,67 g/cm³ ; $\gamma_{d OPM}$ : **2,16 g/cm³** | $W_n$ : 3,58 % ; $W_{OPM}$ : 7,35 % |
-| | | Puits (-2,00 m) | $\gamma_{dn}$ : 1,64 g/cm³ ; $\gamma_{d OPM}$ : **2,13 g/cm³** | $W_n$ : 4,43 % ; $W_{OPM}$ : 7,75 % |
-| | **Compacité** | Puits (-1,00 m) | **ID : 77,31 %** | Très bonne compacité naturelle |
-| **6. CALCULS DE FONDATION** | **Type de fondation** | Superficiel | **Semelles isolées** | |
-| | **Profondeur d'ancrage** | **1,20 m** | Ancrage dans le gravier sablo-argileux | |
-| | **Contrainte de calcul** | À 1,20 m | **ELU = 0,326 MPa** (3,26 bars) | |
-| | | À 1,20 m | **ELS = 0,221 MPa** (2,21 bars) | Valeur recommandée |
+### 1. Localisation et Coordonnées GPS (Page 4)
+| Site | Latitude | Longitude |
+| :--- | :--- | :--- |
+| **Akparé (Préfecture de l'Ogou)** | 07°27’45,81’’ | 01°19’10,04’’ |
 
-***
+---
 
-### Observations Metric & SIG
-*   **Profil de refus :** Le toit de la couche résistante (gravier/roche altérée) ondule entre **1,60 m et 3,00 m** selon les 5 points d'essais. 
-*   **Gradient de portance :** On note une augmentation très brutale de la résistance entre 1,10 m ($R_d \approx 1$ MPa) et 1,50 m ($R_d \approx 4,5$ MPa), confirmant l'intérêt de descendre l'ancrage à au moins 1,20 m.
+### 2. Succession Lithologique (Page 6)
+| Profondeur (m) | Nature des terrains rencontrés |
+| :--- | :--- |
+| 0,00 – 0,10 | Terre végétale |
+| 0,10 – 0,80 | Sable argileux (épaisseur moyenne 0,70m) |
+| 0,80 – Fin de sondage | Gravier sablo-argileux rouge |
+| **Nappe phréatique** | **Non identifiée** |
 
-SOURCE : atlas_reclone/data/extend/EXTEND_1/RAPPORT AKPARE PDF.pdf
+---
+
+### 3. Résultats des Essais de Laboratoire (Page 10 - Table N°6)
+| Essais réalisés en laboratoire | Unité | Puits (-1,00m) | Puits (-2,00m) |
+| :--- | :---: | :---: | :---: |
+| **Granulométrie** | | | |
+| % < 20mm | % | 100 | 100 |
+| % < 2mm | % | 37,80 | 48,10 |
+| % < 0,080mm | % | 7,7 | 18,19 |
+| % < 0,002mm | % | 2,0 | 5,00 |
+| **Limites d’Atterberg** | | | |
+| Limite de Liquidité (LL) | % | 27,75 | 43,50 |
+| Limite de Plasticité (LP) | % | 13,12 | 21,44 |
+| Indice de Consistance (Ic) | - | 1,58 | 1,70 |
+| **État Naturel** | | | |
+| Densité sèche naturelle ($\gamma_{dn}$) | g/cm³ | 1,67 | 1,64 |
+| Teneur en eau naturelle ($W_n$) | % | 3,58 | 4,43 |
+| **Essai PROCTOR Modifié** | | | |
+| Densité sèche optimale ($\gamma_{dopm}$) | g/cm³ | 2,16 (p.20) / 2,16 (p.10)| 2,13 (p.21) / 2,13 (p.10)|
+| Teneur en eau optimale ($W_{opm}$) | % | 7,35 (p.20) / 7,35 (p.10)| 7,75 (p.21) / 7,75 (p.10)|
+| **Indice de compacité (ID)** | % | 77,31 | 77,00 |
+
+---
+
+### 4. Résultats Pénétrométriques - Contraintes de Rupture ($q_u$ en MPa)
+*Synthèse des Tableaux N°1 à N°5 (Pages 7-10). Pénétromètre dynamique lourd type B.*
+
+| Profondeur (m) | Point P1 | Point P2 | Point P3 | Point P4 | Point P5 |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| 0,50 | 0,503 | 0,378 | 0,126 | 0,692 | 0,378 |
+| 1,00 | 1,133 | 0,692 | 1,070 | 1,007 | 0,629 |
+| **1,50 (Ancrage)** | **4,552** | **2,674** | **3,642** | **3,414** | **1,138** |
+| 2,00 | 7,112 | 1,536 | 3,186 | 1,138 | 1,138 |
+| 2,50 | **REFUS (2,10m)** | 4,154 | 7,789 | 3,895 | 3,427 |
+| 2,80 | - | **REFUS (2,70m)** | 6,751 | 4,829 | 6,751 |
+| 3,00 | - | - | **REFUS (2,90m)** | **REFUS (3,00m)** | **REFUS (3,00m)** |
+
+---
+
+### 5. Justification des Fondations (Capacités Portantes - Page 11)
+Valeurs recommandées pour le dimensionnement d'une **semelle isolée** avec un ancrage de **1,50 m** :
+
+| Paramètre | Valeur (MPa) | Valeur (Bars) |
+| :--- | :---: | :---: |
+| Contrainte de rupture ($q_u$) à 1,50m | 0,626 | 6,26 |
+| Capacité portante admissible à l'**ELU** | **0,323** | **3,23** |
+| Capacité portante admissible à l'**ELS** | **0,221** | **2,21** |
+
+---
+
+### 6. Caractéristiques de l'Ouvrage (Page 7)
+*   **Type :** Cuve tronco-cylindrique sur tour en béton armé.
+*   **Capacité :** 400 $m^3$.
+*   **Hauteur du radier :** 15 m (hors sol).
+*   **Diamètre moyen de la tour :** 7,30 m.

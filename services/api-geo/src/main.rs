@@ -20,6 +20,7 @@ mod ai_infer;
 mod ai_jobs;
 mod ai_plots;
 mod ai_opti;
+mod ai_stats;
 mod internal_services;
 pub mod auth;
 mod routes;
@@ -449,6 +450,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ai/ml/refresh-prereqs", post(ai_opti::refresh_ml_prereqs))
         .merge(ai_plots::ai_plots_routes())
         .merge(ai_jobs::ai_jobs_routes())
+        .merge(ai_stats::ai_stats_routes())
         .route(
             "/sondages/:id/geometry",
             patch(sondages::update_sondage_geometry),

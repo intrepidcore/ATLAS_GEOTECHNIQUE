@@ -65,6 +65,7 @@ export class ContextLayersManager {
   private dsmErrorCount: number = 0
   private readonly MAX_DSM_ERRORS = 10
   private dsmLoadedTilesCount: number = 0
+  private dsmUnavailable: boolean = false
 
   constructor(map: L.Map) {
     this.map = map
@@ -88,7 +89,7 @@ export class ContextLayersManager {
   private async loadLayer(layerType: string): Promise<void> {
     // DSM est une couche raster (TileLayer), pas GeoJSON
     if (layerType === 'dsm') {
-      this.loadDsmLayer()
+      await this.loadDsmLayer()
       return
     }
 
@@ -142,7 +143,7 @@ export class ContextLayersManager {
    * Utilise togo_map comme fallback (dsm-cop30 non disponible)
    * Gère les erreurs de tuiles avec désactivation automatique si trop d'erreurs
    */
-  private loadDsmLayer(): void {
+  private async loadDsmLayer(): Promise<void> {
     if (this.dsmLayer) {
       console.log('[ContextLayers] DSM/Relief already loaded, removing and reloading')
       this.map.removeLayer(this.dsmLayer)
@@ -157,6 +158,22 @@ export class ContextLayersManager {
     const tileserverUrl = (import.meta as any).env?.VITE_TILES_URL || 'http://localhost:8081'
     const dsmUrl = `${tileserverUrl}/data/dsm_cop30/{z}/{x}/{y}.png`
     console.log('[ContextLayers] Loading relief (dsm_cop30) from:', dsmUrl)
+
+    // Preflight: vérifier que le tileserver répond avant d'ajouter la couche
+    try {
+      const healthUrl = `${tileserverUrl}/index.json`
+      const ctrl = new AbortController()
+      const timeout = setTimeout(() => ctrl.abort(), 3000)
+      const resp = await fetch(healthUrl, { signal: ctrl.signal, mode: 'no-cors' })
+      clearTimeout(timeout)
+      // no-cors: on ne peut pas lire le status, mais pas d'erreur = serveur joignable
+      console.log('[ContextLayers] Tileserver preflight OK')
+    } catch (preflightErr) {
+      console.error('[ContextLayers] Tileserver injoignable, couche Relief désactivée:', preflightErr)
+      this.dsmUnavailable = true
+      this.disableDsmToggle('Relief indisponible: serveur de tuiles injoignable')
+      return
+    }
 
     // Limiter les requêtes de tuiles à l'emprise du Togo pour réduire les 404
     // (à ajuster si besoin, mais suffisant pour éviter les demandes hors zone)
@@ -200,18 +217,8 @@ export class ContextLayersManager {
       // Désactiver si trop d'erreurs
       if (this.dsmLoadedTilesCount === 0 && this.dsmErrorCount >= this.MAX_DSM_ERRORS && this.dsmLayer) {
         console.error('[ContextLayers] Too many tile errors with no loaded tiles, disabling relief layer')
-        this.map.removeLayer(this.dsmLayer)
-        this.dsmLayer = null
-        
-        // Décocher la checkbox dans l'UI
-        const checkbox = document.getElementById('toggleDsm') as HTMLInputElement
-        if (checkbox) checkbox.checked = false
-        
-        // Notifier l'utilisateur
-        const maybeToast = (window as any).toast
-        if (typeof maybeToast === 'function') {
-          maybeToast('⚠️ Relief désactivé: tuiles non disponibles')
-        }
+        this.dsmUnavailable = true
+        this.disableDsmToggle('Relief désactivé: tuiles non disponibles')
       }
     })
 
@@ -224,6 +231,40 @@ export class ContextLayersManager {
     })
     
     console.log('[ContextLayers] Relief layer added to map (dsm_cop30)')
+  }
+
+  /**
+   * Désactive le toggle DSM dans l'UI et notifie l'utilisateur
+   */
+  private disableDsmToggle(message: string): void {
+    if (this.dsmLayer) {
+      this.map.removeLayer(this.dsmLayer)
+      this.dsmLayer = null
+    }
+
+    // Décocher + désactiver la checkbox dans l'UI
+    const checkbox = document.getElementById('toggleDsm') as HTMLInputElement
+    if (checkbox) {
+      checkbox.checked = false
+      checkbox.disabled = true
+      checkbox.parentElement?.setAttribute('title', message)
+    }
+
+    // Ajouter un label d'indisponibilité sous le toggle
+    const existingNotice = document.getElementById('dsm-unavailable-notice')
+    if (!existingNotice) {
+      const notice = document.createElement('div')
+      notice.id = 'dsm-unavailable-notice'
+      notice.style.cssText = 'font-size:10px;color:#92400E;margin-top:2px;padding:2px 4px;background:#FEF3C7;border-radius:3px;'
+      notice.textContent = message
+      checkbox?.parentElement?.appendChild(notice)
+    }
+
+    // Notifier l'utilisateur via toast si disponible
+    const maybeToast = (window as any).toast
+    if (typeof maybeToast === 'function') {
+      maybeToast(message)
+    }
   }
 
   /**

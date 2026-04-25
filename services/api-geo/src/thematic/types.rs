@@ -7,6 +7,8 @@ use uuid::Uuid;
 pub enum ThematicParameter {
     // Densité et couverture
     NSondages,
+    NEchantillons,
+    #[serde(alias = "n_essais_total")]
     NEssaisGeo,
     /// Nombre de sondages dans un rayon de 20 km (postgis) — MV `mv_maille_n_sondages_20km`
     #[serde(alias = "data_density", alias = "n_sondages_20km")]
@@ -153,6 +155,7 @@ impl ThematicParameter {
     pub fn sql_column(&self) -> &str {
         match self {
             Self::NSondages => "n_sondages",
+            Self::NEchantillons => "n_echantillons",
             Self::NEssaisGeo => "n_essais_geo",
             Self::DataDensity => "n_sondages_20km",
             Self::Passant80umAvg => "passant_80um_avg",
@@ -222,6 +225,7 @@ impl ThematicParameter {
     pub fn label(&self) -> &str {
         match self {
             Self::NSondages => "Nombre de sondages",
+            Self::NEchantillons => "Nombre d'échantillons",
             Self::NEssaisGeo => "Nombre d'essais géotechniques",
             Self::DataDensity => "Densité sondages 20 km (fiabilité)",
             Self::Passant80umAvg => "% Passant 80µm (moyen)",
@@ -290,7 +294,7 @@ impl ThematicParameter {
     /// Unité de mesure
     pub fn unit(&self) -> &str {
         match self {
-            Self::NSondages | Self::NEssaisGeo => "",
+            Self::NSondages | Self::NEchantillons | Self::NEssaisGeo => "",
             Self::DataDensity => "nb",
             Self::Passant80umAvg | Self::Passant2mmAvg | Self::Passant20mmAvg => "%",
             Self::WlAvg
@@ -324,7 +328,7 @@ impl ThematicParameter {
     /// Catégorie du paramètre
     pub fn category(&self) -> &str {
         match self {
-            Self::NSondages | Self::NEssaisGeo | Self::DataDensity => "density",
+            Self::NSondages | Self::NEchantillons | Self::NEssaisGeo | Self::DataDensity => "density",
             Self::Passant80umAvg | Self::Passant2mmAvg | Self::Passant20mmAvg => "granulo",
             Self::WlAvg
             | Self::WpAvg
@@ -597,6 +601,16 @@ mod tests {
         assert_eq!(ThematicParameter::IpAvg.sql_column(), "ip_avg");
         assert_eq!(ThematicParameter::VbsAvg.sql_column(), "vbs_avg");
         assert_eq!(ThematicParameter::EgAvg.sql_column(), "eg_avg");
+        assert_eq!(ThematicParameter::NEchantillons.sql_column(), "n_echantillons");
+        assert_eq!(ThematicParameter::NEssaisGeo.sql_column(), "n_essais_geo");
+    }
+
+    #[test]
+    fn serde_alias_n_essais_total_and_n_echantillons() {
+        let p: ThematicParameter = serde_json::from_str("\"n_essais_total\"").unwrap();
+        assert_eq!(p, ThematicParameter::NEssaisGeo);
+        let q: ThematicParameter = serde_json::from_str("\"n_echantillons\"").unwrap();
+        assert_eq!(q, ThematicParameter::NEchantillons);
     }
 
     #[test]

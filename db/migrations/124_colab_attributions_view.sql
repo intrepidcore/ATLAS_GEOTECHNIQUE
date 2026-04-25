@@ -75,6 +75,22 @@ LEFT JOIN LATERAL (
 WHERE cm.deleted_at IS NULL
   AND cm.maille_id IS NOT NULL;
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_app_user') THEN
+    CREATE ROLE atlas_app_user LOGIN IN ROLE atlas_app;
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_readonly_user') THEN
+    CREATE ROLE atlas_readonly_user LOGIN IN ROLE atlas_readonly;
+  END IF;
+END
+$$;
+
 GRANT SELECT ON atlas.v_colab_mission_attributions TO atlas_app_user;
 GRANT SELECT ON atlas.v_colab_mission_attributions TO atlas_readonly_user;
 

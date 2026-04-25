@@ -1,1 +1,0 @@
-No TS interface Survey found in common paths. You can edit the search paths inside the script.

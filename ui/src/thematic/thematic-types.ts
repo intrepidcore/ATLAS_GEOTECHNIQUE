@@ -86,7 +86,15 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     label: 'IA / Interpolation / AG',
     description: 'Sources de donnees derivees: IA infer, kriging proxy, AG fondation',
     icon: '',
-    parameters: ['ai_rga_score_infer', 'ai_portance_kpa_infer', 'kriging_ip', 'kriging_vbs', 'ag_safety_factor', 'ag_cout_millions'],
+    parameters: [
+      'ai_rga_score_infer',
+      'ai_portance_kpa_infer',
+      'kriging_ip',
+      'kriging_vbs',
+      'ag_safety_factor',
+      'ag_cout_millions',
+      'data_density',
+    ],
     defaultParameter: 'ai_rga_score_infer',
     defaultPalette: 'Viridis'
   },
@@ -118,6 +126,8 @@ export interface ThematicParameter {
   defaultBreaks?: number[]
   defaultPalette?: string
   minEssaisField?: string    // Champ pour filtre "essais minimum"
+  /** Anciens IDs kriging_vbs / kriging_ip — masqués du catalogue interpolation moderne */
+  deprecated?: boolean
 }
 
 export const THEMATIC_PARAMETERS: ThematicParameter[] = [
@@ -420,7 +430,8 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: '%',
     category: 'ai',
     description: 'Interpolation intra-maille de l indice de plasticite',
-    defaultPalette: 'PuRd'
+    defaultPalette: 'PuRd',
+    deprecated: true,
   },
   {
     id: 'kriging_vbs',
@@ -428,7 +439,17 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     unit: 'g/100g',
     category: 'ai',
     description: 'Interpolation intra-maille de la VBS',
-    defaultPalette: 'YlOrRd'
+    defaultPalette: 'YlOrRd',
+    deprecated: true,
+  },
+  {
+    id: 'data_density',
+    label: 'Densité de données (sondages à 20 km)',
+    unit: 'count',
+    category: 'density',
+    description: 'Nombre de sondages dans un rayon de 20 km autour du centroïde de la maille (fiabilité)',
+    defaultBreaks: [0, 1, 2, 3, 5, 10],
+    defaultPalette: 'Viridis',
   },
   {
     id: 'ag_safety_factor',
@@ -534,6 +555,9 @@ export interface ThematicMapConfig {
   // Bloc A - Objectif
   objectif: ObjectifMetier
   parameter: string
+
+  /** Mode expert : hachure fiabilité (mailles avec < 3 sondages à 20 km) */
+  expertReliabilityOverlay?: boolean
   
   // Bloc B - Style
   type: MapType
@@ -764,6 +788,7 @@ export const THEMATIC_PALETTE_MAP: Record<string, ThematicPaletteConfig> = {
   'n_sondages': { palette: 'Greens', rationale: 'Densité de données (vert=bien couvert)' },
   'n_echantillons': { palette: 'Greens', rationale: 'Densité de données' },
   'n_essais_total': { palette: 'Greens', rationale: 'Densité de données' },
+  'data_density': { palette: 'Viridis', rationale: 'Densité de sondages à 20 km (confiance locale)' },
   
   // Argilosité / plasticité - palettes chaudes (risque argileux)
   'vbs_avg': { palette: 'YlOrRd', rationale: 'Risque argileux croissant (jaune→rouge)' },
@@ -971,6 +996,65 @@ const BASE_PARAM_TO_KRIGING_ID: Record<string, string> = {
   ip_avg: 'kriging_ip',
 }
 
+/** Horizon KED national — aligné sur `ai_variograms` / `horizon_label` (H1, H2, H3). */
+export type KedHorizon = 'H1' | 'H2' | 'H3'
+
+/** Bases logiques (roadmap T1.1) : l’API reçoit `${base}_ked_${h}` ou `ip_derived_${h}`. */
+export const INTERPOLATION_BASE_DEFS: ReadonlyArray<{
+  baseId: string
+  label: string
+  unit: string
+  objectifs: ObjectifMetier[]
+}> = [
+  { baseId: 'vbs', label: 'VBS (KED)', unit: 'g/100g', objectifs: ['argilosite', 'ia_ag', 'personnalise'] },
+  { baseId: 'ip', label: 'IP (KED)', unit: '%', objectifs: ['argilosite', 'ia_ag', 'personnalise'] },
+  { baseId: 'wl', label: 'WL (KED)', unit: '%', objectifs: ['argilosite', 'ia_ag', 'personnalise'] },
+  { baseId: 'wp', label: 'WP (KED)', unit: '%', objectifs: ['argilosite', 'ia_ag', 'personnalise'] },
+  { baseId: 'ip_derived', label: 'IP dérivé (WL−WP)', unit: '%', objectifs: ['argilosite', 'ia_ag', 'personnalise'] },
+  { baseId: 'eg', label: 'Eg (KED)', unit: '%', objectifs: ['gonflement', 'ia_ag', 'personnalise'] },
+  { baseId: 'passant_2mm', label: '% passant 2 mm (KED)', unit: '%', objectifs: ['granulometrie', 'ia_ag', 'personnalise'] },
+  { baseId: 'passant_80um', label: '% passant 80 µm (KED)', unit: '%', objectifs: ['granulometrie', 'ia_ag', 'personnalise'] },
+]
+
+/** Préfixe option `<select>` pour bases KED (roadmap T1.1). */
+export const KED_SELECT_PREFIX = 'ked:' as const
+
+export function buildKedApiParameterId(baseId: string, horizon: KedHorizon): string {
+  const h = horizon.toLowerCase()
+  if (baseId === 'ip_derived') return `ip_derived_${h}`
+  return `${baseId}_ked_${h}`
+}
+
+export function parseKedApiParameterId(apiId: string): { baseId: string; horizon: KedHorizon } | null {
+  const id = apiId.trim()
+  const dm = /^ip_derived_(h[123])$/i.exec(id)
+  if (dm) return { baseId: 'ip_derived', horizon: dm[1]!.toUpperCase() as KedHorizon }
+  const km = /^(.+)_ked_(h[123])$/i.exec(id)
+  if (km) return { baseId: km[1]!, horizon: km[2]!.toUpperCase() as KedHorizon }
+  return null
+}
+
+export function thematicParameterFromInterpolationBase(
+  baseId: string,
+  label: string,
+  unit: string,
+): ThematicParameter {
+  return {
+    id: `${KED_SELECT_PREFIX}${baseId}`,
+    label,
+    unit,
+    category: 'ai',
+    description:
+      'Interpolation KED nationale — l’identifiant API est construit avec l’horizon H1/H2/H3 (voir sélecteur).',
+  }
+}
+
+export function listInterpolationBasesForObjectif(objectifId: ObjectifMetier): ThematicParameter[] {
+  return INTERPOLATION_BASE_DEFS.filter(
+    (d) => objectifId === 'personnalise' || d.objectifs.includes(objectifId),
+  ).map((d) => thematicParameterFromInterpolationBase(d.baseId, d.label, d.unit))
+}
+
 /**
  * Paramètres affichés selon la catégorie métier ET la source (base / interpolation / IA).
  * Évite de forcer la catégorie « IA / Interpolation / AG » quand l’utilisateur choisit Argilosité + Kriging.
@@ -984,41 +1068,18 @@ export function getParametersForObjectifAndSource(
   }
 
   if (source === 'interpolation') {
+    if (objectifId === 'couverture') {
+      const dd = THEMATIC_PARAMETERS.find((p) => p.id === 'data_density')
+      return dd ? [dd] : []
+    }
+
     if (objectifId === 'personnalise' || objectifId === 'ia_ag') {
       return getParametersBySource('interpolation')
     }
 
-    // Dans l'UI, la source "interpolation" expose notamment:
-    // - P4 KED granulométrie par horizon: passant_*_ked_h*
-    // - P5 IP dérivé: ip_derived_h*
-    // - proxies kriging: kriging_vbs (VBS)
-    if (objectifId === 'granulometrie') {
-      const orderedIds = [
-        'passant_2mm_ked_h2',
-        'passant_2mm_ked_h1',
-        'passant_2mm_ked_h3',
-        'passant_80um_ked_h2',
-        'passant_80um_ked_h1',
-        'passant_80um_ked_h3',
-      ]
-      return orderedIds
-        .map((id) => THEMATIC_PARAMETERS.find((p) => p.id === id))
-        .filter((p): p is ThematicParameter => Boolean(p))
-    }
+    const bases = listInterpolationBasesForObjectif(objectifId)
+    if (bases.length > 0) return bases
 
-    if (objectifId === 'argilosite') {
-      const orderedIds = [
-        'ip_derived_h2',
-        'ip_derived_h1',
-        'ip_derived_h3',
-        'kriging_vbs',
-      ]
-      return orderedIds
-        .map((id) => THEMATIC_PARAMETERS.find((p) => p.id === id))
-        .filter((p): p is ThematicParameter => Boolean(p))
-    }
-
-    // Autres objectifs: pas d'interpolation spécifique exposée côté UI pour l'instant.
     return []
   }
 
@@ -1051,12 +1112,20 @@ export function getParametersBySource(source: ThematicSource): ThematicParameter
     return THEMATIC_PARAMETERS.filter((p) => p.category !== 'ai')
   }
   if (source === 'interpolation') {
-    return THEMATIC_PARAMETERS.filter(
+    const fromCatalog = listInterpolationBasesForObjectif('personnalise')
+    const legacy = THEMATIC_PARAMETERS.filter(
       (p) =>
-        p.id.startsWith('kriging_') ||
-        p.id.includes('_ked_h') ||
-        p.id.startsWith('ip_derived_h'),
+        (p.id.startsWith('kriging_') ||
+          p.id.includes('_ked_h') ||
+          p.id.startsWith('ip_derived_h')) &&
+        !p.deprecated,
     )
+    const dd = THEMATIC_PARAMETERS.find((p) => p.id === 'data_density')
+    const byId = new Map<string, ThematicParameter>()
+    for (const p of fromCatalog) byId.set(p.id, p)
+    for (const p of legacy) byId.set(p.id, p)
+    if (dd) byId.set(dd.id, dd)
+    return Array.from(byId.values())
   }
   return THEMATIC_PARAMETERS.filter((p) => p.id.startsWith('ai_') || p.id.startsWith('ag_'))
 }

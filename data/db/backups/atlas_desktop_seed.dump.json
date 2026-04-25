@@ -1,36 +1,36 @@
 {
   "schema_version": "2.0",
   "identity": {
-    "seed_id": "",
-    "seed_version": "1.0.1",
+    "seed_id": "atlas-seed-20260424-f5e2c9a",
+    "seed_version": "1.1.0",
     "environment": "production",
     "classification": "internal"
   },
   "source": {
-    "created_at": "2026-03-24T16:34:08.458073+00:00",
+    "created_at": "2026-04-24T18:29:06.189677+00:00",
     "created_by": "Serge TABE DJATO",
-    "git_commit": "841430d",
+    "git_commit": "f5e2c9a",
     "db_name": "atlas_clean",
     "format": "pg_dump -Fc"
   },
   "integrity": {
-    "sha256": "0c7778e527caa6ba672ab1e0b1b9f2a13b55f9ff5f7ab774ecf793e2de6df4a0",
-    "sha512": "8d97a9277ee6caec438629c0ac47a24e6ea5a87faaa174d05fbb4dd20f76881e88d4c8bf31ff4b2ca768ffaf2cbf12a3638439f3e29b41d6fd2a80995d6fdca9",
-    "size_bytes": 668039932
+    "sha256": "45417bd620433742cb31ee33b44ce4038ca186f519ca0c4ca3561faf7579d32a",
+    "sha512": "6fca2af4a38a1cb63ed7e4a5a7c92ce4333c47148b879b638aa7854b75fb8dcdabe13a7adb512fc25d1997008ed883aae07c612e362236ad1259d5377c005df3",
+    "size_bytes": 719297716
   },
   "compatibility": {
     "postgres_target_major": null,
     "postgis_version": null,
-    "max_migration_applied": 137
+    "max_migration_applied": 136
   },
-  "created_at": "2026-03-24T16:34:08.515025+00:00",
+  "created_at": "2026-04-24T18:29:06.252028+00:00",
   "db_name": "atlas_clean",
   "format": "pg_dump -Fc",
-  "sha256": "0c7778e527caa6ba672ab1e0b1b9f2a13b55f9ff5f7ab774ecf793e2de6df4a0",
-  "sha512": "8d97a9277ee6caec438629c0ac47a24e6ea5a87faaa174d05fbb4dd20f76881e88d4c8bf31ff4b2ca768ffaf2cbf12a3638439f3e29b41d6fd2a80995d6fdca9",
-  "size_bytes": 668039932,
-  "git_commit": "841430d",
+  "sha256": "45417bd620433742cb31ee33b44ce4038ca186f519ca0c4ca3561faf7579d32a",
+  "sha512": "6fca2af4a38a1cb63ed7e4a5a7c92ce4333c47148b879b638aa7854b75fb8dcdabe13a7adb512fc25d1997008ed883aae07c612e362236ad1259d5377c005df3",
+  "size_bytes": 719297716,
+  "git_commit": "f5e2c9a",
   "postgres_target_major": null,
   "postgis_version": null,
-  "max_migration_applied": 137
+  "max_migration_applied": 136
 }

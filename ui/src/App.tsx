@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense } from 'react'
+import React, { useState, useEffect, Suspense, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StagingModal } from '@/components/StagingModal'
@@ -6,7 +6,7 @@ import { FieldCalculator } from '@/components/FieldCalculator'
 import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
-import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut, Bell, Moon, Sun } from 'lucide-react'
+import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut, Bell, Moon, Sun, TestTube2 } from 'lucide-react'
 import { UserProfileMenu } from '@/components/UserProfileMenu'
 import { RBACManager } from '@/components/RBACManager'
 import { SchemaTableSelector } from '@/components/SchemaTableSelector'
@@ -28,6 +28,7 @@ import { tablesApi, stagingApi, type Table, type Column, API_BASE_URL } from '@/
 import { authApi, tokenStorage } from './services/auth-api'
 import { stagingApiV2 } from '@/services/staging-api'
 import { ApiHealthIndicator } from '@/components/ApiHealthIndicator'
+import { ExpertScientificDbTab } from '@/components/ExpertScientificDbTab'
 
 const ColabPage = React.lazy(() => import('@/pages/ColabPage'))
 const LandingPage = React.lazy(() => import('@/pages/landing/LandingPage'))
@@ -67,6 +68,13 @@ function App() {
   const [editMode, setEditMode] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [stagingChanges, setStagingChanges] = useState<any[]>([])
+  const [mainTab, setMainTab] = useState('tables')
+
+  useEffect(() => {
+    const handler = () => setMainTab('tables')
+    window.addEventListener('close-expert-scientific', handler)
+    return () => window.removeEventListener('close-expert-scientific', handler)
+  }, [])
   const [stagingId, setStagingId] = useState<string | null>(null)
   const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set())
   const [showAdvancedSelection, setShowAdvancedSelection] = useState(false)
@@ -774,7 +782,7 @@ function App() {
 
       {/* Main Content */}
       <main className="w-full px-4 sm:px-6 lg:px-8 py-6">
-        <Tabs defaultValue="tables" className="space-y-6">
+        <Tabs value={mainTab} onValueChange={setMainTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="tables">
               <Table2 className="h-4 w-4 mr-2" />
@@ -795,6 +803,10 @@ function App() {
             <TabsTrigger value="infer-opti">
               <Activity className="h-4 w-4 mr-2" />
               Infer/Opti
+            </TabsTrigger>
+            <TabsTrigger value="expert-scientifique">
+              <TestTube2 className="h-4 w-4 mr-2" />
+              Expert scientifique
             </TabsTrigger>
             {/* Colab Studio - Gestion des missions terrain */}
             <TabsTrigger value="colab-studio">
@@ -1115,6 +1127,10 @@ function App() {
               apiBase={API_BASE_URL}
               hasJobsPermission={hasPermission('colab.missions.read')}
             />
+          </TabsContent>
+
+          <TabsContent value="expert-scientifique" className="flex flex-col flex-1 min-h-0 overflow-auto">
+            <ExpertScientificDbTab />
           </TabsContent>
 
           {/* Colab Studio Tab - Gestion des missions terrain */}

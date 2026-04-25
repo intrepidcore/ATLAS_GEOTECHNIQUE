@@ -66,7 +66,37 @@ async fn list_recent_jobs(
         return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
     }
 
-    let rows = sqlx::query(
+    let queue_rows = sqlx::query(
+        r#"
+        SELECT id, parameter_id, job_type, status, payload,
+               requested_at, started_at, finished_at, error_message
+        FROM atlas.ai_job_queue
+        ORDER BY requested_at DESC
+        LIMIT 80
+        "#,
+    )
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+
+    let queue_jobs: Vec<serde_json::Value> = queue_rows
+        .into_iter()
+        .map(|r| {
+            json!({
+                "id": r.get::<uuid::Uuid, _>("id"),
+                "parameter_id": r.get::<String, _>("parameter_id"),
+                "job_type": r.get::<String, _>("job_type"),
+                "status": r.get::<String, _>("status"),
+                "payload": r.try_get::<serde_json::Value, _>("payload").unwrap_or(json!({})),
+                "requested_at": r.get::<chrono::DateTime<chrono::Utc>, _>("requested_at").to_rfc3339(),
+                "started_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("started_at").ok().map(|d| d.to_rfc3339()),
+                "finished_at": r.try_get::<chrono::DateTime<chrono::Utc>, _>("finished_at").ok().map(|d| d.to_rfc3339()),
+                "error_message": r.try_get::<Option<String>, _>("error_message").ok().flatten(),
+            })
+        })
+        .collect();
+
+    let legacy_rows = sqlx::query(
         r#"
         SELECT id, model_target, trigger_reason, status,
                requested_at, requested_by, started_at, finished_at, logs
@@ -79,8 +109,14 @@ async fn list_recent_jobs(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
 
-    let jobs: Vec<AiJobPublic> = rows.into_iter().map(row_to_public).collect();
-    Ok(Json(json!({ "success": true, "jobs": jobs })))
+    let legacy: Vec<AiJobPublic> = legacy_rows.into_iter().map(row_to_public).collect();
+
+    Ok(Json(json!({
+        "success": true,
+        "source_table": "ai_job_queue",
+        "jobs": queue_jobs,
+        "legacy_training_jobs": legacy,
+    })))
 }
 
 async fn run_jobs_once(
@@ -240,10 +276,98 @@ fn run_python_json(args: &[&str]) -> Result<serde_json::Value, String> {
     serde_json::from_str(&stdout).map_err(|e| format!("invalid json from python: {e}: {stdout}"))
 }
 
+/// Consomme un job `atlas.ai_job_queue` (SKIP LOCKED) avant la file legacy `ai_training_jobs`.
+async fn try_process_ai_job_queue(pool: &PgPool) -> anyhow::Result<Option<serde_json::Value>> {
+    let mut tx = pool.begin().await?;
+    let job = sqlx::query(
+        r#"
+        SELECT id, parameter_id, job_type, payload
+        FROM atlas.ai_job_queue
+        WHERE status = 'queued'
+        ORDER BY requested_at ASC
+        FOR UPDATE SKIP LOCKED
+        LIMIT 1
+        "#,
+    )
+    .fetch_optional(&mut *tx)
+    .await?;
+
+    let Some(job) = job else {
+        tx.rollback().await?;
+        return Ok(None);
+    };
+
+    let job_id: uuid::Uuid = job.get("id");
+    let parameter_id: String = job.get("parameter_id");
+    let job_type: String = job.get("job_type");
+    let payload: serde_json::Value = job.try_get("payload").unwrap_or(json!({}));
+
+    let started_at = chrono::Utc::now();
+    sqlx::query(
+        r#"
+        UPDATE atlas.ai_job_queue
+        SET status = 'running', started_at = $2
+        WHERE id = $1
+        "#,
+    )
+    .bind(job_id)
+    .bind(started_at)
+    .execute(&mut *tx)
+    .await?;
+    tx.commit().await?;
+
+    let db_url = require_database_url().map_err(|e| anyhow::anyhow!(e))?;
+    let script = script_path("../../scripts/kriging_gp_global_interpolate.py");
+    let (status, detail) = match run_python_json(&[
+        &script,
+        "--database-url",
+        &db_url,
+        "--method",
+        "kriging_gp_global_v1",
+    ]) {
+        Ok(v) => ("finished", json!({"result": v, "parameter_id": parameter_id, "job_type": job_type, "payload": payload})),
+        Err(e) => ("failed", json!({"error": e.to_string()})),
+    };
+
+    let finished_at = chrono::Utc::now();
+    let err_msg: Option<String> = if status == "failed" {
+        Some(detail.to_string())
+    } else {
+        None
+    };
+    sqlx::query(
+        r#"
+        UPDATE atlas.ai_job_queue
+        SET status = $2, finished_at = $3, error_message = $4
+        WHERE id = $1
+        "#,
+    )
+    .bind(job_id)
+    .bind(status)
+    .bind(finished_at)
+    .bind(err_msg)
+    .execute(pool)
+    .await?;
+
+    Ok(Some(json!({
+        "source_table": "ai_job_queue",
+        "job_id": job_id,
+        "parameter_id": parameter_id,
+        "job_type": job_type,
+        "status": status,
+        "finished_at": finished_at.to_rfc3339(),
+        "detail": detail
+    })))
+}
+
 async fn process_one_job(pool: &PgPool) -> anyhow::Result<Option<serde_json::Value>> {
+    if let Some(v) = try_process_ai_job_queue(pool).await? {
+        return Ok(Some(v));
+    }
+
     let mut tx = pool.begin().await?;
 
-    // Claim one queued job atomically.
+    // Claim one queued training job atomically (legacy).
     let job = sqlx::query(
         r#"
         SELECT id, model_target, trigger_reason

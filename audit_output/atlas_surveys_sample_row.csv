@@ -1,3 +1,0 @@
-id,code,localite_canon,localite,source,localite_key,adm1_name,adm2_name,adm3_name,adm3_id,geom,geom_geojson,location_mode,location_accuracy,is_geocoded,has_geom,has_adm3,date,date_sondage,operator,notes,comment,meta,nb_sondages_source,created_at,updated_at,deleted_at
-2b414b5e-16dc-497a-9f68-2ad2f8d9e5f8,S-20251026-001,S20251026001,S-20251026-001,NICABOU Ninsao Vianney,S20251026001,,,,,01010000208F620000FED478E92631E03FA01A2FDD24061840,{"crs": {"type": "name", "properties": {"name": "EPSG:25231"}}, "type": "Point", "coordinates": [0.506, 6.006]},exact,exact,t,t,f,,,,,,{},1,2025-10-26 17:55:50.112+00,2025-10-26 21:21:22.324+00,
-(1 row)

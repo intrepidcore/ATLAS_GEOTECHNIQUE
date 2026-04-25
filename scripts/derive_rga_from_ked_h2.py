@@ -13,7 +13,17 @@ DB_DEFAULT = os.environ.get("DATABASE_URL", "postgresql://atlas:atlas@localhost:
 
 
 def classify_rga(ip: float, vbs: float, eg: float) -> Tuple[float, str, float, float]:
-    # Rule-based deterministic scoring consistent with existing atlas formulas.
+    """
+    Cartographie indicative du risque RGA à partir de VBS, IP et Eg (KED H2).
+
+    Référence méthodologique (cartes / zonations argile-gonflement) :
+    CHASSAGNEUX G. et al. (1996), *Cartographie de l'aléa retrait-gonflement des sols argileux*
+    (principes de combinaison des indicateurs géotechniques).
+
+    Implémentation Atlas : score composite linéaire puis classes par seuils sur ce score
+    (pas des seuils IP/VBS/Eg indépendants) — sum_score = 7.2*VBS + 1.45*IP + 2.4*Eg ;
+    classes tres_fort / fort / moyen / faible si sum_score >= 80 / 60 / 40 / sinon.
+    """
     sum_score = (vbs * 7.2) + (ip * 1.45) + (eg * 2.4)
     rga_score = max(0.0, min(100.0, round(sum_score, 2)))
     if sum_score >= 80.0:

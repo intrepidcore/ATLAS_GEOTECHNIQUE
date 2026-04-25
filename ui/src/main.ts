@@ -190,6 +190,7 @@ bus.on('maille:update', ({ mailleId }) => {
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
 import { makeResizable } from './components/resizable-panel'
+import { initFloatingPanels } from './components/panel-float'
 import { createProfessionalMetricsControl } from './components/map/ProfessionalMetricsControl'
 import './index.css'
 import './vanilla-theme-override.css'
@@ -603,26 +604,29 @@ function ensureDepressionsLegendVisible(): void {
     div.style.color = '#e5e7eb'
     div.style.border = '1px solid #1f2937'
     div.style.borderRadius = '8px'
-    div.style.padding = '8px 10px'
-    div.style.fontSize = '11px'
+    div.style.padding = '6px 8px'
+    div.style.fontSize = '10px'
+    div.style.maxWidth = '200px'
+    div.style.maxHeight = '10vh'
+    div.style.overflowY = 'auto'
+    div.style.boxSizing = 'border-box'
     div.innerHTML = `
-      <div style="font-weight:700;margin-bottom:6px">Zones d'étude Atlas</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;background:#D97706;border-radius:50%;flex-shrink:0"></span>Lama</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;background:#FB923C;border-radius:50%;flex-shrink:0"></span>Bado</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;background:#059669;border-radius:50%;flex-shrink:0"></span>Mono</div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px"><span style="width:10px;height:10px;background:#0284C7;border-radius:50%;flex-shrink:0"></span>Oti</div>
-      <div style="display:flex;align-items:center;gap:8px"><span style="width:10px;height:10px;background:#7C3AED;border-radius:50%;flex-shrink:0"></span>Fosse aux Lions</div>
-      <div style="margin-top:8px;padding-top:8px;border-top:1px solid #1f2937;font-size:10px;line-height:1.35;color:#94a3b8;font-weight:400">
-        Sur la carte, les zones apparaissent en <strong>surface semi-transparente sous la grille</strong> (~15&nbsp;%). Les couleurs des <strong>mailles</strong> indiquent uniquement le <strong>statut des données</strong> (GPS, aléatoire, sans données, etc.).
+      <div style="font-weight:700;margin-bottom:4px;font-size:10px">Zones d'étude</div>
+      <div style="display:flex;flex-wrap:wrap;gap:4px 8px;line-height:1.2">
+        <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:#D97706;border-radius:50%"></span>Lama</span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:#FB923C;border-radius:50%"></span>Bado</span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:#059669;border-radius:50%"></span>Mono</span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:#0284C7;border-radius:50%"></span>Oti</span>
+        <span style="display:inline-flex;align-items:center;gap:4px"><span style="width:8px;height:8px;background:#7C3AED;border-radius:50%"></span>F. Lions</span>
       </div>
-      <div style="margin-top:6px;font-size:10px;line-height:1.35;color:#94a3b8;font-weight:400">
-        Chevauchements (ex. Lama / Mono) : unités géotechniques limitrophes ; une maille peut intersecter plusieurs zones (règle ≥10&nbsp;%). Kriging calculé par zone. Pour une synthèse à zone unique, utiliser la zone de plus forte intersection.
-      </div>
+      <div style="margin-top:4px;font-size:9px;color:#64748b">Détails → panneau gauche « Zones d'étude (carte) »</div>
     `
     return div
   }
   ctl.addTo(map)
   depressionsLegendControl = ctl
+  const help = document.getElementById('zonesEtudeMapHelp')
+  if (help) help.style.display = 'block'
 }
 
 function getPrioriteColor(priorite: number | undefined | null): string {
@@ -5823,6 +5827,8 @@ if (document.readyState === 'loading') {
     initUserMenu()
     // v3.5.2: Panneaux redimensionnables
     initResizablePanels()
+    // v3.6.0: Panneaux détachables (flottants)
+    initFloatingPanels()
   }, { once: true })
 } else {
   updateAppVersion()
@@ -5845,4 +5851,6 @@ if (document.readyState === 'loading') {
   initUserMenu()
   // v3.5.2: Panneaux redimensionnables
   initResizablePanels()
+  // v3.6.0: Panneaux détachables (flottants)
+  initFloatingPanels()
 }

@@ -13,12 +13,38 @@ import type {
 import { getParameterById, getRecommendedPalette, PALETTE_OPTIONS } from './thematic-types'
 import { ContextLayersManager } from './context-layers'
 
+/** Badge provenance valeur (API `properties.source_type`) — roadmap crédibilité scientifique */
+function formatSourceTypeBadgeHtml(sourceType: string): string {
+  const key = sourceType.toLowerCase()
+  const labels: Record<string, string> = {
+    mesure: 'Mesure terrain',
+    ked_pedologie: 'KED pédologique',
+    kriging_global: 'Kriging global',
+    ml_infer: 'Inférence ML',
+    deterministic: 'Déterministe',
+    data_density: 'Densité données',
+  }
+  const colors: Record<string, string> = {
+    mesure: '#16a34a',
+    ked_pedologie: '#2563eb',
+    kriging_global: '#64748b',
+    ml_infer: '#7c3aed',
+    deterministic: '#ea580c',
+    data_density: '#0891b2',
+  }
+  const label = labels[key] || sourceType
+  const c = colors[key] || '#94a3b8'
+  return `<span class="atlas-source-badge" style="display:inline-block;margin-top:4px;padding:3px 8px;border-radius:6px;background:${c}22;border:1px solid ${c}55;color:${c};font-size:11px;font-weight:600">${label}</span>`
+}
+
 export class ThematicMapManager {
   private map: L.Map
   private apiUrl: string
   private polygonLayer: L.GeoJSON | null = null  // Couche des polygones (mailles)
   private circleLayer: L.LayerGroup | null = null // Couche des cercles proportionnels
   private heatLayer: any = null // Couche heatmap (leaflet.heat)
+  /** Expert : mailles avec faible densité locale (n_sondages_20km &lt; 3) */
+  private reliabilityOverlayLayer: L.GeoJSON | null = null
   public admOverlayLayer: L.LayerGroup  // Couche des contours ADM (public pour accès externe)
   private legendControl: L.Control | null = null
   private currentConfig: ThematicMapConfig | null = null
@@ -243,6 +269,10 @@ export class ThematicMapManager {
         this.renderHeatmap(data, classification, config)
       }
       const tRenderDone = performance.now()
+
+      if (config.expertReliabilityOverlay && config.parameter !== 'data_density') {
+        await this.renderReliabilityLowDensityOverlay(config)
+      }
       
       // 4. Afficher la légende
       const tLegendStart = performance.now()
@@ -955,6 +985,11 @@ export class ThematicMapManager {
     // Nettoyer aussi le contour ADM
     this.admOverlayLayer.clearLayers()
 
+    if (this.reliabilityOverlayLayer) {
+      this.map.removeLayer(this.reliabilityOverlayLayer)
+      this.reliabilityOverlayLayer = null
+    }
+
     // Important: si plus aucune couche thématique n'est présente, ne pas bloquer les clics sur la grille.
     this.updateThematicPanePointerEvents(false)
   }
@@ -1043,6 +1078,41 @@ export class ThematicMapManager {
     return [0, 0]
   }
   
+  /**
+   * Mode expert : surcouche semi-transparente sur les mailles avec &lt; 3 sondages dans 20 km.
+   */
+  private async renderReliabilityLowDensityOverlay(config: ThematicMapConfig): Promise<void> {
+    try {
+      const densityCfg: ThematicMapConfig = { ...config, parameter: 'data_density' }
+      const data = await this.fetchThematicData(densityCfg, { includeGeometry: true })
+      const pseudo: ThematicMapConfig = { ...config, parameter: 'data_density' }
+      const low = (data.features || []).filter((f: any) => {
+        const v = this.extractValue(f as any, pseudo)
+        return v !== null && v < 3
+      })
+      if (low.length === 0) {
+        console.log('[ThematicMap] Fiabilité: aucune maille < 3 sondages / 20 km dans la vue')
+        return
+      }
+      this.ensureThematicPane()
+      this.reliabilityOverlayLayer = L.geoJSON(low as any, {
+        pane: 'thematicPane',
+        style: () => ({
+          fillColor: '#f97316',
+          fillOpacity: 0.2,
+          color: '#ea580c',
+          weight: 0.5,
+          dashArray: '5,4',
+        }),
+        interactive: false,
+      })
+      this.reliabilityOverlayLayer.addTo(this.map)
+      this.reliabilityOverlayLayer.bringToFront()
+    } catch (e) {
+      console.warn('[ThematicMap] Overlay fiabilité: échec chargement data_density', e)
+    }
+  }
+
   /**
    * Afficher carte choroplèthe (aplats de couleur sur les mailles)
    */
@@ -1328,6 +1398,9 @@ export class ThematicMapManager {
     
     // Always show: code, region, surveys
     lines.push(`<strong>${props?.code}</strong>`)
+    if (props?.source_type) {
+      lines.push(formatSourceTypeBadgeHtml(String(props.source_type)))
+    }
     if (props?.adm1_name) {
       lines.push(`<span class="tooltip-label">Région:</span> ${props.adm1_name}`)
     }
@@ -1495,6 +1568,9 @@ export class ThematicMapManager {
             <div class="stat-row"><span>Moyenne:</span><b>${stats.mean.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
             <div class="stat-row"><span>Médiane:</span><b>${stats.median.toFixed(2)}${unit ? ' ' + unit : ''}</b></div>
             <div class="stat-row"><span>Mailles:</span><b>${stats.count}</b></div>
+            <div class="stat-row" style="font-size:10px;color:#64748b;margin-top:8px;line-height:1.35">
+              Les valeurs interpolées (KED/kriging) sont estimées à partir du réseau de sondages. Voir le badge « source » au survol d'une maille.
+            </div>
           </div>
         `
       }

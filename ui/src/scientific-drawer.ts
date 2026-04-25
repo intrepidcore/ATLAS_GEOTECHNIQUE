@@ -1,6 +1,8 @@
 import { Chart, registerables } from 'chart.js'
 import { getApiBase } from './api-base'
 import { tokenStorage } from './services/auth-api'
+import { parseKedApiParameterId } from './thematic/thematic-types'
+import { getActiveThematicParameterId } from './thematic/thematic-parameter-context'
 
 // Register chart types (safe if already registered elsewhere)
 Chart.register(...registerables)
@@ -144,6 +146,38 @@ function safeNumber(v: any): number | null {
   return n
 }
 
+/** Deuxième couche EDA / corrélations : VBS ↔ IP même horizon lorsque c’est pertinent. */
+function inferEdaPairIds(pid: string): { a: string; b: string } {
+  const p = parseKedApiParameterId(pid)
+  if (p) {
+    const h = p.horizon.toLowerCase()
+    if (p.baseId === 'vbs') return { a: pid, b: `ip_ked_${h}` }
+    if (p.baseId === 'ip') return { a: `vbs_ked_${h}`, b: pid }
+    return { a: pid, b: `vbs_ked_${h}` }
+  }
+  if (pid === 'kriging_vbs' || pid === 'kriging_ip') return { a: 'kriging_vbs', b: 'kriging_ip' }
+  return { a: pid, b: 'kriging_ip' }
+}
+
+type VariogramSummaryItem = {
+  parameter_id?: string
+  horizon?: string | null
+  loo_rmse?: number | null
+  block_rmse?: number | null
+  model_type?: string | null
+}
+
+async function fetchVariogramSummary(): Promise<VariogramSummaryItem[]> {
+  const apiBase = getApiBase()
+  const token = tokenStorage.getAccessToken?.()
+  const headers: Record<string, string> = {}
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${apiBase}/ai/variograms/summary`, { headers: Object.keys(headers).length ? headers : undefined })
+  if (!res.ok) throw new Error(`variograms summary (${res.status})`)
+  const data = (await res.json()) as { items?: VariogramSummaryItem[] }
+  return Array.isArray(data.items) ? data.items : []
+}
+
 async function fetchVariogramSvgFromApi(
   parameterId: string,
   horizon: string,
@@ -165,6 +199,9 @@ async function fetchVariogramSvgFromApi(
       body: JSON.stringify({ parameter_id: parameterId, horizon }),
       signal: controller.signal,
     })
+    if (res.status === 404) {
+      throw new Error('Aucun variogramme calculé pour ce paramètre')
+    }
     if (!res.ok) {
       throw new Error(`variogram endpoint failed (${res.status})`)
     }
@@ -259,6 +296,7 @@ export function initScientificDrawer(): void {
   let chartEdaIp: Chart | null = null
   let chartCorrScatter: Chart | null = null
   let chartVariogram: Chart | null = null
+  let chartCompare: Chart | null = null
 
   const invalidateLeafletMapSize = () => {
     const mapInstance = (window as any).leafletMap || (window as any).map
@@ -269,17 +307,8 @@ export function initScientificDrawer(): void {
         } catch {
           // best-effort
         }
-      }, 50)
+      }, 300)
     }
-  }
-
-  const setMapHeightForDrawerState = (open: boolean) => {
-    const mapEl = document.getElementById('map') as HTMLElement | null
-    if (!mapEl) return
-    // Le drawer réduit l'espace vertical disponible pour la carte (UX "push" côté layout)
-    mapEl.style.height = open ? 'calc(100vh - 52px - 40vh)' : 'calc(100vh - 52px)'
-    // Évite des hauteurs trop petites sur petits écrans.
-    mapEl.style.minHeight = open ? '260px' : ''
   }
 
   const setStatus = (id: string, msg: string) => {
@@ -287,11 +316,23 @@ export function initScientificDrawer(): void {
     if (el) el.textContent = msg
   }
 
+  const setPanelStatus = (tab: ScientificTabId, msg: string) => {
+    const map: Partial<Record<ScientificTabId, string>> = {
+      eda: 'scientificEdaStatus',
+      corr: 'scientificCorrStatus',
+      variogram: 'scientificVarStatus',
+      validation: 'scientificValidationStatus',
+      compare: 'scientificCompareStatus',
+      ml: 'scientificEdaStatus',
+    }
+    const id = map[tab]
+    if (id) setStatus(id, msg)
+  }
+
   const open = () => {
     drawer.classList.add('open')
     drawer.setAttribute('aria-hidden', 'false')
     document.body.classList.add('scientific-open')
-    setMapHeightForDrawerState(true)
     invalidateLeafletMapSize()
     // Default tab load
     void loadIfNeeded('eda')
@@ -301,7 +342,6 @@ export function initScientificDrawer(): void {
     drawer.classList.remove('open')
     drawer.setAttribute('aria-hidden', 'true')
     document.body.classList.remove('scientific-open')
-    setMapHeightForDrawerState(false)
     invalidateLeafletMapSize()
   }
 
@@ -319,36 +359,48 @@ export function initScientificDrawer(): void {
     void loadIfNeeded(tab)
   }
 
-  const loadIfNeeded = async (tab: ScientificTabId) => {
-    if (loaded[tab]) return
+  const resetDynamicTabs = () => {
+    loaded.eda = false
+    loaded.corr = false
+    loaded.variogram = false
+    loaded.validation = false
+    loaded.compare = false
+  }
+
+  window.addEventListener('atlas-thematic-parameter-changed', () => {
+    resetDynamicTabs()
+    if (drawer.classList.contains('open')) {
+      void loadIfNeeded(activeTab, true)
+    }
+  })
+
+  const loadIfNeeded = async (tab: ScientificTabId, force = false) => {
+    if (!force && loaded[tab]) return
     loaded[tab] = true
     if (tab === 'eda') await loadEda()
     else if (tab === 'corr') await loadCorrelation()
     else if (tab === 'variogram') await loadVariogram()
-    else {
-      // validation / ml / compare : contenu statique déjà dans le markup
-      setStatus(
-        tab === 'validation'
-          ? 'scientificEdaStatus'
-          : tab === 'ml'
-            ? 'scientificEdaStatus'
-            : tab === 'compare'
-              ? 'scientificEdaStatus'
-              : 'scientificEdaStatus',
-        'Prêt.'
-      )
-    }
+    else if (tab === 'validation') await loadValidation()
+    else if (tab === 'compare') await loadCompare()
+    else if (tab === 'ml') setPanelStatus('ml', 'Prêt.')
   }
 
   const loadEda = async () => {
     setStatus('scientificEdaStatus', 'Chargement EDA…')
-    const vbs = await fetchThematicData('kriging_vbs', { includeGeometry: false, grid: '2km', minSondages: 1 })
-    const ip = await fetchThematicData('kriging_ip', { includeGeometry: false, grid: '2km', minSondages: 1 })
+    const active = getActiveThematicParameterId()
+    const { a, b } = inferEdaPairIds(active)
+    const titleA = document.getElementById('scientificEdaTitleA')
+    const titleB = document.getElementById('scientificEdaTitleB')
+    if (titleA) titleA.textContent = `Histogramme (${a})`
+    if (titleB) titleB.textContent = `Histogramme (${b})`
 
-    const vbsValues = (vbs.features || [])
+    const first = await fetchThematicData(a, { includeGeometry: false, grid: '2km', minSondages: 1 })
+    const second = await fetchThematicData(b, { includeGeometry: false, grid: '2km', minSondages: 1 })
+
+    const vbsValues = (first.features || [])
       .map((f) => safeNumber(f.properties?.value))
       .filter((v): v is number => v !== null)
-    const ipValues = (ip.features || [])
+    const ipValues = (second.features || [])
       .map((f) => safeNumber(f.properties?.value))
       .filter((v): v is number => v !== null)
 
@@ -398,10 +450,10 @@ export function initScientificDrawer(): void {
       chartRefSetter(chart)
     }
 
-    renderHist('scientificChartEdaVbs', vbsValues, 'VBS', (c) => {
+      renderHist('scientificChartEdaVbs', vbsValues, a, (c) => {
       chartEdaVbs = c
     })
-    renderHist('scientificChartEdaIp', ipValues, 'IP', (c) => {
+    renderHist('scientificChartEdaIp', ipValues, b, (c) => {
       chartEdaIp = c
     })
 
@@ -417,7 +469,7 @@ export function initScientificDrawer(): void {
       const sv = stats(vbsValues)
       const si = stats(ipValues)
       if (!sv || !si) return 'EDA: pas assez de valeurs.'
-      return `VBS: n=${sv.n} min=${sv.min.toFixed(2)} max=${sv.max.toFixed(2)} mean=${sv.mean.toFixed(2)} | IP: n=${si.n} min=${si.min.toFixed(2)} max=${si.max.toFixed(2)} mean=${si.mean.toFixed(2)}`
+      return `${a}: n=${sv.n} min=${sv.min.toFixed(2)} max=${sv.max.toFixed(2)} mean=${sv.mean.toFixed(2)} | ${b}: n=${si.n} min=${si.min.toFixed(2)} max=${si.max.toFixed(2)} mean=${si.mean.toFixed(2)}`
     })()
 
     const sEl = document.getElementById('scientificEdaStats')
@@ -428,8 +480,10 @@ export function initScientificDrawer(): void {
 
   const loadCorrelation = async () => {
     setStatus('scientificCorrStatus', 'Chargement corrélations…')
-    const vbs = await fetchThematicData('kriging_vbs', { includeGeometry: false, grid: '2km', minSondages: 1 })
-    const ip = await fetchThematicData('kriging_ip', { includeGeometry: false, grid: '2km', minSondages: 1 })
+    const active = getActiveThematicParameterId()
+    const { a, b } = inferEdaPairIds(active)
+    const vbs = await fetchThematicData(a, { includeGeometry: false, grid: '2km', minSondages: 1 })
+    const ip = await fetchThematicData(b, { includeGeometry: false, grid: '2km', minSondages: 1 })
 
     const vbsMap = new Map<string, number>()
     for (const f of vbs.features || []) {
@@ -475,7 +529,7 @@ export function initScientificDrawer(): void {
       data: {
         datasets: [
           {
-            label: 'VBS vs IP',
+            label: `${a} vs ${b}`,
             data: points,
             pointRadius: 2,
             pointBackgroundColor: '#2563EB',
@@ -487,8 +541,8 @@ export function initScientificDrawer(): void {
         maintainAspectRatio: false,
         plugins: { legend: { display: false } },
         scales: {
-          x: { title: { display: true, text: 'VBS' }, grid: { color: '#0f172a20' } },
-          y: { title: { display: true, text: 'IP' }, grid: { color: '#0f172a20' } },
+          x: { title: { display: true, text: a }, grid: { color: '#0f172a20' } },
+          y: { title: { display: true, text: b }, grid: { color: '#0f172a20' } },
         },
       },
     })
@@ -498,15 +552,30 @@ export function initScientificDrawer(): void {
     setStatus('scientificCorrStatus', 'Prêt.')
   }
 
+  const resolveActiveKedParam = (): { parameterId: string; horizon: string } => {
+    const pid = getActiveThematicParameterId().trim()
+    const hm = pid.match(/_h([123])$/i)
+    const horizon = hm ? `H${hm[1]}` : 'H1'
+    if (pid && (/_ked_h[123]$/i.test(pid) || /^ip_derived_h[123]$/i.test(pid) || /^eg_ked_h[123]$/i.test(pid))) {
+      return { parameterId: pid, horizon }
+    }
+    if (pid && (pid === 'kriging_vbs' || pid === 'kriging_ip')) {
+      return { parameterId: pid === 'kriging_vbs' ? 'vbs_ked_h2' : 'ip_derived_h2', horizon: 'H2' }
+    }
+    return { parameterId: 'eg_ked_h1', horizon: 'H1' }
+  }
+
   const loadVariogram = async () => {
     setStatus('scientificVarStatus', 'Chargement variogramme…')
     const canvas = document.getElementById('scientificChartVariogram') as HTMLCanvasElement | null
     if (!canvas) return
     const nEl = document.getElementById('scientificVarNotes')
 
+    const { parameterId: activePid, horizon: activeHz } = resolveActiveKedParam()
+
     // Preferred path (P7): backend Python endpoint with cache.
     try {
-      const payload = await fetchVariogramSvgFromApi('eg_ked_h1', 'H1', 5000)
+      const payload = await fetchVariogramSvgFromApi(activePid, activeHz, 8000)
       if (chartVariogram) {
         chartVariogram.destroy()
         chartVariogram = null
@@ -525,7 +594,8 @@ export function initScientificDrawer(): void {
     }
 
     setStatus('scientificVarStatus', 'Chargement variogramme (fallback JS)…')
-    const vbs = await fetchThematicData('kriging_vbs', { includeGeometry: true, grid: '2km', minSondages: 1 })
+    const fbPid = resolveActiveKedParam().parameterId
+    const vbs = await fetchThematicData(fbPid, { includeGeometry: true, grid: '2km', minSondages: 1 })
     const features = vbs.features || []
 
     const points: Array<{ lat: number; lon: number; z: number }> = []
@@ -626,6 +696,105 @@ export function initScientificDrawer(): void {
         'Variogramme expérimental approx.: centroids bbox, échantillonnage et binning côté client (non substitut aux variogrammes Python).'
     }
     setStatus('scientificVarStatus', 'Prêt.')
+  }
+
+  const loadValidation = async () => {
+    const st = document.getElementById('scientificValidationStatus')
+    const body = document.getElementById('scientificValidationBody')
+    if (st) st.textContent = 'Chargement LOO / variogrammes…'
+    try {
+      const items = await fetchVariogramSummary()
+      if (st) st.textContent = 'Prêt.'
+      if (body) {
+        if (items.length === 0) {
+          body.innerHTML = '<p>Aucune entrée dans <code>ai_variograms</code> pour le moment.</p>'
+        } else {
+          const rows = items
+            .slice(0, 80)
+            .map((it) => {
+              const hz = it.horizon == null ? '—' : String(it.horizon)
+              const loo = it.loo_rmse == null ? '—' : Number(it.loo_rmse).toFixed(4)
+              const blk = it.block_rmse == null ? '—' : Number(it.block_rmse).toFixed(4)
+              const mt = it.model_type ?? '—'
+              const pid = it.parameter_id ?? '—'
+              return `<tr><td>${escapeHtml(pid)}</td><td>${escapeHtml(hz)}</td><td>${loo}</td><td>${blk}</td><td>${escapeHtml(mt)}</td></tr>`
+            })
+            .join('')
+          body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:11px">
+<thead><tr style="text-align:left;border-bottom:1px solid var(--border)">
+<th>parameter_id</th><th>horizon</th><th>loo_rmse</th><th>block_rmse</th><th>model</th>
+</tr></thead><tbody>${rows}</tbody></table>`
+        }
+      }
+    } catch (e) {
+      if (body) body.innerHTML = `<p style="color:#f97316">${escapeHtml((e as Error).message || String(e))}</p>`
+      if (st) st.textContent = 'Erreur chargement.'
+    }
+  }
+
+  const loadCompare = async () => {
+    setStatus('scientificCompareStatus', 'Chargement comparaison…')
+    const notes = document.getElementById('scientificCompareNotes')
+    try {
+      const items = await fetchVariogramSummary()
+      const byModel = new Map<string, number[]>()
+      for (const it of items) {
+        const m = (it.model_type || 'unknown').trim()
+        if (!it.loo_rmse || !Number.isFinite(it.loo_rmse)) continue
+        if (!byModel.has(m)) byModel.set(m, [])
+        byModel.get(m)!.push(it.loo_rmse)
+      }
+      const labels = Array.from(byModel.keys()).sort()
+      const avgs = labels.map((k) => {
+        const xs = byModel.get(k)!
+        return xs.reduce((a, b) => a + b, 0) / xs.length
+      })
+      const canvas = document.getElementById('scientificChartCompare') as HTMLCanvasElement | null
+      if (canvas) {
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          if (chartCompare) chartCompare.destroy()
+          chartCompare = new Chart(ctx, {
+            type: 'bar',
+            data: {
+              labels,
+              datasets: [
+                {
+                  label: 'LOO RMSE moyen (par type de modèle)',
+                  data: avgs,
+                  backgroundColor: '#2563EB66',
+                  borderColor: '#2563EB',
+                  borderWidth: 1,
+                },
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: { legend: { display: false } },
+              scales: {
+                y: { beginAtZero: true, title: { display: true, text: 'RMSE' } },
+                x: { ticks: { maxRotation: 45, minRotation: 25 } },
+              },
+            },
+          })
+        }
+      }
+      if (notes) {
+        notes.textContent =
+          labels.length === 0
+            ? 'Pas assez de métriques LOO par model_type pour un graphique.'
+            : 'Basé sur GET /ai/variograms/summary — moyenne simple des LOO RMSE par model_type (aperçu jury).'
+      }
+      setStatus('scientificCompareStatus', 'Prêt.')
+    } catch (e) {
+      if (notes) notes.textContent = (e as Error).message || String(e)
+      setStatus('scientificCompareStatus', 'Erreur.')
+    }
+  }
+
+  function escapeHtml(s: string): string {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   }
 
   // Bind open/close + tabs

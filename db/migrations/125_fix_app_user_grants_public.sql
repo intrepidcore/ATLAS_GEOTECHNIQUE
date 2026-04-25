@@ -10,6 +10,22 @@ BEGIN;
 -- This migration is idempotent.
 -- ============================================================================
 
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_app') THEN
+    CREATE ROLE atlas_app NOLOGIN;
+  END IF;
+END
+$$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'atlas_readonly') THEN
+    CREATE ROLE atlas_readonly NOLOGIN;
+  END IF;
+END
+$$;
+
 GRANT USAGE ON SCHEMA public TO atlas_app;
 GRANT USAGE ON SCHEMA public TO atlas_readonly;
 

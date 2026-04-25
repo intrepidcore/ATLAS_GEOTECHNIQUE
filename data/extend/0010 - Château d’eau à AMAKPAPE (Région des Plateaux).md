@@ -1,67 +1,76 @@
-Voici l'extraction exhaustive et rigoureuse des données géotechniques du **neuvième document** (Projet Amakpapé - GEOTECH SA, Juin 2017).
 
-| Catégorie | Paramètre / Essai | Profondeur / Niveau | Valeurs extraites | Remarques / Références |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. POSITIONNEMENT (SIG)** | **Coordonnées GPS** | - | Lat: **06°46’38.94’’ N** ; Long: **01°10’48.39’’ E** | Préfecture de HAHO |
-| **2. STRATIGRAPHIE** | **Coupe lithologique** | 0,00 – 0,25 m | Terre végétale | |
-| | (Tarière & Puits) | 0,25 – 1,05 m | **Sable grossier** | Épaisseur moyenne : 0,80 m |
-| | | Dès **1,05 m** | **Cuirasse latéritique** | Présente jusqu'à la base des sondages |
-| **3. HYDROLOGIE** | **Nappe phréatique** | Jusqu'à 3,00 m | **Non identifiée** | Site non inondable |
-| **4. ESSAIS IN-SITU** | **Pénétromètre Léger** (PDL type B) | P1 : **2,20 m** | **Refus** | Matériel : Chute 50cm, Mouton 10kg |
-| | (Refus par point) | P2 : **2,20 m** | **Refus** | |
-| | | P3 : **2,90 m** | **Refus** | |
-| | | P4 : **2,80 m** | **Refus** | |
-| | | P5 : **2,50 m** | **Refus** | |
-| | **Résistance de rupture (qu)** | À 1,50 m | **0,467 MPa** (4,67 bars) | Valeur minimale de calcul |
-| **5. LABORATOIRE** | **Analyse Granulométrique** | **Puits (-1,00 m)** | < 2 mm : 74,80 % ; < 0,080 mm : **8,16 %** | Sol à dominante graveleuse |
-| | **Limites d’Atterberg** | Puits (-1,00 m) | **IRREALISABLE** | Indique un sol peu ou pas plastique |
-| | **Densité naturelle** | Puits (-1,00 m) | $\gamma_{dn}$ : **1,67 g/cm³** | Teneur en eau $W_n$ : 4,13 % |
-| | **Essai PROCTOR** | Puits (-1,00 m) | $\gamma_{d OPM}$ : **1,93 g/cm³** | $W_{OPM}$ : 6,50 % |
-| | **Indice de compacité** | Puits (-1,00 m) | **ID : 86,53 %** | Excellente compacité naturelle |
-| **6. CALCULS DE FONDATION** | **Type de fondation** | Superficiel | **Semelles isolées** | |
-| | **Profondeur d'ancrage** | **1,50 m** | Ancrage impératif dans la cuirasse | |
-| | **Contrainte de calcul** | À 1,50 m | **ELU = 0,246 MPa** (2,46 bars) | |
-| | | À 1,50 m | **ELS = 0,172 MPa** (1,72 bars) | Valeur de dimensionnement |
+Voici l'intégralité des résultats géotechniques extraits du rapport pour le projet de construction du château d'eau d'**Amakpapé** (Région des Plateaux, Togo).
 
-***
+### 1. Localisation et Coordonnées GPS (Page 4)
+| Site | Latitude | Longitude |
+| :--- | :--- | :--- |
+| **Amakpapé (Haho)** | 06°46’38.94’’ N | 01°10’48.39’’ E |
 
-### Analyse Metric & SIG (Amakpapé)
-*   **Substratum résistant :** La cuirasse latéritique est rencontrée de manière très homogène à environ **1,00 m de profondeur** sur l'ensemble du site. C'est un excellent horizon porteur.
-*   **Analyse du Refus :** Le refus au pénétromètre intervient entre **2,20 m et 2,90 m**, ce qui suggère une cuirasse d'une épaisseur d'au moins 1,20 m à 1,90 m avant de rencontrer éventuellement des couches plus tendres ou la roche mère.
-*   **Particularité Laboratoire :** Contrairement au site d'Akparé, les limites d'Atterberg sont ici notées comme "irréalisables", ce qui confirme la nature très grenue (sableuse/graveleuse) du matériau de recouvrement.
+---
 
-Quand vous êtes prêt, nous passons au **troisième document** de cette série (Amoussoukopé).
+### 2. Succession Lithologique (Coupe Stratigraphique)
+*Source : Tarière de reconnaissance (Pages 6 & 11)*
 
-### 1. Pourquoi le tableau de laboratoire ne montre que 1,00 m pour Amakpapé ?
-Si vous regardez attentivement le **Tableau N°6 (page 10)** du document d'Amakpapé :
-*   Il y a deux colonnes : "Puits (-1,00m)" et "Puits (-2,00m)".
-*   La colonne **-1,00m** est remplie de chiffres.
-*   La colonne **-2,00m** porte la mention **"REFUS"**.
+| Profondeur (m) | Nature des terrains |
+| :--- | :--- |
+| 0,00 – 0,20 | Terre végétale sableuse |
+| 0,20 – 1,00 | Gravier sablo-argileux rouge |
+| 1,00 – 3,20 (fin) | Roche en altération grise |
+| **Nappe phréatique** | **Non identifiée (Zone non inondable)** |
 
-**Explication technique :** Les ingénieurs ont creusé un puits de reconnaissance manuel. À 1,00 m, ils ont pu prélever de la terre pour l'analyser. Mais dès 1,05 m (comme indiqué dans la stratigraphie), ils ont rencontré la **cuirasse latéritique** (une sorte de roche très dure). Le creusement manuel est devenu impossible, d'où le "Refus". On ne peut pas faire d'essais de granulométrie ou de Proctor sur de la roche massive au même titre que sur du sable.
+---
 
-### 2. Les essais in-situ vont beaucoup plus loin
-Même si le laboratoire n'a analysé que le premier mètre, l'étude géotechnique globale est descendue plus profondément grâce au **pénétromètre dynamique** :
-*   **Point P1 :** descendu jusqu'à **2,30 m** (Refus).
-*   **Point P3 :** descendu jusqu'à **2,90 m** (Refus).
-*   **Point P4 :** descendu jusqu'à **2,80 m** (Refus).
+### 3. Résultats des Essais de Laboratoire (Page 10 - Table N°6)
+| Essais réalisés en laboratoire | Unité | Puits (-1,00m) | Puits (-2,00m) |
+| :--- | :---: | :---: | :---: |
+| **Granulométrie** | | | |
+| % < 20mm | % | 100 | 100 |
+| % < 2mm | % | 97,80 | 93,90 |
+| % < 0,080mm | % | 8,16 | 33,01 |
+| **Limites d’Atterberg** | | | |
+| Limite de Liquidité (LL) | % | 37,10 | 34,95 |
+| Limite de Plasticité (LP) | % | 26,16 | 25,24 |
+| Indice de Plasticité (IP) | % | 10,94 | 9,71 |
+| Indice de Consistance (Ic) | - | 3,27 | 3,37 |
+| **Densité Naturelle** | | | |
+| Densité sèche ($\gamma_{dn}$) | g/cm³ | 1,77 | 1,74 |
+| Teneur en eau naturelle ($W_n$) | % | 9,83 | 10,05 |
+| **Essai PROCTOR Modifié** | | | |
+| Densité sèche maximale ($\gamma_{dopm}$) | g/cm³ | 1,91 (p.20) / 1,90 (p.10) | 1,93 (p.21) |
+| Teneur en eau optimale ($W_{opm}$) | % | 10,15 (p.20) / 10,00 (p.10) | 11,00 (p.21) |
+| **Indice de compacité (ID)** | % | 77,31 | 77,00 |
 
-L'appareil a "frappé" le sol tous les 10 cm pour mesurer la résistance jusqu'à ce qu'il ne puisse plus avancer. L'étude couvre donc bien toute la zone d'influence de la future fondation.
+---
 
-### 3. Comparaison des profondeurs d'essais (Rigueur métrique)
+### 4. Résultats Pénétrométriques - Contraintes de Rupture ($q_u$ en MPa)
+*Synthèse des Tableaux N°1 à N°5 (Pages 14-18). Pénétromètre dynamique lourd APAFOR 100.*
 
-Voici un récapitulatif des profondeurs maximales atteintes pour chaque document analysé jusqu'ici :
+| Profondeur (m) | Point P1 | Point P2 | Point P3 | Point P4 | Point P5 |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| 0,50 | 0,060 | 0,119 | 0,755 | 0,119 | 0,538 |
+| 1,00 | 0,179 | 0,119 | 1,447 | 0,179 | 0,956 |
+| **1,50 (Ancrage)** | **1,142** | **0,156** | **2,276** | **0,467** | **0,882** |
+| 2,00 | 1,038 | 0,415 | 4,836 | 0,896 | 1,593 |
+| 2,50 | 0,312 | 0,727 | **REFUS (2,20m)** | 0,642 | 1,652 |
+| 3,00 | 1,246 | 2,111 | - | 3,808 | 3,395 |
+| 3,20 | **6,209** | 1,768 | - | **REFUS (3,30m)** | 5,961 |
+| **REFUS Final** | **3,30 m** | **4,10 m** | **2,20 m** | **3,30 m** | **3,30 m** |
 
-| Document | Site | Profondeur In-Situ (Max) | Profondeur Laboratoire (Max) | Raison de l'arrêt |
-| :--- | :--- | :--- | :--- | :--- |
-| **Doc 1** | **Logoté** | **30,00 m** (Pressiomètre) | **22,50 m** | Fin du programme prévu. |
-| **Doc 2** | **Agbandji** | **30,00 m** (Pressiomètre) | **22,50 m** | Fin du programme prévu. |
-| **Doc 5** | **Segbé** | **8,00 m** | **2,00 m** | Stabilité des résultats. |
-| **Doc 6** | **Abobo** | **5,00 m** | **2,00 m** | Matériau homogène. |
-| **Doc 8** | **Akparé** | **3,00 m** | **2,00 m** | **Refus sur gravier dense.** |
-| **Doc 9** | **Amakpapé**| **2,90 m** | **1,00 m** | **Refus sur cuirasse rocheuse.** |
+---
 
-### Conclusion
-Les essais de laboratoire sont limités par la capacité à extraire un échantillon meuble (terre/sable). Dès que le sol devient trop dur (Roche ou Cuirasse), les ingénieurs passent exclusivement aux essais in-situ (pénétromètre ou pressiomètre) qui sont les seuls capables de mesurer la force d'un substratum rocheux.
+### 5. Synthèse des Recommandations de Fondation (Page 12)
+Valeurs minimales retenues pour le dimensionnement (semelles isolées) à une profondeur d'ancrage de **1,50 m**.
 
-SOURCE : atlas_reclone/data/extend/EXTEND_1/RAPPORT AMAKPAPE PDF.pdf
+| Paramètre | Valeur (MPa) | Valeur (Bars) |
+| :--- | :---: | :---: |
+| Contrainte de rupture ($q_u$) à 1,50m | 0,727 | 7,27 |
+| Capacité portante admissible à l'**ELU** | **0,376** | **3,76** |
+| Capacité portante admissible à l'**ELS** | **0,259** | **2,59** |
+
+---
+
+### 6. Caractéristiques de l'Ouvrage (Page 7)
+*   **Type :** Cuve tronco-cylindrique sur tour en béton armé.
+*   **Capacité :** 400 $m^3$.
+*   **Diamètre moyen de la tour :** 5 m.
+*   **Hauteur hors sol du radier :** 15 m.

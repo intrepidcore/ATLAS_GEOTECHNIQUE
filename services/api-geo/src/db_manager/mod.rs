@@ -20,12 +20,12 @@ pub mod versioning;
 
 // Re-export tous les types publics (nécessaire pour routes)
 pub use audit::create_audit_entry;
-pub use backup::{create_backup, restore_backup};
-pub use dryrun::DryRunResult;
+pub use backup::{create_backup, list_backups, restore_backup};
+pub use dryrun::{dryrun_add_column, DryRunResult};
 pub use locks::{acquire_lock, release_lock, StagingLock};
 pub use pg_types::{get_postgres_types, PostgresType};
 pub use schema::get_database_schema;
-pub use staging::{cancel_staging, commit_staging, create_staging};
+pub use staging::{cancel_staging, commit_staging, create_staging, validate_staging};
 pub use table::get_table_data;
 #[allow(ambiguous_glob_reexports)]
 pub use types::*;

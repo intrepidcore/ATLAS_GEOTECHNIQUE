@@ -20,8 +20,13 @@ import {
   getParametersForObjectifAndSource,
   getParameterById,
   getObjectifById,
-  getDefaultConfig
+  getDefaultConfig,
+  buildKedApiParameterId,
+  parseKedApiParameterId,
+  KED_SELECT_PREFIX,
+  type KedHorizon,
 } from './thematic-types'
+import { setActiveThematicParameterId } from './thematic-parameter-context'
 import { tokenStorage } from '../services/auth-api'
 import { icons } from '../icons/lucide-inline'
 import {
@@ -80,6 +85,8 @@ export class ThematicPanel {
     toggleExpertModeCheckbox?: HTMLInputElement
     expertContextLayersContainer?: HTMLElement
     expertHorizonFilterContainer?: HTMLElement
+    thematicHorizonSelect?: HTMLSelectElement
+    toggleReliabilityOverlayCheckbox?: HTMLInputElement
   } = {}
 
   private setSelectValueByOptionText(select: HTMLSelectElement | undefined, optionText: string | undefined): void {
@@ -235,6 +242,15 @@ export class ThematicPanel {
           <select id="thematicParameter" class="thematic-select"></select>
           <div id="parameterDescription" class="param-description"></div>
         </div>
+
+        <div class="thematic-section" id="thematicHorizonRow" style="display:none;">
+          <div class="section-label">Horizon KED</div>
+          <select id="thematicHorizon" class="thematic-select" aria-label="Horizon KED">
+            <option value="H1">H1 (0,5 m)</option>
+            <option value="H2" selected>H2 (1,5 m)</option>
+            <option value="H3">H3 (2,0 m)</option>
+          </select>
+        </div>
         
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <!-- BLOC B : Style & Classification -->
@@ -376,6 +392,14 @@ export class ThematicPanel {
         </div>
         
         <div id="expertContextLayers" style="display:none;">
+          <div class="thematic-section checkbox-section">
+            <label class="checkbox-label thematic-toggle-label">
+              <input type="checkbox" class="atlas-switch" id="toggleReliabilityOverlay">
+              <span>Overlay fiabilité (hachure si &lt; 3 sondages / 20 km)</span>
+            </label>
+          </div>
+        </div>
+
           <div class="thematic-divider">
             <span>Couches de contexte (QGIS)</span>
           </div>
@@ -483,7 +507,6 @@ export class ThematicPanel {
             Cliquez sur ▼ pour la légende — données dans les infobulles.
           </div>
           </div>
-        </div>
 
         <div class="thematic-divider">
           <span>Zones d'étude (data gap)</span>
@@ -612,7 +635,9 @@ export class ThematicPanel {
 
       toggleExpertModeCheckbox: document.getElementById('toggleExpertMode') as HTMLInputElement,
       expertContextLayersContainer: document.getElementById('expertContextLayers') as HTMLElement,
-      expertHorizonFilterContainer: document.getElementById('expertHorizonFilter') as HTMLElement
+      expertHorizonFilterContainer: document.getElementById('expertHorizonFilter') as HTMLElement,
+      thematicHorizonSelect: document.getElementById('thematicHorizon') as HTMLSelectElement,
+      toggleReliabilityOverlayCheckbox: document.getElementById('toggleReliabilityOverlay') as HTMLInputElement,
     }
   }
 
@@ -705,6 +730,76 @@ export class ThematicPanel {
     if (objectif?.defaultPalette && this.elements.paletteSelect) {
       this.elements.paletteSelect.value = objectif.defaultPalette
     }
+
+    this.updateHorizonRowVisibility()
+  }
+
+  /**
+   * Horizon H1/H2/H3 : KED (`ked:*`), IDs API plats (`vbs_ked_h2`, `ip_derived_h1`, …).
+   * Masqué pour kriging legacy et densité (pas de stratification profondeur).
+   */
+  private shouldShowHorizonForInterpolation(param: string): boolean {
+    if (param === 'kriging_vbs' || param === 'kriging_ip') return false
+    if (param === 'data_density') return false
+    if (param.startsWith(KED_SELECT_PREFIX)) return true
+    if (parseKedApiParameterId(param)) return true
+    return false
+  }
+
+  private updateHorizonRowVisibility(): void {
+    const row = document.getElementById('thematicHorizonRow')
+    const source = (document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value as
+      | ThematicSource
+      | undefined
+    const param = this.elements.parameterSelect?.value || ''
+    const show = source === 'interpolation' && this.shouldShowHorizonForInterpolation(param)
+    if (row) row.style.display = show ? '' : 'none'
+    if (show && this.elements.thematicHorizonSelect) {
+      const parsedFlat = parseKedApiParameterId(param)
+      if (parsedFlat && !param.startsWith(KED_SELECT_PREFIX)) {
+        this.elements.thematicHorizonSelect.value = parsedFlat.horizon
+      }
+    }
+  }
+
+  private assignParameterUiFromApiId(apiParameterId: string): void {
+    const select = this.elements.parameterSelect
+    if (!select) return
+
+    const parsed = parseKedApiParameterId(apiParameterId)
+    if (parsed) {
+      const kedVal = `${KED_SELECT_PREFIX}${parsed.baseId}`
+      if (Array.from(select.options).some((o) => o.value === kedVal)) {
+        select.value = kedVal
+        if (this.elements.thematicHorizonSelect) {
+          this.elements.thematicHorizonSelect.value = parsed.horizon
+        }
+      } else {
+        const opt = Array.from(select.options).find((o) => o.value === apiParameterId)
+        if (opt) select.value = apiParameterId
+      }
+    } else if (apiParameterId === 'kriging_vbs') {
+      const kedVal = `${KED_SELECT_PREFIX}vbs`
+      if (Array.from(select.options).some((o) => o.value === kedVal)) {
+        select.value = kedVal
+        if (this.elements.thematicHorizonSelect) this.elements.thematicHorizonSelect.value = 'H2'
+      } else if (Array.from(select.options).some((o) => o.value === 'kriging_vbs')) {
+        select.value = 'kriging_vbs'
+      }
+    } else if (apiParameterId === 'kriging_ip') {
+      const kedVal = `${KED_SELECT_PREFIX}ip`
+      if (Array.from(select.options).some((o) => o.value === kedVal)) {
+        select.value = kedVal
+        if (this.elements.thematicHorizonSelect) this.elements.thematicHorizonSelect.value = 'H2'
+      } else if (Array.from(select.options).some((o) => o.value === 'kriging_ip')) {
+        select.value = 'kriging_ip'
+      }
+    } else if (Array.from(select.options).some((o) => o.value === apiParameterId)) {
+      select.value = apiParameterId
+    }
+
+    this.updateParameterDescription()
+    this.updateHorizonRowVisibility()
   }
   
   /**
@@ -1195,12 +1290,18 @@ export class ThematicPanel {
       if (this.elements.minSondagesInput) {
         this.elements.minSondagesInput.value = source === 'base' ? (this.elements.minSondagesInput.value || '1') : '0'
       }
+      this.updateHorizonRowVisibility()
     })
     
     // Parameter change -> update description & palette
     this.elements.parameterSelect?.addEventListener('change', () => {
       this.updateParameterDescription()
       this.updatePaletteFromParameter()
+      this.updateHorizonRowVisibility()
+    })
+
+    this.elements.thematicHorizonSelect?.addEventListener('change', () => {
+      this.updateHorizonRowVisibility()
     })
     
     // Palette change -> STOCKER ET LOGGER
@@ -1671,16 +1772,17 @@ export class ThematicPanel {
    * Apply config values to UI elements
    */
   private applyConfigToUI(config: ThematicMapConfig): void {
+    setActiveThematicParameterId(config.parameter)
     // Objectif
     if (this.elements.objectifSelect) {
       this.elements.objectifSelect.value = config.objectif
       this.updateParameterList(config.objectif)
     }
     
-    // Parameter
-    if (this.elements.parameterSelect) {
-      this.elements.parameterSelect.value = config.parameter
-      this.updateParameterDescription()
+    this.assignParameterUiFromApiId(config.parameter)
+
+    if (this.elements.toggleReliabilityOverlayCheckbox && config.expertReliabilityOverlay !== undefined) {
+      this.elements.toggleReliabilityOverlayCheckbox.checked = !!config.expertReliabilityOverlay
     }
     
     // Map type
@@ -1721,7 +1823,19 @@ export class ThematicPanel {
    */
   private buildConfigFromUI(): ThematicMapConfig {
     const objectif = (this.elements.objectifSelect?.value || 'couverture') as ObjectifMetier
-    const parameter = this.elements.parameterSelect?.value || 'n_sondages'
+    const source = ((document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value ||
+      'base') as ThematicSource
+    let parameter = this.elements.parameterSelect?.value || 'n_sondages'
+    const hz = (this.elements.thematicHorizonSelect?.value || 'H2') as KedHorizon
+    if (source === 'interpolation') {
+      if (parameter.startsWith(KED_SELECT_PREFIX)) {
+        const baseId = parameter.slice(KED_SELECT_PREFIX.length)
+        parameter = buildKedApiParameterId(baseId, hz)
+      } else {
+        const parsed = parseKedApiParameterId(parameter)
+        if (parsed) parameter = buildKedApiParameterId(parsed.baseId, hz)
+      }
+    }
     const type = (this.elements.mapTypeSelect?.value || 'choropleth') as MapType
     const method = (this.elements.methodSelect?.value || 'quantiles') as ClassificationMethod
     const nClasses = parseInt(this.elements.nClassesInput?.value || '5')
@@ -1744,7 +1858,6 @@ export class ThematicPanel {
     const adm2 = this.elements.adm2Select?.value || undefined
     const adm3 = this.elements.adm3Select?.value || undefined
     console.log('[ThematicPanel] ADM filters:', { adm1, adm2, adm3, adm1El: this.elements.adm1Select })
-    const source = ((document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value || 'base') as ThematicSource
     let minSondages = parseInt(this.elements.minSondagesInput?.value || '0')
     if (source !== 'base') minSondages = 0
     const excludeNoData = this.elements.excludeNoDataCheckbox?.checked ?? true
@@ -1759,11 +1872,15 @@ export class ThematicPanel {
     const levelFromRadio = (gridLevelRadio?.value || '2km') as '2km' | '28km' | 'combined'
     const gridLevel = (levelFromGlobal || levelFromRadio) as '2km' | '28km' | 'combined'
     console.log('[ThematicPanel] Grid level (global):', levelFromGlobal, 'radio:', levelFromRadio, '=>', gridLevel)
+
+    const expertReliabilityOverlay =
+      !!(this.elements.toggleExpertModeCheckbox?.checked && this.elements.toggleReliabilityOverlayCheckbox?.checked)
     
     return {
       name: 'Carte temporaire',
       objectif,
       parameter,
+      expertReliabilityOverlay,
       type,
       classification: {
         method,
@@ -1842,6 +1959,8 @@ export class ThematicPanel {
       this.updateSummary()
       
       this.toast('Carte thématique chargée', 'success')
+
+      setActiveThematicParameterId(config.parameter)
       
     } catch (error) {
       console.error('[ThematicPanel] Error:', error)

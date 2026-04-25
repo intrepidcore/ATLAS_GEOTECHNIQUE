@@ -156,6 +156,7 @@ Très valorisants.
 * Distribution résidus ML
 * Prédictions vs observations
 
+
 ---
 
 ## 7. Graphiques comparaison modèles

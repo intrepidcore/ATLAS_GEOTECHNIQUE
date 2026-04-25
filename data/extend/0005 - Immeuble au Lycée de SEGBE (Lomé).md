@@ -1,32 +1,86 @@
+Voici l'extraction exhaustive de tous les résultats géotechniques contenus dans le rapport pour le projet du Lycée de SEGBE (Lomé, Togo).
 
-| Catégorie                   | Paramètre / Essai                | Profondeur / Niveau | Valeurs extraites                           | Remarques / Références                 |
-| :-------------------------- | :------------------------------- | :------------------ | :------------------------------------------ | :------------------------------------- |
-| **1. POSITIONNEMENT (SIG)** | **Système de projection**        | -                   | **WGS 1984, UTM Zone 31 N**                 | Données pour projection cartographique |
-|                             | **Sondage PD1**                  | -                   | Lat: 0684805 N ; Long: 0291455 E            | Pénétromètre dynamique                 |
-|                             | **Sondage PD2**                  | -                   | Lat: 0684805 N ; Long: 0291443 E            | Pénétromètre dynamique                 |
-|                             | **Sondage PD3**                  | -                   | Lat: 0684812 N ; Long: 0291434 E            | Pénétromètre dynamique                 |
-|                             | **Sondage PD4**                  | -                   | Lat: 0684810 N ; Long: 0291449 E            | Pénétromètre dynamique                 |
-|                             | **Puits de reconnaissance (P)**  | -                   | Lat: 0684808 N ; Long: 0291449 E            | Puits manuel                           |
-| **2. STRATIGRAPHIE**        | **Coupe lithologique** (Puits P) | 0,00 – 0,45 m       | Terre végétale                              |                                        |
-|                             |                                  | 0,45 – 2,00 m       | **Sable argileux rougeâtre**                |                                        |
-| **3. HYDROLOGIE**           | **Nappe phréatique**             | Jusqu'à 8,00 m      | **Non détectée**                            | Observée en saison sèche (Déc. 2021)   |
-| **4. ESSAIS IN-SITU**       | **Pénétromètre Lourd** (DPSH-B)  | Jusqu'à 8,00 m      | **Aucun refus observé**                     | Enfoncement continu sur 8m             |
-|                             |                                  | 0,20 – 1,00 m       | $R_d$ moyen $\approx$ 2,95 MPa              | Résistance faible en surface           |
-|                             |                                  | 1,20 – 8,00 m       | $R_d$ Min = **2,73 MPa**                    | Valeur plancher pour les calculs       |
-|                             |                                  | 1,20 – 8,00 m       | $R_d$ Max = **10,76 MPa**                   | À 7,80m de profondeur                  |
-| **5. LABORATOIRE**          | **Échantillon : Sable argileux** | 1,50 – 2,00 m       | $D_{max} = 2$ mm                            | Granulométrie (Tableau 6)              |
-|                             |                                  |                     | Passants < 0,2 mm = 53,0 %                  |                                        |
-|                             |                                  |                     | Passants < 80 µm = **41,2 %**               | Sol fin important                      |
-|                             |                                  |                     | Teneur en eau (w) = 4,0 %                   |                                        |
-|                             |                                  |                     | $w_L$ = 42 % ; $w_P$ = 20 % ; **IP = 22 %** | Limites d'Atterberg (Sol plastique)    |
-| **6. CALCULS DE FONDATION** | **Profondeur d'ancrage (D)**     | $\geq$ 1,20 m       | **Ancrage recommandé**                      |                                        |
-|                             | **Contrainte Admissible**        | $\geq$ 1,20 m       | **ELU = 0,14 MPa** (1,4 bar)                | Basé sur $R_{d Min}$                   |
-|                             |                                  | $\geq$ 1,20 m       | **ELS = 0,09 MPa** (0,9 bar)                | Valeur pour le dimensionnement         |
+### 1. Coordonnées GPS des points de sondage (WGS 1984, UTM Zone 31 N)
+*Source : Tableau 2, Page 6*
 
-### Analyse de cohérence pour SIG
-Les coordonnées fournies dans le document (UTM 31N) sont cohérentes avec la zone de **Segbé / Lomé**. Si vous projetez ces points, vous constaterez qu'ils forment une emprise rectangulaire (environ 20m x 10m), ce qui correspond classiquement à l'implantation des fondations pour un bâtiment scolaire ou administratif de type immeuble.
+| Type de sondage | Point de sondage | Latitude | Longitude |
+| :--- | :--- | :--- | :--- |
+| Pénétromètre (DPSH-B) | PD1 | 0684805 N | 0291455 E |
+| Pénétromètre (DPSH-B) | PD2 | 0684805 N | 0291443 E |
+| Pénétromètre (DPSH-B) | PD3 | 0684812 N | 0291434 E |
+| Pénétromètre (DPSH-B) | PD4 | 0684810 N | 0291449 E |
+| Puits de reconnaissance | P | 0684808 N | 0291449 E |
 
-**Comparaison avec les autres sites :**
-Ce site de Segbé présente la contrainte admissible la plus faible de votre série (0,09 MPa à l'ELS contre 0,73 MPa à Logoté), ce qui s'explique par la nature argileuse du sable et l'absence de refus rocheux à faible profondeur. Il faudra être vigilant sur la qualité du compactage des fonds de fouille.
+---
 
-SOURCE : atlas_reclone/data/extend/EXTEND_1/PENETRO Lourd-Site de SEGBE.pdf
+### 2. Profil Stratigraphique (Puits de reconnaissance P)
+*Source : Tableau 3, Page 7*
+
+| Profondeur (m) | Nature du terrain |
+| :--- | :--- |
+| 0,00 – 0,45 | Terre végétale |
+| 0,45 – 2,00 | Sable argileux rougeâtre |
+| **Nappe phréatique** | **Non détectée** |
+
+---
+
+### 3. Résultats des Essais d'Identification en Laboratoire
+*Source : Tableau 6, Page 10*
+
+| Paramètre | Unité | Valeur (Échantillon 1,50 – 2,00 m) |
+| :--- | :--- | :--- |
+| Nature géologique | - | Sable argileux rougeâtre |
+| Diamètre maximal ($D_{max}$) | mm | 2 |
+| Passant à 0,2 mm | % | 53,0 |
+| Passant à 80 µm | % | 41,2 |
+| Teneur en eau naturelle ($W_n$) | % | 4,0 |
+| Limite de liquidité ($w_L$) | % | 42 |
+| Limite de plasticité ($w_P$) | % | 20 |
+| Indice de plasticité (IP) | % | 22 |
+
+---
+
+### 4. Résultats des Essais Pénétrométriques (DPSH-B)
+*Source : Tableau 4, Pages 8 et 9*
+*Légende : $R_d$ = Résistance dynamique en pointe ; ELU = État Limite Ultime ($R_d/20$) ; ELS = État Limite de Service ($R_d/30$)*
+
+| Profondeur (m) | PD1 $R_d$ (MPa) | PD2 $R_d$ (MPa) | PD3 $R_d$ (MPa) | PD4 $R_d$ (MPa) | $R_{d Min}$ (MPa) | Contrainte ELU (MPa) | Contrainte ELS (MPa) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| 0,20 | 2,95 | 2,95 | 6,88 | 2,95 | 2,95 | 0,15 | 0,10 |
+| 0,40 | 2,95 | 2,95 | 7,86 | 3,93 | 2,95 | 0,15 | 0,10 |
+| 0,60 | 2,95 | 2,95 | 6,88 | 3,93 | 2,95 | 0,15 | 0,10 |
+| 1,00 | 2,95 | 2,95 | 6,88 | 2,95 | 2,95 | 0,15 | 0,10 |
+| **1,20** | **2,73** | **2,73** | **7,29** | **2,73** | **2,73** | **0,14** | **0,09** |
+| 1,60 | 3,64 | 3,64 | 9,11 | 2,73 | 2,73 | 0,14 | 0,09 |
+| 2,00 | 3,64 | 3,64 | 5,46 | 2,73 | 2,73 | 0,14 | 0,09 |
+| 2,40 | 3,39 | 3,39 | 4,24 | 3,39 | 3,39 | 0,17 | 0,11 |
+| 3,00 | 3,39 | 3,39 | 6,79 | 8,49 | 3,39 | 0,17 | 0,11 |
+| 3,60 | 4,77 | 4,77 | 7,15 | 6,36 | 4,77 | 0,24 | 0,16 |
+| 4,20 | 4,48 | 2,99 | 4,48 | 3,73 | 2,99 | 0,15 | 0,10 |
+| 4,60 | 6,72 | 4,48 | 8,96 | 4,48 | 4,48 | 0,22 | 0,15 |
+| 5,00 | 5,23 | 5,97 | 5,23 | 5,97 | 5,23 | 0,26 | 0,17 |
+| 6,00 | 4,93 | 5,64 | 6,34 | 6,34 | 4,93 | 0,25 | 0,16 |
+| 7,00 | 4,00 | 4,67 | 8,67 | 8,00 | 4,00 | 0,20 | 0,13 |
+| 8,00 | 8,86 | 6,96 | 10,76 | 10,13 | 6,96 | 0,35 | 0,23 |
+
+---
+
+### 5. Synthèse des Contraintes Admissibles pour les Fondations
+*Source : Conclusion, Page 11*
+
+| Paramètre | Profondeur d'ancrage recommandée | Valeur |
+| :--- | :--- | :--- |
+| **Profondeur d'assise** | - | **À partir de 1,20 m** |
+| Contrainte admissible **ELU** | $\ge$ 1,20 m | **0,14 MPa** (1,4 bar) |
+| Contrainte admissible **ELS** | $\ge$ 1,20 m | **0,09 MPa** (0,9 bar) |
+| Type de fondation préconisé | - | Semelles isolées |
+
+---
+
+### 6. Caractéristiques de l'équipement (DPSH-B)
+*Source : Page 5*
+
+*   **Poids du mouton :** 63,50 kg
+*   **Hauteur de chute :** 75 cm
+*   **Diamètre de la pointe :** 5,00 cm (Section : 20 cm²)
+*   **Poids de la pointe :** 1,120 kg

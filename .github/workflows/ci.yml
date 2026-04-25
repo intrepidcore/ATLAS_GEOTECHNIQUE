@@ -137,6 +137,9 @@ jobs:
         run: |
           cd ui
           npm run test:unit
+
+      - name: thematic params TS/Rust consistency
+        run: python3 scripts/ci/check_thematic_params_consistency.py
       
       - name: lint
         run: |

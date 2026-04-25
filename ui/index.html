@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
 :root{
+  --scientific-drawer-height: 0px;
   --bg:#0F172A; --panel:#0F172A; --muted:#94A3B8; --text:#F8FAFC;
   --field:#1E293B; --field-border:#334155; --field-focus:#3B82F6;
   --ok:#0bb07b; --warn:#f4b740; --err:#ef476f; --accent:#2563EB; --accent-hover:#1D4ED8;
@@ -59,7 +60,7 @@ select.input, #gridLevelSelect, #thematicPanel .thematic-select{appearance:none;
 
 /* Scientific drawer (roadmap Bloc UI) */
 #scientificDrawer{
-  position:fixed;left:0;right:0;bottom:-40vh;height:40vh;background:var(--panel);
+  position:fixed;left:0;right:0;bottom:-30vh;height:30vh;background:var(--panel);
   border-top:1px solid #1b2740;box-shadow:0 -4px 20px #0006;z-index:2500;
   transition:bottom 0.3s ease;overflow-y:auto;padding:14px;
 }
@@ -98,8 +99,24 @@ select.input, #gridLevelSelect, #thematicPanel .thematic-select{appearance:none;
   max-height:220px;
 }
 
-/* Drawer UX: lorsque le drawer scientifique est ouvert, on ajuste la hauteur de la map via JS. */
-#map{transition:height 0.25s ease;}
+/* Drawer scientifique : une seule variable pour carte + colonnes */
+body.scientific-open{
+  --scientific-drawer-height: 30vh;
+}
+#map{
+  transition: height 0.3s ease;
+  height: calc(100vh - 52px - var(--scientific-drawer-height));
+  min-height: 0;
+}
+body.scientific-open #map{
+  min-height: 260px;
+}
+body.scientific-open #dashboard,
+body.scientific-open #sidebar,
+body.scientific-open #thematicPanel{
+  height: calc(100vh - 52px - var(--scientific-drawer-height));
+  transition: height 0.3s ease;
+}
 
 .test-item{background:#0f172a;border:1px solid #22304d;border-radius:8px;padding:12px;margin-bottom:8px}
 .test-item-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
@@ -443,6 +460,12 @@ select.input, #gridLevelSelect, #thematicPanel .thematic-select{appearance:none;
             <div><strong>Sondages:</strong> <span id="statSondages">0</span></div>
             <div><strong>Essais:</strong> <span id="statEssais">0</span></div>
           </div>
+
+          <div id="zonesEtudeMapHelp" class="section" style="display:none;margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843;font-size:10px;line-height:1.45;color:var(--muted)">
+            <div style="font-size:11px;color:var(--accent);margin-bottom:6px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase">Zones d'étude (carte)</div>
+            <p style="margin:0 0 8px 0">Sur la carte, les zones apparaissent en surface semi-transparente sous la grille (~15&nbsp;%). Les couleurs des mailles indiquent le statut des données (GPS, aléatoire, sans données, etc.).</p>
+            <p style="margin:0">Chevauchements (ex. Lama / Mono)&nbsp;: unités géotechniques limitrophes ; une maille peut intersecter plusieurs zones (règle ≥10&nbsp;%). Kriging calculé par zone. Pour une synthèse à zone unique, utiliser la zone de plus forte intersection.</p>
+          </div>
           
           <!-- Répartition par type d'essai (6 types) -->
           <div id="essaisTypeStats" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
@@ -725,7 +748,7 @@ select.input, #gridLevelSelect, #thematicPanel .thematic-select{appearance:none;
       </aside>
 
       <!-- CARTE CENTRALE -->
-      <div id="map" style="height:calc(100vh - 52px);"></div>
+      <div id="map"></div>
 
       <!-- PANNEAU DROIT: Filtres & Actions v2.1.0 -->
       <aside id="sidebar">
@@ -1180,12 +1203,12 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
           <div id="scientificEdaStatus" style="color:var(--muted);font-size:12px;margin-bottom:10px">Prêt.</div>
           <div class="s-grid">
             <div>
-              <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Histogramme VBS (kriging_vbs)</div>
-              <canvas id="scientificChartEdaVbs" aria-label="Histogramme VBS"></canvas>
+              <div id="scientificEdaTitleA" style="font-size:12px;color:var(--muted);margin-bottom:6px">Histogramme A</div>
+              <canvas id="scientificChartEdaVbs" aria-label="Histogramme A"></canvas>
             </div>
             <div>
-              <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Histogramme IP (kriging_ip)</div>
-              <canvas id="scientificChartEdaIp" aria-label="Histogramme IP"></canvas>
+              <div id="scientificEdaTitleB" style="font-size:12px;color:var(--muted);margin-bottom:6px">Histogramme B</div>
+              <canvas id="scientificChartEdaIp" aria-label="Histogramme B"></canvas>
             </div>
           </div>
           <div id="scientificEdaStats" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
@@ -1210,9 +1233,8 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
         </div>
 
         <div class="s-panel" id="scientificPanel-validation">
-          <div style="color:var(--muted);font-size:12px">
-            Validation: utilisez l’onglet <strong>Audit</strong> dans `DB Manager` pour les métriques LOO / CV.
-          </div>
+          <div id="scientificValidationStatus" style="color:var(--muted);font-size:12px;margin-bottom:8px">Ouvrez l’onglet pour charger le tableau LOO.</div>
+          <div id="scientificValidationBody" style="font-size:11px;color:var(--text);max-height:42vh;overflow:auto"></div>
         </div>
 
         <div class="s-panel" id="scientificPanel-ml">
@@ -1222,9 +1244,9 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
         </div>
 
         <div class="s-panel" id="scientificPanel-compare">
-          <div style="color:var(--muted);font-size:12px">
-            Comparaison: alignée sur le `run_id` (Audit). Cette vue affiche un résumé basé sur les paramètres actuels.
-          </div>
+          <div id="scientificCompareStatus" style="color:var(--muted);font-size:12px;margin-bottom:8px">Prêt.</div>
+          <canvas id="scientificChartCompare" height="220" aria-label="Comparaison LOO RMSE"></canvas>
+          <div id="scientificCompareNotes" style="margin-top:10px;font-size:11px;color:var(--muted)"></div>
         </div>
       </div>
     </div>
