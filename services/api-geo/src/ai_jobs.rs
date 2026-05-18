@@ -317,14 +317,32 @@ async fn try_process_ai_job_queue(pool: &PgPool) -> anyhow::Result<Option<serde_
     tx.commit().await?;
 
     let db_url = require_database_url().map_err(|e| anyhow::anyhow!(e))?;
-    let script = script_path("../../scripts/kriging_gp_global_interpolate.py");
-    let (status, detail) = match run_python_json(&[
-        &script,
-        "--database-url",
-        &db_url,
-        "--method",
-        "kriging_gp_global_v1",
-    ]) {
+    let (script, mut args) = match job_type.as_str() {
+        "catboost_predict" | "train_supervised" => (
+            script_path("../../scripts/supervised_rga_train_infer.py"),
+            vec![
+                "--database-url".to_string(),
+                db_url,
+                "--model-version".to_string(),
+                "supervised_ml_gb_v2_context".to_string(),
+                "--target".to_string(),
+                "rga_predictor".to_string(),
+            ],
+        ),
+        "kriging" | "kriging_interpolate" | _ => (
+            script_path("../../scripts/kriging_gp_global_interpolate.py"),
+            vec![
+                "--database-url".to_string(),
+                db_url,
+                "--method".to_string(),
+                "kriging_gp_global_v1".to_string(),
+            ],
+        ),
+    };
+
+    let args_str: Vec<&str> = std::iter::once(script.as_str()).chain(args.iter().map(|s| s.as_str())).collect();
+    
+    let (status, detail) = match run_python_json(&args_str) {
         Ok(v) => ("finished", json!({"result": v, "parameter_id": parameter_id, "job_type": job_type, "payload": payload})),
         Err(e) => ("failed", json!({"error": e.to_string()})),
     };

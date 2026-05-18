@@ -32,7 +32,27 @@ def json_safe(obj: Any) -> str:
     return json.dumps(scrub(obj), allow_nan=False)
 
 
-def fallback_kriging(x, y, values, gx, gy) -> Tuple[np.ndarray, np.ndarray, str]:
+def _extract_ok_params(ok_obj) -> Dict[str, Optional[float]]:
+    """Extrait nugget/sill/range d'un objet OrdinaryKriging ajusté."""
+    try:
+        params = ok_obj.variogram_model_parameters
+        if params is not None and len(params) >= 3:
+            partial_sill = float(params[0])
+            rng = float(params[1])
+            nugget = float(params[2])
+            sill = partial_sill + nugget
+            # Coords géographiques → range en degrés, convertir en mètres
+            if rng < 10:
+                rng_m = rng * 111000.0
+            else:
+                rng_m = rng
+            return {"nugget": nugget, "sill": sill, "range_m": rng_m}
+    except Exception:
+        pass
+    return {}
+
+
+def fallback_kriging(x, y, values, gx, gy) -> Tuple[np.ndarray, np.ndarray, str, Dict[str, Optional[float]]]:
     models: Sequence[str] = ("spherical", "exponential", "gaussian", "linear")
     for m in models:
         try:
@@ -41,6 +61,8 @@ def fallback_kriging(x, y, values, gx, gy) -> Tuple[np.ndarray, np.ndarray, str]
                 y,
                 values,
                 variogram_model=m,
+                nlags=15,
+                weight=True,
                 verbose=False,
                 enable_plotting=False,
                 coordinates_type="geographic",
@@ -49,10 +71,11 @@ def fallback_kriging(x, y, values, gx, gy) -> Tuple[np.ndarray, np.ndarray, str]
             zv = np.asarray(z, dtype=np.float64).ravel()
             sv = np.asarray(ss, dtype=np.float64).ravel()
             if np.isfinite(zv).sum() > 0:
-                return zv, sv, m
+                vp = _extract_ok_params(ok)
+                return zv, sv, m, vp
         except Exception:
             continue
-    return np.full(gx.shape[0], np.nan), np.full(gx.shape[0], np.nan), "spherical"
+    return np.full(gx.shape[0], np.nan), np.full(gx.shape[0], np.nan), "spherical", {}
 
 
 def loo_rmse_residual(x, y, resid) -> Dict[str, float]:
@@ -303,7 +326,7 @@ def run_one(conn, horizon_label: str, depth_m: float, cfg: KedParamCfg, grid_cac
     drift_grid = np.array([priors.get(ts, global_mean) for ts in tsol_grid], dtype=np.float64)
 
     residuals = vals - drift_train
-    z_res, z_var, model_used = fallback_kriging(x, y, residuals, gx, gy)
+    z_res, z_var, model_used, ok_params = fallback_kriging(x, y, residuals, gx, gy)
     z_pred = z_res + drift_grid
     z_pred = np.clip(z_pred, cfg.physical_min, cfg.physical_max)
 
@@ -345,12 +368,15 @@ def run_one(conn, horizon_label: str, depth_m: float, cfg: KedParamCfg, grid_cac
         INSERT INTO atlas.ai_variograms
           (id, parameter_id, zone_id, model_type, range_m, sill, nugget, anisotropy_ratio, anisotropy_angle_deg, fit_quality, created_at, kriging_domain_id, loo_rmse)
         VALUES
-          (%s, %s, NULL, %s, NULL, NULL, NULL, NULL, NULL, %s::jsonb, now(), NULL, %s)
+          (%s, %s, NULL, %s, %s, %s, %s, NULL, NULL, %s::jsonb, now(), NULL, %s)
         """,
         (
             variogram_id,
             param_id,
             model_used,
+            ok_params.get("range_m"),
+            ok_params.get("sill"),
+            ok_params.get("nugget"),
             json_safe({"horizon_label": horizon_label, "depth_m": depth_m, "param_kind": cfg.kind, "model": model_used}),
             None if not math.isfinite(float(loo.get("rmse", float("nan")))) else float(loo["rmse"]),
         ),

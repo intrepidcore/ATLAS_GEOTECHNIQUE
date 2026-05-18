@@ -481,3 +481,53 @@ fn build_candidates(features: &ai_infer::MailleFeatures, charge_kpa: f64, budget
     }
     out
 }
+
+/// POST `/ai/ked/recompute` — lance les scripts KED (vbs/ip/wl/wp/eg horizons) + derive_rga.
+pub async fn recompute_ked(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    if !auth.has_permission("colab.missions.read") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let db_url = require_database_url()
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+
+    let ked_script = script_path("../../scripts/run_ked_vbs_ip_wl_wp_horizons.py");
+    let eg_script = script_path("../../scripts/run_ked_eg_horizons.py");
+    let granulo_script = script_path("../../scripts/run_ked_granulo_horizons.py");
+    let rga_script = script_path("../../scripts/derive_rga_from_ked_h2.py");
+
+    let mut results = Vec::new();
+
+    // KED vbs/ip/wl/wp
+    match run_python_json(&[&ked_script, "--database-url", &db_url]) {
+        Ok(v) => results.push(json!({ "script": "run_ked_vbs_ip_wl_wp_horizons", "result": v })),
+        Err(e) => results.push(json!({ "script": "run_ked_vbs_ip_wl_wp_horizons", "error": e })),
+    }
+
+    // KED eg
+    match run_python_json(&[&eg_script, "--database-url", &db_url]) {
+        Ok(v) => results.push(json!({ "script": "run_ked_eg_horizons", "result": v })),
+        Err(e) => results.push(json!({ "script": "run_ked_eg_horizons", "error": e })),
+    }
+
+    // KED granulo
+    match run_python_json(&[&granulo_script, "--database-url", &db_url]) {
+        Ok(v) => results.push(json!({ "script": "run_ked_granulo_horizons", "result": v })),
+        Err(e) => results.push(json!({ "script": "run_ked_granulo_horizons", "error": e })),
+    }
+
+    // derive RGA from KED H2
+    match run_python_json(&[&rga_script, "--database-url", &db_url]) {
+        Ok(v) => results.push(json!({ "script": "derive_rga_from_ked_h2", "result": v })),
+        Err(e) => results.push(json!({ "script": "derive_rga_from_ked_h2", "error": e })),
+    }
+
+    Ok(Json(json!({
+        "success": true,
+        "scripts_run": results.len(),
+        "results": results,
+    })))
+}

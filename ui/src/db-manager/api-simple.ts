@@ -139,6 +139,10 @@ export async function aiRecomputeKriging(): Promise<any> {
   return await postJson('/ai/kriging/recompute', {})
 }
 
+export async function aiRecomputeKed(): Promise<any> {
+  return await postJson('/ai/ked/recompute', {})
+}
+
 export async function aiTrainSupervised(): Promise<any> {
   return await postJson('/ai/infer/train-supervised', {})
 }

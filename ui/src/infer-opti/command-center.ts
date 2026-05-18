@@ -39,7 +39,7 @@ type AiJobRow = {
   logs: unknown
 }
 
-type ActionKey = 'sources' | 'kriging' | 'train' | 'runOnce'
+type ActionKey = 'sources' | 'kriging' | 'ked' | 'train' | 'runOnce'
 
 export function initInferOptiCommandCenter(opts: InferOptiCommandCenterOptions): void {
   const openId = opts.openButtonId ?? 'openInferOptiCommandCenter'
@@ -122,6 +122,7 @@ class InferOptiCommandCenter {
 
     this.bindAction('inferOptiCcSources', 'sources', '/ai/recompute/sources', 'POST', {})
     this.bindAction('inferOptiCcKriging', 'kriging', '/ai/kriging/recompute', 'POST', {})
+    this.bindAction('inferOptiCcKed', 'ked', '/ai/ked/recompute', 'POST', {})
     this.bindAction('inferOptiCcTrain', 'train', '/ai/infer/train-supervised', 'POST', {})
     this.bindAction('inferOptiCcRunOnce', 'runOnce', '/ai/jobs/run-once', 'POST', { max_jobs: 1 })
 
@@ -172,6 +173,10 @@ class InferOptiCommandCenter {
                 <button type="button" class="infer-opti-cc-btn infer-opti-cc-btn--secondary" data-cc-btn="kriging" id="inferOptiCcKriging">
                   ${map}
                   Kriging
+                </button>
+                <button type="button" class="infer-opti-cc-btn infer-opti-cc-btn--secondary" data-cc-btn="ked" id="inferOptiCcKed">
+                  ${map}
+                  KED + RGA
                 </button>
                 <button type="button" class="infer-opti-cc-btn infer-opti-cc-btn--primary" data-cc-btn="train" id="inferOptiCcTrain">
                   ${brain}
@@ -242,6 +247,7 @@ class InferOptiCommandCenter {
       const labels: Record<ActionKey, string> = {
         sources: 'Recalcul sources',
         kriging: 'Kriging',
+        ked: 'KED + RGA',
         train: 'Train supervisé',
         runOnce: 'Run 1 job',
       }
@@ -253,7 +259,7 @@ class InferOptiCommandCenter {
     this.busyAction = action
     const root = this.root
     if (!root) return
-    const keys: ActionKey[] = ['sources', 'kriging', 'train', 'runOnce']
+    const keys: ActionKey[] = ['sources', 'kriging', 'ked', 'train', 'runOnce']
     for (const k of keys) {
       const btn = root.querySelector(`[data-cc-btn="${k}"]`) as HTMLButtonElement | null
       if (!btn) continue
@@ -272,6 +278,7 @@ class InferOptiCommandCenter {
     const m: Record<ActionKey, string> = {
       sources: 'Recalcul sources',
       kriging: 'Kriging',
+      ked: 'KED + RGA',
       train: 'Train supervisé',
       runOnce: 'Run 1 job',
     }
@@ -282,7 +289,7 @@ class InferOptiCommandCenter {
     const icon =
       k === 'sources'
         ? icons.database()
-        : k === 'kriging'
+        : k === 'kriging' || k === 'ked'
           ? icons.map()
           : k === 'train'
             ? icons.brain()

@@ -6,7 +6,7 @@ import { FieldCalculator } from '@/components/FieldCalculator'
 import { ImportExport } from '@/components/ImportExport'
 import { DataGrid } from '@/components/DataGrid'
 import { DiffViewer } from '@/components/DiffViewer'
-import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut, Bell, Moon, Sun, TestTube2 } from 'lucide-react'
+import { Database, Calculator, Upload, Table2, GitCompare, Loader2, Shield, Activity, Users, MapPin, LogOut, Bell, Moon, Sun, Brain } from 'lucide-react'
 import { UserProfileMenu } from '@/components/UserProfileMenu'
 import { RBACManager } from '@/components/RBACManager'
 import { SchemaTableSelector } from '@/components/SchemaTableSelector'
@@ -805,7 +805,7 @@ function App() {
               Infer/Opti
             </TabsTrigger>
             <TabsTrigger value="expert-scientifique">
-              <TestTube2 className="h-4 w-4 mr-2" />
+              <Brain className="h-4 w-4 mr-2" />
               Expert scientifique
             </TabsTrigger>
             {/* Colab Studio - Gestion des missions terrain */}

@@ -4,23 +4,14 @@
  * Permet de détacher un panneau ancré (dashboard, sidebar, thematicPanel, scientificDrawer)
  * en une fenêtre flottante draggable + resizable, avec persistance localStorage.
  *
- * Usage:
- * ```typescript
- * import { makeFloatable, initFloatingPanels } from './components/panel-float'
- *
- * // Rendre un panneau détachable
- * makeFloatable('#dashboard', { title: 'Tableau de bord', storageKey: 'atlas-float-dashboard' })
- *
- * // Ou initialiser tous les panneaux par défaut
- * initFloatingPanels()
- * ```
- *
- * @version 3.6.0
+ * @version 3.6.1 — fix dockPanel contenu perdu + CSS grid carte étendue
  */
 
 export interface FloatableConfig {
   /** Titre affiché dans la barre du panneau flottant */
   title: string
+  /** Identifiant du panneau pour updateGridForPanel ('dashboard' | 'sidebar') */
+  panelId?: string
   /** Clé localStorage pour persister la position/taille du panneau flottant */
   storageKey?: string
   /** Largeur par défaut quand flottant (px) */
@@ -46,10 +37,14 @@ interface FloatingState {
 }
 
 interface FloatableInstance {
-  element: HTMLElement
-  overlay: HTMLElement | null
+  panelEl: HTMLElement
+  floatEl: HTMLElement | null
+  contentEl: HTMLElement | null
   config: FloatableConfig
   state: FloatingState
+  originalDisplay: string
+  originalWidth: string
+  originalMinWidth: string
   destroy: () => void
 }
 
@@ -142,7 +137,6 @@ function injectFloatStyles(): void {
     .floating-panel-resize-handle:hover::after {
       border-color: #3B82F6;
     }
-    /* Dock button dans le panneau ancré */
     .dock-float-btn {
       position: absolute;
       top: 8px;
@@ -215,17 +209,56 @@ function loadState(config: FloatableConfig, defaults: FloatingState): FloatingSt
   }
 }
 
+// ─── Mise à jour CSS grid pour étendre la carte ───────────────────────────
+function updateGridForPanel(panelId: string, isFloating: boolean): void {
+  const container = document.getElementById('container')
+  if (!container) return
+
+  if (panelId === 'dashboard') {
+    const savedWidth = localStorage.getItem('atlas-home-left-panel-width') || '380'
+    const leftW = isFloating ? '0px' : `${savedWidth}px`
+    const rightSaved = localStorage.getItem('atlas-home-right-panel-width') || '380'
+    container.style.gridTemplateColumns = `${leftW} 1fr ${rightSaved}px`
+  } else if (panelId === 'sidebar') {
+    const savedLeft = localStorage.getItem('atlas-home-left-panel-width') || '380'
+    const rightW = isFloating ? '0px' : `${localStorage.getItem('atlas-home-right-panel-width') || '380'}px`
+    container.style.gridTemplateColumns = `${savedLeft}px 1fr ${rightW}`
+  }
+
+  // Invalider Leaflet APRÈS le reflow CSS
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      invalidateMapSize()
+    })
+  })
+}
+
+// ─── Invalider la taille carte Leaflet ─────────────────────────────────────
+function invalidateMapSize(): void {
+  const mapInstance = (window as any).__atlasMap
+    ?? (window as any).leafletMap
+    ?? (window as any).map
+  if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
+    try { mapInstance.invalidateSize({ animate: false }) } catch { /* best-effort */ }
+  }
+}
+
 // ─── Création du panneau flottant ──────────────────────────────────────────
 function createFloatingPanel(instance: FloatableInstance): HTMLElement {
-  const { element, config, state } = instance
+  const { panelEl, contentEl, config, state } = instance
 
-  // Créer l'overlay (panneau flottant)
-  const overlay = document.createElement('div')
-  overlay.className = 'floating-panel'
-  overlay.style.left = `${state.x}px`
-  overlay.style.top = `${state.y}px`
-  overlay.style.width = `${state.width}px`
-  overlay.style.height = `${state.height}px`
+  // Sauvegarder les dimensions originales du panneau
+  instance.originalWidth = panelEl.style.width || ''
+  instance.originalMinWidth = panelEl.style.minWidth || ''
+  instance.originalDisplay = panelEl.style.display || ''
+
+  // Créer le panneau flottant
+  const floatEl = document.createElement('div')
+  floatEl.className = 'floating-panel'
+  floatEl.style.left = `${state.x}px`
+  floatEl.style.top = `${state.y}px`
+  floatEl.style.width = `${state.width}px`
+  floatEl.style.height = `${state.height}px`
 
   // Titlebar
   const titlebar = document.createElement('div')
@@ -238,28 +271,24 @@ function createFloatingPanel(instance: FloatableInstance): HTMLElement {
   const actions = document.createElement('div')
   actions.className = 'floating-panel-actions'
 
-  // Bouton Ré-ancrer
   const dockBtn = document.createElement('button')
   dockBtn.className = 'floating-panel-btn'
   dockBtn.innerHTML = ICON_DOCK
   dockBtn.title = 'Ré-ancrer'
   dockBtn.addEventListener('click', () => dockPanel(instance))
 
-  // Bouton Fermer (ré-ancrer et masquer)
   const closeBtn = document.createElement('button')
   closeBtn.className = 'floating-panel-btn'
   closeBtn.innerHTML = ICON_CLOSE
   closeBtn.title = 'Fermer'
-  closeBtn.addEventListener('click', () => {
-    dockPanel(instance)
-  })
+  closeBtn.addEventListener('click', () => dockPanel(instance))
 
   actions.appendChild(dockBtn)
   actions.appendChild(closeBtn)
   titlebar.appendChild(titleEl)
   titlebar.appendChild(actions)
 
-  // Body — on déplace le contenu du panneau original
+  // Body — on déplace le contentEl dans le float
   const body = document.createElement('div')
   body.className = 'floating-panel-body'
 
@@ -267,20 +296,20 @@ function createFloatingPanel(instance: FloatableInstance): HTMLElement {
   const resizeHandle = document.createElement('div')
   resizeHandle.className = 'floating-panel-resize-handle'
 
-  overlay.appendChild(titlebar)
-  overlay.appendChild(body)
-  overlay.appendChild(resizeHandle)
-  document.body.appendChild(overlay)
+  floatEl.appendChild(titlebar)
+  floatEl.appendChild(body)
+  floatEl.appendChild(resizeHandle)
+  document.body.appendChild(floatEl)
 
-  // Déplacer le contenu dans le body flottant
-  // On sauvegarde les enfants originaux
-  const originalChildren = Array.from(element.childNodes)
-  originalChildren.forEach(child => body.appendChild(child))
+  // Déplacer le contentEl dans le body flottant
+  if (contentEl && contentEl.parentNode === panelEl) {
+    body.appendChild(contentEl)
+  }
 
-  // Masquer le panneau ancré
-  element.style.display = 'none'
+  // Masquer le panneau ancré (pas le supprimer)
+  panelEl.style.display = 'none'
 
-  instance.overlay = overlay
+  instance.floatEl = floatEl
 
   // ─── Drag (titlebar) ────────────────────────────────────────────────────
   let dragState: { startX: number; startY: number; origX: number; origY: number } | null = null
@@ -297,8 +326,8 @@ function createFloatingPanel(instance: FloatableInstance): HTMLElement {
       const dy = ev.clientY - dragState.startY
       state.x = Math.max(0, Math.min(window.innerWidth - 100, dragState.origX + dx))
       state.y = Math.max(0, Math.min(window.innerHeight - 50, dragState.origY + dy))
-      overlay.style.left = `${state.x}px`
-      overlay.style.top = `${state.y}px`
+      floatEl.style.left = `${state.x}px`
+      floatEl.style.top = `${state.y}px`
     }
 
     const onMouseUp = () => {
@@ -331,8 +360,8 @@ function createFloatingPanel(instance: FloatableInstance): HTMLElement {
       const dh = ev.clientY - startY
       state.width = Math.max(minW, startW + dw)
       state.height = Math.max(minH, startH + dh)
-      overlay.style.width = `${state.width}px`
-      overlay.style.height = `${state.height}px`
+      floatEl.style.width = `${state.width}px`
+      floatEl.style.height = `${state.height}px`
     }
 
     const onMouseUp = () => {
@@ -340,57 +369,57 @@ function createFloatingPanel(instance: FloatableInstance): HTMLElement {
       document.removeEventListener('mousemove', onMouseMove)
       document.removeEventListener('mouseup', onMouseUp)
       saveState(config, state)
-      // Invalider la taille carte
-      invalidateMapSize()
     }
 
     document.addEventListener('mousemove', onMouseMove)
     document.addEventListener('mouseup', onMouseUp)
   })
 
-  // Invalider la taille de la carte Leaflet
-  invalidateMapSize()
+  // Mettre à jour la CSS grid pour étendre la carte
+  if (config.panelId) {
+    updateGridForPanel(config.panelId, true)
+  } else {
+    invalidateMapSize()
+  }
 
   if (config.onFloat) config.onFloat()
 
-  return overlay
+  return floatEl
 }
 
 // ─── Ré-ancrer le panneau ──────────────────────────────────────────────────
 function dockPanel(instance: FloatableInstance): void {
-  const { element, overlay, config, state } = instance
-  if (!overlay) return
+  const { panelEl, floatEl, contentEl, config, state } = instance
+  if (!floatEl) return
 
-  // Remettre les enfants dans le panneau original
-  const body = overlay.querySelector('.floating-panel-body')
-  if (body) {
-    const children = Array.from(body.childNodes)
-    children.forEach(child => element.appendChild(child))
+  // ÉTAPE 1 : Remettre le contentEl dans le panneau AVANT de supprimer le float
+  if (contentEl && contentEl.parentNode !== panelEl) {
+    panelEl.appendChild(contentEl)
   }
 
-  // Supprimer l'overlay
-  overlay.remove()
-  instance.overlay = null
+  // ÉTAPE 2 : Réafficher le panneau ancré et restaurer ses dimensions
+  panelEl.style.display = instance.originalDisplay || ''
+  panelEl.style.width = instance.originalWidth || ''
+  panelEl.style.minWidth = instance.originalMinWidth || ''
+  panelEl.style.visibility = 'visible'
 
-  // Réafficher le panneau ancré
-  element.style.display = ''
+  // ÉTAPE 3 : Supprimer le float APRÈS avoir récupéré le contenu
+  floatEl.remove()
+  instance.floatEl = null
 
+  // ÉTAPE 4 : Mettre à jour l'état
   state.isFloating = false
   saveState(config, state)
 
-  invalidateMapSize()
-
-  if (config.onDock) config.onDock()
-}
-
-// ─── Invalider la taille carte Leaflet ─────────────────────────────────────
-function invalidateMapSize(): void {
-  const mapInstance = (window as any).leafletMap || (window as any).map
-  if (mapInstance && typeof mapInstance.invalidateSize === 'function') {
-    setTimeout(() => {
-      try { mapInstance.invalidateSize({ animate: false }) } catch { /* best-effort */ }
-    }, 100)
+  // ÉTAPE 5 : Mettre à jour la CSS grid → la carte se réduit
+  if (config.panelId) {
+    updateGridForPanel(config.panelId, false)
+  } else {
+    invalidateMapSize()
   }
+
+  // ÉTAPE 6 : Callback onDock
+  if (config.onDock) config.onDock()
 }
 
 // ─── API publique ──────────────────────────────────────────────────────────
@@ -403,11 +432,11 @@ export function makeFloatable(
   selector: string | HTMLElement,
   config: FloatableConfig
 ): { destroy: () => void } {
-  const element = typeof selector === 'string'
+  const panelEl = typeof selector === 'string'
     ? document.querySelector(selector) as HTMLElement
     : selector
 
-  if (!element) {
+  if (!panelEl) {
     console.warn(`[PanelFloat] Element not found: ${selector}`)
     return { destroy: () => {} }
   }
@@ -427,20 +456,38 @@ export function makeFloatable(
 
   const state = loadState(config, defaults)
 
+  // Identifier le contentEl : wrapper tout le contenu dans un div.atlas-float-content
+  let contentEl: HTMLElement | null = panelEl.querySelector('.atlas-float-content')
+  if (!contentEl) {
+    contentEl = document.createElement('div')
+    contentEl.className = 'atlas-float-content'
+    contentEl.style.cssText = 'height:100%;overflow:auto;'
+
+    // Déplacer tous les enfants existants dans le wrapper
+    const existingChildren = Array.from(panelEl.childNodes)
+    existingChildren.forEach(child => contentEl!.appendChild(child as Node))
+
+    panelEl.appendChild(contentEl)
+  }
+
   const instance: FloatableInstance = {
-    element,
-    overlay: null,
+    panelEl,
+    floatEl: null,
+    contentEl,
     config,
     state,
+    originalDisplay: '',
+    originalWidth: '',
+    originalMinWidth: '',
     destroy: () => {
-      if (instance.overlay) dockPanel(instance)
-      const btn = element.querySelector('.dock-float-btn')
+      if (instance.floatEl) dockPanel(instance)
+      const btn = panelEl.querySelector('.dock-float-btn')
       if (btn) btn.remove()
-      instances.delete(element)
+      instances.delete(panelEl)
     }
   }
 
-  instances.set(element, instance)
+  instances.set(panelEl, instance)
 
   // Bouton "Flotter" dans le panneau ancré
   const floatBtn = document.createElement('button')
@@ -453,8 +500,9 @@ export function makeFloatable(
     createFloatingPanel(instance)
   })
 
-  element.style.position = 'relative'
-  element.appendChild(floatBtn)
+  panelEl.style.position = 'relative'
+  // Le bouton est ajouté AU PANEL (pas au contentEl) pour ne pas être déplacé dans le float
+  panelEl.appendChild(floatBtn)
 
   // Si l'état sauvegardé était flottant, restaurer
   if (state.isFloating) {
@@ -476,19 +524,12 @@ export function initFloatingPanels(): void {
   if (dashboard) {
     makeFloatable(dashboard, {
       title: 'Tableau de bord',
+      panelId: 'dashboard',
       storageKey: 'atlas-float-dashboard',
       defaultFloatWidth: 400,
       defaultFloatHeight: 600,
       minFloatWidth: 280,
       minFloatHeight: 300,
-      onDock: () => {
-        // Réappliquer la largeur sauvegardée du resizable
-        const saved = localStorage.getItem('atlas-home-left-panel-width')
-        if (saved) {
-          const container = document.getElementById('container')
-          if (container) container.style.gridTemplateColumns = `${saved}px 1fr 380px`
-        }
-      }
     })
     console.log('[PanelFloat] ✅ Dashboard floatable')
   }
@@ -498,19 +539,12 @@ export function initFloatingPanels(): void {
   if (sidebar) {
     makeFloatable(sidebar, {
       title: 'Panneau latéral',
+      panelId: 'sidebar',
       storageKey: 'atlas-float-sidebar',
       defaultFloatWidth: 400,
       defaultFloatHeight: 600,
       minFloatWidth: 280,
       minFloatHeight: 300,
-      onDock: () => {
-        const saved = localStorage.getItem('atlas-home-right-panel-width')
-        if (saved) {
-          const container = document.getElementById('container')
-          const leftSaved = localStorage.getItem('atlas-home-left-panel-width') || '380'
-          if (container) container.style.gridTemplateColumns = `${leftSaved}px 1fr ${saved}px`
-        }
-      }
     })
     console.log('[PanelFloat] ✅ Sidebar floatable')
   }
@@ -535,7 +569,7 @@ export function isFloating(selector: string | HTMLElement): boolean {
  */
 export function dockAll(): void {
   instances.forEach(instance => {
-    if (instance.state.isFloating && instance.overlay) {
+    if (instance.state.isFloating && instance.floatEl) {
       dockPanel(instance)
     }
   })

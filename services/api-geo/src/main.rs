@@ -446,6 +446,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ai/retrain", post(ai_opti::request_retrain))
         .route("/ai/recompute/sources", post(ai_opti::recompute_geotech_sources))
         .route("/ai/kriging/recompute", post(ai_opti::recompute_kriging_global_gp))
+        .route("/ai/ked/recompute", post(ai_opti::recompute_ked))
         .route("/ai/infer/train-supervised", post(ai_opti::train_supervised_infer_rga))
         .route("/ai/ml/refresh-prereqs", post(ai_opti::refresh_ml_prereqs))
         .merge(ai_plots::ai_plots_routes())

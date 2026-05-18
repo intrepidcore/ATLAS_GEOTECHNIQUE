@@ -41,6 +41,18 @@ fn is_ai_parameter(column: &str) -> bool {
             | "wp_ked_h1"
             | "wp_ked_h2"
             | "wp_ked_h3"
+            | "vbs_rk_h1"
+            | "vbs_rk_h2"
+            | "vbs_rk_h3"
+            | "ip_rk_h1"
+            | "ip_rk_h2"
+            | "ip_rk_h3"
+            | "wl_rk_h1"
+            | "wl_rk_h2"
+            | "wl_rk_h3"
+            | "wp_rk_h1"
+            | "wp_rk_h2"
+            | "wp_rk_h3"
             | "ip_derived_h1"
             | "ip_derived_h2"
             | "ip_derived_h3"
@@ -493,9 +505,13 @@ pub async fn get_thematic_data(
                             li.value as metric_value,
                             li.method::text as interp_method
                         FROM mailles_geotechnique_stats_wgs84
-                        JOIN atlas.v_latest_ai_interpolation li ON li.maille_id::text = mailles_geotechnique_stats_wgs84.id
-                        WHERE li.parameter_id = '{}'
-                          AND li.value IS NOT NULL
+                        JOIN (
+                            SELECT maille_id::text as maille_id, value, method
+                            FROM atlas.ai_interpolation_values
+                            WHERE parameter_id = '{}'
+                              AND value IS NOT NULL
+                              AND COALESCE(is_superseded, false) = false
+                        ) li ON li.maille_id = mailles_geotechnique_stats_wgs84.id
                     ) m2
                       ON ST_Intersects(m2.geom, m28.geom)
                     WHERE m2.metric_value IS NOT NULL",
@@ -515,10 +531,14 @@ pub async fn get_thematic_data(
                     ms.adm3_name,
                     li.method::text as interp_method
                  FROM atlas.mailles m
-                 JOIN atlas.v_latest_ai_interpolation li ON li.maille_id = m.id
-                 LEFT JOIN mailles_geotechnique_stats_wgs84 ms ON ms.code = m.code
-                 WHERE li.parameter_id = '{}'
-                   AND li.value IS NOT NULL",
+                 JOIN (
+                     SELECT maille_id, value, method
+                     FROM atlas.ai_interpolation_values
+                     WHERE parameter_id = '{}'
+                       AND value IS NOT NULL
+                       AND COALESCE(is_superseded, false) = false
+                 ) li ON li.maille_id = m.id
+                 LEFT JOIN mailles_geotechnique_stats_wgs84 ms ON ms.code = m.code",
                 column
             )
         } else {
@@ -533,10 +553,14 @@ pub async fn get_thematic_data(
                     ms.adm3_name,
                     li.method::text as interp_method
                  FROM atlas.mailles m
-                 JOIN atlas.v_latest_ai_interpolation li ON li.maille_id = m.id
-                 LEFT JOIN mailles_geotechnique_stats_wgs84 ms ON ms.code = m.code
-                 WHERE li.parameter_id = '{}'
-                   AND li.value IS NOT NULL",
+                 JOIN (
+                     SELECT maille_id, value, method
+                     FROM atlas.ai_interpolation_values
+                     WHERE parameter_id = '{}'
+                       AND value IS NOT NULL
+                       AND COALESCE(is_superseded, false) = false
+                 ) li ON li.maille_id = m.id
+                 LEFT JOIN mailles_geotechnique_stats_wgs84 ms ON ms.code = m.code",
                 column
             )
         }

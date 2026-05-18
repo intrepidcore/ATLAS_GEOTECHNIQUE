@@ -1,0 +1,12 @@
+Processing 1/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_01.tif
+Processing 2/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_02.tif
+Processing 3/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_03.tif
+Processing 4/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_04.tif
+Processing 5/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_05.tif
+Processing 6/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_06.tif
+Processing 7/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_07.tif
+Processing 8/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_08.tif
+Processing 9/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_09.tif
+Processing 10/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_10.tif
+Processing 11/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_11.tif
+Processing 12/12: C:\PROJET_ATLAS_MASTER\atlas_reclone\data\word-clim\prec\wc2.1_2.5m_prec_12.tif

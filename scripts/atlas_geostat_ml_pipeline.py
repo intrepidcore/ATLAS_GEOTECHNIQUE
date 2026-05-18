@@ -292,6 +292,38 @@ def load_grid_mailles_domain(cur, domain_id: str) -> List[Tuple[str, float, floa
     return [(r[0], float(r[1]), float(r[2])) for r in cur.fetchall()]
 
 
+def _extract_pykrige_variogram_params(ok_obj, coordinates_type: str = "geographic") -> Dict[str, Optional[float]]:
+    """Extrait nugget/sill/range d'un objet OrdinaryKriging PyKrige ajusté."""
+    try:
+        params = ok_obj.variogram_model_parameters
+        # Modèle sphérique PyKrige : params = [sill - nugget, range, nugget]
+        # Voir PyKrige source : variogram_function_parameters
+        if params is not None and len(params) >= 3:
+            partial_sill = float(params[0])
+            rng = float(params[1])
+            nugget = float(params[2])
+            sill = partial_sill + nugget
+            # Si coords géographiques, range est en degrés → convertir en mètres
+            if coordinates_type == "geographic" and rng < 10:
+                rng_m = rng * 111000.0
+            else:
+                rng_m = rng
+            return {"nugget": nugget, "sill": sill, "range": rng_m, "partial_sill": partial_sill}
+        elif params is not None and len(params) >= 2:
+            partial_sill = float(params[0])
+            rng = float(params[1])
+            nugget = 0.0
+            sill = partial_sill
+            if coordinates_type == "geographic" and rng < 10:
+                rng_m = rng * 111000.0
+            else:
+                rng_m = rng
+            return {"nugget": nugget, "sill": sill, "range": rng_m, "partial_sill": partial_sill}
+    except Exception:
+        pass
+    return {}
+
+
 def fit_gstools_variogram(
     x: np.ndarray, y: np.ndarray, values: np.ndarray
 ) -> Tuple[str, Dict[str, float]]:
@@ -327,6 +359,8 @@ def ordinary_kriging_grid(
         y,
         values,
         variogram_model=variogram_model,
+        nlags=15,
+        weight=True,
         verbose=False,
         enable_plotting=False,
         coordinates_type="geographic",
@@ -639,6 +673,21 @@ def run_zone(
     z_pred, z_var, pykrige_model_used, kriging_err = ordinary_kriging_with_fallback(
         x, y, vals, gx, gy
     )
+
+    # Si gstools n'a pas fourni de params, extraire depuis PyKrige
+    if not vg_params.get("range") and kriging_err is None:
+        try:
+            ok_tmp = OrdinaryKriging(
+                x, y, vals, variogram_model=pykrige_model_used,
+                nlags=15, weight=True, verbose=False,
+                enable_plotting=False, coordinates_type="geographic",
+            )
+            pykrige_vp = _extract_pykrige_variogram_params(ok_tmp, "geographic")
+            if pykrige_vp.get("range"):
+                vg_params = pykrige_vp
+                vg_model = pykrige_model_used
+        except Exception:
+            pass
 
     loo = cross_validate_loo(x, y, vals)
     loo_ok, loo_reason = loo_is_scientifically_usable(loo, len(vals))

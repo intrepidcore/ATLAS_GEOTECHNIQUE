@@ -1,198 +1,151 @@
-#!/usr/bin/env python3
 """
-Calcule les features DSM (slope, TPI, curvature, flow accumulation, HAND)
-par maille à partir du raster dsm_cop30 et met à jour ai_context_features_maille.
+Compute DSM-derived features for Atlas mailles.
+Uses PostGIS raster functions to extract:
+- altitude_mean (already done)
+- dem_slope_mean_deg (via ST_Slope)
+- dem_tpi_mean (via neighbor average)
+- dem_hand_mean (via minimum in radius)
 
-Utilise PostGIS ST_SummaryStats pour les stats agrégées par maille.
+Usage:
+    python scripts/compute_dsm_features.py --database-url postgresql://atlas:atlas@127.0.0.1:5433/atlas_clean
 """
-from __future__ import annotations
 
 import argparse
-import os
 import sys
+import math
+from datetime import datetime, timezone
 
+import numpy as np
+import pandas as pd
 import psycopg2
+from psycopg2.extras import execute_values
 
-DB_DEFAULT = os.environ.get("DATABASE_URL", "postgresql://atlas:atlas@localhost:5432/atlas_clean")
-
-
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--database-url", default=DB_DEFAULT)
-    ap.add_argument("--batch-size", type=int, default=500)
-    args = ap.parse_args()
-
-    conn = psycopg2.connect(args.database_url)
-    conn.autocommit = False
+def main(db_url: str):
+    conn = psycopg2.connect(db_url)
     cur = conn.cursor()
 
-    try:
-        # 1. Vérifier que le raster existe
-        cur.execute("SELECT count(*) FROM atlas.dsm_cop30")
-        n_tiles = cur.fetchone()[0]
-        if n_tiles == 0:
-            print("ERROR: No DSM raster tiles found in dsm_cop30", file=sys.stderr)
-            return 1
-        print(f"DSM raster: {n_tiles} tiles")
+    print("=== Computing DSM-derived features ===")
 
-        # 2. Calculer slope raster materialisé (si pas déjà fait)
-        cur.execute("""
-            SELECT count(*) FROM information_schema.columns
-            WHERE table_schema='atlas' AND table_name='dsm_cop30' AND column_name='slope_rast'
-        """)
-        has_slope = cur.fetchone()[0] > 0
+    # 1. Calculate slope via ST_Slope on DSM
+    print("\n[1/4] Computing slope from DSM...")
+    cur.execute("""
+    UPDATE atlas.ai_context_features_maille f
+    SET dem_slope_mean_deg = sub.slope
+    FROM (
+      SELECT
+        f2.maille_code,
+        ST_Value(
+          ST_Slope(
+            ST_Clip(d.rast, m.geom),
+            1, '32BF', 'DEGREES'
+          ),
+          ST_Transform(ST_Centroid(m.geom), 25231)
+        ) AS slope
+      FROM atlas.ai_context_features_maille f2
+      JOIN atlas.mailles m ON m.code = f2.maille_code
+      JOIN LATERAL (
+        SELECT rast FROM atlas.dsm_cop30 d
+        WHERE ST_Intersects(d.rast, m.geom)
+        LIMIT 1
+      ) d ON true
+      WHERE f2.dem_slope_mean_deg IS NULL
+        AND f2.altitude_mean IS NOT NULL
+    ) sub
+    WHERE f.maille_code = sub.maille_code;
+    """)
+    conn.commit()
+    print(f"  Slope update: {cur.rowcount} rows affected")
 
-        if not has_slope:
-            print("Adding slope_rast column to dsm_cop30...")
-            cur.execute("ALTER TABLE atlas.dsm_cop30 ADD COLUMN IF NOT EXISTS slope_rast raster")
-            conn.commit()
+    # 2. Calculate TPI (Topographic Position Index)
+    # TPI = elevation - mean(neighbors within radius)
+    print("\n[2/4] Computing TPI (neighbor average)...")
+    cur.execute("""
+    UPDATE atlas.ai_context_features_maille f
+    SET dem_tpi_mean = sub.tpi
+    FROM (
+      SELECT
+        f1.maille_code,
+        f1.altitude_mean - COALESCE(avg_neigh.alt_moy, f1.altitude_mean) AS tpi
+      FROM atlas.ai_context_features_maille f1
+      LEFT JOIN (
+        SELECT
+          f2.maille_code,
+          AVG(f3.altitude_mean) AS alt_moy
+        FROM atlas.ai_context_features_maille f2
+        JOIN atlas.mailles m2 ON m2.code = f2.maille_code
+        JOIN atlas.mailles m3 ON m3.code != m2.code
+        JOIN atlas.ai_context_features_maille f3 ON f3.maille_code = m3.code
+        WHERE ST_DWithin(m2.geom, m3.geom, 5000)
+          AND f3.altitude_mean IS NOT NULL
+        GROUP BY f2.maille_code
+      ) avg_neigh ON f1.maille_code = avg_neigh.maille_code
+      WHERE f1.altitude_mean IS NOT NULL
+        AND f1.dem_tpi_mean IS NULL
+    ) sub
+    WHERE f.maille_code = sub.maille_code;
+    """)
+    conn.commit()
+    print(f"  TPI update: {cur.rowcount} rows affected")
 
-        # Calculer slope pour les tuiles qui n'ont pas encore slope_rast
-        cur.execute("""
-            SELECT count(*) FROM atlas.dsm_cop30 WHERE slope_rast IS NULL
-        """)
-        n_null = cur.fetchone()[0]
-        if n_null > 0:
-            print(f"Computing slope for {n_null} tiles (this may take a while)...")
-            # ST_Slope(rast, nband, pixeltype, units, scale, interpolate_nodata)
-            cur.execute("""
-                UPDATE atlas.dsm_cop30
-                SET slope_rast = ST_Slope(rast, 1, '32BF', 'DEGREES', 1.0, false)
-                WHERE slope_rast IS NULL
-            """)
-            conn.commit()
-            print("Slope computation done")
+    # 3. Calculate HAND (Height Above Nearest Drainage)
+    # HAND = elevation - min(elevation within 10km)
+    print("\n[3/4] Computing HAND (min elevation in 10km radius)...")
+    cur.execute("""
+    UPDATE atlas.ai_context_features_maille f
+    SET dem_hand_mean = sub.hand
+    FROM (
+      SELECT
+        f1.maille_code,
+        f1.altitude_mean - COALESCE(min_neigh.alt_min, f1.altitude_mean) AS hand
+      FROM atlas.ai_context_features_maille f1
+      LEFT JOIN (
+        SELECT
+          f2.maille_code,
+          MIN(f3.altitude_mean) AS alt_min
+        FROM atlas.ai_context_features_maille f2
+        JOIN atlas.mailles m2 ON m2.code = f2.maille_code
+        JOIN atlas.mailles m3 ON m3.code != m2.code
+        JOIN atlas.ai_context_features_maille f3 ON f3.maille_code = m3.code
+        WHERE ST_DWithin(m2.geom, m3.geom, 10000)
+          AND f3.altitude_mean IS NOT NULL
+        GROUP BY f2.maille_code
+      ) min_neigh ON f1.maille_code = min_neigh.maille_code
+      WHERE f1.altitude_mean IS NOT NULL
+        AND f1.dem_hand_mean IS NULL
+    ) sub
+    WHERE f.maille_code = sub.maille_code;
+    """)
+    conn.commit()
+    print(f"  HAND update: {cur.rowcount} rows affected")
 
-        # 3. Peupler ai_context_features_maille avec les stats DSM
-        # Utiliser dsm_maille_flat_cache si disponible, sinon calculer à la volée
-        cur.execute("SELECT count(*) FROM atlas.dsm_maille_flat_cache")
-        n_cache = cur.fetchone()[0]
+    # 4. Verify all features
+    print("\n[4/4] Verification...")
+    cur.execute("""
+    SELECT
+      COUNT(*) AS total,
+      COUNT(altitude_mean) AS alt_ok,
+      COUNT(dem_slope_mean_deg) AS slope_ok,
+      COUNT(dem_tpi_mean) AS tpi_ok,
+      COUNT(dem_hand_mean) AS hand_ok,
+      ROUND(AVG(altitude_mean)::numeric, 1) AS alt_moy,
+      ROUND(AVG(dem_slope_mean_deg)::numeric, 2) AS slope_moy,
+      ROUND(AVG(dem_tpi_mean)::numeric, 2) AS tpi_moy,
+      ROUND(AVG(dem_hand_mean)::numeric, 2) AS hand_moy
+    FROM atlas.ai_context_features_maille;
+    """)
+    result = cur.fetchone()
+    print(f"\n✅ DSM Features computed:")
+    print(f"   Total mailles: {result[0]}")
+    print(f"   altitude_mean: {result[1]} ({result[1]/result[0]*100:.1f}%)")
+    print(f"   dem_slope_mean_deg: {result[2]} ({result[2]/result[0]*100:.1f}%)")
+    print(f"   dem_tpi_mean: {result[3]} ({result[3]/result[0]*100:.1f}%)")
+    print(f"   dem_hand_mean: {result[4]} ({result[4]/result[0]*100:.1f}%)")
+    print(f"\n   Moyennes: alt={result[5]}m, slope={result[6]}°, tpi={result[7]}, hand={result[8]}")
 
-        if n_cache > 0:
-            print(f"Using dsm_maille_flat_cache ({n_cache} rows)")
-            # Mettre à jour ai_context_features_maille depuis le cache
-            cur.execute("""
-                UPDATE atlas.ai_context_features_maille c
-                SET
-                    dem_slope_mean_deg = sub.slope_mean,
-                    dem_tpi_mean = sub.tpi_mean,
-                    dem_curvature_mean = sub.curv_mean,
-                    dem_flow_acc_mean = sub.flow_mean,
-                    dem_hand_mean = sub.hand_mean,
-                    updated_at = now()
-                FROM (
-                    SELECT
-                        f.code,
-                        COALESCE(c.altitude_stddev, 0) * 57.2958 AS slope_mean,
-                        0.0 AS tpi_mean,
-                        0.0 AS curv_mean,
-                        0.0 AS flow_mean,
-                        0.0 AS hand_mean
-                    FROM atlas.dsm_maille_flat_cache f
-                    LEFT JOIN atlas.dsm_maille_flat_cache c ON c.code = f.code
-                ) sub
-                WHERE c.maille_code = sub.code
-            """)
-            n_updated = cur.rowcount
-            conn.commit()
-            print(f"Updated {n_updated} mailles with DSM features from cache")
-        else:
-            # Calcul direct depuis le raster (plus lent)
-            print("Computing DSM features directly from raster (slow)...")
-            batch = args.batch_size
-            offset = 0
-            total_updated = 0
+    conn.close()
 
-            while True:
-                cur.execute("""
-                    SELECT m.code
-                    FROM atlas.ai_context_features_maille m
-                    WHERE m.dem_slope_mean_deg IS NULL
-                    ORDER BY m.maille_code
-                    LIMIT %s OFFSET %s
-                """, (batch, offset))
-                codes = [r[0] for r in cur.fetchall()]
-                if not codes:
-                    break
-
-                for code in codes:
-                    cur.execute("""
-                        UPDATE atlas.ai_context_features_maille c
-                        SET
-                            dem_slope_mean_deg = COALESCE(stats.slope_mean, 0),
-                            dem_tpi_mean = 0,
-                            dem_curvature_mean = 0,
-                            dem_flow_acc_mean = 0,
-                            dem_hand_mean = 0,
-                            updated_at = now()
-                        FROM (
-                            SELECT
-                                ST_SummaryStatsAST(
-                                    ST_Union(slope_rast), 1
-                                ) AS slope_stats
-                            FROM atlas.dsm_cop30 d
-                            WHERE ST_Intersects(d.rast, (
-                                SELECT m.geom FROM atlas.mailles m WHERE m.code = %s
-                            ))
-                        ) r,
-                        LATERAL (
-                            SELECT
-                                (r.slope_stats).mean AS slope_mean
-                        ) stats
-                        WHERE c.maille_code = %s
-                    """, (code, code))
-
-                total_updated += len(codes)
-                offset += batch
-                conn.commit()
-                print(f"  Batch: {len(codes)} mailles updated (total: {total_updated})")
-
-            print(f"Total: {total_updated} mailles updated with DSM features")
-
-        # 4. Aussi mettre à jour ai_maille_features_fast
-        print("Updating ai_maille_features_fast with DSM data...")
-        cur.execute("""
-            UPDATE atlas.ai_maille_features_fast f
-            SET
-                dsm_altitude_mean = sub.alt_mean,
-                dsm_altitude_stddev = sub.alt_stddev,
-                dsm_altitude_range = sub.alt_range,
-                updated_at = now()
-            FROM (
-                SELECT code, altitude_mean AS alt_mean,
-                       altitude_stddev AS alt_stddev,
-                       altitude_range AS alt_range
-                FROM atlas.dsm_maille_flat_cache
-            ) sub
-            WHERE f.maille_code = sub.code
-        """)
-        n_fast = cur.rowcount
-        conn.commit()
-        print(f"Updated {n_fast} rows in ai_maille_features_fast")
-
-        # 5. Stats finales
-        cur.execute("""
-            SELECT
-                count(*) as total,
-                count(dem_slope_mean_deg) as has_slope,
-                count(dem_tpi_mean) as has_tpi
-            FROM atlas.ai_context_features_maille
-        """)
-        total, has_slope, has_tpi = cur.fetchone()
-        print(f"\nFinal stats: {total} mailles, {has_slope} with slope, {has_tpi} with TPI")
-
-        return 0
-
-    except Exception as e:
-        conn.rollback()
-        print(f"ERROR: {e}", file=sys.stderr)
-        import traceback
-        traceback.print_exc()
-        return 1
-    finally:
-        cur.close()
-        conn.close()
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Compute DSM features')
+    parser.add_argument('--database-url', required=True)
+    args = parser.parse_args()
+    main(args.database_url)

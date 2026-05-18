@@ -115,6 +115,35 @@ pub enum ThematicParameter {
     #[serde(alias = "wp_ked_h3")]
     WpKedH3,
 
+    // Regression Kriging SCORPAN (VBS/IP/WL/WP) — H1/H2/H3
+    #[serde(alias = "vbs_rk_h1")]
+    VbsRkH1,
+    #[serde(alias = "vbs_rk_h2")]
+    VbsRkH2,
+    #[serde(alias = "vbs_rk_h3")]
+    VbsRkH3,
+
+    #[serde(alias = "ip_rk_h1")]
+    IpRkH1,
+    #[serde(alias = "ip_rk_h2")]
+    IpRkH2,
+    #[serde(alias = "ip_rk_h3")]
+    IpRkH3,
+
+    #[serde(alias = "wl_rk_h1")]
+    WlRkH1,
+    #[serde(alias = "wl_rk_h2")]
+    WlRkH2,
+    #[serde(alias = "wl_rk_h3")]
+    WlRkH3,
+
+    #[serde(alias = "wp_rk_h1")]
+    WpRkH1,
+    #[serde(alias = "wp_rk_h2")]
+    WpRkH2,
+    #[serde(alias = "wp_rk_h3")]
+    WpRkH3,
+
     // P4 KED national (granulométrie) — passant_2mm / passant_80um
     #[serde(alias = "passant_2mm_ked_h1")]
     #[serde(alias = "passant2mm_ked_h1")]
@@ -203,6 +232,23 @@ impl ThematicParameter {
             Self::WpKedH1 => "wp_ked_h1",
             Self::WpKedH2 => "wp_ked_h2",
             Self::WpKedH3 => "wp_ked_h3",
+
+            // RK parameters
+            Self::VbsRkH1 => "vbs_rk_h1",
+            Self::VbsRkH2 => "vbs_rk_h2",
+            Self::VbsRkH3 => "vbs_rk_h3",
+
+            Self::IpRkH1 => "ip_rk_h1",
+            Self::IpRkH2 => "ip_rk_h2",
+            Self::IpRkH3 => "ip_rk_h3",
+
+            Self::WlRkH1 => "wl_rk_h1",
+            Self::WlRkH2 => "wl_rk_h2",
+            Self::WlRkH3 => "wl_rk_h3",
+
+            Self::WpRkH1 => "wp_rk_h1",
+            Self::WpRkH2 => "wp_rk_h2",
+            Self::WpRkH3 => "wp_rk_h3",
 
             Self::Passant2mmKedH1 => "passant_2mm_ked_h1",
             Self::Passant2mmKedH2 => "passant_2mm_ked_h2",
