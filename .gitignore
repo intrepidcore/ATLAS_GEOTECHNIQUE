@@ -86,3 +86,16 @@ docs/image/
 # Fichiers de données (non-suivis dans git)
 data/**/*.xlsx
 data/**/*.csv
+
+# Fichiers temporaires Atlas
+token.txt
+temp_*.ps1
+temp_*.sql
+prec_*.txt
+psql_audit*.ps1
+smoke_tests*.ps1
+start_atlas.ps1
+
+# Binaires de backup
+api-geo-backup.exe
+atlas-pro-backup.exe

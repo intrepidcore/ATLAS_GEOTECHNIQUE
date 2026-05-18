@@ -144,6 +144,14 @@ pub enum ThematicParameter {
     #[serde(alias = "wp_rk_h3")]
     WpRkH3,
 
+    // RK EG — Essai de Gonflement (Argiles Gibbsitiques)
+    #[serde(alias = "eg_rk_h1")]
+    EgRkH1,
+    #[serde(alias = "eg_rk_h2")]
+    EgRkH2,
+    #[serde(alias = "eg_rk_h3")]
+    EgRkH3,
+
     // P4 KED national (granulométrie) — passant_2mm / passant_80um
     #[serde(alias = "passant_2mm_ked_h1")]
     #[serde(alias = "passant2mm_ked_h1")]
@@ -250,6 +258,10 @@ impl ThematicParameter {
             Self::WpRkH2 => "wp_rk_h2",
             Self::WpRkH3 => "wp_rk_h3",
 
+            Self::EgRkH1 => "eg_rk_h1",
+            Self::EgRkH2 => "eg_rk_h2",
+            Self::EgRkH3 => "eg_rk_h3",
+
             Self::Passant2mmKedH1 => "passant_2mm_ked_h1",
             Self::Passant2mmKedH2 => "passant_2mm_ked_h2",
             Self::Passant2mmKedH3 => "passant_2mm_ked_h3",
@@ -333,7 +345,23 @@ impl ThematicParameter {
             Self::IpDerivedH3 => "IP dérivé WL-WP H3 (2.0m)",
 
             Self::AgSafetyFactor => "Facteur de securite AG",
-            Self::AgCoutMillions => "Cout AG (millions FCFA)",
+            Self::AgCoutMillions => "Cout AG (millions Rcpp)",
+
+            Self::VbsRkH1 => "VBS RK H1 (1.0m)",
+            Self::VbsRkH2 => "VBS RK H2 (1.5m)",
+            Self::VbsRkH3 => "VBS RK H3 (2.0m)",
+            Self::IpRkH1 => "IP RK H1 (1.0m)",
+            Self::IpRkH2 => "IP RK H2 (1.5m)",
+            Self::IpRkH3 => "IP RK H3 (2.0m)",
+            Self::WlRkH1 => "WL RK H1 (1.0m)",
+            Self::WlRkH2 => "WL RK H2 (1.5m)",
+            Self::WlRkH3 => "WL RK H3 (2.0m)",
+            Self::WpRkH1 => "WP RK H1 (1.0m)",
+            Self::WpRkH2 => "WP RK H2 (1.5m)",
+            Self::WpRkH3 => "WP RK H3 (2.0m)",
+            Self::EgRkH1 => "EG RK H1 (1.0m)",
+            Self::EgRkH2 => "EG RK H2 (1.5m)",
+            Self::EgRkH3 => "EG RK H3 (2.0m)",
         }
     }
 
@@ -367,7 +395,12 @@ impl ThematicParameter {
             Self::Passant80umKedH1 | Self::Passant80umKedH2 | Self::Passant80umKedH3 => "%",
             Self::IpDerivedH1 | Self::IpDerivedH2 | Self::IpDerivedH3 => "%",
             Self::AgSafetyFactor => "FS",
-            Self::AgCoutMillions => "M FCFA",
+            Self::AgCoutMillions => "M Rcpp",
+            Self::VbsRkH1 | Self::VbsRkH2 | Self::VbsRkH3 => "g/100g",
+            Self::IpRkH1 | Self::IpRkH2 | Self::IpRkH3 => "%",
+            Self::WlRkH1 | Self::WlRkH2 | Self::WlRkH3 => "%",
+            Self::WpRkH1 | Self::WpRkH2 | Self::WpRkH3 => "%",
+            Self::EgRkH1 | Self::EgRkH2 | Self::EgRkH3 => "%",
         }
     }
 
@@ -417,7 +450,22 @@ impl ThematicParameter {
             | Self::IpDerivedH2
             | Self::IpDerivedH3
             | Self::AgSafetyFactor
-            | Self::AgCoutMillions => "ai",
+            | Self::AgCoutMillions
+            | Self::VbsRkH1
+            | Self::VbsRkH2
+            | Self::VbsRkH3
+            | Self::IpRkH1
+            | Self::IpRkH2
+            | Self::IpRkH3
+            | Self::WlRkH1
+            | Self::WlRkH2
+            | Self::WlRkH3
+            | Self::WpRkH1
+            | Self::WpRkH2
+            | Self::WpRkH3
+            | Self::EgRkH1
+            | Self::EgRkH2
+            | Self::EgRkH3 => "ai",
         }
     }
 }
