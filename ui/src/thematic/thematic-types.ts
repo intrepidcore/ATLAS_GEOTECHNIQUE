@@ -94,8 +94,14 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
       'ag_safety_factor',
       'ag_cout_millions',
       'data_density',
+      // Regression Kriging SCORPAN
+      'vbs_rk_h1', 'vbs_rk_h2', 'vbs_rk_h3',
+      'ip_rk_h1', 'ip_rk_h2', 'ip_rk_h3',
+      'wl_rk_h1', 'wl_rk_h2', 'wl_rk_h3',
+      'wp_rk_h1', 'wp_rk_h2', 'wp_rk_h3',
+      'eg_rk_h1', 'eg_rk_h2', 'eg_rk_h3',
     ],
-    defaultParameter: 'ai_rga_score_infer',
+    defaultParameter: 'vbs_rk_h1',
     defaultPalette: 'Viridis'
   },
   {
@@ -442,6 +448,162 @@ export const THEMATIC_PARAMETERS: ThematicParameter[] = [
     defaultPalette: 'YlOrRd',
     deprecated: true,
   },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REGRESSION KRIGING SCORPAN (VBS)
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'vbs_rk_h1',
+    label: 'VBS RK H1 (1.0m)',
+    unit: 'g/100g',
+    category: 'ai',
+    description: 'VBS interpolée par Regression Kriging SCORPAN - Horizon 1 (0.5-1.5m)',
+    defaultBreaks: [0.5, 2, 4, 6, 8],
+    defaultPalette: 'YlOrRd'
+  },
+  {
+    id: 'vbs_rk_h2',
+    label: 'VBS RK H2 (1.5m)',
+    unit: 'g/100g',
+    category: 'ai',
+    description: 'VBS interpolée par Regression Kriging SCORPAN - Horizon 2 (1.0-2.0m)',
+    defaultBreaks: [0.5, 2, 4, 6, 8],
+    defaultPalette: 'YlOrRd'
+  },
+  {
+    id: 'vbs_rk_h3',
+    label: 'VBS RK H3 (2.0m)',
+    unit: 'g/100g',
+    category: 'ai',
+    description: 'VBS interpolée par Regression Kriging SCORPAN - Horizon 3 (1.5-2.5m)',
+    defaultBreaks: [0.5, 2, 4, 6, 8],
+    defaultPalette: 'YlOrRd'
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REGRESSION KRIGING SCORPAN (IP)
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'ip_rk_h1',
+    label: 'IP RK H1 (1.0m)',
+    unit: '%',
+    category: 'ai',
+    description: 'IP interpolé par Regression Kriging SCORPAN - Horizon 1 (0.5-1.5m)',
+    defaultBreaks: [5, 10, 20, 35, 50],
+    defaultPalette: 'PuRd'
+  },
+  {
+    id: 'ip_rk_h2',
+    label: 'IP RK H2 (1.5m)',
+    unit: '%',
+    category: 'ai',
+    description: 'IP interpolé par Regression Kriging SCORPAN - Horizon 2 (1.0-2.0m)',
+    defaultBreaks: [5, 10, 20, 35, 50],
+    defaultPalette: 'PuRd'
+  },
+  {
+    id: 'ip_rk_h3',
+    label: 'IP RK H3 (2.0m)',
+    unit: '%',
+    category: 'ai',
+    description: 'IP interpolé par Regression Kriging SCORPAN - Horizon 3 (1.5-2.5m)',
+    defaultBreaks: [5, 10, 20, 35, 50],
+    defaultPalette: 'PuRd'
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REGRESSION KRIGING SCORPAN (WL)
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'wl_rk_h1',
+    label: 'WL RK H1 (1.0m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Limite de liquidité interpolée par Regression Kriging SCORPAN - Horizon 1',
+    defaultBreaks: [20, 35, 50, 65, 80],
+    defaultPalette: 'PuBu'
+  },
+  {
+    id: 'wl_rk_h2',
+    label: 'WL RK H2 (1.5m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Limite de liquidité interpolée par Regression Kriging SCORPAN - Horizon 2',
+    defaultBreaks: [20, 35, 50, 65, 80],
+    defaultPalette: 'PuBu'
+  },
+  {
+    id: 'wl_rk_h3',
+    label: 'WL RK H3 (2.0m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Limite de liquidité interpolée par Regression Kriging SCORPAN - Horizon 3',
+    defaultBreaks: [20, 35, 50, 65, 80],
+    defaultPalette: 'PuBu'
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REGRESSION KRIGING SCORPAN (WP)
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'wp_rk_h1',
+    label: 'WP RK H1 (1.0m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Limite de plasticité interpolée par Regression Kriging SCORPAN - Horizon 1',
+    defaultBreaks: [10, 20, 30, 40, 50],
+    defaultPalette: 'BuPu'
+  },
+  {
+    id: 'wp_rk_h2',
+    label: 'WP RK H2 (1.5m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Limite de plasticité interpolée par Regression Kriging SCORPAN - Horizon 2',
+    defaultBreaks: [10, 20, 30, 40, 50],
+    defaultPalette: 'BuPu'
+  },
+  {
+    id: 'wp_rk_h3',
+    label: 'WP RK H3 (2.0m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Limite de plasticité interpolée par Regression Kriging SCORPAN - Horizon 3',
+    defaultBreaks: [10, 20, 30, 40, 50],
+    defaultPalette: 'BuPu'
+  },
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // REGRESSION KRIGING SCORPAN (EG - Gonflement)
+  // ─────────────────────────────────────────────────────────────────────────
+  {
+    id: 'eg_rk_h1',
+    label: 'EG RK H1 (1.0m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Essai de Gonflement interpolé par Regression Kriging SCORPAN - Horizon 1',
+    defaultBreaks: [0, 2, 4, 6, 10],
+    defaultPalette: 'Blues'
+  },
+  {
+    id: 'eg_rk_h2',
+    label: 'EG RK H2 (1.5m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Essai de Gonflement interpolé par Regression Kriging SCORPAN - Horizon 2',
+    defaultBreaks: [0, 2, 4, 6, 10],
+    defaultPalette: 'Blues'
+  },
+  {
+    id: 'eg_rk_h3',
+    label: 'EG RK H3 (2.0m)',
+    unit: '%',
+    category: 'ai',
+    description: 'Essai de Gonflement interpolé par Regression Kriging SCORPAN - Horizon 3',
+    defaultBreaks: [0, 2, 4, 6, 10],
+    defaultPalette: 'Blues'
+  },
+
   {
     id: 'data_density',
     label: 'Densité de données (sondages à 20 km)',
@@ -823,7 +985,32 @@ export const THEMATIC_PALETTE_MAP: Record<string, ThematicPaletteConfig> = {
   'kriging_ip': { palette: 'PuRd', rationale: 'IP interpole (kriging proxy)' },
   'kriging_vbs': { palette: 'YlOrRd', rationale: 'VBS interpolee (kriging proxy)' },
   'ag_safety_factor': { palette: 'Greens', rationale: 'Securite strategie AG' },
-  'ag_cout_millions': { palette: 'Oranges', rationale: 'Cout strategie AG' }
+  'ag_cout_millions': { palette: 'Oranges', rationale: 'Cout strategie AG' },
+  
+  // Regression Kriging SCORPAN - VBS
+  'vbs_rk_h1': { palette: 'YlOrRd', rationale: 'VBS RK H1 (1.0m) - Regression Kriging terrain' },
+  'vbs_rk_h2': { palette: 'YlOrRd', rationale: 'VBS RK H2 (1.5m) - Regression Kriging terrain' },
+  'vbs_rk_h3': { palette: 'YlOrRd', rationale: 'VBS RK H3 (2.0m) - Regression Kriging terrain' },
+  
+  // Regression Kriging SCORPAN - IP
+  'ip_rk_h1': { palette: 'PuRd', rationale: 'IP RK H1 (1.0m) - Regression Kriging terrain' },
+  'ip_rk_h2': { palette: 'PuRd', rationale: 'IP RK H2 (1.5m) - Regression Kriging terrain' },
+  'ip_rk_h3': { palette: 'PuRd', rationale: 'IP RK H3 (2.0m) - Regression Kriging terrain' },
+  
+  // Regression Kriging SCORPAN - WL
+  'wl_rk_h1': { palette: 'PuBu', rationale: 'WL RK H1 (1.0m) - Regression Kriging terrain' },
+  'wl_rk_h2': { palette: 'PuBu', rationale: 'WL RK H2 (1.5m) - Regression Kriging terrain' },
+  'wl_rk_h3': { palette: 'PuBu', rationale: 'WL RK H3 (2.0m) - Regression Kriging terrain' },
+  
+  // Regression Kriging SCORPAN - WP
+  'wp_rk_h1': { palette: 'BuPu', rationale: 'WP RK H1 (1.0m) - Regression Kriging terrain' },
+  'wp_rk_h2': { palette: 'BuPu', rationale: 'WP RK H2 (1.5m) - Regression Kriging terrain' },
+  'wp_rk_h3': { palette: 'BuPu', rationale: 'WP RK H3 (2.0m) - Regression Kriging terrain' },
+  
+  // Regression Kriging SCORPAN - EG (Gonflement)
+  'eg_rk_h1': { palette: 'Blues', rationale: 'EG RK H1 (1.0m) - Regression Kriging terrain' },
+  'eg_rk_h2': { palette: 'Blues', rationale: 'EG RK H2 (1.5m) - Regression Kriging terrain' },
+  'eg_rk_h3': { palette: 'Blues', rationale: 'EG RK H3 (2.0m) - Regression Kriging terrain' },
 }
 
 /**
