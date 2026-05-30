@@ -72,7 +72,9 @@ DEPTH_WINDOWS = {'h1': (0.5, 1.5), 'h2': (1.0, 2.0), 'h3': (1.5, 2.5)}
 
 NUMERIC_FEATURES = [
     'dem_altitude', 'dem_slope', 'dem_tpi',
-    'dem_hand', 'distance_river_m', 'prec_annual', 'lon', 'lat',
+    'dem_hand', 'distance_river_m',
+    'prec_annual', 'prec_dry', 'prec_wet',
+    'lon', 'lat',
 ]
 
 
