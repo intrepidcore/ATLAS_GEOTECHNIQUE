@@ -260,8 +260,9 @@ def run_loo_cv_for_param(conn, param: str, horizon: str,
         log.warning(f"    Pas assez de features SCORPAN disponibles.")
         return {'param_id': param_id, 'status': 'no_features'}
 
-    X = df[available_features]
-    y = df['target'].values
+    # Convertir en float (psycopg2 retourne decimal.Decimal pour NUMERIC)
+    X = df[available_features].astype(float)
+    y = df['target'].values.astype(float)
 
     # Régression Ridge
     model = build_pipeline(available_features)
@@ -284,35 +285,51 @@ def run_loo_cv_for_param(conn, param: str, horizon: str,
     loo_rmse = compute_loo_cv(df, available_features, residuals, ok)
     elapsed = time.time() - t0
 
-    log.info(f"    LOO-RMSE={loo_rmse:.4f if math.isfinite(loo_rmse) else 'NaN'} "
-             f"| N={len(df)} | Durée={elapsed:.1f}s")
+    loo_str = f"{loo_rmse:.4f}" if math.isfinite(loo_rmse) else "NaN"
+    log.info(f"    LOO-RMSE={loo_str} | N={len(df)} | Durée={elapsed:.1f}s")
 
-    # Mettre à jour le dernier run en DB
+    # Mettre à jour ou insérer le run en DB (BM-SYNC-05 : idempotent)
+    import uuid
     cur = conn.cursor()
+    meta_payload = Json({
+        'loo_rmse': loo_rmse if math.isfinite(loo_rmse) else None,
+        'loo_rmse_computed_at': datetime.now(timezone.utc).isoformat(),
+        'n_terrain_samples': len(df),
+        'regression_r2': reg_r2,
+        'regression_rmse': reg_rmse,
+        'features_used': available_features,
+    })
+
+    # Vérifier si un run existe
     cur.execute("""
-        UPDATE atlas.ai_interpolation_runs
-        SET meta = COALESCE(meta, '{}'::jsonb) || %s::jsonb
-        WHERE parameter_id = %s
-          AND method = 'regression_kriging_scorpan'
+        SELECT id FROM atlas.ai_interpolation_runs
+        WHERE parameter_id = %s AND method = 'regression_kriging_scorpan'
           AND status = 'finished'
-          AND created_at = (
-              SELECT MAX(created_at)
-              FROM atlas.ai_interpolation_runs
-              WHERE parameter_id = %s
-                AND method = 'regression_kriging_scorpan'
-                AND status = 'finished'
-          )
-    """, (
-        Json({
-            'loo_rmse': loo_rmse if math.isfinite(loo_rmse) else None,
-            'loo_rmse_computed_at': datetime.now(timezone.utc).isoformat(),
-            'n_terrain_samples': len(df),
-            'regression_r2': reg_r2,
-            'regression_rmse': reg_rmse,
-            'features_used': available_features,
-        }),
-        param_id, param_id
-    ))
+        ORDER BY created_at DESC LIMIT 1
+    """, (param_id,))
+    existing_run = cur.fetchone()
+
+    if existing_run:
+        # UPDATE du run existant
+        cur.execute("""
+            UPDATE atlas.ai_interpolation_runs
+            SET meta = COALESCE(meta, '{}'::jsonb) || %s::jsonb
+            WHERE id = %s
+        """, (meta_payload, existing_run[0]))
+    else:
+        # INSERT d'un nouveau run (cas EG ou paramètre sans run antérieur)
+        now = datetime.now(timezone.utc)
+        cur.execute("""
+            INSERT INTO atlas.ai_interpolation_runs
+              (id, run_type, parameter_id, method, status, metrics, created_at, meta)
+            VALUES (%s, 'kriging', %s, 'regression_kriging_scorpan',
+                    'finished', %s::jsonb, %s, %s)
+        """, (
+            str(uuid.uuid4()), param_id,
+            Json({}), now, meta_payload
+        ))
+        log.info(f"    Nouveau run créé pour {param_id} (pas de run antérieur)")
+
     conn.commit()
     cur.close()
 
