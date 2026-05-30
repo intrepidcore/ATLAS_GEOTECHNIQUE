@@ -139,11 +139,11 @@ async fn get_descriptive_stats(
                 let max: f64 = row.try_get("max").unwrap_or(0.0);
                 (n, mean, stddev, min, q1, median, q3, max, "interpolated_values")
             } else {
-                // COUNT = 0 - utiliser fallback variogrammes
-                let fallback = sqlx::query(
+                // COUNT = 0 - utiliser fallback variogrammes (fetch_optional — ETL-03)
+                let fallback_opt = sqlx::query(
                     r#"
                     SELECT
-                        loo_rmse AS mean,
+                        COALESCE(loo_rmse, 0.0) AS mean,
                         COALESCE(nugget, 0.0) AS min,
                         COALESCE(sill, 0.0) AS max,
                         0.0 AS stddev,
@@ -159,9 +159,21 @@ async fn get_descriptive_stats(
                     "#,
                 )
                 .bind(parameter.clone())
-                .fetch_one(&state.pool)
+                .fetch_optional(&state.pool)
                 .await
                 .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+                let Some(fallback) = fallback_opt else {
+                    return Ok(Json(json!({
+                        "parameter_id": parameter,
+                        "horizon": horizon,
+                        "source": "no_data",
+                        "n": 0,
+                        "mean": 0.0, "stddev": 0.0,
+                        "min": 0.0, "q1": 0.0, "median": 0.0, "q3": 0.0, "max": 0.0
+                    })));
+                };
+                let fallback = fallback;
 
                 let n: i64 = fallback.try_get("n").unwrap_or(1);
                 let mean: f64 = fallback.try_get("mean").unwrap_or(0.0);
@@ -176,18 +188,18 @@ async fn get_descriptive_stats(
             }
         },
         Ok(None) | Err(_) => {
-            // Fallback vers les variogrammes
-            let fallback = sqlx::query(
+            // Fallback vers les variogrammes — fetch_optional : jamais de 500 si table vide
+            let fallback_opt = sqlx::query(
                 r#"
                 SELECT
                     parameter_id,
-                    nugget AS min,
-                    sill AS max,
-                    loo_rmse AS mean,
-                    0 AS stddev,
-                    0 AS q1,
-                    0 AS median,
-                    0 AS q3,
+                    COALESCE(nugget, 0.0) AS min,
+                    COALESCE(sill, 0.0) AS max,
+                    COALESCE(loo_rmse, 0.0) AS mean,
+                    0.0 AS stddev,
+                    0.0 AS q1,
+                    0.0 AS median,
+                    0.0 AS q3,
                     1 AS n
                 FROM atlas.ai_variograms
                 WHERE parameter_id = $1
@@ -196,9 +208,21 @@ async fn get_descriptive_stats(
                 "#,
             )
             .bind(parameter.clone())
-            .fetch_one(&state.pool)
+            .fetch_optional(&state.pool)  // fix: fetch_one → fetch_optional (ETL-03)
             .await
             .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+
+            let Some(fallback) = fallback_opt else {
+                // Aucune donnée — réponse vide propre plutôt que 500
+                return Ok(Json(json!({
+                    "parameter_id": parameter,
+                    "horizon": horizon,
+                    "source": "no_data",
+                    "n": 0,
+                    "mean": 0.0, "stddev": 0.0,
+                    "min": 0.0, "q1": 0.0, "median": 0.0, "q3": 0.0, "max": 0.0
+                })));
+            };
 
             let n: i64 = fallback.try_get("n").unwrap_or(1);
             let mean: f64 = fallback.try_get("mean").unwrap_or(0.0);
@@ -220,7 +244,8 @@ async fn get_descriptive_stats(
                 "q1": q1,
                 "median": median,
                 "q3": q3,
-                })));
+                "max": max,
+            })));
         }
     };
 

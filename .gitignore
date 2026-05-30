@@ -99,3 +99,8 @@ start_atlas.ps1
 # Binaires de backup
 api-geo-backup.exe
 atlas-pro-backup.exe
+
+temp_*.bat
+temp_*.sql
+
+data/db/backups/atlas_desktop_seed.dump

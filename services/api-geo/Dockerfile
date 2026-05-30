@@ -1,5 +1,3 @@
-# syntax=docker/dockerfile:1
-
 ARG RUST_VERSION=1.86
 FROM rust:${RUST_VERSION} as builder
 ENV CARGO_TERM_COLOR=always
