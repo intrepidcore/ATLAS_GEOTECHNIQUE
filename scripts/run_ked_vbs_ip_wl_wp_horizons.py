@@ -195,37 +195,132 @@ def ensure_param(cur, pid: str, cfg: KedParamCfg) -> None:
     )
 
 
-def load_grid(cur) -> List[Tuple[str, float, float, str]]:
-    """
-    Load all mailles geometry and infer type_sol using unites_pedologiques polygons.
-    This is independent of horizon depth and is reused across all params.
-    """
+def _has_contexte_view(cur) -> bool:
+    """Vérifie si atlas.v_contexte_geologique existe (BLOC A — dérive hiérarchique)."""
     cur.execute(
         """
-        SELECT
-          m.id::text AS maille_id,
-          ST_X(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lon,
-          ST_Y(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lat,
-          COALESCE(up.type_sol, 'UNKNOWN') AS type_sol
-        FROM atlas.mailles m
-        LEFT JOIN LATERAL (
-          SELECT p.type_sol
-          FROM atlas.unites_pedologiques p
-          WHERE ST_Contains(p.geom, ST_PointOnSurface(m.geom))
-          LIMIT 1
-        ) up ON TRUE
+        SELECT 1 FROM pg_matviews
+        WHERE schemaname = 'atlas' AND matviewname = 'v_contexte_geologique'
+        LIMIT 1
         """
     )
+    return cur.fetchone() is not None
+
+
+def load_grid(cur) -> List[Tuple[str, float, float, str]]:
+    """
+    Charge toutes les mailles avec leur contexte géologique.
+
+    Si atlas.v_contexte_geologique existe (BLOC A), retourne le contexte_complet
+    (5 niveaux : zone|pédologie|risque|géologie) comme clé de dérive.
+    Sinon, repli sur type_sol pédologique seul (comportement historique).
+
+    Retourne : liste de (maille_id, lon, lat, contexte)
+    """
+    if _has_contexte_view(cur):
+        cur.execute(
+            """
+            SELECT
+              v.maille_id,
+              ST_X(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lon,
+              ST_Y(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lat,
+              v.contexte_complet
+            FROM atlas.v_contexte_geologique v
+            JOIN atlas.mailles m ON m.id::text = v.maille_id
+            """
+        )
+    else:
+        cur.execute(
+            """
+            SELECT
+              m.id::text AS maille_id,
+              ST_X(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lon,
+              ST_Y(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lat,
+              COALESCE(up.type_sol, 'UNKNOWN') AS type_sol
+            FROM atlas.mailles m
+            LEFT JOIN LATERAL (
+              SELECT p.type_sol
+              FROM atlas.unites_pedologiques p
+              WHERE ST_Contains(p.geom, ST_PointOnSurface(m.geom))
+              LIMIT 1
+            ) up ON TRUE
+            """
+        )
     return [(str(a), float(b), float(c), str(d or "UNKNOWN")) for a, b, c, d in cur.fetchall()]
 
 
-def load_training_points(cur, cfg: KedParamCfg, depth_m: float) -> List[Tuple[str, float, float, float, str]]:
+def compute_hierarchical_prior(
+    train_values: "np.ndarray",
+    train_contexts: List[str],
+    min_pts: int = 5,
+) -> Dict[str, float]:
     """
-    Load training points at a given horizon depth.
-    - maille_id from atlas.mailles by maille_code in sondages
-    - type_sol inferred by the mailles geometry
-    - value extracted from the proper essais_* table
+    Calcule les moyennes a priori par contexte géologique hiérarchique.
+
+    Ordre de repli (du plus spécifique au plus général) :
+      1. contexte_complet  → 'ZONE|PEDO|RISQUE|GEO'
+      2. zone + pédologie  → 'ZONE|PEDO'
+      3. pédologie seule   → premier segment après le '|'
+      4. moyenne globale   → toujours disponible
+
+    Règle : un contexte n'est utilisé que s'il regroupe >= min_pts sondages.
     """
+    global_mean = float(np.mean(train_values))
+    priors: Dict[str, float] = {}
+
+    # Niveau 1 : contexte complet
+    for ctx in set(train_contexts):
+        idx = [i for i, c in enumerate(train_contexts) if c == ctx]
+        if len(idx) >= min_pts:
+            priors[ctx] = float(np.mean([train_values[i] for i in idx]))
+
+    # Niveau 2 : zone + pédologie (2 premiers segments)
+    for ctx in set(train_contexts):
+        if ctx not in priors:
+            parent = "|".join(ctx.split("|")[:2])
+            idx = [i for i, c in enumerate(train_contexts) if c.startswith(parent)]
+            if len(idx) >= min_pts:
+                priors[ctx] = float(np.mean([train_values[i] for i in idx]))
+
+    # Niveau 3 : pédologie seule (2e segment)
+    for ctx in set(train_contexts):
+        if ctx not in priors:
+            parts = ctx.split("|")
+            ped = parts[1] if len(parts) > 1 else ctx
+            idx = [
+                i for i, c in enumerate(train_contexts)
+                if (c.split("|")[1] if len(c.split("|")) > 1 else c) == ped
+            ]
+            if len(idx) >= min_pts:
+                priors[ctx] = float(np.mean([train_values[i] for i in idx]))
+            else:
+                priors[ctx] = global_mean  # repli ultime
+
+    return priors
+
+
+def load_training_points(
+    cur, cfg: KedParamCfg, depth_m: float, use_hierarchical: bool = False
+) -> List[Tuple[str, float, float, float, str]]:
+    """
+    Charge les points d'entraînement à une profondeur donnée.
+
+    Si use_hierarchical=True (et v_contexte_geologique disponible) :
+      le contexte retourné est contexte_complet (5 niveaux).
+    Sinon : repli sur type_sol pédologique (comportement historique).
+    """
+    if use_hierarchical:
+        ctx_join = "JOIN atlas.v_contexte_geologique vc ON vc.maille_id = m.id::text"
+        ctx_col  = "COALESCE(vc.contexte_complet, 'UNKNOWN') AS contexte"
+    else:
+        ctx_join = """LEFT JOIN LATERAL (
+              SELECT p.type_sol
+              FROM atlas.unites_pedologiques p
+              WHERE ST_Contains(p.geom, ST_PointOnSurface(m.geom))
+              LIMIT 1
+            ) up ON TRUE"""
+        ctx_col  = "COALESCE(up.type_sol, s.type_sol, 'UNKNOWN') AS contexte"
+
     if cfg.kind == "vbs":
         cur.execute(
             f"""
@@ -234,17 +329,12 @@ def load_training_points(cur, cfg: KedParamCfg, depth_m: float) -> List[Tuple[st
               ST_X(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lon,
               ST_Y(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lat,
               ev.vbs::float8 AS val,
-              COALESCE(up.type_sol, s.type_sol, 'UNKNOWN') AS type_sol
+              {ctx_col}
             FROM atlas.sondages s
             JOIN atlas.echantillons e ON e.sondage_id = s.id
             JOIN atlas.essais_vbs ev ON ev.echantillon_id = e.id
             JOIN atlas.mailles m ON m.code = s.maille_code
-            LEFT JOIN LATERAL (
-              SELECT p.type_sol
-              FROM atlas.unites_pedologiques p
-              WHERE ST_Contains(p.geom, ST_PointOnSurface(m.geom))
-              LIMIT 1
-            ) up ON TRUE
+            {ctx_join}
             WHERE s.deleted_at IS NULL
               AND e.depth_m = %s
               AND {cfg.where_not_null_sql}
@@ -252,7 +342,6 @@ def load_training_points(cur, cfg: KedParamCfg, depth_m: float) -> List[Tuple[st
             (depth_m,),
         )
     else:
-        # ip|wl|wp all come from essais_atterberg.
         cur.execute(
             f"""
             SELECT
@@ -260,17 +349,12 @@ def load_training_points(cur, cfg: KedParamCfg, depth_m: float) -> List[Tuple[st
               ST_X(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lon,
               ST_Y(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lat,
               {cfg.source_column_sql}::float8 AS val,
-              COALESCE(up.type_sol, s.type_sol, 'UNKNOWN') AS type_sol
+              {ctx_col}
             FROM atlas.sondages s
             JOIN atlas.echantillons e ON e.sondage_id = s.id
             JOIN atlas.essais_atterberg ea ON ea.echantillon_id = e.id
             JOIN atlas.mailles m ON m.code = s.maille_code
-            LEFT JOIN LATERAL (
-              SELECT p.type_sol
-              FROM atlas.unites_pedologiques p
-              WHERE ST_Contains(p.geom, ST_PointOnSurface(m.geom))
-              LIMIT 1
-            ) up ON TRUE
+            {ctx_join}
             WHERE s.deleted_at IS NULL
               AND e.depth_m = %s
               AND {cfg.where_not_null_sql}
@@ -289,15 +373,25 @@ def load_training_points(cur, cfg: KedParamCfg, depth_m: float) -> List[Tuple[st
     return out
 
 
-def run_one(conn, horizon_label: str, depth_m: float, cfg: KedParamCfg, grid_cache: List[Tuple[str, float, float, str]]):
+def run_one(
+    conn,
+    horizon_label: str,
+    depth_m: float,
+    cfg: KedParamCfg,
+    grid_cache: List[Tuple[str, float, float, str]],
+    use_hierarchical: bool = False,
+):
     """
-    KED runner for a single (param kind, horizon).
+    KED runner pour un (paramètre, horizon).
+
+    use_hierarchical=True  : utilise compute_hierarchical_prior (5 niveaux géologiques).
+    use_hierarchical=False : comportement historique (type_sol pédologique seul).
     """
     param_id = f"{cfg.kind}_ked_{horizon_label}"
     cur = conn.cursor()
     ensure_param(cur, param_id, cfg)
 
-    train = load_training_points(cur, cfg, depth_m)
+    train = load_training_points(cur, cfg, depth_m, use_hierarchical=use_hierarchical)
     if len(train) < 10:
         cur.close()
         return {"ok": False, "parameter": param_id, "depth_m": depth_m, "reason": "insufficient_training_points", "n_train": len(train)}
@@ -306,24 +400,38 @@ def run_one(conn, horizon_label: str, depth_m: float, cfg: KedParamCfg, grid_cac
     x = np.array([r[1] for r in train], dtype=np.float64)
     y = np.array([r[2] for r in train], dtype=np.float64)
     vals = np.array([r[3] for r in train], dtype=np.float64)
-    tsol_train = [r[4] for r in train]
+    ctx_train = [r[4] for r in train]
 
     gx = np.array([r[1] for r in grid_cache], dtype=np.float64)
     gy = np.array([r[2] for r in grid_cache], dtype=np.float64)
     gmids = [r[0] for r in grid_cache]
-    tsol_grid = [r[3] for r in grid_cache]
+    ctx_grid = [r[3] for r in grid_cache]
 
-    priors: Dict[str, float] = {}
-    counts: Dict[str, int] = {}
-    for ts in sorted(set(tsol_train)):
-        sel = [vals[i] for i in range(len(vals)) if tsol_train[i] == ts]
-        if not sel:
-            continue
-        priors[ts] = float(np.mean(sel))
-        counts[ts] = len(sel)
     global_mean = float(np.mean(vals))
-    drift_train = np.array([priors.get(ts, global_mean) for ts in tsol_train], dtype=np.float64)
-    drift_grid = np.array([priors.get(ts, global_mean) for ts in tsol_grid], dtype=np.float64)
+
+    if use_hierarchical:
+        # Dérive hiérarchique 5 niveaux (BLOC A)
+        priors = compute_hierarchical_prior(vals, ctx_train, min_pts=5)
+        # Compter les points par contexte complet pour la traçabilité
+        counts: Dict[str, int] = {}
+        for ctx in set(ctx_train):
+            counts[ctx] = sum(1 for c in ctx_train if c == ctx)
+        drift_train = np.array([priors.get(c, global_mean) for c in ctx_train], dtype=np.float64)
+        drift_grid  = np.array([priors.get(c, global_mean) for c in ctx_grid],  dtype=np.float64)
+        drift_method = "hierarchical_5levels"
+    else:
+        # Dérive pédologique simple (comportement historique)
+        priors = {}
+        counts = {}
+        for ts in sorted(set(ctx_train)):
+            sel = [vals[i] for i in range(len(vals)) if ctx_train[i] == ts]
+            if not sel:
+                continue
+            priors[ts] = float(np.mean(sel))
+            counts[ts] = len(sel)
+        drift_train = np.array([priors.get(ts, global_mean) for ts in ctx_train], dtype=np.float64)
+        drift_grid  = np.array([priors.get(ts, global_mean) for ts in ctx_grid],  dtype=np.float64)
+        drift_method = "pedological_prior"
 
     residuals = vals - drift_train
     z_res, z_var, model_used, ok_params = fallback_kriging(x, y, residuals, gx, gy)
@@ -337,16 +445,18 @@ def run_one(conn, horizon_label: str, depth_m: float, cfg: KedParamCfg, grid_cac
     run_id = str(uuid.uuid4())
     variogram_id = str(uuid.uuid4())
 
+    method_tag = f"ked_{drift_method}"
     cur.execute(
         """
         INSERT INTO atlas.ai_interpolation_runs
           (id, run_type, parameter_id, method, model_version, status, metrics, started_at, finished_at, zone_id, kriging_domain_id)
         VALUES
-          (%s, 'kriging', %s, 'ked_pedologie_ked', 'v1', 'finished', %s::jsonb, now(), now(), NULL, NULL)
+          (%s, 'kriging', %s, %s, 'v2', 'finished', %s::jsonb, now(), now(), NULL, NULL)
         """,
         (
             run_id,
             param_id,
+            method_tag,
             json_safe(
                 {
                     "horizon_label": horizon_label,
@@ -356,6 +466,7 @@ def run_one(conn, horizon_label: str, depth_m: float, cfg: KedParamCfg, grid_cac
                     "n_grid": int(len(gmids)),
                     "loo_residual": loo,
                     "model_used": model_used,
+                    "drift_method": drift_method,
                     "drift_priors": priors,
                     "global_mean": global_mean,
                 }
@@ -394,6 +505,7 @@ def run_one(conn, horizon_label: str, depth_m: float, cfg: KedParamCfg, grid_cac
                 float(z_pred[i]) if math.isfinite(float(z_pred[i])) else None,
                 float(z_var[i]) if math.isfinite(float(z_var[i])) else None,
                 float(confidence[i]) if math.isfinite(float(confidence[i])) else None,
+                method_tag,
                 variogram_id,
                 run_id,
             )
@@ -405,7 +517,7 @@ def run_one(conn, horizon_label: str, depth_m: float, cfg: KedParamCfg, grid_cac
         INSERT INTO atlas.ai_interpolation_values
           (id, maille_id, zone_id, kriging_domain_id, parameter_id, value, variance, confidence, method, variogram_id, run_id, created_at)
         VALUES
-          (%s::uuid, %s::uuid, NULL, NULL, %s, %s, %s, %s, 'ked_pedologie_ked', %s::uuid, %s::uuid, now())
+          (%s::uuid, %s::uuid, NULL, NULL, %s, %s, %s, %s, %s, %s::uuid, %s::uuid, now())
         """,
         rows,
         page_size=1000,
@@ -452,6 +564,14 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Run KED VBS/IP/WL/WP for horizons H1/H2/H3")
     ap.add_argument("--database-url", default=DB_DEFAULT)
     ap.add_argument("--kinds", default="vbs,ip,wl,wp", help="Comma-separated kinds: vbs,ip,wl,wp")
+    ap.add_argument(
+        "--hierarchical", action="store_true", default=False,
+        help=(
+            "BLOC A : utilise la dérive hiérarchique 5 niveaux depuis "
+            "atlas.v_contexte_geologique (zones + pédologie + risque + géologie). "
+            "Créer d'abord la vue : psql -f scripts/sql/create_contexte_geologique.sql"
+        ),
+    )
     args = ap.parse_args()
     if not args.database_url:
         raise SystemExit("DATABASE_URL required")
@@ -464,13 +584,26 @@ def main() -> int:
     conn = psycopg2.connect(args.database_url)
     try:
         cur = conn.cursor()
+
+        # Vérifier que la vue hiérarchique existe si demandée
+        use_hierarchical = args.hierarchical
+        if use_hierarchical and not _has_contexte_view(cur):
+            raise SystemExit(
+                "ERREUR : --hierarchical demandé mais atlas.v_contexte_geologique "
+                "n'existe pas. Exécuter d'abord :\n"
+                "  psql -v ON_ERROR_STOP=1 -f scripts/sql/create_contexte_geologique.sql"
+            )
+
+        drift_info = "hiérarchique 5 niveaux" if use_hierarchical else "pédologique simple"
+        print(f"Dérive : {drift_info}", flush=True)
+
         grid_cache = load_grid(cur)
         cur.close()
 
         out: List[Dict[str, Any]] = []
         for hz, depth in HORIZONS:
             for cfg in cfgs:
-                out.append(run_one(conn, hz, depth, cfg, grid_cache))
+                out.append(run_one(conn, hz, depth, cfg, grid_cache, use_hierarchical=use_hierarchical))
         print(json_safe({"runs": out}))
         return 0
     finally:
