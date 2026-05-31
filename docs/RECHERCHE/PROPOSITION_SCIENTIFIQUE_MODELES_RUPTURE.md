@@ -12,7 +12,7 @@
 
 L'état actuel du système (KED L1 + RK L2) atteint ses limites pour trois raisons structurelles :
 
-1. **Limite de densité** : 123 sondages pour 56 600 km² = 1 sondage par 460 km². Même un krigeage parfait ne peut pas extraire ce qui n'est pas dans les données.
+1. **Limite de densité** : N sondages pour 56 600 km². Même un krigeage parfait ne peut pas extraire ce qui n'est pas dans les données. Cette limite reculera à chaque nouvel import de données terrain.
 2. **Limite d'indépendance** : Les 5 paramètres (VBS, IP, WL, WP, EG) sont modélisés séparément alors qu'ils sont fortement corrélés (r(IP,WL)=0.80). On laisse de l'information sur la table.
 3. **Limite géographique** : KED et RK traitent le Togo comme un espace homogène. Or les zones géologiques spéciales représentent des régimes distincts de formation des sols.
 
@@ -41,20 +41,50 @@ Les 5 zones identifiées (`zones_etude`) ne sont pas de simples délimitations a
 
 **Conclusion scientifique :** Les zones sont des hypothèses géologiques qui ne sont confirmées que partiellement (Lama + Bado). Les 3 autres zones constituent une opportunité de campagne terrain prioritaire.
 
-### 1.2 Les autres unités géologiques disponibles
+### 1.2 Les couches géologiques couvrant l'intégralité du territoire togolais
 
-En dehors des zones spéciales, deux couches existent dans la DB :
+Contrairement aux 5 zones spéciales (14.5% du territoire), les couches suivantes offrent une **couverture nationale complète (100%)** et sont disponibles dans la base de données. Elles constituent l'ossature géologique du modèle hiérarchique proposé.
 
-**`atlas.unites_pedologiques`** (61 polygones, 13 types) :
-Utilisée actuellement dans KED comme dérive. Elle représente la carte pédologique du Togo (FAO/IRD). Types clés :
-- *Vertisols* → corrélés à VBS élevé (argiles 2:1)
-- *Sols ferralitiques non indurés* → argiles 1:1 (kaolinite), VBS modéré
-- *Sols ferrugineux tropicaux* → faible activité argileuse
+#### Couche 1 — `atlas.unites_geologiques` (120 polygones)
 
-**`atlas.risque_gonflement`** (342 entrées, 5 niveaux) :
-Carte de référence Chassagneux 1996. Non utilisée dans les calculs actuels, seulement en affichage. Elle encode des connaissances expertes non formalisées.
+Carte géologique nationale du Togo. 15 grandes formations géologiques identifiées, couvrant la totalité des 29 407 mailles. Distribution sur les mailles (vérifiée en DB) :
 
-**Proposition :** Ces trois couches (zones spéciales + pédologie + risque gonflement) doivent être fusionnées en une **variable de contexte géologique hiérarchique** (voir Partie III).
+| Formation géologique | Groupe | N mailles | % territoire |
+|---|---|---|---|
+| Gneiss de la Plaine Benino-Togolaise | Socle cristallin | 6 203 | 21.1% |
+| Orthogneiss de Kara | Socle cristallin | 4 127 | 14.0% |
+| Alluvionnaires Mésozoïque-Cénozoïque | Sédimentaire récent | 3 267 | 11.1% |
+| Complexe Kabyè-Sotouboua-Agou | Chaîne Dahomeyides | 3 250 | 11.1% |
+| Micaschistes de Atacora | Chaîne Dahomeyides | 2 614 | 8.9% |
+| Shales de Mango (Bassin des Volta) | Sédimentaire ancien | 2 526 | 8.6% |
+| Cuirasses Mésozoïque-Cénozoïque | Latéritisation | 2 464 | 8.4% |
+| Quartzites de l'Atacora | Chaîne Dahomeyides | 2 436 | 8.3% |
+| Schistes de Kanté | Chaîne Dahomeyides | 2 386 | 8.1% |
+| Autres formations | — | ~9 141 | — |
+
+**Pertinence géotechnique :** La géologie du substrat contrôle la minéralogie des argiles héritées. Les gneiss et micaschistes produisent des kaolinites (VBS modéré), les shales et argiles sédimentaires produisent des illites/smectites (VBS élevé). C'est la variable d'information la plus profonde disponible.
+
+#### Couche 2 — `atlas.unites_pedologiques` (61 polygones, 13 types)
+
+Actuellement utilisée dans KED comme **variable de dérive**. Table `pedological_drift_priors` : les moyennes par type de sol sont pré-calculées et stockées à chaque run KED (ex : WL moyen des Sols ferralitiques = 36.6 %). Types clés :
+- *Vertisols* → argiles 2:1 gonflantes (smectite) → VBS élevé, EG fort
+- *Sols ferralitiques non indurés* → argiles 1:1 (kaolinite) → VBS modéré
+- *Sols ferrugineux tropicaux* → activité argileuse faible → VBS bas
+- *Sols hydromorphes* → engorgement → WL élevé, comportement plastique
+
+#### Couche 3 — `atlas.risque_gonflement` (342 entrées, 5 niveaux)
+
+Carte de risque RGA Chassagneux 1996. Encode des connaissances expertes sur le gonflement par zone géographique. Non utilisée dans les calculs actuels — seulement en affichage. Niveaux : Très Faible → Faible → Moyen → Élevé → Très Élevé.
+
+#### Couche 4 — `atlas.hydrogeologie` (14 polygones)
+
+Carte hydrogéologique nationale. Encode la profondeur de la nappe et la perméabilité des formations. Pertinente car la présence d'eau est le premier facteur de gonflement des argiles gonflantes.
+
+#### Couche 5 — `atlas.zones_etude` (5 zones spéciales, 14.5% du territoire)
+
+Zones à comportement géotechnique identifié comme distinct (Lama, Bado, Mono, Oti, Lions). À confirmer par des sondages supplémentaires dans Oti, Mono et Lions.
+
+**Proposition :** Ces cinq couches doivent être intégrées en une **variable de contexte géologique hiérarchique multi-échelle** (voir Partie III), du plus spécifique (zone spéciale) au plus général (formation géologique).
 
 ---
 
@@ -179,37 +209,57 @@ Niveau 2 — Type pédologique (13 types, couverture nationale 100%)
 Niveau 3 — Classe de risque RGA (5 niveaux Chassagneux)
 ```
 
-### 3.2 Algorithme d'attribution du contexte
+### 3.2 Algorithme d'attribution du contexte — 5 niveaux
+
+La hiérarchie complète intègre les cinq couches disponibles, du plus spécifique au plus général :
+
+```
+Niveau 1 — Zone spéciale (5 zones, 14.5% territoire)  ← le plus informatif
+Niveau 2 — Type pédologique (61 unités, 13 types, 100%)
+Niveau 3 — Risque RGA Chassagneux (342 unités, 5 niveaux, 100%)
+Niveau 4 — Formation géologique (120 unités, 15 formations, 100%)
+Niveau 5 — Hydrogéologie (14 polygones)                ← contexte eau
+```
 
 ```sql
--- Pour chaque maille, déterminer son contexte géologique
-CREATE VIEW atlas.v_contexte_geologique AS
+-- Vue de contexte géologique multi-niveaux
+-- À créer via migration scripts/sql/create_contexte_geologique.sql
+CREATE MATERIALIZED VIEW atlas.v_contexte_geologique AS
 SELECT
-    m.code as maille_code,
-    -- Niveau 1 : zone spéciale si dans une zone
-    CASE
-        WHEN ST_Intersects(m.geom, z.geom) THEN z.code_zone
-        ELSE NULL
-    END as zone_speciale,
-    -- Niveau 2 : type pédologique
-    COALESCE(up.type_sol, 'INCONNU') as type_pedologique,
-    -- Niveau 3 : risque gonflement Chassagneux
-    rg.niveau_risque as risque_rga,
-    -- Variable composite (pour le modèle)
-    CONCAT(
-        COALESCE(z.code_zone, 'NAT'),  -- 'LAMA', 'BADO', ou 'NAT'
-        '_',
-        LEFT(COALESCE(up.type_sol,'INC'), 3),  -- 3 premières lettres
-        '_',
-        COALESCE(rg.niveau_risque, 'INC')  -- 'FORT', 'MOY', etc.
-    ) as contexte_composite
+    m.code                                    AS maille_code,
+    -- Niveau 1 : zone spéciale (null si hors zone)
+    z.id                                      AS zone_speciale_id,
+    COALESCE(z.nom, 'NATIONAL')               AS zone_speciale,
+    -- Niveau 2 : pédologie (dérive actuelle du KED)
+    COALESCE(up.type_sol, 'INCONNU')          AS type_pedologique,
+    -- Niveau 3 : risque Chassagneux
+    COALESCE(rg.niveau_risque, 'INCONNU')     AS risque_rga,
+    -- Niveau 4 : géologie du substrat
+    COALESCE(ug.type_sols, 'INCONNU')         AS formation_geologique,
+    -- Niveau 5 : hydrogéologie
+    COALESCE(hg.libelle, 'INCONNU')           AS hydrogeo_classe,
+    -- Identifiant composite (hiérarchie complète pour repli)
+    CONCAT_WS('|',
+        COALESCE(z.nom, 'NAT'),
+        LEFT(COALESCE(up.type_sol, 'INC'), 4),
+        COALESCE(rg.niveau_risque, 'INC'),
+        LEFT(COALESCE(ug.type_sols, 'INC'), 6)
+    )                                          AS contexte_complet
 FROM atlas.mailles m
 LEFT JOIN atlas.zones_etude z
-    ON ST_Intersects(m.geom, z.geom)
+    ON ST_Intersects(ST_Centroid(m.geom), z.geom)
 LEFT JOIN atlas.unites_pedologiques up
     ON ST_Contains(up.geom, ST_Centroid(m.geom))
 LEFT JOIN atlas.risque_gonflement rg
-    ON ST_Intersects(rg.geom, ST_Centroid(m.geom));
+    ON ST_Intersects(ST_Centroid(m.geom), rg.geom)
+LEFT JOIN atlas.unites_geologiques ug
+    ON ST_Intersects(ST_Centroid(m.geom), ug.geom)
+LEFT JOIN atlas.hydrogeologie hg
+    ON ST_Intersects(ST_Centroid(m.geom), hg.geom)
+WHERE m.code IS NOT NULL;
+
+-- Index pour jointures rapides
+CREATE UNIQUE INDEX ON atlas.v_contexte_geologique (maille_code);
 ```
 
 ### 3.3 Utilisation dans le KED amélioré
@@ -556,30 +606,79 @@ class MultitaskGPGeotechnique:
              = 441 105 valeurs avec intervalles de confiance
 ```
 
-### 6.3 Plan d'implémentation
+### 6.3 Plan d'implémentation — Innovations de rupture
 
 ```
-Sprint 1 (1 semaine) :
-  □ Implémenter la dérive hiérarchique dans run_ked_*.py
-  □ Comparer LOO-RMSE : KED_actuel vs KED_hiérarchique
-  □ Documenter dans mémoire (section 4.2)
+BLOC A — Données et contexte géologique (prérequis pour tout le reste)
+  □ Créer atlas.v_contexte_geologique (SQL ci-dessus, section 3.2)
+    → Intègre zones_etude + unites_pedologiques + risque_gonflement
+       + unites_geologiques + hydrogeologie
+  □ Implémenter la dérive hiérarchique 5 niveaux dans run_ked_*.py
+    → Remplace la dérive pédologique simple actuelle
+    → Métriques : LOO-RMSE KED_actuel vs KED_hiérarchique (H1/H2/H3)
+  □ Documenter résultats → mémoire section "Amélioration du KED"
 
-Sprint 2 (1 semaine) :
-  □ Implémenter la fusion KED-RK cascade (ked_rk_fusion.py)
-  □ Récupérer σ²_KED depuis PyKrige (available via ok.sigma2)
-  □ Comparer LOO-RMSE fusion vs KED seul vs RK seul
-  □ Documenter dans mémoire (section 4.3 — résultat clé)
+BLOC B — Fusion KED-RK Cascade Bayésienne
+  □ Créer scripts/ked_rk_fusion.py (algorithme section 2.2)
+  □ Récupérer σ²_KED depuis PyKrige (ok.sigma2 après execute)
+  □ Récupérer σ²_RK depuis PyKrige sur les résidus RK
+  □ Appliquer la fusion bayésienne par incertitude locale
+  □ Métriques : LOO-RMSE fusion vs KED seul vs RK seul
+  □ Documenter → mémoire section "Fusion optimale KED-RK"
 
-Sprint 3 (2 semaines) :
+BLOC C — Géotechnique par télédétection (DeepTech innovation)
   □ Télécharger Sentinel-2 sur le Togo (ESA Copernicus Hub, gratuit)
-  □ Calculer Clay_Index, SWIR_ratio pour chaque sondage
-  □ Entraîner Random Forest sur Clay_Index → VBS (LOO-CV)
-  □ Si r² > 0.4 → ajouter comme feature SCORPAN → documenter
-  □ C'est la démonstration de la géotechnique sans labo
+    API : https://scihub.copernicus.eu/ ou Google Earth Engine
+  □ Calculer Clay_Index = B11/B12, SWIR_ratio, NDVI pour chaque sondage
+  □ Entraîner Random Forest : Clay_Index → VBS (LOO-CV sur sondages)
+  □ Si r² > 0.4 → ajouter comme feature supplémentaire dans RK
+  □ Documenter → mémoire section "Vers la géotechnique sans laboratoire"
 
-Sprint 4 (optionnel, si temps) :
-  □ MTGP avec GPflow
-  □ Démontrer transfert de structure spatiale VBS → EG
+BLOC D — Multi-Task Gaussian Process (co-krigeage)
+  □ Installer GPflow : pip install gpflow tensorflow
+  □ Modéliser VBS + IP + EG conjointement (ICM rank=2)
+  □ Exploiter corrélations r(IP,EG)=0.74, r(VBS,EG)=0.35
+  □ Métriques : LOO-RMSE EG avec MTGP vs EG seul (gain attendu)
+  □ Documenter → mémoire section "Co-krigeage multi-paramètres"
+```
+
+### 6.4 Roadmap plateforme (recommandations techniques complémentaires)
+
+Ces items ne sont pas des innovations scientifiques mais des améliorations critiques de la plateforme qui **conditionnent la capacité du système à s'auto-améliorer** lorsque de nouvelles données sont importées.
+
+```
+BLOC E — Auto-amélioration sur import (prérequis opérationnel)
+  □ Trigger pg_notify → worker Python → recalcul KED+RK automatique
+    → Sans ce bloc, chaque import de nouveaux sondages nécessite
+      une intervention manuelle pour recalculer les modèles
+    → Implémenter dans scripts/pipeline_worker.py
+    → Câbler run_ked_vbs_ip_wl_wp_horizons.py + compute_loo_cv_rk.py
+      dans le match job_type.as_str() de services/api-geo/src/ai_jobs.rs
+
+BLOC F — Qualité et CI/CD scientifique
+  □ Tests de régression LOO-RMSE sur git push (CI/CD L1/L2)
+    → Empêche une migration de dégrader silencieusement la précision
+    → Seuils : LOO-RMSE VBS H1 < 4.0, IP H1 < 12.0, EG H1 < 2.5
+
+BLOC G — Performance API (experience utilisateur)
+  □ Index ou matview dédié sur v_thematic_ai_geotech
+    → Temps de réponse RK actuel : ~30s → cible < 5s
+  □ LOO-CV analytique PyKrige (formule O(N²)) pour remplacer
+    les N itérations O(N³) actuelles
+
+BLOC H — Complétion du pipeline existant
+  □ Recalculer LOO-CV des 3 horizons EG avec prec_dry/prec_wet
+    (le modèle SCORPAN complet — fait pour H1 mais pas encore
+    mis à jour pour H2/H3 avec le nouveau v_scorpan_features)
+  □ Câbler microservices api-infer et api-opti dans main.rs
+```
+
+**Interdépendances critiques :**
+```
+BLOC A (contexte géologique) → alimente BLOC B et BLOC D
+BLOC C (Sentinel-2) → alimente BLOC B comme feature SCORPAN
+BLOC E (trigger auto) → permet à BLOC A/B/C/D de s'exécuter automatiquement
+                         après chaque import de nouveaux sondages
 ```
 
 ---
