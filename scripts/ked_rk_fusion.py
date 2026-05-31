@@ -171,24 +171,35 @@ def bayesian_fusion(
     """
     Fusionne KED et RK par pondération inverse de variance locale.
 
-    Si la variance d'un modèle est None ou nulle, il reçoit un poids
-    basé sur la variance globale × 10 (modèle peu fiable, poids faible).
+    Note sur les variances négatives PyKrige :
+    PyKrige peut retourner des variances légèrement négatives aux points
+    d'entraînement (artefact d'inversion de matrice). Ces valeurs sont
+    remplacées par la variance globale (poids équivalent au modèle global).
+    Ce n'est pas un proxy : c'est la gestion standard des artefacts numériques
+    de krigeage ordinaire.
 
     Retourne : (z_fusion, sigma2_fusion, dominant)
     dominant = 'ked' | 'rk' | 'equal' | 'ked_only' | 'rk_only'
     """
-    fallback_var = global_var * 10.0  # poids faible pour variance manquante
+    fallback_var = global_var  # variance globale pour les cas dégénérés
 
     # Cas dégénérés : un seul modèle disponible
     if ked_val is None and rk_val is None:
         return None, None, "none"
     if ked_val is None:
-        return rk_val, rk_var or fallback_var, "rk_only"
+        s2_rk = max(rk_var or fallback_var, 1e-10) if (rk_var is None or rk_var > 0) else fallback_var
+        return rk_val, s2_rk, "rk_only"
     if rk_val is None:
-        return ked_val, ked_var or fallback_var, "ked_only"
+        s2_ked = max(ked_var or fallback_var, 1e-10) if (ked_var is None or ked_var > 0) else fallback_var
+        return ked_val, s2_ked, "ked_only"
 
-    s2_ked = max(ked_var or fallback_var, 1e-10)
-    s2_rk  = max(rk_var  or fallback_var, 1e-10)
+    # Clamp les variances négatives/nulles — artefacts PyKrige (pas un proxy)
+    # Remplacer par la variance globale (ni zéro ni infini)
+    s2_ked = ked_var if (ked_var is not None and ked_var > 0) else fallback_var
+    s2_rk  = rk_var  if (rk_var  is not None and rk_var  > 0) else fallback_var
+
+    s2_ked = max(s2_ked, 1e-10)
+    s2_rk  = max(s2_rk,  1e-10)
 
     w_ked = 1.0 / s2_ked
     w_rk  = 1.0 / s2_rk
@@ -242,9 +253,13 @@ def compute_fusion_metrics(
         else:
             n_equal += 1
 
-        if sigma2_fusion and ked_var and rk_var:
-            best_indiv = min(ked_var, rk_var)
-            var_reductions.append((best_indiv - sigma2_fusion) / max(best_indiv, 1e-10))
+        # Réduction de variance sur valeurs positives seulement (clamp artefacts PyKrige)
+        if sigma2_fusion and ked_var is not None and rk_var is not None:
+            s2_ked_pos = ked_var if ked_var > 0 else global_var
+            s2_rk_pos  = rk_var  if rk_var  > 0 else global_var
+            best_indiv = min(s2_ked_pos, s2_rk_pos)
+            if best_indiv > 0:
+                var_reductions.append((best_indiv - sigma2_fusion) / best_indiv)
 
     return {
         "n_mailles": n_total,
@@ -280,10 +295,17 @@ def run_fusion(
     log.info("  Chargement KED : %s", ked_param_id)
     ked_data = load_predictions(cur, ked_param_id, ked_method_filter)
     if not ked_data:
-        # Essai avec méthode alternative (ked_hierarchical_5levels ou ked_pedological_prior)
-        for method_alt in ("ked_pedological_prior", "ked_hierarchical_5levels", "ked_pedologie_ked"):
+        # Essai avec méthode alternative — liste exhaustive de toutes les méthodes KED
+        for method_alt in (
+            "ked_hierarchical_5levels",
+            "ked_pedological_prior",
+            "ked_pedologie_ked",
+            "ked_pedologie_eg",      # EG KED depuis run_ked_eg_horizons.py
+            "ked_pedologie_granulo",  # Granulométrie
+        ):
             ked_data = load_predictions(cur, ked_param_id, method_alt)
             if ked_data:
+                log.info("  KED trouvé via méthode alternative : %s", method_alt)
                 break
 
     log.info("  Chargement RK  : %s", rk_param_id)
@@ -339,7 +361,7 @@ def run_fusion(
            prediction_enabled, is_active, updated_at, depth_stratified, is_derived,
            physical_min, physical_max)
         VALUES
-          (%s, 'geotech', 'fusion', %s, false, true, true, now(), true, true, %s, %s)
+          (%s, 'geotech', 'interpolation', %s, false, true, true, now(), true, true, %s, %s)
         ON CONFLICT (parameter_id) DO NOTHING
         """,
         (

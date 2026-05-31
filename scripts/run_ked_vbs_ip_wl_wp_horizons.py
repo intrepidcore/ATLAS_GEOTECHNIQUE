@@ -503,7 +503,9 @@ def run_one(
                 mid,
                 param_id,
                 float(z_pred[i]) if math.isfinite(float(z_pred[i])) else None,
-                float(z_var[i]) if math.isfinite(float(z_var[i])) else None,
+                # Clamp à 0 : PyKrige peut retourner des variances légèrement négatives
+                # aux points d'entraînement (artefact inversion matricielle — voir doc PyKrige)
+                max(0.0, float(z_var[i])) if math.isfinite(float(z_var[i])) else None,
                 float(confidence[i]) if math.isfinite(float(confidence[i])) else None,
                 method_tag,
                 variogram_id,
