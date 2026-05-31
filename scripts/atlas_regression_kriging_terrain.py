@@ -32,15 +32,21 @@ warnings.filterwarnings('ignore')
 
 DEPTH_MAP = {'h1': (0.5, 1.5), 'h2': (1.0, 2.0), 'h3': (1.5, 2.5)}
 
+# DATA-02 : plages physiques canoniques
 CLAMP_MAP = {
-    'vbs': (0.0, 15.0),
-    'eg':  (0.0, 20.0),
-    'ip':  (0.0, 60.0),
-    'wl':  (10.0, 120.0),
-    'wp':  (5.0, 80.0),
+    'vbs': (0.0, 20.0),    # g/100g
+    'eg':  (0.0, 20.0),    # %
+    'ip':  (0.0, 80.0),    # %
+    'wl':  (20.0, 120.0),  # %
+    'wp':  (10.0, 60.0),   # %
 }
 
-NUMERIC_FEATURES = ['dem_altitude', 'lon', 'lat', 'prec_annual', 'dem_slope', 'dem_tpi', 'dem_hand', 'distance_river_m']
+# Features SCORPAN complètes (prec_dry/wet ajoutés — disponibles dans v_scorpan_features)
+NUMERIC_FEATURES = [
+    'dem_altitude', 'dem_slope', 'dem_tpi', 'dem_hand',
+    'distance_river_m', 'prec_annual', 'prec_dry', 'prec_wet',
+    'lon', 'lat',
+]
 CATEGORICAL_FEATURES = []
 
 def get_connection(db_url):
@@ -49,7 +55,9 @@ def get_connection(db_url):
 def load_terrain_data(conn, param: str, horizon: str) -> pd.DataFrame:
     """Charge les VRAISES données terrain depuis v_echantillons_essais"""
     depth_min, depth_max = DEPTH_MAP[horizon]
-    col_map = {'vbs': 'vbs', 'ip': 'ip', 'wl': 'wl', 'wp': 'wp', 'eg': 'eg'}
+    # ATTENTION : EG s'appelle 'potentiel_gonflement' dans v_echantillons_essais (pas 'eg')
+    # Référence : RAPPORT_TECHNIQUE_SCIENTIFIQUE_30-05-2026.md section 2.2
+    col_map = {'vbs': 'vbs', 'ip': 'ip', 'wl': 'wl', 'wp': 'wp', 'eg': 'potentiel_gonflement'}
 
     if param not in col_map:
         raise ValueError(f"Paramètre {param} non supporté")
@@ -64,11 +72,13 @@ def load_terrain_data(conn, param: str, horizon: str) -> pd.DataFrame:
       ST_X(ST_Transform(s.geom, 25231)) as x_utm31,
       ST_Y(ST_Transform(s.geom, 25231)) as y_utm31,
       sc.dem_altitude,
-      sc.prec_annual,
       sc.dem_slope,
       sc.dem_tpi,
       sc.dem_hand,
       sc.distance_river_m,
+      sc.prec_annual,
+      sc.prec_dry,
+      sc.prec_wet,
       sc.lon,
       sc.lat,
       e.depth_m,
@@ -91,7 +101,10 @@ def load_terrain_data(conn, param: str, horizon: str) -> pd.DataFrame:
 def load_all_mailles(conn) -> pd.DataFrame:
     cur = conn.cursor()
     cur.execute("""
-    SELECT maille_code, x_utm31, y_utm31, dem_altitude, prec_annual, dem_slope, dem_tpi, dem_hand, distance_river_m, lon, lat
+    SELECT maille_code, x_utm31, y_utm31,
+           dem_altitude, dem_slope, dem_tpi, dem_hand, distance_river_m,
+           prec_annual, prec_dry, prec_wet,
+           lon, lat
     FROM atlas.v_scorpan_features
     """)
     rows = cur.fetchall()
@@ -181,7 +194,13 @@ def loo_cross_validation(df_train, geol_cats, pedo_cats) -> float:
     print(f"  LOO-CV RMSE: {loo_rmse:.4f} ({len(errors)}/{n} points)")
     return loo_rmse
 
-def store_results(conn, df_all, z_rk, param, horizon, loo_rmse, reg_r2, n_terrain):
+def store_results(conn, df_all, z_rk, ss_kriged, param, horizon, loo_rmse, reg_r2, n_terrain):
+    """
+    Stocke les prédictions RK avec variance PyKrige réelle.
+
+    ss_kriged : variance de krigeage des résidus (numpy array, même longueur que z_rk).
+                Jamais proxy LOO-RMSE² — toujours la variance réelle de ok.execute().
+    """
     clamp_min, clamp_max = CLAMP_MAP.get(param, (0, 100))
     parameter_id = f'{param}_rk_{horizon}'
     run_id = str(uuid.uuid4())
@@ -189,11 +208,12 @@ def store_results(conn, df_all, z_rk, param, horizon, loo_rmse, reg_r2, n_terrai
 
     cur = conn.cursor()
 
-    # Marquer les anciens RK comme superseded
+    # BM-SYNC-05 : supersede les anciennes valeurs (idempotent)
     cur.execute("""
     UPDATE atlas.ai_interpolation_values
     SET is_superseded = true
     WHERE parameter_id = %s AND method = 'regression_kriging_scorpan'
+      AND COALESCE(is_superseded, false) = false
     """, (parameter_id,))
 
     # Insérer le run avec métadonnées
@@ -205,24 +225,38 @@ def store_results(conn, df_all, z_rk, param, horizon, loo_rmse, reg_r2, n_terrai
           psycopg2.extras.Json({'loo_rmse': loo_rmse, 'regression_r2': reg_r2, 'n_terrain_samples': n_terrain}),
           now, psycopg2.extras.Json({'source': 'v_echantillons_essais', 'note': 'trained on real terrain data'})))
 
-    # Insérer les valeurs interpolées
+    # Insérer les valeurs interpolées avec variance PyKrige réelle (DATA-02)
     rows = []
+    n_all = len(df_all)
     for i, row in df_all.iterrows():
-        val = float(z_rk[i]) if i < len(z_rk) else float('nan')
+        val = float(z_rk[i]) if i < n_all and i < len(z_rk) else float('nan')
+        var = float(ss_kriged[i]) if ss_kriged is not None and i < len(ss_kriged) else None
         val = max(clamp_min, min(clamp_max, val))
         if math.isfinite(val):
-            rows.append((str(uuid.uuid4()), row['maille_code'], parameter_id, val, run_id, 'regression_kriging_scorpan', False, now))
+            rows.append((
+                str(uuid.uuid4()),
+                row['maille_code'],
+                parameter_id,
+                val,
+                var if var is not None and math.isfinite(var) else None,
+                run_id,
+                'regression_kriging_scorpan',
+                False,
+                now,
+            ))
 
     if rows:
         execute_values(cur, """
         INSERT INTO atlas.ai_interpolation_values
-          (id, maille_id, parameter_id, value, run_id, method, is_superseded, created_at)
-        SELECT data.id::uuid, m.id, data.parameter_id, data.value, data.run_id::uuid, data.method, data.is_superseded, data.created_at
-        FROM (VALUES %s) AS data(id, maille_code, parameter_id, value, run_id, method, is_superseded, created_at)
+          (id, maille_id, parameter_id, value, variance, run_id, method, is_superseded, created_at)
+        SELECT data.id::uuid, m.id, data.parameter_id, data.value, data.variance,
+               data.run_id::uuid, data.method, data.is_superseded, data.created_at
+        FROM (VALUES %s) AS data(id, maille_code, parameter_id, value, variance, run_id, method, is_superseded, created_at)
         JOIN atlas.mailles m ON m.code = data.maille_code
-        """, rows, template="(%s,%s,%s,%s,%s,%s,%s,%s)")
+        """, rows, template="(%s,%s,%s,%s,%s,%s,%s,%s,%s)")
         conn.commit()
-        print(f"  [OK] {len(rows)} valeurs RK stockees (param={parameter_id})")
+        n_with_var = sum(1 for r in rows if r[4] is not None)
+        print(f"  [OK] {len(rows)} valeurs RK stockees (param={parameter_id}, variance={n_with_var}/{len(rows)})")
     return run_id
 
 def main():
@@ -237,7 +271,8 @@ def main():
         print("[DRY-RUN] Validation de la configuration...")
         conn = get_connection(args.database_url)
         cur = conn.cursor()
-        cur.execute("SELECT COUNT(*) FROM atlas.v_echantillons_essais WHERE %s IS NOT NULL" % {'vbs': 'vbs', 'ip': 'ip', 'wl': 'wl', 'wp': 'wp'}[args.parameter])
+        col_dry = {'vbs': 'vbs', 'ip': 'ip', 'wl': 'wl', 'wp': 'wp', 'eg': 'potentiel_gonflement'}[args.parameter]
+        cur.execute("SELECT COUNT(*) FROM atlas.v_echantillons_essais WHERE %s IS NOT NULL" % col_dry)
         n = cur.fetchone()[0]
         print(f"  [OK] {n} echantillons {args.parameter} disponibles")
         cur.execute("SELECT COUNT(*) FROM atlas.v_scorpan_features")
@@ -282,30 +317,35 @@ def main():
     X_all = df_all[NUMERIC_FEATURES + CATEGORICAL_FEATURES]
     trend_all = model.predict(X_all)
 
-    # Krigeage des résidus (échantillonné pour mémoire)
-    print("Krigeage des residus (echantillon 500 pts)...")
+    # Krigeage des résidus sur TOUS les points terrain (N ~ 100-220, pas d'échantillonnage)
+    # Raison : avec N < 300 on peut se permettre le krigeage complet O(N³) en ~ quelques secondes
+    # La variance ss_kriged est la variance de krigeage PyKrige réelle (pas de proxy)
+    print(f"Krigeage des residus sur tous les {n_terrain} points terrain...")
+    ss_kriged = None
     try:
         from pykrige.ok import OrdinaryKriging
-        n_sample = min(500, len(df_terrain))
-        idx = np.random.choice(len(df_terrain), n_sample, replace=False)
         ok = OrdinaryKriging(
-            df_terrain.iloc[idx]['x_utm31'].values,
-            df_terrain.iloc[idx]['y_utm31'].values,
-            residuals[idx],
-            variogram_model='spherical', nlags=8, weight=True,
+            df_terrain['x_utm31'].values,
+            df_terrain['y_utm31'].values,
+            residuals,
+            variogram_model='spherical', nlags=10, weight=True,
             verbose=False, enable_plotting=False
         )
         z_kriged, ss_kriged = ok.execute('points', df_all['x_utm31'].values, df_all['y_utm31'].values)
         z_rk = trend_all + z_kriged.flatten()
+        ss_kriged = np.array(ss_kriged).flatten()
+        n_with_var = int(np.isfinite(ss_kriged).sum())
+        print(f"  Variance PyKrige calculee: {n_with_var}/{len(ss_kriged)} valeurs finies")
     except Exception as e:
-        print(f"  Warning: Krigeage simplifie: {e}")
+        print(f"  Warning: Krigeage simplifie (variance non disponible): {e}")
         z_rk = trend_all
+        ss_kriged = None
 
     print(f"  RK stats: min={z_rk.min():.2f}, max={z_rk.max():.2f}, mean={z_rk.mean():.2f}")
 
-    # Stockage des résultats
-    print("Stockage resultats...")
-    run_id = store_results(conn, df_all, z_rk, args.parameter, args.horizon, loo_rmse, reg_r2, n_terrain)
+    # Stockage des résultats avec variance réelle
+    print("Stockage resultats (avec variance PyKrige)...")
+    run_id = store_results(conn, df_all, z_rk, ss_kriged, args.parameter, args.horizon, loo_rmse, reg_r2, n_terrain)
 
     print(f"\n=== TERMINE ===")
     print(f"  Run ID: {run_id}")
