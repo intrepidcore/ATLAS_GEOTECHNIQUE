@@ -569,75 +569,106 @@ def run_extract_mailles(conn, batch_size: int = 5000) -> int:
     cur.close()
     log.info("Mailles à traiter : %d (batch_size=%d)", len(df_mailles), batch_size)
 
-    all_records = []
     n_batches = (len(df_mailles) + batch_size - 1) // batch_size
 
-    # CONVENTION (correctif 2026-06-01) :
+    # CONVENTION UUID (correctif 2026-06-01) :
     # maille_id dans load_mailles_for_prediction est un uuid.UUID (objet Python),
     # mais extract_gee_indices retourne des strings via str(pid).
-    # Unification en string avant merge pour éviter NaN systématiques.
+    # Unification en string avant merge pour eviter NaN systematiques.
     df_mailles["maille_id"] = df_mailles["maille_id"].astype(str)
+
+    # Stockage incremental (correctif 2026-06-01) :
+    # On vide la table AVANT les batches et on UPSERT par batch.
+    # Avantage : si GEE echoue sur un batch, les batches precedents sont sauvegardes.
+    cur = conn.cursor()
+    cur.execute("DELETE FROM atlas.maille_spectral_vfs")
+    conn.commit()
+    cur.close()
+    log.info("Table maille_spectral_vfs videe — stockage incremental par batch.")
+
+    n_total_stored = 0
+    n_batches_ok = 0
 
     for i in range(n_batches):
         batch = df_mailles.iloc[i * batch_size : (i + 1) * batch_size].copy()
         log.info("  Batch %d/%d (%d mailles)...", i + 1, n_batches, len(batch))
-        df_gee = extract_gee_indices(
-            batch["lon"].tolist(),
-            batch["lat"].tolist(),
-            batch["maille_id"].tolist(),  # déjà en str
-        )
+
+        try:
+            df_gee = extract_gee_indices(
+                batch["lon"].tolist(),
+                batch["lat"].tolist(),
+                batch["maille_id"].tolist(),
+            )
+        except Exception as exc:
+            log.error("  Batch %d : erreur GEE (%s) — batch stocke sans spectral", i + 1, exc)
+            df_gee = pd.DataFrame(columns=["maille_id"] + SPECTRAL_FEATURES)
+
         if not df_gee.empty:
-            # Renommer la colonne id si présente — aligner avec batch.maille_id (str)
             if "point_id" in df_gee.columns:
                 df_gee = df_gee.rename(columns={"point_id": "maille_id"})
             elif "id" in df_gee.columns:
                 df_gee = df_gee.rename(columns={"id": "maille_id"})
             df_gee["maille_id"] = df_gee["maille_id"].astype(str)
             df_merged = batch.merge(df_gee, on="maille_id", how="left")
-            n_valid = df_merged[SPECTRAL_FEATURES].notna().all(axis=1).sum()
-            log.info("    -> %d/%d mailles avec indices spectraux valides", n_valid, len(batch))
-            all_records.append(df_merged)
         else:
-            log.warning("  Batch %d : GEE a retourné 0 résultat — batch inclus avec NaN", i + 1)
-            all_records.append(batch)  # inclure le batch sans spectral pour ne pas perdre de mailles
+            df_merged = batch.copy()
+            for col in SPECTRAL_FEATURES:
+                if col not in df_merged.columns:
+                    df_merged[col] = None
 
-    if not all_records:
-        log.error("Aucune donnée GEE extraite pour les mailles.")
-        return 1
+        n_valid = df_merged[SPECTRAL_FEATURES].notna().all(axis=1).sum()
+        log.info("    -> %d/%d mailles avec indices spectraux valides", n_valid, len(batch))
 
-    df_all = pd.concat(all_records, ignore_index=True)
-    log.info("Total mailles avec spectral : %d", df_all[SPECTRAL_FEATURES].notna().all(axis=1).sum())
+        # Deduplication sur maille_id (un maille = une ligne)
+        df_merged = df_merged.drop_duplicates(subset=["maille_id"], keep="first")
 
-    # Stocker dans maille_spectral_vfs
-    cur = conn.cursor()
-    cur.execute("DELETE FROM atlas.maille_spectral_vfs")
+        rows_batch = []
+        for _, row in df_merged.iterrows():
+            rows_batch.append((
+                str(uuid.uuid4()),
+                str(row["maille_id"]),
+                row.get("clay_index"),
+                row.get("swir_ratio"),
+                row.get("ndvi"),
+                row.get("iron_oxide"),
+                bool(str(row.get("formation_geologique", "")).find("Cuirasse") >= 0),
+                bool(str(row.get("formation_geologique", "")).find("Alluvion") >= 0),
+            ))
 
-    rows = []
-    for _, row in df_all.iterrows():
-        rows.append((
-            str(uuid.uuid4()),
-            str(row["maille_id"]),
-            row.get("clay_index"),
-            row.get("swir_ratio"),
-            row.get("ndvi"),
-            row.get("iron_oxide"),
-            bool(str(row.get("formation_geologique", "")).find("Cuirasse") >= 0),
-            bool(str(row.get("formation_geologique", "")).find("Alluvion") >= 0),
-        ))
+        cur = conn.cursor()
+        try:
+            execute_batch(
+                cur,
+                """
+                INSERT INTO atlas.maille_spectral_vfs
+                  (id, maille_id, clay_index, swir_ratio, ndvi, iron_oxide,
+                   is_cuirasse, is_alluvial, computed_at)
+                VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, now())
+                ON CONFLICT (maille_id) DO UPDATE SET
+                  clay_index=EXCLUDED.clay_index,
+                  swir_ratio=EXCLUDED.swir_ratio,
+                  ndvi=EXCLUDED.ndvi,
+                  iron_oxide=EXCLUDED.iron_oxide,
+                  computed_at=now()
+                """,
+                rows_batch, page_size=500,
+            )
+            conn.commit()
+            n_total_stored += len(rows_batch)
+            n_batches_ok += 1
+        except Exception as exc:
+            log.error("  Batch %d : erreur stockage (%s)", i + 1, exc)
+            conn.rollback()
+        finally:
+            cur.close()
 
-    execute_batch(
-        cur,
-        """
-        INSERT INTO atlas.maille_spectral_vfs
-          (id, maille_id, clay_index, swir_ratio, ndvi, iron_oxide,
-           is_cuirasse, is_alluvial, computed_at)
-        VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, now())
-        """,
-        rows, page_size=2000,
+    log.info(
+        "Extraction terminee : %d/%d batches OK | %d mailles stockees.",
+        n_batches_ok, n_batches, n_total_stored,
     )
-    conn.commit()
-    cur.close()
-    log.info("Indices spectraux stockés pour %d mailles.", len(rows))
+    if n_total_stored == 0:
+        log.error("Aucune donnee GEE extraite pour les mailles.")
+        return 1
     return 0
 
 
