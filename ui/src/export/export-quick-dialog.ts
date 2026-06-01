@@ -1003,7 +1003,13 @@ export class ExportQuickDialog {
         onProgress('Capture du fond de carte...')
         markStage('BUILD')
         panes = map.getPanes()
-        const panesToHide = ['overlayPane', 'markerPane', 'tooltipPane', 'popupPane', 'shadowPane', 'thematicPane', 'thematicCirclesPane', 'gridPane', 'gridOverlayPane']
+        const panesToHide = [
+          'overlayPane', 'markerPane', 'tooltipPane', 'popupPane', 'shadowPane',
+          'thematicPane', 'thematicCirclesPane', 'gridPane', 'gridOverlayPane',
+          // Panes overlay a masquer : zones etude, contexte geo/pedo, DSM, highlight
+          'contextPane', 'zoneStudyFillPane', 'zoneEtudePane',
+          'lamaBackgroundPane', 'dsmPane', 'highlightPane',
+        ]
         for (const paneName of panesToHide) {
           const pane = panes[paneName]
           if (pane?.style) {
@@ -2005,15 +2011,22 @@ export class ExportQuickDialog {
         
         // Liste des panes à cacher (tout sauf tilePane et mapPane)
         const panesToHide = [
-          'overlayPane',      // GeoJSON, polygones ADM
-          'markerPane',       // Markers
-          'tooltipPane',      // Tooltips
-          'popupPane',        // Popups
-          'shadowPane',       // Ombres des markers
-          'thematicPane',     // Couche thématique custom
+          'overlayPane',         // GeoJSON, polygones ADM
+          'markerPane',          // Markers
+          'tooltipPane',         // Tooltips
+          'popupPane',           // Popups
+          'shadowPane',          // Ombres des markers
+          'thematicPane',        // Couche thématique custom
           'thematicCirclesPane', // Cercles thématiques
-          'gridPane',         // Grille de fond
-          'gridOverlayPane',  // Surcouche structurelle (ex: 28km en mode combined)
+          'gridPane',            // Grille de fond
+          'gridOverlayPane',     // Surcouche structurelle (ex: 28km en mode combined)
+          // Overlays contextuels — masqués pour export propre (pas dans cartouche)
+          'contextPane',         // Couches géologie/pédologie/risque gonflement
+          'zoneStudyFillPane',   // Remplissage zones d'étude (polygones orange/vert)
+          'zoneEtudePane',       // Contours zones d'étude
+          'lamaBackgroundPane',  // Fond Dépression de la Lama
+          'dsmPane',             // MNS (relief ombré)
+          'highlightPane',       // Surlignage sondage sélectionné
         ];
         
         for (const paneName of panesToHide) {
