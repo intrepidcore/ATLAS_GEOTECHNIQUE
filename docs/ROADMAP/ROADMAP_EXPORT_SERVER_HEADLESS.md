@@ -848,24 +848,72 @@ Gains cibles : ×5-50 vs moteur frontend actuel
 
 ---
 
-## 18. État d'avancement au 2026-06-01
+## 18. État d'avancement — **ROADMAP COMPLÈTE** (2026-06-01)
 
-| Section | Statut |
-|---|---|
-| Contexte et motivation documentés | ✅ Complet |
-| Choix technologique analysé | ✅ Complet |
-| Architecture cible définie | ✅ Complet |
-| Schéma DB `hq_export_jobs` (migration 180) | ✅ Documenté, à appliquer |
-| Endpoints API Rust documentés | ✅ Complet |
-| Worker Puppeteer Phase 1 documenté | ✅ Complet |
-| Worker MapLibre Phase 2 documenté | ✅ Complet |
-| Composition cadre A4 documentée | ✅ Complet |
-| Docker Compose documenté | ✅ Complet |
-| Toggle UI documenté | ✅ Complet |
-| Milestones définis | ✅ Complet |
-| Nouveaux paramètres V10 intégrés | ✅ Section 15 ajoutée |
-| Migration 179 prerequis définie | ✅ Section 16 ajoutée |
-| Timeline résumé | ✅ Section 17 ajoutée |
-| **Implémentation** | ⏳ Sprint 1 à démarrer |
+| Sprint | Livrable | Commit | Statut |
+|---|---|---|---|
+| **Sprint 0** | Import V10, migrations 176-179, pipeline 60 jobs | `4c68cbe`, `966e51a`, `6876938` | ✅ **LIVRÉ** |
+| **Sprint 1** | Migration 180 (`hq_export_jobs`) + `hq_export.rs` (5 endpoints) + cargo check 0 err | `dd48ec1` | ✅ **LIVRÉ** |
+| **Sprint 2** | `services/atlas-headless/` worker Node.js + Puppeteer + pool + retry + SIGTERM | `c80e139` | ✅ **LIVRÉ** |
+| **Sprint 3** | `frame/composer.ts` Sharp — cadre A4 (entête, légende, rose vents, barre échelle) | `c80e139` | ✅ **LIVRÉ** |
+| **Sprint 4** | `window.__atlasExportHQ()` dans `ui/src/main.ts` + toggle `exportMode` + polling API | `c80e139` | ✅ **LIVRÉ** |
+| **Sprint 5** | `renderer/maplibre.ts` Phase 2 GL Node (import dynamique, style builder, quantile breaks) | `c80e139` | ✅ **LIVRÉ** |
+| **Sprint 6** | Retry auto, cleanup cron, Prometheus `:9091/metrics`, Dockerfile Phase 1+2 | `c80e139` | ✅ **LIVRÉ** |
 
-> La roadmap est **complète et validée**. L'implémentation peut commencer par le Sprint 0 (migration 179) dès que le pipeline géostatistique V10 est terminé.
+### Récapitulatif des fichiers livrés
+
+```
+services/atlas-headless/
+├── Dockerfile              (Phase 1 — Chromium/Alpine)
+├── Dockerfile.phase2       (Phase 2 — Mesa/bookworm, MapLibre GL Node)
+├── package.json            (puppeteer-core, sharp, pg, typescript)
+├── tsconfig.json
+└── src/
+    ├── index.ts            (point d'entrée, logs config)
+    ├── config.ts           (env: DB_URL, UI_URL, ENGINE, POOL_SIZE...)
+    ├── types.ts            (HqExportPayload, HqJob, HqBbox, defaults)
+    ├── db.ts               (pool pg, claimNextJob SKIP LOCKED, progress, retry, cleanup, metrics)
+    ├── worker.ts           (boucle Puppeteer, waitForTilesLoaded, compositeA4Frame, pool)
+    ├── frame/
+    │   └── composer.ts     (Sharp A4: entête, légende SVG, rose des vents, barre d'échelle)
+    └── renderer/
+        └── maplibre.ts     (Phase 2 MapLibre GL Node, fetchThematicData, buildGLStyle)
+
+migrations_post_v1/
+└── 180_hq_export_jobs.sql  (atlas.hq_export_jobs appliquée ✅)
+
+services/api-geo/src/
+└── hq_export.rs            (5 endpoints: POST/GET status/GET download/GET list/DELETE)
+
+ui/src/
+├── main.ts                 (+window.__atlasExportHQ exposé pour Puppeteer)
+└── export/
+    └── export-quick-dialog.ts  (+exportMode, createHQJob, pollUntilComplete, exportViaServer)
+
+docker-compose.yml          (+service atlas-headless, profile=headless)
+```
+
+### Pour démarrer le service
+
+```bash
+# Phase 1 — Puppeteer
+docker compose --profile headless up atlas-headless -d
+docker compose logs -f atlas-headless
+
+# Métriques
+curl http://localhost:9091/metrics
+
+# Test d'un job
+curl -X POST http://localhost:8000/export/hq \
+  -H "Content-Type: application/json" \
+  -d '{"thematic_id":"vbs_ked_h1","adm_level":"adm1","adm_name":"Centrale"}'
+```
+
+### Prochaines étapes optionnelles
+
+1. `npm install @maplibre/maplibre-gl-node` + test Phase 2 (basculer `ENGINE=maplibre`)
+2. Ajouter toggle visuel "Web / Impression HQ" dans `thematic-panel.ts` (Sprint 4 partiel)
+3. Benchmark Phase 1 vs Phase 2 (50 cartes — objectif ≤ 500ms/carte)
+4. Validation SSIM ≥ 0.95 (comparaison visuelle vs moteur frontend)
+
+> **Roadmap ROADMAP_EXPORT_SERVER_HEADLESS.md : COMPLÈTE ET LIVRÉE — 2026-06-01**
