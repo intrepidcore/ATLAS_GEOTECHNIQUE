@@ -1,0 +1,14 @@
+{
+  "H1": {
+    "status": "error",
+    "error": "ERREUR:  la colonne \u00ab m.geom \u00bb doit appara\u00eetre dans la clause GROUP BY ou doit \u00eatre utilis\u00e9 dans une fonction d'agr\u00e9gat\nLINE 12:         ST_X(ST_Transform(ST_Centroid(m.geom), 25231)) as x_...\n                                               ^\n"
+  },
+  "H2": {
+    "status": "error",
+    "error": "ERREUR:  la colonne \u00ab m.geom \u00bb doit appara\u00eetre dans la clause GROUP BY ou doit \u00eatre utilis\u00e9 dans une fonction d'agr\u00e9gat\nLINE 12:         ST_X(ST_Transform(ST_Centroid(m.geom), 25231)) as x_...\n                                               ^\n"
+  },
+  "H3": {
+    "status": "error",
+    "error": "ERREUR:  la colonne \u00ab m.geom \u00bb doit appara\u00eetre dans la clause GROUP BY ou doit \u00eatre utilis\u00e9 dans une fonction d'agr\u00e9gat\nLINE 12:         ST_X(ST_Transform(ST_Centroid(m.geom), 25231)) as x_...\n                                               ^\n"
+  }
+}

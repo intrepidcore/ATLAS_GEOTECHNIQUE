@@ -1,4 +1,4 @@
-```
+
 ══════════════════════════════════════════════════════════════════════
 INTREPID CORE ENGINEERING STANDARDS
 Prompt canonique — Rédaction de rapport scientifique et technique
@@ -365,7 +365,8 @@ Si une case est décochée → compléter avant de soumettre.
 ══════════════════════════════════════════════════════════════════════
 INSTRUCTIONS D'USAGE
 ══════════════════════════════════════════════════════════════════════
-
+```
+```
 COMMENT UTILISER CE PROMPT :
 
   1. Donner ce document à l'agent IA en contexte système ou en
@@ -431,4 +432,3 @@ L'agent doit commencer son travail par un message de la forme :
 FIN DU PROMPT CANONIQUE
 Intrepid Core Engineering Standards — v1.0 — 30 mai 2026
 ══════════════════════════════════════════════════════════════════════
-```

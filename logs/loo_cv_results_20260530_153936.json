@@ -1,0 +1,42 @@
+[
+  {
+    "param_id": "vbs_rk_h1",
+    "status": "computed",
+    "n": 204,
+    "loo_rmse": 1.7624880520201012,
+    "regression_r2": 0.15732271451739743,
+    "elapsed_s": 1.8183763027191162
+  },
+  {
+    "param_id": "ip_rk_h1",
+    "status": "computed",
+    "n": 220,
+    "loo_rmse": 6.964877983174596,
+    "regression_r2": 0.12224174262208465,
+    "elapsed_s": 2.868457555770874
+  },
+  {
+    "param_id": "wl_rk_h1",
+    "status": "computed",
+    "n": 211,
+    "loo_rmse": 14.7391220543638,
+    "regression_r2": 0.17671649798856537,
+    "elapsed_s": 2.5715177059173584
+  },
+  {
+    "param_id": "wp_rk_h1",
+    "status": "computed",
+    "n": 202,
+    "loo_rmse": 7.036323769938627,
+    "regression_r2": 0.09383200425713412,
+    "elapsed_s": 1.4584169387817383
+  },
+  {
+    "param_id": "eg_rk_h1",
+    "status": "computed",
+    "n": 186,
+    "loo_rmse": 1.0426996105585913,
+    "regression_r2": 0.16715200596745805,
+    "elapsed_s": 1.0137991905212402
+  }
+]

@@ -1,0 +1,14 @@
+{
+  "H1": {
+    "status": "error",
+    "error": "ERREUR:  syntaxe en entr\u00e9e invalide pour le type uuid : \u00ab rk_eg_H1_20260518_192330 \u00bb\nLINE 4: ...3.9377682916739527, 'regression_kriging_scorpan', 'rk_eg_H1_...\n                                                             ^\n"
+  },
+  "H2": {
+    "status": "error",
+    "error": "ERREUR:  syntaxe en entr\u00e9e invalide pour le type uuid : \u00ab rk_eg_H2_20260518_192332 \u00bb\nLINE 4: ... 4.081891652648945, 'regression_kriging_scorpan', 'rk_eg_H2_...\n                                                             ^\n"
+  },
+  "H3": {
+    "status": "error",
+    "error": "ERREUR:  syntaxe en entr\u00e9e invalide pour le type uuid : \u00ab rk_eg_H3_20260518_192333 \u00bb\nLINE 4: ...', 4.1391803893459, 'regression_kriging_scorpan', 'rk_eg_H3_...\n                                                             ^\n"
+  }
+}

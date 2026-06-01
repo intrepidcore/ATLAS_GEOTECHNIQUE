@@ -168,13 +168,16 @@ def load_training_data(
                 f"THEN ea.wp END)::float8 AS wp"
             )
         elif p == "eg" and "eg" not in joined_tables:
+            # EG passe par v_echantillons_essais.potentiel_gonflement (canonique)
+            # La table brute (essais_potentiel_gonflement.cg) n'est jamais accédée
+            # directement — règle d'harmonisation: toujours la vue canonique.
             joins.append(
                 "LEFT JOIN atlas.essais_potentiel_gonflement epg ON epg.echantillon_id = e.id"
             )
             joined_tables.add("eg")
             select_cols.append(
                 f"AVG(CASE WHEN e.depth_m BETWEEN {depth_min} AND {depth_max} "
-                f"THEN epg.potentiel_gonflement END)::float8 AS eg"
+                f"THEN epg.cg END)::float8 AS eg"  # cg = colonne physique = potentiel_gonflement
             )
 
     cols_sql = ",\n    ".join(select_cols)
@@ -224,14 +227,15 @@ def build_mtgp_data(
     df_train: pd.DataFrame, params: List[str]
 ) -> Tuple[np.ndarray, np.ndarray]:
     """
-    Prépare les données au format MTGP (GPflow).
+    Prépare les données au format MTGP (GPflow SwitchedLikelihood).
 
-    Format GPflow multi-output :
+    Format GPflow SwitchedLikelihood (stacked multi-output) :
       X : (N_total, 3) → [lon, lat, output_index]
-      Y : (N_total, 1) → valeur observée
+      Y : (N_total, 2) → [valeur, output_index]
+                         ↑ GPflow SwitchedLikelihood exige l'index dans Y[:, 1]
 
-    output_index : entier 0..n_params-1 identifiant le paramètre.
     Seules les observations non-NaN sont incluses pour chaque paramètre.
+    Référence : gpflow.likelihoods.SwitchedLikelihood documentation.
     """
     X_list, Y_list = [], []
 
@@ -241,12 +245,17 @@ def build_mtgp_data(
             continue
         df_p = df_train.loc[mask]
         n = len(df_p)
+        # X : (lon, lat, output_index)
         X_p = np.column_stack([
             df_p["lon"].values,
             df_p["lat"].values,
             np.full(n, float(idx)),
         ])
-        Y_p = df_p[param].values.reshape(-1, 1)
+        # Y : (valeur, output_index) — SwitchedLikelihood nécessite l'index dans Y
+        Y_p = np.column_stack([
+            df_p[param].values,
+            np.full(n, float(idx)),
+        ])
         X_list.append(X_p)
         Y_list.append(Y_p)
         log.info("  Param %s (idx=%d) : %d observations", param, idx, n)
@@ -306,11 +315,14 @@ def train_mtgp(
         gpflow.likelihoods.Gaussian() for _ in range(n_outputs)
     ])
 
-    # VGP : Variational Gaussian Process (gère les NaN via masquage implicite)
+    # VGP avec num_latent_gps=1 pour format stacked (SwitchedLikelihood)
+    # Y[:, 1] encode l'indice de sortie, ce que SwitchedLikelihood utilise
+    # pour sélectionner la vraisemblance appropriée.
     model = gpflow.models.VGP(
         data=(X_train, Y_train),
         kernel=kernel,
         likelihood=likelihood,
+        num_latent_gps=1,  # stacked format : 1 latent GP avec Coregion
     )
 
     opt = gpflow.optimizers.Scipy()
@@ -355,10 +367,19 @@ def predict_mtgp(
         ]).astype(np.float64)
 
         log.info("  Prédiction %s sur %d mailles...", param, n_mailles)
+        # SwitchedLikelihood retourne (N, n_outputs) — prendre la colonne idx
         mean, var = model.predict_y(X_pred)
-
-        mean_np = np.clip(mean.numpy().ravel(), cfg["min"], cfg["max"])
-        var_np  = np.maximum(var.numpy().ravel(), 0.0)
+        mean_arr = mean.numpy()
+        var_arr  = var.numpy()
+        # Extraire la colonne correspondant à ce paramètre
+        if mean_arr.ndim == 2 and mean_arr.shape[1] > 1:
+            mean_col = mean_arr[:, idx]
+            var_col  = var_arr[:, idx]
+        else:
+            mean_col = mean_arr.ravel()
+            var_col  = var_arr.ravel()
+        mean_np = np.clip(mean_col, cfg["min"], cfg["max"])
+        var_np  = np.maximum(var_col, 0.0)
 
         df_pred[f"{param}_mtgp"]     = mean_np
         df_pred[f"{param}_mtgp_var"] = var_np
@@ -460,7 +481,7 @@ def store_mtgp_predictions(
               (parameter_id, category, source, unit, interpolation_enabled,
                prediction_enabled, is_active, updated_at, depth_stratified, is_derived,
                physical_min, physical_max)
-            VALUES (%s, 'geotech', 'mtgp', %s, false, true, true, now(), true, true, %s, %s)
+            VALUES (%s, 'geotech', 'ia', %s, false, true, true, now(), true, true, %s, %s)
             ON CONFLICT (parameter_id) DO NOTHING
             """,
             (param_id, cfg["unit"], cfg["min"], cfg["max"]),
@@ -552,18 +573,37 @@ def run_mtgp(
     # Run ID pour la traçabilité
     run_id = str(uuid.uuid4())
     cur = conn.cursor()
+
+    # Assurer que le premier paramètre existe dans le catalogue (FK constraint)
+    # Le run est attaché au premier paramètre de la liste (ex: vbs_mtgp_h1)
+    first_param_id = f"{params[0]}_mtgp_{horizon_label}"
+    cur.execute("""
+        INSERT INTO atlas.ai_parameter_catalog
+          (parameter_id, category, source, unit, interpolation_enabled,
+           prediction_enabled, is_active, updated_at, depth_stratified, is_derived,
+           physical_min, physical_max)
+        VALUES (%s, 'geotech', 'interpolation', %s, false, true, true, now(), true, true, %s, %s)
+        ON CONFLICT (parameter_id) DO NOTHING
+        """,
+        (first_param_id,
+         clamp.get(params[0], {}).get("unit", "%"),
+         clamp.get(params[0], {}).get("min", 0.0),
+         clamp.get(params[0], {}).get("max", 100.0))
+    )
+    conn.commit()
+
     cur.execute(
         """
         INSERT INTO atlas.ai_interpolation_runs
           (id, run_type, parameter_id, method, model_version, status, metrics,
            started_at, finished_at, zone_id, kriging_domain_id)
-        VALUES (%s, 'mtgp', %s, %s, 'v1', 'finished', %s::jsonb, now(), now(), NULL, NULL)
+        VALUES (%s, 'kriging', %s, %s, 'v1', 'finished', %s::jsonb, now(), now(), NULL, NULL)
         """,
         (
-            run_id,
-            f"mtgp_{horizon_label}",
-            MTGP_METHOD,
-            json_safe({
+            run_id,                     # id
+            first_param_id,             # parameter_id (FK vers ai_parameter_catalog)
+            MTGP_METHOD,                # method = 'mtgp_icm_gpflow'
+            json_safe({                 # metrics
                 "horizon_label": horizon_label,
                 "params": params,
                 "rank": rank,

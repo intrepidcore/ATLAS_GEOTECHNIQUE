@@ -1,0 +1,17 @@
+[
+  {
+    "param_id": "eg_rk_h1",
+    "status": "skipped",
+    "loo_rmse": 1.0426996105585913
+  },
+  {
+    "param_id": "eg_rk_h2",
+    "status": "skipped",
+    "loo_rmse": 1.506535401088282
+  },
+  {
+    "param_id": "eg_rk_h3",
+    "status": "skipped",
+    "loo_rmse": 1.1688388211714928
+  }
+]

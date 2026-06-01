@@ -1,0 +1,26 @@
+[
+  {
+    "param_id": "eg_rk_h1",
+    "status": "computed",
+    "n": 186,
+    "loo_rmse": 1.0426996105585913,
+    "regression_r2": 0.16715200596745805,
+    "elapsed_s": 1.1224744319915771
+  },
+  {
+    "param_id": "eg_rk_h2",
+    "status": "computed",
+    "n": 279,
+    "loo_rmse": 1.506535401088282,
+    "regression_r2": 0.1687481700730714,
+    "elapsed_s": 3.894998550415039
+  },
+  {
+    "param_id": "eg_rk_h3",
+    "status": "computed",
+    "n": 186,
+    "loo_rmse": 1.1688388211714928,
+    "regression_r2": 0.18204329854111956,
+    "elapsed_s": 1.0016305446624756
+  }
+]

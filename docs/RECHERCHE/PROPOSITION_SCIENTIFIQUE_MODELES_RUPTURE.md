@@ -379,84 +379,199 @@ Références :
   evaluate several soil properties", Soil Sci. Soc. Am. J.
 ```
 
-### 4.3 Architecture du système VBS-from-Sentinel (VfS)
+### 4.3 Point de vigilance 1 — Le paradoxe de la profondeur
 
-**Principe** : construire une fonction de transfert entre indices spectraux satellite et VBS mesuré en laboratoire, calibrée sur les 123 sondages disponibles.
+**Critique légitime :** Sentinel-2 ne voit que les 2 premiers millimètres de sol (optique) ou 30 cm maximum (SAR). Or la géotechnique s'intéresse aux horizons à 1m, 1.5m, 2m.
 
-```
-Entrées satellites (gratuits, résolution 10-20m) :
-┌─────────────────────────────────────────────────────┐
-│ Sentinel-2 (MSI) :                                   │
-│   - B11 (1610nm SWIR) : argile + eau                 │
-│   - B12 (2190nm SWIR) : minéraux argileux            │
-│   - B04/B08 (rouge/NIR) : végétation (NDVI)          │
-│   - B02/B04/B11 : Iron oxide ratio (rouille latérite)│
-│                                                       │
-│ Sentinel-1 (SAR) :                                   │
-│   - VV/VH backscatter : texture de surface           │
-│   - Ratio VV/VH : rugosité, humidité                 │
-│                                                       │
-│ ALOS-PALSAR L-band :                                 │
-│   - Pénétration végétation + 30cm sol                │
-└─────────────────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────────────────┐
-│ Indices dérivés :                                    │
-│   Clay_Index = B11/B12  (Kalinowski & Oliver 2004)  │
-│   Iron_Oxide = B04/B02  (Drury 1993)                │
-│   SWIR_ratio = (B11-B12)/(B11+B12)                  │
-│   NDVI = (B08-B04)/(B08+B04)                        │
-│   SAR_texture = GLCM(Sentinel-1 VH)                 │
-└─────────────────────────────────────────────────────┘
-           ↓
-┌─────────────────────────────────────────────────────┐
-│ Modèle de transfert :                               │
-│   Random Forest Regressor (scikit-learn)            │
-│   ou Gaussian Process avec noyau Matérn 3/2         │
-│                                                       │
-│   VBS_pred = f(Clay_Index, Iron_Oxide, NDVI,        │
-│                SWIR_ratio, SAR_texture,              │
-│                altitude, type_sol)                   │
-│                                                       │
-│   Entraîné sur : 123 paires (spectre, VBS_labo)     │
-└─────────────────────────────────────────────────────┘
-           ↓
-  VBS prédit à 10m de résolution sur tout le Togo
-  SANS aucun sondage ni laboratoire
-```
+**Réponse empirique (vérifiée dans notre DB) :**
 
-### 4.4 Intégration dans le pipeline existant comme L4
+> Sur les **101 sondages** avec profils complets H1(1m) + H3(2m) disponibles dans Atlas :
+> - Corrélation VBS_H1 / VBS_H3 = **r = 0.511** (p < 0.001)
+> - Différence moyenne H1-H3 = **1.95 g/100g** (sur plage 0-20)
+>
+> Ce r = 0.51 confirme une **cohérence verticale partielle**. Dans les sols résiduels d'altération in-situ (gneiss, micaschistes, orthogneiss = 53% du territoire togolais), la minéralogie argileuse de surface est génétiquement liée à celle de la profondeur — le signal spectral de surface est donc un prédicteur **partiel mais réel** de la géotechnique en profondeur.
+
+**Limitation honnête et solution :**
 
 ```
-L1 — KED        : variogramme pédologique          (21 cartes)
-L2 — RK SCORPAN : régression DSM+climat+krigeage   (15 cartes)
-L3 — ML CatBoost: supervisé (quand N > 200)        (futur)
-L4 — VfS        : spectrométrie satellite sans labo (INNOVATION)
+Zones problématiques (signal surface ≠ géotechnique profonde) :
+  → Cuirasses latéritiques : atlas.unites_geologiques.type_sols LIKE '%Cuirasse%'
+    = 2 464 mailles (8.4%) → MASQUER ou SIGNALER incertitude haute
+  → Alluvions récentes : formations alluvionnaires
+    = 3 267 mailles (11.1%) → profil vertical discontinu
 
-Hiérarchie de confiance :
-  - Là où des sondages existent → L1/L2 dominent
-  - Là où aucun sondage n'existe → L4 fournit le prior satellite
-  - L4 utilisé comme covariable supplémentaire dans L2
+Zones favorables (cohérence verticale attendue) :
+  → Sols résiduels sur gneiss/orthogneiss/micaschistes = 53%
+  → Sols ferrugineux profonds = 22%
+
+Stratégie : deux modèles VfS séparés selon atlas.unites_geologiques
+  - Modèle A : sols résiduels (N ≈ 80 sondages)  ← performant
+  - Modèle B : zones alluviales/cuirasses (N ≈ 23) ← incertitude haute
 ```
 
-### 4.5 Protocole de validation
+**Formulation pour la soutenance :** *"Le modèle VfS est appliqué avec un masque géologique : les formations résiduelles (53% du territoire, r_vertical = 0.51) bénéficient d'une prédiction avec incertitude quantifiée. Les zones alluvionnaires et les cuirasses sont marquées comme 'prédiction à confirmer par sondage'."*
+
+### 4.4 Point de vigilance 2 — Malédiction dimensionnelle : PLS, pas Random Forest
+
+**Critique légitime :** Avec N ≈ 100-120 sondages et 20+ indices spectraux potentiels, Random Forest mémorisera le bruit (overfitting).
+
+**Solution : Régression PLS (Partial Least Squares)**
+
+La PLS est la **norme absolue** en spectroscopie des sols depuis Viscarra Rossel et al. (2006). Elle est conçue précisément pour N petit avec de nombreuses features correlées (spectres).
 
 ```python
-# Validation en 3 phases
+# scikit-learn : sklearn.cross_decomposition.PLSRegression
 
-# Phase 1 : Validation sur les 123 sondages existants
-# Utiliser LOO-CV : pour chaque sondage, cacher le point,
-# prédire depuis le satellite, comparer au laboratoire
-# Métriques : r², RMSE
+from sklearn.cross_decomposition import PLSRegression
+from sklearn.model_selection import LeaveOneOut
+from sklearn.metrics import r2_score, mean_squared_error
 
-# Phase 2 : Validation sur 10-15 sondages de contrôle
-# Campagne terrain légère : prélèvements simples
-# + spectre de terrain au spectroradiomètre portable (ASD FieldSpec)
-# OU spectre extrait de Sentinel-2 (pixel intersectant le sondage)
+# Modèle PLS avec 3-5 composantes latentes
+# (chaque composante = direction de variance spectrale corrélée à VBS)
+pls = PLSRegression(n_components=3)  # à optimiser par CV
 
-# Phase 3 : Carte de confiance
-# Intervalles de prédiction 90% → savoir où la prédiction est fiable
-# Décision : si IC > 2 × RMSE → marquer "à vérifier terrain"
+# Validation LOO rigoureuse
+loo = LeaveOneOut()
+preds = []
+for train_idx, test_idx in loo.split(X_spectral):
+    pls.fit(X_spectral[train_idx], y_VBS[train_idx])
+    preds.append(pls.predict(X_spectral[test_idx])[0])
+
+loo_rmse = np.sqrt(mean_squared_error(y_VBS, preds))
+# → Comparer à LOO-RMSE KED (3.06) → si PLS_RMSE < 3.06, c'est une contribution
+```
+
+**Quand utiliser Random Forest :**
+- Seulement si N > 200 sondages ET avec ACP préalable (3-5 composantes)
+- Avec validation spatiale bloc-CV (pas LOO — trop optimiste pour données spatiales)
+
+**Features à retenir :** 3-6 indices maximum (plus interprétables, moins d'overfitting) :
+- `Clay_Index = B11/B12` ← le plus informé sur la minéralogie argileuse
+- `SWIR_ratio = (B11-B12)/(B11+B12)` ← saisonnalité argile/eau
+- `Iron_Oxide = B04/B02` ← proxy goethite/latérite (anticorrélé à VBS)
+- `NDVI` ← végétation = proxy humidité/MO → affecter WL
+
+### 4.5 Architecture VfS — Google Earth Engine (pipeline recommandé)
+
+**Rejet de l'approche par téléchargement direct.** Pourquoi : Togo zone tropicale = couverture nuageuse > 60% sur la plupart des images individuelles. Sentinel-2 nécessite une correction atmosphérique et un masquage nuage rigoureux. Gérer ces pré-traitements en local est coûteux (>100 GB par scène).
+
+**Solution recommandée : Google Earth Engine (GEE)**
+
+```python
+# scripts/vfs_extract_spectral.py
+# Extraction automatique des indices spectraux via GEE API
+# Déclenchée à chaque nouveau sondage importé
+
+import ee
+import geemap
+import pandas as pd
+
+ee.Initialize()  # nécessite compte GEE (gratuit recherche)
+
+def extract_spectral_indices_for_sondages(sondages: list[dict]) -> pd.DataFrame:
+    """
+    Pour chaque sondage {id, lon, lat}, extrait les indices spectraux
+    depuis un composite Sentinel-2 sans nuage (GEE, médiane annuelle).
+    
+    Évite tout téléchargement de scène brute.
+    Actualise automatiquement à chaque import de sondage.
+    """
+    # 1. Composite Sentinel-2 annuel sans nuage (médiane sur 12 mois)
+    s2 = (ee.ImageCollection('COPERNICUS/S2_SR_HARMONIZED')
+            .filterDate('2023-01-01', '2024-12-31')
+            .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
+            .filterBounds(ee.Geometry.Rectangle([
+                -0.2, 6.0, 1.9, 11.2  # bbox Togo
+            ]))
+            .median()
+            .select(['B4','B8','B11','B12'])  # Rouge, NIR, SWIR1, SWIR2
+    )
+    
+    # 2. Calculer les indices
+    clay_index  = s2.select('B11').divide(s2.select('B12')).rename('clay_index')
+    swir_ratio  = s2.normalizedDifference(['B11','B12']).rename('swir_ratio')
+    ndvi        = s2.normalizedDifference(['B8','B4']).rename('ndvi')
+    iron_oxide  = s2.select('B4').divide(s2.select('B8')).rename('iron_oxide')
+    
+    image = ee.Image.cat([clay_index, swir_ratio, ndvi, iron_oxide])
+    
+    # 3. Extraire aux coordonnées des sondages
+    points = ee.FeatureCollection([
+        ee.Feature(ee.Geometry.Point([s['lon'], s['lat']]),
+                   {'sondage_id': s['id']})
+        for s in sondages
+    ])
+    
+    result = image.sampleRegions(
+        collection=points,
+        scale=20,       # résolution Sentinel-2 SWIR = 20m
+        geometries=True
+    )
+    
+    return geemap.ee_to_df(result)
+```
+
+**Intégration dans le pipeline auto-amélioration :**
+```
+Nouveau sondage importé
+    ↓
+trigger trg_enqueue_ai_jobs_after_sondage
+    ↓
+ai_job_queue → job_type='extract_spectral_gee'
+    ↓
+worker Python → vfs_extract_spectral.py (GEE, < 30 secondes)
+    ↓
+Stockage dans atlas.sondage_spectral_features (nouvelle table)
+    ↓
+Recalibration PLS si N_nouveaux > seuil → vfs_calibrate_pls.py
+    ↓
+Mise à jour VBS_VfS prédit comme feature SCORPAN dans v_scorpan_features
+```
+
+### 4.6 Intégration des couches géologiques dans les calculs — Réponse explicite
+
+> **Question :** Est-ce que pédologie + risque + géologie + hydrogéologie seront utilisées pour les **calculs scientifiques** ?
+
+**Oui, voici comment chacune sera utilisée :**
+
+| Couche | Utilisation dans les calculs |
+|---|---|
+| `unites_pedologiques` | ✅ **Déjà active** : dérive du KED (`pedological_drift_priors`) |
+| `unites_geologiques` | ✅ **Proposée** : (1) niveau 4 de la dérive hiérarchique KED, (2) masque géologique VfS (sols résiduels vs cuirasses), (3) feature catégorielle dans Ridge SCORPAN |
+| `risque_gonflement` | ✅ **Proposée** : (1) niveau 3 de la dérive hiérarchique, (2) variable cible de calibration pour VfS → corréler Clay_Index à classe RGA directement |
+| `hydrogeologie` | ✅ **Proposée** : (1) feature dans Ridge SCORPAN (profondeur nappe → saturation → gonflement), (2) niveau 5 dérive hiérarchique. Particulièrement critique pour EG (essai gonflement = fonction de la teneur en eau) |
+
+**Justification scientifique de l'hydrogéologie dans EG :**
+```
+EG (potentiel gonflement) = f(argile gonflante, teneur en eau initiale)
+                          = f(minéralogie) × f(état hydrique)
+
+L'hydrogéologie encode l'état hydrique probable du sol → premier facteur
+de variance de EG après la minéralogie.
+Référence : Seed et al. (1962) "The swelling and shrinkage of clays",
+Géotechnique 12(4), 329-342.
+```
+
+### 4.7 Point de vigilance 3 — Scalabilité MTGP : clarification
+
+**Clarification critique :** Le bottleneck O(N³) d'un GP s'applique à N = **données d'entraînement**, pas aux données de prédiction.
+
+```
+Situation réelle dans Atlas :
+  N_entraînement = ~300-600 points (sondages × 5 paramètres)
+  N_prédiction   = 29 407 mailles
+
+  Inversion de la matrice de Gram :
+  - 600×600 matrice → triviale (< 1s)
+  - O(600³) = 2.16 × 10⁸ ops → pas un problème
+
+  Prédiction :
+  - O(N_pred × N_train) = O(29407 × 600) = 17.6M ops → < 1s avec NumPy
+```
+
+**Le vrai risque :** mauvais conditionnement de la matrice de covariance conjointe quand les corrélations inter-paramètres approchent 1.0. Solution : `gpflow.config.set_default_jitter(1e-4)` + décomposition de Cholesky avec régularisation.
+
+**SVGP recommandé pour** : si N_train dépasse 2000 (après ~300 nouveaux sondages). Avec M=50 inducing points, `GPflow.models.SVGP` réduit à O(NM²) = O(2000×50²) = trivial.
 ```
 
 ---

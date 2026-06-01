@@ -1,0 +1,77 @@
+[
+  {
+    "param_id": "vbs_rk_h1",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "vbs_rk_h2",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "vbs_rk_h3",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "ip_rk_h1",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "ip_rk_h2",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "ip_rk_h3",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "wl_rk_h1",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "wl_rk_h2",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "wl_rk_h3",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "wp_rk_h1",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "wp_rk_h2",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "wp_rk_h3",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "eg_rk_h1",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "eg_rk_h2",
+    "status": "insufficient_data",
+    "n": 0
+  },
+  {
+    "param_id": "eg_rk_h3",
+    "status": "insufficient_data",
+    "n": 0
+  }
+]

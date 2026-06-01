@@ -1,0 +1,2 @@
+$env:PGPASSWORD = 'postgres'
+& "C:\Program Files\PostgreSQL\17\bin\psql.exe" -U postgres -h 127.0.0.1 -p 5433 -d atlas_clean -f "C:\PROJET_ATLAS_MASTER\atlas_reclone\migrations_post_v1\150_create_scorpan_view_final.sql"

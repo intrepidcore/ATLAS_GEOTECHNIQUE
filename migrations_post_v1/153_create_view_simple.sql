@@ -1,0 +1,76 @@
+-- Vue simplifiée mailles_geotechnique_stats_wgs84 avec uniquement les colonnes RK
+-- Pour permettre à l'API de lire les params RK
+
+CREATE OR REPLACE VIEW atlas.mailles_geotechnique_stats_wgs84 AS
+SELECT 
+    m.id,
+    m.code,
+    m.geom,
+    NULL as geom_4326,
+    NULL as geom_simplified,
+    NULL as adm1_name,
+    m.adm2_name,
+    NULL as adm3_name,
+    0 as n_sondages,
+    0 as n_sondages_exact,
+    0 as n_sondages_random,
+    0 as n_echantillons,
+    0 as n_essais_geo,
+    false as has_data,
+    false as has_exact_location,
+    false as has_random_location,
+    NULL::numeric as wl_avg,
+    NULL::numeric as wp_avg,
+    NULL::numeric as ip_avg,
+    NULL::numeric as ip_stddev,
+    NULL::numeric as ip_min,
+    NULL::numeric as ip_max,
+    NULL::numeric as vbs_avg,
+    NULL::numeric as vbs_stddev,
+    NULL::numeric as vbs_min,
+    NULL::numeric as vbs_max,
+    NULL::numeric as gamma_d_max_avg,
+    NULL::numeric as gamma_d_max_stddev,
+    NULL::numeric as w_opt_avg,
+    NULL::numeric as w_opt_stddev,
+    NULL::numeric as eg_avg,
+    NULL::numeric as eg_stddev,
+    NULL::numeric as eg_min,
+    NULL::numeric as eg_max,
+    NULL::numeric as passant_80um_avg,
+    NULL::numeric as passant_2mm_avg,
+    NULL::numeric as passant_20mm_avg,
+    0 as n_vbs_insensible,
+    0 as n_vbs_peu_sensible,
+    0 as n_vbs_sensible,
+    0 as n_vbs_moyen_argileux,
+    0 as n_vbs_argileux,
+    0 as n_vbs_tres_argileux,
+    0 as n_eg_negligeable,
+    0 as n_eg_faible,
+    0 as n_eg_moyen,
+    0 as n_eg_fort,
+    0 as n_eg_tres_fort,
+    m.vbs_rk_h1,
+    m.vbs_rk_h2,
+    m.vbs_rk_h3,
+    m.ip_rk_h1,
+    m.ip_rk_h2,
+    m.ip_rk_h3,
+    m.wl_rk_h1,
+    m.wl_rk_h2,
+    m.wl_rk_h3,
+    m.wp_rk_h1,
+    m.wp_rk_h2,
+    m.wp_rk_h3,
+    m.eg_rk_h1,
+    m.eg_rk_h2,
+    m.eg_rk_h3
+FROM atlas.mailles m;
+
+-- Vérification
+SELECT 'total' as test, COUNT(*) as cnt FROM atlas.mailles_geotechnique_stats_wgs84
+UNION ALL
+SELECT 'vbs_rk_h1', COUNT(vbs_rk_h1) FROM atlas.mailles_geotechnique_stats_wgs84
+UNION ALL
+SELECT 'ip_rk_h1', COUNT(ip_rk_h1) FROM atlas.mailles_geotechnique_stats_wgs84;
