@@ -67,6 +67,7 @@ mod surveys_extended;
 mod surveys_unified;
 mod thematic;
 mod version;
+mod hq_export;
 
 #[derive(Serialize)]
 struct Health {
@@ -356,6 +357,12 @@ async fn main() -> anyhow::Result<()> {
         // Orchestrateur export (web|hq)
         .route("/export", post(exports::create_export))
         .route("/export/jobs/:id", get(exports::get_export_job))
+        // HQ Export — Moteur serveur headless (Sprint 1 — migration 180)
+        .route("/export/hq", post(hq_export::create_hq_export))
+        .route("/export/hq/list", get(hq_export::list_hq_exports))
+        .route("/export/hq/status/:id", get(hq_export::get_hq_export_status))
+        .route("/export/hq/download/:id", get(hq_export::download_hq_export))
+        .route("/export/hq/:id", axum::routing::delete(hq_export::cancel_hq_export))
         // Export endpoints
         .route("/exports/geopackage", get(exports::export_geopackage))
         .route(

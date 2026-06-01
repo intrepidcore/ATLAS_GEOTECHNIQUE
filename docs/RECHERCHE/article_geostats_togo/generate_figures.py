@@ -66,6 +66,13 @@ PARAMS_FR = {
     "wl":  "WL (%)",
     "wp":  "WP (%)",
     "eg":  "EG (%)",
+    # V11 — nouveaux paramètres
+    "rd_mpa":  "Rd (MPa)",
+    "cbr_95":  "CBR 95% (%)",
+    "gamma_d": "gamma_d (g/cm³)",
+    "w_opt":   "w_opt (%)",
+    "em_mpa":  "Em (MPa)",
+    "pl_mpa":  "Pl (MPa)",
 }
 
 SCRIPT_DIR = Path(__file__).parent
@@ -899,6 +906,314 @@ def fig16_regional_performance(out_dir: Path):
     savefig(fig, "fig16_regional_performance", out_dir)
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FIGURE 17 — Statistiques descriptives V11 : boxplots 6 nouveaux paramètres
+# ─────────────────────────────────────────────────────────────────────────────
+def fig17_v11_descriptive_stats(out_dir: Path):
+    conn = get_conn(); cur = conn.cursor()
+
+    # Rd MPa (essais_penetrometre)
+    cur.execute("""
+        SELECT ep.rd_mpa FROM atlas.sondages s
+        JOIN atlas.echantillons e ON e.sondage_id=s.id
+        JOIN atlas.essais_penetrometre ep ON ep.echantillon_id=e.id
+        WHERE s.deleted_at IS NULL AND ep.rd_mpa IS NOT NULL AND ep.rd_mpa BETWEEN 0 AND 120
+    """)
+    rd = [float(r[0]) for r in cur.fetchall()]
+
+    # CBR 95% (n_coups=55)
+    cur.execute("""
+        SELECT ec.cbr_pct FROM atlas.sondages s
+        JOIN atlas.echantillons e ON e.sondage_id=s.id
+        JOIN atlas.essais_cbr ec ON ec.echantillon_id=e.id
+        WHERE s.deleted_at IS NULL AND ec.cbr_pct IS NOT NULL AND ec.cbr_pct >= 0
+          AND ec.n_coups = 55
+    """)
+    cbr = [float(r[0]) for r in cur.fetchall()]
+
+    # gamma_d max (kN/m3 -> g/cm3)
+    cur.execute("""
+        SELECT ep.gamma_d_max / 10.0 FROM atlas.sondages s
+        JOIN atlas.echantillons e ON e.sondage_id=s.id
+        JOIN atlas.essais_proctor ep ON ep.echantillon_id=e.id
+        WHERE s.deleted_at IS NULL AND ep.gamma_d_max IS NOT NULL
+          AND ep.gamma_d_max BETWEEN 14 AND 25
+    """)
+    gd = [float(r[0]) for r in cur.fetchall()]
+
+    # w_opt
+    cur.execute("""
+        SELECT ep.w_opt FROM atlas.sondages s
+        JOIN atlas.echantillons e ON e.sondage_id=s.id
+        JOIN atlas.essais_proctor ep ON ep.echantillon_id=e.id
+        WHERE s.deleted_at IS NULL AND ep.w_opt IS NOT NULL AND ep.w_opt BETWEEN 0 AND 50
+    """)
+    wopt = [float(r[0]) for r in cur.fetchall()]
+
+    # Em MPa pressiometre
+    cur.execute("""
+        SELECT ep.em_mpa FROM atlas.sondages s
+        JOIN atlas.echantillons e ON e.sondage_id=s.id
+        JOIN atlas.essais_pressiometre ep ON ep.echantillon_id=e.id
+        WHERE s.deleted_at IS NULL AND ep.em_mpa IS NOT NULL AND ep.em_mpa > 0
+    """)
+    em = [float(r[0]) for r in cur.fetchall()]
+
+    # Pl MPa pressiometre
+    cur.execute("""
+        SELECT ep.pl_mpa FROM atlas.sondages s
+        JOIN atlas.echantillons e ON e.sondage_id=s.id
+        JOIN atlas.essais_pressiometre ep ON ep.echantillon_id=e.id
+        WHERE s.deleted_at IS NULL AND ep.pl_mpa IS NOT NULL AND ep.pl_mpa > 0
+    """)
+    pl = [float(r[0]) for r in cur.fetchall()]
+    conn.close()
+
+    datasets = [rd, cbr, gd, wopt, em, pl]
+    labels   = ["Rd\n(MPa)", "CBR95\n(%)", "γd\n(g/cm³)", "w_opt\n(%)", "Em\n(MPa)", "Pl\n(MPa)"]
+    colors   = ["#1f4e79", "#c55a11", "#538135", "#7030a0", "#843c0c", "#2e75b6"]
+    units    = ["MPa", "%", "g/cm³", "%", "MPa", "MPa"]
+
+    fig, axes = plt.subplots(1, 6, figsize=(14, 3.5))
+    for ax, data, lbl, col, u in zip(axes, datasets, labels, colors, units):
+        if not data:
+            ax.text(0.5, 0.5, "N/A", ha="center", va="center", transform=ax.transAxes)
+            ax.set_title("n = 0")
+            continue
+        bp = ax.boxplot(data, patch_artist=True, widths=0.5,
+                        medianprops={"color": "white", "linewidth": 2},
+                        flierprops={"marker": "o", "markersize": 2, "alpha": 0.4})
+        bp["boxes"][0].set_facecolor(col); bp["boxes"][0].set_alpha(0.8)
+        ax.set_xticklabels([lbl])
+        ax.set_ylabel(u)
+        med = float(np.median(data))
+        ax.set_title(f"n={len(data)}\nMéd={med:.2f}", fontsize=8)
+
+    fig.suptitle("Distribution des paramètres géotechniques V11 — Togo (2026)",
+                 fontsize=9, fontweight="bold", y=1.02)
+    fig.tight_layout()
+    savefig(fig, "fig17_v11_boxplots", out_dir)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FIGURE 18 — LOO-RMSE V11 : rd_mpa, cbr_95, gamma_d, w_opt par horizon
+# ─────────────────────────────────────────────────────────────────────────────
+def fig18_v11_loo_rmse(out_dir: Path):
+    """LOO-RMSE par horizon pour les nouveaux paramètres V11, lu depuis la DB."""
+    conn = get_conn(); cur = conn.cursor()
+
+    # Lire les métriques depuis ai_interpolation_runs
+    cur.execute("""
+        SELECT parameter_id,
+               (metrics->>'loo_residual')::jsonb->>'rmse' AS rmse,
+               (metrics->>'n_train') AS n_train
+        FROM atlas.ai_interpolation_runs
+        WHERE parameter_id LIKE 'rd_mpa_ked_%'
+           OR parameter_id LIKE 'cbr_95_ked_%'
+           OR parameter_id LIKE 'gamma_d_ked_%'
+           OR parameter_id LIKE 'w_opt_ked_%'
+        ORDER BY parameter_id, finished_at DESC
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    if not rows:
+        # Pas encore de résultats — afficher placeholder
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, "Pipeline KED V11 en cours\n(résultats disponibles après calcul)",
+                ha="center", va="center", transform=ax.transAxes, fontsize=11,
+                bbox=dict(boxstyle="round", facecolor="lightyellow", edgecolor="orange"))
+        ax.set_title("LOO-RMSE V11 — En attente des résultats KED")
+        ax.axis("off")
+        savefig(fig, "fig18_v11_loo_rmse", out_dir)
+        return
+
+    # Organiser par param_kind x horizon
+    from collections import defaultdict
+    data: dict = defaultdict(dict)
+    for pid, rmse_s, n_s in rows:
+        parts = pid.rsplit("_", 1)  # ["rd_mpa_ked", "h1"]
+        if len(parts) == 2:
+            kind_model, horizon = parts
+            kind = kind_model.replace("_ked", "").replace("_rk", "")
+            try:
+                rmse_val = float(rmse_s) if rmse_s and rmse_s != "null" else None
+            except (ValueError, TypeError):
+                rmse_val = None
+            data[kind][horizon] = rmse_val
+
+    kinds    = [k for k in ["rd_mpa", "cbr_95", "gamma_d", "w_opt"] if k in data]
+    horizons = ["h1", "h2", "h3"]
+    colors_h = ["#1f4e79", "#c55a11", "#538135"]
+
+    if not kinds:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, "Aucun résultat disponible", ha="center", va="center",
+                transform=ax.transAxes, fontsize=11)
+        ax.axis("off")
+        savefig(fig, "fig18_v11_loo_rmse", out_dir)
+        return
+
+    x = np.arange(len(kinds))
+    width = 0.25
+    fig, ax = plt.subplots(figsize=(10, 4))
+    labels_kind = {"rd_mpa": "Rd (MPa)", "cbr_95": "CBR 95% (%)",
+                   "gamma_d": "γd (g/cm³)", "w_opt": "w_opt (%)"}
+    for i, hz in enumerate(horizons):
+        vals = [data[k].get(hz) for k in kinds]
+        bar_vals = [v if v is not None else 0 for v in vals]
+        bars = ax.bar(x + (i - 1) * width, bar_vals, width, label=f"KED {hz.upper()}",
+                      color=colors_h[i], alpha=0.85, edgecolor="white", linewidth=0.5)
+        for bar, v in zip(bars, vals):
+            if v is not None and v > 0 and np.isfinite(v):
+                ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.05,
+                        f"{v:.2f}", ha="center", va="bottom", fontsize=6.5)
+    ax.set_xticks(x)
+    ax.set_xticklabels([labels_kind.get(k, k) for k in kinds])
+    ax.set_ylabel("LOO-RMSE résiduel (unités physiques)")
+    ax.set_title("LOO-RMSE KED — Paramètres géotechniques V11 par horizon canonique")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    savefig(fig, "fig18_v11_loo_rmse", out_dir)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FIGURE 19 — Carte spatiale V11 : CBR 95% H1
+# ─────────────────────────────────────────────────────────────────────────────
+def fig19_v11_maps(out_dir: Path):
+    """Cartes spatiales CBR 95% H1 et Rd MPa H1 depuis ai_interpolation_values."""
+    conn = get_conn(); cur = conn.cursor()
+
+    fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+
+    for ax, param_id, label, unit, cmap_name in [
+        (axes[0], "cbr_95_ked_h1", "CBR 95% Proctor H1", "%", "YlOrRd"),
+        (axes[1], "rd_mpa_ked_h1",  "Rd pénétromètre H1", "MPa", "Blues"),
+    ]:
+        cur.execute("""
+            SELECT
+              ST_X(ST_Transform(ST_PointOnSurface(m.geom), 4326)) AS lon,
+              ST_Y(ST_Transform(ST_PointOnSurface(m.geom), 4326)) AS lat,
+              iv.value
+            FROM atlas.ai_interpolation_values iv
+            JOIN atlas.mailles m ON m.id = iv.maille_id
+            WHERE iv.parameter_id = %s AND iv.value IS NOT NULL
+        """, (param_id,))
+        pts = cur.fetchall()
+        if not pts:
+            ax.text(0.5, 0.5, f"{label}\nEn attente des résultats KED",
+                    ha="center", va="center", transform=ax.transAxes,
+                    bbox=dict(boxstyle="round", facecolor="lightyellow", edgecolor="orange"))
+            ax.set_title(label); ax.axis("off")
+            continue
+
+        lons = np.array([float(r[0]) for r in pts])
+        lats = np.array([float(r[1]) for r in pts])
+        vals = np.array([float(r[2]) for r in pts])
+
+        sc = ax.scatter(lons, lats, c=vals, cmap=cmap_name,
+                        s=1.5, alpha=0.85, linewidths=0)
+        plt.colorbar(sc, ax=ax, label=unit, fraction=0.046, pad=0.04)
+        ax.set_title(f"{label}\nn={len(vals):,}", fontsize=9)
+        ax.set_xlabel("Longitude (°E)"); ax.set_ylabel("Latitude (°N)")
+        ax.set_xlim(-0.1, 1.9); ax.set_ylim(5.8, 11.2)
+
+    conn.close()
+    fig.suptitle("Cartographie géotechnique V11 — CBR 95% Proctor et Résistance dynamique\n"
+                 "Krigeage avec dérive externe — Horizon H1 (0–1 m)", fontsize=9, fontweight="bold")
+    fig.tight_layout()
+    savefig(fig, "fig19_v11_maps_cbr_rd", out_dir)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# FIGURE 20 — Comparaison modèles : meilleur modèle par paramètre V11
+# ─────────────────────────────────────────────────────────────────────────────
+def fig20_v11_model_comparison(out_dir: Path):
+    """
+    Pour chaque paramètre V11, identifie le meilleur modèle (KED vs RK)
+    sur base du LOO-RMSE lu depuis ai_interpolation_runs.
+    """
+    conn = get_conn(); cur = conn.cursor()
+
+    cur.execute("""
+        SELECT parameter_id,
+               CAST((metrics->>'loo_residual')::jsonb->>'rmse' AS FLOAT) AS rmse,
+               CAST(metrics->>'n_train' AS INT) AS n_train,
+               method
+        FROM atlas.ai_interpolation_runs
+        WHERE parameter_id ~ '^(rd_mpa|cbr_95|gamma_d|w_opt|em_mpa|pl_mpa)_(ked|rk)_h[123]$'
+          AND status = 'finished'
+        ORDER BY parameter_id
+    """)
+    rows = cur.fetchall()
+    conn.close()
+
+    if not rows:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, "Pipeline V11 en cours — résultats à venir",
+                ha="center", va="center", transform=ax.transAxes, fontsize=11,
+                bbox=dict(boxstyle="round", facecolor="lightyellow", edgecolor="orange"))
+        ax.set_title("Comparaison modèles V11 — En attente")
+        ax.axis("off")
+        savefig(fig, "fig20_v11_model_comparison", out_dir)
+        return
+
+    from collections import defaultdict
+    # Grouper par (kind, horizon) → meilleur modèle
+    best: dict = {}
+    all_data: dict = defaultdict(list)
+    for pid, rmse, n, method in rows:
+        if rmse is None or not np.isfinite(rmse):
+            continue
+        parts = pid.rsplit("_", 1)
+        if len(parts) == 2:
+            kind_model, horizon = parts
+            model_type = "KED" if "_ked_" in pid else "RK"
+            kind = kind_model.replace("_ked", "").replace("_rk", "")
+            key = f"{kind}/{horizon.upper()}"
+            all_data[key].append((model_type, rmse, n))
+            if key not in best or rmse < best[key][1]:
+                best[key] = (model_type, rmse, pid)
+
+    if not best:
+        fig, ax = plt.subplots(figsize=(8, 4))
+        ax.text(0.5, 0.5, "Aucun résultat valide", ha="center", va="center",
+                transform=ax.transAxes, fontsize=11)
+        ax.axis("off")
+        savefig(fig, "fig20_v11_model_comparison", out_dir)
+        return
+
+    keys = sorted(best.keys())
+    rmse_vals = [best[k][1] for k in keys]
+    model_colors = [COLORS.get(best[k][0], "#888") for k in keys]
+
+    fig, ax = plt.subplots(figsize=(max(8, len(keys) * 0.7), 5))
+    bars = ax.bar(range(len(keys)), rmse_vals, color=model_colors, alpha=0.85,
+                  edgecolor="white", linewidth=0.5)
+    ax.set_xticks(range(len(keys)))
+    ax.set_xticklabels(keys, rotation=45, ha="right", fontsize=8)
+    ax.set_ylabel("LOO-RMSE (unités physiques)")
+    ax.set_title("Meilleur modèle par paramètre V11 (KED vs RK)\n"
+                 "Sélection automatique sur LOO-RMSE minimal")
+
+    # Légende modèles
+    from matplotlib.patches import Patch
+    legend_elements = [
+        Patch(facecolor=COLORS["KED"], label="KED-H"),
+        Patch(facecolor=COLORS["RK"],  label="RK-SCORPAN"),
+    ]
+    ax.legend(handles=legend_elements, fontsize=8)
+
+    for bar, (k, v) in zip(bars, zip(keys, rmse_vals)):
+        model = best[k][0]
+        ax.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.02,
+                f"{model}\n{v:.2f}", ha="center", va="bottom", fontsize=6.5, fontweight="bold")
+
+    fig.tight_layout()
+    savefig(fig, "fig20_v11_model_comparison", out_dir)
+
+
 ALL_FIGS = {
     "01": fig01_descriptive_stats,
     "02": fig02_variogram,
@@ -916,6 +1231,10 @@ ALL_FIGS = {
     "14": fig14_synthesis,
     "15": fig15_learning_curve,
     "16": fig16_regional_performance,
+    "17": fig17_v11_descriptive_stats,
+    "18": fig18_v11_loo_rmse,
+    "19": fig19_v11_maps,
+    "20": fig20_v11_model_comparison,
 }
 
 

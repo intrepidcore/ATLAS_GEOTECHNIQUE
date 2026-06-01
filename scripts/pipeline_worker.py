@@ -95,22 +95,57 @@ def build_command(job_type: str, parameter_id: str, payload: Dict, db_url: str) 
     """
     horizons = "h1,h2,h3"
 
+    # Paramètres V11 (nouveaux — script dédié)
+    NEW_PARAMS_KINDS = {"rd_mpa", "cbr_95", "gamma_d", "w_opt", "em_mpa", "pl_mpa"}
+
+    def _extract_kind(pid: str) -> str:
+        """Extrait le 'kind' d'un parameter_id comme 'rd_mpa_ked_h1' -> 'rd_mpa'."""
+        for k in NEW_PARAMS_KINDS:
+            if pid.startswith(k):
+                return k
+        return ""
+
     if job_type == "run_ked":
-        kinds = payload.get("kinds", "vbs,ip,wl,wp")
-        use_hier = payload.get("hierarchical", True)
-        args = [
-            sys.executable,
-            str(SCRIPTS_DIR / "run_ked_vbs_ip_wl_wp_horizons.py"),
-            "--database-url", db_url,
-            "--kinds", kinds,
-        ]
-        if use_hier:
-            args.append("--hierarchical")
-        return tuple(args)
+        # Détecter si c'est un paramètre V11 (nouveaux) ou V10 (classiques)
+        kind = _extract_kind(parameter_id)
+        if kind:
+            # Paramètre V11 : router vers run_ked_new_params_horizons.py
+            return (
+                sys.executable,
+                str(SCRIPTS_DIR / "run_ked_new_params_horizons.py"),
+                "--database-url", db_url,
+                "--kinds", kind,
+                "--horizons", horizons,
+            )
+        else:
+            # Paramètres classiques V10 (vbs/ip/wl/wp/eg/granulo)
+            kinds = payload.get("kinds", "vbs,ip,wl,wp")
+            use_hier = payload.get("hierarchical", True)
+            args = [
+                sys.executable,
+                str(SCRIPTS_DIR / "run_ked_vbs_ip_wl_wp_horizons.py"),
+                "--database-url", db_url,
+                "--kinds", kinds,
+            ]
+            if use_hier:
+                args.append("--hierarchical")
+            return tuple(args)
 
     elif job_type == "run_rk":
         param = payload.get("parameter", parameter_id)
-        # Lancer les 3 horizons séquentiellement (le script gère 1 paramètre à la fois)
+        # Détecter si c'est un paramètre V11
+        kind = _extract_kind(param)
+        if kind:
+            # Paramètre V11 : utiliser run_ked_new_params_horizons en mode rk-like
+            # (en attendant un vrai script RK pour ces paramètres, on recalcule KED)
+            return (
+                sys.executable,
+                str(SCRIPTS_DIR / "run_ked_new_params_horizons.py"),
+                "--database-url", db_url,
+                "--kinds", kind,
+                "--horizons", horizons,
+            )
+        # Paramètres classiques : lancer les 3 horizons séquentiellement
         cmds = []
         for hz in ["h1", "h2", "h3"]:
             cmds.append((
