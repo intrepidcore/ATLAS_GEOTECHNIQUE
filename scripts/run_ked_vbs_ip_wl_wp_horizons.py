@@ -161,6 +161,18 @@ PARAMS: List[KedParamCfg] = [
         physical_max=100.0,
         unit="%",
     ),
+    # CONV-01 : EG = potentiel_gonflement dans v_echantillons_essais,
+    # mais pour le KED on joint directement essais_potentiel_gonflement.cg
+    # car la vue n'est pas disponible dans le contexte de cette jointure avec depth_m.
+    KedParamCfg(
+        kind="eg",
+        source_table="essais_potentiel_gonflement",
+        source_column_sql="epg.cg",
+        where_not_null_sql="epg.cg IS NOT NULL",
+        physical_min=0.0,
+        physical_max=20.0,
+        unit="%",
+    ),
 ]
 
 
@@ -338,6 +350,28 @@ def load_training_points(
             WHERE s.deleted_at IS NULL
               AND e.depth_m = %s
               AND {cfg.where_not_null_sql}
+            """,
+            (depth_m,),
+        )
+    elif cfg.kind == "eg":
+        # CONV-01 : EG joint directement essais_potentiel_gonflement (colonne cg)
+        # car la vue v_echantillons_essais ne joint pas depth_m correctement
+        cur.execute(
+            f"""
+            SELECT
+              m.id::text AS maille_id,
+              ST_X(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lon,
+              ST_Y(ST_Transform(ST_PointOnSurface(m.geom), 4326))::float8 AS lat,
+              epg.cg::float8 AS val,
+              {ctx_col}
+            FROM atlas.sondages s
+            JOIN atlas.echantillons e ON e.sondage_id = s.id
+            JOIN atlas.essais_potentiel_gonflement epg ON epg.echantillon_id = e.id
+            JOIN atlas.mailles m ON m.code = s.maille_code
+            {ctx_join}
+            WHERE s.deleted_at IS NULL
+              AND e.depth_m = %s
+              AND epg.cg IS NOT NULL
             """,
             (depth_m,),
         )
