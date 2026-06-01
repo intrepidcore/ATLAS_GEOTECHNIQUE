@@ -204,6 +204,36 @@ services:
     networks:
       - atlas-net
 
+  # ── BLOC E : Pipeline worker auto-amélioration ─────────────────────────────
+  # Lance scripts/pipeline_worker.py en mode démon.
+  # Écoute atlas.ai_job_queue (polling 30s) et exécute KED/RK/Fusion/VfS
+  # automatiquement après chaque import de sondage (trigger trg_enqueue_ai_jobs).
+  # Pour démarrer : docker compose up pipeline-worker -d
+  # Logs : docker compose logs -f pipeline-worker
+  pipeline-worker:
+    image: python:3.12-slim
+    container_name: atlas-pipeline-worker
+    restart: unless-stopped
+    working_dir: /opt/atlas
+    command: >
+      python scripts/pipeline_worker.py
+        --database-url postgres://atlas_etl_user:${ATLAS_DB_ETL_PASSWORD}@db:5432/atlas_clean
+        --interval 30
+    environment:
+      DATABASE_URL: postgres://atlas_etl_user:${ATLAS_DB_ETL_PASSWORD}@db:5432/atlas_clean
+      PYTHONUNBUFFERED: "1"
+      PYTHONUTF8: "1"
+      TF_ENABLE_ONEDNN_OPTS: "0"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./scripts:/opt/atlas/scripts:ro
+      - ./logs:/opt/atlas/logs
+    networks:
+      - atlas-net
+    profiles: ["pipeline"]
+
 networks:
   atlas-net:
     driver: bridge
