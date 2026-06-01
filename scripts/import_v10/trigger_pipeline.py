@@ -15,7 +15,7 @@ Usage:
 """
 import sys, time, logging, argparse, subprocess, json
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 import psycopg2
 import psycopg2.extras
@@ -71,23 +71,39 @@ NEW_PARAMS = [
 
 
 def enqueue_jobs(conn, params: list, recalculate: bool = True) -> int:
-    """Injecte les jobs dans atlas.ai_job_queue."""
+    """Injecte les jobs dans atlas.ai_job_queue.
+    Schema reel: id, parameter_id, job_type, status, payload, requested_at, ...
+    """
+    # Map parameter suffix -> job_type valide dans ai_job_queue
+    def get_job_type(pid: str) -> str:
+        if "_rk_"     in pid: return "run_rk"
+        if "_fusion_" in pid: return "run_fusion"
+        if "_mtgp_"   in pid: return "run_mtgp"
+        if "_vfs"     in pid: return "run_vfs"
+        return "run_ked"  # défaut pour _ked_ et nouveaux paramètres
+
     inserted = 0
     with conn.cursor() as cur:
         for param_id, horizon, priority in params:
+            job_type = get_job_type(param_id)
             payload = json.dumps({
                 "parameter_id": param_id,
                 "horizon":      horizon,
                 "recalculate":  recalculate,
                 "triggered_by": "trigger_pipeline_v10_import",
-                "triggered_at": datetime.utcnow().isoformat(),
+                "triggered_at": datetime.now(timezone.utc).isoformat(),
+                "priority":     priority,
             })
+            # Eviter les doublons: un seul job queued/running par parameter_id
             cur.execute("""
                 INSERT INTO atlas.ai_job_queue
-                  (job_type, payload, priority, status, created_at)
-                VALUES ('interpolation', %s::jsonb, %s, 'queued', now())
-                ON CONFLICT DO NOTHING
-            """, (payload, priority))
+                  (parameter_id, job_type, payload, status, requested_at)
+                SELECT %s, %s, %s::jsonb, 'queued', now()
+                WHERE NOT EXISTS (
+                  SELECT 1 FROM atlas.ai_job_queue
+                  WHERE parameter_id=%s AND status IN ('queued','running')
+                )
+            """, (param_id, job_type, payload, param_id))
             inserted += cur.rowcount
 
     conn.commit()
@@ -95,18 +111,17 @@ def enqueue_jobs(conn, params: list, recalculate: bool = True) -> int:
 
 
 def check_queue_schema(conn) -> bool:
-    """Vérifie que ai_job_queue a les colonnes attendues."""
+    """Verifie que ai_job_queue a les colonnes minimales."""
     with conn.cursor() as cur:
         cur.execute("""
             SELECT column_name FROM information_schema.columns
             WHERE table_schema='atlas' AND table_name='ai_job_queue'
         """)
         cols = {r[0] for r in cur.fetchall()}
-    expected = {"job_type", "payload", "priority", "status"}
+    expected = {"job_type", "payload", "status"}
     missing  = expected - cols
     if missing:
         log.warning(f"  Colonnes manquantes dans ai_job_queue : {missing}")
-        log.warning("  -> Ajustement du script d'enqueue nécessaire")
         return False
     return True
 

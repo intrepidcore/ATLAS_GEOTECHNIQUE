@@ -177,19 +177,24 @@ def import_labo(conn):
         gamma_d_opm = safe_float(row.get("densite_seche_opm"))
         w_opt       = safe_float(row.get("teneur_eau_opt_opm"))
         if gamma_d_opm is not None and w_opt is not None:
-            with conn.cursor() as cur:
-                # gamma_d_max : V10 en g/cm3 -> DB en kN/m3 (x10)
-                # proctor_type : 'modifie' (contrainte DB)
-                cur.execute("""
-                    INSERT INTO atlas.essais_proctor
-                      (echantillon_id, proctor_type, gamma_d_max, w_opt, meta)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (echantillon_id, proctor_type) DO NOTHING
-                """, (ech_id, "modifie", float(gamma_d_opm) * 10.0, w_opt,
-                      psycopg2.extras.Json({"source": "V10_LABORATOIRE_HORIZONS",
-                                             "batch": IMPORT_BATCH,
-                                             "gamma_d_original_gcm3": float(gamma_d_opm)})))
-            stats["proctor"] += 1
+            # Validation physique avant insert: 1.4–2.5 g/cm3 -> 14–25 kN/m3 (DB)
+            # Valeurs aberrantes (ex: 8.0 g/cm3) stockees dans meta uniquement
+            gamma_d_kn = float(gamma_d_opm) * 10.0
+            w_opt_f = float(w_opt)
+            if 10.0 <= gamma_d_kn <= 30.0 and 0.0 <= w_opt_f <= 50.0:
+                with conn.cursor() as cur:
+                    cur.execute("""
+                        INSERT INTO atlas.essais_proctor
+                          (echantillon_id, proctor_type, gamma_d_max, w_opt, meta)
+                        VALUES (%s, %s, %s, %s, %s)
+                        ON CONFLICT (echantillon_id, proctor_type) DO NOTHING
+                    """, (ech_id, "modifie", gamma_d_kn, w_opt_f,
+                          psycopg2.extras.Json({"source": "V10_LABORATOIRE_HORIZONS",
+                                                 "batch": IMPORT_BATCH,
+                                                 "gamma_d_original_gcm3": float(gamma_d_opm)})))
+                stats["proctor"] += 1
+            else:
+                log.warning(f"  OPM hors range (audit meta): gamma_d={gamma_d_opm} w_opt={w_opt}")
 
         # -- 5. Physiques (densité naturelle, teneur eau) -------------------
         dens_nat = safe_float(row.get("densite_seche_nat_g_cm3"))
