@@ -1004,16 +1004,25 @@ def fig18_v11_loo_rmse(out_dir: Path):
     conn = get_conn(); cur = conn.cursor()
 
     # Lire les métriques depuis ai_interpolation_runs
+    # Priorité : ked_hierarchical_5levels > ked_pedological_prior
+    # LOO-RMSE stockée sous metrics->'loo_residual'->>'rmse'
     cur.execute("""
-        SELECT parameter_id,
-               (metrics->>'loo_residual')::jsonb->>'rmse' AS rmse,
-               (metrics->>'n_train') AS n_train
+        SELECT DISTINCT ON (parameter_id)
+               parameter_id,
+               metrics->'loo_residual'->>'rmse' AS rmse,
+               metrics->>'n_train' AS n_train
         FROM atlas.ai_interpolation_runs
-        WHERE parameter_id LIKE 'rd_mpa_ked_%'
-           OR parameter_id LIKE 'cbr_95_ked_%'
-           OR parameter_id LIKE 'gamma_d_ked_%'
-           OR parameter_id LIKE 'w_opt_ked_%'
-        ORDER BY parameter_id, finished_at DESC
+        WHERE (parameter_id LIKE 'rd_mpa_ked_%'
+            OR parameter_id LIKE 'cbr_95_ked_%'
+            OR parameter_id LIKE 'gamma_d_ked_%'
+            OR parameter_id LIKE 'w_opt_ked_%')
+          AND metrics->'loo_residual'->>'rmse' IS NOT NULL
+        ORDER BY parameter_id,
+                 CASE method
+                     WHEN 'ked_hierarchical_5levels' THEN 0
+                     ELSE 1
+                 END,
+                 created_at DESC
     """)
     rows = cur.fetchall()
     conn.close()
@@ -1136,15 +1145,31 @@ def fig20_v11_model_comparison(out_dir: Path):
     """
     conn = get_conn(); cur = conn.cursor()
 
+    # LOO-RMSE : KED stocke sous loo_residual, RK sous loo_rmse (top-level)
+    # On unifie les deux sources
     cur.execute("""
-        SELECT parameter_id,
-               CAST((metrics->>'loo_residual')::jsonb->>'rmse' AS FLOAT) AS rmse,
-               CAST(metrics->>'n_train' AS INT) AS n_train,
+        SELECT DISTINCT ON (parameter_id, method)
+               parameter_id,
+               COALESCE(
+                   (metrics->'loo_residual'->>'rmse')::float,
+                   (metrics->>'loo_rmse')::float
+               ) AS rmse,
+               (metrics->>'n_train')::int AS n_train,
                method
         FROM atlas.ai_interpolation_runs
         WHERE parameter_id ~ '^(rd_mpa|cbr_95|gamma_d|w_opt|em_mpa|pl_mpa)_(ked|rk)_h[123]$'
           AND status = 'finished'
-        ORDER BY parameter_id
+          AND COALESCE(
+                  (metrics->'loo_residual'->>'rmse')::float,
+                  (metrics->>'loo_rmse')::float
+              ) IS NOT NULL
+        ORDER BY parameter_id, method,
+                 CASE method
+                     WHEN 'ked_hierarchical_5levels' THEN 0
+                     WHEN 'regression_kriging_scorpan' THEN 0
+                     ELSE 1
+                 END,
+                 created_at DESC
     """)
     rows = cur.fetchall()
     conn.close()
