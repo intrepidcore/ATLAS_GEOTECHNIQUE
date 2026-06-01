@@ -154,25 +154,43 @@ def fit_regression(df_train, geol_cats, pedo_cats):
     return model, residuals, r2, rmse
 
 def loo_cross_validation(df_train, geol_cats, pedo_cats) -> float:
-    """Leave-One-Out Cross-Validation - MESURE RÉELLE DE LA PERTE"""
+    """
+    Leave-One-Out Cross-Validation COMPLET : Régression Ridge + Krigeage des résidus.
+
+    Convention (RAPPORT_TECHNIQUE_SCIENTIFIQUE_30-05-2026.md §3.3) :
+      - Pas de proxy : la LOO-RMSE mesure la prédiction COMPLÈTE du modèle RK,
+        c'est-à-dire trend(x_i) + résidu_krigé(x_i), pas seulement la régression.
+      - Pour chaque point i :
+          1. Entraîner Ridge sur les N-1 autres points.
+          2. Calculer les résidus sur les N-1 points.
+          3. Kriger les résidus et prédire au point i.
+          4. Prédiction finale = trend_i + résidu_krigé_i.
+      - N < 300 → LOO complet O(N³) réalisable en quelques secondes.
+    """
+    from pykrige.ok import OrdinaryKriging  # import local pour éviter dépendance globale
+
     n = len(df_train)
     if n < 6:
         print(f"  LOO-CV: N={n} < 6, impossible")
         return float('nan')
 
     all_features = NUMERIC_FEATURES + CATEGORICAL_FEATURES if CATEGORICAL_FEATURES else NUMERIC_FEATURES
-    
+
+    x_all = df_train['x_utm31'].values.astype(float)
+    y_all = df_train['y_utm31'].values.astype(float)
+    z_all = df_train['target'].values.astype(float)
+
     errors = []
     for i in range(n):
-        train_idx = list(range(n))
-        train_idx.remove(i)
+        train_idx = [j for j in range(n) if j != i]
 
         X_train = df_train.iloc[train_idx][all_features]
-        y_train = df_train.iloc[train_idx]['target'].values
-        X_test = df_train.iloc[i:i+1][all_features]
-        y_test = df_train.iloc[i]['target']
+        y_train = z_all[train_idx]
+        X_test  = df_train.iloc[i:i+1][all_features]
+        y_test  = z_all[i]
 
         try:
+            # — Étape 1 : régression Ridge sur N-1 ——————————————————————————
             if CATEGORICAL_FEATURES:
                 preprocessor = build_preprocessor(geol_cats, pedo_cats)
             else:
@@ -183,15 +201,37 @@ def loo_cross_validation(df_train, geol_cats, pedo_cats) -> float:
             model = Pipeline([('preprocessor', preprocessor), ('regressor', Ridge(alpha=1.0))])
             model.fit(X_train, y_train)
 
-            y_pred = model.predict(X_test)[0]
-            errors.append((y_pred - y_test) ** 2)
+            trend_train = model.predict(X_train)
+            residuals_train = y_train - trend_train
+            trend_test  = model.predict(X_test)[0]
+
+            # — Étape 2 : krigeage des résidus sur N-1, prédiction en x_i ——
+            x_tr = x_all[train_idx]
+            y_tr = y_all[train_idx]
+            ok = OrdinaryKriging(
+                x_tr, y_tr, residuals_train,
+                variogram_model='spherical', nlags=8, weight=True,
+                verbose=False, enable_plotting=False
+            )
+            resid_pred, _ = ok.execute('points',
+                                       np.array([x_all[i]]),
+                                       np.array([y_all[i]]))
+            resid_pred = float(resid_pred[0])
+
+            # — Étape 3 : prédiction RK complète ——————————————————————————
+            y_pred_rk = trend_test + resid_pred
+            errors.append((y_pred_rk - y_test) ** 2)
+
         except Exception as e:
-            pass
+            # Enregistrer l'erreur mais continuer (LOO partiel valide)
+            print(f"  LOO-CV [i={i}] exception: {e}")
 
     if not errors:
+        print(f"  LOO-CV: aucun résultat valide sur {n} points")
         return float('nan')
+
     loo_rmse = math.sqrt(sum(errors) / len(errors))
-    print(f"  LOO-CV RMSE: {loo_rmse:.4f} ({len(errors)}/{n} points)")
+    print(f"  LOO-CV COMPLET RK RMSE: {loo_rmse:.4f} ({len(errors)}/{n} points)")
     return loo_rmse
 
 def store_results(conn, df_all, z_rk, ss_kriged, param, horizon, loo_rmse, reg_r2, n_terrain):

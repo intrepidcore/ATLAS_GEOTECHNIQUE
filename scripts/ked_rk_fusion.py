@@ -223,16 +223,23 @@ def compute_fusion_metrics(
     ked_data: Dict, rk_data: Dict, param_kind: str
 ) -> Dict:
     """
-    Calcule les métriques de fusion sur les mailles communes :
-    - fraction où KED domine / RK domine
-    - réduction moyenne de variance par rapport à chaque modèle
+    Calcule les métriques de fusion sur les mailles communes.
+
+    CONVENTION (décision 2026-06-01) :
+      La réduction de variance est calculée via les MOYENNES AGRÉGÉES
+      (pas par maille). La formule per-maille produisait des outliers
+      numériques dans les cas PyKrige où ked_var ≈ 0 aux points
+      d'entraînement (artefact d'inversion), induisant des réductions
+      artificiellement négatives (ex : -5843%). Le calcul agrégé
+      est statistiquement robuste et cohérent avec les rapports :
+        réduction = 1 - mean_σ²_fusion / min(mean_σ²_KED, mean_σ²_RK)
     """
     global_var_ked = float(np.nanmean([v for _, v in ked_data.values() if v is not None])) if ked_data else 1.0
     global_var_rk  = float(np.nanmean([v for _, v in rk_data.values()  if v is not None])) if rk_data else 1.0
     global_var = max(global_var_ked, global_var_rk, 1e-6)
 
     n_total = n_ked_dom = n_rk_dom = n_equal = 0
-    var_reductions: List[float] = []
+    fus_vars: List[float] = []
 
     all_mailles = set(ked_data.keys()) | set(rk_data.keys())
     for mid in all_mailles:
@@ -253,22 +260,26 @@ def compute_fusion_metrics(
         else:
             n_equal += 1
 
-        # Réduction de variance sur valeurs positives seulement (clamp artefacts PyKrige)
-        if sigma2_fusion and ked_var is not None and rk_var is not None:
-            s2_ked_pos = ked_var if ked_var > 0 else global_var
-            s2_rk_pos  = rk_var  if rk_var  > 0 else global_var
-            best_indiv = min(s2_ked_pos, s2_rk_pos)
-            if best_indiv > 0:
-                var_reductions.append((best_indiv - sigma2_fusion) / best_indiv)
+        if sigma2_fusion is not None:
+            fus_vars.append(sigma2_fusion)
+
+    # Réduction agrégée : robuste aux artefacts PyKrige per-maille
+    mean_fus = float(np.mean(fus_vars)) if fus_vars else 0.0
+    best_mean = min(global_var_ked, global_var_rk)
+    if best_mean > 1e-8:
+        reduction_pct = round((1.0 - mean_fus / best_mean) * 100.0, 1)
+    else:
+        reduction_pct = 0.0
 
     return {
         "n_mailles": n_total,
         "ked_dominates_pct": round(100.0 * n_ked_dom / max(n_total, 1), 1),
         "rk_dominates_pct":  round(100.0 * n_rk_dom  / max(n_total, 1), 1),
         "equal_pct":         round(100.0 * n_equal    / max(n_total, 1), 1),
-        "mean_var_reduction_pct": round(
-            100.0 * float(np.mean(var_reductions)) if var_reductions else 0.0, 1
-        ),
+        "mean_var_reduction_pct": reduction_pct,
+        "mean_var_fusion": round(mean_fus, 4),
+        "mean_var_ked": round(global_var_ked, 4),
+        "mean_var_rk":  round(global_var_rk,  4),
     }
 
 

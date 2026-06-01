@@ -235,7 +235,7 @@ def extract_gee_indices(
         )
 
     try:
-        ee.Initialize()
+        ee.Initialize(project='gen-lang-client-0964618990')  # ADC gcloud
     except Exception as exc:
         raise RuntimeError(
             f"GEE non initialisé : {exc}\n"
@@ -282,9 +282,15 @@ def extract_gee_indices(
     )
 
     log.info("  GEE : extraction en cours (peut prendre 30-120 secondes)...")
-    df_gee = geemap.ee_to_df(result)
+    # Conversion manuelle — contourne bug geemap.ee_to_df avec pandas >= 2.0
+    # (geemap appelle df.drop(columns=["geo"], axis=1) qui est invalide en pandas 2+)
+    features_info = result.getInfo().get("features", [])
+    records = [f.get("properties", {}) for f in features_info]
+    df_gee = pd.DataFrame(records)
+    log.info("  GEE : %d points extraits", len(df_gee))
 
-    df_gee = df_gee.rename(columns={"point_id": "id"})
+    if "point_id" in df_gee.columns:
+        df_gee = df_gee.rename(columns={"point_id": "id"})
     return df_gee
 
 
@@ -327,13 +333,16 @@ def calibrate_pls(df: pd.DataFrame) -> Dict:
     best_n = 1
     loo = LeaveOneOut()
 
-    for n_comp in range(1, min(N_PLS_COMPONENTS_MAX + 1, len(df_fit))):
+    # n_components <= min(n_features, n_samples-1) — borne scikit-learn
+    n_comp_max = min(N_PLS_COMPONENTS_MAX, len(SPECTRAL_FEATURES), len(df_fit) - 1)
+    for n_comp in range(1, n_comp_max + 1):
         pls = PLSRegression(n_components=n_comp)
         preds = []
         truths = []
         for train_idx, test_idx in loo.split(X_scaled):
             pls.fit(X_scaled[train_idx], y[train_idx])
-            p = pls.predict(X_scaled[test_idx])[0, 0]
+            pred = pls.predict(X_scaled[test_idx])
+            p = float(pred.ravel()[0])  # compatible 1D et 2D
             preds.append(float(p))
             truths.append(float(y[test_idx[0]]))
         rmse = float(np.sqrt(mean_squared_error(truths, preds)))
@@ -346,7 +355,7 @@ def calibrate_pls(df: pd.DataFrame) -> Dict:
     pls_final = PLSRegression(n_components=best_n)
     pls_final.fit(X_scaled, y)
 
-    y_pred_train = pls_final.predict(X_scaled)[:, 0]
+    y_pred_train = pls_final.predict(X_scaled).ravel()
     r2_train = float(r2_score(y, y_pred_train))
 
     log.info(
@@ -545,6 +554,93 @@ def run_extract(conn) -> int:
     return 0
 
 
+# ── Extraction GEE sur les mailles (prédiction spatiale) ─────────────
+def run_extract_mailles(conn, batch_size: int = 5000) -> int:
+    """
+    Extrait les indices spectraux Sentinel-2 pour les 29 407 centroïdes de mailles.
+    Traitement par batch pour éviter les timeouts GEE.
+    Stocke dans atlas.maille_spectral_vfs.
+    """
+    cur = conn.cursor()
+    ensure_tables(cur)
+
+    log.info("Chargement des mailles pour extraction GEE...")
+    df_mailles = load_mailles_for_prediction(cur)
+    cur.close()
+    log.info("Mailles à traiter : %d (batch_size=%d)", len(df_mailles), batch_size)
+
+    all_records = []
+    n_batches = (len(df_mailles) + batch_size - 1) // batch_size
+
+    # CONVENTION (correctif 2026-06-01) :
+    # maille_id dans load_mailles_for_prediction est un uuid.UUID (objet Python),
+    # mais extract_gee_indices retourne des strings via str(pid).
+    # Unification en string avant merge pour éviter NaN systématiques.
+    df_mailles["maille_id"] = df_mailles["maille_id"].astype(str)
+
+    for i in range(n_batches):
+        batch = df_mailles.iloc[i * batch_size : (i + 1) * batch_size].copy()
+        log.info("  Batch %d/%d (%d mailles)...", i + 1, n_batches, len(batch))
+        df_gee = extract_gee_indices(
+            batch["lon"].tolist(),
+            batch["lat"].tolist(),
+            batch["maille_id"].tolist(),  # déjà en str
+        )
+        if not df_gee.empty:
+            # Renommer la colonne id si présente — aligner avec batch.maille_id (str)
+            if "point_id" in df_gee.columns:
+                df_gee = df_gee.rename(columns={"point_id": "maille_id"})
+            elif "id" in df_gee.columns:
+                df_gee = df_gee.rename(columns={"id": "maille_id"})
+            df_gee["maille_id"] = df_gee["maille_id"].astype(str)
+            df_merged = batch.merge(df_gee, on="maille_id", how="left")
+            n_valid = df_merged[SPECTRAL_FEATURES].notna().all(axis=1).sum()
+            log.info("    -> %d/%d mailles avec indices spectraux valides", n_valid, len(batch))
+            all_records.append(df_merged)
+        else:
+            log.warning("  Batch %d : GEE a retourné 0 résultat — batch inclus avec NaN", i + 1)
+            all_records.append(batch)  # inclure le batch sans spectral pour ne pas perdre de mailles
+
+    if not all_records:
+        log.error("Aucune donnée GEE extraite pour les mailles.")
+        return 1
+
+    df_all = pd.concat(all_records, ignore_index=True)
+    log.info("Total mailles avec spectral : %d", df_all[SPECTRAL_FEATURES].notna().all(axis=1).sum())
+
+    # Stocker dans maille_spectral_vfs
+    cur = conn.cursor()
+    cur.execute("DELETE FROM atlas.maille_spectral_vfs")
+
+    rows = []
+    for _, row in df_all.iterrows():
+        rows.append((
+            str(uuid.uuid4()),
+            str(row["maille_id"]),
+            row.get("clay_index"),
+            row.get("swir_ratio"),
+            row.get("ndvi"),
+            row.get("iron_oxide"),
+            bool(str(row.get("formation_geologique", "")).find("Cuirasse") >= 0),
+            bool(str(row.get("formation_geologique", "")).find("Alluvion") >= 0),
+        ))
+
+    execute_batch(
+        cur,
+        """
+        INSERT INTO atlas.maille_spectral_vfs
+          (id, maille_id, clay_index, swir_ratio, ndvi, iron_oxide,
+           is_cuirasse, is_alluvial, computed_at)
+        VALUES (%s::uuid, %s::uuid, %s, %s, %s, %s, %s, %s, now())
+        """,
+        rows, page_size=2000,
+    )
+    conn.commit()
+    cur.close()
+    log.info("Indices spectraux stockés pour %d mailles.", len(rows))
+    return 0
+
+
 # ── Mode calibration PLS ──────────────────────────────────────────────
 def run_calibrate(conn) -> Tuple[int, Dict]:
     cur = conn.cursor()
@@ -654,7 +750,15 @@ def main() -> int:
     )
     ap.add_argument(
         "--skip-gee", action="store_true",
-        help="Sauter l'extraction GEE (utiliser les données déjà en base).",
+        help="Sauter l'extraction GEE sondages ET mailles (utiliser données déjà en base).",
+    )
+    ap.add_argument(
+        "--skip-sondage-gee", action="store_true",
+        help="Sauter uniquement l'extraction GEE des sondages (96 déjà extraits), mais relancer l'extraction maille.",
+    )
+    ap.add_argument(
+        "--batch-size", type=int, default=1000,
+        help="Taille des batches GEE pour extraction maille (défaut: 1000).",
     )
     args = ap.parse_args()
 
@@ -671,9 +775,15 @@ def main() -> int:
         pls_result: Optional[Dict] = None
 
         if args.mode in ("extract", "all") and not args.skip_gee:
-            rc = run_extract(conn)
+            if not getattr(args, 'skip_sondage_gee', False):
+                rc = run_extract(conn)
+                if rc != 0:
+                    return rc
+            # Extraction spectrale sur les mailles (prédiction spatiale)
+            log.info("Extraction GEE sur les mailles (batch=%d)...", args.batch_size)
+            rc = run_extract_mailles(conn, batch_size=args.batch_size)
             if rc != 0:
-                return rc
+                log.warning("Extraction mailles echouee — prediction spatiale impossible.")
 
         if args.mode in ("calibrate", "all"):
             rc, pls_result = run_calibrate(conn)

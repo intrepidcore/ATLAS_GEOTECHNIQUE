@@ -270,7 +270,7 @@ def run_one(conn, horizon_label: str, depth_m: float) -> Dict[str, Any]:
                 mid,
                 param_id,
                 float(z_pred[i]) if math.isfinite(float(z_pred[i])) else None,
-                float(z_var[i]) if math.isfinite(float(z_var[i])) else None,
+                max(0.0, float(z_var[i])) if math.isfinite(float(z_var[i])) else None,  # clamp artefacts négatifs PyKrige (DATA-02)
                 float(confidence[i]) if math.isfinite(float(confidence[i])) else None,
                 variogram_id,
                 run_id,
