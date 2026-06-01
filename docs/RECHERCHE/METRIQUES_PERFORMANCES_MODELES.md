@@ -46,31 +46,37 @@ Elle mesure le résidu de la prédiction complète KED en leave-one-out (drift +
 
 ## 2. LOO-RMSE KED vs RK SCORPAN (complet — régression + krigeage résidus)
 
-La LOO-RMSE RK est un **LOO complet** incluant :
-1. Régression Ridge sur covariables SCORPAN (DEM, pente, TPI, HAND, distance rivière, précipitations, lon/lat)
-2. Krigeage des résidus (PyKrige OrdinaryKriging, variogramme sphérique)
+La LOO-RMSE RK est un **LOO complet** (CONV-03) incluant :
+1. Entraîner Ridge sur N−1 points
+2. Kriging des résidus → prédire au point i
+3. Erreur = (trend_i + residu_krige_i) − mesure_i
 
-Source : `metrics->>'loo_rmse'` dans `ai_interpolation_runs` pour RK SCORPAN.
+Source : `metrics->>'loo_rmse'` dans `ai_interpolation_runs` pour RK SCORPAN.  
+**Correction 2026-06-01 :** les valeurs précédentes (VBS H1=1.81, EG H1=1.04) étaient des LOO partiels (régression seule).
 
 | Paramètre | Horizon | KED_meilleur | RK_SCORPAN | Δ (RK − KED) | Gagnant | N_KED | N_RK |
 |-----------|---------|:------------:|:----------:|:------------:|:-------:|:-----:|:----:|
 | **VBS** (g/100g) | H1 | 2.9407 | **2.4802** | −0.461 | **RK** | 106 | 204 |
-| VBS | H2 | 3.0086 | 5.2883 | +2.280 | **KED** | 98 | 311 |
-| VBS | H3 | 2.3069 | 2.6407 | +0.334 | **KED** | 107 | 205 |
-| **IP** (%) | H1 | 9.7862 | 12.7931 | +3.007 | **KED** | 112 | 220 |
+| VBS | H2 | **3.0086** | 5.2883 | +2.280 | **KED** | 98 | 311 |
+| VBS | H3 | **2.3069** | 2.6407 | +0.334 | **KED** | 107 | 205 |
+| **IP** (%) | H1 | **9.7862** | 12.7931 | +3.007 | **KED** | 112 | 220 |
 | IP | H2 | 9.9478 | **7.5770** | −2.371 | **RK** | 108 | 329 |
 | IP | H3 | 10.1904 | **7.3209** | −2.870 | **RK** | 109 | 217 |
-| **WL** (%) | H1 | 13.2133 | 15.4168 | +2.203 | **KED** | 112 | 222 |
-| WL | H2 | 11.8627 | 19.9708 | +8.108 | **KED** | 110 | 333 |
-| WL | H3 | 11.2639 | 12.3468 | +1.083 | **KED** | 111 | 221 |
-| **WP** (%) | H1 | 7.9493 | 8.0709 | +0.122 | **KED** | 112 | 220 |
-| WP | H2 | 8.1465 | 13.1969 | +5.050 | **KED** | 108 | 329 |
+| **WL** (%) | H1 | **13.2133** | 15.4168 | +2.203 | **KED** | 112 | 222 |
+| WL | H2 | **11.8627** | 19.9708 | +8.108 | **KED** | 110 | 333 |
+| WL | H3 | **11.2639** | 12.3468 | +1.083 | **KED** | 111 | 221 |
+| **WP** (%) | H1 | **7.9493** | 8.0709 | +0.122 | **KED** | 112 | 220 |
+| WP | H2 | **8.1465** | 13.1969 | +5.050 | **KED** | 108 | 329 |
 | WP | H3 | 7.7420 | **7.1575** | −0.585 | **RK** | 109 | 217 |
 | **EG** (%) | H1 | 1.6670 | **1.2428** | −0.424 | **RK** | 93 | 186 |
-| EG | H2 | 1.6895 | 1.9711 | +0.282 | **KED** | 93 | 279 |
+| EG | H2 | **1.6895** | 1.9711 | +0.282 | **KED** | 93 | 279 |
 | EG | H3 | 1.6686 | **1.2863** | −0.383 | **RK** | 93 | 186 |
 
 **Résumé :** KED gagne 9/15, RK gagne 6/15.
+
+> **Anomalie H2 RK** : LOO-RMSE H2 systématiquement élevé (VBS: 5.29, WL: 19.97, WP: 13.20).
+> Cause : l'horizon H2 (1.0–2.0m) capture une zone de transition avec forte hétérogénéité,
+> et les covariables SCORPAN (surface) perdent leur pouvoir prédictif en profondeur.
 
 ### Anomalie H2 (résultat honnête)
 
