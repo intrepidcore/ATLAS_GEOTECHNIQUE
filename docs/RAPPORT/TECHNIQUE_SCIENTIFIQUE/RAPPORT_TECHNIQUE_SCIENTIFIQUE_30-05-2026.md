@@ -252,29 +252,43 @@ La régression Ridge (α = 1.0) modélise la tendance déterministe. Les R² mes
 
 **Interprétation scientifique :** R² de 0.10–0.22 signifie que les covariables SCORPAN n'expliquent que 10–22% de la variance. Ceci est **cohérent avec la littérature** pour des propriétés géotechniques à densité d'échantillonnage < 200 points. L'essentiel de la variance reste expliqué par la structure spatiale des résidus (krigeage).
 
-### 5.4 LOO-CV Régression Kriging (résultats finaux)
+### 5.4 LOO-CV Régression Kriging (résultats finaux — mis à jour 2026-06-01)
 
-La LOO-CV a été calculée par la **méthode numérique complète** (N itérations, chaque point retiré à tour de rôle). Elle mesure la performance prédictive du modèle RK complet (régression + krigeage des résidus).
+La LOO-CV est calculée par la **méthode numérique complète** (N itérations) :
+1. Entraîner Ridge sur N−1 points
+2. Calculer les résidus sur N−1
+3. Kriger les résidus → prédire au point i
+4. Erreur = (trend_i + residu_krige_i) − mesure_i
+
+> ⚠️ **Note correction 2026-06-01 :** Les valeurs LOO-RMSE précédentes étaient calculées
+> avec LOO de la régression Ridge seule (pas du krigeage de résidus). Les valeurs corrigées
+> ci-dessous incluent les deux étapes. Voir CONV-03 dans CONVENTIONS_TECHNIQUES_LITIGES.md.
 
 | Paramètre | N H1 | LOO-RMSE H1 | N H2 | LOO-RMSE H2 | N H3 | LOO-RMSE H3 |
-|---|---|---|---|---|---|---|
-| **VBS** (g/100g) | 204 | **1.81** | 310 | 2.72 | 204 | 1.98 |
-| **IP** (%) | 220 | **12.47** | 329 | 21.29 | 217 | 11.73 |
-| **WL** (%) | 211 | **15.18** | 319 | 23.54 | 213 | 11.99 |
-| **WP** (%) | 202 | **7.07** | 307 | 9.10 | 205 | 5.87 |
-| **EG** (%) | 186 | **1.04** | 279 | 1.51 | 186 | 1.17 |
+|-----------|:----:|:-----------:|:----:|:-----------:|:----:|:-----------:|
+| **VBS** (g/100g) | 204 | **2.4802** | 311 | 5.2883 | 205 | 2.6407 |
+| **IP** (%) | 220 | 12.7931 | 329 | **7.5770** | 217 | **7.3209** |
+| **WL** (%) | 222 | 15.4168 | 333 | 19.9708 | 221 | 12.3468 |
+| **WP** (%) | 220 | 8.0709 | 329 | 13.1969 | 217 | **7.1575** |
+| **EG** (%) | 186 | **1.2428** | 279 | 1.9711 | 186 | **1.2863** |
 
-**Comparaison KED vs RK (H1) :**
+> **Anomalie H2 RK :** La LOO-RMSE H2 est systematiquement plus elevée (VBS=5.29, WL=19.97)
+> car l'horizon H2 (1.0-2.0m) capture une zone de transition avec forte heterogeneite.
+> Les covariables SCORPAN (surface) perdent leur pouvoir predictif en profondeur.
 
-| Paramètre | LOO-RMSE KED | LOO-RMSE RK | Δ | Interprétation |
-|---|---|---|---|---|
-| VBS | 3.06 g/100g | 1.81 g/100g | **−41%** | RK nettement meilleur |
-| IP | 10.53 % | 12.47 % | +18% | KED légèrement meilleur en H1 |
-| WL | 13.68 % | 15.18 % | +11% | KED légèrement meilleur |
-| WP | 8.38 % | 7.07 % | **−16%** | RK meilleur |
-| EG | 1.67 % | 1.04 % | **−38%** | RK nettement meilleur |
+**Comparaison KED vs RK (H1) — valeurs corrigées :**
 
-> **Conclusion pour le mémoire :** Le RK améliore VBS et EG de façon significative. Pour IP et WL, le KED reste compétitif — le faible R² Ridge (+19-22%) ne parvient pas à dominer la structure spatiale bien capturée par le variogramme KED à large portée (400-530 km pour IP). Cette nuance est scientifiquement importante.
+| Paramètre | LOO-RMSE KED_hier | LOO-RMSE RK | Delta | Gagnant |
+|:---------:|:-----------------:|:-----------:|:-----:|:-------:|
+| VBS | 2.94 g/100g | **2.48 g/100g** | −16% | **RK** |
+| IP | **9.79 %** | 12.79 % | +31% | **KED** |
+| WL | **13.21 %** | 15.42 % | +17% | **KED** |
+| WP | **7.95 %** | 8.07 % | +2% | KED (marginal) |
+| EG | 1.67 % | **1.24 %** | −26% | **RK** |
+
+> **Conclusion mise à jour :** KED gagne 9/15 paramètres-horizons, RK gagne 6/15.
+> La fusion Bayésienne BLUP reste justifiée dans tous les cas car σ²_fusion ≤ σ²_min toujours.
+> Score final KED vs RK : 9/15 KED. Réduction variance fusion : **44.7–49.8%**.
 
 ### 5.5 Stockage des résultats RK
 

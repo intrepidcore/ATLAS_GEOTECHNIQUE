@@ -211,5 +211,52 @@ WHERE method = 'ked_hierarchical_5levels';
 
 ---
 
+## CONV-12 : Correction rétroactive des variances négatives (ALL méthodes)
+
+**Date :** 2026-06-01  
+**Litige :** Découverte de variances négatives résiduelles dans `ked_pedologie_granulo` (121 lignes)  
+et `ordinary_kriging_pykrige` (7 lignes), non traitées par les corrections précédentes.
+
+**Correction directe DB :**
+```sql
+UPDATE atlas.ai_interpolation_values
+SET variance = 0.0
+WHERE variance < 0
+  AND method IN ('ked_pedologie_granulo', 'ordinary_kriging_pykrige')
+  AND COALESCE(is_superseded, false) = false;
+-- 128 lignes mises à jour
+```
+
+**Migration :** `scripts/sql/fix_negative_variances.sql`  
+**Résultat :** 0 variance négative dans toute la base après cette correction.
+
+**Règle étendue (CONV-12 complète CONV-02 et CONV-05) :**  
+Tous les scripts KED/OK/RK doivent stocker `max(0.0, variance)`.  
+Les méthodes granulométriques et OK ordinaire sont aussi concernées.
+
+---
+
+## CONV-13 : Status 'queued' (DB) vs 'pending' (worker)
+
+**Date :** 2026-06-01  
+**Litige :** `pipeline_worker.py` cherchait `status='pending'` mais la DB utilise `status='queued'`.
+
+**Correction :** `WHERE status IN ('pending', 'queued')` pour compatibilité.  
+**Valeurs valides** (CHECK constraint) : `queued, running, finished, failed, cancelled`.  
+**Note :** `skipped` n'est PAS une valeur valide — utiliser `cancelled`.
+
+---
+
+## CONV-14 : FK ai_job_queue.parameter_id — entités simples requises
+
+**Date :** 2026-06-01  
+**Litige :** Le trigger insère des jobs avec `parameter_id='vbs'` mais la FK nécessite  
+que `'vbs'` existe dans `ai_parameter_catalog`. La table ne contenait que des IDs composés.
+
+**Correction :** Migration `scripts/sql/add_job_parameter_catalog.sql` — ajout des entries  
+`vbs`, `ip`, `wl`, `wp`, `eg`, `all` dans `ai_parameter_catalog` avec `source='interpolation'`.
+
+---
+
 *Document maintenu par Claude Code (Intrepid Core Engineering Standards)*  
 *Dernière mise à jour : 2026-06-01*
