@@ -234,6 +234,45 @@ services:
       - atlas-net
     profiles: ["pipeline"]
 
+  # ── Atlas Headless — Moteur d'export serveur (Sprint 2, Roadmap) ──────────────
+  # Phase 1 : Puppeteer (Chromium headless, ~1-3s/carte)
+  # Phase 2 : MapLibre GL Node — changer dockerfile + ENGINE=maplibre
+  #
+  # Demarrage : docker compose up atlas-headless -d
+  # Logs      : docker compose logs -f atlas-headless
+  # Metriques : http://localhost:9091/metrics
+  atlas-headless:
+    build:
+      context: ./services/atlas-headless
+      dockerfile: Dockerfile          # Phase 1 (Puppeteer)
+      # dockerfile: Dockerfile.phase2 # Phase 2 (MapLibre GL) — decommenter pour activer
+    container_name: atlas-headless
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://atlas_app_user:${ATLAS_DB_APP_PASSWORD}@db:5432/atlas_clean
+      API_BASE_URL: http://api-geo:8000
+      ATLAS_UI_URL: http://ui:5173
+      EXPORTS_DIR: /data/exports/hq
+      ENGINE: puppeteer
+      POLL_INTERVAL_MS: "2000"
+      WORKER_POOL_SIZE: "3"
+      MAX_RETRIES: "3"
+      JOB_TIMEOUT_MS: "120000"
+      METRICS_ENABLED: "true"
+      METRICS_PORT: "9091"
+    ports:
+      - "127.0.0.1:9091:9091"   # Metriques Prometheus
+    volumes:
+      - ./exports/hq:/data/exports/hq
+    depends_on:
+      db:
+        condition: service_healthy
+      api-geo:
+        condition: service_started
+    networks:
+      - atlas-net
+    profiles: ["headless"]   # Activer : docker compose --profile headless up -d
+
 networks:
   atlas-net:
     driver: bridge

@@ -426,11 +426,13 @@ export interface ExportQuickDialogConfig {
   getAdmPolygon?: () => number[][] | null;
   /** Récupère la géométrie GeoJSON complète de l'ADM pour calcul clearance */
   getAdmGeometry?: () => ADMGeometry | null;
-  /** 
+  /**
    * Récupère les features thématiques actuellement affichées à l'écran
    * C'est la SOURCE DE VÉRITÉ pour l'export (mêmes valeurs que l'écran)
    */
   getThematicFeatures?: () => Array<{ properties: { code?: string; value?: number; grid_id?: string }; geometry: any }> | null;
+  /** Retourne l'URL de base de l'API Atlas (pour les appels HQ export serveur) */
+  getApiBase?: () => string;
 }
 
 // Cache global des mailles ADM (partagé entre exports)
@@ -477,7 +479,88 @@ export class ExportQuickDialog {
   private overlay: HTMLElement | null = null;
   private isExporting: boolean = false;
   private neighborsAuthWarningShown: boolean = false; // ÉTAPE 2: Flag pour log unique 401
-  
+
+  // ── Mode HQ Serveur (Sprint 4) ────────────────────────────────────────────
+  // Bascule entre moteur frontend (web) et moteur serveur headless (hq).
+  // Persisté en localStorage. Ne modifie pas le comportement par défaut.
+  private _exportMode: 'web' | 'hq' =
+    ((localStorage.getItem('atlas_export_mode') as 'web' | 'hq') ?? 'web');
+
+  get exportMode(): 'web' | 'hq' { return this._exportMode; }
+
+  /** Basculer le mode d'export (appelé depuis le toggle UI) */
+  setExportMode(mode: 'web' | 'hq'): void {
+    this._exportMode = mode;
+    localStorage.setItem('atlas_export_mode', mode);
+    console.log(`[ExportQuickDialog] Export mode: ${mode}`);
+  }
+
+  /** Crée un job HQ via l'API et retourne le job_id */
+  private async createHQJob(payload: Record<string, unknown>): Promise<string> {
+    const apiBase = this.config.getApiBase?.() ?? '';
+    const res = await fetch(`${apiBase}/export/hq`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error(`HQ job creation failed: ${res.status}`);
+    const data = await res.json();
+    return data.job_id as string;
+  }
+
+  /** Polling du statut jusqu'à COMPLETED ou FAILED (max 5 min) */
+  private async pollUntilComplete(
+    jobId: string,
+    onProgress?: (pct: number, status: string) => void
+  ): Promise<{ result_path: string; download_url: string }> {
+    const apiBase = this.config.getApiBase?.() ?? '';
+    const maxWaitMs = 300_000; // 5 min
+    const pollMs   = 1_500;
+    const deadline = Date.now() + maxWaitMs;
+
+    while (Date.now() < deadline) {
+      await new Promise((r) => setTimeout(r, pollMs));
+      const res = await fetch(`${apiBase}/export/hq/status/${jobId}`);
+      if (!res.ok) continue;
+      const status = await res.json();
+      onProgress?.(status.progress ?? 0, status.status);
+      if (status.status === 'COMPLETED') {
+        return {
+          result_path: status.result_path ?? '',
+          download_url: `${apiBase}/export/hq/download/${jobId}`,
+        };
+      }
+      if (status.status === 'FAILED' || status.status === 'CANCELLED') {
+        throw new Error(`HQ job ${status.status}: ${status.error_message ?? 'Unknown error'}`);
+      }
+    }
+    throw new Error(`HQ job timeout after ${maxWaitMs / 1000}s`);
+  }
+
+  /** Télécharge le résultat HQ et retourne un Blob */
+  private async downloadHQResult(downloadUrl: string): Promise<Blob> {
+    const res = await fetch(downloadUrl);
+    if (!res.ok) throw new Error(`HQ download failed: ${res.status}`);
+    return res.blob();
+  }
+
+  /** Pipeline complet export via serveur HQ */
+  async exportViaServer(
+    payload: Record<string, unknown>,
+    onProgress?: (pct: number, status: string) => void
+  ): Promise<Blob> {
+    onProgress?.(5, 'PENDING');
+    const jobId = await this.createHQJob(payload);
+    console.log(`[ExportQuickDialog] HQ job created: ${jobId}`);
+    onProgress?.(10, 'PROCESSING');
+    const result = await this.pollUntilComplete(jobId, onProgress);
+    onProgress?.(98, 'DOWNLOADING');
+    const blob = await this.downloadHQResult(result.download_url);
+    onProgress?.(100, 'COMPLETED');
+    return blob;
+  }
+  // ── Fin mode HQ ───────────────────────────────────────────────────────────
+
   constructor(config: ExportQuickDialogConfig) {
     this.config = config;
     this.options = { ...DEFAULT_EXPORT_OPTIONS };

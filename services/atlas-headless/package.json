@@ -1,0 +1,27 @@
+{
+  "name": "atlas-headless",
+  "version": "1.0.0",
+  "description": "Atlas Geotechnique Togo — Headless Export Worker (Puppeteer/MapLibre)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.11.3",
+    "puppeteer-core": "^22.6.5",
+    "sharp": "^0.33.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5",
+    "@types/pg": "^8.11.2",
+    "@types/sharp": "^0.31.1",
+    "typescript": "^5.3.3",
+    "ts-node": "^10.9.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

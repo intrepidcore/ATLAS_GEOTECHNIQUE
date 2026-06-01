@@ -5205,6 +5205,61 @@ initInferOptiCommandCenter({
 ;(window as any).thematicManager = thematicManager
 ;(window as any).thematicPanel = thematicPanel
 
+// ── Exposition pour le worker headless (Sprint 4 — non invasif) ───────────────
+// Fonction appelee par Puppeteer via page.evaluate() pour configurer la carte.
+// Ne modifie rien au comportement normal (si window.__atlasExportHQ n'est pas appele).
+;(window as any).__atlasExportHQ = async (payload: {
+  thematic_id?: string
+  adm_level?: string
+  adm_name?: string
+  bbox?: { north: number; south: number; east: number; west: number }
+}) => {
+  console.log('[HQ Export] Configuring map for headless export:', payload)
+
+  // 1. Charger la carte thematique si demandee
+  if (payload.thematic_id && thematicManager) {
+    try {
+      await thematicManager.loadThematicMap({
+        parameterId: payload.thematic_id,
+        displayName: payload.thematic_id,
+        palette: 'reds',
+        classification: 'quantile',
+        nClasses: 5,
+      } as any)
+      console.log('[HQ Export] Thematic loaded:', payload.thematic_id)
+    } catch (err) {
+      console.warn('[HQ Export] loadThematicMap warning:', err)
+    }
+  }
+
+  // 2. Ajuster la vue sur la zone demandee
+  if (payload.bbox) {
+    const { south, west, north, east } = payload.bbox
+    map.fitBounds([[south, west], [north, east]], { animate: false })
+  } else if (payload.adm_level && payload.adm_name) {
+    // Pas de bbox fournie : laisser le thematic manager cadrer
+    console.log('[HQ Export] No bbox — using thematic bounds')
+  }
+
+  // 3. Attendre que la carte soit stable
+  await new Promise<void>((resolve) => {
+    const onIdle = () => {
+      map.off('moveend', onIdle)
+      map.off('zoomend', onIdle)
+      resolve()
+    }
+    if (!(map as any).isMoving?.()) {
+      setTimeout(resolve, 100)
+    } else {
+      map.once('moveend', onIdle)
+    }
+  })
+
+  return { ready: true, thematic: payload.thematic_id }
+}
+console.log('[INIT] window.__atlasExportHQ exposed for headless worker')
+// ── Fin exposition headless ───────────────────────────────────────────────────
+
 initCampaignPlanner({
   map,
   getApiBase: () => API_GEO,

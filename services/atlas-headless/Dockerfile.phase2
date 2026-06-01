@@ -1,0 +1,54 @@
+# ── Dockerfile Phase 2 : MapLibre GL Node (rendu natif OpenGL) ────────────────
+# Sprint 5 — atlas-headless worker Phase 2
+# Cible : ~200-500ms/carte, independant de l'UI
+
+FROM node:20-bookworm-slim AS base
+
+# Mesa pour rendu OpenGL offscreen (EGL/Mesa)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-dev \
+    libegl1-mesa-dev \
+    libgbm-dev \
+    libxi-dev \
+    libxrandr-dev \
+    libxss-dev \
+    ca-certificates \
+    fonts-noto \
+    && rm -rf /var/lib/apt/lists/*
+
+# Software rendering (pas de GPU requis)
+ENV LIBGL_ALWAYS_SOFTWARE=1 \
+    NODE_ENV=production
+
+# ── Build ──────────────────────────────────────────────────────────────────────
+FROM base AS builder
+WORKDIR /build
+COPY package*.json ./
+RUN npm ci
+COPY tsconfig.json ./
+COPY src/ ./src/
+RUN npm run build
+
+# ── Runtime ────────────────────────────────────────────────────────────────────
+FROM base AS runtime
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY --from=builder /build/dist ./dist/
+
+VOLUME ["/data/exports/hq"]
+
+ENV EXPORTS_DIR=/data/exports/hq \
+    ENGINE=maplibre \
+    POLL_INTERVAL_MS=500 \
+    WORKER_POOL_SIZE=6 \
+    MAX_RETRIES=3 \
+    JOB_TIMEOUT_MS=30000 \
+    METRICS_ENABLED=true \
+    METRICS_PORT=9091
+
+EXPOSE 9091
+
+CMD ["node", "dist/index.js"]
