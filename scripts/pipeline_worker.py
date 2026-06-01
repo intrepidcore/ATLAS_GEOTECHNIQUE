@@ -134,14 +134,20 @@ def build_command(job_type: str, parameter_id: str, payload: Dict, db_url: str) 
 
     elif job_type == "run_vfs":
         mode = payload.get("mode", "calibrate")  # par défaut recalibrer uniquement
+        batch_size = str(payload.get("batch_size", 500))  # 500 par défaut (évite GEE memory limit)
         args = [
             sys.executable,
             str(SCRIPTS_DIR / "vfs_extract_spectral.py"),
             "--database-url", db_url,
             "--mode", mode,
+            "--batch-size", batch_size,
         ]
-        if mode != "extract":
-            args.append("--skip-gee")  # GEE extraction = coûteuse, séparée
+        if mode == "calibrate":
+            args.append("--skip-gee")  # Calibration seule = pas d'extraction GEE
+        elif mode == "all":
+            # En mode all déclenché par trigger : ré-extraire les mailles
+            # mais pas les sondages (déjà extraits)
+            args.append("--skip-sondage-gee")
         return tuple(args)
 
     elif job_type in ("kriging_stratifie", "regression_kriging", "kriging", "kriging_interpolate"):
