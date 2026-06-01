@@ -1,4 +1,4 @@
-# Roadmap — Moteur d'Export Serveur Headless
+	# Roadmap — Moteur d'Export Serveur Headless
 ## Atlas Géotechnique Togo — Intrepid Core Engineering
 
 > **Phrase fondatrice** : *Atlas Engine Headless est un moteur de rendu déterministe, piloté par l'API Atlas, produisant des sorties cartographiques reproductibles, sans aucune dépendance au navigateur ou au viewport.*
@@ -695,3 +695,177 @@ Bloc H (EG H2/H3 complet)        →  indépendant
 ```
 
 Le worker headless utilise le **même endpoint `/thematic/data`** que le frontend. Toute amélioration de performance sur cet endpoint (Bloc G) bénéficie directement au rendu serveur.
+
+---
+
+## 15. Intégration des nouveaux paramètres V10 dans le rendu serveur
+
+L'import V10_MASTER (batch `v10_master_import_2026`) a ajouté 5 nouvelles familles de paramètres géotechniques. Ils doivent tous être rendus cartographiés par le moteur serveur.
+
+### 15.1 Nouveaux paramètres et leur mapping thématique
+
+| Paramètre | Table source | `thematic_id` côté API | Catégorie UI |
+|---|---|---|---|
+| CBR 95% | `essais_cbr` | `cbr_95_ked_h1/h2/h3` | Portance routière |
+| OPM gamma_d max | `essais_proctor` | `gamma_d_ked_h1/h2/h3` | Compactage |
+| Pénétromètre Rd | `essais_penetrometre` | `rd_mpa_ked_h1/h2/h3` | Portance fondations |
+| Pressiomètre Em | `essais_pressiometre` | `em_mpa_ked_h1/h2/h3` | Portance fondations |
+| Indice de Groupe | `essais_classif.indice_groupe` | dérivé HRB | Classification |
+
+### 15.2 Palettes recommandées pour le rendu
+
+```json
+{
+  "cbr_95":   { "palette": "greens",   "domain": [0, 80],  "unit": "%" },
+  "gamma_d":  { "palette": "oranges",  "domain": [14, 25], "unit": "kN/m³" },
+  "rd_mpa":   { "palette": "blues",    "domain": [0, 30],  "unit": "MPa" },
+  "em_mpa":   { "palette": "purples",  "domain": [0, 100], "unit": "MPa" },
+  "ig":       { "palette": "reds_r",   "domain": [0, 16],  "unit": "—" }
+}
+```
+
+### 15.3 Vues matérialisées à créer pour le GET `/thematic/data`
+
+Pour que l'endpoint `/thematic/data` renvoie les valeurs interpolées des nouveaux paramètres, les vues suivantes doivent être créées (migration 179) :
+
+```sql
+-- Migration 179 — Vues thématiques nouveaux paramètres V10
+-- Ajouter les nouveaux paramètres dans maille_geotech_interpolation
+
+-- CBR 95% par horizon
+CREATE MATERIALIZED VIEW IF NOT EXISTS atlas.mv_cbr_95_ked AS
+SELECT
+  v.maille_code,
+  v.parameter_id,
+  v.value                 AS cbr_95_pct,
+  v.variance              AS cbr_95_variance,
+  v.method,
+  v.run_id,
+  m.geom
+FROM atlas.ai_interpolation_values v
+JOIN atlas.mailles m ON m.code = v.maille_code
+WHERE v.parameter_id LIKE 'cbr_95_ked_%'
+  AND v.run_id = (
+    SELECT id FROM atlas.ai_interpolation_runs r2
+    WHERE r2.parameter_id = v.parameter_id
+    ORDER BY r2.created_at DESC LIMIT 1
+  );
+
+CREATE UNIQUE INDEX IF NOT EXISTS mv_cbr_95_ked_pk
+  ON atlas.mv_cbr_95_ked (maille_code, parameter_id);
+```
+
+> **Note** : La même structure s'applique pour `rd_mpa_ked`, `em_mpa_ked`, `gamma_d_ked`.
+> La migration 179 devra aussi ajouter l'index UNIQUE manquant sur `mv_mailles_geotech` (cf. section 16).
+
+### 15.4 Cartes thématiques prioritaires (whitepaper)
+
+Pour l'article scientifique V2, les cartes suivantes sont requises en haute résolution (PNG 300 DPI, format A4) :
+
+| Carte | Paramètre | Horizon | Zone |
+|---|---|---|---|
+| 1. Portance routière CBR 95% | `cbr_95_ked_h1` | H1 | Régions Plateaux + Kara |
+| 2. Résistance dynamique Rd | `rd_mpa_ked_h1` | H1 | Togo entier |
+| 3. Module pressiométrique Em | `em_mpa_ked_h2` | H2 | Régions Centrale + Kara |
+| 4. OPM gamma_d | `gamma_d_ked_h1` | H1 | Corridors routiers V10 |
+| 5. VBS (référence) | `vbs_fusion_h1` | H1 | Togo entier |
+| 6. IP Fusion | `ip_fusion_h1/h2/h3` | H1+H2+H3 | Togo entier |
+
+---
+
+## 16. Migration 179 — Corrections techniques post-V10 (prerequis roadmap serveur)
+
+Avant de lancer l'implémentation du moteur headless, cette migration doit être appliquée :
+
+```sql
+-- migrations_post_v1/179_fix_mv_mailles_geotech_index.sql
+\set ON_ERROR_STOP 1
+BEGIN;
+
+-- 1. Index UNIQUE pour REFRESH CONCURRENTLY (trigger_refresh_mailles cassé sans lui)
+CREATE UNIQUE INDEX IF NOT EXISTS mv_mailles_geotech_maille_code_idx
+  ON atlas.mv_mailles_geotech (maille_code);
+
+-- 2. Ré-activer le trigger trigger_refresh_mailles
+ALTER TABLE atlas.sondages ENABLE TRIGGER trigger_refresh_mailles;
+
+-- 3. Note sur migration hq_export_jobs :
+--    Les migrations 176-178 sont réservées au V10 import.
+--    La table hq_export_jobs sera créée en migration 180.
+
+RAISE NOTICE 'Migration 179 OK — mv_mailles_geotech index + trigger reactives';
+COMMIT;
+```
+
+**Table `atlas.hq_export_jobs`** → sera créée en migration **180** (pas 176 comme indiqué dans §3.1 — cette numérotation est mise à jour).
+
+---
+
+## 17. Timeline résumé (estimation sprints)
+
+```
+Sprint 0 (prerequis — 1 jour)
+  [x] Import V10_MASTER (sondages, labo, in-situ, CBR, Proctor)
+  [x] Migrations 176/177/178 (essais_penetrometre, pressiometre, cbr)
+  [ ] Migration 179 (mv_mailles_geotech unique index)
+  [ ] Pipeline calculs KED/RK (60 jobs en cours)
+
+Sprint 1 — Infrastructure DB + API (2-3 jours)
+  [ ] Migration 180 : table hq_export_jobs
+  [ ] services/api-geo/src/hq_export.rs (3 endpoints)
+  [ ] Tests curl
+
+Sprint 2 — Worker Puppeteer MVP (3-4 jours)
+  [ ] services/atlas-headless/ structure Node.js
+  [ ] worker.ts boucle + Puppeteer
+  [ ] window.__atlasExportHQ() dans ui/src/main.ts
+  [ ] waitForTilesLoaded() (fix Problème 1)
+  [ ] Dockerfile Phase 1 + docker-compose
+
+Sprint 3 — Composition cadre A4 (3-4 jours)
+  [ ] frame/composer.ts (Sharp)
+  [ ] Validation visuelle SSIM > 0.95
+
+Sprint 4 — Toggle UI + polling (2-3 jours)
+  [ ] Thematic panel toggle "Web / Impression HQ"
+  [ ] Barre de progression dans export-quick-dialog.ts
+
+Sprint 5 — Phase 2 MapLibre GL Node (3-5 jours)
+  [ ] @maplibre/maplibre-gl-node renderer
+  [ ] styles/builder.ts (GL JSON depuis palettes Atlas)
+  [ ] Benchmark Phase 1 vs Phase 2
+
+Sprint 6 — Robustesse + monitoring (2 jours)
+  [ ] Retry automatique (max 3)
+  [ ] Nettoyage fichiers > 7 jours
+  [ ] Métriques jobs/heure, durée, taux d'échec
+
+Total estimé : 16-22 jours de développement
+Gains cibles : ×5-50 vs moteur frontend actuel
+               Phase 1 : ≤ 3 s/carte (vs 5-8 s actuels)
+               Phase 2 : ≤ 500 ms/carte
+```
+
+---
+
+## 18. État d'avancement au 2026-06-01
+
+| Section | Statut |
+|---|---|
+| Contexte et motivation documentés | ✅ Complet |
+| Choix technologique analysé | ✅ Complet |
+| Architecture cible définie | ✅ Complet |
+| Schéma DB `hq_export_jobs` (migration 180) | ✅ Documenté, à appliquer |
+| Endpoints API Rust documentés | ✅ Complet |
+| Worker Puppeteer Phase 1 documenté | ✅ Complet |
+| Worker MapLibre Phase 2 documenté | ✅ Complet |
+| Composition cadre A4 documentée | ✅ Complet |
+| Docker Compose documenté | ✅ Complet |
+| Toggle UI documenté | ✅ Complet |
+| Milestones définis | ✅ Complet |
+| Nouveaux paramètres V10 intégrés | ✅ Section 15 ajoutée |
+| Migration 179 prerequis définie | ✅ Section 16 ajoutée |
+| Timeline résumé | ✅ Section 17 ajoutée |
+| **Implémentation** | ⏳ Sprint 1 à démarrer |
+
+> La roadmap est **complète et validée**. L'implémentation peut commencer par le Sprint 0 (migration 179) dès que le pipeline géostatistique V10 est terminé.

@@ -1,41 +1,137 @@
 {
+  "$schema": "https://atlas.intrepidcore.io/schemas/seed-manifest-v2.json",
   "schema_version": "2.0",
   "identity": {
-    "seed_version": "1.3.0",
-    "created_at": "2026-05-30T15:34:33Z",
+    "seed_id": "atlas-seed-20260601-966e51a",
+    "seed_version": "2.0.0",
+    "environment": "production",
+    "classification": "internal"
+  },
+  "source": {
+    "created_at": "2026-06-01T17:31:35Z",
     "created_by": "serge.tabedjato",
-    "description": "Atlas Géotechnique Togo — Seed desktop v1.3.0. KED L1 + RK L2 (15 params) complets. Sans rasters WorldClim/DSM."
+    "git_commit": "966e51a",
+    "git_branch": "atlas_v2_clean",
+    "db_name": "atlas_clean",
+    "format": "pg_dump -Fc --no-owner --no-privileges --schema=atlas"
   },
-  "file": {
-    "filename": "atlas_desktop_seed.dump",
-    "format": "pg_dump -Fc",
-    "size_mb": 153.7,
-    "sha256": "EE23ACBD30824E106D41E34F00815625BFC551DCD275CB10F875A6C215B98F68"
+  "integrity": {
+    "sha256": "253b19209952978e0f9a53fefb6ceedf26a24e11d85009616dd5e3e831e813e5",
+    "size_bytes": 2328257357,
+    "signed_by": "atlas-release-key-2026"
   },
-  "invariants": {
-    "inv001_mailles_29407": true,
-    "inv002_rk_15params": true,
-    "inv003_ked_12params": true,
-    "inv004_zones_5": true,
-    "inv005_no_doublons": true,
-    "inv006_worldclim_excluded": true
-  },
-  "content": {
-    "mailles": 29407,
-    "sondages": 123,
-    "rk_params": 15,
-    "ked_params": 12,
-    "zones_etude": 5,
-    "excluded_tables": [
-      "worldclim_prec",
-      "worldclim_bio",
-      "dsm_cop30",
-      "dsm_slope"
+  "compatibility": {
+    "postgres_min_major": 16,
+    "postgres_max_major": 17,
+    "postgis_min_version": "3.4",
+    "max_migration_applied": "178",
+    "requires_extensions": [
+      "postgis",
+      "uuid-ossp",
+      "pg_trgm"
     ]
   },
-  "restore": {
-    "command": "pg_restore -Fc --no-owner -n atlas -d atlas_clean atlas_desktop_seed.dump",
-    "requires_postgis": true,
-    "note": "Exécuter AFTER CREATE EXTENSION IF NOT EXISTS postgis;"
-  }
+  "contents": {
+    "schemas": [
+      "atlas"
+    ],
+    "tables_count": 210,
+    "rows_estimate": {
+      "atlas.mailles": 29407,
+      "atlas.sondages": 492,
+      "atlas.echantillons": 1244,
+      "atlas.essais_vbs": 810,
+      "atlas.essais_atterberg": 909,
+      "atlas.essais_proctor": 292,
+      "atlas.essais_cbr": 567,
+      "atlas.essais_penetrometre": 411,
+      "atlas.essais_pressiometre": 26,
+      "atlas.ai_interpolation_runs": 314,
+      "atlas.ai_interpolation_values": 6399738,
+      "atlas.users": 0
+    },
+    "contains_pii": false,
+    "contains_user_data": false,
+    "geographic_scope": "TGO",
+    "import_batch": "v10_master_import_2026",
+    "new_v10_parameters": [
+      "essais_cbr (CBR %%)",
+      "essais_penetrometre (Rd MPa)",
+      "essais_pressiometre (Em MPa)",
+      "essais_classif.indice_groupe (IG)",
+      "essais_proctor.OPM (gamma_d kN/m3)"
+    ]
+  },
+  "retention": {
+    "expires_at": "2027-06-01T00:00:00Z",
+    "superseded_by": null,
+    "keep_versions": 3
+  },
+  "invariants": [
+    {
+      "id": "INV-001",
+      "description": "Toutes les mailles V2 presentes",
+      "severity": "critical",
+      "query": "SELECT COUNT(*) FROM atlas.mailles",
+      "expected_min": 29407,
+      "expected_max": 29407
+    },
+    {
+      "id": "INV-002",
+      "description": "Table desktop_seed_state presente",
+      "severity": "critical",
+      "query": "SELECT to_regclass('atlas.desktop_seed_state') IS NOT NULL",
+      "expected_value": true
+    },
+    {
+      "id": "INV-003",
+      "description": "PostGIS operationnel",
+      "severity": "critical",
+      "query": "SELECT PostGIS_Version() IS NOT NULL",
+      "expected_value": true
+    },
+    {
+      "id": "INV-004",
+      "description": "Nouvelles tables V10 presentes (essais_cbr, penetrometre, pressiometre)",
+      "severity": "critical",
+      "query": "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='atlas' AND table_name IN ('essais_cbr','essais_penetrometre','essais_pressiometre')",
+      "expected_min": 3,
+      "expected_max": 3
+    },
+    {
+      "id": "INV-005",
+      "description": "Sondages V10 importes",
+      "severity": "high",
+      "query": "SELECT COUNT(*) FROM atlas.sondages WHERE created_by_batch='v10_master_import_2026'",
+      "expected_min": 300
+    },
+    {
+      "id": "INV-006",
+      "description": "Aucun utilisateur dans le seed (securite)",
+      "severity": "critical",
+      "query": "SELECT COUNT(*) FROM atlas.users",
+      "expected_max": 0
+    },
+    {
+      "id": "INV-007",
+      "description": "CBR importes",
+      "severity": "high",
+      "query": "SELECT COUNT(*) FROM atlas.essais_cbr",
+      "expected_min": 500
+    },
+    {
+      "id": "INV-008",
+      "description": "AI interpolation values present",
+      "severity": "high",
+      "query": "SELECT COUNT(*) FROM atlas.ai_interpolation_values",
+      "expected_min": 6000000
+    },
+    {
+      "id": "INV-009",
+      "description": "h_canon backfille sur echantillons",
+      "severity": "medium",
+      "query": "SELECT COUNT(*) FROM atlas.echantillons WHERE h_canon IS NOT NULL",
+      "expected_min": 1200
+    }
+  ]
 }
