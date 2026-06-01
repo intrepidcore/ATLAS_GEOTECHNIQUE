@@ -423,7 +423,7 @@ def predict_vbs_vfs(
     if valid_mask.sum() > 0:
         X_valid = df.loc[valid_mask, SPECTRAL_FEATURES].values.astype(np.float64)
         X_scaled = scaler.transform(X_valid)
-        preds = model.predict(X_scaled)[:, 0]
+        preds = model.predict(X_scaled).ravel()  # ravel() car PLSRegression retourne (N,) ou (N,1)
         preds = np.clip(preds, VBS_MIN, VBS_MAX)
         df.loc[valid_mask, "vbs_vfs_pred"] = preds
         df.loc[valid_mask, "vbs_vfs_std"]  = pls_result["loo_rmse"]
