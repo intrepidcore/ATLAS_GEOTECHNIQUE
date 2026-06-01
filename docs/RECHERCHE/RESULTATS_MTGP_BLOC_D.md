@@ -56,13 +56,19 @@ car le MTGP nécessite une jointure spéciale pour le stacking. Ce cas est docum
 
 ---
 
-## 3. Résultats en base (H1 uniquement)
+## 3. Résultats en base (H1/H2/H3)
 
-| Paramètre | N mailles | Prédiction moyenne | Variance GPflow moyenne |
-|:---------:|:---------:|:-----------------:|:----------------------:|
-| vbs_mtgp_h1 | 29,407 | 4.090 g/100g | 8.928 |
-| ip_mtgp_h1 | 29,407 | 19.463 % | 100.257 |
-| eg_mtgp_h1 | 29,407 | 3.731 % | 3.546 |
+| Paramètre | Horizon | N train | N mailles | Prédiction moy. | Variance GPflow moy. |
+|:---------:|:-------:|:-------:|:---------:|:---------------:|:--------------------:|
+| VBS | H1 | 260 | 29,407 | 4.090 g/100g | 8.928 |
+| VBS | H2 | 260 | 29,407 | 4.007 g/100g | 8.710 |
+| VBS | H3 | 258 | 29,407 | 4.021 g/100g | 9.051 |
+| IP | H1 | 260 | 29,407 | 19.463 % | 100.257 |
+| IP | H2 | 260 | 29,407 | 20.466 % | 95.285 |
+| IP | H3 | 258 | 29,407 | 20.553 % | 102.278 |
+| EG | H1 | 260 | 29,407 | 3.731 % | 3.546 |
+| EG | H2 | 260 | 29,407 | 3.986 % | 3.051 |
+| EG | H3 | 258 | 29,407 | 4.077 % | 3.260 |
 
 ### Cohérence avec plages physiques DATA-02
 
