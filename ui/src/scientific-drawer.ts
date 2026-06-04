@@ -382,7 +382,7 @@ export function initScientificDrawer(): void {
     else if (tab === 'variogram') await loadVariogram()
     else if (tab === 'validation') await loadValidation()
     else if (tab === 'compare') await loadCompare()
-    else if (tab === 'ml') setPanelStatus('ml', 'Prêt.')
+    else if (tab === 'ml') await loadMlPanel()
   }
 
   const loadEda = async () => {
@@ -791,6 +791,278 @@ export function initScientificDrawer(): void {
       if (notes) notes.textContent = (e as Error).message || String(e)
       setStatus('scientificCompareStatus', 'Erreur.')
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ONGLET ML — Pipeline de calcul L1-L4 (ARCH-01 + ARCH-02)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  interface MlModelStatus {
+    id: string
+    label: string
+    method_db: string
+    status: string
+    n_params: number
+    n_mailles: number
+    metrics: Record<string, any>
+    warnings: string[]
+    last_run_at?: string
+  }
+
+  interface MlJobStatus {
+    id: string
+    status: string
+    logs?: string
+    progress_pct?: number
+    error_message?: string
+  }
+
+  let mlJobPollingInterval: ReturnType<typeof setInterval> | null = null
+
+  async function loadMlPanel(): Promise<void> {
+    const panel = document.getElementById('scientificPanel-ml')
+    if (!panel) return
+    panel.innerHTML = buildMlPanelSkeleton()
+    if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+
+    document.getElementById('mlRefreshBtn')?.addEventListener('click', () => void refreshMlPanel())
+
+    panel.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-action="recompute"]')
+      if (btn) void handleRecomputeClick(btn.dataset.model ?? '')
+    })
+
+    await refreshMlPanel()
+  }
+
+  async function refreshMlPanel(): Promise<void> {
+    const panel = document.getElementById('scientificPanel-ml')
+    if (!panel) return
+    const errEl = panel.querySelector<HTMLElement>('#mlStatusError')
+
+    try {
+      const apiBase = getApiBase()
+      const token = tokenStorage.getAccessToken?.()
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+      const resp = await fetch(`${apiBase}/ai/models/status`, { headers })
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+      const data = (await resp.json()) as { models: MlModelStatus[] }
+      renderMlTable(panel, data.models)
+      if (errEl) errEl.style.display = 'none'
+      if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+    } catch (err) {
+      if (errEl) {
+        errEl.textContent = `Impossible de charger le statut des modèles: ${(err as Error).message}`
+        errEl.style.display = 'block'
+      }
+    }
+  }
+
+  function renderMlTable(panel: HTMLElement, models: MlModelStatus[]): void {
+    const tbody = panel.querySelector<HTMLElement>('#mlModelsBody')
+    if (!tbody) return
+
+    const statusBadge: Record<string, string> = {
+      ready:        '<span class="badge badge--ready" style="background:#166534;color:#bbf7d0;padding:2px 6px;border-radius:4px;font-size:10px">Prêt</span>',
+      partial:      '<span class="badge badge--partial" style="background:#78350f;color:#fde68a;padding:2px 6px;border-radius:4px;font-size:10px">Partiel</span>',
+      not_computed: '<span class="badge badge--pending" style="background:#1e3a5f;color:#93c5fd;padding:2px 6px;border-radius:4px;font-size:10px">Non calculé</span>',
+      running:      '<span class="badge badge--running" style="background:#1e293b;color:#f59e0b;padding:2px 6px;border-radius:4px;font-size:10px;animation:pulse 1s infinite">En cours</span>',
+    }
+
+    tbody.innerHTML = models.map(model => {
+      // ARCH-01 : valeurs depuis model.metrics (API), aucun hardcode
+      const rmseRaw = model.metrics?.['vbs_ked_h1']?.loo_rmse
+        ?? model.metrics?.['vbs_h1']?.loo_rmse
+        ?? model.metrics?.['variance_reduction_pct']
+      let rmseCell = '—'
+      if (rmseRaw != null) {
+        rmseCell = typeof rmseRaw === 'number'
+          ? (model.id === 'L2b_BLUP' ? `σ²↓${rmseRaw.toFixed(1)}%` : rmseRaw.toFixed(2))
+          : String(rmseRaw)
+      }
+
+      const badge = statusBadge[model.status] ?? '<span style="font-size:10px;color:#94a3b8">—</span>'
+      const lastRun = model.last_run_at ? new Date(model.last_run_at).toLocaleDateString('fr-FR') : '—'
+      const warn = model.warnings?.length
+        ? `<div style="font-size:10px;color:#f59e0b;margin-top:2px"><i data-lucide="alert-triangle" style="width:10px;height:10px"></i> ${escapeHtml(model.warnings[0] ?? '')}</div>`
+        : ''
+
+      return `<tr data-model-id="${escapeHtml(model.id)}">
+        <td style="padding:6px 8px">
+          <strong style="font-size:12px">${escapeHtml(model.label)}</strong>
+          <code style="display:block;font-size:10px;color:#64748b;margin-top:2px">${escapeHtml(model.method_db)}</code>
+          ${warn}
+        </td>
+        <td style="padding:6px 8px;text-align:center">${badge}</td>
+        <td style="padding:6px 8px;text-align:right;font-size:12px">${model.n_params ?? '—'}</td>
+        <td style="padding:6px 8px;text-align:right;font-size:12px">${(model.n_mailles ?? 0).toLocaleString('fr-FR')}</td>
+        <td style="padding:6px 8px;text-align:right;font-size:12px;color:#94a3b8">${rmseCell}</td>
+        <td style="padding:6px 8px;text-align:center;font-size:10px;color:#64748b">${lastRun}</td>
+        <td style="padding:6px 8px;text-align:center">
+          <button class="btn-sm" data-action="recompute" data-model="${escapeHtml(model.id)}"
+            ${model.status === 'running' ? 'disabled' : ''}
+            style="font-size:10px;padding:3px 8px;border:1px solid #334155;border-radius:4px;background:#1e293b;color:#e2e8f0;cursor:pointer">
+            <i data-lucide="refresh-cw" style="width:10px;height:10px;vertical-align:middle"></i>
+            ${model.status === 'not_computed' ? 'Calculer' : 'Recalculer'}
+          </button>
+        </td>
+      </tr>`
+    }).join('')
+  }
+
+  function buildMlPanelSkeleton(): string {
+    return `<div class="ml-jobs-panel" style="font-size:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <h4 style="margin:0;font-size:13px;display:flex;align-items:center;gap:6px">
+          <i data-lucide="cpu" style="width:14px;height:14px"></i> Pipeline L1–L4
+        </h4>
+        <button id="mlRefreshBtn" style="font-size:11px;padding:3px 8px;border:1px solid #334155;border-radius:4px;background:#1e293b;color:#94a3b8;cursor:pointer">
+          <i data-lucide="refresh-cw" style="width:10px;height:10px;vertical-align:middle"></i> Rafraîchir
+        </button>
+      </div>
+
+      <p id="mlStatusError" style="color:#f87171;font-size:11px;display:none;margin-bottom:8px"></p>
+
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead>
+            <tr style="border-bottom:1px solid #334155;color:#64748b;text-align:left">
+              <th style="padding:4px 8px">Modèle</th>
+              <th style="padding:4px 8px;text-align:center">Statut</th>
+              <th style="padding:4px 8px;text-align:right">Params</th>
+              <th style="padding:4px 8px;text-align:right">Mailles</th>
+              <th style="padding:4px 8px;text-align:right">Métrique</th>
+              <th style="padding:4px 8px;text-align:center">Dernier run</th>
+              <th style="padding:4px 8px;text-align:center">Action</th>
+            </tr>
+          </thead>
+          <tbody id="mlModelsBody">
+            <tr><td colspan="7" style="padding:12px;text-align:center;color:#64748b">Chargement...</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div id="mlJobConsole" style="display:none;margin-top:12px;background:#0a0f1a;border-radius:6px;border:1px solid #1e3a5f">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 10px;border-bottom:1px solid #1e3a5f">
+          <span style="font-size:11px;display:flex;align-items:center;gap:6px">
+            <i data-lucide="terminal" style="width:12px;height:12px"></i>
+            <span id="consoleJobLabel">Job en cours...</span>
+          </span>
+          <button id="consoleCancelBtn" style="font-size:10px;padding:2px 6px;border:1px solid #ef4444;border-radius:4px;background:transparent;color:#ef4444;cursor:pointer">
+            <i data-lucide="x-circle" style="width:10px;height:10px"></i> Annuler
+          </button>
+        </div>
+        <pre id="consoleOutput" style="margin:0;padding:8px 10px;font-size:10px;color:#94a3b8;max-height:150px;overflow-y:auto;white-space:pre-wrap">En attente...</pre>
+        <div style="padding:4px 10px 6px;background:#0f172a">
+          <div style="background:#1e3a5f;border-radius:2px;height:4px;overflow:hidden">
+            <div id="progressFill" style="width:0%;height:100%;background:#3b82f6;transition:width 0.3s"></div>
+          </div>
+          <span id="progressEta" style="font-size:9px;color:#64748b;margin-top:2px;display:block"></span>
+        </div>
+      </div>
+    </div>`
+  }
+
+  async function handleRecomputeClick(modelId: string): Promise<void> {
+    const jobTypeMap: Record<string, string> = {
+      L1_KED_H: 'ked_recompute',
+      L2a_RK:   'rk_recompute',
+      L2b_BLUP: 'blup_recompute',
+      L3_VFS:   'vfs_extract',
+      L4_MTGP:  'mtgp_recompute',
+    }
+    const jobType = jobTypeMap[modelId]
+    if (!jobType) return
+
+    try {
+      const apiBase = getApiBase()
+      const token = tokenStorage.getAccessToken?.()
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      }
+      const resp = await fetch(`${apiBase}/ai/jobs/enqueue`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ job_type: jobType, requested_by: 'expert-panel' }),
+      })
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => '')
+        throw new Error(`HTTP ${resp.status} ${txt}`)
+      }
+      const { job_id } = (await resp.json()) as { job_id: string }
+
+      // Affiche la console et commence le polling
+      showJobConsole(modelId)
+      startJobPolling(job_id)
+    } catch (err) {
+      const errEl = document.getElementById('mlStatusError')
+      if (errEl) {
+        errEl.textContent = `Impossible d'enqueuer le job : ${(err as Error).message}`
+        errEl.style.display = 'block'
+      }
+    }
+  }
+
+  function showJobConsole(modelId: string): void {
+    const console = document.getElementById('mlJobConsole')
+    const label = document.getElementById('consoleJobLabel')
+    const output = document.getElementById('consoleOutput')
+    const progress = document.getElementById('progressFill')
+    if (console) console.style.display = 'block'
+    if (label) label.textContent = `Job ${modelId} en cours...`
+    if (output) output.textContent = 'En attente de démarrage...'
+    if (progress) progress.style.width = '0%'
+
+    document.getElementById('consoleCancelBtn')?.addEventListener('click', async () => {
+      if (mlJobPollingInterval) clearInterval(mlJobPollingInterval)
+      if (console) console.style.display = 'none'
+      await refreshMlPanel()
+    }, { once: true })
+  }
+
+  function startJobPolling(jobId: string): void {
+    if (mlJobPollingInterval) clearInterval(mlJobPollingInterval)
+
+    let lastLogLength = 0
+    mlJobPollingInterval = setInterval(async () => {
+      try {
+        const apiBase = getApiBase()
+        const token = tokenStorage.getAccessToken?.()
+        const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+        const resp = await fetch(`${apiBase}/ai/jobs/${jobId}`, { headers })
+        if (!resp.ok) return
+        const job = (await resp.json()) as MlJobStatus
+
+        // Append new log lines
+        const output = document.getElementById('consoleOutput')
+        if (output && job.logs && job.logs.length > lastLogLength) {
+          output.textContent = job.logs
+          lastLogLength = job.logs.length
+          output.scrollTop = output.scrollHeight
+        }
+
+        const fill = document.getElementById('progressFill')
+        if (fill && job.progress_pct != null) {
+          fill.style.width = `${job.progress_pct}%`
+        }
+
+        const eta = document.getElementById('progressEta')
+        if (eta && job.progress_pct != null) {
+          eta.textContent = `${job.progress_pct}%`
+        }
+
+        if (['done', 'failed', 'cancelled'].includes(job.status)) {
+          clearInterval(mlJobPollingInterval!)
+          mlJobPollingInterval = null
+          const console = document.getElementById('mlJobConsole')
+          if (console) setTimeout(() => { console.style.display = 'none' }, 3000)
+          await refreshMlPanel()
+        }
+      } catch {
+        // Silencieux — retry au prochain tick
+      }
+    }, 3000)
   }
 
   function escapeHtml(s: string): string {
