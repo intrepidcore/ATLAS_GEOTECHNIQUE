@@ -138,9 +138,24 @@ jobs:
           cd ui
           npm run test:unit
 
+      - name: TypeScript type-check (noEmit)
+        run: |
+          cd ui
+          # Compte les erreurs TS hors fichiers orphelins (@ts-nocheck)
+          npx tsc --noEmit 2>&1 | grep "error TS" \
+            | grep -v "import-bulk-store\|DbManagerModal\|DataGrid\|SchemaTree" \
+            > /tmp/ts-errors.txt || true
+          COUNT=$(wc -l < /tmp/ts-errors.txt)
+          if [ "$COUNT" -gt 0 ]; then
+            echo "❌ $COUNT erreur(s) TypeScript non résolue(s):"
+            cat /tmp/ts-errors.txt
+            exit 1
+          fi
+          echo "✅ TypeScript OK (0 erreur hors orphelins @ts-nocheck)"
+
       - name: thematic params TS/Rust consistency
         run: python3 scripts/ci/check_thematic_params_consistency.py
-      
+
       - name: lint
         run: |
           cd ui
