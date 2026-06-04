@@ -332,6 +332,39 @@ function safeAddEventListener(id: string, event: string, handler: EventListener)
 const map = L.map('map', { preferCanvas: true, attributionControl: false }).setView([8.6195, 0.8248], 7)
 ;(window as any).leafletMap = map
 
+// Mode dessin fence — utilisé par l'onglet Visu 3D du panneau Expert Scientifique
+;(window as any).enableFenceDrawMode = function (): void {
+  const points: [number, number][] = []
+  const drawLayer = L.layerGroup().addTo(map)
+  map.getContainer().style.cursor = 'crosshair'
+
+  const onClick = (e: L.LeafletMouseEvent) => {
+    points.push([e.latlng.lng, e.latlng.lat])
+    L.circleMarker(e.latlng, { radius: 7, color: '#dc2626', fillColor: '#dc2626', fillOpacity: 0.9 })
+      .bindTooltip(`Point ${points.length === 1 ? 'A' : 'B'}`)
+      .addTo(drawLayer)
+
+    if (points.length === 2) {
+      L.polyline(
+        [points[0].slice().reverse() as L.LatLngExpression, points[1].slice().reverse() as L.LatLngExpression],
+        { color: '#dc2626', weight: 2, dashArray: '6,4' }
+      ).addTo(drawLayer)
+
+      const setField = (id: string, v: number) => {
+        const el = document.getElementById(id) as HTMLInputElement | null
+        if (el) el.value = v.toFixed(6)
+      }
+      setField('fenceLon1', points[0][0]!); setField('fenceLat1', points[0][1]!)
+      setField('fenceLon2', points[1][0]!); setField('fenceLat2', points[1][1]!)
+
+      map.off('click', onClick)
+      map.getContainer().style.cursor = ''
+      setTimeout(() => drawLayer.clearLayers(), 8000)
+    }
+  }
+  map.on('click', onClick)
+}
+
 // Créer les panes Leaflet pour gérer le z-order des couches
 // contextPane: couches géologie/pédologie/risque (z-index 440, en dessous)
 // gridPane: mailles 2km/28km (z-index 450, au-dessus pour permettre les clics)

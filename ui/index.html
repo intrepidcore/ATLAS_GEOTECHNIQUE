@@ -1193,8 +1193,9 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
         <button type="button" class="s-tab active" data-s-tab="eda">EDA</button>
         <button type="button" class="s-tab" data-s-tab="corr">Corrélations</button>
         <button type="button" class="s-tab" data-s-tab="variogram">Variogrammes</button>
-        <button type="button" class="s-tab" data-s-tab="validation">Validation</button>
-        <button type="button" class="s-tab" data-s-tab="ml">ML</button>
+        <button type="button" class="s-tab" data-s-tab="validation">Métriques</button>
+        <button type="button" class="s-tab" data-s-tab="ml">ML Pipeline</button>
+        <button type="button" class="s-tab" data-s-tab="viz3d">Visu 3D</button>
         <button type="button" class="s-tab" data-s-tab="compare">Comparaison</button>
       </div>
 
@@ -1237,11 +1238,9 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
           <div id="scientificValidationBody" style="font-size:11px;color:var(--text);max-height:42vh;overflow:auto"></div>
         </div>
 
-        <div class="s-panel" id="scientificPanel-ml">
-          <div style="color:var(--muted);font-size:12px">
-            ML: l’inférence IA est pilotée via Infer/Opti (jobs). Cette vue fournit des indicateurs visuels (à brancher selon endpoints disponibles).
-          </div>
-        </div>
+        <div class="s-panel" id="scientificPanel-ml"></div>
+
+        <div class="s-panel" id="scientificPanel-viz3d"></div>
 
         <div class="s-panel" id="scientificPanel-compare">
           <div id="scientificCompareStatus" style="color:var(--muted);font-size:12px;margin-bottom:8px">Prêt.</div>

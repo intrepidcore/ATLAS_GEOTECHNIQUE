@@ -7,7 +7,7 @@ import { getActiveThematicParameterId } from './thematic/thematic-parameter-cont
 // Register chart types (safe if already registered elsewhere)
 Chart.register(...registerables)
 
-type ScientificTabId = 'eda' | 'corr' | 'variogram' | 'validation' | 'ml' | 'compare'
+type ScientificTabId = 'eda' | 'corr' | 'variogram' | 'validation' | 'ml' | 'compare' | 'viz3d'
 
 type ThematicFeature = {
   properties?: {
@@ -280,6 +280,7 @@ export function initScientificDrawer(): void {
     validation: 'scientificPanel-validation',
     ml: 'scientificPanel-ml',
     compare: 'scientificPanel-compare',
+    viz3d: 'scientificPanel-viz3d',
   }
 
   let activeTab: ScientificTabId = 'eda'
@@ -290,6 +291,7 @@ export function initScientificDrawer(): void {
     validation: false,
     ml: false,
     compare: false,
+    viz3d: false,
   }
 
   let chartEdaVbs: Chart | null = null
@@ -365,6 +367,7 @@ export function initScientificDrawer(): void {
     loaded.variogram = false
     loaded.validation = false
     loaded.compare = false
+    // ml + viz3d ne dépendent pas du paramètre actif — pas de reset
   }
 
   window.addEventListener('atlas-thematic-parameter-changed', () => {
@@ -383,6 +386,7 @@ export function initScientificDrawer(): void {
     else if (tab === 'validation') await loadValidation()
     else if (tab === 'compare') await loadCompare()
     else if (tab === 'ml') await loadMlPanel()
+    else if (tab === 'viz3d') await loadViz3dPanel()
   }
 
   const loadEda = async () => {
@@ -698,38 +702,82 @@ export function initScientificDrawer(): void {
     setStatus('scientificVarStatus', 'Prêt.')
   }
 
+  // Bloc 5 — Tableau métriques live depuis /ai/models/status (ARCH-01, 0 hardcode)
   const loadValidation = async () => {
     const st = document.getElementById('scientificValidationStatus')
     const body = document.getElementById('scientificValidationBody')
-    if (st) st.textContent = 'Chargement LOO / variogrammes…'
+    if (st) st.textContent = 'Chargement métriques…'
     try {
-      const items = await fetchVariogramSummary()
-      if (st) st.textContent = 'Prêt.'
-      if (body) {
-        if (items.length === 0) {
-          body.innerHTML = '<p>Aucune entrée dans <code>ai_variograms</code> pour le moment.</p>'
-        } else {
-          const rows = items
-            .slice(0, 80)
-            .map((it) => {
-              const hz = it.horizon == null ? '—' : String(it.horizon)
-              const loo = it.loo_rmse == null ? '—' : Number(it.loo_rmse).toFixed(4)
-              const blk = it.block_rmse == null ? '—' : Number(it.block_rmse).toFixed(4)
-              const mt = it.model_type ?? '—'
-              const pid = it.parameter_id ?? '—'
-              return `<tr><td>${escapeHtml(pid)}</td><td>${escapeHtml(hz)}</td><td>${loo}</td><td>${blk}</td><td>${escapeHtml(mt)}</td></tr>`
-            })
-            .join('')
-          body.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:11px">
-<thead><tr style="text-align:left;border-bottom:1px solid var(--border)">
-<th>parameter_id</th><th>horizon</th><th>loo_rmse</th><th>block_rmse</th><th>model</th>
-</tr></thead><tbody>${rows}</tbody></table>`
-        }
-      }
+      const apiBase = getApiBase()
+      const token = tokenStorage.getAccessToken?.()
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+      const resp = await fetch(`${apiBase}/ai/models/status`, { headers })
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`)
+      const data = (await resp.json()) as { models: MlModelStatus[] }
+      if (st) st.textContent = `${data.models.filter(m => m.status === 'ready').length}/${data.models.length} modèles prêts`
+      if (body) body.innerHTML = renderMetricsTable(data.models)
+      if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
     } catch (e) {
       if (body) body.innerHTML = `<p style="color:#f97316">${escapeHtml((e as Error).message || String(e))}</p>`
       if (st) st.textContent = 'Erreur chargement.'
     }
+  }
+
+  function renderMetricsTable(models: MlModelStatus[]): string {
+    const paramLabels: Record<string, string> = {
+      vbs_ked_h1: 'VBS KED H1', vbs_ked_h2: 'VBS KED H2', vbs_ked_h3: 'VBS KED H3',
+      ip_ked_h1: 'IP KED H1', ip_ked_h2: 'IP KED H2', ip_ked_h3: 'IP KED H3',
+      eg_ked_h1: 'EG KED H1', eg_ked_h2: 'EG KED H2', eg_ked_h3: 'EG KED H3',
+      wl_ked_h1: 'WL KED H1', wl_ked_h2: 'WL KED H2', wl_ked_h3: 'WL KED H3',
+      wp_ked_h1: 'WP KED H1', wp_ked_h2: 'WP KED H2', wp_ked_h3: 'WP KED H3',
+    }
+
+    const sections = models.map(model => {
+      const metricEntries = Object.entries(model.metrics ?? {})
+      if (metricEntries.length === 0) {
+        return `<div style="margin-bottom:16px">
+          <h5 style="margin:0 0 6px;font-size:12px;color:#94a3b8">
+            <i data-lucide="cpu" style="width:12px;height:12px"></i> ${escapeHtml(model.label)}
+            <code style="font-size:10px;color:#475569;margin-left:6px">${escapeHtml(model.method_db)}</code>
+          </h5>
+          <p style="font-size:11px;color:#475569;margin:0">Métriques non disponibles (${escapeHtml(model.status)})</p>
+        </div>`
+      }
+
+      const rows = metricEntries.map(([key, val]) => {
+        const label = paramLabels[key] ?? key
+        let display = '—'
+        if (val != null && typeof val === 'object' && 'loo_rmse' in val) {
+          display = (val as any).loo_rmse != null ? Number((val as any).loo_rmse).toFixed(4) : '—'
+        } else if (typeof val === 'number') {
+          display = val.toFixed(4)
+        } else if (val != null) {
+          display = String(val)
+        }
+        return `<tr>
+          <td style="padding:3px 6px;font-size:11px;color:#e2e8f0">${escapeHtml(label)}</td>
+          <td style="padding:3px 6px;font-size:11px;text-align:right;color:#93c5fd;font-family:monospace">${display}</td>
+        </tr>`
+      }).join('')
+
+      return `<div style="margin-bottom:16px">
+        <h5 style="margin:0 0 6px;font-size:12px;color:#94a3b8;display:flex;align-items:center;gap:6px">
+          <i data-lucide="cpu" style="width:12px;height:12px"></i>
+          ${escapeHtml(model.label)}
+          <code style="font-size:10px;color:#475569">${escapeHtml(model.method_db)}</code>
+          <span style="font-size:10px;color:#64748b">${model.n_mailles.toLocaleString('fr-FR')} mailles</span>
+        </h5>
+        <table style="width:100%;border-collapse:collapse;font-size:11px">
+          <thead><tr style="border-bottom:1px solid #1e3a5f;color:#475569">
+            <th style="padding:3px 6px;text-align:left">Paramètre</th>
+            <th style="padding:3px 6px;text-align:right">LOO-RMSE</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`
+    })
+
+    return `<div style="max-height:50vh;overflow-y:auto;padding-right:4px">${sections.join('<hr style="border-color:#1e3a5f;margin:8px 0">')}</div>`
   }
 
   const loadCompare = async () => {
@@ -1063,6 +1111,253 @@ export function initScientificDrawer(): void {
         // Silencieux — retry au prochain tick
       }
     }, 3000)
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // ONGLET VIZ3D — Visualisations 3D (ARCH-01 + ARCH-02 + ARCH-03)
+  // ═══════════════════════════════════════════════════════════════════════
+
+  let viz3dJobPollingInterval: ReturnType<typeof setInterval> | null = null
+
+  async function loadViz3dPanel(): Promise<void> {
+    const panel = document.getElementById('scientificPanel-viz3d')
+    if (!panel) return
+    panel.innerHTML = buildViz3dPanel()
+    if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+
+    document.getElementById('viz3dGenerate')?.addEventListener('click', () => {
+      const param = (document.getElementById('viz3dParam') as HTMLSelectElement)?.value ?? 'vbs'
+      const arch = (panel.querySelector<HTMLInputElement>('input[name="archetype"]:checked'))?.value ?? 'A'
+      void generateViz3d(param, arch)
+    })
+
+    panel.querySelectorAll<HTMLElement>('.arch-option').forEach(opt => {
+      opt.addEventListener('click', () => {
+        panel.querySelectorAll('.arch-option').forEach(o => o.classList.remove('active'))
+        opt.classList.add('active')
+        const arch = opt.dataset.arch ?? 'A'
+        const fence = document.getElementById('fenceControls')
+        if (fence) fence.hidden = arch !== 'C'
+      })
+    })
+
+    document.getElementById('fenceDrawMode')?.addEventListener('click', () => {
+      if (typeof (window as any).enableFenceDrawMode === 'function') {
+        (window as any).enableFenceDrawMode()
+      }
+    })
+  }
+
+  function buildViz3dPanel(): string {
+    return `<div style="font-size:12px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-end">
+        <div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">PARAMÈTRE</div>
+          <select id="viz3dParam" style="background:#1e293b;border:1px solid #334155;border-radius:4px;color:#e2e8f0;padding:4px 8px;font-size:12px">
+            <optgroup label="Argilosité / Plasticité">
+              <option value="vbs">VBS (g/100g)</option>
+              <option value="ip">IP (%)</option>
+              <option value="wl">WL (%)</option>
+              <option value="wp">WP (%)</option>
+              <option value="eg">Eg (%)</option>
+            </optgroup>
+            <optgroup label="Portance / Compactage">
+              <option value="cbr_95">CBR 95% (%)</option>
+              <option value="gamma_d">γd max (t/m³)</option>
+              <option value="w_opt">wopt (%)</option>
+            </optgroup>
+            <optgroup label="In-situ">
+              <option value="rd_mpa">Rd (MPa)</option>
+            </optgroup>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:10px;color:#64748b;margin-bottom:4px">TYPE DE VUE</div>
+          <div style="display:flex;gap:6px">
+            ${[
+              { arch: 'A', icon: 'box', label: 'Cube 3D', sub: 'Plotly interactif' },
+              { arch: 'B', icon: 'columns-2', label: 'Strati H1-H3', sub: 'Colonnes PNG' },
+              { arch: 'C', icon: 'scissors', label: 'Fence', sub: 'Section SVG' },
+              { arch: 'D', icon: 'layers', label: 'Isovaleurs', sub: 'Surfaces PNG' },
+            ].map((a, i) => `
+              <label class="arch-option ${i === 0 ? 'active' : ''}" data-arch="${a.arch}"
+                style="display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;background:${i === 0 ? '#1e3a5f' : '#1e293b'};border:1px solid ${i === 0 ? '#3b82f6' : '#334155'};border-radius:6px;cursor:pointer;font-size:10px;color:#e2e8f0;min-width:68px;text-align:center">
+                <i data-lucide="${a.icon}" style="width:14px;height:14px"></i>
+                <span style="font-weight:600">${a.label}</span>
+                <span style="color:#64748b">${a.sub}</span>
+                <input type="radio" name="archetype" value="${a.arch}" ${i === 0 ? 'checked' : ''} hidden>
+              </label>`).join('')}
+          </div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button id="viz3dGenerate" style="padding:6px 14px;background:#3b82f6;border:none;border-radius:4px;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;gap:4px">
+            <i data-lucide="play" style="width:12px;height:12px"></i> Afficher
+          </button>
+        </div>
+      </div>
+
+      <div id="fenceControls" hidden style="background:#0f172a;border:1px solid #1e3a5f;border-radius:6px;padding:10px;margin-bottom:10px;font-size:11px">
+        <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:8px">
+          <div>
+            <div style="color:#64748b;margin-bottom:4px">Point A</div>
+            <label>Lon <input type="number" id="fenceLon1" step="0.001" placeholder="ex: 0.845"
+              style="width:80px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#e2e8f0;padding:2px 4px"></label>
+            <label style="margin-left:6px">Lat <input type="number" id="fenceLat1" step="0.001" placeholder="ex: 9.234"
+              style="width:80px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#e2e8f0;padding:2px 4px"></label>
+          </div>
+          <div>
+            <div style="color:#64748b;margin-bottom:4px">Point B</div>
+            <label>Lon <input type="number" id="fenceLon2" step="0.001" placeholder="ex: 1.124"
+              style="width:80px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#e2e8f0;padding:2px 4px"></label>
+            <label style="margin-left:6px">Lat <input type="number" id="fenceLat2" step="0.001" placeholder="ex: 8.512"
+              style="width:80px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#e2e8f0;padding:2px 4px"></label>
+          </div>
+          <div>
+            <div style="color:#64748b;margin-bottom:4px">Points coupe</div>
+            <input type="number" id="fenceNPoints" value="100" min="20" max="500"
+              style="width:60px;background:#1e293b;border:1px solid #334155;border-radius:3px;color:#e2e8f0;padding:2px 4px">
+          </div>
+        </div>
+        <button id="fenceDrawMode" style="padding:4px 10px;border:1px solid #334155;border-radius:4px;background:#1e293b;color:#94a3b8;font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px">
+          <i data-lucide="pencil" style="width:10px;height:10px"></i> Tracer sur la carte
+        </button>
+      </div>
+
+      <div id="viz3dOutput" style="min-height:200px;background:#0a0f1a;border:1px solid #1e3a5f;border-radius:6px;display:flex;align-items:center;justify-content:center">
+        <div style="text-align:center;color:#475569;font-size:12px;padding:20px">
+          <i data-lucide="image" style="width:24px;height:24px;display:block;margin:0 auto 8px"></i>
+          Sélectionnez un paramètre et un type de vue, puis cliquez "Afficher"
+        </div>
+      </div>
+    </div>`
+  }
+
+  async function generateViz3d(param: string, arch: string): Promise<void> {
+    const output = document.getElementById('viz3dOutput')
+    if (!output) return
+    output.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">
+      <i data-lucide="loader-2" style="width:20px;height:20px;display:block;margin:0 auto 8px;animation:spin 1s linear infinite"></i>
+      Chargement...
+    </div>`
+    if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+
+    try {
+      if (arch === 'A') {
+        const htmlUrl = `/exports/3d/${param}_A_cube_plotly.html`
+        output.innerHTML = `<iframe src="${htmlUrl}" style="width:100%;height:420px;border:none;border-radius:4px"
+          title="Cube 3D ${param.toUpperCase()}"></iframe>`
+        return
+      }
+
+      // ARCH-03 : backend décide si cache existe, jamais de HEAD depuis le front
+      const apiBase = getApiBase()
+      const token = tokenStorage.getAccessToken?.()
+      const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+
+      let url = `${apiBase}/ai/3d/asset?param=${encodeURIComponent(param)}&archetype=${encodeURIComponent(arch)}`
+      if (arch === 'C') {
+        const lon1 = (document.getElementById('fenceLon1') as HTMLInputElement)?.value
+        const lat1 = (document.getElementById('fenceLat1') as HTMLInputElement)?.value
+        const lon2 = (document.getElementById('fenceLon2') as HTMLInputElement)?.value
+        const lat2 = (document.getElementById('fenceLat2') as HTMLInputElement)?.value
+        const npts = (document.getElementById('fenceNPoints') as HTMLInputElement)?.value ?? '100'
+        if (lon1 && lat1 && lon2 && lat2) {
+          url += `&lon1=${lon1}&lat1=${lat1}&lon2=${lon2}&lat2=${lat2}&n_points=${npts}`
+        }
+      }
+
+      const assetResp = await fetch(url, { headers })
+      if (!assetResp.ok) throw new Error(`HTTP ${assetResp.status}`)
+      const asset = (await assetResp.json()) as { cached: boolean; url?: string; job_id?: string }
+
+      if (asset.cached && asset.url) {
+        renderViz3dAsset(output, asset.url, param, arch)
+        return
+      }
+
+      if (asset.job_id) {
+        output.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">
+          <i data-lucide="cpu" style="width:16px;height:16px;display:block;margin:0 auto 8px"></i>
+          Génération en cours (30–90 s)…
+          <progress id="viz3dProgress" value="0" max="100" style="display:block;width:80%;margin:8px auto"></progress>
+        </div>`
+        if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+        await pollViz3dJob(asset.job_id, output, param, arch)
+      }
+    } catch (err) {
+      output.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">
+        <i data-lucide="alert-circle" style="width:14px;height:14px"></i>
+        Erreur: ${escapeHtml(String(err))}
+      </div>`
+      if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+    }
+  }
+
+  function renderViz3dAsset(container: HTMLElement, url: string, param: string, arch: string): void {
+    const archLabel: Record<string, string> = {
+      B: 'Cartes stratigraphiques H1/H2/H3',
+      C: 'Coupe transversale (Fence)',
+      D: 'Isovaleurs',
+    }
+    container.innerHTML = `
+      <div style="padding:10px">
+        <img src="${url}" alt="${param.toUpperCase()} — ${archLabel[arch] ?? arch}"
+          style="max-width:100%;border-radius:4px;cursor:zoom-in"
+          onclick="this.style.maxWidth = this.style.maxWidth === '100%' ? 'none' : '100%'">
+        <div style="display:flex;justify-content:flex-end;margin-top:6px">
+          <a href="${url}" download style="font-size:11px;color:#3b82f6;text-decoration:none;display:flex;align-items:center;gap:4px">
+            <i data-lucide="download" style="width:12px;height:12px"></i> PNG 300dpi
+          </a>
+        </div>
+      </div>`
+    if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+  }
+
+  async function pollViz3dJob(jobId: string, container: HTMLElement, param: string, arch: string): Promise<void> {
+    if (viz3dJobPollingInterval) clearInterval(viz3dJobPollingInterval)
+    return new Promise<void>((resolve) => {
+      viz3dJobPollingInterval = setInterval(async () => {
+        try {
+          const apiBase = getApiBase()
+          const token = tokenStorage.getAccessToken?.()
+          const headers: Record<string, string> = token ? { Authorization: `Bearer ${token}` } : {}
+          const resp = await fetch(`${apiBase}/ai/jobs/${jobId}`, { headers })
+          if (!resp.ok) return
+          const job = (await resp.json()) as MlJobStatus & { result_url?: string; result_svg?: string }
+
+          const progress = container.querySelector<HTMLProgressElement>('#viz3dProgress')
+          if (progress && job.progress_pct != null) progress.value = job.progress_pct
+
+          if (job.status === 'done') {
+            clearInterval(viz3dJobPollingInterval!)
+            viz3dJobPollingInterval = null
+            if (arch === 'C' && job.result_svg) {
+              container.innerHTML = `
+                <div id="fenceSvgWrap" style="overflow:auto;max-height:420px;padding:10px">${job.result_svg}</div>
+                <div style="padding:6px 10px;display:flex;justify-content:flex-end">
+                  <button onclick="(window as any).exportSvgToPng?.('fenceSvgWrap','${param}_fence')"
+                    style="font-size:11px;padding:3px 8px;border:1px solid #334155;border-radius:4px;background:#1e293b;color:#94a3b8;cursor:pointer">
+                    <i data-lucide="download" style="width:10px;height:10px"></i> Exporter PNG
+                  </button>
+                </div>`
+              if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+            } else if (job.result_url) {
+              renderViz3dAsset(container, job.result_url, param, arch)
+            }
+            resolve()
+          } else if (['failed', 'cancelled'].includes(job.status)) {
+            clearInterval(viz3dJobPollingInterval!)
+            viz3dJobPollingInterval = null
+            container.innerHTML = `<div style="padding:16px;color:#f87171;font-size:12px">
+              <i data-lucide="x-circle" style="width:14px;height:14px"></i>
+              Job ${escapeHtml(job.status)}${job.error_message ? ': ' + escapeHtml(job.error_message) : ''}
+            </div>`
+            if (typeof (window as any).lucide !== 'undefined') (window as any).lucide.createIcons()
+            resolve()
+          }
+        } catch { /* retry */ }
+      }, 3000)
+    })
   }
 
   function escapeHtml(s: string): string {
