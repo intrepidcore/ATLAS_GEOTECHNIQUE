@@ -258,5 +258,129 @@ que `'vbs'` existe dans `ai_parameter_catalog`. La table ne contenait que des ID
 
 ---
 
+## CONV-15 : Dualité des bases de données — `method` DB ≠ identité du modèle
+
+**Date :** 2026-06-04  
+**Découverte :** Il existe **deux instances PostgreSQL** sur la même machine de développement.
+
+| Port | Instance | Contenu | Utilisateurs |
+|:----:|:--------:|:-------:|:------------:|
+| **5433** | PostgreSQL 17 natif (Windows) | Base canonique — **toutes les données de calcul** | Scripts Python (`run_ked_*.py`, `ked_rk_fusion.py`, `mtgp_geotechnique.py`, etc.) |
+| **5432** | Docker `atlas-db` | Clone partiel — **uniquement les données initiales** | API Rust (`atlas-api-geo` container) |
+
+**État des données vérifié le 2026-06-04 :**
+
+| Méthode | Port 5433 | Port 5432 | Statut |
+|:-------:|:---------:|:---------:|:------:|
+| `ked_hierarchical_5levels` | 31 params × 29 407 mailles ✅ | 0 lignes ❌ | **Manquant dans Docker** |
+| `ked_rk_fusion_bayesian` | 15 params × 29 407 mailles ✅ | 0 lignes ❌ | **Manquant dans Docker** |
+| `mtgp_icm_gpflow` | 15 params × 29 407 mailles ✅ | 0 lignes ❌ | **Manquant dans Docker** |
+| `regression_kriging_scorpan` | 15 params × 29 407 mailles ✅ | ~15 params ✅ | Présent dans les deux |
+
+**Conséquence :** L'API REST (`localhost:1420/api/...`) expose uniquement les données incomplètes du Docker.  
+L'UI ne voit pas KED-H, Fusion BLUP, ni MTGP alors qu'ils sont calculés.
+
+**Règle CONV-15 :** Toute référence à la base de données dans le code ou les scripts doit préciser  
+explicitement le port. La règle mnémotechnique est :
+
+> **5433 = vérité** (calculs géostat) · **5432 = API** (à synchroniser depuis 5433)
+
+**Correctif immédiat requis :** Pointer l'API Docker sur le PostgreSQL 5433 via  
+`host.docker.internal:5433` dans `docker-compose.yml`. Voir CONV-07.
+
+---
+
+## CONV-16 : Nommage des méthodes DB — `method` doit encoder la dérive utilisée
+
+**Date :** 2026-06-04  
+**Litige :** La table `ai_interpolation_values` contenait des lignes avec `method='ked_pedologie_ked'`  
+(ancien nom figé) qui ne permettait pas de distinguer si le run utilisait la dérive pédologique simple  
+ou la dérive hiérarchique 5 niveaux.
+
+**Cause :** Une version antérieure de `run_ked_vbs_ip_wl_wp_horizons.py` hardcodait  
+`method = 'ked_pedologie_ked'` indépendamment du mode `--hierarchical` activé.
+
+**Conséquence :** ~352 884 lignes en Docker (`ked_pedologie_ked`) ont un mode de dérive  
+**inconnu** — on ne peut pas garantir qu'elles sont hiérarchiques ou pédologiques.
+
+**Règle CONV-16 :**  
+1. Le champ `method` dans `ai_interpolation_values` DOIT encoder la dérive.  
+   - Dérive hiérarchique 5 niveaux → `method = 'ked_hierarchical_5levels'` ✅  
+   - Dérive pédologique simple → `method = 'ked_pedological_prior'`  
+2. Le script `run_ked_vbs_ip_wl_wp_horizons.py` implémente déjà ce comportement  
+   via `method_tag = f"ked_{drift_method}"`. Ne jamais hardcoder.  
+3. Tout nouveau run DOIT utiliser `--hierarchical` → method = `ked_hierarchical_5levels`.  
+   Le KED pédologique simple est **obsolète** (remplacé par le hiérarchique, L1 officiel).  
+4. Les lignes `ked_pedologie_ked` dans le Docker DB sont une dette technique — elles seront  
+   remplacées lors de la prochaine synchronisation depuis le port 5433.
+
+**Vérification :** `SELECT DISTINCT method, metrics->>'drift_method' FROM atlas.ai_interpolation_runs  
+WHERE method LIKE 'ked%'` doit retourner UNIQUEMENT `drift_method = 'hierarchical_5levels'` en prod.
+
+---
+
+## CONV-17 : Modèle L1 officiel = KED hiérarchique 5 niveaux uniquement
+
+**Date :** 2026-06-04  
+**Décision architecturale finale (non révisable sans consensus) :**
+
+Le seul modèle L1 maintenu en production est **KED Hiérarchique 5 Niveaux** :
+- `method DB = 'ked_hierarchical_5levels'`  
+- Script : `run_ked_vbs_ip_wl_wp_horizons.py --hierarchical`  
+- Vue de contexte requise : `atlas.v_contexte_geologique` (79 contextes, créée en migration)  
+- Dérive = clé composite `ZONE|PEDO|RISQUE|GEO` avec repli hiérarchique (≥ 5 pts par contexte)
+
+**Ce qui est OBSOLÈTE et ne doit plus être utilisé :**
+
+| Method | Script | Statut |
+|:------:|:------:|:------:|
+| `ked_pedologie_ked` | ancien nom hardcodé | ❌ Obsolète — ne plus créer |
+| `ked_pedological_prior` | mode sans `--hierarchical` | ❌ Obsolète — ne plus exécuter |
+| `ked_pedologie_eg` | KED EG pédologique | ⚠️ À migrer vers hiérarchique |
+| `ked_pedologie_granulo` | KED granulométrie | ⚠️ À migrer vers hiérarchique |
+
+**Note :** Le gain LOO-RMSE du hiérarchique vs pédologique est marginal à N ≈ 100–120  
+(voir RESULTATS_AMELIORATION_KED.md §4.1). Mais la dérive hiérarchique est scientifiquement  
+correcte et s'auto-améliorera à N > 300 sondages. Le framework est en place.
+
+**Référence article :** Section 3.2.1 de l'article géostats Togo (main.tex).
+
+---
+
+## CONV-18 : Synchronisation Docker DB depuis la base canonique (5433 → 5432)
+
+**Date :** 2026-06-04  
+**Problème :** Le Docker `atlas-db` (port 5432) est une copie ancienne qui manque  
+`ked_hierarchical_5levels`, `ked_rk_fusion_bayesian`, `mtgp_icm_gpflow`.
+
+**Solution recommandée (ordre de priorité) :**
+
+**Option A (recommandée) — Pointer l'API sur le port 5433 :**
+```yaml
+# docker-compose.yml — service api-geo
+environment:
+  DATABASE_URL: postgres://atlas_app_user:${ATLAS_DB_APP_PASSWORD}@host.docker.internal:5433/atlas_clean
+  # NB: host.docker.internal = accès à l'hôte depuis un container Docker Desktop Windows
+```
+
+**Option B — Synchroniser les tables manquantes :**
+```bash
+# Dump sélectif depuis 5433
+pg_dump -h 127.0.0.1 -p 5433 -U atlas atlas_clean \
+  -t atlas.ai_interpolation_values \
+  -t atlas.ai_interpolation_runs \
+  -t atlas.ai_variograms \
+  --data-only -F c -f dump_ai_tables.pgdump
+
+# Restore dans Docker
+pg_restore -h 127.0.0.1 -p 5432 -U atlas -d atlas_clean \
+  --data-only dump_ai_tables.pgdump
+```
+
+**Ne PAS faire** : synchro automatique bidirectionnelle — risque d'écrasement.  
+La base 5433 est la **source de vérité**. Le Docker est le destinataire.
+
+---
+
 *Document maintenu par Claude Code (Intrepid Core Engineering Standards)*  
-*Dernière mise à jour : 2026-06-01*
+*Dernière mise à jour : 2026-06-04*

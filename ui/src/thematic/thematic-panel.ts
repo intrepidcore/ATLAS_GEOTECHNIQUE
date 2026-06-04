@@ -41,12 +41,22 @@ import {
  * Panneau de configuration des cartes thématiques v2.0
  * Organisation en 4 blocs métier pour ingénieurs géotechniciens
  */
+interface ModelStatus {
+  id: string
+  status: string
+  n_mailles: number
+  n_params: number
+  metrics: Record<string, any>
+  warnings: string[]
+}
+
 export class ThematicPanel {
   private manager: ThematicMapManager
   private panelElement: HTMLElement
   private isOpen: boolean = false
   private currentConfig: ThematicMapConfig
   private exportDialog: ReturnType<typeof createExportQuickDialog> | null = null
+  private modelStatusCache: ModelStatus[] = []
 
   private async waitForNextPaint(): Promise<void> {
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
@@ -142,6 +152,9 @@ export class ThematicPanel {
     // Mode expert (hide/show overlays + horizon selection)
     void this.applyExpertMode(false)
 
+    // ARCH-01: charge les statuts des modèles ML depuis l'API (aucune valeur hardcodée)
+    void this.syncSourceAvailability()
+
     // Synchroniser visuellement le niveau de grille avec le panneau droit (source de vérité: main.ts)
     const getLevel = (window as any).getCurrentGridLevel
     const currentLevel = typeof getLevel === 'function' ? getLevel() : '2km'
@@ -201,6 +214,76 @@ export class ThematicPanel {
   public async reloadFromUI(): Promise<void> {
     await this.applyThematic()
   }
+
+  /**
+   * ARCH-01 : Charge les statuts des modèles ML depuis l'API.
+   * Active/désactive les options du dropdown selon model.status.
+   * Met à jour le badge live avec données API (aucune valeur hardcodée).
+   */
+  private async syncSourceAvailability(): Promise<void> {
+    try {
+      const base = (window as any).__API_GEO__ || 'http://localhost:8000'
+      const resp = await fetch(`${base}/ai/models/status`)
+      if (!resp.ok) return
+
+      const data = (await resp.json()) as { models: ModelStatus[] }
+      this.modelStatusCache = data.models
+
+      for (const model of data.models) {
+        const opt = this.panelElement.querySelector<HTMLOptionElement>(
+          `option[data-model-id="${model.id}"]`
+        )
+        if (!opt) continue
+        const isAvailable = model.status === 'ready' || model.status === 'partial'
+        opt.disabled = !isAvailable
+        if (!isAvailable) {
+          opt.title = `Non disponible (${model.status})`
+        }
+      }
+
+      // Initialise le badge avec la source courante
+      const currentSource = (document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value as ThematicSource | undefined
+      if (currentSource) this.updateModelBadge(currentSource)
+    } catch {
+      // Silencieux — l'UI reste fonctionnelle sans les badges
+    }
+  }
+
+  /**
+   * ARCH-01 : Met à jour le badge sous le dropdown source.
+   * Toutes les valeurs viennent du cache API (modelStatusCache), aucune valeur hardcodée.
+   */
+  private updateModelBadge(source: ThematicSource): void {
+    const badge = document.getElementById('sourceModelBadge')
+    const label = document.getElementById('sourceRmseLabel')
+    if (!badge || !label) return
+
+    if (source === 'base') {
+      badge.style.display = 'none'
+      return
+    }
+
+    badge.style.display = 'block'
+
+    const modelIdMap: Partial<Record<ThematicSource, string>> = {
+      l1_ked: 'L1_KED_H', l2a_rk: 'L2a_RK', l2b_blup: 'L2b_BLUP',
+      l3_vfs: 'L3_VFS', l4_mtgp: 'L4_MTGP',
+      interpolation: 'L1_KED_H', ia: 'L4_MTGP',
+    }
+
+    const modelId = modelIdMap[source]
+    if (!modelId) { label.textContent = '—'; return }
+
+    const model = this.modelStatusCache.find((m) => m.id === modelId)
+    if (!model) { label.textContent = 'Statut inconnu'; return }
+
+    const coverage = model.n_mailles.toLocaleString('fr-FR')
+    const rmseVbs = (model.metrics?.['vbs_ked_h1'] as any)?.loo_rmse
+      ?? (model.metrics?.['vbs_h1'] as any)?.loo_rmse
+    label.textContent = rmseVbs != null
+      ? `${coverage} mailles · LOO-RMSE VBS·H1: ${Number(rmseVbs).toFixed(2)}`
+      : `${coverage} mailles · métriques non disponibles`
+  }
   
   /**
    * Render the complete panel HTML
@@ -221,15 +304,26 @@ export class ThematicPanel {
         </div>
 
         <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- BLOC A : Objectif métier -->
+        <!-- BLOC A : Source de données -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <div class="thematic-section" id="thematicSourceSection">
           <div class="section-label">Source de données</div>
           <select id="thematicAiSource" class="thematic-select">
-            <option value="base">Base (mailles avec sondages)</option>
-            <option value="interpolation">Interpolation (Kriging)</option>
-            <option value="ia">IA / Opti (prédiction)</option>
+            <optgroup label="Données terrain">
+              <option value="base">Base — Données terrain (sondages)</option>
+            </optgroup>
+            <optgroup label="Machine Learning géostatistique">
+              <option value="l1_ked" data-model-id="L1_KED_H">ML L1 — KED Hiérarchique (5 niveaux)</option>
+              <option value="l2a_rk" data-model-id="L2a_RK">ML L2a — RK-SCORPAN (Regression Kriging)</option>
+              <option value="l2b_blup" data-model-id="L2b_BLUP">ML L2b — Fusion Bayésienne BLUP</option>
+              <option value="l3_vfs" data-model-id="L3_VFS">ML L3 — VfS-PLS (Sentinel-2, VBS uniquement)</option>
+              <option value="l4_mtgp" data-model-id="L4_MTGP">ML L4 — MTGP/ICM (Multi-Tâches, exp.)</option>
+            </optgroup>
           </select>
+          <div id="sourceModelBadge" class="source-badge" style="display:none;font-size:11px;color:#94a3b8;padding:4px 0;min-height:18px" aria-live="polite">
+            <i data-lucide="activity" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+            <span id="sourceRmseLabel">—</span>
+          </div>
         </div>
 
         <div class="thematic-section">
@@ -244,8 +338,8 @@ export class ThematicPanel {
         </div>
 
         <div class="thematic-section" id="thematicHorizonRow" style="display:none;">
-          <div class="section-label">Horizon KED</div>
-          <select id="thematicHorizon" class="thematic-select" aria-label="Horizon KED">
+          <div class="section-label">Horizon</div>
+          <select id="thematicHorizon" class="thematic-select" aria-label="Horizon ML">
             <option value="H1">H1 (0,5 m)</option>
             <option value="H2" selected>H2 (1,5 m)</option>
             <option value="H3">H3 (2,0 m)</option>
@@ -735,26 +829,32 @@ export class ThematicPanel {
   }
 
   /**
-   * Horizon H1/H2/H3 : KED (`ked:*`), IDs API plats (`vbs_ked_h2`, `ip_derived_h1`, …).
-   * Masqué pour kriging legacy et densité (pas de stratification profondeur).
+   * Horizon H1/H2/H3 visible si source ML (sauf l3_vfs = pas d'horizon, base = pas d'horizon).
    */
-  private shouldShowHorizonForInterpolation(param: string): boolean {
-    if (param === 'kriging_vbs' || param === 'kriging_ip') return false
-    if (param === 'data_density') return false
-    if (param.startsWith(KED_SELECT_PREFIX)) return true
-    if (parseKedApiParameterId(param)) return true
+  private shouldShowHorizonForSource(source: ThematicSource, param: string): boolean {
+    if (source === 'base' || source === 'l3_vfs') return false
+    if (param === 'kriging_vbs' || param === 'kriging_ip' || param === 'data_density') return false
+    if (param === 'vbs_vfs') return false
+    // Pour l1_ked en mode KED_SELECT_PREFIX (ked:vbs), horizon géré par sélecteur
+    if (source === 'l1_ked' || source === 'interpolation') {
+      if (param.startsWith(KED_SELECT_PREFIX)) return true
+      if (parseKedApiParameterId(param)) return true
+    }
+    // Pour L2a/L2b/L4 : horizon implicite dans l'ID param (vbs_blup_h1 etc.)
+    // On affiche quand même le sélecteur horizon pour permettre de switcher H1/H2/H3
+    if (source === 'l2a_rk' || source === 'l2b_blup' || source === 'l4_mtgp') {
+      return param.match(/_h[123]$/) != null
+    }
     return false
   }
 
   private updateHorizonRowVisibility(): void {
     const row = document.getElementById('thematicHorizonRow')
-    const source = (document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value as
-      | ThematicSource
-      | undefined
+    const source = ((document.getElementById('thematicAiSource') as HTMLSelectElement | null)?.value || 'base') as ThematicSource
     const param = this.elements.parameterSelect?.value || ''
-    const show = source === 'interpolation' && this.shouldShowHorizonForInterpolation(param)
+    const show = this.shouldShowHorizonForSource(source, param)
     if (row) row.style.display = show ? '' : 'none'
-    if (show && this.elements.thematicHorizonSelect) {
+    if (show && this.elements.thematicHorizonSelect && source === 'l1_ked') {
       const parsedFlat = parseKedApiParameterId(param)
       if (parsedFlat && !param.startsWith(KED_SELECT_PREFIX)) {
         this.elements.thematicHorizonSelect.value = parsedFlat.horizon
@@ -1291,6 +1391,7 @@ export class ThematicPanel {
         this.elements.minSondagesInput.value = source === 'base' ? (this.elements.minSondagesInput.value || '1') : '0'
       }
       this.updateHorizonRowVisibility()
+      this.updateModelBadge(source)
     })
     
     // Parameter change -> update description & palette

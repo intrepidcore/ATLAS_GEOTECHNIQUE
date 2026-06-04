@@ -33,9 +33,11 @@ services:
       - ./.env
       - ./.env.example
     environment:
-      DATABASE_URL: postgres://atlas_app_user:${ATLAS_DB_APP_PASSWORD}@db:5432/atlas_clean
+      # CONV-15/CONV-18 : Connexion à la base canonique port 5433 (source de vérité — tous les modèles L1-L4)
+      # host.docker.internal = adresse de l'hôte depuis Docker Desktop for Windows
+      DATABASE_URL: postgres://atlas:atlas@host.docker.internal:5433/atlas_clean
       ENABLE_DB_MANAGER: ${ENABLE_DB_MANAGER:-false}
-      DATABASE_URL_ADMIN: postgres://atlas_etl_user:${ATLAS_DB_ETL_PASSWORD}@db:5432/atlas_clean
+      DATABASE_URL_ADMIN: postgres://atlas:atlas@host.docker.internal:5433/atlas_clean
       RUST_LOG: ${RUST_LOG:-info}
       API_BIND: 0.0.0.0:8000
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
@@ -136,6 +138,8 @@ services:
     # Volume pour dev: mount dist pour voir les changements sans rebuild
     volumes:
       - ./ui/dist:/usr/share/nginx/html:ro
+      # Exports 3D statiques (PNG 300dpi + HTML Plotly) — servis via /exports/3d/
+      - ./exports_3d_v2:/data/exports/exports_3d_v2:ro
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1/"]
       interval: 10s

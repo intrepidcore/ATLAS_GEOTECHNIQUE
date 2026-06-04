@@ -185,6 +185,77 @@ pub enum ThematicParameter {
     AgSafetyFactor,
     #[serde(alias = "ag_cout_millions")]
     AgCoutMillions,
+
+    // ─────────────────────────────────────────────────────────────────────
+    // L2b — Fusion Bayésienne BLUP (KED + RK, σ²↓ ~48%)
+    // method DB : ked_rk_fusion_bayesian
+    // ─────────────────────────────────────────────────────────────────────
+    #[serde(alias = "vbs_blup_h1")]
+    VbsBlupH1,
+    #[serde(alias = "vbs_blup_h2")]
+    VbsBlupH2,
+    #[serde(alias = "vbs_blup_h3")]
+    VbsBlupH3,
+
+    #[serde(alias = "ip_blup_h1")]
+    IpBlupH1,
+    #[serde(alias = "ip_blup_h2")]
+    IpBlupH2,
+    #[serde(alias = "ip_blup_h3")]
+    IpBlupH3,
+
+    #[serde(alias = "wl_blup_h1")]
+    WlBlupH1,
+    #[serde(alias = "wl_blup_h2")]
+    WlBlupH2,
+    #[serde(alias = "wl_blup_h3")]
+    WlBlupH3,
+
+    #[serde(alias = "wp_blup_h1")]
+    WpBlupH1,
+    #[serde(alias = "wp_blup_h2")]
+    WpBlupH2,
+    #[serde(alias = "wp_blup_h3")]
+    WpBlupH3,
+
+    #[serde(alias = "eg_blup_h1")]
+    EgBlupH1,
+    #[serde(alias = "eg_blup_h2")]
+    EgBlupH2,
+    #[serde(alias = "eg_blup_h3")]
+    EgBlupH3,
+
+    // ─────────────────────────────────────────────────────────────────────
+    // L4 — MTGP/ICM GPflow (Multi-Tâches VBS+IP+EG corrélés)
+    // method DB : mtgp_icm_gpflow
+    // ─────────────────────────────────────────────────────────────────────
+    #[serde(alias = "vbs_mtgp_h1")]
+    VbsMtgpH1,
+    #[serde(alias = "vbs_mtgp_h2")]
+    VbsMtgpH2,
+    #[serde(alias = "vbs_mtgp_h3")]
+    VbsMtgpH3,
+
+    #[serde(alias = "ip_mtgp_h1")]
+    IpMtgpH1,
+    #[serde(alias = "ip_mtgp_h2")]
+    IpMtgpH2,
+    #[serde(alias = "ip_mtgp_h3")]
+    IpMtgpH3,
+
+    #[serde(alias = "eg_mtgp_h1")]
+    EgMtgpH1,
+    #[serde(alias = "eg_mtgp_h2")]
+    EgMtgpH2,
+    #[serde(alias = "eg_mtgp_h3")]
+    EgMtgpH3,
+
+    // ─────────────────────────────────────────────────────────────────────
+    // L3 — VfS-PLS Sentinel-2 (VBS surface uniquement)
+    // method DB : maille_spectral_vfs
+    // ─────────────────────────────────────────────────────────────────────
+    #[serde(alias = "vbs_vfs")]
+    VbsVfs,
 }
 
 impl ThematicParameter {
@@ -276,6 +347,37 @@ impl ThematicParameter {
 
             Self::AgSafetyFactor => "ag_safety_factor",
             Self::AgCoutMillions => "ag_cout_millions",
+
+            // L2b BLUP — DB parameter_id = *_fusion_* (ked_rk_fusion.py écrit vbs_fusion_h1, etc.)
+            Self::VbsBlupH1 => "vbs_fusion_h1",
+            Self::VbsBlupH2 => "vbs_fusion_h2",
+            Self::VbsBlupH3 => "vbs_fusion_h3",
+            Self::IpBlupH1 => "ip_fusion_h1",
+            Self::IpBlupH2 => "ip_fusion_h2",
+            Self::IpBlupH3 => "ip_fusion_h3",
+            Self::WlBlupH1 => "wl_fusion_h1",
+            Self::WlBlupH2 => "wl_fusion_h2",
+            Self::WlBlupH3 => "wl_fusion_h3",
+            Self::WpBlupH1 => "wp_fusion_h1",
+            Self::WpBlupH2 => "wp_fusion_h2",
+            Self::WpBlupH3 => "wp_fusion_h3",
+            Self::EgBlupH1 => "eg_fusion_h1",
+            Self::EgBlupH2 => "eg_fusion_h2",
+            Self::EgBlupH3 => "eg_fusion_h3",
+
+            // L4 MTGP
+            Self::VbsMtgpH1 => "vbs_mtgp_h1",
+            Self::VbsMtgpH2 => "vbs_mtgp_h2",
+            Self::VbsMtgpH3 => "vbs_mtgp_h3",
+            Self::IpMtgpH1 => "ip_mtgp_h1",
+            Self::IpMtgpH2 => "ip_mtgp_h2",
+            Self::IpMtgpH3 => "ip_mtgp_h3",
+            Self::EgMtgpH1 => "eg_mtgp_h1",
+            Self::EgMtgpH2 => "eg_mtgp_h2",
+            Self::EgMtgpH3 => "eg_mtgp_h3",
+
+            // L3 VfS
+            Self::VbsVfs => "vbs_vfs",
         }
     }
 
@@ -362,6 +464,37 @@ impl ThematicParameter {
             Self::EgRkH1 => "EG RK H1 (1.0m)",
             Self::EgRkH2 => "EG RK H2 (1.5m)",
             Self::EgRkH3 => "EG RK H3 (2.0m)",
+
+            // L2b BLUP
+            Self::VbsBlupH1 => "VBS Fusion BLUP H1 (1.0m)",
+            Self::VbsBlupH2 => "VBS Fusion BLUP H2 (1.5m)",
+            Self::VbsBlupH3 => "VBS Fusion BLUP H3 (2.0m)",
+            Self::IpBlupH1 => "IP Fusion BLUP H1 (1.0m)",
+            Self::IpBlupH2 => "IP Fusion BLUP H2 (1.5m)",
+            Self::IpBlupH3 => "IP Fusion BLUP H3 (2.0m)",
+            Self::WlBlupH1 => "WL Fusion BLUP H1 (1.0m)",
+            Self::WlBlupH2 => "WL Fusion BLUP H2 (1.5m)",
+            Self::WlBlupH3 => "WL Fusion BLUP H3 (2.0m)",
+            Self::WpBlupH1 => "WP Fusion BLUP H1 (1.0m)",
+            Self::WpBlupH2 => "WP Fusion BLUP H2 (1.5m)",
+            Self::WpBlupH3 => "WP Fusion BLUP H3 (2.0m)",
+            Self::EgBlupH1 => "EG Fusion BLUP H1 (1.0m)",
+            Self::EgBlupH2 => "EG Fusion BLUP H2 (1.5m)",
+            Self::EgBlupH3 => "EG Fusion BLUP H3 (2.0m)",
+
+            // L4 MTGP
+            Self::VbsMtgpH1 => "VBS MTGP H1 (1.0m)",
+            Self::VbsMtgpH2 => "VBS MTGP H2 (1.5m)",
+            Self::VbsMtgpH3 => "VBS MTGP H3 (2.0m)",
+            Self::IpMtgpH1 => "IP MTGP H1 (1.0m)",
+            Self::IpMtgpH2 => "IP MTGP H2 (1.5m)",
+            Self::IpMtgpH3 => "IP MTGP H3 (2.0m)",
+            Self::EgMtgpH1 => "EG MTGP H1 (1.0m)",
+            Self::EgMtgpH2 => "EG MTGP H2 (1.5m)",
+            Self::EgMtgpH3 => "EG MTGP H3 (2.0m)",
+
+            // L3 VfS
+            Self::VbsVfs => "VBS Sentinel-2 VfS (surface)",
         }
     }
 
@@ -401,6 +534,21 @@ impl ThematicParameter {
             Self::WlRkH1 | Self::WlRkH2 | Self::WlRkH3 => "%",
             Self::WpRkH1 | Self::WpRkH2 | Self::WpRkH3 => "%",
             Self::EgRkH1 | Self::EgRkH2 | Self::EgRkH3 => "%",
+
+            // L2b BLUP
+            Self::VbsBlupH1 | Self::VbsBlupH2 | Self::VbsBlupH3 => "g/100g",
+            Self::IpBlupH1 | Self::IpBlupH2 | Self::IpBlupH3 => "%",
+            Self::WlBlupH1 | Self::WlBlupH2 | Self::WlBlupH3 => "%",
+            Self::WpBlupH1 | Self::WpBlupH2 | Self::WpBlupH3 => "%",
+            Self::EgBlupH1 | Self::EgBlupH2 | Self::EgBlupH3 => "%",
+
+            // L4 MTGP
+            Self::VbsMtgpH1 | Self::VbsMtgpH2 | Self::VbsMtgpH3 => "g/100g",
+            Self::IpMtgpH1 | Self::IpMtgpH2 | Self::IpMtgpH3 => "%",
+            Self::EgMtgpH1 | Self::EgMtgpH2 | Self::EgMtgpH3 => "%",
+
+            // L3 VfS
+            Self::VbsVfs => "g/100g",
         }
     }
 
@@ -465,7 +613,19 @@ impl ThematicParameter {
             | Self::WpRkH3
             | Self::EgRkH1
             | Self::EgRkH2
-            | Self::EgRkH3 => "ai",
+            | Self::EgRkH3
+            // L2b BLUP
+            | Self::VbsBlupH1 | Self::VbsBlupH2 | Self::VbsBlupH3
+            | Self::IpBlupH1  | Self::IpBlupH2  | Self::IpBlupH3
+            | Self::WlBlupH1  | Self::WlBlupH2  | Self::WlBlupH3
+            | Self::WpBlupH1  | Self::WpBlupH2  | Self::WpBlupH3
+            | Self::EgBlupH1  | Self::EgBlupH2  | Self::EgBlupH3
+            // L4 MTGP
+            | Self::VbsMtgpH1 | Self::VbsMtgpH2 | Self::VbsMtgpH3
+            | Self::IpMtgpH1  | Self::IpMtgpH2  | Self::IpMtgpH3
+            | Self::EgMtgpH1  | Self::EgMtgpH2  | Self::EgMtgpH3
+            // L3 VfS
+            | Self::VbsVfs => "ai",
         }
     }
 }

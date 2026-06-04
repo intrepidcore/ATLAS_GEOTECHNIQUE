@@ -20,47 +20,36 @@ fn is_ai_parameter(column: &str) -> bool {
             | "ai_portance_kpa_infer"
             | "kriging_ip"
             | "kriging_vbs"
-            | "eg_ked_h1"
-            | "eg_ked_h2"
-            | "eg_ked_h3"
-            | "passant_2mm_ked_h1"
-            | "passant_2mm_ked_h2"
-            | "passant_2mm_ked_h3"
-            | "passant_80um_ked_h1"
-            | "passant_80um_ked_h2"
-            | "passant_80um_ked_h3"
-            | "vbs_ked_h1"
-            | "vbs_ked_h2"
-            | "vbs_ked_h3"
-            | "ip_ked_h1"
-            | "ip_ked_h2"
-            | "ip_ked_h3"
-            | "wl_ked_h1"
-            | "wl_ked_h2"
-            | "wl_ked_h3"
-            | "wp_ked_h1"
-            | "wp_ked_h2"
-            | "wp_ked_h3"
-            | "vbs_rk_h1"
-            | "vbs_rk_h2"
-            | "vbs_rk_h3"
-            | "ip_rk_h1"
-            | "ip_rk_h2"
-            | "ip_rk_h3"
-            | "wl_rk_h1"
-            | "wl_rk_h2"
-            | "wl_rk_h3"
-            | "wp_rk_h1"
-            | "wp_rk_h2"
-            | "wp_rk_h3"
-            | "eg_rk_h1"
-            | "eg_rk_h2"
-            | "eg_rk_h3"
-            | "ip_derived_h1"
-            | "ip_derived_h2"
-            | "ip_derived_h3"
-            | "ag_safety_factor"
-            | "ag_cout_millions"
+            // L1 KED (VBS/IP/WL/WP/EG + granulo)
+            | "eg_ked_h1" | "eg_ked_h2" | "eg_ked_h3"
+            | "passant_2mm_ked_h1" | "passant_2mm_ked_h2" | "passant_2mm_ked_h3"
+            | "passant_80um_ked_h1" | "passant_80um_ked_h2" | "passant_80um_ked_h3"
+            | "vbs_ked_h1" | "vbs_ked_h2" | "vbs_ked_h3"
+            | "ip_ked_h1"  | "ip_ked_h2"  | "ip_ked_h3"
+            | "wl_ked_h1"  | "wl_ked_h2"  | "wl_ked_h3"
+            | "wp_ked_h1"  | "wp_ked_h2"  | "wp_ked_h3"
+            // L2a RK-SCORPAN
+            | "vbs_rk_h1" | "vbs_rk_h2" | "vbs_rk_h3"
+            | "ip_rk_h1"  | "ip_rk_h2"  | "ip_rk_h3"
+            | "wl_rk_h1"  | "wl_rk_h2"  | "wl_rk_h3"
+            | "wp_rk_h1"  | "wp_rk_h2"  | "wp_rk_h3"
+            | "eg_rk_h1"  | "eg_rk_h2"  | "eg_rk_h3"
+            // IP dérivé
+            | "ip_derived_h1" | "ip_derived_h2" | "ip_derived_h3"
+            // AG
+            | "ag_safety_factor" | "ag_cout_millions"
+            // L2b — Fusion Bayésienne BLUP (DB parameter_id = *_fusion_*, API param = vbs_blup_h1)
+            | "vbs_fusion_h1" | "vbs_fusion_h2" | "vbs_fusion_h3"
+            | "ip_fusion_h1"  | "ip_fusion_h2"  | "ip_fusion_h3"
+            | "wl_fusion_h1"  | "wl_fusion_h2"  | "wl_fusion_h3"
+            | "wp_fusion_h1"  | "wp_fusion_h2"  | "wp_fusion_h3"
+            | "eg_fusion_h1"  | "eg_fusion_h2"  | "eg_fusion_h3"
+            // L4 — MTGP/ICM GPflow
+            | "vbs_mtgp_h1" | "vbs_mtgp_h2" | "vbs_mtgp_h3"
+            | "ip_mtgp_h1"  | "ip_mtgp_h2"  | "ip_mtgp_h3"
+            | "eg_mtgp_h1"  | "eg_mtgp_h2"  | "eg_mtgp_h3"
+            // L3 — VfS Sentinel-2
+            | "vbs_vfs"
     )
 }
 
@@ -439,7 +428,13 @@ pub async fn get_thematic_data(
     // Donc on force une logique "ked-like" (sinon 28km => SQL / agrégation incohérente).
     // - KED : suffixe `_ked_h{1,2,3}` (contient `_ked_h`)
     // - P5 : `ip_derived_h{1,2,3}`
-    let is_ked_parameter = column.contains("_ked_h") || column.starts_with("ip_derived_h");
+    // Tous les paramètres stockés dans ai_interpolation_values (lookup par parameter_id)
+    // L1 KED, L2b BLUP, L4 MTGP, L3 VfS utilisent tous la même table
+    let is_ked_parameter = column.contains("_ked_h")
+        || column.starts_with("ip_derived_h")
+        || column.contains("_fusion_h")  // L2b Fusion BLUP (DB: *_fusion_h*)
+        || column.contains("_mtgp_h")   // L4 MTGP
+        || column == "vbs_vfs";         // L3 VfS (surface, pas d'horizon)
     let tolerance = simplify_tolerance(req.zoom);
 
     let grid = req.grid.as_deref().unwrap_or("2km");
