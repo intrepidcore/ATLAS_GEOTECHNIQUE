@@ -78,7 +78,8 @@ class ApiClient {
         try {
           const errorData = await response.json()
           error.details = errorData
-          const code = errorData?.code || errorData?.error_code || errorData?.error
+          // Backend retourne error_type (DbManagerError struct), pas code
+          const code = errorData?.code || errorData?.error_code || errorData?.error || errorData?.error_type
           if (response.status === 503 && code === 'DB_MANAGER_DISABLED') {
             error.message =
               'DB Manager désactivé (ENABLE_DB_MANAGER=false). Pour activer en dev: définir ENABLE_DB_MANAGER=true + DATABASE_URL_ADMIN, puis redémarrer api-geo.'
@@ -96,6 +97,15 @@ class ApiClient {
 
       return await response.json()
     } catch (error: unknown) {
+      // ApiError est un plain object (pas un Error instance) avec .status et .message
+      if (error !== null && typeof error === 'object' && 'status' in error && 'message' in error) {
+        const apiErr = error as { status: number; message: unknown }
+        throw {
+          ...(error as object),
+          message: typeof apiErr.message === 'string' ? apiErr.message : String(apiErr.message ?? 'Erreur API'),
+        }
+      }
+
       if (error instanceof Error && 'status' in error) {
         throw error
       }

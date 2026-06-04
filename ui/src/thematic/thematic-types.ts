@@ -5,15 +5,18 @@
 // OBJECTIFS MÉTIER - Bloc A
 // ============================================================================
 
-export type ObjectifMetier = 
+export type ObjectifMetier =
   | 'couverture'      // Couverture & instrumentation
-  | 'argilosite'      // Argilosité / plasticité
-  | 'gonflement'      // Potentiel de gonflement
-  | 'compacite'       // Compacité / portance (Proctor)
-  | 'granulometrie'   // Granulométrie
-  | 'contexte'        // Contexte géographique
+  | 'argilosite'      // Argilosité / plasticité / gonflement (famille scientifique)
+  | 'portance'        // Portance, compactage, granulométrie (famille scientifique)
+  | 'insitu'          // In-situ, pressiométrique, contexte géographique
   | 'ia_ag'           // IA / Interpolation / AG
   | 'personnalise'    // Power user - tous les paramètres
+  // Legacy (conservés pour compatibilité configs sauvegardées)
+  | 'gonflement'
+  | 'compacite'
+  | 'granulometrie'
+  | 'contexte'
 
 export interface ObjectifConfig {
   id: ObjectifMetier
@@ -27,86 +30,70 @@ export interface ObjectifConfig {
 }
 
 export const OBJECTIFS_METIER: ObjectifConfig[] = [
+  // ── 4 FAMILLES SCIENTIFIQUES (roadmap Phase 3) ──────────────────────────────
   {
     id: 'couverture',
     label: 'Couverture & instrumentation',
-    description: 'Densité de sondages et essais par maille',
+    description: 'Densité de sondages, échantillons et essais par maille 2km×2km',
     icon: '',
-    parameters: ['n_sondages', 'n_echantillons', 'n_essais_total'],
+    parameters: ['n_sondages', 'n_echantillons', 'n_essais_total', 'data_density'],
     defaultParameter: 'n_sondages',
     defaultPalette: 'Greens'
   },
   {
     id: 'argilosite',
-    label: 'Argilosité / plasticité',
-    description: 'Caractérisation de la fraction argileuse',
+    label: 'Argilosité & plasticité',
+    description: 'VBS, IP, WL, WP, Eg — caractérisation de la fraction argileuse et gonflement',
     icon: '',
-    parameters: ['vbs_avg', 'ip_avg', 'wl_avg', 'wp_avg'],
+    parameters: ['vbs_avg', 'ip_avg', 'wl_avg', 'wp_avg', 'eg_avg', 'eg_max', 'eg_min',
+                 'ip_derived_h1', 'ip_derived_h2', 'ip_derived_h3'],
     defaultParameter: 'vbs_avg',
     defaultPalette: 'YlOrRd'
   },
   {
-    id: 'gonflement',
-    label: 'Potentiel de gonflement',
-    description: 'Risque de gonflement des argiles',
+    id: 'portance',
+    label: 'Portance & compactage',
+    description: 'CBR, γd max, wopt, granulométrie — résistance mécanique et compactage Proctor',
     icon: '',
-    parameters: ['eg_avg', 'eg_max', 'eg_min'],
-    defaultParameter: 'eg_avg',
-    defaultPalette: 'Blues'
-  },
-  {
-    id: 'compacite',
-    label: 'Compacité / portance (Proctor)',
-    description: 'Caractéristiques de compactage',
-    icon: '',
-    parameters: ['gamma_d_max_avg', 'w_opt_avg'],
+    parameters: ['gamma_d_max_avg', 'w_opt_avg',
+                 'passant_80um_avg', 'passant_2mm_avg', 'passant_20mm_avg',
+                 'passant_80um_ked_h1', 'passant_80um_ked_h2', 'passant_80um_ked_h3',
+                 'passant_2mm_ked_h1', 'passant_2mm_ked_h2', 'passant_2mm_ked_h3'],
     defaultParameter: 'gamma_d_max_avg',
     defaultPalette: 'Oranges'
   },
   {
-    id: 'granulometrie',
-    label: 'Granulométrie',
-    description: 'Distribution granulométrique',
+    id: 'insitu',
+    label: 'In-situ & contexte',
+    description: 'Essais en place (Rd, NSPT), altitude DSM — contexte géographique et géomécanique',
     icon: '',
-    parameters: ['passant_80um_avg', 'passant_2mm_avg', 'passant_20mm_avg'],
-    defaultParameter: 'passant_80um_avg',
-    defaultPalette: 'BrBG'
-  },
-  {
-    id: 'contexte',
-    label: 'Contexte géographique',
-    description: 'Paramètres géographiques et topographiques',
-    icon: '',
-    parameters: ['altitude_mean'],
+    parameters: ['altitude_mean', 'ag_safety_factor', 'ag_cout_millions'],
     defaultParameter: 'altitude_mean',
     defaultPalette: 'Terrain'
   },
+  // ── IA / ML (tous modèles L1-L4) ───────────────────────────────────────────
   {
     id: 'ia_ag',
     label: 'IA / Interpolation / AG',
-    description: 'Sources de donnees derivees: IA infer, kriging proxy, AG fondation, L1-L4 ML',
+    description: 'Modèles ML géostatistiques L1-L4, kriging proxy, AG fondation',
     icon: '',
     parameters: [
       'ai_rga_score_infer', 'ai_portance_kpa_infer',
       'kriging_ip', 'kriging_vbs',
       'ag_safety_factor', 'ag_cout_millions', 'data_density',
-      // L2a RK-SCORPAN
       'vbs_rk_h1', 'vbs_rk_h2', 'vbs_rk_h3',
       'ip_rk_h1', 'ip_rk_h2', 'ip_rk_h3',
       'wl_rk_h1', 'wl_rk_h2', 'wl_rk_h3',
       'wp_rk_h1', 'wp_rk_h2', 'wp_rk_h3',
       'eg_rk_h1', 'eg_rk_h2', 'eg_rk_h3',
-      // L2b BLUP
       'vbs_blup_h1', 'vbs_blup_h2', 'vbs_blup_h3',
       'ip_blup_h1', 'ip_blup_h2', 'ip_blup_h3',
       'wl_blup_h1', 'wl_blup_h2', 'wl_blup_h3',
       'wp_blup_h1', 'wp_blup_h2', 'wp_blup_h3',
       'eg_blup_h1', 'eg_blup_h2', 'eg_blup_h3',
-      // L4 MTGP
       'vbs_mtgp_h1', 'vbs_mtgp_h2', 'vbs_mtgp_h3',
       'ip_mtgp_h1', 'ip_mtgp_h2', 'ip_mtgp_h3',
       'eg_mtgp_h1', 'eg_mtgp_h2', 'eg_mtgp_h3',
-      // L3 VfS
       'vbs_vfs',
     ],
     defaultParameter: 'vbs_blup_h1',
@@ -117,10 +104,47 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
     label: 'Personnalisé',
     description: 'Accès à tous les paramètres disponibles',
     icon: '',
-    parameters: [], // Tous les paramètres
+    parameters: [],
     defaultParameter: 'n_sondages',
     defaultPalette: 'Greens'
-  }
+  },
+  // ── LEGACY — redirige vers les nouvelles familles ───────────────────────────
+  {
+    id: 'gonflement',
+    label: 'Potentiel de gonflement',
+    description: 'Risque de gonflement des argiles (legacy → argilosité)',
+    icon: '',
+    parameters: ['eg_avg', 'eg_max', 'eg_min'],
+    defaultParameter: 'eg_avg',
+    defaultPalette: 'Blues'
+  },
+  {
+    id: 'compacite',
+    label: 'Compacité / portance (Proctor)',
+    description: 'Caractéristiques de compactage (legacy → portance)',
+    icon: '',
+    parameters: ['gamma_d_max_avg', 'w_opt_avg'],
+    defaultParameter: 'gamma_d_max_avg',
+    defaultPalette: 'Oranges'
+  },
+  {
+    id: 'granulometrie',
+    label: 'Granulométrie',
+    description: 'Distribution granulométrique (legacy → portance)',
+    icon: '',
+    parameters: ['passant_80um_avg', 'passant_2mm_avg', 'passant_20mm_avg'],
+    defaultParameter: 'passant_80um_avg',
+    defaultPalette: 'BrBG'
+  },
+  {
+    id: 'contexte',
+    label: 'Contexte géographique',
+    description: 'Paramètres géographiques (legacy → in-situ)',
+    icon: '',
+    parameters: ['altitude_mean'],
+    defaultParameter: 'altitude_mean',
+    defaultPalette: 'Terrain'
+  },
 ]
 
 // ============================================================================
@@ -1375,16 +1399,19 @@ const ML_BASE_PARAMS: Record<string, string[]> = {
   mtgp:  ['vbs', 'ip', 'eg'],   // WL/WP MTGP non exposés dans l'API Rust
 }
 
-/** Filtres par objectif (quels base params sont pertinents). */
-const OBJECTIF_BASE_FILTER: Partial<Record<ObjectifMetier, string[]>> = {
-  argilosite:    ['vbs', 'ip', 'wl', 'wp'],
+/** Filtres par objectif (quels base params sont pertinents pour chaque source ML). */
+const OBJECTIF_BASE_FILTER: Partial<Record<ObjectifMetier, string[] | null>> = {
+  couverture:    [],          // Pas de params ML pour la couverture (densité terrain)
+  argilosite:    ['vbs', 'ip', 'wl', 'wp', 'eg'],  // VBS + plasticité + gonflement
+  portance:      ['passant_80um', 'passant_2mm'],   // Granulo (Proctor non dispo ML)
+  insitu:        [],          // Pas de params ML pour in-situ / contexte
+  ia_ag:         null,        // null = tous les params disponibles pour la source
+  personnalise:  null,
+  // Legacy
   gonflement:    ['eg'],
-  compacite:     [],   // Proctor non dispo dans ML
+  compacite:     [],
   granulometrie: ['passant_80um', 'passant_2mm'],
   contexte:      [],
-  couverture:    [],
-  ia_ag:         null as any, // null = tout
-  personnalise:  null as any,
 }
 
 /**
@@ -1430,40 +1457,68 @@ export function getParametersForObjectifAndSource(
     return []
   }
 
-  // Build param list from THEMATIC_PARAMETERS (already populated with _blup_/_mtgp_/_rk_/_ked_ variants)
-  const horizons = ['h1', 'h2', 'h3'] as const
+  // Pour les sources ML (sauf l1_ked en mode KED_SELECT_PREFIX) :
+  // Retourne UN seul param par base (variant H2 comme représentant),
+  // avec le label simplifié (sans suffixe H2/1.5m).
+  // Le sélecteur "Horizon" dans l'UI remplace ensuite _h2 par h1/h2/h3.
+  const DEFAULT_H = 'h2'
   const result: ThematicParameter[] = []
 
   for (const base of allowedBases) {
-    // Special case: ip_derived for KED
-    if (source === 'l1_ked' && base === 'ip') {
-      // Include both ip_ked_h* AND ip_derived_h*
-      for (const h of horizons) {
-        const ipKed = THEMATIC_PARAMETERS.find((p) => p.id === `ip_ked_${h}`)
-        const ipDerived = THEMATIC_PARAMETERS.find((p) => p.id === `ip_derived_${h}`)
-        if (ipKed) result.push(ipKed)
-        if (ipDerived) result.push(ipDerived)
-      }
+    if (source === 'l1_ked') {
+      // KED : utilise le système KED_SELECT_PREFIX (ked:vbs) — retourne le param ked: virtuel
+      const baseId = base === 'ip' ? 'ip' : base
+      result.push({
+        id: `${KED_SELECT_PREFIX}${baseId}`,
+        label: labelForBase(base),
+        unit: unitForBase(base),
+        category: 'ai',
+        description: `${labelForBase(base)} — KED Hiérarchique 5 niveaux (horizon H1/H2/H3)`,
+      })
       continue
     }
-    for (const h of horizons) {
-      const id = `${base}_${suffix}_${h}`
-      const p = THEMATIC_PARAMETERS.find((param) => param.id === id)
-      if (p) result.push(p)
-    }
-  }
 
-  // For ia_ag/personnalise + l1_ked: also add KED passant params
-  if ((objectifId === 'ia_ag' || objectifId === 'personnalise') && source === 'l1_ked') {
-    for (const base of ['passant_80um', 'passant_2mm']) {
-      for (const h of horizons) {
-        const p = THEMATIC_PARAMETERS.find((param) => param.id === `${base}_ked_${h}`)
-        if (p) result.push(p)
-      }
+    // L2a RK, L2b BLUP, L4 MTGP : retourne le variant H2 avec label épuré
+    const id = `${base}_${suffix}_${DEFAULT_H}`
+    const p = THEMATIC_PARAMETERS.find((param) => param.id === id)
+    if (p) {
+      result.push({
+        ...p,
+        // Label épuré : supprime " H2 (1.5m)" — l'horizon est géré par le sélecteur
+        label: labelForBase(base),
+      })
     }
   }
 
   return result
+}
+
+/** Label court pour un paramètre de base ML. */
+function labelForBase(base: string): string {
+  const map: Record<string, string> = {
+    vbs: 'VBS (Valeur au Bleu)',
+    ip: 'IP (Indice de plasticité)',
+    wl: 'WL (Limite de liquidité)',
+    wp: 'WP (Limite de plasticité)',
+    eg: 'Eg (Potentiel de gonflement)',
+    passant_80um: '% Passant 80µm',
+    passant_2mm: '% Passant 2mm',
+    cbr_95: 'CBR 95%',
+    gamma_d: 'γd max (Proctor)',
+    w_opt: 'wopt (Proctor)',
+    rd_mpa: 'Rd (MPa)',
+  }
+  return map[base] ?? base.toUpperCase()
+}
+
+/** Unité pour un paramètre de base ML. */
+function unitForBase(base: string): string {
+  const map: Record<string, string> = {
+    vbs: 'g/100g', ip: '%', wl: '%', wp: '%', eg: '%',
+    passant_80um: '%', passant_2mm: '%', cbr_95: '%',
+    gamma_d: 't/m³', w_opt: '%', rd_mpa: 'MPa',
+  }
+  return map[base] ?? ''
 }
 
 export function getParametersBySource(source: ThematicSource): ThematicParameter[] {

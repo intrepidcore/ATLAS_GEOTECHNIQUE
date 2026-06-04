@@ -769,10 +769,12 @@ export class ThematicPanel {
   private populateObjectifSelect(): void {
     const select = this.elements.objectifSelect
     if (!select) return
-    
-    select.innerHTML = OBJECTIFS_METIER.map(obj => 
-      `<option value="${obj.id}">${obj.icon} ${obj.label}</option>`
-    ).join('')
+    // Affiche seulement les 5 familles principales (pas les 4 legacy)
+    const VISIBLE_IDS: ObjectifMetier[] = ['couverture', 'argilosite', 'portance', 'insitu', 'ia_ag', 'personnalise']
+    select.innerHTML = OBJECTIFS_METIER
+      .filter(obj => VISIBLE_IDS.includes(obj.id))
+      .map(obj => `<option value="${obj.id}">${obj.label}</option>`)
+      .join('')
   }
   
   /**
@@ -1928,7 +1930,8 @@ export class ThematicPanel {
       'base') as ThematicSource
     let parameter = this.elements.parameterSelect?.value || 'n_sondages'
     const hz = (this.elements.thematicHorizonSelect?.value || 'H2') as KedHorizon
-    if (source === 'interpolation') {
+    // L1 KED (et alias legacy 'interpolation') : construit depuis KED_SELECT_PREFIX
+    if (source === 'l1_ked' || source === 'interpolation') {
       if (parameter.startsWith(KED_SELECT_PREFIX)) {
         const baseId = parameter.slice(KED_SELECT_PREFIX.length)
         parameter = buildKedApiParameterId(baseId, hz)
@@ -1936,6 +1939,10 @@ export class ThematicPanel {
         const parsed = parseKedApiParameterId(parameter)
         if (parsed) parameter = buildKedApiParameterId(parsed.baseId, hz)
       }
+    }
+    // L2a RK, L2b BLUP, L4 MTGP : remplace le suffixe _h2 (défaut) par l'horizon choisi
+    if (['l2a_rk', 'l2b_blup', 'l4_mtgp'].includes(source)) {
+      parameter = parameter.replace(/_h[123]$/, `_${hz.toLowerCase()}`)
     }
     const type = (this.elements.mapTypeSelect?.value || 'choropleth') as MapType
     const method = (this.elements.methodSelect?.value || 'quantiles') as ClassificationMethod

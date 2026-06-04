@@ -526,15 +526,15 @@ async fn get_3d_asset(
         "output_filename": filename,
     });
 
+    // parameter_id est NULL pour les jobs 3d_render (param+archetype dans payload)
     let job_id: Uuid = sqlx::query_scalar(
         r#"
         INSERT INTO atlas.ai_job_queue
-          (parameter_id, job_type, status, payload, requested_at)
-        VALUES ($1, '3d_render', 'queued', $2, now())
+          (job_type, status, payload, requested_at)
+        VALUES ('3d_render', 'queued', $1, now())
         RETURNING id
         "#,
     )
-    .bind(format!("{}_{}", q.param, q.archetype))
     .bind(&payload)
     .fetch_one(&state.pool)
     .await
