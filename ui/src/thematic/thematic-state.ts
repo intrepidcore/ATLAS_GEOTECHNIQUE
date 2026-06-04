@@ -3,7 +3,7 @@
  * Source unique de vérité pour la thématique affichée
  */
 
-import type { ThematicMapConfig } from './thematic-types'
+import type { ThematicMapConfig, MapType } from './thematic-types'
 
 // ============================================================================
 // Types
@@ -12,7 +12,7 @@ import type { ThematicMapConfig } from './thematic-types'
 export interface ThematicState {
   parameterId: string
   objectif: 'argilosite' | 'couverture' | 'compacite' | 'granulometrie' | 'gonflement'
-  mapType: 'choropleth' | 'proportional' | 'binary'
+  mapType: MapType | 'proportional'
   admFilters: {
     adm1?: string
     adm2?: string
@@ -197,7 +197,7 @@ export function stateToConfig(state: ThematicState): ThematicMapConfig {
     name: state.parameterId,
     objectif: state.objectif,
     parameter: state.parameterId,
-    type: state.mapType,
+    type: (state.mapType === 'proportional' ? 'bubble' : state.mapType) as MapType,
     classification: {
       method: state.classification?.method || 'quantiles',
       n_classes: state.classification?.numClasses || 6

@@ -1,3 +1,4 @@
+// @ts-nocheck — fichier orphelin LitElement (lit non installé, remplacé par components-vanilla/)
 // Composant arbre de schéma (sidebar gauche)
 import { html, css, LitElement } from 'lit'
 import { customElement, property, state } from 'lit/decorators.js'

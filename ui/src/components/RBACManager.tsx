@@ -24,6 +24,7 @@ import {
   type Role as ApiRole,
   type Permission as ApiPermission,
   type PermissionsByResource,
+  type UserInfo,
 } from '@/services/auth-api'
 import { UserWizard } from './UserWizard'
 
@@ -99,7 +100,7 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
   const [loginPassword, setLoginPassword] = useState('')
   const [loginLoading, setLoginLoading] = useState(false)
   const [loginError, setLoginError] = useState<string | null>(null)
-  const [currentUser, setCurrentUser] = useState(tokenStorage.getUser())
+  const [currentUser, setCurrentUser] = useState<UserInfo | null>(tokenStorage.getUser() as UserInfo | null)
 
   const handleLogin = async () => {
     setLoginLoading(true)
@@ -107,7 +108,7 @@ export const RBACManager: React.FC<RBACManagerProps> = ({ open, onClose }) => {
     try {
       const response = await authApi.login({ email: loginEmail, password: loginPassword })
       setIsAuthenticated(true)
-      setCurrentUser(response.user)
+      setCurrentUser(response.user as UserInfo)
       setLoginPassword('')
     } catch (err: any) {
       setLoginError(err.message || 'Erreur de connexion')

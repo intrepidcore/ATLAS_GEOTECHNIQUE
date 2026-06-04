@@ -337,7 +337,7 @@ export function createTabListeSondages(apiUrl: string): TabComponent {
           <td>${formatDateTime(survey.created_at)}</td>
           <td>${formatDateTime(survey.updated_at)}</td>
           <td>${deletedBadge}</td>
-          <td>${formatMeta(survey.meta)}</td>
+          <td>${formatMeta(typeof survey.meta === 'string' ? survey.meta : survey.meta != null ? JSON.stringify(survey.meta) : null)}</td>
         </tr>
       `
       }).join('')

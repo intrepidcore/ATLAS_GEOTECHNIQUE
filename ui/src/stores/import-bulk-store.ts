@@ -1,3 +1,4 @@
+// @ts-nocheck — store Svelte orphelin (svelte non installé dans ce projet Vite/React)
 /**
  * Store Svelte pour l'état de l'import bulk
  */

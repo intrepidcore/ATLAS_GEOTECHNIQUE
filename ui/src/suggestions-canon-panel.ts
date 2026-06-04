@@ -212,7 +212,7 @@ export class SuggestionsCanonPanel {
           ${survey.meta ? `
             <details style="margin:10px 0 0;">
               <summary style="cursor:pointer;color:#9fb7d3;font-size:12px;">Voir métadonnées</summary>
-              <pre style="margin:8px 0 0;background:#101828;border:1px solid #22304d;border-radius:6px;padding:10px;font-size:11px;max-height:180px;overflow:auto;">${escapeHtml(prettyMeta(survey.meta))}</pre>
+              <pre style="margin:8px 0 0;background:#101828;border:1px solid #22304d;border-radius:6px;padding:10px;font-size:11px;max-height:180px;overflow:auto;">${escapeHtml(prettyMeta(typeof survey.meta === 'string' ? survey.meta : JSON.stringify(survey.meta, null, 2)))}</pre>
             </details>
           ` : ''}
 

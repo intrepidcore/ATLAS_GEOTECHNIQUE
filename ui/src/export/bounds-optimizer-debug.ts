@@ -4,7 +4,7 @@
  */
 
 import { BoundsOptimizer } from './bounds-optimizer'
-import type { ADMGeometry, BoundsRect } from './export-types'
+import type { ADMGeometry, BoundsRect } from './bounds-optimizer'
 
 export interface DebugScanResult {
   shrink: number

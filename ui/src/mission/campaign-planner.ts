@@ -227,7 +227,7 @@ export function initCampaignPlanner(opts: PlannerOpts): void {
     }
     if (list.length) {
       try {
-        opts.map.fitBounds(campaignLayer.getBounds(), { padding: [24, 24], maxZoom: 12 })
+        opts.map.fitBounds((campaignLayer as unknown as L.FeatureGroup).getBounds(), { padding: [24, 24], maxZoom: 12 })
       } catch {
         /* empty bounds */
       }

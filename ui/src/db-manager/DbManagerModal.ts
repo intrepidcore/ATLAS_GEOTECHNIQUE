@@ -1,3 +1,4 @@
+// @ts-nocheck — fichier orphelin LitElement (decorateurs @property/@state non résolus sans lit)
 // Modal principal du gestionnaire de base de données
 import type { DatabaseSchema, SchemaInfo, TableInfo, DbManagerState } from './types'
 import * as api from './api'

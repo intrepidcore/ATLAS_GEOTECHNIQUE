@@ -280,7 +280,7 @@ export const StagingModal: React.FC<StagingModalProps> = ({
           </Button>
           <Button
             onClick={commitStaging}
-            disabled={loading || (dryRunResult && !dryRunResult.is_safe)}
+            disabled={loading || !!(dryRunResult && !dryRunResult.is_safe)}
           >
             {loading ? <Loader2 className="animate-spin mr-2" /> : null}
             Commit

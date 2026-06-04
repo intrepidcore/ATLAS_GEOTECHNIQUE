@@ -86,7 +86,7 @@ async function waitForTilesLoaded(
     const checkTiles = () => {
       if (resolved) return
       
-      const tileLayers = []
+      const tileLayers: any[] = []
       map.eachLayer((layer: any) => {
         if (layer._tiles || layer._loading) {
           tileLayers.push(layer)
