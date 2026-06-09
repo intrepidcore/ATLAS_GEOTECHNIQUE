@@ -1,0 +1,188 @@
+sondage_id,code,source,locality_extracted,matched_adm3,score,method,action,adm2,adm1
+1434c64a-0d32-4e22-9dc3-973b51432358,KONTONGBONGUE,SOGLO Ferdinand,KONTONGBONGUE,,36.0,no_match,manual_required,,
+1036d2df-8b38-4f33-b1a7-6e03efcd5b80,NASSABLE,SOGLO Ferdinand,NASSABLÉ,,36.0,no_match,manual_required,,
+9ba7c987-f3a1-4635-afb0-4d9c79f6aaa6,AGB_PRISE_TAR,V10_MASTER_2026,AGB PRISE,,36.0,no_match,manual_required,,
+7066e4d1-b43c-4fa2-b009-207aa8252f45,AGB_STAT_SC,V10_MASTER_2026,AGB STAT,,38.6,no_match,manual_required,,
+65df3c7f-89b6-4832-bfcc-bedf07574de5,AMENOUKOPE_EMPRUNT_31_09_99,V10_MASTER_2026,AMENOUKOPE,,36.0,no_match,manual_required,,
+305fe3fb-1530-43c6-a83f-50468c2fdc23,AO_S1,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+83775b44-5ca7-4214-ba6f-7fd3017654c9,AO_S10,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+86a3bda9-36d5-4193-8945-3d2301b38c23,AO_S2,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+89f97985-1de3-4a6f-8462-03216b388262,AO_S3,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+8777f15a-6b34-49fc-a5be-8b594d96fef5,AO_S4,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+c2a7b230-ff75-46f3-abd2-b5b8d69d233e,AO_S5,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+81cb5da3-6222-42f5-8f71-345933ab2dfe,AO_S6,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+99123fac-a21b-462f-afc5-25dbebe306d0,AO_S7,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+d661b946-f2e0-4c3d-aa61-63558361426e,AO_S8,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+f3c941dd-6966-48af-b8a0-e32c59cc8815,AO_S9,V10_MASTER_2026,AO,Aflao Gakli,100.0,exact,auto_apply,Golfe,Maritime
+b163ea27-560a-4083-b5cd-329f30f17533,ATRAVE_EMPRUNT_27_17_47,V10_MASTER_2026,ATRAVE,,36.0,no_match,manual_required,,
+7f888b98-4c2c-4dba-b61c-25cbb68dbdc2,BADJA_S1,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+eaa43511-5a65-44c7-9731-afdce415fd2c,BADJA_S10,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+c898da02-8ee8-4e3b-a496-2125903ea397,BADJA_S11,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+6ba97740-6506-4e09-a65e-4055c6c1c278,BADJA_S12,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+0599f13f-25ce-4f63-9745-9f2fe31403ef,BADJA_S13,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+348511f8-fe51-442c-a748-539f4baf704d,BADJA_S14,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+3304a592-2142-423c-8e02-5dca2b69c16d,BADJA_S15,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+dd679da1-2966-4eec-94f0-10f154b1f4b7,BADJA_S16,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+6b0e834f-ad9d-4049-ae30-e929eb73c285,BADJA_S17,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+6c38a54a-4415-4736-b79d-4b2a3b855a6e,BADJA_S18,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+4e8f7556-8acb-4a06-8534-657ffb3f8867,BADJA_S19,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+891e4772-c5ae-4082-87f2-396a9197e598,BADJA_S2,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+b3a97b73-1f04-4c25-b7d1-89a4e8a8ac9d,BADJA_S20,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+57733409-46ef-4d94-81df-bbad9f087086,BADJA_S21,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+f30ab581-829f-4995-a95d-134fc5809923,BADJA_S22,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+99fb742f-f961-44ce-8a37-0443bcb6380d,BADJA_S23,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+f94b0a72-a4f5-4f42-a855-cadfbab4d2a1,BADJA_S24,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+8c102295-9c82-444a-a921-7a95525ac28e,BADJA_S25,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+f815c474-1eb7-4569-a545-1f44668986da,BADJA_S26,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+e9b8ffed-6ee9-4326-b3b6-7ae72c02e032,BADJA_S27,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+c3d3ac42-61d4-4aca-b444-cfdcaf028815,BADJA_S28,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+981b41af-d9ea-459f-8353-77d28c812cba,BADJA_S3,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+86059c2f-ac15-420d-a193-bd90c6510142,BADJA_S4,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+62bf3dd8-71cf-4d73-8da2-ae6f781bb987,BADJA_S5,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+24315480-0179-4a5a-a449-ff9e35b91caa,BADJA_S6,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+b90ad0d8-af68-47aa-9678-46d92647e183,BADJA_S7,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+ca3ee0c4-a995-48e0-828d-236d36a17c91,BADJA_S8,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+06883e60-f9c1-40a6-b0ee-add64e5ea9a5,BADJA_S9,V10_MASTER_2026,BADJA,Badja,100.0,exact,auto_apply,Ave,Maritime
+d027ce23-4860-4e48-9890-cd167dceeb61,BAF_F_S1,V10_MASTER_2026,BAF F,,36.0,no_match,manual_required,,
+8e9c1ec8-5902-424f-92ac-f56ffa985771,BAF_F_S2,V10_MASTER_2026,BAF F,,36.0,no_match,manual_required,,
+ebc40218-d3b7-47ee-a80e-33f4ca7cb534,BAF_F_S3,V10_MASTER_2026,BAF F,,36.0,no_match,manual_required,,
+20bf5ccc-a233-46d2-a7f0-fef1981293a4,BAF_FD_S1,V10_MASTER_2026,BAF FD,,45.0,no_match,manual_required,,
+61c21dcc-d0f2-4f8a-a226-b7822fca0253,BAF_FD_S2,V10_MASTER_2026,BAF FD,,45.0,no_match,manual_required,,
+c375f80e-6474-4cb8-a2da-f66b4c990369,BAF_FD_S3,V10_MASTER_2026,BAF FD,,45.0,no_match,manual_required,,
+7987d5ee-175d-45bd-aecf-889bbc9cef88,BEDJI_EMPRUNT_31_81_62,V10_MASTER_2026,BEDJI,,30.0,no_match,manual_required,,
+66138426-2678-47ce-bac1-8c8bf4d6813f,CH_S1,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+48232800-a9f4-44a7-b6be-d9c95e844bc5,CH_S10,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+87083ffd-16b7-452d-80bc-84e372884351,CH_S2,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+68c084a0-4e05-40e5-8a9d-d5b5392091bf,CH_S3,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+8670d631-c7b5-4f5d-81e2-35254f9eb8fe,CH_S4,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+b42a38f1-998c-470c-96f5-a8556f013792,CH_S5,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+3eddbaf5-757a-4be2-b930-9141ce16067c,CH_S6,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+f1ba1794-b9ac-4e1d-94cc-c12c656d1946,CH_S7,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+36ba7292-5715-4a43-aac2-5873a131a34a,CH_S8,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+d63c1e34-fe49-4bc9-9cd7-255984008e7d,CH_S9,V10_MASTER_2026,CH,Atchangbade,100.0,exact,auto_apply,Kozah,Kara
+3758a6f7-85fc-4fd2-9fe7-5708ec73cb94,DZ_S1,V10_MASTER_2026,DZ,Adzakpa,100.0,exact,auto_apply,Agou,Plateaux
+ced18432-d908-4505-8732-a4cc2f44b5f9,DZ_S2,V10_MASTER_2026,DZ,Adzakpa,100.0,exact,auto_apply,Agou,Plateaux
+7f22e515-d57a-4ed9-bccf-2c8114b1b167,DZ_S3,V10_MASTER_2026,DZ,Adzakpa,100.0,exact,auto_apply,Agou,Plateaux
+9d00a5d1-1f5c-4cdd-adec-49ed8a1dfde6,DZ_S4,V10_MASTER_2026,DZ,Adzakpa,100.0,exact,auto_apply,Agou,Plateaux
+e003722a-bbc9-475a-b1b3-7919d0bc0a85,DZ_S5,V10_MASTER_2026,DZ,Adzakpa,100.0,exact,auto_apply,Agou,Plateaux
+a672c9a2-3434-4328-936b-3d0246eb885c,DZ_S6,V10_MASTER_2026,DZ,Adzakpa,100.0,exact,auto_apply,Agou,Plateaux
+8d7c2ce4-94c7-4928-ae05-75ad2ff99ad5,ETRA_S1,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+fc77f366-bcc6-445f-ae0e-307b343115fe,ETRA_S10,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+b9d9f084-0633-4dc4-8da2-b3a40e1479e3,ETRA_S11,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+0177b669-4e58-4771-af3c-dafb034e6851,ETRA_S12,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+55f239cd-01ac-43f2-9be7-9d9ca95b1cca,ETRA_S2,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+475767f4-2589-46db-aa45-69ca4095139a,ETRA_S3,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+124a0e84-f000-4a1b-9c43-238ae5a04a3e,ETRA_S4,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+0e7c97fa-7c2d-4398-9c71-dba6ec95e9ca,ETRA_S5,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+f5d9de68-7e4e-4cf6-a28e-48890139f255,ETRA_S6,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+aad9ac67-70b3-404c-8331-e4912ae10b5f,ETRA_S7,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+ea443d91-962e-4d22-94c9-67b5dd23f8a2,ETRA_S8,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+ce9dbc70-4826-4f9a-b444-ebfd4cfe1cfa,ETRA_S9,V10_MASTER_2026,ETRA,,36.0,no_match,manual_required,,
+f750f233-9999-48bc-bef8-8389646e6dd1,FODJAYE_EMPRUNT_31_82_65,V10_MASTER_2026,FODJAYE,,36.0,no_match,manual_required,,
+c8e4fc1c-4d22-4206-b714-ba913d707c50,GBOBLE_EMPRUNT_31_35_36,V10_MASTER_2026,GBOBLE,,36.0,no_match,manual_required,,
+1eacde1e-07ea-46d9-b52e-f3b3b2fd3c22,GLITTO_EMPRUNT_33_82_92,V10_MASTER_2026,GLITTO,Glitto,100.0,exact,auto_apply,Anie,Plateaux
+6f55a607-31af-45f5-ade9-18388a3a6993,IRANDOMI_EMPRUNT_32_13_80,V10_MASTER_2026,IRANDOMI,,36.0,no_match,manual_required,,
+c25f36ba-69b6-4a54-b17c-31b551ab3849,KABLE KONDJI_EMPRUNT_32_55_88,V10_MASTER_2026,KABLE KONDJI,,36.0,no_match,manual_required,,
+f48ff2a3-5620-489a-8a48-7d2217af1c10,KABLE KOPE_EMPRUNT_33_48_53,V10_MASTER_2026,KABLE KOPE,,36.0,no_match,manual_required,,
+81ddc74e-74f8-486a-a38e-a9fb220dfa01,KANTE_S1,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+fcd29151-24a3-4a0f-ba7f-5e203881f350,KANTE_S10,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+5c642912-4e04-4a17-b6ce-2e9a1127935a,KANTE_S2,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+6a0062bf-7371-479c-97f6-b768a7c69a08,KANTE_S3,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+2f9fe80a-fb2f-473b-a027-ac38279193ed,KANTE_S4,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+153bf392-06b4-4c0a-a220-653f7ac0ac4d,KANTE_S5,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+c2553de3-af7e-4c0b-a6e0-bb7b6d1421be,KANTE_S6,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+cdf4dcfd-4a96-4fb9-9374-990fb1f90ebf,KANTE_S7,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+60d6d33d-20b4-474d-b137-1e619feae67d,KANTE_S8,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+4c49192e-8df2-499f-80f2-9676f2b6e59f,KANTE_S9,V10_MASTER_2026,KANTE,,30.8,no_match,manual_required,,
+d89d5f8a-04e6-40c4-a1cd-08aa6faa9159,KENOUKOPE_EMPRUNT_30_53_38,V10_MASTER_2026,KENOUKOPE,,36.0,no_match,manual_required,,
+ce68ee26-56d2-4593-b00e-7301140ba849,KPOGANDJI_EMPRUNT_33_41_25,V10_MASTER_2026,KPOGANDJI,,36.0,no_match,manual_required,,
+5af7b4c5-7dfc-43c2-b293-1db74e2b3ab9,KPOVE_EMPRUNT_31_18_33,V10_MASTER_2026,KPOVE,,36.0,no_match,manual_required,,
+0ef47786-9e6b-4d3b-bd59-65308c7531f2,KR_S10,V10_MASTER_2026,KR,Kri-Kri,100.0,exact,auto_apply,Tchamba,Centrale
+eaefebc6-a8dc-43fb-8632-c295d218969b,KR_S13,V10_MASTER_2026,KR,Kri-Kri,100.0,exact,auto_apply,Tchamba,Centrale
+94ba4d49-1798-4018-9075-d49749079953,KR_S7,V10_MASTER_2026,KR,Kri-Kri,100.0,exact,auto_apply,Tchamba,Centrale
+d8d051c7-c4f1-4012-b03b-4a942795935b,KR_S7_B,V10_MASTER_2026,KR,Kri-Kri,100.0,exact,auto_apply,Tchamba,Centrale
+f0da8a9e-aa73-4f16-b1df-d0bd109e5202,KR_S8,V10_MASTER_2026,KR,Kri-Kri,100.0,exact,auto_apply,Tchamba,Centrale
+55c28c3b-62ab-411d-9dcc-400ced0f6dab,KR_S9,V10_MASTER_2026,KR,Kri-Kri,100.0,exact,auto_apply,Tchamba,Centrale
+ebcb5068-d882-4293-91db-00dfc5030184,LM2_S1,V10_MASTER_2026,LM2,,45.0,no_match,manual_required,,
+ce01d5d8-e5f4-4d7a-8bd0-a527adcc0063,LM2_S1_B,V10_MASTER_2026,LM2,,45.0,no_match,manual_required,,
+07767d0c-a408-45bb-aaed-2a7ede33e444,LM2_S2,V10_MASTER_2026,LM2,,45.0,no_match,manual_required,,
+b4914372-6932-4b8b-9ae2-83d6c47d3fba,LM2_S3,V10_MASTER_2026,LM2,,45.0,no_match,manual_required,,
+758b8f28-4032-4b4f-80a4-156647f6f0c4,LM2_S4,V10_MASTER_2026,LM2,,45.0,no_match,manual_required,,
+64fb3dd2-16b2-4710-b7ad-6d19a2d1c6ea,LM2_S5,V10_MASTER_2026,LM2,,45.0,no_match,manual_required,,
+115db9a9-b403-4e39-b1ce-2b55b1eadba3,LM2_S6,V10_MASTER_2026,LM2,,45.0,no_match,manual_required,,
+1b5042c4-62b5-4b10-958d-4aca62a83203,LM2_S7,V10_MASTER_2026,LM2,,45.0,no_match,manual_required,,
+b772fca3-3fa6-4e97-96c9-10b1ebb3d160,MESSIWOBE_EMPRUNT_26_93_23,V10_MASTER_2026,MESSIWOBE,,36.0,no_match,manual_required,,
+cbd84874-c361-40f2-811e-5ae9ece85c89,NOT_E1,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+bb7bfa88-e2bd-4b60-8838-70eb788e5b04,NOT_E10,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+bd0b7cb9-e8bb-4fd5-bd74-0fe20ee88301,NOT_E11,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+06ee0c79-6263-47ee-9b94-39e0763cb515,NOT_E12,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+f4c9b2d1-4b09-423c-8fe9-90177cbece1f,NOT_E13,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+4371b1e0-6396-45c8-b9e8-4fcc03a5ebf9,NOT_E14,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+28e4e0eb-f99c-413d-b7e7-f242f39b709e,NOT_E15,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+f77054ed-fcb6-472e-b8f8-11783b582e76,NOT_E16,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+533548f9-3243-4723-9b7d-126a522467f2,NOT_E17,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+5bff8544-1355-45c3-a4c7-c0c331115d7a,NOT_E18,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+90492bdb-6539-4a7d-818d-6b7b9255d98f,NOT_E19,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+13557882-a484-42ff-bbee-6364f9638af0,NOT_E2,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+640b1c32-3c8a-43fe-bdbf-ea62ae766e79,NOT_E20,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+82116fea-d8b3-4a71-86b6-4399b0336a79,NOT_E21,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+0d459253-a3e3-45b3-84be-7311e8bd85db,NOT_E22,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+1421d8ae-387f-4fcf-a491-7db4551fc13b,NOT_E23,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+0b3a01c2-53ed-47b2-85ea-b70280479854,NOT_E24,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+1717e4f3-ad02-484e-99d4-5c7f22447696,NOT_E25,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+3360b017-94dc-4345-b0b5-55df4ddce4ea,NOT_E26,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+df70478a-0fe8-4982-8403-59fa4123a153,NOT_E27,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+054d987e-b1a6-4820-86cd-c6b452f2ca16,NOT_E28,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+971c9516-cc42-456b-a051-9eb2ce10001c,NOT_E29,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+aa6c0311-a9c0-4112-9668-4f30805d84f7,NOT_E3,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+57a9bf7c-6c98-42f9-b4b1-8fe0a6e0779e,NOT_E30,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+78f61110-3b12-415a-b255-5f0e0fb4e601,NOT_E31,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+b8862f47-9d5e-4905-ac4c-28bea5e9dc58,NOT_E4,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+230c0a44-8d7f-49e3-b397-4f0011ac753c,NOT_E5,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+708d8c8e-3784-459b-a1c4-1508a3446280,NOT_E6,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+1b29baf3-c4e6-4566-ba0c-26a92e6a6762,NOT_E7,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+681e6579-ca42-469d-9635-d1d90e47e170,NOT_E8,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+74f6af8e-cf90-4f1f-8762-8838c7755010,NOT_E9,V10_MASTER_2026,NOT,Notse,100.0,exact,auto_apply,Haho,Plateaux
+edbc35c0-700b-4f16-8436-1d45c56a219f,OKE_EMPRUNT_32_80_16,V10_MASTER_2026,OKE,Yokele,100.0,exact,auto_apply,Kloto,Plateaux
+1728466f-fee0-46c4-9c02-058d84b9c485,PK3+300 C/D_EMPRUNT_32_53_70,V10_MASTER_2026,PK3+300 C/D,,45.0,no_match,manual_required,,
+086a0690-d650-4cab-85d2-42638bb20a84,PK5+100 C/D_EMPRUNT_26_63_75,V10_MASTER_2026,PK5+100 C/D,,45.0,no_match,manual_required,,
+ded87b2d-6fb6-4d4f-b22e-b22790d9c0af,PK8+000 C/D_EMPRUNT_27_39_45,V10_MASTER_2026,PK8+000 C/D,,45.0,no_match,manual_required,,
+cdaae6dc-edd0-4746-8afe-d2418dad0331,SEYDOU KOPE_EMPRUNT_30_68_37,V10_MASTER_2026,SEYDOU KOPE,,36.0,no_match,manual_required,,
+72cb6522-84db-4f4b-ac07-92ea501e61b6,SIM KOPE_EMPRUNT_27_13_96,V10_MASTER_2026,SIM KOPE,,36.0,no_match,manual_required,,
+139c3ddb-c841-489c-8c9d-c889da3d9c46,SOK_S10,V10_MASTER_2026,SOK,,45.0,no_match,manual_required,,
+7fe2252b-260a-45c0-ab9b-beb96530b0df,SOK_S11,V10_MASTER_2026,SOK,,45.0,no_match,manual_required,,
+2572f5f8-03e8-4090-b8aa-66b8108e131d,SOK_T1_S1,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+39310608-dd1f-475e-9063-71b348c7596a,SOK_T1_S1_2,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+65a0ccb7-8294-4398-af09-84c07aec5a97,SOK_T1_S10,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+dca1fb94-1e4a-4336-99d8-76da5e2029e7,SOK_T1_S11,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+37a02053-693a-4b16-a1f2-fd2761f1d7f1,SOK_T1_S12,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+f8be9c48-ce74-47a7-ae61-f786a9d696de,SOK_T1_S13,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+1d3bcc83-e55f-4e00-a071-454679604db8,SOK_T1_S14,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+eb907cba-ecc9-44cd-9637-373c9efdb8dc,SOK_T1_S15,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+6d98f4fc-ed16-4843-9395-34dd5ea9dbef,SOK_T1_S15_2,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+79eb0cfd-df64-42c2-b15b-0302fc189c98,SOK_T1_S16,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+72130795-8ead-4438-afa0-32ec736801bf,SOK_T1_S17,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+e7b71a53-48a8-48bd-be4b-4597c764daf2,SOK_T1_S18,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+40a531da-0400-4a72-8e50-1eae700fe8a4,SOK_T1_S19,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+7d76c2f4-046d-4643-b914-dfc9236f3c7c,SOK_T1_S2,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+02c380dc-dfe3-456b-8ce2-157151383ed0,SOK_T1_S20,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+38f4f510-c19a-4ed7-91ff-a0ab51cdbf82,SOK_T1_S3,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+a76cc4f0-63c9-47d1-b02e-5c6c7ed60574,SOK_T1_S4,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+c9126cad-c937-48bc-954c-b622a0cb1534,SOK_T1_S5,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+6d10e50a-9344-456f-802a-7059c1be642e,SOK_T1_S6,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+a8262096-2953-4cbe-bec6-51f28030637e,SOK_T1_S7,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+aa461a3d-500b-49f0-bc64-c008185ee2e5,SOK_T1_S8,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+453a68d1-f0cb-4d16-934b-a31fc5f942a4,SOK_T1_S8_2,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+149018ff-0b47-47b0-ac06-54c6060a4b68,SOK_T1_S9,V10_MASTER_2026,SOK T1,,36.0,no_match,manual_required,,
+0eee5879-8388-4003-9cd8-7dcbca8c627a,TCHEKITA_EMPRUNT_31_72_72,V10_MASTER_2026,TCHEKITA,,36.0,no_match,manual_required,,
+0869a24b-43c1-4749-9815-d0935bb54c6a,TOH_PD1,V10_MASTER_2026,TOH,Tohoun,100.0,exact,auto_apply,Moyen-Mono,Plateaux
+74778617-09f9-43b2-bae3-a4ba8600478a,TOH_PD2,V10_MASTER_2026,TOH,Tohoun,100.0,exact,auto_apply,Moyen-Mono,Plateaux
+88cefdfe-7434-40a6-acba-c7f1e34bad31,TOH_PD3,V10_MASTER_2026,TOH,Tohoun,100.0,exact,auto_apply,Moyen-Mono,Plateaux
+dcddea27-e955-434e-91e8-6ad3dc268584,TOH_PD4,V10_MASTER_2026,TOH,Tohoun,100.0,exact,auto_apply,Moyen-Mono,Plateaux
+c598d30c-768d-4704-b984-cb27b8551cbb,TOH_PD5,V10_MASTER_2026,TOH,Tohoun,100.0,exact,auto_apply,Moyen-Mono,Plateaux
+f7a90877-f28c-42c2-9718-5933451be63d,TOH_PD6,V10_MASTER_2026,TOH,Tohoun,100.0,exact,auto_apply,Moyen-Mono,Plateaux
+c9536ae2-398b-43b6-b9f9-437cf40c4700,TOH_TAR,V10_MASTER_2026,TOH,Tohoun,100.0,exact,auto_apply,Moyen-Mono,Plateaux
+e115bb00-5162-413f-8fdc-ba93e496c892,TOKOH 2_EMPRUNT_26_04_40,V10_MASTER_2026,TOKOH 2,,36.0,no_match,manual_required,,
+e84b9417-72fe-47a4-ac40-1c6e82cb6d18,TOKOH_EMPRUNT_25_93_04,V10_MASTER_2026,TOKOH,,30.0,no_match,manual_required,,
+0daec3a8-d7b2-4230-8cab-d68afa377607,WANOUKOPE_EMPRUNT_32_23_33,V10_MASTER_2026,WANOUKOPE,,45.0,no_match,manual_required,,
+a6956dfa-8482-43ed-846a-ad92d53ae92d,WEDEME_EMPRUNT_31_47_84,V10_MASTER_2026,WEDEME,,45.0,no_match,manual_required,,

@@ -1,3 +1,5 @@
+retirer la mention de 122 point uniquement car les sondages ne sont pas des sondages reserver avec des apparail rare et peut etre fait mais juste avec assez de financement. l'objectif c'est d'établir des model matematique, correlartion et machnine leaning avec les donnée dont nous dispo en vue de predire facilement ces parametre
+
 # Points de révision — Prochaine itération de rédaction
 ## Article : Cartographie Géotechnique Nationale — Togo
 
@@ -180,3 +182,163 @@ python scripts/pipeline_worker.py --database-url ... --once
 ---
 
 *Document créé le 2026-06-01. À consulter au début de la prochaine session de rédaction.*
+
+
+Voici la restructuration stricte de votre document selon le format **IMRaD** (Introduction, Matériel & Méthodes, Résultats, Discussion).
+Nouveau titre: Modélisation Prédictive Hybride par Géostatistique et Apprentissage Automatique des Paramètres Géotechniques Nationaux : Application au Togo
+### **RÉSUMÉ / ABSTRACT**
+
+### **1. INTRODUCTION**
+
+_Cette section fusionne l'introduction générale et les fondements théoriques pour poser le cadre avant d'entrer dans la méthodologie propre au projet._
+
+- **1.1. Contexte et problématique** _(Ancienne section 1)_
+    
+- **1.2. Rappels théoriques sur la géostatistique linéaire** _(Ancienne section 2)_
+    
+    - 1.2.1. Hypothèses de stationnarité
+        
+    - 1.2.2. Propriétés d’optimalité du krigeage
+        
+    - 1.2.3. Relation entre krigeage et régression
+        
+    - 1.2.4. Intervalles de prédiction vs intervalles de confiance
+        
+
+### **2. MATÉRIEL ET MÉTHODES**
+
+_Cette section rassemble toutes les informations nécessaires pour reproduire l'étude : la zone, les données brutes, les covariables, les mathématiques des modèles et leur implémentation._
+
+- **2.1. Zone d’étude, données et contexte géologique** _(Ancienne section 3)_
+    
+    - 2.1.1. Territoire togolais et contraintes spatiales
+        
+    - 2.1.2. Base de données géotechniques
+        
+    - 2.1.3. Couches géologiques et pédologiques auxiliaires
+        
+- **2.2. Calcul des covariables SCORPAN** _(Ancienne section 10)_
+    
+    - 2.2.1. Modèle numérique de terrain
+        
+    - 2.2.2. Covariables climatiques
+        
+    - 2.2.3. Covariables géologiques et pédologiques
+        
+    - 2.2.4. Résumé des covariables
+        
+- **2.3. Formulations mathématiques des modèles** _(Ancienne section 4)_
+    
+    - 2.3.1. L1 — Krigeage avec dérive externe hiérarchique _(Inclut : Modèle structural, Prior, Équations, Variogramme)_
+        
+    - 2.3.2. L2a — Régression kriging SCORPAN _(Inclut : Cadre conceptuel, Ridge, Résidus)_
+        
+    - 2.3.3. L2b — Fusion bayésienne par BLUP _(Inclut : Motivation, Combinaison)_
+        
+    - 2.3.4. L3 — Régression PLS sur indices spectraux Sentinel-2 _(Inclut : Fondements, Modèle PLS)_
+        
+    - 2.3.5. L4 — Processus gaussien multi-tâches _(Inclut : Coregionalisation, Co-krigeage)_
+        
+- **2.4. Implémentation algorithmique et architecture** _(Fusion des anciennes sections 5 et 11 expurgée des détails d'infrastructure trop spécifiques)_
+    
+    - 2.4.1. Infrastructure de données et pipeline hiérarchique _(Anciennes 5.1 et 5.2)_
+        
+    - 2.4.2. Algorithme KED-H _(Ancienne 11.1)_
+        
+    - 2.4.3. Validation croisée Leave-One-Out rigoureuse _(Anciennes 5.3 et 11.2)_
+        
+    - 2.4.4. Calibration du paramètre Ridge _(Ancienne 11.3)_
+        
+    - 2.4.5. Analyse des composantes PLS _(Ancienne 11.4)_
+        
+    - 2.4.6. Paramètres variographiques par paramètre _(Ancienne 11.5)_
+        
+
+### **3. RÉSULTATS**
+
+_Regroupe purement les métriques, les performances, les cartes générées et les tests de robustesse, sans les interpréter en profondeur._
+
+- **3.1. Validation et performances des modèles** _(Ancienne section 6 partiellement)_
+    
+    - 3.1.1. Performance LOO-CV comparative
+        
+    - 3.1.2. Dégradation de la précision avec la profondeur
+        
+    - 3.1.3. Réduction de variance par fusion bayésienne
+        
+    - 3.1.4. Résultats VfS-PLS
+        
+- **3.2. Prédictions spatiales et cartographie nationale** _(Anciennes 6.4 et 6.6)_
+    
+    - 3.2.1. Cartographie nationale
+        
+    - 3.2.2. Profil de prédiction et incertitude spatiale
+        
+- **3.3. Analyse de sensibilité et robustesse** _(Ancienne section 9)_
+    
+    - 3.3.1. Sensibilité au modèle variographique
+        
+    - 3.3.2. Sensibilité à la taille de l’échantillon
+        
+    - 3.3.3. Influence du paramètre de régularisation sur la prédiction spatiale
+        
+    - 3.3.4. Performance par région administrative
+        
+
+### **4. DISCUSSION**
+
+_Analyse ce que signifient les résultats, comment ils s'intègrent dans la géologie, comment ils se comparent à la littérature, et quelles sont les prochaines étapes._
+
+- **4.1. Analyse géologique des résultats** _(Ancienne section 12)_
+    
+    - 4.1.1. Distribution spatiale du VBS et contrôles géologiques
+        
+    - 4.1.2. Comparaison zones géologiques spéciales vs zones générales
+        
+    - 4.1.3. Anomalies géotechniques identifiées
+        
+    - 4.1.4. Relation VBS–IP : droite de régression et cohérence physique
+        
+    - 4.1.5. Interprétation de la matrice de coregionalisation
+        
+    - 4.1.6. Analyse de l’incertitude spatiale _(Ancienne 12.7)_
+        
+- **4.2. Synthèse et positionnement scientifique** _(Ancienne section 7)_
+    
+    - 4.2.1. Position dans la littérature
+        
+    - 4.2.2. Gain du co-krigeage MTGP
+        
+    - 4.2.3. Synthèse de la hiérarchie L1–L4
+        
+- **4.3. Implications pratiques et limites** _(Anciennes 12.6 et 7.3)_
+    
+    - 4.3.1. Comparaison des politiques de seuillage pour la classification géotechnique
+        
+    - 4.3.2. Limites épistémiques et techniques
+        
+- **4.4. Perspectives et développements futurs** _(Ancienne section 13)_
+    
+    - 4.4.1. CatBoost — conditions d’activation
+        
+    - 4.4.2. Krigeage transcendant et modèles non-linéaires
+        
+    - 4.4.3. Vers une prédiction temporelle : atlas dynamique
+        
+    - 4.4.4. Amélioration de la covariable VfS par SAR
+        
+    - 4.4.5. Enrichissement du MTGP par mesures laboratoire supplémentaires
+        
+    - 4.4.6. Passage à l’échelle : déploiement régional Afrique de l’Ouest
+        
+
+### **5. CONCLUSION**
+
+- **5.1. Synthèse finale** _(Ancienne section 8 repoussée à sa place logique, juste avant les références, pour clore le document de façon cohérente)_
+    
+
+**REMERCIEMENTS**
+
+**RÉFÉRENCES**
+
+**ANNEXES (A à I)** _(Restent inchangées à la fin du manuscrit)_

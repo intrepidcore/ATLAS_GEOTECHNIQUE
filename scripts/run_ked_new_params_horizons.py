@@ -288,6 +288,30 @@ NEW_PARAM_CONFIGS: List[NewParamCfg] = [
         category="geotech",
         min_pts=5,
     ),
+    NewParamCfg(
+        kind="passant_2mm",
+        source_table="granulo_points",
+        join_sql="JOIN atlas.granulo_points np_tbl ON np_tbl.echantillon_id = e.id AND np_tbl.sieve_mm = 2",
+        value_sql="np_tbl.passing_pct::float8",
+        where_sql="np_tbl.passing_pct IS NOT NULL AND np_tbl.passing_pct BETWEEN 0 AND 100",
+        physical_min=0.0,
+        physical_max=100.0,
+        unit="%",
+        category="granulo",
+        min_pts=5,
+    ),
+    NewParamCfg(
+        kind="passant_80um",
+        source_table="granulo_points",
+        join_sql="JOIN atlas.granulo_points np_tbl ON np_tbl.echantillon_id = e.id AND np_tbl.sieve_mm = 0.08",
+        value_sql="np_tbl.passing_pct::float8",
+        where_sql="np_tbl.passing_pct IS NOT NULL AND np_tbl.passing_pct BETWEEN 0 AND 100",
+        physical_min=0.0,
+        physical_max=100.0,
+        unit="%",
+        category="granulo",
+        min_pts=10,
+    ),
 ]
 
 KIND_MAP: Dict[str, NewParamCfg] = {c.kind: c for c in NEW_PARAM_CONFIGS}

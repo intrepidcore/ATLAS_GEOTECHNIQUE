@@ -84,7 +84,7 @@ logging.basicConfig(
     format="%(asctime)s.%(msecs)03d | %(levelname)-8s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[
-        logging.StreamHandler(sys.stdout),
+        logging.StreamHandler(sys.stderr),
         logging.FileHandler(
             f"logs/vfs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log",
             encoding="utf-8",
@@ -486,6 +486,15 @@ def store_maille_predictions(conn, df: pd.DataFrame, pls_result: Dict) -> int:
     ensure_tables(cur)
 
     cur.execute("DELETE FROM atlas.maille_spectral_vfs")
+
+    # Dédup maille_id (décision hors roadmap 2026-06-07 : merge peut produire doublons)
+    n_before = len(df)
+    df = df.drop_duplicates(subset=["maille_id"], keep="last").reset_index(drop=True)
+    if len(df) < n_before:
+        import logging as _lg
+        _lg.getLogger("VfS").info(
+            "  Dédup maille_id : %d → %d lignes", n_before, len(df)
+        )
 
     rows = []
     for _, row in df.iterrows():

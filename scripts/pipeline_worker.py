@@ -96,7 +96,8 @@ def build_command(job_type: str, parameter_id: str, payload: Dict, db_url: str) 
     horizons = "h1,h2,h3"
 
     # Paramètres V11 (nouveaux — script dédié)
-    NEW_PARAMS_KINDS = {"rd_mpa", "cbr_95", "gamma_d", "w_opt", "em_mpa", "pl_mpa"}
+    NEW_PARAMS_KINDS = {"rd_mpa", "cbr_95", "gamma_d", "w_opt", "em_mpa", "pl_mpa",
+                        "passant_2mm", "passant_80um"}
 
     def _extract_kind(pid: str) -> str:
         """Extrait le 'kind' d'un parameter_id comme 'rd_mpa_ked_h1' -> 'rd_mpa'."""
@@ -132,20 +133,41 @@ def build_command(job_type: str, parameter_id: str, payload: Dict, db_url: str) 
             return tuple(args)
 
     elif job_type == "run_rk":
-        param = payload.get("parameter", parameter_id)
+        import re as _re
+        # parameter_id format: "vbs_rk_h1", "ip_rk_h2", etc.
+        # Extraire kind + horizon depuis parameter_id (priorité) ou payload
+        _m = _re.match(r'^([a-z0-9_]+?)_rk_(h[123])$', parameter_id)
+        if _m:
+            param = _m.group(1)
+            single_hz = _m.group(2)
+        else:
+            # Fallback legacy : param depuis payload ou parameter_id brut
+            param = payload.get("parameter", parameter_id)
+            _hz_raw = payload.get("horizon", "h1")
+            single_hz = _hz_raw.lower() if _hz_raw else None
+
         # Détecter si c'est un paramètre V11
         kind = _extract_kind(param)
         if kind:
-            # Paramètre V11 : utiliser run_ked_new_params_horizons en mode rk-like
-            # (en attendant un vrai script RK pour ces paramètres, on recalcule KED)
+            # Paramètre V11 : recalculer KED (pas encore de vrai script RK pour V11)
+            _hz_arg = single_hz if single_hz else "h1"
             return (
                 sys.executable,
                 str(SCRIPTS_DIR / "run_ked_new_params_horizons.py"),
                 "--database-url", db_url,
                 "--kinds", kind,
-                "--horizons", horizons,
+                "--horizons", _hz_arg,
             )
-        # Paramètres classiques : lancer les 3 horizons séquentiellement
+        # Paramètres classiques V10 : un job = un horizon (parameter_id = xxx_rk_hN)
+        if single_hz:
+            return (
+                sys.executable,
+                str(SCRIPTS_DIR / "atlas_regression_kriging_terrain.py"),
+                "--database-url", db_url,
+                "--parameter", param,
+                "--horizon", single_hz,
+            )
+        # Fallback ultime : lancer les 3 horizons (compatibilité legacy)
         cmds = []
         for hz in ["h1", "h2", "h3"]:
             cmds.append((
@@ -155,16 +177,43 @@ def build_command(job_type: str, parameter_id: str, payload: Dict, db_url: str) 
                 "--parameter", param,
                 "--horizon", hz,
             ))
-        return cmds  # type: ignore  # retourne une liste de commandes
+        return cmds  # type: ignore
 
     elif job_type == "run_fusion":
-        params = payload.get("params", "vbs,ip,wl,wp,eg")
+        import re as _re2
+        # parameter_id format: "vbs_fusion_h1", "eg_fusion_h2", etc.
+        _mf = _re2.match(r'^([a-z0-9_]+?)_fusion_(h[123])$', parameter_id)
+        if _mf:
+            f_param = _mf.group(1)
+            f_hz    = _mf.group(2)
+        else:
+            f_param = payload.get("params", "vbs,ip,wl,wp,eg")
+            f_hz    = payload.get("horizons", "h1,h2,h3")
         return (
             sys.executable,
             str(SCRIPTS_DIR / "ked_rk_fusion.py"),
             "--database-url", db_url,
-            "--params", params,
-            "--horizons", horizons,
+            "--params", f_param,
+            "--horizons", f_hz,
+        )
+
+    elif job_type == "run_mtgp":
+        import re as _re3
+        # parameter_id format: "vbs_mtgp_h1", "ip_mtgp_h2", etc.
+        _mm = _re3.match(r'^([a-z0-9_]+?)_mtgp_(h[123])$', parameter_id)
+        if _mm:
+            m_param = _mm.group(1)
+            m_hz    = _mm.group(2)
+        else:
+            m_param = payload.get("params", "vbs,ip,eg")
+            m_hz    = payload.get("horizons", "h1")
+        # Normaliser: eg → eg (mtgp_geotechnique utilise 'eg' pas 'potentiel_gonflement')
+        return (
+            sys.executable,
+            str(SCRIPTS_DIR / "mtgp_geotechnique.py"),
+            "--database-url", db_url,
+            "--params", m_param,
+            "--horizons", m_hz,
         )
 
     elif job_type == "run_vfs":
@@ -331,6 +380,29 @@ def main() -> int:
     except Exception as e:
         log.error("Connexion DB impossible : %s", e)
         return 1
+
+    # AUTO-RECOVERY : reset jobs "running" depuis > 45 min (ghost jobs apres reboot/crash)
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            UPDATE atlas.ai_job_queue
+            SET status = 'queued', started_at = NULL
+            WHERE status = 'running'
+              AND started_at < now() - interval '45 minutes'
+            RETURNING parameter_id, job_type
+        """)
+        ghosts = cur.fetchall()
+        conn.commit()
+        cur.close()
+        if ghosts:
+            log.warning("AUTO-RECOVERY : %d ghost job(s) resetés -> queued : %s",
+                        len(ghosts), [f"{r[1]}|{r[0]}" for r in ghosts])
+        else:
+            log.info("AUTO-RECOVERY : aucun ghost job detecte")
+    except Exception as e:
+        log.warning("AUTO-RECOVERY check failed : %s", e)
+        try: conn.rollback()
+        except: pass
 
     while True:
         try:

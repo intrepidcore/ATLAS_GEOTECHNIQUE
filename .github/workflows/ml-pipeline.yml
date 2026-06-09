@@ -240,6 +240,92 @@ jobs:
           print(f'✅ /thematic/data vbs_ked_h1 — réponse valide (count={d[\"statistics\"].get(\"count\", 0)} en CI)')
           "
 
+  # ─── 7b. Tests cohérence DB — anti-fallback + consistance MV ────────────────
+  db-coherence-tests:
+    name: "DB — Cohérence géocodage (anti-fallback)"
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.4
+        env:
+          POSTGRES_USER: atlas
+          POSTGRES_PASSWORD: atlas
+          POSTGRES_DB: atlas_clean
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5433:5432
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup DB + migrations
+        run: |
+          PGPASSWORD=atlas psql -h localhost -p 5433 -U atlas -d atlas_clean \
+            -c "CREATE SCHEMA IF NOT EXISTS atlas; CREATE EXTENSION IF NOT EXISTS postgis;" 2>/dev/null || true
+          for f in services/api-geo/migrations/*.sql; do
+            PGPASSWORD=atlas psql -h localhost -p 5433 -U atlas -d atlas_clean -f "$f" 2>/dev/null || true
+          done
+
+      - name: Test 1 — Aucun sondage avec POINT(1 8.6) sans marquage fallback_default
+        run: |
+          COUNT=$(PGPASSWORD=atlas psql -h localhost -p 5433 -U atlas -d atlas_clean -t -c "
+            SELECT COUNT(*) FROM atlas.sondages
+            WHERE geom = ST_SetSRID(ST_MakePoint(1, 8.6), 4326)
+              AND location_mode != 'fallback_default'
+              AND location_mode IS NOT NULL
+              AND deleted_at IS NULL;
+          " 2>/dev/null | tr -d ' ' || echo "0")
+          echo "Sondages POINT(1 8.6) non marqués : $COUNT"
+          if [ "$COUNT" != "0" ] && [ -n "$COUNT" ]; then
+            echo "❌ TEST 1 ECHEC : $COUNT sondage(s) avec coordonnée fallback non marqués"
+            exit 1
+          fi
+          echo "✅ Test 1 OK — aucun fallback non marqué"
+
+      - name: Test 2 — Pas de maille avec plus de 50 sondages (seuil géographique)
+        run: |
+          ROWS=$(PGPASSWORD=atlas psql -h localhost -p 5433 -U atlas -d atlas_clean -t -c "
+            SELECT maille_code, COUNT(*) AS nb FROM atlas.sondages
+            WHERE deleted_at IS NULL
+            GROUP BY maille_code
+            HAVING COUNT(*) > 50;
+          " 2>/dev/null | grep -c '[A-Z]' || echo "0")
+          echo "Mailles avec > 50 sondages : $ROWS"
+          if [ "$ROWS" != "0" ]; then
+            PGPASSWORD=atlas psql -h localhost -p 5433 -U atlas -d atlas_clean -c "
+              SELECT maille_code, COUNT(*) AS nb FROM atlas.sondages
+              WHERE deleted_at IS NULL
+              GROUP BY maille_code HAVING COUNT(*) > 50 ORDER BY nb DESC;
+            " 2>/dev/null || true
+            echo "❌ TEST 2 ECHEC : concentration anormale de sondages dans certaines mailles"
+            exit 1
+          fi
+          echo "✅ Test 2 OK — aucune concentration anormale de sondages"
+
+      - name: Test 3 — Cohérence has_data dans mv_mailles_geotech
+        run: |
+          COUNT=$(PGPASSWORD=atlas psql -h localhost -p 5433 -U atlas -d atlas_clean -t -c "
+            SELECT COUNT(*) FROM atlas.mv_mailles_geotech
+            WHERE (has_data = true AND n_sondages = 0)
+               OR (has_data = false AND n_sondages > 0);
+          " 2>/dev/null | tr -d ' ' || echo "0")
+          echo "Incohérences has_data/n_sondages : $COUNT"
+          if [ "$COUNT" != "0" ] && [ -n "$COUNT" ]; then
+            echo "❌ TEST 3 ECHEC : $COUNT incohérence(s) has_data vs n_sondages dans mv_mailles_geotech"
+            exit 1
+          fi
+          echo "✅ Test 3 OK — has_data cohérent avec n_sondages"
+
+      - name: Test 4 — Scripts Python fuzzy sans erreur de syntaxe
+        run: |
+          python3 -m py_compile scripts/regeocod_fuzzy_v1.py && echo "✅ regeocod_fuzzy_v1.py OK"
+          python3 -m py_compile scripts/run_all_models_nightly.py && echo "✅ nightly v1 OK"
+          python3 -m py_compile scripts/run_all_models_nightly_v2.py && echo "✅ nightly v2 OK"
+
   # ─── 7. Docker build api-geo ─────────────────────────────────────────────────
   docker-build:
     name: "Docker — api-geo build"

@@ -130,21 +130,15 @@ pub async fn list_sondages(
 
     let query = format!(
         r#"
-        SELECT 
+        SELECT
             s.id, s.code, s.localite_base AS localite, s.adm3_id, s.adm3_name,
             ST_AsGeoJSON(s.geom)::jsonb as geom,
             s.location_mode::text,
             s.is_geocoded,
             s.source, s.created_at, s.updated_at,
             s.meta->>'geocoded_mode' as geocoded_mode,
-            COALESCE(
-                (s.meta->>'geocoded_score')::float8,
-                gs.top_score::float8
-            ) as geocoded_score
-        FROM public.sondages s
-        LEFT JOIN geocode_suggestions gs ON s.id = gs.entity_id 
-            AND s.meta->>'geocoded_mode' = 'suggestion_accepted'
-            AND gs.status = 'accepted'
+            (s.meta->>'geocoded_score')::float8 as geocoded_score
+        FROM atlas.sondages s
         WHERE s.deleted_at IS NULL {}
         ORDER BY s.created_at DESC
         LIMIT {} OFFSET {}
@@ -188,12 +182,12 @@ pub async fn get_sondages_stats(
 
     let stats: (i64, i64, i64, i64) = sqlx::query_as(
         r#"
-        SELECT 
+        SELECT
             COUNT(*) as total,
             COUNT(*) FILTER (WHERE is_geocoded) as geocoded,
             COUNT(*) FILTER (WHERE geom IS NOT NULL) as with_geom,
             COUNT(*) FILTER (WHERE adm3_id IS NOT NULL) as with_adm3
-        FROM sondages
+        FROM atlas.sondages
         WHERE deleted_at IS NULL
         "#,
     )
@@ -223,21 +217,15 @@ pub async fn get_sondage(
 
     let sondage = sqlx::query_as::<_, Sondage>(
         r#"
-        SELECT 
+        SELECT
             s.id, s.code, s.localite_base AS localite, s.adm3_id, s.adm3_name,
             ST_AsGeoJSON(s.geom)::jsonb as geom,
             s.location_mode::text,
             s.is_geocoded,
             s.source, s.created_at, s.updated_at,
             s.meta->>'geocoded_mode' as geocoded_mode,
-            COALESCE(
-                (s.meta->>'geocoded_score')::float8,
-                gs.top_score::float8
-            ) as geocoded_score
-        FROM sondages s
-        LEFT JOIN geocode_suggestions gs ON s.id = gs.entity_id 
-            AND s.meta->>'geocoded_mode' = 'suggestion_accepted'
-            AND gs.status = 'accepted'
+            (s.meta->>'geocoded_score')::float8 as geocoded_score
+        FROM atlas.sondages s
         WHERE s.id = $1 AND s.deleted_at IS NULL
         "#,
     )
@@ -283,11 +271,8 @@ pub async fn get_sondage_details(
             'updated_at', s.updated_at,
             'meta', s.meta,
             'geocoded_mode', s.meta->>'geocoded_mode',
-            'geocoded_score', COALESCE(
-                (s.meta->>'geocoded_score')::float8,
-                gs.top_score::float8
-            ),
-            'coordinates', CASE 
+            'geocoded_score', (s.meta->>'geocoded_score')::float8,
+            'coordinates', CASE
                 WHEN s.geom IS NOT NULL THEN jsonb_build_object(
                     'lat', ST_Y(s.geom),
                     'lon', ST_X(s.geom)
@@ -295,10 +280,7 @@ pub async fn get_sondage_details(
                 ELSE NULL
             END
         )
-        FROM sondages s
-        LEFT JOIN geocode_suggestions gs ON s.id = gs.entity_id 
-            AND s.meta->>'geocoded_mode' = 'suggestion_accepted'
-            AND gs.status = 'accepted'
+        FROM atlas.sondages s
         WHERE s.id = $1 AND s.deleted_at IS NULL
         "#,
     )
@@ -430,19 +412,20 @@ pub async fn get_sondage_details(
     .unwrap_or_default();
 
     // Récupérer les essais Proctor via échantillons
+    // Note: colonne gamma_d_max (pas rho_d_max), pas de laboratory/test_date dans ce table
     let proctor: Vec<serde_json::Value> = sqlx::query_scalar(
         r#"
         SELECT jsonb_build_object(
             'id', epr.id,
             'depth_m', e.depth_m,
-            'rho_d_max', epr.rho_d_max,
+            'proctor_type', epr.proctor_type,
+            'gamma_d_max', epr.gamma_d_max,
             'w_opt', epr.w_opt,
-            'laboratory', epr.laboratory,
-            'test_date', epr.test_date,
+            'h_canon', e.h_canon,
             'echantillon_id', e.id
         )
-        FROM essais_proctor epr
-        INNER JOIN echantillons e ON epr.echantillon_id = e.id
+        FROM atlas.essais_proctor epr
+        INNER JOIN atlas.echantillons e ON epr.echantillon_id = e.id
         WHERE e.sondage_id = $1
         ORDER BY e.depth_m
         "#,
@@ -466,8 +449,8 @@ pub async fn get_sondage_details(
                 ) ORDER BY gp.sieve_mm
             )
         )
-        FROM granulo_points gp
-        INNER JOIN echantillons e ON gp.echantillon_id = e.id
+        FROM atlas.granulo_points gp
+        INNER JOIN atlas.echantillons e ON gp.echantillon_id = e.id
         WHERE e.sondage_id = $1
         GROUP BY e.id, e.depth_m, gp.method
         ORDER BY e.depth_m, gp.method
@@ -478,19 +461,96 @@ pub async fn get_sondage_details(
     .await
     .unwrap_or_default();
 
-    // Récupérer les échantillons
+    // Récupérer les essais CBR via échantillons
+    let cbr: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', ec.id,
+            'depth_m', e.depth_m,
+            'proctor_type', ec.proctor_type,
+            'n_coups', ec.n_coups,
+            'compactage_pct', ec.compactage_pct,
+            'cbr_pct', ec.cbr_pct,
+            'gamma_d_gcm3', ec.gamma_d_gcm3,
+            'w_pct', ec.w_pct,
+            'h_canon', ec.h_canon,
+            'echantillon_id', e.id
+        )
+        FROM atlas.essais_cbr ec
+        INNER JOIN atlas.echantillons e ON ec.echantillon_id = e.id
+        WHERE e.sondage_id = $1
+        ORDER BY e.depth_m, ec.compactage_pct
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les essais Pressiomètre via échantillons
+    let pressiometre: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', ep.id,
+            'depth_m', e.depth_m,
+            'z_reel_m', ep.z_reel_m,
+            'h_canon', ep.h_canon,
+            'pf_mpa', ep.pf_mpa,
+            'pl_mpa', ep.pl_mpa,
+            'em_mpa', ep.em_mpa,
+            'e_pl_ratio', ep.e_pl_ratio,
+            'echantillon_id', e.id
+        )
+        FROM atlas.essais_pressiometre ep
+        INNER JOIN atlas.echantillons e ON ep.echantillon_id = e.id
+        WHERE e.sondage_id = $1
+        ORDER BY e.depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les essais Pénétromètre via échantillons
+    let penetrometre: Vec<serde_json::Value> = sqlx::query_scalar(
+        r#"
+        SELECT jsonb_build_object(
+            'id', epe.id,
+            'depth_m', e.depth_m,
+            'z_reel_m', epe.z_reel_m,
+            'h_canon', epe.h_canon,
+            'rd_mpa', epe.rd_mpa,
+            'elu_mpa', epe.elu_mpa,
+            'els_mpa', epe.els_mpa,
+            'echantillon_id', e.id
+        )
+        FROM atlas.essais_penetrometre epe
+        INNER JOIN atlas.echantillons e ON epe.echantillon_id = e.id
+        WHERE e.sondage_id = $1
+        ORDER BY e.depth_m
+        "#,
+    )
+    .bind(id)
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    // Récupérer les échantillons (avec eg = equivalent granulométrique)
     let echantillons: Vec<serde_json::Value> = sqlx::query_scalar(
         r#"
         SELECT jsonb_build_object(
             'id', id,
             'depth_m', depth_m,
+            'h_canon', h_canon,
             'laboratory', laboratory,
             'norm', norm,
+            'eg', eg,
             'rho_s_gcm3', rho_s_gcm3,
             'water_content_w', water_content_w,
             'date', date
         )
-        FROM echantillons
+        FROM atlas.echantillons
         WHERE sondage_id = $1
         ORDER BY depth_m
         "#,
@@ -509,6 +569,9 @@ pub async fn get_sondage_details(
     result.insert("physiques".to_string(), serde_json::json!(physiques));
     result.insert("proctor".to_string(), serde_json::json!(proctor));
     result.insert("granulometrie".to_string(), serde_json::json!(granulo));
+    result.insert("cbr".to_string(), serde_json::json!(cbr));
+    result.insert("pressiometre".to_string(), serde_json::json!(pressiometre));
+    result.insert("penetrometre".to_string(), serde_json::json!(penetrometre));
     result.insert("echantillons".to_string(), serde_json::json!(echantillons));
 
     Ok(Json(serde_json::Value::Object(result)))
@@ -525,7 +588,7 @@ pub async fn get_adm3_candidates(
     let sondage: (Uuid, Option<String>) = sqlx::query_as(
         r#"
         SELECT id, localite_base AS localite
-        FROM sondages
+        FROM atlas.sondages
         WHERE id = $1 AND deleted_at IS NULL
         "#,
     )
@@ -645,7 +708,7 @@ pub async fn update_sondage_geometry(
         // Récupérer le code du sondage pour le seed
         let sondage_code: String = sqlx::query_scalar(
             r#"
-            SELECT code FROM sondages WHERE id = $1 AND deleted_at IS NULL
+            SELECT code FROM atlas.sondages WHERE id = $1 AND deleted_at IS NULL
             "#,
         )
         .bind(id)
@@ -708,7 +771,7 @@ pub async fn update_sondage_geometry(
             location_mode::text,
             is_geocoded,
             date, source, created_at, updated_at
-        FROM sondages
+        FROM atlas.sondages
         WHERE id = $1 AND deleted_at IS NULL
         "#,
     )

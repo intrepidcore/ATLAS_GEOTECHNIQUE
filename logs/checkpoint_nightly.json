@@ -1,0 +1,407 @@
+{
+  "l1_ked_vbs_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.186780+00:00",
+    "elapsed_s": 0.0
+  },
+  "l1_ked_ip_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.186780+00:00",
+    "elapsed_s": 0.0
+  },
+  "l1_ked_wl_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.188178+00:00",
+    "elapsed_s": 0.0
+  },
+  "l1_ked_wp_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.189172+00:00",
+    "elapsed_s": 0.0
+  },
+  "l1_ked_eg_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.189172+00:00",
+    "elapsed_s": 0.0
+  },
+  "l3_vfs_all": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.190854+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_vbs_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.191961+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_vbs_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.192963+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_vbs_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.193962+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_ip_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.193962+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_ip_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.196418+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_ip_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.197415+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_wl_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.198416+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_wl_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.199415+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_wl_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.199415+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_wp_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.200923+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_wp_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.202111+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_wp_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.202111+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_eg_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.203482+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_eg_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.204374+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2a_rk_eg_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.205783+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2b_blup_vbs_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.206784+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2b_blup_ip_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.208248+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2b_blup_wl_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.208248+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2b_blup_wp_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.209249+00:00",
+    "elapsed_s": 0.0
+  },
+  "l2b_blup_eg_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.210248+00:00",
+    "elapsed_s": 0.0
+  },
+  "l4_mtgp_vbs_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.290582+00:00",
+    "elapsed_s": 0.0
+  },
+  "l4_mtgp_ip_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.291587+00:00",
+    "elapsed_s": 0.0
+  },
+  "l4_mtgp_eg_all_horizons": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.292588+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_ked_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.292588+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_ked_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.293790+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_ked_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.294940+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_ked_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.295953+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_ked_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.296502+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_ked_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.297521+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__wl_ked_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.297521+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__wl_ked_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.298528+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__wl_ked_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.299861+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__wp_ked_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.300863+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__wp_ked_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.301371+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__wp_ked_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.302382+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_ked_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.303380+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_ked_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.303380+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_ked_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.304379+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_fusion_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.305378+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_fusion_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.305378+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_fusion_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.306379+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_fusion_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.306379+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_fusion_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.307379+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_fusion_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.308378+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_fusion_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.310065+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_fusion_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.310569+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_fusion_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.311576+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_mtgp_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.311576+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_mtgp_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.312712+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__vbs_mtgp_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.313719+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_mtgp_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.313719+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_mtgp_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.315512+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__ip_mtgp_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.316720+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_mtgp_h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.316720+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_mtgp_h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.317885+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_png300__eg_mtgp_h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.318886+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_3d__vbs__BCD": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.319885+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_3d__ip__BCD": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.319885+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_3d__eg__BCD": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.320884+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_3d__wl__BCD": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.321884+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_3d__wp__BCD": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.322390+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__vbs__h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.323397+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__vbs__h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.324461+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__vbs__h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.324461+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__ip__h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.325874+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__ip__h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.326893+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__ip__h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.326893+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__eg__h1": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.327890+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__eg__h2": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.328890+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_maps_compare__eg__h3": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.329965+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_article__fig01_boxplots": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.330963+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_article__fig02_variogram": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.330963+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_article__fig03_loo_rmse": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.332157+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_article__fig04_correlation": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.333661+00:00",
+    "elapsed_s": 0.0
+  },
+  "export_article__fig05_variance_reduction": {
+    "status": "success",
+    "finished_at": "2026-06-04T13:05:55.334682+00:00",
+    "elapsed_s": 0.0
+  }
+}

@@ -5,14 +5,15 @@
 
 ## 1. Résumé des anomalies détectées et actions
 
-| Paramètre | Anomalie | n | Origine | Action | Statut |
-|---|---|---|---|---|---|
-| WL (Atterberg) | WL=0, WP=0 | 3 | Sondage Kparatao (pre-V10, batch=NULL) | WL=NULL, WP=NULL | ✅ Corrigé |
-| WP (Atterberg) | WP < 0 (jusqu'à -57%) | 18 | Sites emprunt V10 (KABLE_KOPE, TOKOH2, BEDJI, FODJAYE) | WP=NULL (sol non plastique) | ✅ Corrigé |
-| Rd MPa (pénétromètre) | Rd > 50 MPa | 54 | Latérite profonde (5–10 m) : LOGOTE, TOH, ZOSS | Confirmé CSV source — valeurs réelles | ✅ Conservé |
-| VBS | VBS > 20 g/100g | 2 | Kamina Dakré (28.86), Ountivou (20.16) | Argile très gonflante — physiquement possible | ✅ Conservé |
-| CBR | CBR > 100% | 2 | PC03_S10 (132%), PC03_EMPRUNT_TOKPEVIA (114%) | Sites emprunt/graveleux — physiquement possible | ✅ Conservé |
-| OPM gamma_d | gamma_d hors [1.4–2.5 g/cm³] | 38 | Colonnes CSV inversées lors import | Signalé WARNING, non inséré en DB | ✅ Log only |
+| Paramètre             | Anomalie                     | n   | Origine                                                | Action                                          | Statut     |
+| --------------------- | ---------------------------- | --- | ------------------------------------------------------ | ----------------------------------------------- | ---------- |
+| WL (Atterberg)        | WL=0, WP=0                   | 3   | Sondage Kparatao (pre-V10, batch=NULL)                 | WL=NULL, WP=NULL                                | ✅ Corrigé  |
+| WP (Atterberg)        | WP < 0 (jusqu'à -57%)        | 18  | Sites emprunt V10 (KABLE_KOPE, TOKOH2, BEDJI, FODJAYE) | WP=NULL (sol non plastique)                     | ✅ Corrigé  |
+| Rd MPa (pénétromètre) | Rd > 50 MPa                  | 54  | Latérite profonde (5–10 m) : LOGOTE, TOH, ZOSS         | Confirmé CSV source — valeurs réelles           | ✅ Conservé |
+| VBS                   | VBS > 20 g/100g              | 2   | Kamina Dakré (28.86), Ountivou (20.16)                 | Argile très gonflante — physiquement possible   | ✅ Conservé |
+| CBR                   | CBR > 100%                   | 2   | PC03_S10 (132%), PC03_EMPRUNT_TOKPEVIA (114%)          | Sites emprunt/graveleux — physiquement possible | ✅ Conservé |
+| OPM gamma_d           | gamma_d hors [1.4–2.5 g/cm³] | 38  | Colonnes CSV inversées lors import                     | Signalé WARNING, non inséré en DB               | ✅ Log only |
+|                       |                              |     |                                                        |                                                 |            |
 
 ---
 

@@ -1,7 +1,7 @@
 # Résultats — VBS-from-Sentinel (VfS) — BLOC C
 ## Atlas Géotechnique Togo
 
-**Date :** 2026-06-01  
+**Date initiale :** 2026-06-01 | **Dernière mise à jour :** 2026-06-04  
 **Script :** `scripts/vfs_extract_spectral.py`  
 **Source DB :** `atlas.sondage_spectral_features`, `atlas.maille_spectral_vfs`
 
@@ -118,5 +118,74 @@ au-delà du modèle pédologique.
 
 ---
 
+## 7. État d'avancement — Extraction mailles (mise à jour 2026-06-04)
+
+### 7.1 Statut base de données
+
+| Table | Lignes | État `vbs_vfs_pred` |
+|:-----:|:------:|:-------------------:|
+| `atlas.sondage_spectral_features` | 96 | ✅ Spectral extrait (calibration PLS) |
+| `atlas.maille_spectral_vfs` | 29 407 | ❌ `NULL` — script non relancé |
+
+**Vérification SQL (2026-06-04) :**
+```sql
+SELECT COUNT(*) FILTER (WHERE vbs_vfs_pred IS NOT NULL) AS with_pred
+FROM atlas.maille_spectral_vfs;
+-- Résultat : 0
+```
+
+### 7.2 Raison du blocage — Dépendance critique
+
+Le script `vfs_extract_spectral.py` a bien été corrigé (bug UUID/string, CONV-06, 2026-06-01) mais **n'a pas été relancé sur les 29 407 mailles**.
+
+**Raison explicite :** L'audit `session/audit/AUDIT_GEOCODAGE_CRITIQUE_2026-06-04.md` a identifié une anomalie critique de géocodage affectant l'ensemble du pipeline L1–L4 :
+
+> *185 sondages ont la coordonnée de fallback `POINT(1.0, 8.6)` — toutes rattachées à la maille `TG-0672-0197-01`. Les `maille_code` de ces sondages sont incorrects, ce qui biaise les données d'entraînement de tous les modèles, y compris les 96 sondages de calibration PLS-VfS.*
+
+Relancer `vfs_extract_spectral.py` avant la résolution de cet audit produirait des prédictions fondées sur un jeu d'entraînement partiellement corrompu (fraction inconnue des 96 sondages concernée).
+
+### 7.3 Condition de déblocage
+
+Le script devra être relancé **après** l'application complète de :
+
+```
+session/audit/AUDIT_GEOCODAGE_CRITIQUE_2026-06-04.md
+```
+
+Étapes à valider avant relance :
+1. ✅ Re-géocodage des sondages avec `location_mode = NULL` (≈370 sondages)
+2. ✅ Recalcul des `maille_code` corrects pour les sondages impactés
+3. ✅ Ré-extraction des features spectrales GEE sur les sondages corrigés (`atlas.sondage_spectral_features`)
+4. ✅ Re-calibration du modèle PLS sur les données corrigées
+5. ✅ Relance de `vfs_extract_spectral.py --all-mailles` pour peupler `atlas.maille_spectral_vfs`
+6. ✅ Synchronisation dans `atlas.ai_interpolation_values` (parameter_id = `vbs_vfs`)
+
+### 7.4 Impact sur l'UI
+
+En attendant, la source **ML L3 — VfS-PLS** est accessible dans l'interface mais affiche `NO DATA` (badge "0 mailles · métriques non disponibles"). Ce comportement est intentionnel et documenté — le modèle n'est pas désactivé, uniquement non peuplé.
+
+---
+
+### 7.5 Checklist de déblocage (2026-06-04)
+
+| Étape | Outil | Statut |
+|-------|-------|--------|
+| Appliquer migrations 102/103/104/105 | SQL psql | ⬜ À faire |
+| Lancer `regeocod_fuzzy_v1.py` | Python | ⬜ À faire |
+| Valider suggestions dans l'UI | localhost:1420 | ⬜ Utilisateur |
+| Lancer `vfs_extract_spectral.py --mode=sondages-only` | Python | ⬜ Après étape 3 |
+| Re-calibration PLS sur données corrigées | Idem | ⬜ Après étape 4 |
+| Lancer `vfs_extract_spectral.py --all-mailles` | Python | ⬜ Après étape 5 |
+| Vérifier `vbs_vfs_pred IS NOT NULL` en DB | SQL | ⬜ Après étape 6 |
+
+**Ou via orchestrateur v2 (après géocodage) :**
+```bash
+python scripts/run_all_models_nightly_v2.py --models l3
+```
+
+---
+
 *Script : `scripts/vfs_extract_spectral.py`*  
-*Données : `atlas.sondage_spectral_features` (96 lignes), `atlas.maille_spectral_vfs` (extraction 2026-06-01)*
+*Données : `atlas.sondage_spectral_features` (96 lignes), `atlas.maille_spectral_vfs` (29 407 lignes, `vbs_vfs_pred=NULL`)*  
+*Blocage documenté : `docs/RAPPORT/audit/AUDIT_GEOCODAGE_CRITIQUE_2026-06-04.md` — roadmap à appliquer avant relance*  
+*Orchestration : `scripts/run_all_models_nightly_v2.py` (v2 via API Rust)*

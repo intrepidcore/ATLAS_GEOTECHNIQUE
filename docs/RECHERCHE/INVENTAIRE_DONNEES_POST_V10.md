@@ -67,11 +67,11 @@
 
 ### Paramètres classification sol
 
-| Paramètre | Total DB | Dont V10 |
-|---|---|---|
-| Classe HRB | 583 | **261** |
-| Indice de Groupe (IG) | **261** | 261 |
-| Densité sèche naturelle | 71 | 29 |
+| Paramètre               | Total DB | Dont V10 |
+| ----------------------- | -------- | -------- |
+| Classe HRB              | 583      | **261**  |
+| Indice de Groupe (IG)   | **261**  | 261      |
+| Densité sèche naturelle | 71       | 29       |
 
 ---
 
@@ -115,17 +115,17 @@
 
 Ajoutés par migrations 176–178 :
 
-| `parameter_id` | Catégorie | Unité | Source |
-|---|---|---|---|
-| `rd_mpa_ked_h1/h2/h3` | geotech | MPa | `essais_penetrometre` |
-| `rd_mpa_rk_h1/h2/h3` | geotech | MPa | `essais_penetrometre` |
-| `em_mpa_ked_h1/h2/h3` | geotech | MPa | `essais_pressiometre` |
-| `em_mpa_rk_h1/h2/h3` | geotech | MPa | `essais_pressiometre` |
-| `pl_mpa_ked_h1/h2/h3` | geotech | MPa | `essais_pressiometre` |
-| `cbr_95_ked_h1/h2/h3` | portance | % | `essais_cbr` |
-| `cbr_95_rk_h1/h2/h3` | portance | % | `essais_cbr` |
-| `cbr_95_avg` | portance | % | `essais_cbr` |
-| `gamma_d_ked_h1/h2/h3` | compacite | g/cm³ | `essais_proctor` |
+| `parameter_id`         | Catégorie | Unité | Source                |
+| ---------------------- | --------- | ----- | --------------------- |
+| `rd_mpa_ked_h1/h2/h3`  | geotech   | MPa   | `essais_penetrometre` |
+| `rd_mpa_rk_h1/h2/h3`   | geotech   | MPa   | `essais_penetrometre` |
+| `em_mpa_ked_h1/h2/h3`  | geotech   | MPa   | `essais_pressiometre` |
+| `em_mpa_rk_h1/h2/h3`   | geotech   | MPa   | `essais_pressiometre` |
+| `pl_mpa_ked_h1/h2/h3`  | geotech   | MPa   | `essais_pressiometre` |
+| `cbr_95_ked_h1/h2/h3`  | portance  | %     | `essais_cbr`          |
+| `cbr_95_rk_h1/h2/h3`   | portance  | %     | `essais_cbr`          |
+| `cbr_95_avg`           | portance  | %     | `essais_cbr`          |
+| `gamma_d_ked_h1/h2/h3` | compacite | g/cm³ | `essais_proctor`      |
 
 ---
 

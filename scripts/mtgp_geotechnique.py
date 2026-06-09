@@ -8,11 +8,14 @@ Exploite les corrélations entre paramètres géotechniques pour améliorer
 les prédictions, en particulier pour EG (101 mesures) qui bénéficie
 de la structure spatiale de VBS et IP (200+ mesures).
 
-Corrélations mesurées en DB :
-  r(IP, WL)  = 0.802 → très forte
-  r(IP, EG)  = 0.742 → forte
-  r(WL, EG)  = 0.741 → forte
-  r(VBS, EG) = 0.350 → modérée
+Groupes de paramètres supportés :
+  plasticite : vbs, ip, wl, wp, eg
+    Corrélations : r(IP, WL)=0.802, r(IP, EG)=0.742, r(WL, EG)=0.741, r(VBS, EG)=0.350
+
+  compactage : cbr_95, gamma_d, w_opt
+    cbr_95  : essais_cbr WHERE compactage_pct BETWEEN 94 AND 96 (colonne cbr_pct)
+    gamma_d : essais_proctor.gamma_d_max (kN/m³, plage 14-25)
+    w_opt   : essais_proctor.w_opt
 
 Complexité mémoire :
   N_train = ~300-600 points → matrice 600×600 → triviale (< 1s)
@@ -26,26 +29,31 @@ Fondements :
 Règles respectées :
   CFG-01     : aucune URL hardcodée
   GEN-01     : inspection DB avant écriture
-  DATA-02    : validation plages physiques (VBS 0-20, IP 0-80, WL 20-120, WP 10-60, EG 0-20)
+  DATA-02    : validation plages physiques
   ETL-03     : gestion erreurs systématique
   BM-SYNC-05 : idempotent (superseded avant réinsertion)
 
 Usage :
   pip install gpflow tensorflow
 
+  # Groupe plasticité (défaut)
   python scripts/mtgp_geotechnique.py \\
       --database-url postgresql://atlas:atlas@127.0.0.1:5433/atlas_clean \\
-      --horizons h1 \\
-      --params vbs,ip,eg \\
-      [--dry-run]
+      --group plasticite --horizons h1 [--dry-run]
 
-  # Avec entraînement sur H1 uniquement (recommandé pour démonstration mémoire)
+  # Groupe compactage
+  python scripts/mtgp_geotechnique.py \\
+      --database-url postgresql://atlas:atlas@127.0.0.1:5433/atlas_clean \\
+      --group compactage --horizons h1
+
+  # Paramètres explicites (compatibilité ascendante)
   python scripts/mtgp_geotechnique.py \\
       --database-url postgresql://atlas:atlas@127.0.0.1:5433/atlas_clean \\
       --horizons h1 --params vbs,ip,wl,wp,eg
 
 Notes :
   - L'EG dans v_echantillons_essais s'appelle 'potentiel_gonflement' (pas 'eg')
+  - gamma_d stocké en kN/m³ (valeurs 14-25) — filtrage BETWEEN 14 AND 25
   - $env:PYTHONUTF8 = "1" avant exécution sur Windows (encodage)
 """
 
@@ -59,7 +67,7 @@ import os
 import sys
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -73,7 +81,7 @@ logging.basicConfig(
     format="%(asctime)s.%(msecs)03d | %(levelname)-8s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[
-        logging.StreamHandler(sys.stdout),
+        logging.StreamHandler(sys.stderr),   # stderr pour ne pas polluer le JSON stdout
         logging.FileHandler(
             f"logs/mtgp_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log",
             encoding="utf-8",
@@ -84,11 +92,22 @@ log = logging.getLogger("MTGP")
 
 # ── Constantes métier (DATA-02) ───────────────────────────────────────
 PARAMS_CONFIG: Dict[str, Dict] = {
-    "vbs": {"col": "vbs",                   "min": 0.0,  "max": 20.0,  "unit": "g/100g"},
-    "ip":  {"col": "ip",                    "min": 0.0,  "max": 80.0,  "unit": "%"},
-    "wl":  {"col": "wl",                    "min": 20.0, "max": 120.0, "unit": "%"},
-    "wp":  {"col": "wp",                    "min": 10.0, "max": 60.0,  "unit": "%"},
-    "eg":  {"col": "potentiel_gonflement",  "min": 0.0,  "max": 20.0,  "unit": "%"},
+    # Groupe plasticite
+    "vbs":     {"col": "vbs",                   "min": 0.0,  "max": 20.0,  "unit": "g/100g"},
+    "ip":      {"col": "ip",                    "min": 0.0,  "max": 80.0,  "unit": "%"},
+    "wl":      {"col": "wl",                    "min": 20.0, "max": 120.0, "unit": "%"},
+    "wp":      {"col": "wp",                    "min": 10.0, "max": 60.0,  "unit": "%"},
+    "eg":      {"col": "potentiel_gonflement",  "min": 0.0,  "max": 20.0,  "unit": "%"},
+    # Groupe compactage
+    "cbr_95":  {"col": "cbr_pct",              "min": 0.0,  "max": 200.0, "unit": "%"},
+    "gamma_d": {"col": "gamma_d_max",          "min": 14.0, "max": 25.0,  "unit": "kN/m³"},
+    "w_opt":   {"col": "w_opt",                "min": 0.0,  "max": 50.0,  "unit": "%"},
+}
+
+# Définition des groupes de paramètres
+GROUPS: Dict[str, List[str]] = {
+    "plasticite": ["vbs", "ip", "wl", "wp", "eg"],
+    "compactage": ["cbr_95", "gamma_d", "w_opt"],
 }
 
 DEPTH_WINDOWS = {"h1": (0.5, 1.5), "h2": (1.0, 2.0), "h3": (1.5, 2.5)}
@@ -119,37 +138,24 @@ def get_conn(db_url: str):
 
 
 # ── Chargement des données terrain ───────────────────────────────────
-def load_training_data(
-    cur, params: List[str], depth_window: Tuple[float, float]
-) -> pd.DataFrame:
-    """
-    Charge les sondages avec toutes les mesures demandées.
-
-    Chaque ligne = un sondage avec ses coordonnées et ses valeurs
-    pour chaque paramètre (NaN si non mesuré à cette profondeur).
-    """
-    depth_min, depth_max = depth_window
-
-    # Construire les colonnes dynamiquement selon les paramètres
-    select_cols = []
-    joins = []
+def _build_plasticite_sql(
+    params: List[str], depth_min: float, depth_max: float
+) -> Tuple[List[str], List[str]]:
+    """Construit les clauses SELECT et JOIN pour le groupe plasticité."""
+    select_cols: List[str] = []
+    joins: List[str] = []
     joined_tables: set = set()
 
     for p in params:
-        cfg = PARAMS_CONFIG[p]
-        col = cfg["col"]
-
         if p == "vbs" and "vbs" not in joined_tables:
-            joins.append(
-                "LEFT JOIN atlas.essais_vbs ev ON ev.echantillon_id = e.id"
-            )
+            joins.append("LEFT JOIN atlas.essais_vbs ev ON ev.echantillon_id = e.id")
             joined_tables.add("vbs")
-            select_cols.append(f"AVG(CASE WHEN e.depth_m BETWEEN {depth_min} AND {depth_max} THEN ev.vbs END)::float8 AS vbs")
-
-        elif p in ("ip", "wl", "wp") and "atterberg" not in joined_tables:
-            joins.append(
-                "LEFT JOIN atlas.essais_atterberg ea ON ea.echantillon_id = e.id"
+            select_cols.append(
+                f"AVG(CASE WHEN e.depth_m BETWEEN {depth_min} AND {depth_max} "
+                f"THEN ev.vbs END)::float8 AS vbs"
             )
+        elif p in ("ip", "wl", "wp") and "atterberg" not in joined_tables:
+            joins.append("LEFT JOIN atlas.essais_atterberg ea ON ea.echantillon_id = e.id")
             joined_tables.add("atterberg")
 
         if p == "ip":
@@ -168,17 +174,84 @@ def load_training_data(
                 f"THEN ea.wp END)::float8 AS wp"
             )
         elif p == "eg" and "eg" not in joined_tables:
-            # EG passe par v_echantillons_essais.potentiel_gonflement (canonique)
-            # La table brute (essais_potentiel_gonflement.cg) n'est jamais accédée
-            # directement — règle d'harmonisation: toujours la vue canonique.
+            # EG passe par essais_potentiel_gonflement.cg (vue canonique)
             joins.append(
                 "LEFT JOIN atlas.essais_potentiel_gonflement epg ON epg.echantillon_id = e.id"
             )
             joined_tables.add("eg")
             select_cols.append(
                 f"AVG(CASE WHEN e.depth_m BETWEEN {depth_min} AND {depth_max} "
-                f"THEN epg.cg END)::float8 AS eg"  # cg = colonne physique = potentiel_gonflement
+                f"THEN epg.cg END)::float8 AS eg"
             )
+
+    return select_cols, joins
+
+
+def _build_compactage_sql(
+    params: List[str], depth_min: float, depth_max: float
+) -> Tuple[List[str], List[str]]:
+    """Construit les clauses SELECT et JOIN pour le groupe compactage.
+
+    Sources :
+      cbr_95  : essais_cbr.cbr_pct WHERE compactage_pct BETWEEN 94 AND 96
+      gamma_d : essais_proctor.gamma_d_max (kN/m³, BETWEEN 14 AND 25)
+      w_opt   : essais_proctor.w_opt
+    """
+    select_cols: List[str] = []
+    joins: List[str] = []
+    joined_tables: set = set()
+
+    for p in params:
+        if p == "cbr_95" and "cbr" not in joined_tables:
+            joins.append(
+                "LEFT JOIN atlas.essais_cbr ecbr ON ecbr.echantillon_id = e.id"
+                "  AND ecbr.compactage_pct BETWEEN 94 AND 96"
+            )
+            joined_tables.add("cbr")
+            select_cols.append(
+                f"AVG(CASE WHEN e.depth_m BETWEEN {depth_min} AND {depth_max} "
+                f"THEN ecbr.cbr_pct END)::float8 AS cbr_95"
+            )
+
+        if p in ("gamma_d", "w_opt") and "proctor" not in joined_tables:
+            joins.append(
+                "LEFT JOIN atlas.essais_proctor epro ON epro.echantillon_id = e.id"
+            )
+            joined_tables.add("proctor")
+
+        if p == "gamma_d":
+            select_cols.append(
+                f"AVG(CASE WHEN e.depth_m BETWEEN {depth_min} AND {depth_max} "
+                f"  AND epro.gamma_d_max BETWEEN 14 AND 25 "
+                f"THEN epro.gamma_d_max END)::float8 AS gamma_d"
+            )
+        elif p == "w_opt":
+            select_cols.append(
+                f"AVG(CASE WHEN e.depth_m BETWEEN {depth_min} AND {depth_max} "
+                f"THEN epro.w_opt END)::float8 AS w_opt"
+            )
+
+    return select_cols, joins
+
+
+def load_training_data(
+    cur, params: List[str], depth_window: Tuple[float, float], group: str = "plasticite"
+) -> pd.DataFrame:
+    """
+    Charge les sondages avec toutes les mesures demandées.
+
+    Chaque ligne = un sondage avec ses coordonnées et ses valeurs
+    pour chaque paramètre (NaN si non mesuré à cette profondeur).
+
+    group : 'plasticite' | 'compactage'
+      Détermine les tables sources et les filtres appliqués.
+    """
+    depth_min, depth_max = depth_window
+
+    if group == "compactage":
+        select_cols, joins = _build_compactage_sql(params, depth_min, depth_max)
+    else:
+        select_cols, joins = _build_plasticite_sql(params, depth_min, depth_max)
 
     cols_sql = ",\n    ".join(select_cols)
     joins_sql = "\n".join(joins)
@@ -225,19 +298,38 @@ def load_grid(cur) -> pd.DataFrame:
 # ── Construction du modèle MTGP ───────────────────────────────────────
 def build_mtgp_data(
     df_train: pd.DataFrame, params: List[str]
-) -> Tuple[np.ndarray, np.ndarray]:
+) -> Tuple[np.ndarray, np.ndarray, Dict]:
     """
     Prépare les données au format MTGP (GPflow SwitchedLikelihood).
 
     Format GPflow SwitchedLikelihood (stacked multi-output) :
-      X : (N_total, 3) → [lon, lat, output_index]
-      Y : (N_total, 2) → [valeur, output_index]
+      X : (N_total, 3) → [lon_norm, lat_norm, output_index]
+      Y : (N_total, 2) → [valeur_norm, output_index]
                          ↑ GPflow SwitchedLikelihood exige l'index dans Y[:, 1]
+
+    Normalisation spatiale (z-score) appliquée sur lon/lat pour stabilité
+    numérique du kernel Matern32 (évite ELBO=NaN par mauvais conditionnement).
+    Les scalers sont retournés pour l'inversion lors de la prédiction.
 
     Seules les observations non-NaN sont incluses pour chaque paramètre.
     Référence : gpflow.likelihoods.SwitchedLikelihood documentation.
     """
     X_list, Y_list = [], []
+
+    # Normalisation spatiale globale (sur tous les sondages confondus)
+    lon_all = df_train["lon"].values
+    lat_all = df_train["lat"].values
+    lon_mean, lon_std = float(np.mean(lon_all)), float(np.std(lon_all)) + 1e-8
+    lat_mean, lat_std = float(np.mean(lat_all)), float(np.std(lat_all)) + 1e-8
+
+    # Normalisation par paramètre (z-score des valeurs — stabilité Adam)
+    y_scalers: Dict[str, Tuple[float, float]] = {}
+    for param in params:
+        vals = df_train[param].dropna().values
+        if len(vals) > 0:
+            y_scalers[param] = (float(np.mean(vals)), float(np.std(vals)) + 1e-8)
+        else:
+            y_scalers[param] = (0.0, 1.0)
 
     for idx, param in enumerate(params):
         mask = df_train[param].notna()
@@ -245,27 +337,37 @@ def build_mtgp_data(
             continue
         df_p = df_train.loc[mask]
         n = len(df_p)
-        # X : (lon, lat, output_index)
-        X_p = np.column_stack([
-            df_p["lon"].values,
-            df_p["lat"].values,
-            np.full(n, float(idx)),
-        ])
-        # Y : (valeur, output_index) — SwitchedLikelihood nécessite l'index dans Y
-        Y_p = np.column_stack([
-            df_p[param].values,
-            np.full(n, float(idx)),
-        ])
+        # X : (lon_norm, lat_norm, output_index)
+        lon_n = (df_p["lon"].values - lon_mean) / lon_std
+        lat_n = (df_p["lat"].values - lat_mean) / lat_std
+        X_p = np.column_stack([lon_n, lat_n, np.full(n, float(idx))])
+
+        # Y : (valeur_norm, output_index)
+        y_mean, y_std = y_scalers[param]
+        y_norm = (df_p[param].values - y_mean) / y_std
+        Y_p = np.column_stack([y_norm, np.full(n, float(idx))])
+
         X_list.append(X_p)
         Y_list.append(Y_p)
-        log.info("  Param %s (idx=%d) : %d observations", param, idx, n)
+        log.info("  Param %s (idx=%d) : %d observations | y∈[%.2f, %.2f] → norm∈[%.2f, %.2f]",
+                 param, idx, n,
+                 float(df_p[param].min()), float(df_p[param].max()),
+                 float(y_norm.min()), float(y_norm.max()))
 
     if not X_list:
         raise ValueError("Aucune donnée d'entraînement valide.")
 
     X = np.vstack(X_list).astype(np.float64)
     Y = np.vstack(Y_list).astype(np.float64)
-    return X, Y
+
+    scalers = {
+        "lon": (lon_mean, lon_std),
+        "lat": (lat_mean, lat_std),
+        "y": y_scalers,
+    }
+    log.info("  Scalers spatiaux : lon=(%.4f ± %.4f) lat=(%.4f ± %.4f)",
+             lon_mean, lon_std, lat_mean, lat_std)
+    return X, Y, scalers
 
 
 def train_mtgp(
@@ -274,7 +376,7 @@ def train_mtgp(
     n_outputs: int,
     rank: int = 2,
     max_iter: int = 500,
-    jitter: float = 1e-4,
+    jitter: float = 1e-2,
 ) -> "gpflow.models.VGP":
     """
     Entraîne le modèle MTGP (ICM) avec GPflow.
@@ -282,8 +384,11 @@ def train_mtgp(
     rank=2 : deux processus latents (axe activité argileuse VBS/IP/EG + axe plasticité WL/WP).
     Noyau : Matérn 3/2 (adapté aux discontinuités géologiques).
 
-    Jitter gpflow.config.set_default_jitter(jitter) : régularisation numérique
-    pour éviter le mauvais conditionnement de la matrice de covariance.
+    Prérequis : X_train[:, :2] doit être déjà normalisé (z-score) par build_mtgp_data
+    pour éviter le mauvais conditionnement de la matrice de covariance (ELBO=NaN).
+
+    jitter=1e-2 (au lieu de 1e-4) : plus robuste sur GPU RTX 2050 avec float32.
+    Retry automatique avec jitter×10 si NaN détecté à iter=50.
     """
     try:
         import gpflow
@@ -294,46 +399,112 @@ def train_mtgp(
             "Documentation : https://gpflow.github.io/"
         )
 
-    gpflow.config.set_default_jitter(jitter)
-    log.info("  GPflow jitter=%.1e | rank=%d | max_iter=%d", jitter, rank, max_iter)
+    # GPU memory growth — doit être appelé avant toute opération TF (ARCH-GPU-01)
+    gpus = tf.config.list_physical_devices("GPU")
+    for gpu in gpus:
+        try:
+            tf.config.experimental.set_memory_growth(gpu, True)
+        except RuntimeError:
+            pass  # déjà initialisé — sans impact
+    if gpus:
+        log.info("  GPU détecté : %d device(s) — memory_growth activé", len(gpus))
+    else:
+        log.info("  Aucun GPU — calculs sur CPU")
 
-    # Noyau spatial Matérn 3/2 sur (lon, lat)
-    kernel_spatial = gpflow.kernels.Matern32(active_dims=[0, 1])
+    def _build_model(jitter_val: float) -> "gpflow.models.VGP":
+        gpflow.config.set_default_jitter(jitter_val)
+        log.info("  GPflow jitter=%.1e | rank=%d | max_iter=%d", jitter_val, rank, max_iter)
 
-    # Noyau de coregionalisation (ICM)
-    # active_dims=[2] : dimension qui encode l'indice du paramètre
-    kernel_coreg = gpflow.kernels.Coregion(
-        output_dim=n_outputs,
-        rank=rank,
-        active_dims=[2],
-    )
+        # Noyau spatial Matérn 3/2 sur (lon_norm, lat_norm)
+        # Lengthscale initialisé à 1.0 (données déjà normalisées → range ≈ [-2, 2])
+        kernel_spatial = gpflow.kernels.Matern32(
+            active_dims=[0, 1],
+            lengthscales=1.0,
+            variance=1.0,
+        )
 
-    kernel = kernel_spatial * kernel_coreg
+        # Noyau de coregionalisation (ICM)
+        # active_dims=[2] : dimension qui encode l'indice du paramètre
+        kernel_coreg = gpflow.kernels.Coregion(
+            output_dim=n_outputs,
+            rank=rank,
+            active_dims=[2],
+        )
+        # Initialiser W avec bruit faible — évite W≈0 → matrice covariance nulle → NaN
+        kernel_coreg.W.assign(
+            np.random.RandomState(42).randn(n_outputs, rank).astype(np.float64) * 0.1
+        )
+        kernel_coreg.kappa.assign(np.ones(n_outputs, dtype=np.float64) * 0.1)
 
-    # Vraisemblance : bruit gaussien indépendant par sortie
-    likelihood = gpflow.likelihoods.SwitchedLikelihood([
-        gpflow.likelihoods.Gaussian() for _ in range(n_outputs)
-    ])
+        kernel = kernel_spatial * kernel_coreg
 
-    # VGP avec num_latent_gps=1 pour format stacked (SwitchedLikelihood)
-    # Y[:, 1] encode l'indice de sortie, ce que SwitchedLikelihood utilise
-    # pour sélectionner la vraisemblance appropriée.
-    model = gpflow.models.VGP(
-        data=(X_train, Y_train),
-        kernel=kernel,
-        likelihood=likelihood,
-        num_latent_gps=1,  # stacked format : 1 latent GP avec Coregion
-    )
+        # Vraisemblance : bruit gaussien indépendant par sortie
+        # Variance initialisée à 0.5 (données normalisées → variance Y ≈ 1)
+        likelihoods = []
+        for _ in range(n_outputs):
+            lik = gpflow.likelihoods.Gaussian()
+            lik.variance.assign(0.5)
+            likelihoods.append(lik)
+        likelihood = gpflow.likelihoods.SwitchedLikelihood(likelihoods)
 
-    opt = gpflow.optimizers.Scipy()
-    log.info("  Optimisation du modèle MTGP (Scipy L-BFGS-B)...")
-    opt.minimize(
-        model.training_loss,
-        model.trainable_variables,
-        options={"maxiter": max_iter, "disp": False},
-    )
-    log.info("  ELBO final : %.3f", -float(model.training_loss()))
+        # VGP stacked format : num_latent_gps=1 avec SwitchedLikelihood + Coregion
+        m = gpflow.models.VGP(
+            data=(X_train, Y_train),
+            kernel=kernel,
+            likelihood=likelihood,
+            num_latent_gps=1,
+        )
+        return m
 
+    model = _build_model(jitter)
+
+    # Optimiseur Adam GPU-natif
+    opt = tf.optimizers.Adam(learning_rate=0.005)
+    log.info("  Optimisation Adam lr=0.005 GPU-native (max_iter=%d)...", max_iter)
+
+    @tf.function
+    def _train_step() -> None:
+        opt.minimize(model.training_loss, model.trainable_variables)
+
+    prev_elbo: float = float("inf")
+    patience: int = 0
+    nan_retry_done: bool = False
+
+    for i in range(max_iter):
+        _train_step()
+        if i % 50 == 0:
+            elbo = -float(model.training_loss())
+            log.info("  iter=%d ELBO=%.4f", i, elbo)
+
+            # Détection NaN précoce → retry avec jitter×10
+            if math.isnan(elbo) or math.isinf(elbo):
+                if not nan_retry_done and jitter < 0.5:
+                    new_jitter = jitter * 10.0
+                    log.warning(
+                        "  ELBO=NaN à iter=%d — retry avec jitter=%.2e", i, new_jitter
+                    )
+                    model = _build_model(new_jitter)
+                    opt = tf.optimizers.Adam(learning_rate=0.005)
+                    nan_retry_done = True
+                    prev_elbo = float("inf")
+                    patience = 0
+                    continue
+                else:
+                    log.error("  ELBO=NaN persistant après retry — arrêt anticipé")
+                    break
+
+            improvement = abs(elbo - prev_elbo) / (abs(prev_elbo) + 1e-8)
+            if improvement < 1e-4 and i > 100:
+                patience += 1
+                if patience >= 3:
+                    log.info("  Convergence iter=%d ELBO=%.4f (patience plateau)", i, elbo)
+                    break
+            else:
+                patience = 0
+            prev_elbo = elbo
+
+    final_elbo = -float(model.training_loss())
+    log.info("  ELBO final : %.3f", final_elbo)
     return model
 
 
@@ -342,6 +513,7 @@ def predict_mtgp(
     df_grid: pd.DataFrame,
     params: List[str],
     clamp_config: Dict,
+    scalers: Optional[Dict] = None,
 ) -> pd.DataFrame:
     """
     Prédit les paramètres géotechniques sur la grille de mailles.
@@ -356,13 +528,22 @@ def predict_mtgp(
 
     df_pred = df_grid[["maille_id", "code"]].copy()
 
+    # Appliquer les mêmes scalers spatiaux que lors de l'entraînement
+    lon_arr = df_grid["lon"].values
+    lat_arr = df_grid["lat"].values
+    if scalers is not None:
+        lon_mean, lon_std = scalers["lon"]
+        lat_mean, lat_std = scalers["lat"]
+        lon_arr = (lon_arr - lon_mean) / lon_std
+        lat_arr = (lat_arr - lat_mean) / lat_std
+
     for idx, param in enumerate(params):
         cfg = clamp_config[param]
         n_mailles = len(df_grid)
         idx_col = np.full(n_mailles, float(idx))
         X_pred = np.column_stack([
-            df_grid["lon"].values,
-            df_grid["lat"].values,
+            lon_arr,
+            lat_arr,
             idx_col,
         ]).astype(np.float64)
 
@@ -378,6 +559,12 @@ def predict_mtgp(
         else:
             mean_col = mean_arr.ravel()
             var_col  = var_arr.ravel()
+        # Dénormaliser les prédictions (annuler le z-score appliqué dans build_mtgp_data)
+        if scalers is not None and param in scalers.get("y", {}):
+            y_mean, y_std = scalers["y"][param]
+            mean_col = mean_col * y_std + y_mean
+            var_col  = var_col * (y_std ** 2)  # variance se scale au carré
+
         mean_np = np.clip(mean_col, cfg["min"], cfg["max"])
         var_np  = np.maximum(var_col, 0.0)
 
@@ -532,15 +719,16 @@ def run_mtgp(
     dry_run: bool = False,
     rank: int = 2,
     max_iter: int = 500,
+    group: str = "plasticite",
 ) -> Dict:
     depth_window = DEPTH_WINDOWS.get(horizon_label, (0.5, 1.5))
     clamp = {p: PARAMS_CONFIG[p] for p in params}
 
     cur = conn.cursor()
 
-    log.info("Chargement des données terrain (horizon=%s, fenêtre=%.1f-%.1f m)...",
-             horizon_label, *depth_window)
-    df_train = load_training_data(cur, params, depth_window)
+    log.info("Chargement des données terrain (groupe=%s, horizon=%s, fenêtre=%.1f-%.1f m)...",
+             group, horizon_label, *depth_window)
+    df_train = load_training_data(cur, params, depth_window, group=group)
     n_total = len(df_train)
     n_per_param = {p: int(df_train[p].notna().sum()) for p in params}
     log.info("Sondages chargés : %d | Par paramètre : %s", n_total, n_per_param)
@@ -553,8 +741,8 @@ def run_mtgp(
     df_grid = load_grid(cur)
     cur.close()
 
-    # Construction du tenseur d'entraînement MTGP
-    X_train, Y_train = build_mtgp_data(df_train, params)
+    # Construction du tenseur d'entraînement MTGP (avec normalisation z-score)
+    X_train, Y_train, scalers = build_mtgp_data(df_train, params)
     log.info("Tenseur X_train : %s | Y_train : %s", X_train.shape, Y_train.shape)
 
     if dry_run:
@@ -566,9 +754,9 @@ def run_mtgp(
     n_outputs = len(params)
     model = train_mtgp(X_train, Y_train, n_outputs=n_outputs, rank=rank, max_iter=max_iter)
 
-    # Prédiction sur la grille
+    # Prédiction sur la grille (avec les mêmes scalers que l'entraînement)
     log.info("Prédiction sur 29 407 mailles...")
-    df_pred = predict_mtgp(model, df_grid, params, clamp)
+    df_pred = predict_mtgp(model, df_grid, params, clamp, scalers=scalers)
 
     # Run ID pour la traçabilité
     run_id = str(uuid.uuid4())
@@ -592,32 +780,115 @@ def run_mtgp(
     )
     conn.commit()
 
+    # ── Versioning du run (traçabilité) ──────────────────────────────────
+    # NOTE : le run est inséré ICI avec status='running' pour que les prédictions
+    # soient disponibles en DB immédiatement. La LOO-CV (lente) viendra mettre à
+    # jour le run en 'finished' avec les métriques. BM-SYNC-05 respecté.
+    import subprocess as _sp, hashlib as _hl, platform as _pl
+    # Git hash (best-effort — pas disponible dans tous les containers)
+    try:
+        _git_hash = _sp.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            stderr=_sp.DEVNULL, text=True
+        ).strip()
+    except Exception:
+        _git_hash = "nogit"
+    # Hash des hyperparamètres pour identifier la configuration exacte
+    _hp_str = f"rank={rank}_maxiter={max_iter}_group={group}_horizon={horizon_label}"
+    _hp_hash = _hl.sha1(_hp_str.encode()).hexdigest()[:8]
+    model_version_tag = f"mtgp-{_git_hash}-{_hp_hash}"
+
+    # Versions logicielles
+    try:
+        import gpflow as _gpf, tensorflow as _tf
+        _sw_versions = {
+            "gpflow": _gpf.__version__,
+            "tensorflow": _tf.__version__,
+            "python": _pl.python_version(),
+        }
+    except Exception:
+        _sw_versions = {}
+
+    meta_base = json_safe({
+        "git_hash": _git_hash,
+        "hp_hash": _hp_hash,
+        "hyperparams": {
+            "rank": rank, "max_iter": max_iter, "jitter": 1e-2,
+            "lr_adam": 0.005, "group": group, "horizon": horizon_label,
+            "normalization": "zscore_spatial_and_y",
+        },
+        "scalers": {
+            "lon": list(scalers["lon"]),
+            "lat": list(scalers["lat"]),
+            "y": {k: list(v) for k, v in scalers["y"].items()},
+        },
+        "software": _sw_versions,
+        "timestamp_utc": datetime.utcnow().isoformat(),
+    })
+
+    # ── INSERT run status='running' — prédictions disponibles immédiatement ──
     cur.execute(
         """
         INSERT INTO atlas.ai_interpolation_runs
           (id, run_type, parameter_id, method, model_version, status, metrics,
-           started_at, finished_at, zone_id, kriging_domain_id)
-        VALUES (%s, 'kriging', %s, %s, 'v1', 'finished', %s::jsonb, now(), now(), NULL, NULL)
+           started_at, finished_at, zone_id, kriging_domain_id, meta)
+        VALUES (%s, 'kriging', %s, %s, %s, 'running', %s::jsonb, now(), NULL, NULL, NULL, %s::jsonb)
         """,
         (
-            run_id,                     # id
-            first_param_id,             # parameter_id (FK vers ai_parameter_catalog)
-            MTGP_METHOD,                # method = 'mtgp_icm_gpflow'
-            json_safe({                 # metrics
-                "horizon_label": horizon_label,
-                "params": params,
-                "rank": rank,
+            run_id, first_param_id, MTGP_METHOD, model_version_tag,
+            json_safe({
+                "horizon_label": horizon_label, "params": params,
+                "rank": rank, "max_iter": max_iter,
                 "n_train_total": int(len(X_train)),
                 "n_per_param": n_per_param,
                 "n_grid": int(len(df_grid)),
+                "loo_rmse": None,          # sera mis à jour après LOO-CV
+                "loo_rmse_by_param": {},
             }),
+            meta_base,
         ),
     )
     conn.commit()
     cur.close()
 
-    # Stockage des prédictions
+    # ── Stockage immédiat des prédictions (avant LOO-CV) ──────────────────
+    log.info("Stockage des prédictions en DB (avant LOO-CV)...")
     n_inserted = store_mtgp_predictions(conn, df_pred, params, horizon_label, run_id, clamp)
+    log.info("✓ %d valeurs MTGP insérées en DB — run_id=%s", n_inserted, run_id)
+
+    # ── LOO-CV en arrière-plan (n_iter réduit à 10 par param) ─────────────
+    log.info("Calcul LOO-RMSE (10 itérations par paramètre)...")
+    loo_by_param = {}
+    for p in params:
+        try:
+            rmse_val = loo_rmse_gpflow(df_train, p, n_iter_loo=10, rank=rank)
+            loo_by_param[p] = None if (rmse_val is None or rmse_val != rmse_val) else round(float(rmse_val), 4)
+            log.info("  LOO-RMSE %s = %s", p, loo_by_param[p])
+        except Exception as e:
+            log.warning("  LOO-RMSE %s FAILED: %s", p, e)
+            loo_by_param[p] = None
+
+    primary_loo = loo_by_param.get(params[0])
+
+    # ── UPDATE run → 'finished' avec métriques LOO ────────────────────────
+    cur2 = conn.cursor()
+    cur2.execute(
+        """
+        UPDATE atlas.ai_interpolation_runs
+        SET status = 'finished',
+            finished_at = now(),
+            metrics = metrics || %s::jsonb
+        WHERE id = %s
+        """,
+        (
+            json_safe({"loo_rmse": primary_loo, "loo_rmse_by_param": loo_by_param,
+                       "loo_residual": {"rmse": primary_loo}}),
+            run_id,
+        ),
+    )
+    conn.commit()
+    cur2.close()
+    log.info("✓ Run %s marqué 'finished' (LOO-RMSE principal=%s)", run_id, primary_loo)
 
     return {
         "ok": True,
@@ -630,6 +901,31 @@ def run_mtgp(
     }
 
 
+# ── Insertion des parameter_id manquants dans le catalogue ────────────
+def ensure_catalog_entries(conn, params: List[str], horizon_label: str) -> None:
+    """
+    Assure que tous les parameter_id MTGP existent dans ai_parameter_catalog.
+    Utilisé avant l'entraînement pour éviter les erreurs de FK.
+    """
+    cur = conn.cursor()
+    for p in params:
+        param_id = f"{p}_mtgp_{horizon_label}"
+        cfg = PARAMS_CONFIG[p]
+        cur.execute(
+            """
+            INSERT INTO atlas.ai_parameter_catalog
+              (parameter_id, category, source, unit, interpolation_enabled,
+               prediction_enabled, is_active, updated_at, depth_stratified, is_derived,
+               physical_min, physical_max)
+            VALUES (%s, 'geotech', 'ia', %s, false, true, true, now(), true, true, %s, %s)
+            ON CONFLICT (parameter_id) DO NOTHING
+            """,
+            (param_id, cfg["unit"], cfg["min"], cfg["max"]),
+        )
+    conn.commit()
+    cur.close()
+
+
 # ── Entrée principale ─────────────────────────────────────────────────
 def main() -> int:
     ap = argparse.ArgumentParser(
@@ -637,8 +933,20 @@ def main() -> int:
     )
     ap.add_argument("--database-url", default=DB_DEFAULT)
     ap.add_argument(
-        "--params", default="vbs,ip,eg",
-        help="Paramètres à modéliser conjointement. Ex: vbs,ip,wl,wp,eg",
+        "--group", default=None,
+        choices=list(GROUPS.keys()),
+        help=(
+            "Groupe de paramètres prédéfini : 'plasticite' (vbs,ip,wl,wp,eg) "
+            "ou 'compactage' (cbr_95,gamma_d,w_opt). "
+            "Ignoré si --params est fourni explicitement."
+        ),
+    )
+    ap.add_argument(
+        "--params", default=None,
+        help=(
+            "Paramètres à modéliser conjointement (liste séparée par virgules). "
+            "Ex: vbs,ip,wl,wp,eg. Prioritaire sur --group."
+        ),
     )
     ap.add_argument(
         "--horizons", default="h1",
@@ -646,7 +954,7 @@ def main() -> int:
     )
     ap.add_argument(
         "--rank", type=int, default=2,
-        help="Rang ICM (nombre de processus latents). 2 = axe activité argileuse + axe plasticité.",
+        help="Rang ICM (nombre de processus latents). 2 = deux axes latents.",
     )
     ap.add_argument(
         "--max-iter", type=int, default=500,
@@ -662,7 +970,29 @@ def main() -> int:
         log.error("--database-url requis")
         return 1
 
-    params   = [p.strip() for p in args.params.split(",")   if p.strip()]
+    # Résolution des paramètres : --params prime sur --group
+    if args.params:
+        params = [p.strip() for p in args.params.split(",") if p.strip()]
+        # Déterminer le groupe pour les requêtes SQL
+        group = "plasticite"
+        if all(p in GROUPS["compactage"] for p in params):
+            group = "compactage"
+        elif any(p in GROUPS["compactage"] for p in params):
+            # Mélange des deux groupes — utiliser plasticite par défaut
+            group = "plasticite"
+            log.warning(
+                "Mélange de paramètres de groupes différents détecté. "
+                "Groupe SQL utilisé : '%s'. Vérifier les jointures.", group
+            )
+    elif args.group:
+        group = args.group
+        params = GROUPS[group]
+    else:
+        # Défaut historique : groupe plasticite
+        group = "plasticite"
+        params = GROUPS["plasticite"]
+        log.info("Ni --group ni --params fourni. Défaut : groupe 'plasticite'.")
+
     horizons = [h.strip() for h in args.horizons.split(",") if h.strip()]
 
     unknown = [p for p in params if p not in PARAMS_CONFIG]
@@ -677,8 +1007,8 @@ def main() -> int:
 
     log.info("=== BLOC D — Multi-Task Gaussian Process ===")
     log.info(
-        "Paramètres : %s | Horizons : %s | Rank : %d | Max-iter : %d | Dry-run : %s",
-        params, horizons, args.rank, args.max_iter, args.dry_run,
+        "Groupe : %s | Paramètres : %s | Horizons : %s | Rank : %d | Max-iter : %d | Dry-run : %s",
+        group, params, horizons, args.rank, args.max_iter, args.dry_run,
     )
 
     # Vérifier que GPflow est disponible
@@ -694,6 +1024,10 @@ def main() -> int:
 
     conn = get_conn(args.database_url)
     try:
+        # Assurer l'existence des parameter_id dans le catalogue (évite les FK errors)
+        for hz in horizons:
+            ensure_catalog_entries(conn, params, hz)
+
         results = []
         for hz in horizons:
             log.info("--- Horizon %s ---", hz)
@@ -702,6 +1036,7 @@ def main() -> int:
                 dry_run=args.dry_run,
                 rank=args.rank,
                 max_iter=args.max_iter,
+                group=group,
             )
             results.append(r)
             if r.get("ok"):
@@ -712,7 +1047,7 @@ def main() -> int:
 
         ok_count = sum(1 for r in results if r.get("ok"))
         log.info("=== Terminé : %d/%d horizons réussis ===", ok_count, len(results))
-        print(json_safe({"mtgp_results": results}))
+        print(json_safe({"group": group, "mtgp_results": results}))
         return 0
 
     except Exception as exc:

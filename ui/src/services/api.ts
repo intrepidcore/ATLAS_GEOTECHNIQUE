@@ -86,7 +86,8 @@ class ApiClient {
           } else if (response.status === 403 && code === 'PERMISSION_DENIED') {
             error.message = errorData?.error || errorData?.message || 'Accès administrateur requis.'
           } else {
-            error.message = errorData.message || errorData.error || error.message
+            const rawMsg = errorData.message || errorData.error || error.message
+            error.message = typeof rawMsg === 'string' ? rawMsg : JSON.stringify(rawMsg)
           }
         } catch {
           // Ignore JSON parse errors

@@ -2,9 +2,18 @@
 ## Atlas Géotechnique Togo — Bloc B
 
 **Auteur :** Serge TABE DJATO — Intrepid Core Engineering  
-**Date :** 01 juin 2026  
+**Date initiale :** 01 juin 2026 | **Dernière mise à jour :** 2026-06-04  
 **Source des métriques :** Vérification directe DB `atlas_clean` port 5433  
 **Commit de référence :** `6ff3548`
+
+> ⚠️ **STATUT 2026-06-04 — RÉSULTATS PROVISOIRES**
+> Les métriques ci-dessous ont été calculées sur des données incluant 187 sondages
+> avec la coordonnée fallback `POINT(1.0, 8.6)` (centroïde Kaniamboua).
+> Ces sondages créent une singularité au lag=0 dans les variogrammes L1/L2a et
+> biaisent les poids BLUP résultants. Les métriques `σ²_fusion` sont mathématiquement
+> correctes (propriété BLUP garantie) mais les **valeurs numériques absolues seront
+> mises à jour** après re-géocodage et relancement des modèles.
+> Ref : `AUDIT_GEOCODAGE_CRITIQUE_2026-06-04.md`
 
 ---
 
@@ -206,7 +215,32 @@ La fusion est une **amélioration certifiée** de l'incertitude de prédiction :
 
 ---
 
-## 7. Références
+## 7. Mise à jour post-audit (2026-06-04)
+
+### Actions requises avant publication
+
+| Action | Statut | Notes |
+|--------|--------|-------|
+| Re-géocodage 187 sondages fallback | ⏳ En cours | Script `regeocod_fuzzy_v1.py` disponible |
+| Relancement L1 KED | ⬜ Planifié | `run_all_models_nightly_v2.py --models l1` |
+| Relancement L2a RK | ⬜ Planifié | `--models l2a` (parallèle L1) |
+| Relancement L2b BLUP | ⬜ Planifié | `--models l2b` (après L1+L2a) |
+| Mise à jour métriques σ² | ⬜ Planifié | Nouvelles valeurs depuis `/ai/models/status` |
+| Mise à jour figures article | ⬜ Planifié | Scripts `plot_*` dans `docs/RECHERCHE/` |
+
+Les métriques de réduction de variance (44–51%) resteront probablement dans la même
+plage après correction — la propriété BLUP est mathématique. Les valeurs absolues
+de LOO-RMSE varieront selon la redistribution spatiale des sondages re-géocodés.
+
+**Script de lancement post-correction :**
+```bash
+# Après validation du re-géocodage
+python scripts/run_all_models_nightly_v2.py --models l1,l2a,l2b --skip-exports
+```
+
+---
+
+## 8. Références
 
 - Hengl, T. et al. (2007). "About regression-kriging: From equations to case studies." *Computers & Geosciences*, 33(10), 1301–1315.
 - Chilès, J.P. & Delfiner, P. (2012). *Geostatistics: Modeling Spatial Uncertainty*, 2nd ed. Wiley — ch. 3.4 (BLUP combination).

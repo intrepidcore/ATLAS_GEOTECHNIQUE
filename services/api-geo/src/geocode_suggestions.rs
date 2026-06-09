@@ -251,13 +251,14 @@ pub async fn get_suggestions_stats(
 ) -> Result<Json<serde_json::Value>, (StatusCode, String)> {
     let pool = &state.pool;
     
+    // Statistiques depuis la table public.geocode_suggestions (source de vérité)
     let stats = sqlx::query(
         r#"
-        SELECT 
-            COUNT(*) FILTER (WHERE status = 'pending') as pending,
-            COUNT(*) FILTER (WHERE status = 'accepted') as accepted,
-            COUNT(*) FILTER (WHERE status = 'rejected') as rejected,
-            COUNT(*) as total
+        SELECT
+            COUNT(*)                                               AS total,
+            COUNT(*) FILTER (WHERE status = 'pending')            AS pending,
+            COUNT(*) FILTER (WHERE status = 'accepted')           AS accepted,
+            COUNT(*) FILTER (WHERE status = 'rejected')           AS rejected
         FROM public.geocode_suggestions
         "#,
     )
@@ -269,7 +270,7 @@ pub async fn get_suggestions_stats(
     let pending: i64 = stats.try_get("pending").unwrap_or(0);
     let accepted: i64 = stats.try_get("accepted").unwrap_or(0);
     let rejected: i64 = stats.try_get("rejected").unwrap_or(0);
-    
+
     Ok(Json(serde_json::json!({
         "total": total,
         "pending": pending,

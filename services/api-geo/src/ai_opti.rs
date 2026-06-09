@@ -483,6 +483,76 @@ fn build_candidates(features: &ai_infer::MailleFeatures, charge_kpa: f64, budget
 }
 
 /// POST `/ai/ked/recompute` — lance les scripts KED (vbs/ip/wl/wp/eg horizons) + derive_rga.
+/// POST `/ai/rk/recompute` — lance le Regression Kriging SCORPAN (L2a) pour tous params × horizons.
+///
+/// Chaque combinaison (param, horizon) est un process indépendant — 15 process parallèles.
+/// Calcule : vbs, ip, wl, wp, eg × h1, h2, h3 → ai_interpolation_values (method=regression_kriging_scorpan).
+pub async fn recompute_rk(
+    State(_state): State<AppState>,
+    auth: AuthUser,
+) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
+    use std::thread;
+
+    if !auth.has_permission("colab.missions.read") {
+        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    }
+
+    let db_url = require_database_url()
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+
+    let rk_script = script_path("../../scripts/atlas_regression_kriging_terrain.py");
+
+    let params   = ["vbs", "ip", "wl", "wp", "eg"];
+    let horizons = ["h1", "h2", "h3"];
+
+    // 15 threads parallèles (param × horizon) — chacun indépendant, écriture atomique en DB
+    let handles: Vec<_> = params.iter().flat_map(|&p| {
+        // Cloner les captures AVANT la closure interne (évite move sur FnMut outer)
+        let rk_script_outer = rk_script.clone();
+        let db_url_outer    = db_url.clone();
+        horizons.iter().map(move |&h| {
+            let script  = rk_script_outer.clone();
+            let db      = db_url_outer.clone();
+            let param   = p.to_string();
+            let horizon = h.to_string();
+            thread::spawn(move || {
+                let result = run_python_json(&[
+                    &script,
+                    "--database-url", &db,
+                    "--parameter",    &param,
+                    "--horizon",      &horizon,
+                ]);
+                (param, horizon, result)
+            })
+        }).collect::<Vec<_>>()
+    }).collect();
+
+    let mut results = Vec::new();
+    let mut n_ok = 0usize;
+    let mut n_err = 0usize;
+
+    for h in handles {
+        match h.join() {
+            Ok((param, horizon, Ok(v))) => {
+                n_ok += 1;
+                results.push(json!({ "param": param, "horizon": horizon, "result": v }));
+            }
+            Ok((param, horizon, Err(e))) => {
+                n_err += 1;
+                results.push(json!({ "param": param, "horizon": horizon, "error": e }));
+            }
+            Err(_) => n_err += 1,
+        }
+    }
+
+    Ok(Json(json!({
+        "success": n_err == 0,
+        "n_ok": n_ok,
+        "n_err": n_err,
+        "results": results,
+    })))
+}
+
 pub async fn recompute_ked(
     State(_state): State<AppState>,
     auth: AuthUser,

@@ -246,7 +246,10 @@ function App() {
       setColumns(cols)
       setTableData(data)
     } catch (e:any) {
-      setError(e.message)
+      const msg = typeof e?.message === 'string' ? e.message
+        : typeof e === 'string' ? e
+        : (e?.error ?? e?.detail ?? 'Erreur chargement données')
+      setError(String(msg))
     } finally {
       setLoading(false)
     }
@@ -874,7 +877,7 @@ function App() {
                       </div>
                     ) : error ? (
                       <div className="text-red-600 p-4 border border-red-200 rounded-lg">
-                        {error}
+                        {typeof error === 'string' ? error : JSON.stringify(error)}
                       </div>
                     ) : (
                       <DataGrid

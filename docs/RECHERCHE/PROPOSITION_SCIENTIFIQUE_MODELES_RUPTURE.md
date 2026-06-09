@@ -323,11 +323,308 @@ def compute_hierarchical_prior(
             pts = train_values[mask]
             if len(pts) >= min_pts:
                 priors[ctx] = float(np.mean(pts))
+    
+    # Repli niveau 4 : hydrogéologie (NEW — filet de sécurité hydrique)
+    # Nécessite hydro_lookup : dict[maille_code → libelle_hydro]
+    for ctx in set(grid_contexts + train_contexts):
+        if ctx not in priors:
+            hydro = hydro_lookup.get(ctx, 'INCONNU')
+            mask = [hydro_lookup.get(c, 'X') == hydro for c in train_contexts]
+            pts = train_values[mask]
+            if len(pts) >= min_pts:
+                priors[ctx] = float(np.mean(pts))
             else:
-                priors[ctx] = global_mean  # repli ultime
+                priors[ctx] = global_mean  # repli ultime : moyenne nationale
     
     return priors
 ```
+
+---
+
+### 3.5 Intégration de l'Hydrogéologie comme Niveau 4 — Proposition Détaillée
+
+*Rédigé en juin 2026 — Extension de la proposition initiale de mai 2026*
+
+#### 3.5.1 Justification scientifique : la mécanique de la poudre et de l'étincelle
+
+La géotechnique des argiles gonflantes obéit à une loi fondamentale à deux facteurs :
+
+> **Un sol gonfle si et seulement si deux conditions sont simultanément réunies :**  
+> **(1) la minéralogie est favorable** — présence d'argiles 2:1 (smectite, illite), et  
+> **(2) l'état hydrique initial permet l'absorption d'eau** — nappe accessible ou sol non desséché.
+
+En reprenant l'image du chercheur en incendie : la minéralogie est la **poudre** (combustible), l'eau souterraine est **l'étincelle** (l'initiateur). Sans la poudre (argile gonflante), il n'y a aucun gonflement quelque soit la nappe. Sans l'étincelle (eau), la poudre ne brûle pas.
+
+Cette analogie justifie la position du niveau hydrogéologique **après** les niveaux minéralogiques dans la hiérarchie de repli :
+
+```
+Niveau 1 : ZONE | PEDO | RGA | GEO | HYDRO  ← Contexte absolu (5 couches)
+           "Lama + Vertisol + Risque Fort + Gneiss + Nappe affleurante"
+           → Précision maximale : capture la conjonction minéral-eau localement
+
+Niveau 2 : ZONE | PEDO                       ← Repli fort empirique
+           "Je suis dans la Lama sur un Vertisol"
+           → La pédologie et la zone géomorphologique seules suffisent
+             pour structurer 80% de la variance géotechnique (confirmé LOO-CV)
+
+Niveau 3 : PEDO seule                        ← Minéralogie pure
+           "Je suis sur un Vertisol (smectite 2:1)"
+           → La minéralogie dicte le potentiel absolu de gonflement
+             (Skempton 1953 : IP = Activité × teneur_argile)
+
+Niveau 4 : HYDRO seule             🆕        ← Filet de sécurité hydrique
+           "Zone à nappe affleurante (CSIF-H)"
+           → Avant de tomber sur la moyenne nationale,
+             on regarde : est-ce qu'on est dans une zone
+             hydrogéologiquement distincte ?
+             Si oui, les sondages de ce grand bassin
+             ont un comportement hydrique cohérent.
+
+Niveau 5 : Moyenne nationale                 ← Ignorance totale du contexte
+```
+
+**Pourquoi HYDRO est au niveau 4 et non plus haut ?**
+
+| Critère | PEDO (Niv. 3) | HYDRO (Niv. 4) | RGA (Niv. 3 imbriqué) |
+|---------|--------------|----------------|----------------------|
+| Nb de polygones | 61 | **14** | 342 |
+| Couverture territoire | 100% | 100% | 100% |
+| Résolution spatiale | Fine (préfecture) | **Grossière** (régionale) | Fine |
+| Facteur contrôlé | Minéralogie héritée | État hydrique | Gonflement expert |
+| Pertinence pour IP/VBS | Directe | Indirecte | Directe |
+| Pertinence pour EG/WL | Directe | Forte (gonflement = f(eau)) | Directe |
+
+**La résolution grossière de l'hydrogéologie (14 polygones pour 56 600 km²) est sa principale limite** : un polygone couvre en moyenne 4 043 km² ≈ 1 000 mailles 2km×2km. Il serait statistiquement imprudent de lui accorder une priorité sur la pédologie (61 polygones, résolution 5× supérieure) ou le risque RGA (342 polygones).
+
+Cependant, sa pertinence physique est réelle : **une zone à nappe affleurante (type CSIF-H : "Complexe de Socle Imperméable Fissuré — Humide") aura systématiquement des valeurs de WL et EG supérieures aux zones à nappe profonde**, toutes minéralogies égales. Ce signal, faible mais cohérent à l'échelle régionale, mérite d'être capturé avant de tomber sur la moyenne nationale aveugle.
+
+#### 3.5.2 Les 4 classes hydrogéologiques togolaises
+
+La table `atlas.hydrogeologie` (14 polygones, 4 types distincts) encode :
+
+| Code | Libellé | Interprétation géotechnique | N mailles typiques |
+|------|---------|---------------------------|-------------------|
+| `CSIF-H` | Complexe de Socle Imperméable Fissuré — Humide | Nappe perchée + zones d'altération → EG potentiellement élevé | ~8 000 |
+| `B-L` | Bassin sédimentaire — Libre | Nappe libre peu profonde → WL élevé, gonflement possible | ~4 000 |
+| `n/a` | Non classifié / manque de données | Pas d'information hydrogéologique — repli national | ~5 000 |
+| *(4ᵉ type)* | *(à vérifier en DB)* | — | ~12 000 |
+
+**Note sur les données** : La table actuelle ne dispose pas de champ `description` renseigné. Pour une intégration complète, il faudra obtenir la légende officielle de la carte hydrogéologique du Togo (DGIH — Direction Générale de l'Inventaire Hydrogéologique) auprès des services togolais.
+
+#### 3.5.3 Implémentation Python : mise à jour de `compute_hierarchical_prior`
+
+La modification porte sur la signature de la fonction et l'ajout d'un dictionnaire de correspondance maille → classe hydrogéologique :
+
+```python
+def compute_hierarchical_prior(
+    train_values: np.ndarray,
+    train_contexts: list[str],        # contexte_complet 4-part : ZONE|PEDO|RGA|GEO
+    grid_contexts: list[str],
+    hydro_lookup: dict[str, str],     # NEW : {maille_code → libelle_hydro}
+    train_maille_codes: list[str],    # NEW : codes des mailles d'entraînement
+    min_pts: int = 5,
+) -> dict[str, float]:
+    """
+    Dérive hiérarchique avec 5 niveaux de repli.
+    
+    NOUVEAUTÉ v2 : le niveau 4 utilise la classe hydrogéologique
+    comme filet de sécurité avant la moyenne nationale.
+    
+    Paramètres
+    ----------
+    hydro_lookup : {maille_code → libelle_hydrogéologique}
+        Obtenu via :
+        SELECT m.code, COALESCE(hg.libelle, 'INCONNU') AS hydro_class
+        FROM atlas.mailles m
+        LEFT JOIN atlas.hydrogeologie hg
+            ON ST_Intersects(ST_Centroid(m.geom), hg.geom)
+        
+    train_maille_codes : list[str]
+        Codes maille des sondages d'entraînement (même longueur que train_values).
+    
+    Références
+    ----------
+    Seed et al. (1962) "The swelling and shrinkage of clays", Géotechnique 12(4).
+    Chassagneux & Chaussier (1996) — Cartes géotechniques des dépôts meubles.
+    """
+    priors = {}
+    global_mean = float(np.nanmean(train_values))
+    
+    # Pré-calcul : classe hydro de chaque sondage d'entraînement
+    train_hydro = [hydro_lookup.get(code, 'INCONNU') for code in train_maille_codes]
+    
+    # ── Niveau 1 : contexte complet ZONE|PEDO|RGA|GEO|HYDRO ──────────────────
+    # On enrichit le contexte avec la classe hydro pour ce niveau
+    train_ctx_hydro = [
+        f"{ctx}|{hydro}"
+        for ctx, hydro in zip(train_contexts, train_hydro)
+    ]
+    for ctx_h in set(train_ctx_hydro):
+        mask = np.array([c == ctx_h for c in train_ctx_hydro])
+        pts = train_values[mask]
+        if np.sum(mask) >= min_pts:
+            priors[ctx_h] = float(np.nanmean(pts))
+    
+    # ── Niveau 2 : ZONE | PEDO (sans RGA, GEO, HYDRO) ───────────────────────
+    for ctx in set(train_contexts):
+        parent = '|'.join(ctx.split('|')[:2])   # 'ZONE|PEDO'
+        key_l2 = f"{ctx}|L2"                    # marqueur de repli
+        if key_l2 not in priors:
+            mask = np.array([c.startswith(parent) for c in train_contexts])
+            pts = train_values[mask]
+            if np.sum(mask) >= min_pts:
+                priors[key_l2] = float(np.nanmean(pts))
+    
+    # ── Niveau 3 : PEDO seule ────────────────────────────────────────────────
+    all_ctxs = set(grid_contexts + train_contexts)
+    for ctx in all_ctxs:
+        key_l3 = f"{ctx}|L3"
+        if key_l3 not in priors:
+            ped = ctx.split('|')[1] if '|' in ctx else ctx
+            mask = np.array([c.split('|')[1] == ped for c in train_contexts if '|' in c])
+            pts = train_values[mask]
+            if np.sum(mask) >= min_pts:
+                priors[key_l3] = float(np.nanmean(pts))
+    
+    # ── Niveau 4 : HYDRO seule (NEW) ─────────────────────────────────────────
+    for ctx in all_ctxs:
+        key_l4 = f"{ctx}|L4"
+        if key_l4 not in priors:
+            # Récupérer la classe hydro pour ce contexte
+            # (heuristique : on cherche parmi les sondages d'entraînement
+            #  qui ont ce préfixe de contexte, et on prend leur classe hydro)
+            hydro = None
+            for tc, th in zip(train_contexts, train_hydro):
+                if tc == ctx:
+                    hydro = th
+                    break
+            
+            if hydro is None or hydro == 'INCONNU':
+                priors[key_l4] = global_mean
+                continue
+            
+            mask = np.array([h == hydro for h in train_hydro])
+            pts = train_values[mask]
+            if np.sum(mask) >= min_pts:
+                priors[key_l4] = float(np.nanmean(pts))
+            else:
+                priors[key_l4] = global_mean   # ── Niveau 5 : national ──
+    
+    return priors
+
+
+def get_prior_for_maille(
+    maille_ctx: str,
+    maille_code: str,
+    priors: dict[str, float],
+    hydro_lookup: dict[str, str],
+    global_mean: float,
+) -> tuple[float, int]:
+    """
+    Sélectionne le prior le plus précis disponible pour une maille.
+    Retourne (valeur_prior, niveau_utilisé).
+    
+    Cette fonction encapsule la logique de repli pour la prédiction.
+    """
+    hydro = hydro_lookup.get(maille_code, 'INCONNU')
+    
+    # Tentative niveau 1 (contexte complet + hydro)
+    k1 = f"{maille_ctx}|{hydro}"
+    if k1 in priors:
+        return priors[k1], 1
+    
+    # Tentative niveau 2 (ZONE|PEDO)
+    k2 = f"{maille_ctx}|L2"
+    if k2 in priors:
+        return priors[k2], 2
+    
+    # Tentative niveau 3 (PEDO)
+    k3 = f"{maille_ctx}|L3"
+    if k3 in priors:
+        return priors[k3], 3
+    
+    # Tentative niveau 4 (HYDRO)
+    k4 = f"{maille_ctx}|L4"
+    if k4 in priors:
+        return priors[k4], 4
+    
+    # Niveau 5 : moyenne nationale
+    return global_mean, 5
+```
+
+#### 3.5.4 Requête SQL pour charger le lookup hydrogéologique
+
+```python
+# À ajouter dans run_ked_vbs_ip_wl_wp_horizons.py, section "chargement des données"
+
+def load_hydro_lookup(conn) -> dict[str, str]:
+    """
+    Charge la correspondance maille_code → classe hydrogéologique.
+    
+    Utilise ST_Intersects sur le centroïde de chaque maille.
+    Temps estimé : ~3s pour 29 407 mailles (index spatial requis).
+    """
+    query = """
+    SELECT 
+        m.code                                    AS maille_code,
+        COALESCE(hg.libelle, 'INCONNU')           AS hydro_class
+    FROM atlas.mailles m
+    LEFT JOIN atlas.hydrogeologie hg
+        ON ST_Intersects(ST_Centroid(m.geom), hg.geom)
+    WHERE m.code IS NOT NULL;
+    """
+    df = pd.read_sql(query, conn)
+    return dict(zip(df['maille_code'], df['hydro_class']))
+```
+
+**Optimisation** : ce lookup peut être mis en cache dans `atlas.v_contexte_geologique` (vue matérialisée SQL — section 3.2) pour éviter le ST_Intersects à chaque run KED. Le coût est un refresh de la vue (une fois après modification des polygones hydrogéologiques, ce qui est exceptionnel).
+
+#### 3.5.5 Impact attendu et protocole de validation
+
+**Paramètre le plus impacté** : `EG` (équivalent granulométrique = gonflement libre) car :
+```
+EG = f(minéralogie gonflante × état_hydrique_initial)
+   → HYDRO capte directement le second facteur
+   → Zones CSIF-H : nappe haute → matrice argileuse hydratée → EG élevé
+   → Zones B-L    : nappe libre → comportement hydrique différent
+```
+
+**Protocole de validation LOO-CV proposé** :
+
+```python
+# Comparer les RMSE LOO des deux versions de compute_hierarchical_prior :
+
+metrics = {}
+for version, func in [('KED-4niveaux', prior_4levels), 
+                       ('KED-5niveaux+hydro', prior_5levels)]:
+    for param in ['vbs', 'ip', 'wl', 'wp', 'eg']:
+        for horizon in ['h1', 'h2', 'h3']:
+            loo_rmse = run_loo_cv(func, param, horizon)
+            metrics[(version, param, horizon)] = loo_rmse
+
+# Critère de succès :
+# RMSE_KED-5niveaux(EG) < RMSE_KED-4niveaux(EG)  → contribution validée
+# Si aucun gain → l'hydrogéologie n'apporte rien à ce niveau de données (N=572)
+# Publier les deux résultats honnêtement.
+```
+
+**Hypothèse de recherche (falsifiable)** :
+
+> *H₀ : La classe hydrogéologique n'améliore pas significativement le LOO-RMSE du KED-H pour EG et WL (α=0.05, test de Wilcoxon sur les erreurs LOO).*  
+> *H₁ : L'ajout de HYDRO comme niveau 4 réduit le LOO-RMSE d'EG de plus de 5%.*
+
+Si H₀ est rejetée, la contribution est publiable comme amélioration méthodologique du KED-H dans le contexte du Togo.
+
+#### 3.5.6 Honnêteté scientifique — Ce que l'hydrogéologie NE peut pas apporter
+
+| Limite | Raison |
+|--------|--------|
+| 14 polygones seulement | Résolution trop grossière pour capturer la variabilité locale (rayon de corrélation KED ≈ 80-120 km >> 200 km par polygone hydro) |
+| Descriptions non renseignées en DB | La table `atlas.hydrogeologie` n'a pas de champ `description` rempli — les libellés seuls (`CSIF-H`, `B-L`) ne permettent pas de reconstruire les paramètres hydrodynamiques |
+| N=572 sondages | Avec seulement 14 classes hydro, certaines classes auront < 5 sondages → repli national automatique → contribution nulle pour ces zones |
+| Saisonnalité non capturée | L'hydrogéologie donne un état moyen annuel, pas la variabilité saisonnière (nappe haute en avril, basse en novembre) |
+
+**Recommandation** : si H₀ n'est pas rejetée, utiliser l'hydrogéologie uniquement comme **feature Ridge dans RK SCORPAN** (où son signal peut s'exprimer continûment, pas en classes discrètes), et non dans la dérive hiérarchique KED.
 
 ---
 

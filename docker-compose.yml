@@ -56,6 +56,15 @@ services:
     volumes:
       - ./exports:/data/exports
       - ./scripts:/opt/atlas/scripts:ro
+      - ml-pip-cache:/root/.cache/pip    # Cache pip persistant (ML deps ~2.3GB)
+    # GPU pour les calculs MTGP/GPflow (ARCH-GPU-01)
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/healthz"]
       interval: 30s
@@ -280,3 +289,9 @@ services:
 networks:
   atlas-net:
     driver: bridge
+
+volumes:
+  # Cache pip persistant pour ML deps (tensorflow, gpflow) — évite re-téléchargement
+  # après chaque recréation du container. Population initiale :
+  #   docker cp C:\PROJET_ATLAS_MASTER\pip-cache-backup atlas-api-geo:/root/.cache/pip
+  ml-pip-cache:

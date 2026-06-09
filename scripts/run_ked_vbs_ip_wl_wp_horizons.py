@@ -5,9 +5,19 @@ import argparse
 import json
 import math
 import os
+import sys
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional, Sequence, Tuple
+
+# Traçabilité partagée (git hash, hyperparams, versions logicielles)
+sys.path.insert(0, os.path.dirname(__file__))
+try:
+    from utils._run_traceability import build_version_tag, make_run_meta
+except ImportError:
+    def build_version_tag(p, h=None): return f"{p}-nogit-nohp"
+    def make_run_meta(s, h, **kw): return {"script": s, "hyperparams": h}
 
 import numpy as np
 import psycopg2
@@ -261,32 +271,95 @@ def load_grid(cur) -> List[Tuple[str, float, float, str]]:
     return [(str(a), float(b), float(c), str(d or "UNKNOWN")) for a, b, c, d in cur.fetchall()]
 
 
+def load_hydro_lookup(cur) -> Dict[str, str]:
+    """
+    Charge la correspondance maille_id (UUID) → classe hydrogéologique.
+
+    Utilise ST_Intersects sur le centroïde de chaque maille.
+    Résultat mis en cache en mémoire — appeler une seule fois par session.
+
+    Référence scientifique :
+        Seed et al. (1962) "The swelling and shrinkage of clays", Géotechnique 12(4)
+        L'état hydrique contrôle le gonflement libre EG autant que la minéralogie.
+    """
+    cur.execute("""
+        SELECT
+            m.id::text                                    AS maille_id,
+            COALESCE(hg.libelle, 'INCONNU')               AS hydro_class
+        FROM atlas.mailles m
+        LEFT JOIN atlas.hydrogeologie hg
+            ON ST_Intersects(ST_Centroid(m.geom), hg.geom)
+        WHERE m.code IS NOT NULL
+    """)
+    rows = cur.fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
 def compute_hierarchical_prior(
     train_values: "np.ndarray",
     train_contexts: List[str],
     min_pts: int = 5,
+    hydro_lookup: Optional[Dict[str, str]] = None,
+    train_maille_ids: Optional[List[str]] = None,
 ) -> Dict[str, float]:
     """
     Calcule les moyennes a priori par contexte géologique hiérarchique.
 
     Ordre de repli (du plus spécifique au plus général) :
-      1. contexte_complet  → 'ZONE|PEDO|RISQUE|GEO'
-      2. zone + pédologie  → 'ZONE|PEDO'
-      3. pédologie seule   → premier segment après le '|'
-      4. moyenne globale   → toujours disponible
+      1. contexte_complet + HYDRO → 'ZONE|PEDO|RISQUE|GEO|HYDRO'
+      2. zone + pédologie          → 'ZONE|PEDO'
+      3. pédologie seule           → 2e segment du contexte
+      4. hydrogéologie seule       → classe hydro (14 polygones) [NEW]
+      5. moyenne nationale         → toujours disponible
 
     Règle : un contexte n'est utilisé que s'il regroupe >= min_pts sondages.
+
+    Paramètres optionnels :
+        hydro_lookup      : dict {maille_id → libelle_hydrogeo} depuis load_hydro_lookup()
+        train_maille_ids  : liste des maille_id des sondages d'entraînement
+                            (même longueur que train_values)
+
+    Si hydro_lookup est None, le niveau 4 (hydro) est ignoré et on passe
+    directement à la moyenne nationale → comportement identique à v1.
+
+    Justification du niveau 4 (voir PROPOSITION_SCIENTIFIQUE_MODELES_RUPTURE.md §3.5) :
+        L'hydrogéologie encode l'état hydrique régional. C'est un facteur
+        aggravant du gonflement (pas un facteur causal), d'où sa position
+        APRÈS les niveaux minéralogiques (PEDO, GEO) dans la hiérarchie.
+        14 polygones = résolution grossière = pertinent seulement comme
+        filet de sécurité avant la moyenne nationale aveugle.
     """
     global_mean = float(np.mean(train_values))
     priors: Dict[str, float] = {}
 
-    # Niveau 1 : contexte complet
-    for ctx in set(train_contexts):
-        idx = [i for i, c in enumerate(train_contexts) if c == ctx]
-        if len(idx) >= min_pts:
-            priors[ctx] = float(np.mean([train_values[i] for i in idx]))
+    # Précalcul : classe hydro des sondages d'entraînement (si fourni)
+    if hydro_lookup and train_maille_ids:
+        train_hydro = [hydro_lookup.get(mid, 'INCONNU') for mid in train_maille_ids]
+    else:
+        train_hydro = None
 
-    # Niveau 2 : zone + pédologie (2 premiers segments)
+    # ── Niveau 1 : contexte complet (+ hydro si disponible) ─────────────────
+    if train_hydro:
+        # Enrichir la clé avec la classe hydro
+        rich_contexts = [f"{ctx}|{h}" for ctx, h in zip(train_contexts, train_hydro)]
+        for rctx in set(rich_contexts):
+            idx = [i for i, c in enumerate(rich_contexts) if c == rctx]
+            if len(idx) >= min_pts:
+                priors[rctx] = float(np.mean([train_values[i] for i in idx]))
+            # Aussi stocker sous la clé sans hydro pour la compatibilité niveau 2+
+            ctx_base = '|'.join(rctx.split('|')[:4])
+            if ctx_base not in priors:
+                idx_base = [i for i, c in enumerate(train_contexts) if c == ctx_base]
+                if len(idx_base) >= min_pts:
+                    priors[ctx_base] = float(np.mean([train_values[i] for i in idx_base]))
+    else:
+        # Niveau 1 sans hydro (comportement v1)
+        for ctx in set(train_contexts):
+            idx = [i for i, c in enumerate(train_contexts) if c == ctx]
+            if len(idx) >= min_pts:
+                priors[ctx] = float(np.mean([train_values[i] for i in idx]))
+
+    # ── Niveau 2 : zone + pédologie (2 premiers segments) ───────────────────
     for ctx in set(train_contexts):
         if ctx not in priors:
             parent = "|".join(ctx.split("|")[:2])
@@ -294,7 +367,7 @@ def compute_hierarchical_prior(
             if len(idx) >= min_pts:
                 priors[ctx] = float(np.mean([train_values[i] for i in idx]))
 
-    # Niveau 3 : pédologie seule (2e segment)
+    # ── Niveau 3 : pédologie seule (2e segment) ─────────────────────────────
     for ctx in set(train_contexts):
         if ctx not in priors:
             parts = ctx.split("|")
@@ -305,8 +378,29 @@ def compute_hierarchical_prior(
             ]
             if len(idx) >= min_pts:
                 priors[ctx] = float(np.mean([train_values[i] for i in idx]))
+            elif train_hydro:
+                pass  # niveau 4 ci-dessous
             else:
-                priors[ctx] = global_mean  # repli ultime
+                priors[ctx] = global_mean  # repli ultime (sans hydro)
+
+    # ── Niveau 4 : hydrogéologie seule [NEW v2] ──────────────────────────────
+    if train_hydro:
+        for ctx in set(train_contexts):
+            if ctx not in priors:
+                # Trouver la classe hydro majoritaire parmi les sondages
+                # ayant ce préfixe de contexte
+                candidate_hydro = [
+                    train_hydro[i] for i, c in enumerate(train_contexts) if c == ctx
+                ]
+                hydro_class = candidate_hydro[0] if candidate_hydro else 'INCONNU'
+
+                if hydro_class != 'INCONNU':
+                    idx_h = [i for i, h in enumerate(train_hydro) if h == hydro_class]
+                    if len(idx_h) >= min_pts:
+                        priors[ctx] = float(np.mean([train_values[i] for i in idx_h]))
+                        continue
+
+                priors[ctx] = global_mean  # ── Niveau 5 : nationale ──
 
     return priors
 
@@ -414,14 +508,26 @@ def run_one(
     cfg: KedParamCfg,
     grid_cache: List[Tuple[str, float, float, str]],
     use_hierarchical: bool = False,
+    hydro_lookup: Optional[Dict[str, str]] = None,
+    log_transform: bool = False,
 ):
     """
     KED runner pour un (paramètre, horizon).
 
     use_hierarchical=True  : utilise compute_hierarchical_prior (5 niveaux géologiques).
     use_hierarchical=False : comportement historique (type_sol pédologique seul).
+    hydro_lookup           : dict {maille_id → classe_hydrogeo} depuis load_hydro_lookup().
+                             Si fourni, active le niveau 4 de repli hydrogéologique.
+                             Voir PROPOSITION_SCIENTIFIQUE_MODELES_RUPTURE.md §3.5.
+    log_transform          : si True, applique log(val+1) avant krigeage et back-transforme
+                             après. Recommandé pour VBS (skewness=2.41) et CBR (range 0-132%).
+                             Voir POINTS_REVISION_PROCHAINE_ITERATION_V2.md §3.6 (A5).
     """
+    t_start = datetime.now(timezone.utc)   # ← début réel pour durée tracée
     param_id = f"{cfg.kind}_ked_{horizon_label}"
+    # Si log-transform actif, suffixe le parameter_id pour différencier des runs normaux
+    if log_transform:
+        param_id = f"{cfg.kind}_ked_log_{horizon_label}"
     cur = conn.cursor()
     ensure_param(cur, param_id, cfg)
 
@@ -433,7 +539,14 @@ def run_one(
     mids = [r[0] for r in train]
     x = np.array([r[1] for r in train], dtype=np.float64)
     y = np.array([r[2] for r in train], dtype=np.float64)
-    vals = np.array([r[3] for r in train], dtype=np.float64)
+    vals_raw = np.array([r[3] for r in train], dtype=np.float64)
+
+    # A5 — Log-transformation avant krigeage (pour paramètres asymétriques)
+    if log_transform:
+        vals = np.log1p(vals_raw)
+        print(f"  [LOG-TRANSFORM] log(val+1) appliqué : {cfg.kind}/{horizon_label}", flush=True)
+    else:
+        vals = vals_raw
     ctx_train = [r[4] for r in train]
 
     gx = np.array([r[1] for r in grid_cache], dtype=np.float64)
@@ -444,15 +557,19 @@ def run_one(
     global_mean = float(np.mean(vals))
 
     if use_hierarchical:
-        # Dérive hiérarchique 5 niveaux (BLOC A)
-        priors = compute_hierarchical_prior(vals, ctx_train, min_pts=5)
+        # Dérive hiérarchique (4 ou 5 niveaux selon présence du lookup hydro)
+        priors = compute_hierarchical_prior(
+            vals, ctx_train, min_pts=5,
+            hydro_lookup=hydro_lookup,
+            train_maille_ids=mids if hydro_lookup else None,
+        )
         # Compter les points par contexte complet pour la traçabilité
         counts: Dict[str, int] = {}
         for ctx in set(ctx_train):
             counts[ctx] = sum(1 for c in ctx_train if c == ctx)
         drift_train = np.array([priors.get(c, global_mean) for c in ctx_train], dtype=np.float64)
         drift_grid  = np.array([priors.get(c, global_mean) for c in ctx_grid],  dtype=np.float64)
-        drift_method = "hierarchical_5levels"
+        drift_method = "hierarchical_5levels_hydro" if hydro_lookup else "hierarchical_5levels"
     else:
         # Dérive pédologique simple (comportement historique)
         priors = {}
@@ -470,6 +587,11 @@ def run_one(
     residuals = vals - drift_train
     z_res, z_var, model_used, ok_params = fallback_kriging(x, y, residuals, gx, gy)
     z_pred = z_res + drift_grid
+
+    # A5 — Back-transformation si log-transform actif
+    if log_transform:
+        z_pred = np.expm1(z_pred)
+
     z_pred = np.clip(z_pred, cfg.physical_min, cfg.physical_max)
 
     var_base = float(np.nanvar(vals)) if np.isfinite(np.nanvar(vals)) else 1.0
@@ -483,28 +605,45 @@ def run_one(
     cur.execute(
         """
         INSERT INTO atlas.ai_interpolation_runs
-          (id, run_type, parameter_id, method, model_version, status, metrics, started_at, finished_at, zone_id, kriging_domain_id)
+          (id, run_type, parameter_id, method, model_version, status, metrics,
+           started_at, finished_at, zone_id, kriging_domain_id, meta)
         VALUES
-          (%s, 'kriging', %s, %s, 'v2', 'finished', %s::jsonb, now(), now(), NULL, NULL)
+          (%s, 'kriging', %s, %s, %s, 'finished', %s::jsonb,
+           %s, now(), NULL, NULL, %s::jsonb)
         """,
         (
             run_id,
             param_id,
             method_tag,
-            json_safe(
-                {
-                    "horizon_label": horizon_label,
+            build_version_tag("ked", {"drift_method": drift_method, "depth_m": depth_m, "kind": cfg.kind}),
+            json_safe({
+                "horizon_label": horizon_label,
+                "depth_m": depth_m,
+                "param_kind": cfg.kind,
+                "n_train": int(len(vals)),
+                "n_grid": int(len(gmids)),
+                "loo_residual": loo,
+                "model_used": model_used,
+                "drift_method": drift_method,
+                "global_mean": global_mean,
+            }),
+            t_start,
+            json_safe(make_run_meta(
+                script_name="run_ked_vbs_ip_wl_wp_horizons",
+                hyperparams={
+                    "drift_method": drift_method,
                     "depth_m": depth_m,
                     "param_kind": cfg.kind,
+                    "horizon_label": horizon_label,
+                    "use_hierarchical": use_hierarchical,
+                },
+                metrics={
                     "n_train": int(len(vals)),
                     "n_grid": int(len(gmids)),
-                    "loo_residual": loo,
-                    "model_used": model_used,
-                    "drift_method": drift_method,
-                    "drift_priors": priors,
-                    "global_mean": global_mean,
-                }
-            ),
+                    "loo_rmse": loo.get("rmse") if isinstance(loo, dict) else None,
+                },
+                t_start=t_start,
+            )),
         ),
     )
 
@@ -527,7 +666,16 @@ def run_one(
         ),
     )
 
-    cur.execute("DELETE FROM atlas.ai_interpolation_values WHERE parameter_id = %s", (param_id,))
+    # Archiver les valeurs actives avant d'insérer la nouvelle génération (contrat is_superseded)
+    cur.execute(
+        """
+        UPDATE atlas.ai_interpolation_values
+           SET is_superseded = true
+         WHERE parameter_id = %s
+           AND COALESCE(is_superseded, false) = false
+        """,
+        (param_id,),
+    )
 
     rows = []
     for i, mid in enumerate(gmids):
@@ -603,9 +751,25 @@ def main() -> int:
     ap.add_argument(
         "--hierarchical", action="store_true", default=False,
         help=(
-            "BLOC A : utilise la dérive hiérarchique 5 niveaux depuis "
-            "atlas.v_contexte_geologique (zones + pédologie + risque + géologie). "
+            "BLOC A : utilise la dérive hiérarchique (4 niveaux : zones + pédologie + risque + géologie). "
             "Créer d'abord la vue : psql -f scripts/sql/create_contexte_geologique.sql"
+        ),
+    )
+    ap.add_argument(
+        "--use-hydro", action="store_true", default=False,
+        help=(
+            "Active le niveau 4 de repli hydrogéologique dans compute_hierarchical_prior. "
+            "Nécessite --hierarchical et atlas.hydrogeologie renseignée. "
+            "Voir PROPOSITION_SCIENTIFIQUE_MODELES_RUPTURE.md §3.5 pour la justification."
+        ),
+    )
+    ap.add_argument(
+        "--log-transform", action="store_true", default=False,
+        help=(
+            "A5 — Applique log(val+1) avant krigeage et expm1() après (back-transform). "
+            "Recommandé pour VBS (skewness=2.41) et CBR (range 0-132%). "
+            "Améliore la couverture des intervalles de prédiction (PICP 95%). "
+            "Voir POINTS_REVISION_PROCHAINE_ITERATION_V2.md §3.6."
         ),
     )
     args = ap.parse_args()
@@ -630,16 +794,41 @@ def main() -> int:
                 "  psql -v ON_ERROR_STOP=1 -f scripts/sql/create_contexte_geologique.sql"
             )
 
-        drift_info = "hiérarchique 5 niveaux" if use_hierarchical else "pédologique simple"
+        # Charger le lookup hydrogéologique (optionnel — niveau 4 de repli)
+        # Désactivé par défaut pour ne pas changer le comportement existant.
+        # Activer avec --use-hydro quand la table atlas.hydrogeologie est complète.
+        use_hydro = getattr(args, 'use_hydro', False)
+        hydro_lookup: Optional[Dict[str, str]] = None
+        if use_hierarchical and use_hydro:
+            try:
+                hydro_lookup = load_hydro_lookup(cur)
+                print(f"Lookup hydrogéologique chargé : {len(hydro_lookup)} mailles", flush=True)
+            except Exception as e:
+                print(f"[WARN] Impossible de charger hydro_lookup ({e}) — niveau 4 désactivé", flush=True)
+
+        drift_info = "hiérarchique 5 niveaux + hydro" if hydro_lookup else \
+                     "hiérarchique 5 niveaux" if use_hierarchical else "pédologique simple"
         print(f"Dérive : {drift_info}", flush=True)
 
         grid_cache = load_grid(cur)
         cur.close()
 
+        use_log = getattr(args, 'log_transform', False)
+        if use_log:
+            log_kinds = {'vbs', 'cbr_95', 'eg'}
+            print(f"Log-transform activé pour : {log_kinds & kinds_allowed}", flush=True)
+
         out: List[Dict[str, Any]] = []
         for hz, depth in HORIZONS:
             for cfg in cfgs:
-                out.append(run_one(conn, hz, depth, cfg, grid_cache, use_hierarchical=use_hierarchical))
+                # A5 : appliquer log-transform seulement aux paramètres asymétriques
+                apply_log = use_log and cfg.kind in {'vbs', 'eg'}
+                out.append(run_one(
+                    conn, hz, depth, cfg, grid_cache,
+                    use_hierarchical=use_hierarchical,
+                    hydro_lookup=hydro_lookup,
+                    log_transform=apply_log,
+                ))
         print(json_safe({"runs": out}))
         return 0
     finally:

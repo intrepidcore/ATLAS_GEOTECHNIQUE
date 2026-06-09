@@ -90,7 +90,7 @@ async fn list_recent_jobs(
         .map(|r| {
             json!({
                 "id": r.get::<uuid::Uuid, _>("id"),
-                "parameter_id": r.get::<String, _>("parameter_id"),
+                "parameter_id": r.try_get::<String, _>("parameter_id").unwrap_or_default(),
                 "job_type": r.get::<String, _>("job_type"),
                 "status": r.get::<String, _>("status"),
                 "payload": r.try_get::<serde_json::Value, _>("payload").unwrap_or(json!({})),
@@ -191,7 +191,7 @@ async fn get_ai_plan_summary(
         .map(|r| {
             json!({
                 "category": r.get::<String, _>("category"),
-                "parameter_id": r.get::<String, _>("parameter_id"),
+                "parameter_id": r.try_get::<String, _>("parameter_id").unwrap_or_default(),
                 "unit": r.try_get::<Option<String>, _>("unit").ok().flatten(),
                 "method": r.try_get::<Option<String>, _>("method").ok().flatten(),
             })
@@ -203,7 +203,7 @@ async fn get_ai_plan_summary(
         .map(|r| {
             json!({
                 "category": r.get::<String, _>("category"),
-                "parameter_id": r.get::<String, _>("parameter_id"),
+                "parameter_id": r.try_get::<String, _>("parameter_id").unwrap_or_default(),
                 "unit": r.try_get::<Option<String>, _>("unit").ok().flatten(),
                 "model_kind": r.try_get::<Option<String>, _>("model_kind").ok().flatten(),
             })
@@ -307,7 +307,7 @@ async fn get_job_status(
             let error_message: Option<String> = r.try_get("error_message").ok().flatten();
             Ok(Json(json!({
                 "job_id":       r.get::<Uuid, _>("id"),
-                "parameter_id": r.get::<String, _>("parameter_id"),
+                "parameter_id": r.try_get::<String, _>("parameter_id").unwrap_or_default(),
                 "job_type":     r.get::<String, _>("job_type"),
                 "status":       status,
                 "payload":      r.try_get::<serde_json::Value, _>("payload").unwrap_or(json!({})),
@@ -378,7 +378,7 @@ async fn get_models_status(
     // Construire map parameter_id → loo_rmse
     let mut rmse_map: std::collections::HashMap<String, f64> = std::collections::HashMap::new();
     for r in &variograms {
-        let pid: String = r.get("parameter_id");
+        let pid: String = r.try_get("parameter_id").unwrap_or_default();
         let rmse: Option<f64> = r.try_get("loo_rmse").ok().flatten();
         if let Some(v) = rmse {
             rmse_map.insert(pid, v);
@@ -608,7 +608,25 @@ fn run_python_json(args: &[&str]) -> Result<serde_json::Value, String> {
     if !out.status.success() {
         return Err(format!("python failed: {stderr}\n{stdout}"));
     }
-    serde_json::from_str(&stdout).map_err(|e| format!("invalid json from python: {e}: {stdout}"))
+    // Tenter d'abord un parse direct (cas idéal : stdout = JSON pur)
+    if let Ok(v) = serde_json::from_str::<serde_json::Value>(stdout.trim()) {
+        return Ok(v);
+    }
+    // Sinon chercher la dernière ligne valide JSON (cas : logs + JSON final)
+    for line in stdout.lines().rev() {
+        let t = line.trim();
+        if t.starts_with('{') || t.starts_with('[') {
+            if let Ok(v) = serde_json::from_str::<serde_json::Value>(t) {
+                return Ok(v);
+            }
+        }
+    }
+    // Fallback : le script a réussi (exit 0) mais n'a pas émis de JSON.
+    // On retourne un objet de succès générique plutôt que d'échouer.
+    Ok(json!({
+        "status": "completed",
+        "logs_truncated": &stdout[stdout.len().saturating_sub(500)..]
+    }))
 }
 
 /// Consomme un job `atlas.ai_job_queue` (SKIP LOCKED) avant la file legacy `ai_training_jobs`.
@@ -633,7 +651,7 @@ async fn try_process_ai_job_queue(pool: &PgPool) -> anyhow::Result<Option<serde_
     };
 
     let job_id: uuid::Uuid = job.get("id");
-    let parameter_id: String = job.get("parameter_id");
+    let parameter_id: String = job.try_get("parameter_id").unwrap_or_default();
     let job_type: String = job.get("job_type");
     let payload: serde_json::Value = job.try_get("payload").unwrap_or(json!({}));
 

@@ -234,10 +234,17 @@ export class ThematicPanel {
           `option[data-model-id="${model.id}"]`
         )
         if (!opt) continue
-        const isAvailable = model.status === 'ready' || model.status === 'partial'
-        opt.disabled = !isAvailable
-        if (!isAvailable) {
-          opt.title = `Non disponible (${model.status})`
+        // Désactiver uniquement si erreur hard — pas_calculé = accessible mais sans données
+        const isError = model.status === 'error' || model.status === 'disabled'
+        opt.disabled = isError
+        if (model.status === 'not_computed' || model.status === 'not_started') {
+          opt.title = `Modèle non encore calculé — données non disponibles`
+          // Indicateur visuel léger (pas désactivé)
+          if (!opt.text.includes('⚠')) opt.text = opt.text + ' ⚠'
+        } else if (isError) {
+          opt.title = `Erreur modèle (${model.status}) — sélection désactivée`
+        } else if (model.status === 'ready') {
+          opt.title = `${model.n_mailles.toLocaleString('fr-FR')} mailles`
         }
       }
 
@@ -286,6 +293,28 @@ export class ThematicPanel {
   }
   
   /**
+   * Avertissements contextuels (badge sous la source).
+   * Actuellement : RK-SCORPAN H2 métriques dégradées sur VBS et EG.
+   */
+  private showSourceWarning(source: ThematicSource): void {
+    const warningEl = document.getElementById('sourceWarningBanner')
+    if (!warningEl) return
+    const DEGRADED_RK_H2 = ['vbs', 'eg']
+    const param = this.elements.parameterSelect?.value ?? ''
+    const horizon = this.elements.thematicHorizonSelect?.value ?? 'H2'
+    if (
+      source === 'l2a_rk' &&
+      horizon === 'H2' &&
+      DEGRADED_RK_H2.some(b => param.startsWith(`${b}_rk`))
+    ) {
+      warningEl.textContent = '⚠ RK-SCORPAN H2 : métriques dégradées pour VBS et EG sur cet horizon.'
+      warningEl.style.display = 'block'
+    } else {
+      warningEl.style.display = 'none'
+    }
+  }
+
+  /**
    * Render the complete panel HTML
    */
   private renderPanel(): void {
@@ -324,6 +353,7 @@ export class ThematicPanel {
             <i data-lucide="activity" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
             <span id="sourceRmseLabel">—</span>
           </div>
+          <div id="sourceWarningBanner" style="display:none;margin-top:4px;padding:5px 8px;background:#422006;border:1px solid #92400e;border-radius:4px;font-size:11px;color:#fbbf24;" role="alert" aria-live="polite"></div>
         </div>
 
         <div class="thematic-section">
@@ -769,8 +799,10 @@ export class ThematicPanel {
   private populateObjectifSelect(): void {
     const select = this.elements.objectifSelect
     if (!select) return
-    // Affiche seulement les 5 familles principales (pas les 4 legacy)
-    const VISIBLE_IDS: ObjectifMetier[] = ['couverture', 'argilosite', 'portance', 'insitu', 'ia_ag', 'personnalise']
+    // Uniquement les 4 familles scientifiques (roadmap Phase 3)
+    // IA/Interpolation et Personnalisé sont retirés : les modèles ML sont
+    // accessibles via le sélecteur "Source de données" (L1-L4).
+    const VISIBLE_IDS: ObjectifMetier[] = ['couverture', 'argilosite', 'portance', 'insitu']
     select.innerHTML = OBJECTIFS_METIER
       .filter(obj => VISIBLE_IDS.includes(obj.id))
       .map(obj => `<option value="${obj.id}">${obj.label}</option>`)
@@ -791,12 +823,16 @@ export class ThematicPanel {
     const objectif = getObjectifById(objectifId)
     
     if (params.length === 0) {
-      const hint =
-        source === 'interpolation'
-          ? 'Aucune couche kriging pour cette catégorie (seuls IP et VBS sont interpolés côté API).'
-          : source === 'ia'
-            ? 'Aucune sortie IA disponible pour cette catégorie.'
-            : 'Aucun paramètre disponible.'
+      const isMLSource = source !== 'base' && source !== 'interpolation' && source !== 'ia'
+      const hint = isMLSource && (objectifId === 'portance' || objectifId === 'insitu')
+        ? `Les modèles ML ne modélisent pas la catégorie "${objectifId === 'portance' ? 'Portance & compactage' : 'In-situ & pressiométrique'}" — utiliser la source Base.`
+        : source === 'l3_vfs'
+          ? 'ML L3 VfS-PLS : seul le paramètre VBS surface est disponible (catégorie Argilosité).'
+          : source === 'interpolation'
+            ? 'Aucune couche kriging pour cette catégorie (seuls IP et VBS sont interpolés côté API).'
+            : source === 'ia'
+              ? 'Aucune sortie IA disponible pour cette catégorie.'
+              : 'Aucun paramètre disponible pour cette combinaison source/catégorie.'
       select.innerHTML = `<option value="" data-description="${hint.replace(/"/g, '&quot;')}">— ${hint} —</option>`
       select.value = ''
       this.updateParameterDescription()
@@ -1388,23 +1424,35 @@ export class ThematicPanel {
     sourceSelect?.addEventListener('change', () => {
       const source = (sourceSelect.value || 'base') as ThematicSource
       const objectifId = (this.elements.objectifSelect?.value || 'couverture') as ObjectifMetier
+
+      // Auto-reset : rebuild parameter list pour la nouvelle source.
+      // Si le paramètre courant n'est plus valide, updateParameterList sélectionne
+      // automatiquement le premier paramètre disponible (voir updateParameterList).
       this.updateParameterList(objectifId)
+
       if (this.elements.minSondagesInput) {
         this.elements.minSondagesInput.value = source === 'base' ? (this.elements.minSondagesInput.value || '1') : '0'
       }
       this.updateHorizonRowVisibility()
       this.updateModelBadge(source)
+
+      // Avertissement RK SCORPAN sur H2 pour paramètres dégradés
+      this.showSourceWarning(source)
     })
     
-    // Parameter change -> update description & palette
+    // Parameter change -> update description & palette & warning
     this.elements.parameterSelect?.addEventListener('change', () => {
       this.updateParameterDescription()
       this.updatePaletteFromParameter()
       this.updateHorizonRowVisibility()
+      const src = (sourceSelect?.value || 'base') as ThematicSource
+      this.showSourceWarning(src)
     })
 
     this.elements.thematicHorizonSelect?.addEventListener('change', () => {
       this.updateHorizonRowVisibility()
+      const src = (sourceSelect?.value || 'base') as ThematicSource
+      this.showSourceWarning(src)
     })
     
     // Palette change -> STOCKER ET LOGGER

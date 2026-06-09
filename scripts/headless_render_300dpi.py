@@ -53,22 +53,96 @@ DPI = 300
 
 # ── Metadonnees parametres ───────────────────────────────────────────────────
 PARAM_META: Dict[str, Dict] = {
-    "vbs_ked_h1":    {"label": "VBS — Valeur de Bleu de Methylene", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H1 (0–1 m)"},
-    "vbs_ked_h2":    {"label": "VBS — H2", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H2 (1–1.5 m)"},
-    "vbs_ked_h3":    {"label": "VBS — H3", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H3 (>1.5 m)"},
+    # VBS — Valeur de Bleu de Methylene
+    "vbs_ked_h1":    {"label": "VBS — Valeur de Bleu de Methylene", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H1 (0-1 m)"},
+    "vbs_ked_h2":    {"label": "VBS — Valeur de Bleu de Methylene", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H2 (1-1.5 m)"},
+    "vbs_ked_h3":    {"label": "VBS — Valeur de Bleu de Methylene", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H3 (>1.5 m)"},
     "vbs_rk_h1":     {"label": "VBS RK-SCORPAN", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H1"},
-    "ip_ked_h1":     {"label": "Indice de Plasticite (IP)", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H1"},
-    "ip_rk_h1":      {"label": "IP RK-SCORPAN", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H1"},
-    "wl_ked_h1":     {"label": "Limite de Liquidite (WL)", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H1"},
-    "wp_ked_h1":     {"label": "Limite de Plasticite (WP)", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H1"},
-    "eg_ked_h1":     {"label": "Potentiel de Gonflement (EG)", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H1"},
-    "rd_mpa_ked_h1": {"label": "Resistance Dynamique (Rd)", "unit": "MPa", "cmap": "Greens", "vmin": 0, "vmax": 20, "horizon": "H1"},
+    "vbs_rk_h2":     {"label": "VBS RK-SCORPAN", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H2 (1-1.5 m)"},
+    "vbs_rk_h3":     {"label": "VBS RK-SCORPAN", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H3 (>1.5 m)"},
+    "vbs_fusion_h1": {"label": "VBS — Fusion KED+RK", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H1 (0-1 m)"},
+    "vbs_fusion_h2": {"label": "VBS — Fusion KED+RK", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H2 (1-1.5 m)"},
+    "vbs_fusion_h3": {"label": "VBS — Fusion KED+RK", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H3 (>1.5 m)"},
+    "vbs_mtgp_h1":   {"label": "VBS — MTGP", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H1 (0-1 m)"},
+    "vbs_mtgp_h2":   {"label": "VBS — MTGP", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H2 (1-1.5 m)"},
+    "vbs_mtgp_h3":   {"label": "VBS — MTGP", "unit": "g/100g", "cmap": "YlOrRd", "vmin": 0, "vmax": 10, "horizon": "H3 (>1.5 m)"},
+    # IP — Indice de Plasticite
+    "ip_ked_h1":     {"label": "Indice de Plasticite (IP)", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H1 (0-1 m)"},
+    "ip_ked_h2":     {"label": "Indice de Plasticite (IP)", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H2 (1-1.5 m)"},
+    "ip_ked_h3":     {"label": "Indice de Plasticite (IP)", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H3 (>1.5 m)"},
+    "ip_rk_h1":      {"label": "IP RK-SCORPAN", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H1 (0-1 m)"},
+    "ip_rk_h2":      {"label": "IP RK-SCORPAN", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H2 (1-1.5 m)"},
+    "ip_rk_h3":      {"label": "IP RK-SCORPAN", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H3 (>1.5 m)"},
+    "ip_fusion_h1":  {"label": "IP — Fusion KED+RK", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H1 (0-1 m)"},
+    "ip_fusion_h2":  {"label": "IP — Fusion KED+RK", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H2 (1-1.5 m)"},
+    "ip_fusion_h3":  {"label": "IP — Fusion KED+RK", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H3 (>1.5 m)"},
+    "ip_mtgp_h1":    {"label": "IP — MTGP", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H1 (0-1 m)"},
+    "ip_mtgp_h2":    {"label": "IP — MTGP", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H2 (1-1.5 m)"},
+    "ip_mtgp_h3":    {"label": "IP — MTGP", "unit": "%", "cmap": "PuRd", "vmin": 5, "vmax": 50, "horizon": "H3 (>1.5 m)"},
+    # WL — Limite de Liquidite
+    "wl_ked_h1":     {"label": "Limite de Liquidite (WL)", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H1 (0-1 m)"},
+    "wl_ked_h2":     {"label": "Limite de Liquidite (WL)", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H2 (1-1.5 m)"},
+    "wl_ked_h3":     {"label": "Limite de Liquidite (WL)", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H3 (>1.5 m)"},
+    "wl_rk_h1":      {"label": "WL RK-SCORPAN", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H1 (0-1 m)"},
+    "wl_rk_h2":      {"label": "WL RK-SCORPAN", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H2 (1-1.5 m)"},
+    "wl_rk_h3":      {"label": "WL RK-SCORPAN", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H3 (>1.5 m)"},
+    "wl_fusion_h1":  {"label": "WL — Fusion KED+RK", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H1 (0-1 m)"},
+    "wl_fusion_h2":  {"label": "WL — Fusion KED+RK", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H2 (1-1.5 m)"},
+    "wl_fusion_h3":  {"label": "WL — Fusion KED+RK", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H3 (>1.5 m)"},
+    "wl_mtgp_h1":    {"label": "WL — MTGP", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H1 (0-1 m)"},
+    "wl_mtgp_h2":    {"label": "WL — MTGP", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H2 (1-1.5 m)"},
+    "wl_mtgp_h3":    {"label": "WL — MTGP", "unit": "%", "cmap": "Blues", "vmin": 10, "vmax": 80, "horizon": "H3 (>1.5 m)"},
+    # WP — Limite de Plasticite
+    "wp_ked_h1":     {"label": "Limite de Plasticite (WP)", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H1 (0-1 m)"},
+    "wp_ked_h2":     {"label": "Limite de Plasticite (WP)", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H2 (1-1.5 m)"},
+    "wp_ked_h3":     {"label": "Limite de Plasticite (WP)", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H3 (>1.5 m)"},
+    "wp_rk_h1":      {"label": "WP RK-SCORPAN", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H1 (0-1 m)"},
+    "wp_rk_h2":      {"label": "WP RK-SCORPAN", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H2 (1-1.5 m)"},
+    "wp_rk_h3":      {"label": "WP RK-SCORPAN", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H3 (>1.5 m)"},
+    "wp_fusion_h1":  {"label": "WP — Fusion KED+RK", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H1 (0-1 m)"},
+    "wp_fusion_h2":  {"label": "WP — Fusion KED+RK", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H2 (1-1.5 m)"},
+    "wp_fusion_h3":  {"label": "WP — Fusion KED+RK", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H3 (>1.5 m)"},
+    "wp_mtgp_h1":    {"label": "WP — MTGP", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H1 (0-1 m)"},
+    "wp_mtgp_h2":    {"label": "WP — MTGP", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H2 (1-1.5 m)"},
+    "wp_mtgp_h3":    {"label": "WP — MTGP", "unit": "%", "cmap": "BuPu", "vmin": 5, "vmax": 40, "horizon": "H3 (>1.5 m)"},
+    # EG — Potentiel de Gonflement
+    "eg_ked_h1":     {"label": "Potentiel de Gonflement (EG)", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H1 (0-1 m)"},
+    "eg_ked_h2":     {"label": "Potentiel de Gonflement (EG)", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H2 (1-1.5 m)"},
+    "eg_ked_h3":     {"label": "Potentiel de Gonflement (EG)", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H3 (>1.5 m)"},
+    "eg_rk_h1":      {"label": "EG RK-SCORPAN", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H1 (0-1 m)"},
+    "eg_rk_h2":      {"label": "EG RK-SCORPAN", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H2 (1-1.5 m)"},
+    "eg_rk_h3":      {"label": "EG RK-SCORPAN", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H3 (>1.5 m)"},
+    "eg_fusion_h1":  {"label": "EG — Fusion KED+RK", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H1 (0-1 m)"},
+    "eg_fusion_h2":  {"label": "EG — Fusion KED+RK", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H2 (1-1.5 m)"},
+    "eg_fusion_h3":  {"label": "EG — Fusion KED+RK", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H3 (>1.5 m)"},
+    "eg_mtgp_h1":    {"label": "EG — MTGP", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H1 (0-1 m)"},
+    "eg_mtgp_h2":    {"label": "EG — MTGP", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H2 (1-1.5 m)"},
+    "eg_mtgp_h3":    {"label": "EG — MTGP", "unit": "%", "cmap": "RdYlGn_r", "vmin": 0, "vmax": 12, "horizon": "H3 (>1.5 m)"},
+    # Rd — Resistance Dynamique
+    "rd_mpa_ked_h1": {"label": "Resistance Dynamique (Rd)", "unit": "MPa", "cmap": "Greens", "vmin": 0, "vmax": 20, "horizon": "H1 (0-1 m)"},
+    "rd_mpa_ked_h2": {"label": "Resistance Dynamique (Rd)", "unit": "MPa", "cmap": "Greens", "vmin": 0, "vmax": 30, "horizon": "H2 (1-1.5 m)"},
     "rd_mpa_ked_h3": {"label": "Resistance Dynamique (Rd)", "unit": "MPa", "cmap": "Greens", "vmin": 0, "vmax": 40, "horizon": "H3 (>1.5 m)"},
-    "cbr_95_ked_h1": {"label": "CBR 95% Proctor", "unit": "%", "cmap": "RdYlGn", "vmin": 0, "vmax": 80, "horizon": "H1"},
-    "gamma_d_ked_h1":{"label": "Densite Seche Maximale (gd)", "unit": "g/cm3", "cmap": "copper_r", "vmin": 1.6, "vmax": 2.2, "horizon": "H1"},
-    "w_opt_ked_h1":  {"label": "Teneur en eau Optimale (w_opt)", "unit": "%", "cmap": "Blues", "vmin": 5, "vmax": 25, "horizon": "H1"},
-    "passant_2mm_ked_h1": {"label": "Passant 2mm", "unit": "%", "cmap": "YlGn", "vmin": 0, "vmax": 100, "horizon": "H1"},
-    "passant_80um_ked_h1": {"label": "Passant 80 um (fines)", "unit": "%", "cmap": "OrRd", "vmin": 0, "vmax": 100, "horizon": "H1"},
+    # CBR
+    "cbr_95_ked_h1": {"label": "CBR 95% Proctor", "unit": "%", "cmap": "RdYlGn", "vmin": 0, "vmax": 80, "horizon": "H1 (0-1 m)"},
+    # Gamma d
+    "gamma_d_ked_h1":{"label": "Densite Seche Maximale (gamma_d)", "unit": "g/cm3", "cmap": "copper_r", "vmin": 1.6, "vmax": 2.2, "horizon": "H1 (0-1 m)"},
+    # w_opt
+    "w_opt_ked_h1":  {"label": "Teneur en eau Optimale (w_opt)", "unit": "%", "cmap": "Blues", "vmin": 5, "vmax": 25, "horizon": "H1 (0-1 m)"},
+    # Passants granulometriques
+    "passant_2mm_ked_h1":  {"label": "Passant 2 mm", "unit": "%", "cmap": "YlGn", "vmin": 0, "vmax": 100, "horizon": "H1 (0-1 m)"},
+    "passant_2mm_ked_h2":  {"label": "Passant 2 mm", "unit": "%", "cmap": "YlGn", "vmin": 0, "vmax": 100, "horizon": "H2 (1-1.5 m)"},
+    "passant_2mm_ked_h3":  {"label": "Passant 2 mm", "unit": "%", "cmap": "YlGn", "vmin": 0, "vmax": 100, "horizon": "H3 (>1.5 m)"},
+    "passant_80um_ked_h1": {"label": "Passant 80 um (fines)", "unit": "%", "cmap": "OrRd", "vmin": 0, "vmax": 100, "horizon": "H1 (0-1 m)"},
+    "passant_80um_ked_h2": {"label": "Passant 80 um (fines)", "unit": "%", "cmap": "OrRd", "vmin": 0, "vmax": 100, "horizon": "H2 (1-1.5 m)"},
+    "passant_80um_ked_h3": {"label": "Passant 80 um (fines)", "unit": "%", "cmap": "OrRd", "vmin": 0, "vmax": 100, "horizon": "H3 (>1.5 m)"},
+    # Modules pressiometriques
+    "em_mpa_ked_h1": {"label": "Module Pressiometrique (Em)", "unit": "MPa", "cmap": "Spectral", "vmin": 0, "vmax": 30, "horizon": "H1 (0-1 m)"},
+    "em_mpa_ked_h3": {"label": "Module Pressiometrique (Em)", "unit": "MPa", "cmap": "Spectral", "vmin": 0, "vmax": 60, "horizon": "H3 (>1.5 m)"},
+    "pl_mpa_ked_h1": {"label": "Pression Limite (Pl)", "unit": "MPa", "cmap": "RdYlGn", "vmin": 0, "vmax": 2, "horizon": "H1 (0-1 m)"},
+    "pl_mpa_ked_h3": {"label": "Pression Limite (Pl)", "unit": "MPa", "cmap": "RdYlGn", "vmin": 0, "vmax": 4, "horizon": "H3 (>1.5 m)"},
+    # VfS — Prediction spectrale Sentinel-2 (source: atlas.maille_spectral_vfs)
+    "vbs_vfs":        {"label": "VBS — Prediction VfS-PLS (Sentinel-2)", "unit": "g/100g", "cmap": "YlOrRd",
+                       "horizon": "Surface (Sentinel-2)", "source": "spectral_vfs", "dynamic_range": True},
 }
 
 # ── Connexion DB ─────────────────────────────────────────────────────────────
@@ -101,6 +175,9 @@ def load_mailles_gdf(cur) -> gpd.GeoDataFrame:
 
 def load_values(cur, parameter_id: str) -> Dict[str, float]:
     """Charge les valeurs interpolees pour un parametre."""
+    meta = PARAM_META.get(parameter_id, {})
+    if meta.get("source") == "spectral_vfs":
+        return load_values_vfs(cur)
     print(f"  [LOAD] valeurs {parameter_id} ...", flush=True)
     cur.execute(
         "SELECT maille_id::text, value FROM atlas.ai_interpolation_values "
@@ -109,6 +186,24 @@ def load_values(cur, parameter_id: str) -> Dict[str, float]:
     )
     d = {r[0]: float(r[1]) for r in cur.fetchall()}
     print(f"  [LOAD] {len(d)} valeurs", flush=True)
+    return d
+
+
+def load_values_vfs(cur) -> Dict[str, float]:
+    """Charge les predictions VfS depuis atlas.maille_spectral_vfs (NaN exclus)."""
+    import math as _math
+    print("  [LOAD] valeurs VfS (spectral_vfs) ...", flush=True)
+    cur.execute("""
+        SELECT maille_id::text, vbs_vfs_pred
+        FROM atlas.maille_spectral_vfs
+        WHERE vbs_vfs_pred IS NOT NULL
+    """)
+    d = {}
+    for mid, val in cur.fetchall():
+        v = float(val)
+        if not _math.isnan(v):
+            d[mid] = v
+    print(f"  [LOAD] {len(d)} valeurs VfS (finies)", flush=True)
     return d
 
 
@@ -314,25 +409,38 @@ def render_map(
     # Separateur
     ax_info.axhline(0.73, color="#aaa", linewidth=0.8, xmin=0.05, xmax=0.95)
 
-    # Legende couleur (barre + labels)
-    n_ticks = 7
-    tick_vals = np.linspace(vmin, vmax, n_ticks)
+    # Legende couleur — placée ENTRE le bloc titre et les statistiques
+    # (entre y=0.73 et y=0.52 dans les coordonnées de ax_info)
     sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
     sm.set_array([])
 
-    # Cbar dans ax_info
-    cbar_ax = fig.add_axes([
-        ax_info.get_position().x0 + 0.01,
-        ax_info.get_position().y0 + 0.30,
-        0.028,
-        0.36,
-    ])
+    info_pos = ax_info.get_position()
+    # Colorbar : centrée dans ax_info, entre 52% et 72% de hauteur
+    cbar_x0  = info_pos.x0 + (info_pos.width - 0.032) / 2
+    cbar_y0  = info_pos.y0 + info_pos.height * 0.52
+    cbar_h   = info_pos.height * 0.20
+    cbar_ax  = fig.add_axes([cbar_x0, cbar_y0, 0.032, cbar_h])
     cb = fig.colorbar(sm, cax=cbar_ax, orientation="vertical")
-    cb.set_label(f"[{meta['unit']}]", fontsize=8)
-    cb.ax.tick_params(labelsize=7)
+    cb.set_label(f"[{meta['unit']}]", fontsize=7.5, labelpad=3)
+    cb.ax.tick_params(labelsize=6.5)
+
+    # Label colorbar à gauche de la barre
+    ax_info.text(
+        0.30, 0.715,
+        f"{vmax:.3g}",
+        transform=ax_info.transAxes, ha="right", va="top", fontsize=6.5, color="#333"
+    )
+    ax_info.text(
+        0.30, 0.525,
+        f"{vmin:.3g}",
+        transform=ax_info.transAxes, ha="right", va="bottom", fontsize=6.5, color="#333"
+    )
+
+    # Séparateur entre légende et stats
+    ax_info.axhline(0.50, color="#aaa", linewidth=0.8, xmin=0.05, xmax=0.95)
 
     # Statistiques
-    stats_y = 0.48
+    stats_y = 0.47
     stats = {
         "N mailles":  f"{len(gdf_data):,}",
         "Min":        f"{vals_arr.min():.3f} {meta['unit']}",
@@ -395,19 +503,39 @@ def render_map(
 # ── Main ─────────────────────────────────────────────────────────────────────
 
 TEST_PARAMS = [
-    "vbs_ked_h1",
-    "vbs_ked_h2",
-    "vbs_ked_h3",
-    "ip_ked_h1",
-    "wl_ked_h1",
-    "wp_ked_h1",
-    "eg_ked_h1",
-    "rd_mpa_ked_h1",
-    "rd_mpa_ked_h3",
-    "cbr_95_ked_h1",
-    "gamma_d_ked_h1",
-    "w_opt_ked_h1",
-    "passant_80um_ked_h1",
+    # VBS
+    "vbs_ked_h1", "vbs_ked_h2", "vbs_ked_h3",
+    # IP
+    "ip_ked_h1", "ip_ked_h2", "ip_ked_h3",
+    # WL
+    "wl_ked_h1", "wl_ked_h2", "wl_ked_h3",
+    # WP
+    "wp_ked_h1", "wp_ked_h2", "wp_ked_h3",
+    # EG
+    "eg_ked_h1", "eg_ked_h2", "eg_ked_h3",
+    # Rd
+    "rd_mpa_ked_h1", "rd_mpa_ked_h2", "rd_mpa_ked_h3",
+    # CBR, gamma_d, w_opt
+    "cbr_95_ked_h1", "gamma_d_ked_h1", "w_opt_ked_h1",
+    # Passants
+    "passant_80um_ked_h1", "passant_80um_ked_h2", "passant_80um_ked_h3",
+    "passant_2mm_ked_h1", "passant_2mm_ked_h2", "passant_2mm_ked_h3",
+    # Pressiometrique
+    "em_mpa_ked_h1", "em_mpa_ked_h3",
+    "pl_mpa_ked_h1", "pl_mpa_ked_h3",
+]
+
+# Parametres manquants prioritaires (ceux non encore dans exports_300dpi/)
+MISSING_PARAMS = [
+    "wl_ked_h2", "wl_ked_h3",
+    "wp_ked_h2", "wp_ked_h3",
+    "ip_ked_h2", "ip_ked_h3",
+    "eg_ked_h2", "eg_ked_h3",
+    "rd_mpa_ked_h2",
+    "passant_80um_ked_h2", "passant_80um_ked_h3",
+    "passant_2mm_ked_h1", "passant_2mm_ked_h2", "passant_2mm_ked_h3",
+    "em_mpa_ked_h1", "em_mpa_ked_h3",
+    "pl_mpa_ked_h1", "pl_mpa_ked_h3",
 ]
 
 
@@ -418,6 +546,7 @@ def main() -> int:
     parser.add_argument("--database-url", default=DB_DEFAULT)
     parser.add_argument("--param", default=None, help="Parametre a rendre (ex: vbs_ked_h1)")
     parser.add_argument("--all", action="store_true", help="Rendre tous les parametres de test")
+    parser.add_argument("--missing", action="store_true", help="Rendre uniquement les parametres manquants")
     parser.add_argument(
         "--out", default="./exports_300dpi",
         help="Repertoire de sortie (defaut: ./exports_300dpi)",
@@ -434,6 +563,8 @@ def main() -> int:
         params = [args.param]
     elif args.all:
         params = TEST_PARAMS
+    elif args.missing:
+        params = MISSING_PARAMS
     else:
         # Par defaut : les 5 plus representatifs
         params = ["vbs_ked_h1", "ip_ked_h1", "rd_mpa_ked_h1", "gamma_d_ked_h1", "cbr_95_ked_h1"]

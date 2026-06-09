@@ -2,7 +2,8 @@ ARG RUST_VERSION=1.86
 FROM rust:${RUST_VERSION} as builder
 ENV CARGO_TERM_COLOR=always
 ENV CARGO_NET_GIT_FETCH_WITH_CLI=true
-ENV CARGO_BUILD_JOBS=1
+# CARGO_BUILD_JOBS=1 était trop conservateur — laisser Cargo utiliser les coeurs dispo
+# (le build Docker n'est pas OOM sur une machine 28Go RAM)
 WORKDIR /app
 
 # Pre-build to cache dependencies
@@ -31,6 +32,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
     && pip3 install --no-cache-dir --break-system-packages 'PyKrige>=1.7.0' \
     && ln -sf /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf /usr/share/fonts/truetype/dejavu/DejaVuSans-Regular.ttf \
     && rm -rf /var/lib/apt/lists/*
+
+# ARCH-GPU-01 : Dépendances ML baked dans l'image — BuildKit cache évite le re-téléchargement
+# (~2GB au premier build, ~10s ensuite grâce au cache pip BuildKit)
+# tensorflow[and-cuda] embarque les libs CUDA pour GPU RTX 2050
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip3 install --break-system-packages \
+    pandas==2.0.3 \
+    scikit-learn==1.3.2 \
+    'tensorflow[and-cuda]>=2.15,<2.16' \
+    gpflow==2.10.1
+
 WORKDIR /app
 COPY --from=builder /out/api-geo /usr/local/bin/api-geo
 ENV RUST_LOG=info

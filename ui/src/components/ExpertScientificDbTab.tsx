@@ -354,16 +354,16 @@ function DonneesBrutesTab({ catalog, jobs, plotCache }: { catalog: Row[]; jobs: 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      try {
-        const [vData, covData] = await Promise.all([
-          tablesApi.getData('atlas', 'ai_variograms', 100, 0),
-          api.get<any>('/api/stats/coverage'),
-        ])
-        if (!cancelled) {
-          setVariograms(vData as Row[])
-          setCoverage((covData?.items ?? []) as Row[])
-        }
-      } catch { /* best effort */ }
+      // Promise.allSettled : si l'un échoue (ex: DB Manager désactivé),
+      // l'autre charge quand même (résilience individuelle)
+      const [vRes, covRes] = await Promise.allSettled([
+        tablesApi.getData('atlas', 'ai_variograms', 100, 0),
+        api.get<any>('/api/stats/coverage'),
+      ])
+      if (!cancelled) {
+        if (vRes.status === 'fulfilled') setVariograms(vRes.value as Row[])
+        if (covRes.status === 'fulfilled') setCoverage(((covRes.value as any)?.items ?? []) as Row[])
+      }
     })()
     return () => { cancelled = true }
   }, [])

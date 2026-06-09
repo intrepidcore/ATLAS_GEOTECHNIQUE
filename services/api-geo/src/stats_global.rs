@@ -320,3 +320,88 @@ pub async fn get_global_stats(
     })
     .into_response()
 }
+
+// ============================================================================
+// GET /stats/coverage — Couverture d'interpolation par paramètre
+// Utilisé par ExpertScientificDbTab.tsx (section Couverture)
+// Retourne { items: [ { parameter_id, method, n_mailles, coverage_pct, loo_rmse, status } ] }
+// ============================================================================
+
+#[derive(Debug, Serialize)]
+pub struct CoverageItem {
+    pub parameter_id: String,
+    pub method: String,
+    pub n_mailles: i64,
+    pub coverage_pct: f64,
+    pub loo_rmse: Option<f64>,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CoverageResponse {
+    pub items: Vec<CoverageItem>,
+}
+
+pub async fn get_stats_coverage(
+    State(state): State<AppState>,
+) -> impl IntoResponse {
+    let pool = &state.pool;
+
+    // Nombre total de mailles de référence
+    let total_mailles: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM atlas.mailles"
+    )
+    .fetch_one(pool)
+    .await
+    .unwrap_or(29407);
+
+    // Couverture par (parameter_id, method) depuis ai_interpolation_values
+    // Joint avec ai_variograms pour le LOO-RMSE si disponible
+    let rows = sqlx::query(
+        r#"
+        SELECT
+            iv.parameter_id,
+            iv.method,
+            COUNT(DISTINCT iv.maille_id)::bigint                        AS n_mailles,
+            COALESCE(AVG(v.loo_rmse), NULL)                             AS loo_rmse
+        FROM atlas.ai_interpolation_values iv
+        LEFT JOIN atlas.ai_variograms v ON v.parameter_id = iv.parameter_id
+        WHERE NOT COALESCE(iv.is_superseded, false)
+          AND iv.value IS NOT NULL
+        GROUP BY iv.parameter_id, iv.method
+        ORDER BY iv.parameter_id, iv.method
+        "#,
+    )
+    .fetch_all(pool)
+    .await
+    .unwrap_or_default();
+
+    let items: Vec<CoverageItem> = rows
+        .into_iter()
+        .map(|r| {
+            let n: i64 = r.try_get("n_mailles").unwrap_or(0);
+            let pct = if total_mailles > 0 {
+                (n as f64 / total_mailles as f64) * 100.0
+            } else {
+                0.0
+            };
+            let status = if pct >= 90.0 {
+                "complet".to_string()
+            } else if pct >= 10.0 {
+                "partiel".to_string()
+            } else {
+                "vide".to_string()
+            };
+            CoverageItem {
+                parameter_id: r.try_get("parameter_id").unwrap_or_default(),
+                method: r.try_get("method").unwrap_or_default(),
+                n_mailles: n,
+                coverage_pct: (pct * 10.0).round() / 10.0,
+                loo_rmse: r.try_get::<Option<f64>, _>("loo_rmse").ok().flatten(),
+                status,
+            }
+        })
+        .collect();
+
+    Json(CoverageResponse { items }).into_response()
+}

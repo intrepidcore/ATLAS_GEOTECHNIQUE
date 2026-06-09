@@ -93,19 +93,19 @@ La LOO-RMSE est calculée sur les **résidus** (valeurs mesurées − dérive a 
 
 ### WL (%) — plage physique [20–120]
 
-| Horizon | N points | LOO-RMSE KED pédologique | LOO-RMSE KED hiérarchique | Δ absolu | Gagnant |
-|---------|---------|:------------------------:|:--------------------------:|:--------:|:-------:|
-| **H1** | 112 | 13.6814 | **13.2133** | −0.468 | Hiérarchique |
-| **H2** | 110 | **11.7646** | 11.8627 | +0.098 | Pédologique |
-| **H3** | 111 | **10.7834** | 11.2639 | +0.481 | Pédologique |
+| Horizon | N points | LOO-RMSE KED pédologique | LOO-RMSE KED hiérarchique | Δ absolu |   Gagnant    |
+| ------- | -------- | :----------------------: | :-----------------------: | :------: | :----------: |
+| **H1**  | 112      |         13.6814          |        **13.2133**        |  −0.468  | Hiérarchique |
+| **H2**  | 110      |       **11.7646**        |          11.8627          |  +0.098  | Pédologique  |
+| **H3**  | 111      |       **10.7834**        |          11.2639          |  +0.481  | Pédologique  |
 
 ### WP (%) — plage physique [10–60]
 
-| Horizon | N points | LOO-RMSE KED pédologique | LOO-RMSE KED hiérarchique | Δ absolu | Gagnant |
-|---------|---------|:------------------------:|:--------------------------:|:--------:|:-------:|
-| **H1** | 112 | 8.3840 | **7.9493** | −0.435 | Hiérarchique |
-| **H2** | 108 | **7.8574** | 8.1465 | +0.291 | Pédologique |
-| **H3** | 109 | **7.7285** | 7.7420 | +0.014 | ≈égal |
+| Horizon | N points | LOO-RMSE KED pédologique | LOO-RMSE KED hiérarchique | Δ absolu |   Gagnant    |
+| ------- | -------- | :----------------------: | :-----------------------: | :------: | :----------: |
+| **H1**  | 112      |          8.3840          |        **7.9493**         |  −0.435  | Hiérarchique |
+| **H2**  | 108      |        **7.8574**        |          8.1465           |  +0.291  | Pédologique  |
+| **H3**  | 109      |        **7.7285**        |          7.7420           |  +0.014  |    ≈égal     |
 
 ### EG (%) — plage physique [0–20]
 

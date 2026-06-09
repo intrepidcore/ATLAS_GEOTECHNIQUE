@@ -33,7 +33,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
   // ── 4 FAMILLES SCIENTIFIQUES (roadmap Phase 3) ──────────────────────────────
   {
     id: 'couverture',
-    label: 'Couverture & instrumentation',
+    label: 'Couverture terrain',
     description: 'Densité de sondages, échantillons et essais par maille 2km×2km',
     icon: '',
     parameters: ['n_sondages', 'n_echantillons', 'n_essais_total', 'data_density'],
@@ -64,7 +64,7 @@ export const OBJECTIFS_METIER: ObjectifConfig[] = [
   },
   {
     id: 'insitu',
-    label: 'In-situ & contexte',
+    label: 'In-situ & pressiométrique',
     description: 'Essais en place (Rd, NSPT), altitude DSM — contexte géographique et géomécanique',
     icon: '',
     parameters: ['altitude_mean', 'ag_safety_factor', 'ag_cout_millions'],
@@ -1401,10 +1401,17 @@ const ML_BASE_PARAMS: Record<string, string[]> = {
 
 /** Filtres par objectif (quels base params sont pertinents pour chaque source ML). */
 const OBJECTIF_BASE_FILTER: Partial<Record<ObjectifMetier, string[] | null>> = {
-  couverture:    [],          // Pas de params ML pour la couverture (densité terrain)
-  argilosite:    ['vbs', 'ip', 'wl', 'wp', 'eg'],  // VBS + plasticité + gonflement
-  portance:      ['passant_80um', 'passant_2mm'],   // Granulo (Proctor non dispo ML)
-  insitu:        [],          // Pas de params ML pour in-situ / contexte
+  // couverture : densité terrain uniquement — pas de modèle ML
+  couverture:    [],
+  // argilosite : VBS + plasticité + gonflement — disponible L1-L4
+  argilosite:    ['vbs', 'ip', 'wl', 'wp', 'eg'],
+  // portance : CBR/γd/wopt = mesures labo non modélisables via KED/RK/MTGP.
+  // Les passant_80um/passant_2mm appartiennent à la granulométrie, pas à la portance.
+  // → ML ne modélise pas la portance : vide = message "données terrain uniquement".
+  portance:      [],
+  // insitu : Rd, NSPT, Em, Pl = mesures in-situ non modélisables par interpolation ML.
+  // → vide : message "données terrain uniquement".
+  insitu:        [],
   ia_ag:         null,        // null = tous les params disponibles pour la source
   personnalise:  null,
   // Legacy

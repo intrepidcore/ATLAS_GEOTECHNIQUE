@@ -929,194 +929,472 @@ export class SondagesListPanel {
     }
   }
 
+  // ─── Helpers visuels ───────────────────────────────────────────────────────
+
+  private renderSection(title: string, icon: string, content: string, count?: number): string {
+    const badge = count !== undefined
+      ? `<span style="background:#0a0e17;padding:2px 8px;border-radius:10px;font-size:11px;color:#94a3b8;">${count}</span>`
+      : '';
+    return `
+      <details open style="margin-bottom:14px;background:#1a2332;border:1px solid #22304d;border-radius:8px;overflow:hidden;">
+        <summary style="padding:12px 16px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;background:#22304d;user-select:none;">
+          <div style="display:flex;align-items:center;gap:8px;font-weight:600;color:#ecf2f8;font-size:13px;">
+            <span>${icon}</span> ${title} ${badge}
+          </div>
+          <span style="font-size:11px;color:#94a3b8;">▼</span>
+        </summary>
+        <div style="padding:14px;">${content}</div>
+      </details>`;
+  }
+
+  private renderTable(headers: string[], rows: any[], renderRow: (item: any) => string): string {
+    if (!rows || rows.length === 0)
+      return '<div style="color:#94a3b8;font-style:italic;text-align:center;padding:10px;font-size:12px;">Aucune donnée disponible</div>';
+    return `<div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;">
+        <thead><tr style="background:#0a0e17;color:#94a3b8;">
+          ${headers.map(h => `<th style="padding:7px 10px;text-align:left;border-bottom:1px solid #22304d;white-space:nowrap;">${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows.map(renderRow).join('')}</tbody>
+      </table></div>`;
+  }
+
+  private renderNa(label: string): string {
+    return `<div style="display:inline-block;padding:3px 10px;background:#1a2332;border:1px dashed #334155;border-radius:4px;font-size:11px;color:#475569;font-style:italic;">
+      ${label}: N/D</div>`;
+  }
+
+  /** Inline SVG — courbe granulométrique (PSD) logarithmique */
+  private renderPsdSvg(series: any[]): string {
+    if (!series || series.length === 0) return '';
+    const W = 520, H = 230, pL = 48, pR = 16, pT = 12, pB = 48;
+    const plotW = W - pL - pR, plotH = H - pT - pB;
+
+    const logMin = Math.log10(0.001), logMax = Math.log10(100);
+    const xOf = (s: number) => pL + (Math.log10(Math.max(s, 0.0005)) - logMin) / (logMax - logMin) * plotW;
+    const yOf = (p: number) => pT + plotH - (p / 100) * plotH;
+
+    // Axes graduations
+    const xTicks = [0.001, 0.002, 0.005, 0.01, 0.02, 0.063, 0.1, 0.2, 0.5, 1, 2, 5, 10, 20, 50, 100];
+    const yTicks = [0, 20, 40, 60, 80, 100];
+
+    const xGrid = xTicks.map(t => {
+      const x = xOf(t).toFixed(1);
+      return `<line x1="${x}" y1="${pT}" x2="${x}" y2="${pT + plotH}" stroke="#1f2d46" stroke-width="1"/>`;
+    }).join('');
+    const yGrid = yTicks.map(p => {
+      const y = yOf(p).toFixed(1);
+      return `<line x1="${pL}" y1="${y}" x2="${pL + plotW}" y2="${y}" stroke="#1f2d46" stroke-width="1"/>
+              <text x="${pL - 4}" y="${y}" text-anchor="end" dominant-baseline="middle" fill="#64748b" font-size="9">${p}</text>`;
+    }).join('');
+
+    // Zone labels (argile / limon / sable / gravier)
+    const zones = [
+      { x1: 0.001, x2: 0.002, label: 'A' },
+      { x1: 0.002, x2: 0.063, label: 'Limon' },
+      { x1: 0.063, x2: 2, label: 'Sable' },
+      { x1: 2, x2: 100, label: 'Gravier' },
+    ];
+    const zoneLines = zones.map((z, i) => {
+      const x1 = xOf(z.x1), x2 = xOf(z.x2);
+      const mid = ((x1 + x2) / 2).toFixed(1);
+      return `<text x="${mid}" y="${pT + plotH + 32}" text-anchor="middle" fill="#64748b" font-size="8">${z.label}</text>
+              ${i > 0 ? `<line x1="${x1.toFixed(1)}" y1="${pT}" x2="${x1.toFixed(1)}" y2="${pT + plotH}" stroke="#334155" stroke-width="1.5" stroke-dasharray="3,2"/>` : ''}`;
+    }).join('');
+
+    // X tick labels (selectively)
+    const xLabels = [0.002, 0.063, 0.5, 2, 10, 100].map(t => {
+      const x = xOf(t).toFixed(1);
+      return `<text x="${x}" y="${pT + plotH + 14}" text-anchor="middle" fill="#64748b" font-size="8">${t < 1 ? t : t}</text>`;
+    }).join('');
+
+    const colors = ['#4c6ef5', '#ff6b6b', '#51cf66', '#ff9f43', '#a29bfe', '#74c0fc'];
+    const curves = series.map((serie: any, i: number) => {
+      const pts: {sieve_mm: number; passing_pct: number}[] = (serie.points || []).filter((p: any) => p.sieve_mm > 0);
+      if (pts.length < 2) return '';
+      const sorted = [...pts].sort((a, b) => a.sieve_mm - b.sieve_mm);
+      const d = sorted.map((p, j) => `${j === 0 ? 'M' : 'L'} ${xOf(p.sieve_mm).toFixed(1)} ${yOf(p.passing_pct).toFixed(1)}`).join(' ');
+      const label = serie.depth_m !== undefined ? `z=${serie.depth_m}m` : `Série ${i + 1}`;
+      return `<path d="${d}" stroke="${colors[i % colors.length]}" stroke-width="2" fill="none" stroke-linejoin="round"/>
+              <text x="${pL + 4 + i * 70}" y="${pT + 10}" fill="${colors[i % colors.length]}" font-size="9">— ${this.escapeHtml(String(label))}</text>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;max-height:240px;display:block;">
+      <rect x="${pL}" y="${pT}" width="${plotW}" height="${plotH}" fill="#0a0e17" rx="2"/>
+      ${xGrid}${yGrid}
+      <text x="${pL - 28}" y="${pT + plotH / 2}" transform="rotate(-90 ${pL - 28} ${pT + plotH / 2})" text-anchor="middle" fill="#64748b" font-size="9">% Passant</text>
+      <text x="${pL + plotW / 2}" y="${H - 2}" text-anchor="middle" fill="#64748b" font-size="9">Diamètre (mm) — échelle log</text>
+      ${zoneLines}${xLabels}${curves}
+    </svg>`;
+  }
+
+  /** Inline SVG — profil CBR (profondeur vs CBR%) */
+  private renderCbrProfileSvg(cbrRows: any[]): string {
+    if (!cbrRows || cbrRows.length === 0) return '';
+    const rows95 = cbrRows.filter((r: any) => r.compactage_pct === 95 || !r.compactage_pct);
+    if (rows95.length === 0) return '';
+
+    const W = 300, H = 30 + rows95.length * 28 + 30;
+    const pL = 60, pR = 60, pT = 20;
+    const maxCbr = Math.max(...rows95.map((r: any) => r.cbr_pct || 0), 10);
+    const barW = W - pL - pR;
+
+    const bars = rows95.map((r: any, i: number) => {
+      const cbr = r.cbr_pct || 0;
+      const y = pT + i * 28;
+      const bw = Math.max(4, (cbr / maxCbr) * barW);
+      const color = cbr >= 80 ? '#51cf66' : cbr >= 30 ? '#ff9f43' : '#ff6b6b';
+      const depth = typeof r.depth_m === 'number' ? r.depth_m.toFixed(2) : '?';
+      return `<text x="${pL - 4}" y="${y + 14}" text-anchor="end" fill="#94a3b8" font-size="10">${depth}m</text>
+              <rect x="${pL}" y="${y + 4}" width="${bw.toFixed(1)}" height="18" fill="${color}" rx="2" opacity="0.85"/>
+              <text x="${pL + bw + 4}" y="${y + 14}" fill="#ecf2f8" font-size="10">${cbr}%</text>`;
+    }).join('');
+
+    return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:320px;height:auto;display:block;">
+      <text x="${W / 2}" y="13" text-anchor="middle" fill="#94a3b8" font-size="10">CBR (%) à 95% OPM</text>
+      ${bars}
+    </svg>`;
+  }
+
+  // ─── Vue détail sondage ──────────────────────────────────────────────────────
+
   private renderDetailsContent(modal: HTMLElement, s: any) {
     const isGeocoded = s.is_geocoded || false;
     const modeLabel = this.getLocationModeLabel(s.location_mode || 'unknown');
-    const coords = s.coordinates; // Structure {lat, lon} depuis l'API enrichie
+    const coords = s.coordinates;
 
-    // Sections helpers
-    const renderSection = (title: string, icon: string, content: string, count?: number) => `
-      <details open style="margin-bottom: 16px; background: #1a2332; border: 1px solid #22304d; border-radius: 8px; overflow: hidden;">
-        <summary style="padding: 12px 16px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; background: #22304d;">
-          <div style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #ecf2f8;">
-            <span>${icon}</span> ${title}
-            ${count !== undefined ? `<span style="background: #0a0e17; padding: 2px 8px; border-radius: 10px; font-size: 11px; color: #94a3b8;">${count}</span>` : ''}
-          </div>
-          <span style="font-size: 12px; color: #94a3b8;">▼</span>
-        </summary>
-        <div style="padding: 16px;">${content}</div>
-      </details>
-    `;
+    // Extraire résumé 11 paramètres ML
+    const atterberg: any[] = s.atterberg || [];
+    const vbsData: any[] = s.vbs || [];
+    const granulo: any[] = s.granulometrie || [];
+    const proctor: any[] = s.proctor || [];
+    const cbr: any[] = s.cbr || [];
+    const pression: any[] = s.pressiometre || [];
+    const penet: any[] = s.penetrometre || [];
+    const classif: any[] = s.classif || [];
+    const gonflement: any[] = s.gonflement || [];
+    const physiques: any[] = s.physiques || [];
+    const echantillons: any[] = s.echantillons || [];
 
-    // Tables helpers
-    const renderTable = (headers: string[], rows: any[], renderRow: (item: any) => string) => {
-      if (!rows || rows.length === 0) return '<div style="color: #94a3b8; font-style: italic; text-align: center; padding: 12px;">Aucune donnée disponible</div>';
-      return `
-        <div style="overflow-x: auto;">
-          <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-            <thead>
-              <tr style="background: #0a0e17; color: #94a3b8;">
-                ${headers.map(h => `<th style="padding: 8px; text-align: left; border-bottom: 1px solid #22304d;">${h}</th>`).join('')}
-              </tr>
-            </thead>
-            <tbody>
-              ${rows.map(renderRow).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    };
+    // Indicateurs 11 params
+    const has = (arr: any[]) => arr.length > 0;
+    const egAvailable = echantillons.some((e: any) => e.eg != null);
+    const param11: {label: string; available: boolean; value?: string}[] = [
+      { label: 'WL', available: atterberg.some((a: any) => a.wl != null) },
+      { label: 'WP', available: atterberg.some((a: any) => a.wp != null) },
+      { label: 'IP', available: atterberg.some((a: any) => a.ip != null) },
+      { label: 'VBS', available: has(vbsData) },
+      { label: 'EG', available: egAvailable },
+      { label: 'γd max', available: proctor.some((p: any) => p.gamma_d_max != null) },
+      { label: 'w_opt', available: proctor.some((p: any) => p.w_opt != null) },
+      { label: 'CBR₉₅', available: cbr.some((c: any) => c.cbr_pct != null) },
+      { label: 'Em (MPa)', available: pression.some((p: any) => p.em_mpa != null) },
+      { label: 'Pl (MPa)', available: pression.some((p: any) => p.pl_mpa != null) },
+      { label: 'Rd (MPa)', available: penet.some((p: any) => p.rd_mpa != null) },
+    ];
+
+    const param11Html = param11.map(p => {
+      const bg = p.available ? '#0b3d2e' : '#1a1a2e';
+      const border = p.available ? '#0bb07b' : '#334155';
+      const color = p.available ? '#0bb07b' : '#475569';
+      const icon = p.available ? '✓' : '—';
+      return `<div style="padding:6px 10px;background:${bg};border:1px solid ${border};border-radius:6px;text-align:center;min-width:70px;">
+        <div style="font-size:10px;color:${color};font-weight:600;">${icon}</div>
+        <div style="font-size:11px;color:${p.available ? '#ecf2f8' : '#475569'};margin-top:2px;">${p.label}</div>
+      </div>`;
+    }).join('');
+
+    // ── Sections de détail ────────────────────────────────────────────────────
+
+    // 1. Atterberg
+    const atterbergHtml = this.renderTable(
+      ['Prof. (m)', 'WL (%)', 'WP (%)', 'IP (%)'],
+      atterberg,
+      (item: any) => {
+        const ip = item.ip != null ? item.ip.toFixed(1) : '—';
+        const ipColor = item.ip != null ? (item.ip > 30 ? '#ff6b6b' : item.ip > 15 ? '#ff9f43' : '#51cf66') : '#94a3b8';
+        return `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+          <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+          <td style="padding:7px 10px;">${item.wl != null ? Number(item.wl).toFixed(1) : '—'}</td>
+          <td style="padding:7px 10px;">${item.wp != null ? Number(item.wp).toFixed(1) : '—'}</td>
+          <td style="padding:7px 10px;font-weight:600;color:${ipColor};">${ip}</td>
+        </tr>`;
+      }
+    );
+
+    // 2. VBS
+    const vbsHtml = this.renderTable(
+      ['Prof. (m)', 'VBS', 'Horizon'],
+      vbsData,
+      (item: any) => {
+        const vbsVal = item.vbs != null ? Number(item.vbs).toFixed(2) : '—';
+        const vbsColor = item.vbs != null ? (item.vbs > 1.5 ? '#ff6b6b' : item.vbs > 0.5 ? '#ff9f43' : '#51cf66') : '#94a3b8';
+        return `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+          <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+          <td style="padding:7px 10px;font-weight:600;color:${vbsColor};">${vbsVal}</td>
+          <td style="padding:7px 10px;color:#94a3b8;">${item.commentaire || '—'}</td>
+        </tr>`;
+      }
+    );
+
+    // 3. Granulométrie — courbe PSD + tableau récap
+    const granuloPoints = granulo.flatMap((g: any) =>
+      (g.points || []).map((p: any) => ({ ...p, depth_m: g.depth_m }))
+    );
+    const psdSvg = this.renderPsdSvg(granulo);
+    const granuloTableHtml = this.renderTable(
+      ['Prof. (m)', 'Méthode', 'Nb points', 'D10 (mm)', 'D50 (mm)', 'D90 (mm)'],
+      granulo,
+      (item: any) => {
+        const pts: any[] = [...(item.points || [])].sort((a: any, b: any) => a.sieve_mm - b.sieve_mm);
+        const interpolate = (target: number) => {
+          for (let i = 0; i < pts.length - 1; i++) {
+            if (pts[i].passing_pct <= target && pts[i + 1].passing_pct >= target) {
+              const t = (target - pts[i].passing_pct) / (pts[i + 1].passing_pct - pts[i].passing_pct);
+              return (pts[i].sieve_mm + t * (pts[i + 1].sieve_mm - pts[i].sieve_mm)).toFixed(3);
+            }
+          }
+          return '—';
+        };
+        return `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+          <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+          <td style="padding:7px 10px;color:#94a3b8;">${item.method || '—'}</td>
+          <td style="padding:7px 10px;">${pts.length}</td>
+          <td style="padding:7px 10px;">${pts.length >= 2 ? interpolate(10) : '—'}</td>
+          <td style="padding:7px 10px;font-weight:600;">${pts.length >= 2 ? interpolate(50) : '—'}</td>
+          <td style="padding:7px 10px;">${pts.length >= 2 ? interpolate(90) : '—'}</td>
+        </tr>`;
+      }
+    );
+    const granuloContent = (granulo.length > 0)
+      ? `${psdSvg}<div style="margin-top:10px;">${granuloTableHtml}</div>`
+      : '<div style="color:#94a3b8;font-style:italic;text-align:center;padding:10px;font-size:12px;">Aucune donnée disponible</div>';
+
+    // 4. Proctor
+    const proctorHtml = has(proctor)
+      ? this.renderTable(
+          ['Prof. (m)', 'Type', 'γd max (g/cm³)', 'w_opt (%)', 'Horizon'],
+          proctor,
+          (item: any) => `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+            <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+            <td style="padding:7px 10px;color:#94a3b8;">${item.proctor_type || '—'}</td>
+            <td style="padding:7px 10px;font-weight:600;color:#4c6ef5;">${item.gamma_d_max != null ? Number(item.gamma_d_max).toFixed(3) : '—'}</td>
+            <td style="padding:7px 10px;font-weight:600;color:#ff9f43;">${item.w_opt != null ? Number(item.w_opt).toFixed(1) : '—'}</td>
+            <td style="padding:7px 10px;color:#94a3b8;">${item.h_canon || '—'}</td>
+          </tr>`
+        )
+      : `<div style="display:flex;gap:12px;flex-wrap:wrap;">
+          ${this.renderNa('γd max')} ${this.renderNa('w_opt')}
+        </div>`;
+
+    // 5. CBR
+    const cbrSvg = this.renderCbrProfileSvg(cbr);
+    const cbrTableHtml = this.renderTable(
+      ['Prof. (m)', 'Compactage (%)', 'CBR (%)', 'γd (g/cm³)', 'w (%)', 'Horizon'],
+      cbr,
+      (item: any) => {
+        const cbrVal = item.cbr_pct != null ? Number(item.cbr_pct) : null;
+        const cbrColor = cbrVal != null ? (cbrVal >= 80 ? '#51cf66' : cbrVal >= 30 ? '#ff9f43' : '#ff6b6b') : '#94a3b8';
+        return `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+          <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+          <td style="padding:7px 10px;">${item.compactage_pct != null ? item.compactage_pct : '—'}</td>
+          <td style="padding:7px 10px;font-weight:600;color:${cbrColor};">${cbrVal != null ? cbrVal : '—'}</td>
+          <td style="padding:7px 10px;">${item.gamma_d_gcm3 != null ? Number(item.gamma_d_gcm3).toFixed(3) : '—'}</td>
+          <td style="padding:7px 10px;">${item.w_pct != null ? Number(item.w_pct).toFixed(1) : '—'}</td>
+          <td style="padding:7px 10px;color:#94a3b8;">${item.h_canon || '—'}</td>
+        </tr>`;
+      }
+    );
+    const cbrContent = has(cbr)
+      ? `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start;">
+          <div style="flex:0 0 auto;">${cbrSvg}</div>
+          <div style="flex:1;min-width:0;">${cbrTableHtml}</div>
+        </div>`
+      : `<div style="display:flex;gap:12px;flex-wrap:wrap;">${this.renderNa('CBR₉₅')}</div>`;
+
+    // 6. Pressiomètre
+    const pressHtml = has(pression)
+      ? this.renderTable(
+          ['Prof. (m)', 'Pf (MPa)', 'Pl (MPa)', 'Em (MPa)', 'Em/Pl', 'Horizon'],
+          pression,
+          (item: any) => `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+            <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+            <td style="padding:7px 10px;">${item.pf_mpa != null ? Number(item.pf_mpa).toFixed(2) : '—'}</td>
+            <td style="padding:7px 10px;font-weight:600;color:#4c6ef5;">${item.pl_mpa != null ? Number(item.pl_mpa).toFixed(2) : '—'}</td>
+            <td style="padding:7px 10px;font-weight:600;color:#51cf66;">${item.em_mpa != null ? Number(item.em_mpa).toFixed(2) : '—'}</td>
+            <td style="padding:7px 10px;color:#94a3b8;">${item.e_pl_ratio != null ? Number(item.e_pl_ratio).toFixed(2) : '—'}</td>
+            <td style="padding:7px 10px;color:#94a3b8;">${item.h_canon || '—'}</td>
+          </tr>`
+        )
+      : `<div style="display:flex;gap:12px;flex-wrap:wrap;">${this.renderNa('Em (MPa)')} ${this.renderNa('Pl (MPa)')}</div>`;
+
+    // 7. Pénétromètre
+    const penetHtml = has(penet)
+      ? this.renderTable(
+          ['Prof. (m)', 'Rd (MPa)', 'ELU (MPa)', 'ELS (MPa)', 'Horizon'],
+          penet,
+          (item: any) => {
+            const rd = item.rd_mpa != null ? Number(item.rd_mpa) : null;
+            const rdColor = rd != null ? (rd >= 20 ? '#51cf66' : rd >= 5 ? '#ff9f43' : '#ff6b6b') : '#94a3b8';
+            return `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+              <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+              <td style="padding:7px 10px;font-weight:600;color:${rdColor};">${rd != null ? rd.toFixed(2) : '—'}</td>
+              <td style="padding:7px 10px;">${item.elu_mpa != null ? Number(item.elu_mpa).toFixed(2) : '—'}</td>
+              <td style="padding:7px 10px;">${item.els_mpa != null ? Number(item.els_mpa).toFixed(2) : '—'}</td>
+              <td style="padding:7px 10px;color:#94a3b8;">${item.h_canon || '—'}</td>
+            </tr>`;
+          }
+        )
+      : `<div style="display:flex;gap:12px;flex-wrap:wrap;">${this.renderNa('Rd (MPa)')}</div>`;
+
+    // 8. Classification
+    const classifHtml = this.renderTable(
+      ['Prof. (m)', 'HRB', 'USCS', 'Type sol', 'Cg'],
+      classif,
+      (item: any) => `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+        <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+        <td style="padding:7px 10px;font-weight:600;">${item.hrb || '—'}</td>
+        <td style="padding:7px 10px;">${item.unified || '—'}</td>
+        <td style="padding:7px 10px;color:#94a3b8;">${item.type_sol || '—'}</td>
+        <td style="padding:7px 10px;">${item.cg != null ? Number(item.cg).toFixed(2) : '—'}</td>
+      </tr>`
+    );
+
+    // 9. Gonflement
+    const gonflHtml = this.renderTable(
+      ['Prof. (m)', 'Cg', 'Cg qual.', 'Type sol'],
+      gonflement,
+      (item: any) => `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+        <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+        <td style="padding:7px 10px;font-weight:600;color:#ff9f43;">${item.cg != null ? Number(item.cg).toFixed(2) : '—'}</td>
+        <td style="padding:7px 10px;">${item.cg_qual || '—'}</td>
+        <td style="padding:7px 10px;color:#94a3b8;">${item.type_sol || '—'}</td>
+      </tr>`
+    );
+
+    // 10. Physiques
+    const physHtml = this.renderTable(
+      ['Prof. (m)', 'ρd (g/cm³)', 'ρs (g/cm³)', 'w (%)'],
+      physiques,
+      (item: any) => `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+        <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+        <td style="padding:7px 10px;">${item.densite_apparente_gcm3 != null ? Number(item.densite_apparente_gcm3).toFixed(3) : '—'}</td>
+        <td style="padding:7px 10px;">${item.rho_s != null ? Number(item.rho_s).toFixed(3) : '—'}</td>
+        <td style="padding:7px 10px;">${item.teneur_eau_pct != null ? Number(item.teneur_eau_pct).toFixed(1) : '—'}</td>
+      </tr>`
+    );
+
+    // 11. Échantillons
+    const echHtml = this.renderTable(
+      ['Prof. (m)', 'Horizon', 'Labo', 'EG', 'ρs (g/cm³)', 'w (%)'],
+      echantillons,
+      (item: any) => `<tr style="border-bottom:1px solid #22304d;color:#ecf2f8;">
+        <td style="padding:7px 10px;">${Number(item.depth_m).toFixed(2)}</td>
+        <td style="padding:7px 10px;color:#94a3b8;">${item.h_canon || '—'}</td>
+        <td style="padding:7px 10px;color:#94a3b8;">${item.laboratory || '—'}</td>
+        <td style="padding:7px 10px;font-weight:600;">${item.eg != null ? Number(item.eg).toFixed(2) : '—'}</td>
+        <td style="padding:7px 10px;">${item.rho_s_gcm3 != null ? Number(item.rho_s_gcm3).toFixed(3) : '—'}</td>
+        <td style="padding:7px 10px;">${item.water_content_w != null ? Number(item.water_content_w).toFixed(1) : '—'}</td>
+      </tr>`
+    );
+
+    // ── Assemblage HTML ──────────────────────────────────────────────────────
 
     const html = `
-      <div style="background: #0a0e17; border: 1px solid #22304d; border-radius: 12px; width: 900px; max-width: 95vw; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 60px rgba(0,0,0,0.5);">
-        <!-- Header -->
-        <div style="padding: 20px; border-bottom: 1px solid #22304d; display: flex; justify-content: space-between; align-items: center; background: #1a2332; border-radius: 12px 12px 0 0;">
-          <div style="display: flex; align-items: center; gap: 16px;">
-            <div style="background: #0a0e17; width: 48px; height: 48px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 1px solid #22304d;">
-              📝
-            </div>
+      <div style="background:#0a0e17;border:1px solid #22304d;border-radius:12px;width:980px;max-width:96vw;max-height:92vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);">
+
+        <!-- En-tête -->
+        <div style="padding:16px 20px;border-bottom:1px solid #22304d;display:flex;justify-content:space-between;align-items:center;background:#1a2332;border-radius:12px 12px 0 0;flex-shrink:0;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="background:#0a0e17;width:44px;height:44px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:22px;border:1px solid #22304d;">📝</div>
             <div>
-              <h2 style="margin: 0 0 4px 0; color: #ecf2f8; font-size: 20px;">
-                ${this.escapeHtml(s.code || 'N/A')}
-              </h2>
-              <div style="display: flex; gap: 8px; align-items: center;">
-                <span style="font-size: 13px; color: #94a3b8;">${this.escapeHtml(s.localite || 'Localité inconnue')}</span>
-                <span style="color: #22304d;">|</span>
-                <span style="font-size: 12px; color: ${isGeocoded ? '#51cf66' : '#ff6b6b'}; font-weight: 600;">
-                  ${isGeocoded ? '✅ GÉOCODÉ' : '❌ NON GÉOCODÉ'}
-                </span>
+              <h2 style="margin:0 0 3px 0;color:#ecf2f8;font-size:18px;">${this.escapeHtml(s.code || 'N/A')}</h2>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <span style="font-size:12px;color:#94a3b8;">${this.escapeHtml(s.localite || s.adm3_name || 'Localité inconnue')}</span>
+                <span style="color:#334155;">|</span>
+                <span style="font-size:11px;color:${isGeocoded ? '#51cf66' : '#ff6b6b'};font-weight:600;">${isGeocoded ? '✅ GÉOCODÉ' : '❌ NON GÉOCODÉ'}</span>
               </div>
             </div>
           </div>
-          <button id="close-modal-btn" style="background: #22304d; border: none; color: #ecf2f8; width: 32px; height: 32px; border-radius: 6px; cursor: pointer; font-size: 18px; transition: background 0.2s;">
-            ✕
-          </button>
+          <button id="close-modal-btn" style="background:#22304d;border:none;color:#ecf2f8;width:30px;height:30px;border-radius:6px;cursor:pointer;font-size:16px;">✕</button>
         </div>
 
-        <!-- Scrollable Content -->
-        <div style="flex: 1; overflow-y: auto; padding: 24px;">
-          
-          <!-- 1. Informations Générales -->
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; margin-bottom: 24px;">
-            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
-              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px; font-weight: 600; text-transform: uppercase;">📍 Localisation</div>
-              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #ecf2f8;">
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: #94a3b8;">ADM3:</span>
-                  <span>${this.escapeHtml(s.adm3_name || '—')}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: #94a3b8;">Mode:</span>
-                  <span>${modeLabel}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: #94a3b8;">Coords (WGS84):</span>
-                  <span>${coords ? `${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}` : '—'}</span>
-                </div>
-                ${coords ? `
-                  <button class="zoom-btn" style="margin-top: 8px; padding: 6px; background: #4c6ef5; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; width: 100%;">
-                    🔍 Zoomer sur la carte
-                  </button>
-                ` : ''}
+        <!-- Contenu scrollable -->
+        <div style="flex:1;overflow-y:auto;padding:18px 22px;">
+
+          <!-- Résumé 11 paramètres ML -->
+          <div style="margin-bottom:18px;">
+            <div style="font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;font-weight:600;">▸ Paramètres interpolables (11)</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">${param11Html}</div>
+          </div>
+
+          <!-- Localisation + Métadonnées -->
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:18px;">
+            <div style="background:#1a2332;padding:14px;border-radius:8px;border:1px solid #22304d;">
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:10px;font-weight:600;text-transform:uppercase;">📍 Localisation</div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#ecf2f8;">
+                <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;">ADM3:</span><span>${this.escapeHtml(s.adm3_name || '—')}</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;">Mode:</span><span>${modeLabel}</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;">WGS84:</span><span style="font-family:monospace;">${coords ? `${coords.lat.toFixed(5)}, ${coords.lon.toFixed(5)}` : '—'}</span></div>
+                ${coords ? `<button class="zoom-btn" style="margin-top:6px;padding:5px;background:#4c6ef5;color:white;border:none;border-radius:4px;cursor:pointer;font-size:11px;width:100%;">🔍 Zoomer sur la carte</button>` : ''}
               </div>
             </div>
-
-            <div style="background: #1a2332; padding: 16px; border-radius: 8px; border: 1px solid #22304d;">
-              <div style="font-size: 12px; color: #94a3b8; margin-bottom: 12px; font-weight: 600; text-transform: uppercase;">📄 Métadonnées</div>
-              <div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: #ecf2f8;">
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: #94a3b8;">Source:</span>
-                  <span>${this.escapeHtml(s.source || '—')}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: #94a3b8;">Maille:</span>
-                  <span style="font-family: monospace; background: #0a0e17; padding: 2px 6px; border-radius: 4px;">${s.grid_code || '—'}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between;">
-                  <span style="color: #94a3b8;">Mis à jour:</span>
-                  <span>${s.updated_at ? new Date(s.updated_at).toLocaleDateString('fr-FR') : '—'}</span>
-                </div>
+            <div style="background:#1a2332;padding:14px;border-radius:8px;border:1px solid #22304d;">
+              <div style="font-size:11px;color:#94a3b8;margin-bottom:10px;font-weight:600;text-transform:uppercase;">📄 Métadonnées</div>
+              <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#ecf2f8;">
+                <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;">Source:</span><span>${this.escapeHtml(s.source || '—')}</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;">Maille:</span><code style="background:#0a0e17;padding:1px 5px;border-radius:3px;font-size:11px;">${s.grid_code || '—'}</code></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;">Modifié:</span><span>${s.updated_at ? new Date(s.updated_at).toLocaleDateString('fr-FR') : '—'}</span></div>
+                <div style="display:flex;justify-content:space-between;"><span style="color:#94a3b8;">Échantillons:</span><span>${echantillons.length}</span></div>
               </div>
             </div>
           </div>
 
-          <!-- 2. Essais Géotechniques -->
-          ${renderSection('Atterberg', '💧', renderTable(
-            ['Prof. (m)', 'WL', 'WP', 'IP', 'Class.'],
-            s.atterberg || [],
-            (item) => `
-              <tr style="border-bottom: 1px solid #22304d; color: #ecf2f8;">
-                <td style="padding: 8px;">${item.depth_m.toFixed(1)}</td>
-                <td style="padding: 8px;">${item.wl || '—'}</td>
-                <td style="padding: 8px;">${item.wp || '—'}</td>
-                <td style="padding: 8px; font-weight: 600; color: #4c6ef5;">${item.ip || '—'}</td>
-                <td style="padding: 8px;"><span style="background: #22304d; padding: 2px 6px; border-radius: 4px;">${item.classification || '—'}</span></td>
-              </tr>
-            `
-          ), s.atterberg?.length)}
+          <!-- Cat. 1: Plasticité (Atterberg) -->
+          ${this.renderSection('Plasticité — Atterberg', '💧', atterbergHtml, atterberg.length)}
 
-          ${renderSection('VBS', '🔵', renderTable(
-            ['Prof. (m)', 'VBS', 'Interprétation'],
-            s.vbs || [],
-            (item) => `
-              <tr style="border-bottom: 1px solid #22304d; color: #ecf2f8;">
-                <td style="padding: 8px;">${item.depth_m.toFixed(1)}</td>
-                <td style="padding: 8px; font-weight: 600;">${item.vbs?.toFixed(2) || '—'}</td>
-                <td style="padding: 8px; color: #94a3b8;">${item.interpretation || '—'}</td>
-              </tr>
-            `
-          ), s.vbs?.length)}
+          <!-- Cat. 2: VBS -->
+          ${this.renderSection('Activité argileuse — VBS', '🔵', vbsHtml, vbsData.length)}
 
-          ${renderSection('Granulométrie', '📊', renderTable(
-            ['Prof. (m)', 'D10', 'D30', 'D60', 'Cu', 'Cc', 'Type'],
-            s.granulometrie || [],
-            (item) => `
-              <tr style="border-bottom: 1px solid #22304d; color: #ecf2f8;">
-                <td style="padding: 8px;">${item.depth_m.toFixed(1)}</td>
-                <td style="padding: 8px;">${item.d10 || '—'}</td>
-                <td style="padding: 8px;">${item.d30 || '—'}</td>
-                <td style="padding: 8px;">${item.d60 || '—'}</td>
-                <td style="padding: 8px;">${item.cu || '—'}</td>
-                <td style="padding: 8px;">${item.cc || '—'}</td>
-                <td style="padding: 8px;">${item.type || '—'}</td>
-              </tr>
-            `
-          ), s.granulometrie?.length)}
+          <!-- Cat. 3: Granulométrie -->
+          ${this.renderSection('Granulométrie', '📊', granuloContent, granuloPoints.length)}
 
-          ${renderSection('Échantillons', '🧪', renderTable(
-            ['Prof. (m)', 'Type', 'Description'],
-            s.echantillons || [],
-            (item) => `
-              <tr style="border-bottom: 1px solid #22304d; color: #ecf2f8;">
-                <td style="padding: 8px;">${item.depth_m.toFixed(1)}</td>
-                <td style="padding: 8px;"><span style="background: #22304d; padding: 2px 6px; border-radius: 4px;">${item.type || '—'}</span></td>
-                <td style="padding: 8px; color: #94a3b8;">${item.description || '—'}</td>
-              </tr>
-            `
-          ), s.echantillons?.length)}
+          <!-- Cat. 4: Compactage Proctor -->
+          ${this.renderSection('Compactage — Proctor', '🔨', proctorHtml, proctor.length)}
+
+          <!-- Cat. 5: CBR -->
+          ${this.renderSection('CBR (Californian Bearing Ratio)', '🛣️', cbrContent, cbr.length)}
+
+          <!-- Cat. 6: Pressiomètre -->
+          ${this.renderSection('Pressiomètre', '📡', pressHtml, pression.length)}
+
+          <!-- Cat. 7: Pénétromètre -->
+          ${this.renderSection('Pénétromètre', '📌', penetHtml, penet.length)}
+
+          <!-- Cat. 8: Classification -->
+          ${this.renderSection('Classification géotechnique', '🏷️', classifHtml, classif.length)}
+
+          <!-- Cat. 9: Gonflement -->
+          ${this.renderSection('Potentiel de gonflement', '⚠️', gonflHtml, gonflement.length)}
+
+          <!-- Cat. 10: Propriétés physiques -->
+          ${this.renderSection('Propriétés physiques', '⚗️', physHtml, physiques.length)}
+
+          <!-- Cat. 11: Échantillons -->
+          ${this.renderSection('Échantillons', '🧪', echHtml, echantillons.length)}
 
         </div>
-      </div>
-    `;
+      </div>`;
 
     modal.innerHTML = html;
-
-    // Event listeners
     modal.querySelector('#close-modal-btn')?.addEventListener('click', () => modal.remove());
-    
+
     const zoomBtn = modal.querySelector('.zoom-btn');
     if (zoomBtn && coords) {
       zoomBtn.addEventListener('click', (e) => {
         e.stopPropagation();
         modal.remove();
-        
-        // Dispatch event to zoom on map
-        // This assumes we have a listener for this event in the main page or map component
-        const event = new CustomEvent('atlas:zoom-coord', { 
-          detail: { lat: coords.lat, lon: coords.lon, zoom: 14 } 
-        });
-        window.dispatchEvent(event);
-        console.log(`[DETAILS] Zoom sur ${s.code} à ${coords.lat}, ${coords.lon}`);
+        window.dispatchEvent(new CustomEvent('atlas:zoom-coord', { detail: { lat: coords.lat, lon: coords.lon, zoom: 14 } }));
       });
     }
   }

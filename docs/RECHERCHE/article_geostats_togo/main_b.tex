@@ -1,0 +1,1910 @@
+% !TeX program = xelatex
+%% NOT_YET_WRITTEN
+%% ============================================================
+%% MODÉLISATION PRÉDICTIVE HYBRIDE PAR GÉOSTATISTIQUE
+%% ET APPRENTISSAGE AUTOMATIQUE DES PARAMÈTRES GÉOTECHNIQUES
+%% NATIONAUX : APPLICATION AU TOGO
+%% Structure IMRaD complète — révision 2026
+%% ============================================================
+\documentclass[10pt,a4paper,twocolumn]{article}
+
+\usepackage[a4paper,top=2.2cm,bottom=2.2cm,left=1.5cm,right=1.5cm,
+columnsep=0.8cm]{geometry}
+\usepackage[french]{babel}
+\usepackage{csquotes}
+\usepackage{graphicx}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{bm}
+\usepackage{microtype}
+\usepackage{titlesec}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{placeins}
+\usepackage{afterpage}
+\usepackage{xcolor}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\hypersetup{hidelinks}
+\usepackage{float}
+\usepackage{fancyhdr}
+% Numerotation simple sans footer email (email sur page de titre uniquement)
+\pagestyle{plain}
+\usepackage{fontspec}
+\usepackage{newtxmath}
+\usepackage[style=ieee,backend=biber]{biblatex}
+\addbibresource{bibliographie.bib}
+
+\IfFontExistsTF{Times New Roman}{
+	\setmainfont{Times New Roman}
+}{\setmainfont{TeX Gyre Termes}}
+
+\titleformat{\section}{\normalfont\fontsize{11}{13}\bfseries}{\thesection.}{0.8em}{}
+\titleformat{\subsection}{\normalfont\fontsize{10}{12}\bfseries}{\thesubsection}{0.8em}{}
+\titleformat{\subsubsection}{\normalfont\fontsize{10}{12}\itshape}{\thesubsubsection}{0.6em}{}
+\titlespacing{\section}{0pt}{8pt}{4pt}
+\titlespacing{\subsection}{0pt}{6pt}{3pt}
+\titlespacing{\subsubsection}{0pt}{4pt}{2pt}
+\captionsetup{font=small,labelfont=bf,labelsep=endash,justification=justified}
+
+%% Commandes mathématiques
+\newcommand{\bZ}{\mathbf{Z}}
+\newcommand{\bs}{\mathbf{s}}
+\newcommand{\bK}{\mathbf{K}}
+\newcommand{\blambda}{\boldsymbol{\lambda}}
+\newcommand{\KED}{\text{KED-H}}
+\newcommand{\RK}{\text{RK-SCORPAN}}
+\newcommand{\BLUP}{\text{BLUP}}
+
+%% ── Titre ──────────────────────────────────────────────────────────────────
+\title{%
+	\vspace{-1.4cm}%
+	\fontsize{13}{15}\bfseries
+	MODÉLISATION PRÉDICTIVE HYBRIDE PAR GÉOSTATISTIQUE\\
+	ET APPRENTISSAGE AUTOMATIQUE DES PARAMÈTRES\\
+	GÉOTECHNIQUES NATIONAUX~: APPLICATION AU TOGO\\[4pt]
+	{\fontsize{10.5}{13}\normalfont\itshape
+		Cadre adaptatif L1--L4~: Krigeage Hiérarchique~5~niveaux,
+		Régression SCORPAN, Fusion Bayésienne BLUP,\\
+		Télédétection Sentinel-2, Processus Gaussien Multi-Tâches\\
+		(56\,600~km², 573~sondages, 11~paramètres, 29\,407~mailles~$2\times2$~km)}%
+}
+\author{%
+	\fontsize{10}{12}\normalfont
+	Freddy Yoan AMESSEFE\textsuperscript{1}
+	\quad\&\quad
+	Serge TABE DJATO\textsuperscript{1*}\\[4pt]
+	\fontsize{8.5}{11}\normalfont
+	\textsuperscript{1}Institut des Sciences Technologiques Économiques et
+	Administratives (FORMATEC), Génie Civil, Lomé, Togo.\\[2pt]
+	\fontsize{8}{10}\normalfont
+	\textsuperscript{*}Auteur correspondant~:
+	\texttt{serge.tdjato@gmail.com}
+}
+\date{}
+
+\begin{document}
+	
+	%% ── Résumé / Abstract ──────────────────────────────────────────────────────
+	\twocolumn[%
+	\maketitle
+	\vspace{-0.5cm}
+	\rule{\linewidth}{0.4pt}
+	\vspace{0.15cm}
+	
+	\noindent\small
+	\textbf{Résumé ---} \textit{%
+		La cartographie géotechnique nationale du Togo s'inscrit dans un paradigme
+		adaptatif~: 573~sondages géoréférencés sur 56\,600~km² constituent
+		la \emph{ligne de base initiale} d'un système de prédiction spatiale
+		ouvert, conçu pour s'auto-améliorer à chaque apport de données
+		complémentaires. Cet article présente la hiérarchie L1--L4 de modèles
+		interpolant onze paramètres géotechniques (VBS, IP, WL, WP, EG,
+		CBR\,95\%, $\gamma_d$, $w_{\mathrm{opt}}$, Rd, $E_m$, $P_l$)
+		sur 29\,407~mailles carrées (2~km~$\times$~2~km).
+		Le Krigeage avec Dérive Hiérarchique 5~niveaux (KED-H,~L1), intégrant
+		la carte nationale de risque de Retrait-Gonflement des Argiles (RGA)
+		comme covariable catégorielle prioritaire, atteint
+		LOO-RMSE(VBS,~H1)~$=$~3{,}147~g/100g~($n=113$),
+		LOO-RMSE(CBR\,95\%,~H1)~$=$~16{,}14\,\%~($n=117$),
+		LOO-RMSE(Rd,~H1)~$=$~3{,}45~MPa~($n=89$) et
+		LOO-RMSE($P_l$,~H3)~$=$~0{,}988~MPa~($n=26$).
+		La Régression Kriging SCORPAN~(L2a) domine sur 9~comparaisons sur~15.
+		La Fusion Bayésienne BLUP~(L2b) réduit la variance de
+		47{,}9\,\%~$\pm$~1{,}5\,\% (certifié mathématiquement dans 100\,\%
+		des mailles). Le module VfS-PLS Sentinel-2~(L3,
+		LOO-RMSE~$=$~2{,}788~g/100g~$<$~KED-H) établit la preuve de concept
+		d'une géotechnique sans laboratoire en milieu tropical.
+		Le MTGP/ICM~(L4) exploite les corrélations inter-paramètres
+		($r_{\mathrm{IP,WL}}=0{,}773$~; $r_{\gamma_d,w_{\mathrm{opt}}}=-0{,}684$)
+		pour améliorer les paramètres sous-documentés.
+		La forte variance locale identifie précisément les zones prioritaires
+		pour les investigations terrain futures, faisant de l'incertitude
+		un outil de planification d'échantillonnage adaptatif.
+	}
+	
+	\smallskip
+	\noindent\small
+	\textbf{Abstract ---} \textit{%
+		This paper presents an adaptive geotechnical prediction framework for
+		Togo, treating 573~georeferenced boreholes over 56\,600~km² as an
+		initial training baseline for a self-improving spatial model.
+		An L1--L4 hierarchy predicts eleven geotechnical parameters over 29,407
+		cells (2~km~$\times$~2~km). Hierarchical External Drift Kriging
+		(KED-H,~L1), integrating the national clay shrink-swell risk~(RGA)
+		layer as a priority categorical covariate, achieves
+		LOO-RMSE(VBS,H1)~$=$~3.147~g/100g and
+		LOO-RMSE($P_l$,H3)~$=$~0.988~MPa.
+		Bayesian BLUP fusion~(L2b) reduces kriging variance by
+		47.9\,\%~$\pm$~1.5\,\% in 100\,\% of cells.
+		High local variance maps where targeted field investigation
+		yields the greatest uncertainty reduction.
+	}
+	
+	\smallskip
+	\noindent\small
+	\textbf{Mots clés~:} Krigeage Externe Hiérarchique, SCORPAN,
+	Fusion Bayésienne, MTGP/ICM, RGA, CBR, $P_l$, Géotechnique, Togo.
+	
+	\vspace{0.15cm}
+	\rule{\linewidth}{0.4pt}
+	\vspace{0.3cm}
+	]
+	
+	%% ══════════════════════════════════════════════════════════════════════
+	%% SECTION 1 — INTRODUCTION
+	%% ══════════════════════════════════════════════════════════════════════
+	\section{Introduction}
+	\label{sec:intro}
+	
+	\subsection{Contexte et problématique}
+	\label{subsec:contexte}
+	
+	La conception des infrastructures civiles --- routes, ouvrages hydrauliques,
+	bâtiments --- repose sur la caractérisation géotechnique du sol, réalisée
+	par des investigations physiques coûteuses (sondages, essais en laboratoire,
+	essais in situ). Au Togo, la mutualisation de rapports issus de bureaux
+	d'études partenaires a permis de constituer une base de référence de
+	\textbf{573~sondages géoréférencés} sur un territoire de
+	56\,600~km² ($\rho \approx 1{,}01\times10^{-2}$~sondage~km$^{-2}$).
+	
+	Cette densité n'est pas présentée ici comme une lacune structurelle, mais
+	comme la \emph{ligne de base initiale} (\textit{baseline}) d'un système
+	de prédiction spatiale adaptatif~: les modèles sont entraînés et validés
+	sur ces données, et chaque nouvel apport --- campagne terrain, laboratoire
+	partenaire, intégration satellite --- déclenche automatiquement un recalcul
+	qui raffine les prédictions et réduit l'incertitude localement
+	\cite{mcbratney2003digital,brus2007sampling}.
+	
+	L'enjeu est double. D'une part, fournir un outil d'aide au
+	pré-dimensionnement géotechnique couvrant l'ensemble du territoire national
+	à la résolution 2~km~$\times$~2~km. D'autre part, \emph{identifier
+		précisément les zones de forte incertitude prédictive}~: là où la variance
+	locale $\sigma^2_K(\bs_0)$ est élevée, un sondage supplémentaire réduit
+	davantage l'incertitude cartographique qu'ailleurs --- logique
+	d'échantillonnage adaptatif fondée sur la théorie géostatistique
+	\cite{brus2007sampling}. La question passe de
+	``où manque-t-il des données ?'' à
+	``où un sondage supplémentaire serait-il le plus utile ?''
+	
+	Dans le contexte togolais, deux verrous spécifiques motivent la
+	hiérarchie L1--L4 proposée.
+	(i)~Les couches géologiques et pédo-géotechniques disponibles
+	(pédologie~FAO, géologie~BRGM, carte de risque de Retrait-Gonflement
+	des Argiles~--- RGA) offrent une information catégorielle multi-échelle
+	qui, encodée comme covariable de dérive, améliore la prédiction dans
+	les contextes géologiques bien documentés~\cite{odeh1994further}.
+	(ii)~Les onze paramètres géotechniques sont fortement corrélés entre eux
+	($r_{\mathrm{IP,WL}}=0{,}773$~; $r_{\mathrm{CBR},\gamma_d}=0{,}658$~;
+	$r_{\gamma_d,w_{\mathrm{opt}}}=-0{,}684$), de sorte que leur modélisation
+	indépendante constitue un gâchis d'information inter-paramètres corrigé
+	par le processus gaussien multi-tâches~(L4).
+	
+	La hiérarchie L1--L4 répond à ces verrous~:
+	\textbf{(L1)}~KED-H avec dérive hiérarchique 5~niveaux intégrant la RGA~;
+	\textbf{(L2a)}~Régression Kriging SCORPAN à régularisation Ridge~;
+	\textbf{(L2b)}~Fusion Bayésienne BLUP~;
+	\textbf{(L3)}~VfS-PLS Sentinel-2~;
+	\textbf{(L4)}~MTGP/ICM multi-tâches.
+	
+	\subsection{Rappels théoriques sur la géostatistique linéaire}
+	\label{sec:theorie}
+	
+	\subsubsection{Hypothèses de stationnarité}
+	
+	La géostatistique formalise l'intuition que des points proches dans
+	l'espace tendent à se ressembler --- propriété appelée
+	\emph{autocorrélation spatiale}.
+	La \textbf{stationnarité d'ordre~2} requiert une espérance constante
+	$\mathbb{E}[Z(\bs)]=m$ et une covariance ne dépendant que du vecteur
+	de séparation $\mathbf{h}$~:
+	$C(\mathbf{h})=\mathrm{Cov}[Z(\bs),Z(\bs+\mathbf{h})]$.
+	Le \textbf{semi-variogramme intrinsèque}, moins restrictif, s'applique
+	aux processus à variance infinie mais à différences stationnaires~:
+	\begin{equation}
+		\gamma(\mathbf{h})=\tfrac{1}{2}\,\mathrm{Var}
+		[Z(\bs+\mathbf{h})-Z(\bs)]
+		\label{eq:variogram}
+	\end{equation}
+	Dans les données togolaises, la stationnarité est vérifiée sur les
+	résidus après déduction de la dérive hiérarchique
+	$\mu_h(\bs)$~\eqref{eq:prior}.
+	
+	\subsubsection{Propriétés d'optimalité du krigeage}
+	
+	L'estimateur krigeage $Z^*(\bs_0)=\sum_i\lambda_i\,z(\bs_i)$ est
+	\textbf{MVUE}~(\textit{Minimum Variance Unbiased Estimator}) dans la
+	classe des interpolateurs linéaires non-biaisés.
+	Concrètement~: parmi tous les estimateurs qui sont à la fois linéaires
+	et exacts en espérance ($\sum_i\lambda_i=1$), le krigeage est celui
+	qui se trompe le moins en moyenne~--- analogie spatiale du
+	théorème de Gauss-Markov~\cite{chilesdelfiner2012}.
+	Pour tout autre estimateur linéaire non-biaisé $\tilde{Z}$,
+	$\mathrm{Var}[\tilde{Z}(\bs_0)]\geq\sigma^2_K(\bs_0)$.
+	
+	\subsubsection{Relation entre krigeage et régression}
+	
+	La \textbf{régression} prédit à partir de variables explicatives
+	(covariables)~: elle capture la tendance déterministe $m(\bs)$.
+	Le \textbf{krigeage ordinaire} interpole les résidus stochastiques~:
+	il capture la structure de corrélation spatiale résiduelle.
+	La \textbf{Régression Kriging}~(L2a) combine les deux en séparant
+	explicitement tendance déterministe (régression sur les covariables
+	SCORPAN) et résidus spatiaux (krigeage ordinaire).
+	
+	Dans le cadre du Krigeage avec Dérive Externe~(L1), la dérive
+	$\mu(\bs)=\mathbf{f}(\bs)^T\bm{\beta}$ est une fonction linéaire
+	de covariables~; les coefficients $\bm{\beta}$ sont estimés
+	conjointement avec les poids de krigeage. KED et RK convergent
+	vers le même estimateur BLUP lorsque la variance de la composante
+	de tendance est bien spécifiée~\cite{cressie1993statistics}.
+	
+	\subsubsection{Intervalles de prédiction vs intervalles de confiance}
+	
+	Un \emph{intervalle de confiance} localise la \emph{moyenne} de la
+	population (incertitude sur le paramètre moyen)~; un
+	\emph{intervalle de prédiction} localise la prochaine
+	\emph{observation individuelle} (incertitude sur une valeur spécifique).
+	
+	La variance de krigeage $\sigma^2_K(\bs_0)$ fournit directement
+	un intervalle de prédiction~:
+	\begin{equation}
+		P\!\bigl[Z(\bs_0)\in
+		Z^*(\bs_0)\pm1{,}96\,\sigma_K(\bs_0)\bigr]\approx95\%
+		\label{eq:ic95}
+	\end{equation}
+	sous hypothèse de gaussianité locale.
+	Cette variance est \emph{locale}~: elle dépend de la configuration
+	des voisins, pas de la valeur prédite, ce qui la distingue
+	d'un intervalle de régression classique.
+	La gaussianité est approximativement vérifiée pour WL, WP, IP,
+	CBR\,95\%, Rd, $E_m$ et $P_l$, mais non pour VBS
+	(asymétrie~2{,}41, distribution log-normale), justifiant
+	une transformation logarithmique comme perspective.
+	
+	%% ══════════════════════════════════════════════════════════════════════
+	%% SECTION 2 — MATÉRIEL ET MÉTHODES
+	%% ══════════════════════════════════════════════════════════════════════
+	\section{Matériel et Méthodes}
+	\label{sec:methodes}
+	
+	\subsection{Zone d'étude, données et contexte géologique}
+	\label{sec:donnees}
+	
+	\subsubsection{Territoire togolais et contraintes spatiales}
+	
+	Le Togo couvre 56\,600~km² entre 6°N et 11°N, articulé en cinq
+	régions physiographiques~:
+	\textbf{(1)~Maritime}~: alluvions quaternaires, smectites gonflantes,
+	VBS~$>6$~g/100g en moyenne~;
+	\textbf{(2)~Plateaux}~: ferralisols latéritiques,
+	profondeur d'altération 2--8~m, CBR~$>50$\,\%~;
+	\textbf{(3)~Centrale}~: gneiss et orthogneiss précambriens (800--900~m
+	d'altitude), Dépression de la Lama~;
+	\textbf{(4)~Kara}~: schistes et quartzites de l'Atacora,
+	forte hétérogénéité structurale~;
+	\textbf{(5)~Savanes}~: grès voltaïens, sols peu argileux,
+	CBR~$>60$\,\% fréquent.
+	
+	La grille nationale de prédiction comprend $N_g=29\,407$~mailles
+	carrées de 2~km~$\times$~2~km en projection UTM~31N
+	(EPSG:25231). Cette résolution constitue le compromis entre la portée
+	variographique ($a>175$~km pour tous les paramètres d'argilosité) et
+	les besoins opérationnels du pré-dimensionnement routier.
+	
+	\subsubsection{Base de données géotechniques}
+	
+	La base agrège \textbf{573~sondages géoréférencés} issus de rapports
+	géotechniques de bureaux d'études partenaires~:
+	Maritime~164, Centrale~213, Plateaux~160, Kara~18, Savanes~14.
+	
+	\textbf{Horizons canoniques.}
+	Les mesures sont agrégées selon la profondeur centroïde de
+	l'échantillon en trois horizons~:
+	\begin{itemize}[noitemsep]
+		\item \textbf{H1}~(0--1~m)~: couche de fondation courante des routes~;
+		paramètres les mieux documentés~;
+		\item \textbf{H2}~(1--1{,}5~m)~: zone de transition sol résiduel /
+		altérite, souvent sous-documentée~;
+		\item \textbf{H3}~($>$1{,}5~m)~: sol résiduel profond~;
+		essais in situ ($E_m$, $P_l$) et pénétrométriques (Rd) dominants.
+	\end{itemize}
+	
+	Le tableau~\ref{tab:stats_obs} récapitule les statistiques descriptives
+	des onze paramètres mesurés.
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{Statistiques descriptives des paramètres géotechniques
+			(tous horizons confondus, base de données 2026).
+			\textemdash~: $n\leq26$, statistiques non représentatives.}
+		\label{tab:stats_obs}
+		\setlength{\tabcolsep}{2pt}
+		\begin{tabular}{@{}lrrrrr@{}}
+			\toprule
+			Paramètre & $n$ & $\bar{x}$ & $\sigma$ & Méd. & Max \\
+			\midrule
+			VBS (g/100g)     & 329 & 4,27 & 3,90 & 3,33 & 28,9 \\
+			IP (\%)          & 356 & 21,4 & 10,0 & 20,4 & 61,9 \\
+			WL (\%)          & 357 & 41,3 & 12,1 & 41,8 & 72,9 \\
+			WP (\%)          & 353 & 19,6 & 7,7  & 18,9 & 42,0 \\
+			EG (\%)          & 327 & 4,30 & 1,82 & 4,19 & 10,2 \\
+			CBR\,95\% (\%)   & 434 & 30,1 & 19,0 & 30,0 & 132  \\
+			Rd (MPa)         & 411 & 12,7 & 15,5 & 6,7  & 106  \\
+			$\gamma_d$ (kN/m³) & 371 & 20,9 & 1,1 & 20,8 & 23,3 \\
+			$w_{\mathrm{opt}}$ (\%) & 371 & 8,8 & 2,1 & 8,2 & 17,2 \\
+			$E_m$ (MPa)      &  26 & 15,0 & 12,1 & 11,9 & 40,0 \\
+			$P_l$ (MPa)      &  26 & 1,69 & 0,98 & 1,78 & 3,81 \\
+			\bottomrule
+		\end{tabular}
+		\par\vspace{2pt}
+		{\footnotesize $E_m$, $P_l$~: pressiomètre~H3, $n=26$, zone Maritime.}
+	\end{table}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig17a_argilosite_boxplots.png}
+		\caption{Distribution des paramètres d'argilosité/plasticité.
+			VBS~: forte asymétrie positive (log-normale, asymétrie~2{,}41)~;
+			les valeurs extrêmes~$>$15~g/100g correspondent aux Vertisols
+			maritimes (smectites).
+			IP, WL, WP~: quasi-normaux.
+			EG~: distribution étroite ($\sigma=1{,}82$\,\%).}
+		\label{fig:boxplots}
+	\end{figure}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig17b_portance_boxplots.png}
+		\caption{Distribution des paramètres de portance et in-situ.
+			CBR\,95\%~: forte variabilité ($\sigma=19$\,\%, valeurs de 1\,\%
+			à 132\,\%).
+			$\gamma_d$~: très concentrée autour du Proctor standard
+			(~20{,}9~kN/m³).
+			Rd~: queue lourde ($>$100~MPa~= latérites indurées).
+			$E_m$ et $P_l$~: pressiomètre, mesures uniquement en H3,
+			$n=26$ seulement.}
+		\label{fig:boxplots_portance}
+	\end{figure}
+	
+	\subsubsection{Couches géologiques, pédologiques et risque RGA}
+	
+	Cinq couches spatiales à couverture nationale constituent les
+	covariables de dérive pour KED-H.
+	
+	\textbf{(1) Géologie BRGM (2019).}
+	120~polygones, 15~formations géologiques.
+	Détermine la minéralogie héritée~: smectites en zone maritime,
+	kaolinite sur les plateaux, minéraux primaires dans les massifs
+	cristallins.
+	
+	\textbf{(2) Pédologie FAO.}
+	61~polygones, 13~types.
+	Les Vertisols~(smectites dominantes) affichent
+	VBS~$\approx$8{,}7~g/100g contre 4{,}1 en moyenne nationale.
+	Les ferralsols des plateaux présentent systématiquement les CBR
+	les plus élevés ($>$50\,\%).
+	
+	\textbf{(3) Carte de risque RGA
+		(Retrait-Gonflement des Argiles).}
+	342~entités, 5~niveaux (nul, faible, moyen, fort, très fort)
+	\cite{chassagneux1996}.
+	La vectorisation et la modélisation de cette couche à partir
+	des cartes géologiques (Gnandi 2009, Sylvain 1986) et pédologiques
+	du Togo ont été réalisées par \textcite{bassafoula2025integration}
+	sous QGIS, avec un modèle de classification en 5~niveaux
+	d'aléa automatisé par calcul matriciel.
+	Cette couche est intégrée comme \textbf{covariable catégorielle
+		prioritaire au niveau~1} de la dérive hiérarchique
+	KED-H~\eqref{eq:prior}~: les zones à risque~``fort/très fort''
+	reçoivent automatiquement une moyenne de dérive corrigée vers
+	les valeurs élevées de VBS et EG, capturant physiquement la
+	susceptibilité au gonflement.
+	C'est l'originalité centrale de L1 par rapport aux approches
+	de krigeage ordinaire.
+	
+	\textbf{(4) Hydrogéologie.}
+	14~polygones qualifiant la profondeur de la nappe phréatique
+	(facteur critique pour EG et CBR en zone humide).
+	
+	\textbf{(5) Zones géomorphologiques spéciales.}
+	5~zones~: Oti, Mono, Fosse aux Lions, Dépression de la Lama,
+	piedmont de l'Atacora.
+	
+	La combinaison de ces couches définit
+	\textbf{79~contextes géologiques distincts}, chacun recevant
+	sa propre moyenne de dérive dans~\eqref{eq:prior}.
+	
+	\subsection{Calcul des covariables SCORPAN}
+	\label{sec:covariables}
+	
+	Le cadre SCORPAN~\cite{mcbratney2003digital} formalise le lien
+	entre propriétés du sol et variables environnementales mesurables
+	à l'échelle nationale.
+	Douze covariables continues sont calculées sur la grille nationale.
+	
+	\subsubsection{Modèle numérique de terrain (SRTM 30~m)}
+	
+	Le MNT SRTM à 30~m est agrégé à 2~km (bilinéaire).
+	Quatre dérivés topographiques sont calculés~:
+	\begin{itemize}[noitemsep]
+		\item \textbf{Altitude DSM}~: contrôle la profondeur d'altération et
+		la latérisation (corrélée négativement avec l'argilosité au-dessus
+		de 500~m)~;
+		\item \textbf{Pente~$\alpha$}~: quantifie le lessivage mécanique des
+		particules fines ($r_{\mathrm{pente,VBS}}=-0{,}31$)~;
+		\item \textbf{TPI à 5~km}~(\textit{Topographic Position Index})~:
+		indice d'accumulation des argiles dans les zones dépressionnaires~;
+		\item \textbf{HAND}~(\textit{Height Above Nearest Drainage})~:
+		proxy de la saturation hydrique, facteur critique pour EG
+		(gonflement) et CBR (portance).
+	\end{itemize}
+	
+	\subsubsection{Covariables climatiques (WorldClim v2.1)}
+	
+	Trois variables à 1~km de résolution, rééchantillonnées à 2~km~:
+	$P_{\mathrm{ann}}$~(BIO12, précipitation annuelle~: gradient N-S
+	de 1\,400~mm à 800~mm/an, principal déterminant de l'altération
+	chimique et du niveau de plasticité)~;
+	$P_{\mathrm{sèche}}$~(trimestre le plus sec, contrôle les cycles
+	retrait-gonflement, facteur EG et IP)~;
+	$\sigma_P$~(BIO15, saisonnalité, corrélée avec les fentes de
+	retrait et la plasticité saisonnière).
+	
+	\subsubsection{Covariables géologiques et pédologiques}
+	
+	Les variables catégorielles (géologie, pédologie, RGA) sont encodées
+	par contraste national~:
+	\begin{equation}
+		\mathrm{enc}(c)=\frac{\bar{z}_c-\bar{z}_{\mathrm{nat}}}{\sigma_{\mathrm{nat}}}
+		\label{eq:encoding}
+	\end{equation}
+	où $\bar{z}_c$ est la moyenne observée dans le contexte~$c$.
+	Deux coordonnées UTM (Est, Nord) complètent le jeu de covariables
+	en capturant les gradients spatiaux résiduels.
+	
+	\subsubsection{Résumé des covariables SCORPAN}
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{Les 12~covariables SCORPAN retenues.
+			Catégories~: $S$~sol, $C$~climat, $R$~relief, $P$~parental,
+			$N$~position.
+			Couverture spatiale~$\geq98{,}6$\,\% pour toutes les couches.}
+		\label{tab:covariables}
+		\setlength{\tabcolsep}{3pt}
+		\begin{tabular}{@{}p{2.0cm}p{1.6cm}cp{2.1cm}@{}}
+			\toprule
+			Variable & Source & Cat. & Pertinence physique \\
+			\midrule
+			Altitude DSM         & SRTM 30m    & R & Latérisation \\
+			Pente $\alpha$       & SRTM dérivé & R & Lessivage mécanique \\
+			TPI (5~km)           & SRTM dérivé & R & Accumulation argile \\
+			HAND                 & SRTM dérivé & R & Saturation hydrique \\
+			$P_{\mathrm{ann}}$   & WorldClim   & C & Altération chimique \\
+			$P_{\mathrm{sèche}}$ & WorldClim   & C & Retrait-gonflement \\
+			$\sigma_P$           & WorldClim   & C & Plasticité saisonnière \\
+			Géologie (enc.)      & BRGM 2019   & P & Minéralogie héritée \\
+			Pédologie (enc.)     & FAO         & S & Type d'argile \\
+			RGA (enc.)           & \cite{chassagneux1996} & S & Activité gonflante \\
+			Coord. Est           & UTM~31N     & N & Gradient W-E \\
+			Coord. Nord          & UTM~31N     & N & Gradient S-N \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\subsection{Formulations mathématiques des modèles}
+	\label{sec:modeles}
+	
+	Soit $Z(\bs)$ le champ aléatoire d'un paramètre géotechnique.
+	L'objectif est de prédire $Z(\bs_0)$ en tout point $\bs_0$ de la
+	grille nationale avec incertitude quantifiée~$\sigma^2(\bs_0)$.
+	
+	\subsubsection{L1 --- KED Hiérarchique (KED-H)}
+	\label{subsec:ked}
+	
+	KED-H décompose $Z(\bs)=\mu_h(\bs)+R(\bs)$, où $R(\bs)$ est un
+	résidu stationnaire de moyenne nulle. La dérive hiérarchique à
+	5~niveaux (priorité décroissante)~:
+	\begin{equation}
+		\mu_h(\bs)=\begin{cases}
+			\bar{z}_{\mathrm{RGA}}  & n_k\geq5\;\text{(classe RGA)} \\
+			\bar{z}_{\mathrm{zone}} & n_k\geq5\;\text{(zone géomorphologique)} \\
+			\bar{z}_{\mathrm{ped}}  & n_k\geq5\;\text{(type pédologique)} \\
+			\bar{z}_{\mathrm{géol}} & n_k\geq5\;\text{(formation géologique)} \\
+			\bar{z}_{\mathrm{nat}}  & \text{repli~: moyenne nationale}
+		\end{cases}
+		\label{eq:prior}
+	\end{equation}
+	encode 79~contextes géologiques. La RGA constitue le \emph{premier
+		niveau de priorité}~: les Vertisols RGA-fort reçoivent
+	$\bar{z}_{\mathrm{VBS}}\approx8{,}7$~g/100g contre
+	4{,}1~g/100g pour la moyenne nationale.
+	
+	L'estimateur KED-H est solution du système linéaire~:
+	\begin{equation}
+		\begin{pmatrix}\bK & \mathbf{F}\\
+			\mathbf{F}^T & \mathbf{0}\end{pmatrix}
+		\begin{pmatrix}\blambda\\\bm{\mu}\end{pmatrix}=
+		\begin{pmatrix}\mathbf{k}_0\\\mathbf{f}_0\end{pmatrix}
+		\label{eq:ked_system}
+	\end{equation}
+	avec $\bK_{ij}=C(\bs_i-\bs_j)$, $\mathbf{F}_{il}=f_l(\bs_i)$,
+	$\mathbf{k}_{0i}=C(\bs_i-\bs_0)$, $\mathbf{f}_{0l}=f_l(\bs_0)$.
+	La variance de krigeage~:
+	\begin{equation}
+		\sigma^2_{\KED}(\bs_0)=C(0)
+		-\blambda^T\mathbf{k}_0-\bm{\mu}^T\mathbf{f}_0
+		\label{eq:ked_var}
+	\end{equation}
+	est positive par construction et fournit les intervalles~\eqref{eq:ic95}.
+	Un modèle sphérique est ajusté aux résidus empiriques~:
+	$\gamma(h)=C_0+C\bigl[1{,}5h/a-0{,}5(h/a)^3\bigr]$ pour $h\leq a$.
+	Paramètres VBS~H1~: $C_0=2{,}8$, $C_0+C=14{,}0$, $a=220$~km.
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig02_variogram_vbs_h1.png}
+		\caption{Variogramme VBS~H1~: modèle sphérique ajusté
+			($C_0=2{,}8$, palier~14{,}0, portée~220~km).
+			Rapport pépite $C_0/(C_0+C)=0{,}20$~: 80\,\% de la variance
+			est structurée spatialement.
+			L'anisotropie N-S/E-O confirme l'influence du gradient climatique.}
+		\label{fig:variogram}
+	\end{figure}
+	
+	\subsubsection{L2a --- RK-SCORPAN}
+	\label{subsec:rk}
+	
+	La Régression Kriging modélise la tendance déterministe par
+	\emph{Régression Ridge} sur les 12~covariables~:
+	\begin{equation}
+		\hat{\bm{\beta}}=
+		\bigl(\mathbf{X}^T\mathbf{X}+\lambda_R\mathbf{I}\bigr)^{-1}
+		\mathbf{X}^T\mathbf{z}
+		\label{eq:ridge}
+	\end{equation}
+	La régularisation Ridge ($\lambda_R>0$) réduit la variance des
+	coefficients en présence de multicolinéarité entre covariables
+	(e.g., corrélation pente-altitude, $r=0{,}67$).
+	Le paramètre optimal $\lambda_R^*=0{,}18$ est calibré par
+	LOO-CV complète (figure~\ref{fig:ridge_cv}).
+	Le résidu est interpolé par krigeage ordinaire~:
+	\begin{equation}
+		Z^*_{\RK}(\bs_0)=\mathbf{x}(\bs_0)^T\hat{\bm{\beta}}
+		+Z^*_{\mathrm{OK}}\!\bigl(\hat{R};\bs_0\bigr)
+		\label{eq:rk_pred}
+	\end{equation}
+	
+	\subsubsection{L2b --- Fusion Bayésienne BLUP}
+	\label{subsec:fusion}
+	
+	La Fusion BLUP combine KED-H et RK-SCORPAN en pondérant
+	par l'inverse de la variance locale
+	$w_j(\bs_0)=1/\sigma^2_j(\bs_0)$~:
+	\begin{equation}
+		Z^*_{\BLUP} =
+		\frac{w_{\KED}Z^*_{\KED}+w_{\RK}Z^*_{\RK}}
+		{w_{\KED}+w_{\RK}}
+		\label{eq:blup}
+	\end{equation}
+	\begin{equation}
+		\sigma^2_{\BLUP} =
+		\tfrac{\sigma^2_{\KED}\sigma^2_{\RK}}
+		{\sigma^2_{\KED}+\sigma^2_{\RK}}
+		< \min(\sigma^2_{\KED},\sigma^2_{\RK})
+		\label{eq:blup_var}
+	\end{equation}
+	La propriété~\eqref{eq:blup_var} est certifiée mathématiquement
+	dans \textbf{100\,\% des mailles}~\cite{chilesdelfiner2012}.
+	
+	\subsubsection{L3 --- VfS-PLS (Sentinel-2)}
+	\label{subsec:vfs}
+	
+	Un composite médian Sentinel-2 (2023--2024) fournit 4~indices
+	spectraux~: indice argile $I_{\mathrm{argile}}=B_{11}/B_{12}$
+	(bandes SWIR), SWIR normalisé, NDVI, indice fer
+	$I_{\mathrm{Fe}}=(B_8-B_{11})/(B_8+B_{11})$
+	\cite{viscarra2006data}.
+	La régression PLS~(\textit{Partial Least Squares},
+	$q=3$~composantes optimisées par LOO-CV) exploite la structure
+	de covariance croisée entre le bloc spectral $\mathbf{X}$ et la
+	réponse $y$~(VBS). La variance prédictive est homoscédastique~:
+	$\hat{\sigma}^2_{\mathrm{VfS}}=\mathrm{RMSE}^2_{\mathrm{LOO}}$.
+	Ce modèle ne nécessite \emph{aucun sondage physique}, constituant
+	la preuve de concept d'une géotechnique par télédétection.
+	
+	\subsubsection{L4 --- Processus Gaussien Multi-Tâches (MTGP/ICM)}
+	\label{subsec:mtgp}
+	
+	Le Modèle de Coregionalisation Intrinsèque (ICM, rang~$r=2$)
+	\cite{journelhijbregts1978} paramètre la covariance conjointe
+	entre paramètres~:
+	\begin{equation}
+		\mathrm{Cov}[Z_d(\bs),Z_{d'}(\bs')]=
+		\sum_{l=1}^{r}a_{dl}\,a_{d'l}\,k_l(\bs,\bs')
+		\label{eq:icm}
+	\end{equation}
+	où $k_l$ est un noyau RBF de portée $\ell_l$.
+	Les coefficients $a_{dl}$ sont appris par descente de gradient
+	(Adam, 500~itérations, GPflow).
+	
+	Deux groupes de paramètres sont traités séparément~:
+	\begin{itemize}[noitemsep]
+		\item \textbf{Groupe~1 --- Plasticité}~:
+		VBS, IP, WL, WP, EG --- exploite
+		$r_{\mathrm{IP,WL}}=0{,}773$ et $r_{\mathrm{IP,EG}}=0{,}721$~;
+		\item \textbf{Groupe~2 --- Compactage}~:
+		CBR\,95\%, $\gamma_d$, $w_{\mathrm{opt}}$ --- exploite
+		la courbe Proctor~: $r_{\gamma_d,w_{\mathrm{opt}}}=-0{,}684$
+		et $r_{\mathrm{CBR},\gamma_d}=0{,}658$ ($N=386$).
+	\end{itemize}
+	
+	La dissociation en deux groupes est justifiée par l'absence de
+	corrélation croisée significative entre les deux familles~:
+	$r_{\mathrm{VBS,CBR}}=-0{,}12$, $r_{\mathrm{IP},\gamma_d}=0{,}08$
+	--- argilosité (nature minéralogique) et portance Proctor
+	(compacité mécanique) sont des propriétés orthogonales.
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{Corrélations de Pearson --- paramètres d'argilosité.
+			\textbf{Gras}~: $|r|>0{,}6$. Base de données 2026.}
+		\label{tab:correlations}
+		\begin{tabular}{lccccc}
+			\toprule
+			& VBS & IP & WL & WP & EG \\
+			\midrule
+			VBS & 1,000 & 0,319 & 0,254 & $-$0,024 & 0,363 \\
+			IP  & 0,319 & 1,000 & \textbf{0,773} & $-$0,062 & \textbf{0,721} \\
+			WL  & 0,254 & \textbf{0,773} & 1,000 & 0,586 & \textbf{0,671} \\
+			WP  & $-$0,024 & $-$0,062 & 0,586 & 1,000 & 0,143 \\
+			EG  & 0,363 & \textbf{0,721} & \textbf{0,671} & 0,143 & 1,000 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig04_correlation_matrix.png}
+		\caption{Matrices de corrélation de Pearson (base 2026).
+			\textit{(A)}~Argilosité~:
+			IP-WL ($r=0{,}773$) et IP-EG ($r=0{,}721$) justifient MTGP-1.
+			\textit{(B)}~Portance Proctor~:
+			$\gamma_d$-$w_{\mathrm{opt}}$ ($r=-0{,}684$, courbe Proctor)
+			et CBR-$\gamma_d$ ($r=0{,}658$) justifient MTGP-2.}
+		\label{fig:correlations}
+	\end{figure}
+	
+	\subsection{Implémentation algorithmique et architecture}
+	\label{sec:pipeline}
+	
+	\subsubsection{Infrastructure de données et pipeline hiérarchique}
+	
+	Le pipeline comprend cinq étapes séquentielles~:
+	\begin{enumerate}[noitemsep,label=\arabic*.]
+		\item \textbf{Import terrain}~: intégration des rapports avec
+		contrôle qualité (plages physiques, doublons géoréférencés
+		$<$50~m)~;
+		\item \textbf{Covariables SCORPAN}~: calcul des 12~covariables
+		sur la grille nationale (précalculées, mise à jour si nouveau
+		MNT disponible)~;
+		\item \textbf{Modèles L1--L4}~: entraînement et prédiction pour
+		11~paramètres $\times$ 3~horizons (33~surfaces + variances)~;
+		\item \textbf{Fusion BLUP}~: combinaison pondérée pour les
+		5~paramètres d'argilosité disposant de KED-H et RK~;
+		\item \textbf{Stockage}~: 441\,105~prédictions avec intervalles
+		de confiance à 95\,\%.
+	\end{enumerate}
+	
+	L'architecture est \emph{ouverte et auto-améliorante}~: chaque ajout
+	de sondages déclenche automatiquement la réévaluation LOO-CV et la
+	mise à jour des cartes. La figure~\ref{fig:pipeline} illustre les
+	flux de données.
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig08_pipeline_schema.png}
+		\caption{Architecture hiérarchique du pipeline L1--L4.
+			L1 et L2a alimentent L2b~(Fusion BLUP).
+			L3~(Sentinel-2) et L4~(MTGP) sont indépendants.
+			Les flèches grises~: boucle auto-améliorante (nouveaux sondages
+			$\to$ recalcul automatique).}
+		\label{fig:pipeline}
+	\end{figure}
+	
+	\subsubsection{Algorithme KED-H --- étapes}
+	
+	\begin{enumerate}[noitemsep,label=\arabic*.]
+		\item Assigner $\mu_h(\bs_i)$ selon~\eqref{eq:prior}
+		(RGA~$\to$~zone~$\to$~pédo~$\to$~géol~$\to$~national)~;
+		\item Calculer les résidus $r(\bs_i)=z(\bs_i)-\mu_h(\bs_i)$~;
+		\item Ajuster le variogramme sphérique sur les résidus empiriques
+		(15~classes de distance, moindres carrés non-linéaires)~;
+		\item Résoudre le système~\eqref{eq:ked_system} pour chaque
+		maille (voisinage mobile, 20~voisins max)~;
+		\item Reconstruire $Z^*(\bs_0)=\mu_h(\bs_0)+\sum_i\lambda_i r(\bs_i)$.
+	\end{enumerate}
+	
+	\subsubsection{Validation croisée Leave-One-Out rigoureuse}
+	
+	La performance est mesurée par~:
+	\begin{equation}
+		\mathrm{RMSE}_{\mathrm{LOO}}=\sqrt{\frac{1}{n}\sum_{i=1}^n
+			\bigl[z(\bs_i)-Z^*_{(-i)}(\bs_i)\bigr]^2}
+		\label{eq:loo}
+	\end{equation}
+	Pour RK-SCORPAN, le LOO-CV est \emph{complet}~: la régression
+	Ridge \emph{et} le krigeage des résidus sont ré-estimés à chaque
+	itération. Cette rigueur évite une sous-estimation de l'erreur
+	réelle de 15--30\,\% observée avec le LOO-CV partiel.
+	
+	\subsubsection{Calibration du paramètre Ridge}
+	
+	La calibration de $\lambda_R$ est réalisée par minimisation de
+	$\mathrm{RMSE}_{\mathrm{LOO}}$ sur la grille log-linéaire
+	$\lambda_R\in[10^{-4},10^2]$ (50~valeurs).
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig11_ridge_calibration.png}
+		\caption{Calibration Ridge par LOO-CV (VBS~H1).
+			(Gauche)~Courbe RMSE-$\lambda_R$~: optimum
+			$\lambda_R^*=0{,}18$.
+			(Droite)~Chemins de régularisation des 12~covariables~:
+			contraction progressive des coefficients à mesure que
+			$\lambda_R$ augmente.}
+		\label{fig:ridge_cv}
+	\end{figure}
+	
+	\subsubsection{Analyse des composantes PLS}
+	
+	Le nombre optimal de composantes PLS ($q=3$) est déterminé
+	par LOO-CV~: $q<3$ sous-exploite la variance spectrale~;
+	$q>3$ amplifie le bruit.
+	La composante~1 explique 68\,\% de la variance de VBS.
+	
+	\subsubsection{Paramètres variographiques par paramètre}
+	
+	Les paramètres du modèle sphérique pour les 5~paramètres
+	d'argilosité à H1 sont présentés en
+	Annexe~\ref{app:variogrammes}. On note des portées longues
+	($a=175$--310~km) indiquant une forte continuité spatiale
+	résiduelle, et des rapports pépite modérés (0{,}15--0{,}24)
+	confirmant que 75--85\,\% de la variance est structurée.
+	
+	%% ══════════════════════════════════════════════════════════════════════
+	%% SECTION 3 — RÉSULTATS
+	%% ══════════════════════════════════════════════════════════════════════
+	\section{Résultats}
+	\label{sec:resultats}
+	
+	\subsection{Validation et performances des modèles}
+	\label{subsec:loo_resultats}
+	
+	\subsubsection{Performance LOO-CV comparative}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig03_loo_rmse_comparison.png}
+		\caption{\textit{(A)}~LOO-RMSE KED-H~H1 pour tous les paramètres
+			(bleu~=~argilosité, rouge~=~portance/in-situ).
+			\textit{(B)}~Réduction relative RK~vs~KED pour les 5~paramètres
+			d'argilosité~($>0$ = RK meilleur).}
+		\label{fig:loo_rmse}
+	\end{figure}
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{LOO-RMSE~H1 --- paramètres d'argilosité.
+			\textbf{Gras}~= meilleur modèle.
+			Score sur 15~comparaisons (H1/H2/H3)~: annexe~\ref{app:loo_complet}.}
+		\label{tab:loo_rmse}
+		\begin{tabular}{lcccc}
+			\toprule
+			Param. & Unité & KED-H & RK-SCORPAN & VfS-PLS \\
+			\midrule
+			VBS & g/100g & 3,147          & \textbf{2,625} & 2,788 \\
+			IP  & \%     & \textbf{10,481}& 12,509         & ---   \\
+			WL  & \%     & \textbf{12,384}& 16,186         & ---   \\
+			WP  & \%     & 7,788          & \textbf{5,349} & ---   \\
+			EG  & \%     & 1,692          & \textbf{1,149} & ---   \\
+			\midrule
+			Score & & 2/5 & 3/5 & 1/5 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	Le tableau~\ref{tab:best_model} consolide le meilleur modèle
+	par paramètre sur l'ensemble des 11~propriétés géotechniques~:
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{Meilleur modèle par paramètre (LOO-RMSE minimal, H1).
+			Fusion~= KED-H~$+$~RK-SCORPAN (quand les deux sont disponibles).
+			$^\dagger$~: seul modèle calibré.
+			---~: $n<10$ à cet horizon.}
+		\label{tab:best_model}
+		\setlength{\tabcolsep}{2.5pt}
+		\begin{tabular}{llcc}
+			\toprule
+			Paramètre & Meilleur modèle & LOO-RMSE & Unité \\
+			\midrule
+			VBS            & Fusion / RK     & 2,625  & g/100g \\
+			IP             & Fusion / KED    & 10,481 & \%     \\
+			WL             & Fusion / KED    & 12,384 & \%     \\
+			WP             & Fusion / RK     & 5,349  & \%     \\
+			EG             & Fusion / RK     & 1,149  & \%     \\
+			CBR\,95\%      & KED$^\dagger$   & 16,14  & \%     \\
+			Rd             & KED$^\dagger$   & 3,45   & MPa    \\
+			$\gamma_d$     & KED$^\dagger$   & 1,41   & kN/m³  \\
+			$w_{\mathrm{opt}}$ & KED$^\dagger$ & 2,90 & \%     \\
+			$E_m$          & KED$^\dagger$   & ---    & MPa    \\
+			$P_l$          & KED$^\dagger$   & ---    & MPa    \\
+			\bottomrule
+			\multicolumn{4}{l}{\small $^\dagger$~RK non calibré pour ce paramètre.}
+		\end{tabular}
+	\end{table}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig06_loo_scatter_vbs.png}
+		\caption{Diagramme prédit~vs~observé (LOO-CV) VBS~H1~($n=113$).
+			Gauche~: KED-H (RMSE~$=3{,}147$).
+			Droite~: RK-SCORPAN (RMSE~$=2{,}625$).
+			Les points au-dessus de la bissectrice~= sous-estimation
+			dans les Vertisols ($\mathrm{VBS}>10$~g/100g).}
+		\label{fig:loo_scatter}
+	\end{figure}
+	
+	\subsubsection{Paramètres de portance et in-situ}
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{LOO-RMSE KED-H --- portance et essais in-situ, par horizon.
+			---~: $n<10$ à cet horizon.}
+		\label{tab:loo_v11}
+		\begin{tabular}{lcrrrr}
+			\toprule
+			Paramètre & Unité & $n_{H1}$ & H1 & H2 & H3 \\
+			\midrule
+			CBR\,95\%  & \%    & 117 & 16,14 & ---   & ---   \\
+			$\gamma_d$ & kN/m³ & 318 & 1,41  & ---   & ---   \\
+			$w_{\mathrm{opt}}$ & \% & 318 & 2,90 & --- & ---\\
+			Rd         & MPa   & 89  & 3,45  & 7,01  & 14,16 \\
+			$E_m$      & MPa   & --- & ---   & ---   & 13,31 \\
+			$P_l$      & MPa   & --- & ---   & ---   & 0,988 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\subsubsection{Dégradation de la précision avec la profondeur}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig10_loo_multihorizon.png}
+		\caption{LOO-RMSE KED-H par horizon (H1/H2/H3)~:
+			(A)~argilosité par horizon~;
+			(B)~VBS~: KED-H~vs~RK-SCORPAN~vs~VfS-PLS~;
+			(C)~portance/in-situ par horizon~;
+			(D)~profil de dégradation Rd~(rouge,~MPa)~vs~VBS~(bleu,~g/100g).}
+		\label{fig:multihorizon}
+	\end{figure}
+	
+	Trois comportements distincts sont observés~:
+	\textbf{(1)} Argilosité~: légère dégradation H1~$\to$~H2 ($+$8--12\,\%
+	sur RMSE), puis stabilisation à~H3, cohérente avec la faible
+	variabilité verticale des minéraux argileux dans les sols résiduels~;
+	\textbf{(2)} Rd pénétromètre~: forte dégradation H1~$\to$~H3
+	($3{,}45\to14{,}16$~MPa), reflétant l'hétérogénéité structurale de
+	l'altérite~;
+	\textbf{(3)} Anomalie RK à~H2 (RK $>$ KED pour VBS~: $4{,}81$
+	vs $3{,}20$~g/100g)~: les covariables SCORPAN de surface perdent
+	leur pouvoir prédictif dans la zone de transition altérite/substrat.
+	
+	\subsubsection{Réduction de variance par Fusion Bayésienne}
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{Variance moyenne de krigeage $\bar{\sigma}^2$ par
+			modèle~(H1). La Fusion est garantie inférieure dans
+			100\,\% des mailles.}
+		\label{tab:variance}
+		\begin{tabular}{lcccc}
+			\toprule
+			Param. & KED-H  & RK     & Fusion & Réduc. \\
+			\midrule
+			VBS & 12,45 & 10,60 & \textbf{5,73}  & 45,9\% \\
+			IP  & 90,99 & 79,87 & \textbf{42,33} & 47,0\% \\
+			WL  &174,15 &140,36 & \textbf{77,63} & 44,7\% \\
+			WP  & 54,54 & 60,37 & \textbf{28,70} & 47,4\% \\
+			EG  &  2,68 &  2,55 & \textbf{1,30}  & 48,8\% \\
+			\midrule
+			\multicolumn{3}{l}{\textbf{Moyenne}} &
+			\multicolumn{2}{r}{\textbf{47,9\,\%~$\pm$~1,5\,\%}} \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig05_variance_reduction.png}
+		\caption{Réduction de variance Fusion BLUP.
+			(Gauche) variance absolue log-transformée.
+			(Droite) réduction relative confirmant~\eqref{eq:blup_var}
+			dans 100\,\% des mailles.}
+		\label{fig:variance}
+	\end{figure}
+	
+	\subsubsection{Résultats VfS-PLS Sentinel-2}
+	
+	LOO-RMSE~$=$~2{,}788~g/100g $<$ KED-H~(3{,}147), sur
+	24\,038/29\,407~mailles (81{,}7\,\%), après masquage des cuirasses
+	ferrugineuses~(8{,}4\,\%) et alluvions récentes.
+	La composante PLS~1 est dominée par
+	$I_{\mathrm{argile}}=B_{11}/B_{12}$ (chargement~0{,}72),
+	confirmant la relation physique entre l'absorption SWIR et la
+	teneur en argiles gonflantes (kaolinite + smectite).
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig12_pls_loadings.png}
+		\caption{Chargements PLS~(3~composantes, VBS~H1).
+			CP1 dominée par $I_{\mathrm{argile}}$ (charg.~0{,}72).
+			Droite~: variance expliquée dans $\mathbf{X}$~(spectral)
+			et $y$~(VBS)~; 3~composantes~$\to$~68\,\% de la variance de VBS.}
+		\label{fig:pls}
+	\end{figure}
+	
+	\subsection{Prédictions spatiales et cartographie nationale}
+	\label{subsec:cartes}
+	
+	\subsubsection{Cartographie nationale}
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{Statistiques des prédictions sur la grille (H1,
+			29\,407~mailles).}
+		\label{tab:predictions_grille}
+		\begin{tabular}{llcc}
+			\toprule
+			Param. & Modèle & $\bar{Z}^*$ & $\sigma_{Z^*}$ \\
+			\midrule
+			VBS & KED-H       & 3,65  & 1,36 \\
+			VBS & RK-SCORPAN  & 3,80  & 2,20 \\
+			VBS & Fusion BLUP & 3,83  & 1,48 \\
+			IP  & KED-H       & 18,99 & 4,58 \\
+			WL  & KED-H       & 36,07 & 5,00 \\
+			WP  & KED-H       & 17,45 & 3,05 \\
+			EG  & KED-H       & 3,82  & 0,82 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\begin{figure*}[t]
+		\centering
+		\includegraphics[width=0.98\textwidth]{figures/fig07_maps_vbs_h1.png}
+		\caption{Cartes VBS~H1 selon les quatre modèles L1--L4 (grille 2×2).
+			\textit{Haut-gauche} KED-H~: structure pédologique et RGA
+			(fort VBS dans les Vertisols maritimes et Dépression de la Lama).
+			\textit{Haut-droite} RK-SCORPAN~: gradient climatique N-S
+			($P_{\mathrm{ann}}$ 1\,400~$\to$~800~mm/an).
+			\textit{Bas-gauche} Fusion BLUP~: combinaison à variance réduite
+			~\eqref{eq:blup_var}.
+			\textit{Bas-droite} MTGP/ICM~: co-krigeage multi-paramètres.}
+		\label{fig:maps}
+	\end{figure*}
+
+	\begin{figure*}[t]
+		\centering
+		\includegraphics[width=0.98\textwidth]{figures/fig19_maps_portance_cbr_rd.png}
+		\caption{Cartographie des paramètres de portance~H1 (pleine largeur).
+			\textit{Gauche}~: CBR\,95\%~Proctor~($n=117$)~;
+			zones côtières~CBR~$<15$\,\%~(smectites gonflantes, fort VBS).
+			\textit{Droite}~: Rd résistance dynamique~($n=89$)~;
+			contraste latérites indurées nord~($>40$~MPa) vs argiles molles sud.}
+		\label{fig:maps_portance}
+	\end{figure*}
+	
+	\subsubsection{Sélection de cartes haute résolution --- argilosité}
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig21a_vbs_ked_h1.png}
+		\caption{Carte VBS~(Valeur au Bleu de Méthylène, g/100g) ---
+			KED-H,~H1, 300~dpi, 2~km~$\times$~2~km.
+			Fort VBS dans les Vertisols maritimes et la Dépression de
+			la Lama~; faible VBS sur les quartzites du nord.}
+		\label{fig:map_vbs_300}
+	\end{figure}
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig21a_ip_ked_h1.png}
+		\caption{Carte IP~(Indice de Plasticité, \%) ---
+			KED-H,~H1, 300~dpi.
+			Corrélé avec VBS~($r=0{,}319$)~; zones marines et Lama
+			présentent IP~$>35$\,\%.}
+		\label{fig:map_ip_300}
+	\end{figure}
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig21a_wl_ked_h1.png}
+		\caption{Carte WL~(Limite de liquidité, \%) ---
+			KED-H,~H1, 300~dpi.
+			Gradient N-S marqué~: 1\,400~mm/an de précipitation au sud
+			contre 800~mm au nord~($r_{WL,P_{\mathrm{ann}}}=0{,}44$).}
+		\label{fig:map_wl_300}
+	\end{figure}
+
+	\subsubsection{Sélection de cartes haute résolution --- portance}
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig21b_cbr_95_ked_h1.png}
+		\caption{Carte CBR\,95\%~Proctor~(\%) ---
+			KED-H,~H1, 300~dpi.
+			Les zones côtières ($<15$\,\%) correspondent aux VBS les
+			plus élevés~; les plateaux ferrallitiques affichent
+			CBR~$>60$\,\%.}
+		\label{fig:map_cbr_300}
+	\end{figure}
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig21b_rd_mpa_ked_h1.png}
+		\caption{Carte Rd~(Résistance dynamique pénétromètre, MPa) ---
+			KED-H,~H1, 300~dpi.
+			Forte variabilité~: cuirasses latéritiques du nord
+			(Rd~$>$40~MPa) vs argiles molles maritimes (Rd~$<5$~MPa).}
+		\label{fig:map_rd_300}
+	\end{figure}
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig21b_gamma_d_ked_h1.png}
+		\caption{Carte $\gamma_d$~(Densité sèche optimale Proctor,
+			kN/m³) --- KED-H,~H1, 300~dpi.
+			Distribution très concentrée autour de 20{,}9~kN/m³~;
+			valeurs plus élevées sur les formations schisteuses compactes.}
+		\label{fig:map_gd_300}
+	\end{figure}
+
+	
+	\subsubsection{Profil de prédiction et incertitude spatiale}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig09_transect_uncertainty.png}
+		\caption{Transect N-S (6°N--11°N) VBS~H1~:
+			intervalles de prédiction 95\,\% ($\pm2\sigma_K$).
+			Fusion BLUP~: enveloppe la plus étroite sur tout le territoire.
+			Kara/Savanes~: forte variance~= priorité d'échantillonnage adaptatif.}
+		\label{fig:transect}
+	\end{figure}
+	
+	\subsubsection{Représentation 3D --- VBS stratigraphique}
+
+	Les cartes stratigraphiques superposées (type~B) révèlent la
+	\emph{persistance verticale} des structures argileuses.
+	Pour le VBS, les zones marines et la Dépression de la Lama
+	maintiennent des valeurs~$>8$~g/100g sur les trois horizons~H1--H3,
+	confirmant que les smectites gonflantes sont ancrées en profondeur
+	et non limitées à la couche de surface. À l'inverse, la région de
+	Kara affiche un VBS décroissant de~H1 à~H3, cohérent avec un profil
+	d'altération superficielle sur substrat quartzitique peu argileux.
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig22_vbs_B_strati.png}
+		\caption{Cartes stratigraphiques superposées --- VBS (g/100g),
+			horizons H1/H2/H3.
+			La continuité verticale des argiles smectitiques maritimes est
+			nettement visible~: les zones rouge foncé (VBS~$>8$) persistent
+			sur les trois horizons dans la zone maritime et la Dépression
+			de la Lama.}
+		\label{fig:vbs_strati}
+	\end{figure}
+	
+	Les coupes transversales E-O (type~C) quantifient le profil
+	d'altération vertical. La coupe méridionale (6°N--8°N) montre
+	une décroissance du VBS de~H1 à~H3 sur les gneiss de la Centrale,
+	reflétant la kaolinitisation progressive en profondeur.
+	En revanche, sur la zone maritime, le VBS reste élevé
+	sur l'ensemble de la colonne, témoignant d'une minéralogie
+	smectitique homogène indépendante de la profondeur.
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig23_vbs_C_fence.png}
+		\caption{Coupes transversales (fence diagram) --- VBS (g/100g).
+			La coupe E-O révèle le profil d'altération~: passage de valeurs
+			élevées en surface (H1) à des valeurs plus uniformes en profondeur
+			(H3), cohérent avec la kaolinitisation croissante en profondeur.}
+		\label{fig:vbs_fence}
+	\end{figure}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig24_vbs_D_isoval.png}
+		\caption{Surfaces isovaleur VBS~$=3{,}5$~g/100g (limite classe~A3,
+			NF~P~11-300).
+			Le volume délimité identifie les zones à risque de gonflement
+			potentiel modéré à élevé dans les trois horizons simultanément.}
+		\label{fig:vbs_isoval}
+	\end{figure}
+	
+	La surface isovaleur VBS~$=3{,}5$~g/100g (type~D) délimite
+	le volume géotechnique à risque de gonflement modéré à élevé
+	(frontière classe~A3/A4, NF~P~11-300).
+	Ce volume couvre~$\approx22$\,\% du territoire sur~H1 et se réduit
+	à~$\approx14$\,\% sur~H3, confirmant que le risque diminue mais
+	persiste en profondeur dans les contextes smectitiques.
+
+	\subsubsection{Représentation 3D --- IP stratigraphique}
+
+	L'Indice de Plasticité~(IP) présente une structure 3D très similaire
+	à celle du VBS, cohérente avec la corrélation modérée entre les deux
+	paramètres ($r=0{,}319$). Cependant, les contrastes IP sont plus
+	marqués au sein des Vertisols (IP~$>35$\,\% sur~H1, H2 et~H3),
+	ce qui confirme que la plasticité élevée n'est pas un artefact
+	de surface mais une propriété structurale profonde de ces sols.
+	Les plateaux ferrallitiques, en revanche, montrent une inversion~:
+	l'IP croît légèrement de~H1 à~H3 (kaolinite secondaire plus
+	plastique que le matériau de surface partiellement induré).
+
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig25_ip_B_strati.png}
+		\caption{Cartes stratigraphiques superposées --- IP (\%),
+			horizons H1/H2/H3.
+			IP~$>35$\,\% dans les Vertisols de la Dépression de la Lama
+			(zone centrale-sud, persistant sur les trois horizons).
+			La classification NF~P~11-300 classe~B4 (IP~$>40$\,\%)
+			n'est atteinte que localement.}
+		\label{fig:ip_strati}
+	\end{figure}
+	
+	La coupe transversale IP (type~C) confirme la transition est-ouest
+	entre la zone maritime (IP~$>30$\,\%) et le massif cristallin central
+	(IP~$<15$\,\%). Cette discontinuité correspond physiquement à la limite
+	entre argiles smectitiques côtières et kaolinites du socle.
+	La coupe N-S révèle le gradient pluviométrique~: les sols du sud,
+	soumis à 1\,400~mm/an, développent un IP structurellement plus
+	élevé que ceux du nord~(800~mm/an).
+
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig26_ip_C_fence.png}
+		\caption{Coupes transversales --- IP (\%).
+			Coupe E-O~: transition nette entre la zone maritime
+			(IP~$>30$\,\%) et le massif cristallin central (IP~$<15$\,\%).
+			La coupe N-S reflète le gradient pluviométrique~\cite{hengl2007regression}.}
+		\label{fig:ip_fence}
+	\end{figure}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig27_ip_D_isoval.png}
+		\caption{Surface isovaleur IP~$=25$\,\% (limite classe~B4,
+			NF~P~11-300).
+			Le volume identifie les zones nécessitant un traitement à la chaux
+			avant compactage routier, couvrant~$\approx18$\,\% du territoire
+			en H1.}
+		\label{fig:ip_isoval}
+	\end{figure}
+
+	La surface isovaleur IP~$=25$\,\% (type~D) délimite les zones
+	exigeant un traitement à la chaux avant compactage routier
+	(norme NF~P~98-114). Ce volume représente~$\approx18$\,\% du
+	territoire en~H1, mais monte à~$\approx24$\,\% en~H3, indiquant
+	que la plasticité augmente en profondeur dans les zones smectitiques.
+	Ces résultats ont une implication directe pour le dimensionnement
+	des terrassements~: les projets de grande fouille (fondations
+	profondes, tunnels) doivent intégrer ce gradient IP croissant.
+
+	\subsection{Analyse de sensibilité et robustesse}
+	\label{subsec:sensibilite}
+	
+	\subsubsection{Sensibilité au modèle variographique}
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{Sensibilité au modèle variographique (VBS~H1).}
+		\label{tab:sensibilite_variogram}
+		\begin{tabular}{lcccc}
+			\toprule
+			Modèle $\gamma(h)$ & $C_0$ & $C_0+C$ & $a$ (km) & RMSE \\
+			\midrule
+			Sphérique (retenu) & 2,80 & 14,0 & 220 & 3,147 \\
+			Exponentiel        & 2,65 & 13,5 & 185 & 3,161 \\
+			Gaussien           & 3,10 & 14,8 & 175 & 3,218 \\
+			Matérn 3/2         & 2,72 & 13,8 & 198 & 3,153 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	La différence entre modèles est inférieure à 2{,}4\,\%, robustesse
+	caractéristique des portées $a>150$~km~\cite{lark2000kriging}.
+	
+	\subsubsection{Sensibilité à la taille de l'échantillon}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig15_learning_curve.png}
+		\caption{Courbe d'apprentissage LOO-RMSE VBS~H1
+			($B=50$~répétitions bootstrap).
+			Plancher KED-H~$\approx2{,}75$~g/100g atteint vers $n\approx150$~;
+			saturation liée à la portée variographique de 220~km,
+			non à un manque absolu de données.
+			La zone verte marque le régime de saturation actuel.
+			Ligne pointillée~: $n=113$~(effectif actuel VBS~H1).}
+		\label{fig:learning_curve}
+	\end{figure}
+	
+	La relation $\mathrm{RMSE}(n)\approx4{,}8\,e^{-n/28}+2{,}75$
+	confirme que de nouveaux sondages dans les zones Kara/Savanes
+	(hors de la zone de saturation) réduisent davantage l'incertitude
+	que des sondages supplémentaires en zones déjà denses.
+	
+	\subsubsection{Influence du paramètre de régularisation}
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{Sensibilité de RK-SCORPAN à $\lambda_R$
+			(VBS~H1, 29\,407~mailles).}
+		\label{tab:sensibilite_ridge}
+		\begin{tabular}{ccccc}
+			\toprule
+			$\lambda_R$ & $\bar{Z}^*$ & $\sigma_{Z^*}$ & RMSE$_{\mathrm{LOO}}$ & $\Delta\sigma^2$ \\
+			\midrule
+			0,05  & 3,82 & 2,41 & 2,661 & $+$8,3\% \\
+			0,18* & 3,80 & 2,20 & 2,625 & 0        \\
+			1,00  & 3,74 & 1,85 & 2,744 & $-$5,8\% \\
+			\bottomrule
+			\multicolumn{5}{l}{\small *~Valeur retenue.}
+		\end{tabular}
+	\end{table}
+	
+	\subsubsection{Performance par région administrative}
+	
+	\begin{table}[htbp]
+		\centering\small
+		\caption{LOO-RMSE VBS~H1 par région. $n$~= sondages.}
+		\label{tab:perf_region}
+		\begin{tabular}{lccc}
+			\toprule
+			Région & $n$ & KED-H & RK-SCORPAN \\
+			\midrule
+			Maritime          & 164 & 2,52  & 2,29  \\
+			Plateaux          & 160 & 3,11  & 2,84  \\
+			Centrale          & 213 & 2,98  & 2,64  \\
+			Kara              & 18  & 3,38  & 3,05  \\
+			Savanes           & 14  & 3,62  & 3,20  \\
+			\textbf{National} & \textbf{573} & \textbf{3,147} & \textbf{2,625} \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig16_regional_performance.png}
+		\caption{Performance régionale VBS~H1.
+			(Gauche) LOO-RMSE~: Maritime~= meilleure~($n=164$),
+			Savanes~= moins bonne~($n=14$).
+			(Droite) Variance KED-H par région~:
+			carte directe de priorité pour les futurs sondages.}
+		\label{fig:regional}
+	\end{figure}
+	
+	%% ══════════════════════════════════════════════════════════════════════
+	%% SECTION 4 — DISCUSSION
+	%% ══════════════════════════════════════════════════════════════════════
+	\section{Discussion}
+	\label{sec:discussion}
+	
+	\subsection{Analyse géologique des résultats}
+	\label{subsec:geologie}
+	
+	\subsubsection{Distribution spatiale du VBS et contrôles géologiques}
+	
+	La carte VBS~(figure~\ref{fig:maps}) révèle trois régimes géotechniques
+	cohérents avec la géologie togolaise~:
+	\textbf{(1)~Argileux} (VBS~$>4{,}5$~g/100g, 22\,\% du territoire)~:
+	alluvions lacustres maritimes et Dépression de la Lama, contrôlés
+	par les Vertisols smectitiques et le risque RGA fort~;
+	\textbf{(2)~Intermédiaire} (2{,}5--4{,}5~g/100g, 53\,\%)~:
+	gneiss du socle précambrien altéré en kaolinite~;
+	\textbf{(3)~Faiblement argileux} ($<2{,}5$~g/100g, 25\,\%)~:
+	quartzites Atacora et grès voltaïens du nord.
+	Cette tripartition valide la pertinence de la dérive hiérarchique
+	intégrant la RGA comme premier niveau de discrimination.
+	
+	Pour le CBR\,95\% (figure~\ref{fig:maps_portance}), les zones
+	côtières montrent les valeurs les plus faibles ($<15$\,\%),
+	cohérentes avec les VBS élevés. Le Rd pénétromètre présente une
+	forte variabilité géographique (1--50~MPa en~H1), reflétant les
+	contrastes latérite consolidée~vs~argile molle.
+	
+	\subsubsection{Comparaison zones géologiques spéciales vs zones générales}
+	
+	La Dépression de la Lama (120~km²) concentre les valeurs d'EG
+	les plus élevées du territoire (EG~$\approx8{,}5$\,\% vs 4{,}3
+	nationale), avec un risque RGA ``très fort'' généralisé.
+	Ces zones sont prédites par la dérive hiérarchique seule, sans
+	sondage local --- la carte nationale RGA constituant un proxy
+	géotechnique validé. Les 5~zones géomorphologiques spéciales
+	sont entièrement couvertes par KED-H via le mécanisme de dérive
+	prioritaire, garantissant une prédiction cohérente sans sur-extrapolation.
+	
+	\subsubsection{Anomalies géotechniques identifiées}
+	
+	\textbf{Anomalie RK~H2.}
+	Le RK-SCORPAN est systématiquement dominé par KED-H à~H2
+	pour VBS~($4{,}81$ vs $3{,}20$~g/100g) et WL
+	($25{,}35$ vs $11{,}30$\,\%).
+	L'horizon H2~(1{,}0--1{,}5~m) constitue la zone de transition
+	altérite/substrat où les covariables SCORPAN de surface
+	(topographie, NDVI) perdent leur pouvoir prédictif.
+	\textbf{Recommandation pratique}~: utiliser KED-H pour H2~;
+	Fusion BLUP pour H1 et H3.
+	
+	\textbf{Dégradation Rd à~H3.}
+	Le LOO-RMSE Rd passe de 3{,}45~MPa~(H1) à 14{,}16~MPa~(H3).
+	Cette dégradation est attendue~: à~$>1{,}5$~m, la résistance
+	dynamique reflète l'état d'altération du substrat rocheux, très
+	hétérogène spatialement à l'échelle de la maille~(2~km).
+	
+	\subsubsection{Relation VBS--IP et cohérence physique}
+	
+	$\mathrm{IP}=4{,}72+3{,}93\times\mathrm{VBS}$,
+	$R^2=0{,}107$~($n=306$ paires VBS-IP conjointes~; inférieur aux
+	effectifs individuels du tableau~\ref{tab:stats_obs} car les mesures
+	ne coïncident pas toujours sur le même échantillon) à l'échelle
+	nationale, mais $R^2=0{,}38$ dans les seuls Vertisols~($n=47$).
+	Cette différence s'explique physiquement~: dans les Vertisols
+	smectitiques, VBS est un proxy direct de la teneur en argile
+	gonflante (surface spécifique élevée). Dans les ferralsols
+	kaolinitiques, VBS et IP sont décorrélés car la kaolinite
+	présente une faible surface spécifique malgré une plasticité
+	non nulle. Le MTGP/ICM capture ces variations de régime
+	via les coefficients $a_{dl}$ appris par maximum de vraisemblance.
+	
+	\subsubsection{Interprétation de la matrice de coregionalisation}
+	
+	Les coefficients ICM appris (annexe~\ref{app:mtgp}) convergent
+	vers la matrice de corrélation observée
+	(tableau~\ref{tab:correlations}).
+	La forte corrélation IP-EG~($r=0{,}721$) s'explique par la
+	dépendance commune à la teneur en smectite.
+	La corrélation quasi-nulle VBS-WP~($r=-0{,}024$) reflète
+	l'indépendance entre la surface spécifique (mesurée par VBS)
+	et la limite de plasticité (contrôlée par la microstructure
+	granulaire). Le MTGP maintient WP dans le Groupe~1 mais avec
+	un coefficient $a_{\mathrm{VBS,WP}}$ appris proche de zéro.
+	
+	\subsubsection{Analyse de l'incertitude spatiale}
+	
+	Les zones à $\sigma_K(\bs_0)>2\,\sigma_{\mathrm{nat}}$ couvrent
+	12\,\% du territoire (Kara, Savanes, zones de transition géologique
+	abrupte, figure~\ref{fig:transect}).
+	Un sondage en zone Kara réduit l'incertitude locale de
+	$\Delta\sigma^2\approx3{,}5$~(g/100g)² contre
+	$\Delta\sigma^2\approx0{,}8$~(g/100g)² en zone Maritime
+	déjà saturée. Cette cartographie de l'utilité marginale constitue
+	un outil de planification des campagnes terrain.
+	
+	\subsection{Synthèse et positionnement scientifique}
+	\label{subsec:synthese}
+	
+	\subsubsection{Position dans la littérature}
+	
+	Trois contributions originales~:
+	
+	\textbf{(i)~KED-H avec RGA.}
+	L'intégration d'une carte de risque de retrait-gonflement comme
+	covariable prioritaire dans une dérive à 5~niveaux n'est pas
+	documentée en Afrique de l'Ouest pour la géotechnique
+	\cite{odeh1994further}. Elle constitue un pont entre la
+	géotechnique empirique (classification RGA) et la modélisation
+	géostatistique rigoureuse.
+	
+	\textbf{(ii)~VfS-PLS Sentinel-2 pour sols tropicaux.}
+	LOO-RMSE~$=$~2{,}788~g/100g $<$ KED-H~: première preuve de
+	concept de cartographie VBS par imagerie satellite en milieu
+	tropical togolais~\cite{viscarra2006data,castaldi2019sentinel}.
+	
+	\textbf{(iii)~Fusion BLUP certifiée.}
+	Réduction 47{,}9\,\%~$\pm$~1{,}5\,\% certifiée dans
+	100\,\% des mailles~\cite{chilesdelfiner2012}, dépassant
+	la fusion naïve 50/50 (gain théorique 38\,\% seulement).
+	
+	\subsubsection{Gain du co-krigeage MTGP}
+	
+	Le MTGP/ICM présente un gain de 8--12\,\% sur LOO-RMSE
+	pour EG et WP~vs krigeage indépendant
+	(figure~\ref{fig:mtgp}).
+	La dissociation en deux groupes (Plasticité et Compactage)
+	est justifiée par l'indépendance physique des deux familles~:
+	argilosité (nature minéralogique) et portance Proctor
+	(compacité mécanique) sont orthogonales en géotechnique.
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig13_mtgp_gain.png}
+		\caption{Gain MTGP/ICM~vs~krigeage indépendant~(H1).
+			Les paramètres sous-documentés~(EG, WP) bénéficient le plus
+			du co-krigeage grâce aux coefficients ICM appris
+			($a_{\mathrm{IP,WL}}=0{,}773$,
+			$a_{\mathrm{IP,EG}}=0{,}721$).}
+		\label{fig:mtgp}
+	\end{figure}
+	
+	\subsubsection{Synthèse de la hiérarchie L1--L4}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig20a_synthesis_radar_loo.png}
+		\caption{Synthèse comparative L1--L4 --- Panneaux~A--B.
+			\textit{(A)}~Radar des performances normalisées~: la Fusion
+			BLUP domine sur tous les axes.
+			\textit{(B)}~LOO-RMSE KED-H~H1~: argilosité~(bleu)
+			vs portance~(rouge).}
+		\label{fig:synthesis_ab}
+	\end{figure}
+	
+	\begin{figure}[htbp]
+		\centering
+		\includegraphics[width=0.97\linewidth]{figures/fig20b_synthesis_coverage_variance.png}
+		\caption{Synthèse comparative L1--L4 --- Panneaux~C--D.
+			\textit{(C)}~Couverture spatiale par modèle.
+			\textit{(D)}~Réduction de variance Fusion BLUP
+			($\bar{r}=47{,}9$\,\%) avec variance absolue en arrière-plan.}
+		\label{fig:synthesis_cd}
+	\end{figure}
+	
+	\subsection{Implications pratiques et limites}
+	\label{subsec:limites}
+	
+	\subsubsection{Politiques de seuillage pour la classification géotechnique}
+	
+	L'atlas produit des prédictions continues $Z^*(\bs_0)\pm\sigma_K(\bs_0)$.
+	Trois politiques de seuillage sont proposées~:
+	
+	\textbf{(a)~Centrale}~: seuillage sur $Z^*(\bs_0)$,
+	recommandée pour les cartes de vue d'ensemble~;
+	
+	\textbf{(b)~Pessimiste (p95)}~:
+	$Z^*(\bs_0)+1{,}64\,\sigma_K(\bs_0)$,
+	recommandée pour les ouvrages à enjeux~(routes nationales,
+	bâtiments à forte fréquentation)~;
+	
+	\textbf{(c)~Probabiliste}~:
+	$P[Z(\bs_0)>z_{\mathrm{seuil}}]=
+	1-\Phi[(z_{\mathrm{seuil}}-Z^*)/\sigma_K]$,
+	la plus rigoureuse, permettant de cartographier la probabilité
+	de dépasser un seuil normatif (e.g., VBS~$>6$~g/100g,
+	classe~A4 de la NF~P~11-300, annexe~\ref{app:classification}).
+	
+	\subsubsection{Limites épistémiques et techniques}
+	
+	\textbf{Densité résiduelle.}
+	La variance dépasse 80\,\% de la prédiction dans 12\,\% des
+	mailles (Kara, Savanes). Ces zones sont prédites par la dérive
+	hiérarchique seule~; la prédiction reflète le contexte géologique
+	et non une interpolation au sens strict.
+	
+	\textbf{$E_m$ et $P_l$~: données insuffisantes.}
+	Les 26~mesures pressiométriques sont toutes en~H3 et concentrées
+	dans la zone Maritime. Les cartes $E_m$ et $P_l$ ont une valeur
+	illustrative~; de nouvelles campagnes pressiométriques en Centrale
+	et Kara sont indispensables avant un usage opérationnel.
+	
+	\textbf{CatBoost.}
+	L'activation du gradient boosting spatial nécessite
+	$n>200$ par paramètre et horizon.
+	VBS~H1~($n=113$)~: horizon d'activation estimé
+	$t\approx(200-113)/15\approx5{,}8$~ans~(2031--2032).
+	
+	\textbf{RK pour portance.}
+	CBR, Rd, $\gamma_d$ et $w_{\mathrm{opt}}$ n'ont pas de modèle
+	RK disponible~; la Fusion BLUP n'est pas applicable.
+	Des covariables SCORPAN spécifiques (densité réseau
+	hydrographique, profil d'altérabilité lithologique)
+	devront être construites.
+	
+	\textbf{Gaussianité de VBS.}
+	L'asymétrie~2{,}41 viole partiellement l'hypothèse~\eqref{eq:ic95}.
+	Ratio couverture empirique/nominale~: 0{,}87 pour VBS
+	vs 0{,}93 pour IP. Une transformation $\ln(Z+1)$ est planifiée.
+	
+	\subsection{Perspectives et développements futurs}
+	\label{subsec:perspectives}
+	
+	\subsubsection{CatBoost --- conditions d'activation}
+	
+	L'activation du gradient boosting spatial (validation croisée
+	par blocs, 5~blocs de 100~km²) est planifiée à $n>200$.
+	Des campagnes ciblées dans Kara et Savanes
+	($\Delta n\approx87$~sondages VBS~H1 supplémentaires)
+	permettraient d'atteindre ce seuil vers 2031--2032.
+	
+	\subsubsection{Krigeage transcendant et modèles non-linéaires}
+	
+	La transformation $Y=\ln(Z+1)$ pour VBS améliorera la
+	calibration des intervalles de prédiction.
+	La simulation géostatistique séquentielle~(SGS) fournira des
+	ensembles de réalisations équiprobables pour l'analyse de risque
+	probabiliste à l'échelle de l'ouvrage.
+	
+	\subsubsection{Vers une prédiction temporelle~: atlas dynamique}
+	
+	L'intégration de séries temporelles Sentinel-2 (2015--2026)
+	permettra de produire des cartes saisonnières (saison sèche~vs
+	humide) pour WL, WP, EG et CBR~\cite{gundogdu2007spatial},
+	capturant les variations d'humidité contrôlées par
+	$P_{\mathrm{ann}}$ et $\sigma_P$.
+	
+	\subsubsection{Amélioration de la covariable VfS par SAR}
+	
+	L'ajout des bandes Sentinel-1~(C-band, pénétration~30~cm) est
+	attendu pour un gain de 15--25\,\% sur le LOO-RMSE VfS dans les
+	zones à forte rugosité de surface~(schistes Atacora), où le signal
+	optique est saturé.
+	
+	\subsubsection{Enrichissement du MTGP}
+	
+	L'amélioration du MTGP Groupe~2~(Compactage) est conditionnée à
+	l'accès à des données Proctor-CBR conjointes supplémentaires.
+	L'intégration de données historiques des laboratoires partenaires
+	(LNBTP, TREC) pourrait porter $n_{\mathrm{joint}}$ de 386 à
+	$>600$, affinant les coefficients ICM $a_{\mathrm{CBR},\gamma_d}$.
+	
+	\subsubsection{Passage à l'échelle~: déploiement régional Afrique de l'Ouest}
+	
+	Les covariables SCORPAN utilisées (SRTM, WorldClim, FAO) sont
+	disponibles sans coût supplémentaire à l'échelle régionale.
+	La méthodologie L1--L4 est directement transposable au Bénin,
+	Ghana et Burkina Faso (mêmes formations précambriennes et
+	schistes voltaïens), posant les bases du premier atlas
+	géotechnique régional d'Afrique de l'Ouest.
+	
+	%% ══════════════════════════════════════════════════════════════════════
+	%% SECTION 5 — CONCLUSION
+	%% ══════════════════════════════════════════════════════════════════════
+	\section{Conclusion}
+	\label{sec:conclusion}
+	
+	\subsection{Synthèse finale et livrables de l'Atlas}
+	
+	Ce travail présente le premier atlas géotechnique national adaptatif
+	du Togo à haute résolution~(2~km~$\times$~2~km), fondé sur la
+	hiérarchie L1--L4 comme cadre de prédiction dynamique et
+	auto-améliorant. Sa contribution centrale est autant l'architecture
+	qui \emph{quantifie l'incertitude localement} que les cartes elles-mêmes~:
+	la forte variance en Kara et Savanes devient une carte de priorité
+	d'échantillonnage, transformant l'incertitude d'une limitation en outil
+	de planification.
+	
+	Les cinq contributions principales sont~:
+	\begin{enumerate}[noitemsep]
+		\item \textbf{KED-H avec RGA~(L1)}~: première intégration
+		de la carte nationale de risque de retrait-gonflement comme
+		covariable prioritaire dans une dérive hiérarchique 5~niveaux /
+		79~contextes géologiques. Produit 441\,105~valeurs interpolées
+		avec variance réelle~;
+		
+		\item \textbf{RK-SCORPAN~(L2a)}~: LOO-CV complet
+		(Ridge~$+$~krigeage résidus ré-estimés à chaque itération),
+		LOO-RMSE(VBS~H1)~$=$~2{,}625~g/100g, supérieur à KED-H
+		sur 9/15~comparaisons~;
+		
+		\item \textbf{Fusion Bayésienne BLUP~(L2b)}~: réduction de variance
+		47{,}9\,\%~$\pm$~1{,}5\,\% certifiée mathématiquement dans
+		100\,\% des 29\,407~mailles~;
+		
+		\item \textbf{VfS-PLS Sentinel-2~(L3)}~: preuve de concept
+		géotechnique sans laboratoire,
+		LOO-RMSE~$=$~2{,}788~g/100g $<$ KED-H~;
+		
+		\item \textbf{Extension portance et pressiomètre~(6~paramètres)}~:
+		CBR\,95\%, $\gamma_d$, $w_{\mathrm{opt}}$, Rd, $E_m$, $P_l$
+		interpolés sur 26--434~mesures~;
+		LOO-RMSE($P_l$,~H3)~$=$~0{,}988~MPa~;
+		MTGP Groupe~2 opérationnel~($r_{\mathrm{CBR},\gamma_d}=0{,}658$).
+	\end{enumerate}
+	
+	L'architecture ouverte garantit que l'atlas continuera de s'améliorer
+	à mesure que de nouvelles données géotechniques seront intégrées ---
+	qu'elles proviennent de campagnes terrain ciblées, de partenariats
+	avec des laboratoires, ou d'intégrations satellitaires.
+	
+	%% ══════════════════════════════════════════════════════════════════════
+	%% REMERCIEMENTS
+	%% ══════════════════════════════════════════════════════════════════════
+	\section*{Remerciements}
+
+	Les auteurs remercient le \textbf{BRGM} pour la mise à disposition
+	des données géologiques nationales~(2019), sans lesquelles la
+	dérive hiérarchique KED-H n'aurait pas été possible.
+	La base de données géotechniques nationale a été constituée par la
+	mutualisation de rapports issus des laboratoires et bureaux d'études
+	\textbf{TREC}, \textbf{LAB~TP}, \textbf{LNBTP} et \textbf{GeoTech}~;
+	leurs données de terrain forment le socle empirique de cet atlas.
+	Des données géotechniques additionnelles ont été extraites de mémoires
+	de fin d'études soutenus à l'\textbf{Institut FORMATEC}~: en particulier,
+	le travail de cartographie QGIS de \textcite{bassafoula2025integration}
+	a fourni la vectorisation de la carte géologique et la modélisation
+	du risque de gonflement en cinq niveaux, intégrée comme couche~RGA
+	prioritaire dans la dérive hiérarchique du modèle L1.
+	Les auteurs adressent leurs remerciements à l'ensemble des étudiants
+	et encadrants de FORMATEC dont les travaux ont contribué à cet effort
+	collectif de capitalisation de la connaissance géotechnique togolaise.
+	
+	\printbibliography
+	
+	%% ══════════════════════════════════════════════════════════════════════
+	%% ANNEXES
+	%% ══════════════════════════════════════════════════════════════════════
+	\appendix
+
+	\section{Notation et glossaire}
+	\label{app:notation}
+	
+	\begin{description}[noitemsep]
+		\item[$Z(\bs)$] Champ aléatoire du paramètre géotechnique à la position~$\bs$
+		\item[$\sigma^2_K(\bs_0)$] Variance de krigeage~: incertitude locale de prédiction
+		\item[$\mu_h(\bs)$] Prior hiérarchique 5~niveaux~\eqref{eq:prior}
+		\item[$C_0,C,a$] Pépite, palier, portée du variogramme sphérique
+		\item[$\lambda_R$] Paramètre Ridge ($\lambda_R^*=0{,}18$ pour VBS~H1)
+		\item[$a_{dl}$] Coefficient de coregionalisation ICM~(MTGP, rang~$r=2$)
+		\item[H1/H2/H3] 0--1~m, 1--1{,}5~m, $>$1{,}5~m
+		\item[LOO-CV] Leave-One-Out Cross-Validation complète
+		\item[BLUP] Best Linear Unbiased Predictor
+		\item[ICM] Intrinsic Coregionalization Model
+		\item[MVUE] Minimum Variance Unbiased Estimator
+		\item[RGA] Retrait-Gonflement des Argiles~(carte de risque nationale)
+		\item[SCORPAN] Soil, Climate, Organisms, Relief, Parent material, Age, N-position
+		\item[VBS] Valeur au Bleu de Méthylène
+	\end{description}
+	
+	\section{Paramètres variographiques sphériques --- H1}
+	\label{app:variogrammes}
+	
+	\begin{table}[H]
+		\centering\small
+		\caption{Modèle sphérique ajusté~H1 --- 5~paramètres d'argilosité.
+			Rapport pépite~$=C_0/(C_0+C)$.}
+		\label{tab:variogrammes}
+		\begin{tabular}{lcccc}
+			\toprule
+			Param. & $C_0$ & $C_0+C$ & $a$~(km) & Rapp. pépite \\
+			\midrule
+			VBS (g/100g)² & 2,80  & 14,00  & 220 & 0,200 \\
+			IP (\%)²      & 22,0  & 145,0  & 310 & 0,152 \\
+			WL (\%)²      & 45,0  & 185,0  & 280 & 0,243 \\
+			WP (\%)²      & 15,0  & 72,0   & 195 & 0,208 \\
+			EG (\%)²      & 0,85  & 3,60   & 175 & 0,236 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\section{LOO-RMSE complet --- 15 comparaisons KED-H vs RK}
+	\label{app:loo_complet}
+	
+	\begin{table}[H]
+		\centering\small
+		\caption{LOO-RMSE KED-H et RK-SCORPAN par paramètre et horizon.
+			\textbf{Gras}~= meilleur modèle.
+			Score global~: KED~6/15, RK~9/15.}
+		\label{tab:loo_complet}
+		\setlength{\tabcolsep}{4pt}
+		\begin{tabular}{llccl}
+			\toprule
+			Param. & Hz & KED-H & RK & Gagnant \\
+			\midrule
+			VBS & H1 & 3,147          & \textbf{2,625} & RK  \\
+			VBS & H2 & \textbf{3,204} & 4,805          & KED \\
+			VBS & H3 & 3,050          & \textbf{2,875} & RK  \\
+			IP  & H1 & \textbf{10,481}& 12,509         & KED \\
+			IP  & H2 & 9,702          & \textbf{9,351} & RK  \\
+			IP  & H3 & \textbf{9,483} & 7,050          & RK  \\
+			WL  & H1 & \textbf{12,384}& 16,186         & KED \\
+			WL  & H2 & \textbf{11,302}& 25,352         & KED \\
+			WL  & H3 & \textbf{10,594}& 6,980          & RK  \\
+			WP  & H1 & 7,788          & \textbf{5,349} & RK  \\
+			WP  & H2 & \textbf{7,752} & 13,535         & KED \\
+			WP  & H3 & 7,544          & \textbf{7,292} & RK  \\
+			EG  & H1 & 1,692          & \textbf{1,149} & RK  \\
+			EG  & H2 & \textbf{1,754} & 1,975          & KED \\
+			EG  & H3 & 1,719          & \textbf{1,275} & RK  \\
+			\midrule
+			\multicolumn{2}{l}{Score} & 6/15 & 9/15 & \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\section{Matrices de corrélation complètes}
+	\label{app:correlations}
+	
+	\begin{table}[H]
+		\centering\small
+		\caption{Corrélations de Pearson --- portance Proctor et CBR.
+			\textbf{Gras}~: $|r|>0{,}5$. $N=386$~paires jointes.}
+		\label{tab:corr_portance}
+		\begin{tabular}{lccc}
+			\toprule
+			& CBR\,95\% & $\gamma_d$ & $w_{\mathrm{opt}}$ \\
+			\midrule
+			CBR\,95\%           & 1,000 & \textbf{0,658}  & $-$0,395 \\
+			$\gamma_d$          & \textbf{0,658}  & 1,000 & \textbf{$-$0,684} \\
+			$w_{\mathrm{opt}}$  & $-$0,395 & \textbf{$-$0,684} & 1,000 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\section{Classification géotechnique NF P 11-300}
+	\label{app:classification}
+	
+	\begin{table}[H]
+		\centering\small
+		\caption{Seuils NF~P~11-300 appliqués aux prédictions VBS et IP.}
+		\label{tab:nfp11300}
+		\begin{tabular}{lccc}
+			\toprule
+			Classe & VBS (g/100g) & IP (\%) & Sol type \\
+			\midrule
+			A1 & $<0{,}2$    & $<12$    & Sable peu plastique \\
+			A2 & 0{,}2--1{,}5 & 12--25  & Sable limoneux      \\
+			A3 & 1{,}5--6{,}0 & 25--40  & Argile plastique    \\
+			A4 & $>6{,}0$    & $>40$    & Argile très plastique \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\section{Meilleur modèle par paramètre et horizon}
+	\label{app:best_model_ext}
+	
+	\begin{table}[H]
+		\centering\small
+		\caption{Meilleur modèle par paramètre et horizon.
+			F~= Fusion BLUP disponible~;
+			KED~= KED-H seul~;
+			---~= $n$ insuffisant.}
+		\label{tab:best_model_ext}
+		\setlength{\tabcolsep}{3pt}
+		\begin{tabular}{lcccc}
+			\toprule
+			Param. & H1 & LOO~H1 & H2 & H3 \\
+			\midrule
+			VBS  & F/RK  & 2,625  & KED & F/RK \\
+			IP   & F/KED & 10,481 & F/RK & KED \\
+			WL   & F/KED & 12,384 & KED & KED  \\
+			WP   & F/RK  & 5,349  & KED & F/RK \\
+			EG   & F/RK  & 1,149  & KED & F/RK \\
+			CBR  & KED   & 16,14  & --- & ---  \\
+			Rd   & KED   & 3,45   & KED & KED  \\
+			$\gamma_d$ & KED & 1,41 & --- & --- \\
+			$w_{\mathrm{opt}}$ & KED & 2,90 & --- & --- \\
+			$E_m$ & ---  & ---    & --- & KED  \\
+			$P_l$ & ---  & ---    & --- & KED  \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\section{Statistiques de couverture par région}
+	\label{app:couverture}
+	
+	\begin{table}[H]
+		\centering\small
+		\caption{Couverture prédictions KED-H (VBS~H1) par région.}
+		\label{tab:couverture_region}
+		\begin{tabular}{lccc}
+			\toprule
+			Région & Mailles & $\bar{\sigma}^2_K$ & $\bar{Z}^*$ \\
+			\midrule
+			Maritime  & 4\,512~(100\%) & 8,5  & 4,11 \\
+			Plateaux  & 7\,230~(100\%) & 14,2 & 3,72 \\
+			Centrale  & 9\,801~(100\%) & 11,8 & 3,58 \\
+			Kara      & 4\,120~(100\%) & 16,5 & 3,25 \\
+			Savanes   & 3\,744~(100\%) & 19,2 & 2,88 \\
+			\textbf{National} & \textbf{29\,407} & 13,2 & 3,65 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\section{Paramètres du modèle MTGP/ICM}
+	\label{app:mtgp}
+	
+	\begin{table}[H]
+		\centering\small
+		\caption{Paramètres ICM appris (GPflow, Adam 500~itérations).
+			$\ell$~: portée RBF.~$\sigma^2_n$~: bruit résiduel.}
+		\label{tab:mtgp_params}
+		\begin{tabular}{lcccc}
+			\toprule
+			Param. & $a_{d1}$ & $a_{d2}$ & $\ell$~(km) & $\sigma^2_n$ \\
+			\midrule
+			VBS & 0,319 & 0,102 & 185 & 0,42 \\
+			IP  & 0,773 & 0,215 & 210 & 8,3  \\
+			WL  & 0,773 & 0,181 & 225 & 12,1 \\
+			WP  & 0,062 & 0,044 & 180 & 4,8  \\
+			EG  & 0,721 & 0,163 & 165 & 0,31 \\
+			\bottomrule
+		\end{tabular}
+	\end{table}
+	
+	\section{Protocole d'intégration de nouveaux sondages}
+	\label{app:protocole}
+
+	Tout nouveau rapport géotechnique produit par un bureau d'études
+	togolais peut être intégré dans la base de données nationale selon
+	le protocole suivant.
+
+	\begin{enumerate}[label=\arabic*.,topsep=4pt]
+		\item \textbf{Géocodage}~: vérification et assignation des
+		coordonnées EPSG:4326~(WGS84), reprojection en EPSG:25231
+		(UTM~31N) pour le calcul des distances~;
+
+		\item \textbf{Contrôle qualité physique}~: validation des
+		plages de valeurs acceptables
+		(VBS~$\in[0,30]$, IP~$\in[0,80]$, CBR~$\in[0,200]$,
+		Rd~$\in[0,120]$, $E_m$~$\in[0,100]$, $P_l$~$\in[0,10]$)
+		et détection des doublons géoréférencés
+		à moins de 50~m~;
+
+		\item \textbf{Assignation d'horizon}~: classification
+		automatique H1/H2/H3 sur la profondeur centroïde de
+		l'échantillon ($z_c < 1{,}0$~m, $1{,}0 \leq z_c < 1{,}5$~m,
+		$z_c \geq 1{,}5$~m)~;
+
+		\item \textbf{Déclenchement automatique}~: recalcul du
+		LOO-RMSE, mise à jour des 441\,105~prédictions, génération du
+		rapport de gain de précision ($\Delta\mathrm{RMSE}$ par
+		paramètre et par région).
+	\end{enumerate}
+
+	\bigskip
+	\noindent
+	\textbf{Seuils d'alerte.}
+	Si $\Delta\mathrm{RMSE} < 0{,}5$\,\% après intégration, le
+	nouveau sondage est dit \emph{redondant}~: il n'améliore pas
+	la précision cartographique et sera archivé sans mise à jour
+	des cartes. Si $\Delta\mathrm{RMSE} \geq 5$\,\%, un rapport
+	d'anomalie est généré pour validation humaine
+	(contrôle de cohérence géologique).
+
+	\bigskip
+	\noindent
+	\textbf{Fréquence recommandée.}
+	Une campagne d'intégration semestrielle est recommandée pour
+	maintenir la fraîcheur de l'atlas. Les bureaux d'études partenaires
+	(TREC, LAB~TP, LNBTP, GeoTech) sont invités à transmettre leurs
+	nouveaux rapports au format numérique standardisé (CSV ou JSON)
+	défini par la documentation technique du système.
+
+\end{document}

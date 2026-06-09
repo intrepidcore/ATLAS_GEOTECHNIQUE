@@ -21,6 +21,7 @@ mod ai_jobs;
 mod ai_plots;
 mod ai_opti;
 mod ai_stats;
+mod blup_fusion;
 mod internal_services;
 pub mod auth;
 mod routes;
@@ -454,11 +455,13 @@ async fn main() -> anyhow::Result<()> {
         .route("/ai/recompute/sources", post(ai_opti::recompute_geotech_sources))
         .route("/ai/kriging/recompute", post(ai_opti::recompute_kriging_global_gp))
         .route("/ai/ked/recompute", post(ai_opti::recompute_ked))
+        .route("/ai/rk/recompute",  post(ai_opti::recompute_rk))
         .route("/ai/infer/train-supervised", post(ai_opti::train_supervised_infer_rga))
         .route("/ai/ml/refresh-prereqs", post(ai_opti::refresh_ml_prereqs))
         .merge(ai_plots::ai_plots_routes())
         .merge(ai_jobs::ai_jobs_routes())
         .merge(ai_stats::ai_stats_routes())
+        .merge(blup_fusion::blup_fusion_routes())
         .route(
             "/sondages/:id/geometry",
             patch(sondages::update_sondage_geometry),

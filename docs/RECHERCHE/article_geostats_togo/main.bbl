@@ -59,32 +59,44 @@
       \verb 10.1016/S0016-7061(03)00223-4
       \endverb
     \endentry
-    \entry{matheron1963}{book}{}{}
-      \name{author}{1}{}{%
-        {{hash=ea0a6a067aea85f0014b448311fbd6c0}{%
-           family={Matheron},
-           familyi={M\bibinitperiod},
-           given={G.},
-           giveni={G\bibinitperiod}}}%
+    \entry{brus2007sampling}{book}{}{}
+      \name{author}{2}{}{%
+        {{hash=4408ff64f4bd3f897ab25011b6c6e924}{%
+           family={Brus},
+           familyi={B\bibinitperiod},
+           given={D.\bibnamedelimi J.},
+           giveni={D\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+        {{hash=86aeb6e7a82cf25ce544a42b7f785be1}{%
+           family={Gruijter},
+           familyi={G\bibinitperiod},
+           given={J.\bibnamedelimi J.},
+           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod},
+           prefix={de},
+           prefixi={d\bibinitperiod}}}%
       }
-      \strng{namehash}{ea0a6a067aea85f0014b448311fbd6c0}
-      \strng{fullhash}{ea0a6a067aea85f0014b448311fbd6c0}
-      \strng{fullhashraw}{ea0a6a067aea85f0014b448311fbd6c0}
-      \strng{bibnamehash}{ea0a6a067aea85f0014b448311fbd6c0}
-      \strng{authorbibnamehash}{ea0a6a067aea85f0014b448311fbd6c0}
-      \strng{authornamehash}{ea0a6a067aea85f0014b448311fbd6c0}
-      \strng{authorfullhash}{ea0a6a067aea85f0014b448311fbd6c0}
-      \strng{authorfullhashraw}{ea0a6a067aea85f0014b448311fbd6c0}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
+      \list{location}{1}{%
+        {Berlin}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{13d22454c5cb894508dea37f24996677}
+      \strng{fullhash}{13d22454c5cb894508dea37f24996677}
+      \strng{fullhashraw}{13d22454c5cb894508dea37f24996677}
+      \strng{bibnamehash}{13d22454c5cb894508dea37f24996677}
+      \strng{authorbibnamehash}{13d22454c5cb894508dea37f24996677}
+      \strng{authornamehash}{13d22454c5cb894508dea37f24996677}
+      \strng{authorfullhash}{13d22454c5cb894508dea37f24996677}
+      \strng{authorfullhashraw}{13d22454c5cb894508dea37f24996677}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{journaltitle}{Economic Geology}
-      \field{title}{Principles of geostatistics}
-      \field{volume}{58}
-      \field{year}{1963}
-      \field{pages}{1246\bibrangedash 1266}
-      \range{pages}{21}
+      \field{title}{Sampling for Natural Resource Monitoring}
+      \field{year}{2007}
+      \verb{doi}
+      \verb 10.1007/978-3-540-33161-4
+      \endverb
     \endentry
     \entry{odeh1994further}{article}{}{}
       \name{author}{3}{}{%
@@ -123,79 +135,6 @@
       \field{pages}{215\bibrangedash 226}
       \range{pages}{12}
     \endentry
-    \entry{hengl2007regression}{article}{}{}
-      \name{author}{3}{}{%
-        {{hash=884df4ac8a1f7458e3da07b63d75d957}{%
-           family={Hengl},
-           familyi={H\bibinitperiod},
-           given={T.},
-           giveni={T\bibinitperiod}}}%
-        {{hash=ea7bfaa36442b9bcf9529b15a7f55e80}{%
-           family={Heuvelink},
-           familyi={H\bibinitperiod},
-           given={G.\bibnamedelimi B.\bibnamedelimi M.},
-           giveni={G\bibinitperiod\bibinitdelim B\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
-        {{hash=ac84bebbaec94fc19dd18b6c9f21cc17}{%
-           family={Rossiter},
-           familyi={R\bibinitperiod},
-           given={D.\bibnamedelimi G.},
-           giveni={D\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
-      }
-      \strng{namehash}{a78718a9e5b319b59f409fe3b105d23e}
-      \strng{fullhash}{630a62b722bf1746ad4ff65b60e4b81a}
-      \strng{fullhashraw}{630a62b722bf1746ad4ff65b60e4b81a}
-      \strng{bibnamehash}{630a62b722bf1746ad4ff65b60e4b81a}
-      \strng{authorbibnamehash}{630a62b722bf1746ad4ff65b60e4b81a}
-      \strng{authornamehash}{a78718a9e5b319b59f409fe3b105d23e}
-      \strng{authorfullhash}{630a62b722bf1746ad4ff65b60e4b81a}
-      \strng{authorfullhashraw}{630a62b722bf1746ad4ff65b60e4b81a}
-      \field{extraname}{1}
-      \field{sortinit}{4}
-      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{journaltitle}{Computers \& Geosciences}
-      \field{number}{10}
-      \field{title}{About regression-kriging: From equations to case studies}
-      \field{volume}{33}
-      \field{year}{2007}
-      \field{pages}{1301\bibrangedash 1315}
-      \range{pages}{15}
-      \verb{doi}
-      \verb 10.1016/j.cageo.2007.05.001
-      \endverb
-    \endentry
-    \entry{chassagneux1996}{article}{}{}
-      \name{author}{2}{}{%
-        {{hash=2a66ad869b5602d3e589d2fc3d70d8bb}{%
-           family={Chassagneux},
-           familyi={C\bibinitperiod},
-           given={D.},
-           giveni={D\bibinitperiod}}}%
-        {{hash=67ce99f9690949642dc273fa94a137c2}{%
-           family={Chaussier},
-           familyi={C\bibinitperiod},
-           given={J.\bibnamedelimi B.},
-           giveni={J\bibinitperiod\bibinitdelim B\bibinitperiod}}}%
-      }
-      \list{institution}{1}{%
-        {BRGM}%
-      }
-      \strng{namehash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
-      \strng{fullhash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
-      \strng{fullhashraw}{48f5f998a9ff88c4f6d4da78f6d2eea1}
-      \strng{bibnamehash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
-      \strng{authorbibnamehash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
-      \strng{authornamehash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
-      \strng{authorfullhash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
-      \strng{authorfullhashraw}{48f5f998a9ff88c4f6d4da78f6d2eea1}
-      \field{sortinit}{6}
-      \field{sortinithash}{b33bc299efb3c36abec520a4c896a66d}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{title}{Carte géotechnique des risques de gonflement des argiles --- Méthodologie}
-      \field{year}{1996}
-    \endentry
     \entry{chilesdelfiner2012}{book}{}{}
       \name{author}{2}{}{%
         {{hash=088569437d67fe5c48adf94b169c7cfc}{%
@@ -223,47 +162,108 @@
       \strng{authornamehash}{63056102ca11474e565740c4da4c574b}
       \strng{authorfullhash}{63056102ca11474e565740c4da4c574b}
       \strng{authorfullhashraw}{63056102ca11474e565740c4da4c574b}
-      \field{sortinit}{9}
-      \field{sortinithash}{0a5ebc79d83c96b6579069544c73c7d4}
+      \field{sortinit}{4}
+      \field{sortinithash}{9381316451d1b9788675a07e972a12a7}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
       \field{edition}{2nd}
       \field{title}{Geostatistics: Modeling Spatial Uncertainty}
       \field{year}{2012}
     \endentry
-    \entry{rasmussen2006gaussian}{book}{}{}
-      \name{author}{2}{}{%
-        {{hash=482e938bd278409c1df5b869731c286d}{%
-           family={Rasmussen},
-           familyi={R\bibinitperiod},
-           given={C.\bibnamedelimi E.},
-           giveni={C\bibinitperiod\bibinitdelim E\bibinitperiod}}}%
-        {{hash=03fe732f745576c10e0c06a73741997b}{%
-           family={Williams},
-           familyi={W\bibinitperiod},
-           given={C.\bibnamedelimi K.\bibnamedelimi I.},
-           giveni={C\bibinitperiod\bibinitdelim K\bibinitperiod\bibinitdelim I\bibinitperiod}}}%
+    \entry{cressie1993statistics}{book}{}{}
+      \name{author}{1}{}{%
+        {{hash=c618651ea03a37582f0c96dadd161273}{%
+           family={Cressie},
+           familyi={C\bibinitperiod},
+           given={Noel\bibnamedelimb A.\bibnamedelimi C.},
+           giveni={N\bibinitperiod\bibinitdelim A\bibinitperiod\bibinitdelim C\bibinitperiod}}}%
       }
       \list{location}{1}{%
-        {Cambridge, MA}%
+        {New York}%
       }
       \list{publisher}{1}{%
-        {MIT Press}%
+        {Wiley}%
       }
-      \strng{namehash}{ed49b693d5d79e8f1375cc72fe366e60}
-      \strng{fullhash}{ed49b693d5d79e8f1375cc72fe366e60}
-      \strng{fullhashraw}{ed49b693d5d79e8f1375cc72fe366e60}
-      \strng{bibnamehash}{ed49b693d5d79e8f1375cc72fe366e60}
-      \strng{authorbibnamehash}{ed49b693d5d79e8f1375cc72fe366e60}
-      \strng{authornamehash}{ed49b693d5d79e8f1375cc72fe366e60}
-      \strng{authorfullhash}{ed49b693d5d79e8f1375cc72fe366e60}
-      \strng{authorfullhashraw}{ed49b693d5d79e8f1375cc72fe366e60}
-      \field{sortinit}{1}
-      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \strng{namehash}{c618651ea03a37582f0c96dadd161273}
+      \strng{fullhash}{c618651ea03a37582f0c96dadd161273}
+      \strng{fullhashraw}{c618651ea03a37582f0c96dadd161273}
+      \strng{bibnamehash}{c618651ea03a37582f0c96dadd161273}
+      \strng{authorbibnamehash}{c618651ea03a37582f0c96dadd161273}
+      \strng{authornamehash}{c618651ea03a37582f0c96dadd161273}
+      \strng{authorfullhash}{c618651ea03a37582f0c96dadd161273}
+      \strng{authorfullhashraw}{c618651ea03a37582f0c96dadd161273}
+      \field{sortinit}{5}
+      \field{sortinithash}{20e9b4b0b173788c5dace24730f47d8c}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{title}{Gaussian Processes for Machine Learning}
-      \field{year}{2006}
+      \field{edition}{Revised}
+      \field{title}{Statistics for Spatial Data}
+      \field{year}{1993}
+    \endentry
+    \entry{chassagneux1996}{report}{}{}
+      \name{author}{2}{}{%
+        {{hash=2a66ad869b5602d3e589d2fc3d70d8bb}{%
+           family={Chassagneux},
+           familyi={C\bibinitperiod},
+           given={D.},
+           giveni={D\bibinitperiod}}}%
+        {{hash=67ce99f9690949642dc273fa94a137c2}{%
+           family={Chaussier},
+           familyi={C\bibinitperiod},
+           given={J.\bibnamedelimi B.},
+           giveni={J\bibinitperiod\bibinitdelim B\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Bureau de Recherches Géologiques et Minières (BRGM)}%
+      }
+      \strng{namehash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
+      \strng{fullhash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
+      \strng{fullhashraw}{48f5f998a9ff88c4f6d4da78f6d2eea1}
+      \strng{bibnamehash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
+      \strng{authorbibnamehash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
+      \strng{authornamehash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
+      \strng{authorfullhash}{48f5f998a9ff88c4f6d4da78f6d2eea1}
+      \strng{authorfullhashraw}{48f5f998a9ff88c4f6d4da78f6d2eea1}
+      \field{sortinit}{6}
+      \field{sortinithash}{b33bc299efb3c36abec520a4c896a66d}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Sans DOI (rapport interne BRGM)}
+      \field{title}{Carte géotechnique des risques de gonflement des argiles --- Méthodologie}
+      \field{type}{Rapport technique}
+      \field{year}{1996}
+    \endentry
+    \entry{bassafoula2025integration}{thesis}{}{}
+      \name{author}{1}{}{%
+        {{hash=4d9e7f0721f0e981843d67e04031d99d}{%
+           family={Bassafoula\bibnamedelima Ngoma},
+           familyi={B\bibinitperiod\bibinitdelim N\bibinitperiod},
+           given={Kryshna\bibnamedelima Aidera},
+           giveni={K\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Institut des Sciences Technologiques, Économiques et Administratives (FORMATEC)}%
+      }
+      \list{location}{1}{%
+        {Lomé, Togo}%
+      }
+      \strng{namehash}{4d9e7f0721f0e981843d67e04031d99d}
+      \strng{fullhash}{4d9e7f0721f0e981843d67e04031d99d}
+      \strng{fullhashraw}{4d9e7f0721f0e981843d67e04031d99d}
+      \strng{bibnamehash}{4d9e7f0721f0e981843d67e04031d99d}
+      \strng{authorbibnamehash}{4d9e7f0721f0e981843d67e04031d99d}
+      \strng{authornamehash}{4d9e7f0721f0e981843d67e04031d99d}
+      \strng{authorfullhash}{4d9e7f0721f0e981843d67e04031d99d}
+      \strng{authorfullhashraw}{4d9e7f0721f0e981843d67e04031d99d}
+      \field{sortinit}{7}
+      \field{sortinithash}{108d0be1b1bee9773a1173443802c0a3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{12}
+      \field{note}{Sous la direction de M. AMESSEFE Komi Yoan Freddy}
+      \field{title}{Intégration des données géologiques et pédologiques pour la superposition cartographique et analyse corrélative des aléas géotechniques et taux de gonflement}
+      \field{type}{Mémoire de Licence Professionnelle en Génie Civil}
+      \field{year}{2025}
     \endentry
     \entry{viscarra2006data}{article}{}{}
       \name{author}{5}{}{%
@@ -349,31 +349,73 @@
       \field{title}{Mining Geostatistics}
       \field{year}{1978}
     \endentry
-    \entry{brgm2019togo}{report}{}{}
-      \name{author}{1}{}{%
-        {{hash=1bf7c3d3ed77df717bea90ddb2639ad9}{%
-           family={{BRGM}},
-           familyi={B\bibinitperiod}}}%
+    \entry{hengl2007regression}{article}{}{}
+      \name{author}{3}{}{%
+        {{hash=884df4ac8a1f7458e3da07b63d75d957}{%
+           family={Hengl},
+           familyi={H\bibinitperiod},
+           given={T.},
+           giveni={T\bibinitperiod}}}%
+        {{hash=ea7bfaa36442b9bcf9529b15a7f55e80}{%
+           family={Heuvelink},
+           familyi={H\bibinitperiod},
+           given={G.\bibnamedelimi B.\bibnamedelimi M.},
+           giveni={G\bibinitperiod\bibinitdelim B\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=ac84bebbaec94fc19dd18b6c9f21cc17}{%
+           family={Rossiter},
+           familyi={R\bibinitperiod},
+           given={D.\bibnamedelimi G.},
+           giveni={D\bibinitperiod\bibinitdelim G\bibinitperiod}}}%
       }
-      \list{institution}{1}{%
-        {Bureau de Recherches Géologiques et Minières}%
-      }
-      \strng{namehash}{1bf7c3d3ed77df717bea90ddb2639ad9}
-      \strng{fullhash}{1bf7c3d3ed77df717bea90ddb2639ad9}
-      \strng{fullhashraw}{1bf7c3d3ed77df717bea90ddb2639ad9}
-      \strng{bibnamehash}{1bf7c3d3ed77df717bea90ddb2639ad9}
-      \strng{authorbibnamehash}{1bf7c3d3ed77df717bea90ddb2639ad9}
-      \strng{authornamehash}{1bf7c3d3ed77df717bea90ddb2639ad9}
-      \strng{authorfullhash}{1bf7c3d3ed77df717bea90ddb2639ad9}
-      \strng{authorfullhashraw}{1bf7c3d3ed77df717bea90ddb2639ad9}
+      \strng{namehash}{a78718a9e5b319b59f409fe3b105d23e}
+      \strng{fullhash}{630a62b722bf1746ad4ff65b60e4b81a}
+      \strng{fullhashraw}{630a62b722bf1746ad4ff65b60e4b81a}
+      \strng{bibnamehash}{630a62b722bf1746ad4ff65b60e4b81a}
+      \strng{authorbibnamehash}{630a62b722bf1746ad4ff65b60e4b81a}
+      \strng{authornamehash}{a78718a9e5b319b59f409fe3b105d23e}
+      \strng{authorfullhash}{630a62b722bf1746ad4ff65b60e4b81a}
+      \strng{authorfullhashraw}{630a62b722bf1746ad4ff65b60e4b81a}
       \field{sortinit}{1}
       \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{note}{Notice explicative}
-      \field{title}{Carte géologique et hydrogéologique du Togo}
-      \field{type}{techreport}
-      \field{year}{2019}
+      \field{journaltitle}{Computers \& Geosciences}
+      \field{number}{10}
+      \field{title}{About regression-kriging: From equations to case studies}
+      \field{volume}{33}
+      \field{year}{2007}
+      \field{pages}{1301\bibrangedash 1315}
+      \range{pages}{15}
+      \verb{doi}
+      \verb 10.1016/j.cageo.2007.05.001
+      \endverb
+    \endentry
+    \entry{lark2000kriging}{article}{}{}
+      \name{author}{1}{}{%
+        {{hash=075e58d3755f2b9ee7cbd4d6bb3e1491}{%
+           family={Lark},
+           familyi={L\bibinitperiod},
+           given={R.\bibnamedelimi M.},
+           giveni={R\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+      }
+      \strng{namehash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \strng{fullhash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \strng{fullhashraw}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \strng{bibnamehash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \strng{authorbibnamehash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \strng{authornamehash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \strng{authorfullhash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \strng{authorfullhashraw}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \field{sortinit}{1}
+      \field{sortinithash}{4f6aaa89bab872aa0999fec09ff8e98a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{European Journal of Soil Science}
+      \field{title}{A comparison of some robust estimators of the variogram for use in soil survey}
+      \field{volume}{51}
+      \field{year}{2000}
+      \field{pages}{137\bibrangedash 157}
+      \range{pages}{21}
     \endentry
     \entry{castaldi2019sentinel}{article}{}{}
       \name{author}{9}{}{%
@@ -447,61 +489,101 @@
       \verb 10.1016/j.isprsjprs.2018.11.026
       \endverb
     \endentry
-    \entry{lark2000kriging}{article}{}{}
-      \name{author}{1}{}{%
-        {{hash=075e58d3755f2b9ee7cbd4d6bb3e1491}{%
-           family={Lark},
-           familyi={L\bibinitperiod},
-           given={R.\bibnamedelimi M.},
-           giveni={R\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+    \entry{roberts2017cross}{article}{}{}
+      \name{author}{14}{}{%
+        {{hash=b063a11a34d26c1e524ab098ddeca7ed}{%
+           family={Roberts},
+           familyi={R\bibinitperiod},
+           given={D.\bibnamedelimi R.},
+           giveni={D\bibinitperiod\bibinitdelim R\bibinitperiod}}}%
+        {{hash=808ce92a2eda09bcab8c44192ab0871a}{%
+           family={Bahn},
+           familyi={B\bibinitperiod},
+           given={V.},
+           giveni={V\bibinitperiod}}}%
+        {{hash=8348dd04d9ebad49de220ea4ee36eb76}{%
+           family={Ciuti},
+           familyi={C\bibinitperiod},
+           given={S.},
+           giveni={S\bibinitperiod}}}%
+        {{hash=51930d28adabea7f5dd8f9b5ce61ef9d}{%
+           family={Boyce},
+           familyi={B\bibinitperiod},
+           given={M.\bibnamedelimi S.},
+           giveni={M\bibinitperiod\bibinitdelim S\bibinitperiod}}}%
+        {{hash=3aad0d9b62e28af604b93cd190cf5823}{%
+           family={Elith},
+           familyi={E\bibinitperiod},
+           given={J.},
+           giveni={J\bibinitperiod}}}%
+        {{hash=4e9ebd649640ba386a13e6edc5d7a68e}{%
+           family={Guillera-Arroita},
+           familyi={G\bibinithyphendelim A\bibinitperiod},
+           given={G.},
+           giveni={G\bibinitperiod}}}%
+        {{hash=48e416d8826addf3b20e9030d4b70ec5}{%
+           family={Hauenstein},
+           familyi={H\bibinitperiod},
+           given={S.},
+           giveni={S\bibinitperiod}}}%
+        {{hash=77799a1cba7b4fddf7492dbcdd7ab8e5}{%
+           family={Lahoz-Monfort},
+           familyi={L\bibinithyphendelim M\bibinitperiod},
+           given={J.\bibnamedelimi J.},
+           giveni={J\bibinitperiod\bibinitdelim J\bibinitperiod}}}%
+        {{hash=a169fa1850522e19b856191e96ce22dd}{%
+           family={Schröder},
+           familyi={S\bibinitperiod},
+           given={B.},
+           giveni={B\bibinitperiod}}}%
+        {{hash=7f65e8ff152bb58806ac067251f1776d}{%
+           family={Thuiller},
+           familyi={T\bibinitperiod},
+           given={W.},
+           giveni={W\bibinitperiod}}}%
+        {{hash=21d9230fbf8ea655db6db393a173a33e}{%
+           family={Warton},
+           familyi={W\bibinitperiod},
+           given={D.\bibnamedelimi I.},
+           giveni={D\bibinitperiod\bibinitdelim I\bibinitperiod}}}%
+        {{hash=96c9a9c1a84fe7d9a55a325eedf270f3}{%
+           family={Wintle},
+           familyi={W\bibinitperiod},
+           given={B.\bibnamedelimi A.},
+           giveni={B\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=61df63eebf36606cc65ff9d4aa9f5b28}{%
+           family={Hartig},
+           familyi={H\bibinitperiod},
+           given={F.},
+           giveni={F\bibinitperiod}}}%
+        {{hash=118601e9f19533b8e97fae75cc3ab0ec}{%
+           family={Dormann},
+           familyi={D\bibinitperiod},
+           given={C.\bibnamedelimi F.},
+           giveni={C\bibinitperiod\bibinitdelim F\bibinitperiod}}}%
       }
-      \strng{namehash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
-      \strng{fullhash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
-      \strng{fullhashraw}{075e58d3755f2b9ee7cbd4d6bb3e1491}
-      \strng{bibnamehash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
-      \strng{authorbibnamehash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
-      \strng{authornamehash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
-      \strng{authorfullhash}{075e58d3755f2b9ee7cbd4d6bb3e1491}
-      \strng{authorfullhashraw}{075e58d3755f2b9ee7cbd4d6bb3e1491}
+      \strng{namehash}{f12f3947e56921bc95fbedd2481fc3ef}
+      \strng{fullhash}{cd79e277bf671b73d306208f9809a648}
+      \strng{fullhashraw}{cd79e277bf671b73d306208f9809a648}
+      \strng{bibnamehash}{f12f3947e56921bc95fbedd2481fc3ef}
+      \strng{authorbibnamehash}{f12f3947e56921bc95fbedd2481fc3ef}
+      \strng{authornamehash}{f12f3947e56921bc95fbedd2481fc3ef}
+      \strng{authorfullhash}{cd79e277bf671b73d306208f9809a648}
+      \strng{authorfullhashraw}{cd79e277bf671b73d306208f9809a648}
       \field{sortinit}{2}
       \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
       \field{labelnamesource}{author}
       \field{labeltitlesource}{title}
-      \field{journaltitle}{European Journal of Soil Science}
-      \field{title}{A comparison of some robust estimators of the variogram for use in soil survey}
-      \field{volume}{51}
-      \field{year}{2000}
-      \field{pages}{137\bibrangedash 157}
-      \range{pages}{21}
-    \endentry
-    \entry{goovaerts1997}{book}{}{}
-      \name{author}{1}{}{%
-        {{hash=b9ffb1c4cb7ec5f4a087ad21996011ee}{%
-           family={Goovaerts},
-           familyi={G\bibinitperiod},
-           given={P.},
-           giveni={P\bibinitperiod}}}%
-      }
-      \list{location}{1}{%
-        {New York}%
-      }
-      \list{publisher}{1}{%
-        {Oxford University Press}%
-      }
-      \strng{namehash}{b9ffb1c4cb7ec5f4a087ad21996011ee}
-      \strng{fullhash}{b9ffb1c4cb7ec5f4a087ad21996011ee}
-      \strng{fullhashraw}{b9ffb1c4cb7ec5f4a087ad21996011ee}
-      \strng{bibnamehash}{b9ffb1c4cb7ec5f4a087ad21996011ee}
-      \strng{authorbibnamehash}{b9ffb1c4cb7ec5f4a087ad21996011ee}
-      \strng{authornamehash}{b9ffb1c4cb7ec5f4a087ad21996011ee}
-      \strng{authorfullhash}{b9ffb1c4cb7ec5f4a087ad21996011ee}
-      \strng{authorfullhashraw}{b9ffb1c4cb7ec5f4a087ad21996011ee}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{title}{Geostatistics for Natural Resources Evaluation}
-      \field{year}{1997}
+      \field{journaltitle}{Ecography}
+      \field{number}{8}
+      \field{title}{Cross-validation strategies for data with temporal, spatial, hierarchical, or phylogenetic structure}
+      \field{volume}{40}
+      \field{year}{2017}
+      \field{pages}{913\bibrangedash 929}
+      \range{pages}{17}
+      \verb{doi}
+      \verb 10.1111/ecog.02881
+      \endverb
     \endentry
     \entry{gundogdu2007spatial}{article}{}{}
       \name{author}{2}{}{%
@@ -534,118 +616,6 @@
       \field{year}{2007}
       \field{pages}{49\bibrangedash 55}
       \range{pages}{7}
-    \endentry
-    \entry{bendar1995nir}{article}{}{}
-      \name{author}{2}{}{%
-        {{hash=dd9859af1f8c08b7aa03fd154e540f1a}{%
-           family={Ben-Dor},
-           familyi={B\bibinithyphendelim D\bibinitperiod},
-           given={E.},
-           giveni={E\bibinitperiod}}}%
-        {{hash=93d5060123feeb6b2b7ad030560df65f}{%
-           family={Banin},
-           familyi={B\bibinitperiod},
-           given={A.},
-           giveni={A\bibinitperiod}}}%
-      }
-      \strng{namehash}{002d436a7a0d3e26df09686c15a4442b}
-      \strng{fullhash}{002d436a7a0d3e26df09686c15a4442b}
-      \strng{fullhashraw}{002d436a7a0d3e26df09686c15a4442b}
-      \strng{bibnamehash}{002d436a7a0d3e26df09686c15a4442b}
-      \strng{authorbibnamehash}{002d436a7a0d3e26df09686c15a4442b}
-      \strng{authornamehash}{002d436a7a0d3e26df09686c15a4442b}
-      \strng{authorfullhash}{002d436a7a0d3e26df09686c15a4442b}
-      \strng{authorfullhashraw}{002d436a7a0d3e26df09686c15a4442b}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{journaltitle}{Soil Science Society of America Journal}
-      \field{title}{Near-infrared analysis as a rapid method to simultaneously evaluate several soil properties}
-      \field{volume}{59}
-      \field{year}{1995}
-      \field{pages}{364\bibrangedash 372}
-      \range{pages}{9}
-    \endentry
-    \entry{skempton1953colloidal}{article}{}{}
-      \name{author}{1}{}{%
-        {{hash=0439d00f9c7d47c30c4448bedf719855}{%
-           family={Skempton},
-           familyi={S\bibinitperiod},
-           given={A.\bibnamedelimi W.},
-           giveni={A\bibinitperiod\bibinitdelim W\bibinitperiod}}}%
-      }
-      \list{location}{1}{%
-        {London}%
-      }
-      \strng{namehash}{0439d00f9c7d47c30c4448bedf719855}
-      \strng{fullhash}{0439d00f9c7d47c30c4448bedf719855}
-      \strng{fullhashraw}{0439d00f9c7d47c30c4448bedf719855}
-      \strng{bibnamehash}{0439d00f9c7d47c30c4448bedf719855}
-      \strng{authorbibnamehash}{0439d00f9c7d47c30c4448bedf719855}
-      \strng{authornamehash}{0439d00f9c7d47c30c4448bedf719855}
-      \strng{authorfullhash}{0439d00f9c7d47c30c4448bedf719855}
-      \strng{authorfullhashraw}{0439d00f9c7d47c30c4448bedf719855}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{booktitle}{Proceedings of the 3rd International Conference on Soil Mechanics and Foundation Engineering}
-      \field{title}{The colloidal activity of clays}
-      \field{year}{1953}
-      \field{pages}{57\bibrangedash 61}
-      \range{pages}{5}
-    \endentry
-    \entry{hengl2018random}{article}{}{}
-      \name{author}{5}{}{%
-        {{hash=884df4ac8a1f7458e3da07b63d75d957}{%
-           family={Hengl},
-           familyi={H\bibinitperiod},
-           given={T.},
-           giveni={T\bibinitperiod}}}%
-        {{hash=59d17c87c0299fd4fb21f237a6208943}{%
-           family={Nussbaum},
-           familyi={N\bibinitperiod},
-           given={M.},
-           giveni={M\bibinitperiod}}}%
-        {{hash=50a8aebc5149e4ed633b97327b845e7c}{%
-           family={Wright},
-           familyi={W\bibinitperiod},
-           given={M.\bibnamedelimi N.},
-           giveni={M\bibinitperiod\bibinitdelim N\bibinitperiod}}}%
-        {{hash=ea7bfaa36442b9bcf9529b15a7f55e80}{%
-           family={Heuvelink},
-           familyi={H\bibinitperiod},
-           given={G.\bibnamedelimi B.\bibnamedelimi M.},
-           giveni={G\bibinitperiod\bibinitdelim B\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
-        {{hash=2ce85e5a530f0627507852119ab3798d}{%
-           family={Gräler},
-           familyi={G\bibinitperiod},
-           given={B.},
-           giveni={B\bibinitperiod}}}%
-      }
-      \strng{namehash}{a78718a9e5b319b59f409fe3b105d23e}
-      \strng{fullhash}{976d2f5e1fd8410ddea8058888d07350}
-      \strng{fullhashraw}{976d2f5e1fd8410ddea8058888d07350}
-      \strng{bibnamehash}{976d2f5e1fd8410ddea8058888d07350}
-      \strng{authorbibnamehash}{976d2f5e1fd8410ddea8058888d07350}
-      \strng{authornamehash}{a78718a9e5b319b59f409fe3b105d23e}
-      \strng{authorfullhash}{976d2f5e1fd8410ddea8058888d07350}
-      \strng{authorfullhashraw}{976d2f5e1fd8410ddea8058888d07350}
-      \field{extraname}{2}
-      \field{sortinit}{2}
-      \field{sortinithash}{8b555b3791beccb63322c22f3320aa9a}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{journaltitle}{PeerJ}
-      \field{title}{Random forest as a generic framework for predictive modeling of spatial and spatio-temporal variables}
-      \field{volume}{6}
-      \field{year}{2018}
-      \field{pages}{e5518}
-      \range{pages}{-1}
-      \verb{doi}
-      \verb 10.7717/peerj.5518
-      \endverb
     \endentry
   \enddatalist
 \endrefsection

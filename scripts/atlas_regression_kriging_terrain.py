@@ -10,12 +10,21 @@ Usage:
 """
 
 import sys
+import os
 import math
 import argparse
 import warnings
 import uuid
 from datetime import datetime, timezone
 from typing import Tuple, List
+
+# Traçabilité partagée
+sys.path.insert(0, os.path.dirname(__file__))
+try:
+    from utils._run_traceability import build_version_tag, make_run_meta
+except ImportError:
+    def build_version_tag(p, h=None): return f"{p}-nogit-nohp"
+    def make_run_meta(s, h, **kw): return {"script": s, "hyperparams": h}
 
 import numpy as np
 import pandas as pd
@@ -34,11 +43,15 @@ DEPTH_MAP = {'h1': (0.5, 1.5), 'h2': (1.0, 2.0), 'h3': (1.5, 2.5)}
 
 # DATA-02 : plages physiques canoniques
 CLAMP_MAP = {
-    'vbs': (0.0, 20.0),    # g/100g
-    'eg':  (0.0, 20.0),    # %
-    'ip':  (0.0, 80.0),    # %
-    'wl':  (20.0, 120.0),  # %
-    'wp':  (10.0, 60.0),   # %
+    'vbs':     (0.0, 20.0),    # g/100g
+    'eg':      (0.0, 20.0),    # %
+    'ip':      (0.0, 80.0),    # %
+    'wl':      (20.0, 120.0),  # %
+    'wp':      (10.0, 60.0),   # %
+    # P3 : paramètres de portance (ajoutés 2026-06-07)
+    'cbr_95':  (0.0, 150.0),   # % compactage
+    'gamma_d': (1.0, 2.5),     # g/cm³
+    'w_opt':   (5.0, 35.0),    # % teneur en eau
 }
 
 # Features SCORPAN complètes (prec_dry/wet ajoutés — disponibles dans v_scorpan_features)
@@ -49,12 +62,90 @@ NUMERIC_FEATURES = [
 ]
 CATEGORICAL_FEATURES = []
 
+# P3 : Requêtes SQL pour les paramètres de portance
+# Ces paramètres ne sont pas dans v_echantillons_essais → jointure directe sur leurs tables
+PORTANCE_SQL = {
+    'cbr_95': """
+    SELECT
+      s.code as sondage_code, s.maille_code,
+      ST_X(ST_Transform(s.geom, 25231)) as x_utm31,
+      ST_Y(ST_Transform(s.geom, 25231)) as y_utm31,
+      sc.dem_altitude, sc.dem_slope, sc.dem_tpi, sc.dem_hand,
+      sc.distance_river_m, sc.prec_annual, sc.prec_dry, sc.prec_wet,
+      sc.lon, sc.lat,
+      e.depth_m,
+      ec.cbr_pct as target
+    FROM atlas.sondages s
+    JOIN atlas.echantillons e ON e.sondage_id = s.id
+    JOIN atlas.essais_cbr ec ON ec.echantillon_id = e.id
+    JOIN atlas.v_scorpan_features sc ON sc.maille_code = s.maille_code
+    WHERE ec.cbr_pct IS NOT NULL
+      AND ec.compactage_pct = 95
+      AND e.depth_m BETWEEN %(dmin)s AND %(dmax)s
+      AND s.maille_code IS NOT NULL
+      AND s.deleted_at IS NULL
+    """,
+    'gamma_d': """
+    SELECT
+      s.code as sondage_code, s.maille_code,
+      ST_X(ST_Transform(s.geom, 25231)) as x_utm31,
+      ST_Y(ST_Transform(s.geom, 25231)) as y_utm31,
+      sc.dem_altitude, sc.dem_slope, sc.dem_tpi, sc.dem_hand,
+      sc.distance_river_m, sc.prec_annual, sc.prec_dry, sc.prec_wet,
+      sc.lon, sc.lat,
+      e.depth_m,
+      (epr.gamma_d_max / 10.0) as target
+    FROM atlas.sondages s
+    JOIN atlas.echantillons e ON e.sondage_id = s.id
+    JOIN atlas.essais_proctor epr ON epr.echantillon_id = e.id
+    JOIN atlas.v_scorpan_features sc ON sc.maille_code = s.maille_code
+    WHERE epr.gamma_d_max IS NOT NULL
+      AND e.depth_m BETWEEN %(dmin)s AND %(dmax)s
+      AND s.maille_code IS NOT NULL
+      AND s.deleted_at IS NULL
+    """,
+    'w_opt': """
+    SELECT
+      s.code as sondage_code, s.maille_code,
+      ST_X(ST_Transform(s.geom, 25231)) as x_utm31,
+      ST_Y(ST_Transform(s.geom, 25231)) as y_utm31,
+      sc.dem_altitude, sc.dem_slope, sc.dem_tpi, sc.dem_hand,
+      sc.distance_river_m, sc.prec_annual, sc.prec_dry, sc.prec_wet,
+      sc.lon, sc.lat,
+      e.depth_m,
+      epr.w_opt as target
+    FROM atlas.sondages s
+    JOIN atlas.echantillons e ON e.sondage_id = s.id
+    JOIN atlas.essais_proctor epr ON epr.echantillon_id = e.id
+    JOIN atlas.v_scorpan_features sc ON sc.maille_code = s.maille_code
+    WHERE epr.w_opt IS NOT NULL
+      AND e.depth_m BETWEEN %(dmin)s AND %(dmax)s
+      AND s.maille_code IS NOT NULL
+      AND s.deleted_at IS NULL
+    """,
+}
+
 def get_connection(db_url):
     return psycopg2.connect(db_url)
 
 def load_terrain_data(conn, param: str, horizon: str) -> pd.DataFrame:
-    """Charge les VRAISES données terrain depuis v_echantillons_essais"""
+    """Charge les VRAISES données terrain.
+    Pour VBS/IP/WL/WP/EG : depuis v_echantillons_essais.
+    Pour CBR_95/gamma_d/w_opt (P3) : jointure directe sur les tables essais_*.
+    """
     depth_min, depth_max = DEPTH_MAP[horizon]
+
+    # P3 : paramètres de portance (jointure directe)
+    if param in PORTANCE_SQL:
+        sql = PORTANCE_SQL[param]
+        cur = conn.cursor()
+        cur.execute(sql, {'dmin': depth_min, 'dmax': depth_max})
+        rows = cur.fetchall()
+        cols = [desc[0] for desc in cur.description]
+        df = pd.DataFrame(rows, columns=cols)
+        print(f"  Donnees terrain chargees: {len(df)} echantillons ({param}, {horizon})")
+        return df[df['target'].notna() & df['x_utm31'].notna()]
+
     # ATTENTION : EG s'appelle 'potentiel_gonflement' dans v_echantillons_essais (pas 'eg')
     # Référence : RAPPORT_TECHNIQUE_SCIENTIFIQUE_30-05-2026.md section 2.2
     col_map = {'vbs': 'vbs', 'ip': 'ip', 'wl': 'wl', 'wp': 'wp', 'eg': 'potentiel_gonflement'}
@@ -234,19 +325,33 @@ def loo_cross_validation(df_train, geol_cats, pedo_cats) -> float:
     print(f"  LOO-CV COMPLET RK RMSE: {loo_rmse:.4f} ({len(errors)}/{n} points)")
     return loo_rmse
 
-def store_results(conn, df_all, z_rk, ss_kriged, param, horizon, loo_rmse, reg_r2, n_terrain):
+def store_results(conn, df_all, z_rk, ss_kriged, param, horizon, loo_rmse, reg_r2, n_terrain,
+                  t_start: datetime = None):
     """
     Stocke les prédictions RK avec variance PyKrige réelle.
 
     ss_kriged : variance de krigeage des résidus (numpy array, même longueur que z_rk).
                 Jamais proxy LOO-RMSE² — toujours la variance réelle de ok.execute().
+    t_start   : horodatage de début du calcul (pour durée tracée).
     """
     clamp_min, clamp_max = CLAMP_MAP.get(param, (0, 100))
     parameter_id = f'{param}_rk_{horizon}'
     run_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
+    if t_start is None:
+        t_start = now
 
     cur = conn.cursor()
+
+    hp = {"param": param, "horizon": horizon, "variogram_model": "spherical", "ridge_alpha": 1.0}
+    version_tag = build_version_tag("rk_scorpan", hp)
+    meta_json = make_run_meta(
+        script_name="atlas_regression_kriging_terrain",
+        hyperparams=hp,
+        metrics={"loo_rmse": loo_rmse, "r2": reg_r2, "n_terrain": n_terrain},
+        t_start=t_start,
+        extra_modules=["sklearn", "pykrige"],
+    )
 
     # BM-SYNC-05 : supersede les anciennes valeurs (idempotent)
     cur.execute("""
@@ -256,14 +361,17 @@ def store_results(conn, df_all, z_rk, ss_kriged, param, horizon, loo_rmse, reg_r
       AND COALESCE(is_superseded, false) = false
     """, (parameter_id,))
 
-    # Insérer le run avec métadonnées
+    # Insérer le run avec traçabilité complète
     cur.execute("""
     INSERT INTO atlas.ai_interpolation_runs
-      (id, run_type, parameter_id, method, status, metrics, created_at, meta)
-    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-    """, (run_id, 'kriging', parameter_id, 'regression_kriging_scorpan', 'finished',
-          psycopg2.extras.Json({'loo_rmse': loo_rmse, 'regression_r2': reg_r2, 'n_terrain_samples': n_terrain}),
-          now, psycopg2.extras.Json({'source': 'v_echantillons_essais', 'note': 'trained on real terrain data'})))
+      (id, run_type, parameter_id, method, model_version, status, metrics,
+       started_at, finished_at, created_at, meta)
+    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (run_id, 'kriging', parameter_id, 'regression_kriging_scorpan',
+          version_tag, 'finished',
+          psycopg2.extras.Json({'loo_rmse': loo_rmse, 'r2': reg_r2, 'n_terrain': n_terrain}),
+          t_start, now, now,
+          psycopg2.extras.Json(meta_json)))
 
     # Insérer les valeurs interpolées avec variance PyKrige réelle (DATA-02)
     rows = []
@@ -300,9 +408,17 @@ def store_results(conn, df_all, z_rk, ss_kriged, param, horizon, loo_rmse, reg_r
     return run_id
 
 def main():
-    parser = argparse.ArgumentParser(description='Regression Kriging sur DONNEES TERRAIN')
+    # P3 : étendu pour inclure cbr_95, gamma_d, w_opt (2026-06-07)
+    # Ces paramètres ont 280-348 sondages H1 — plus que VBS (135)
+    # Voir COUVERTURE_MODELES_PAR_PARAMETRE.md pour la preuve DB
+    ALL_PARAMS = ['vbs', 'eg', 'ip', 'wl', 'wp', 'cbr_95', 'gamma_d', 'w_opt']
+
+    parser = argparse.ArgumentParser(
+        description='Regression Kriging SCORPAN sur données terrain — paramètres argilosité ET portance'
+    )
     parser.add_argument('--database-url', required=True)
-    parser.add_argument('--parameter', choices=['vbs','eg','ip','wl','wp'], required=True)
+    parser.add_argument('--parameter', choices=ALL_PARAMS, required=True,
+                        help='Paramètre : argilosité (vbs,eg,ip,wl,wp) ou portance (cbr_95,gamma_d,w_opt)')
     parser.add_argument('--horizon', choices=['h1','h2','h3'], required=True)
     parser.add_argument('--dry-run', action='store_true', help='Mode dry-run: valider config sans executer')
     args = parser.parse_args()
@@ -311,9 +427,17 @@ def main():
         print("[DRY-RUN] Validation de la configuration...")
         conn = get_connection(args.database_url)
         cur = conn.cursor()
-        col_dry = {'vbs': 'vbs', 'ip': 'ip', 'wl': 'wl', 'wp': 'wp', 'eg': 'potentiel_gonflement'}[args.parameter]
-        cur.execute("SELECT COUNT(*) FROM atlas.v_echantillons_essais WHERE %s IS NOT NULL" % col_dry)
-        n = cur.fetchone()[0]
+        if args.parameter in PORTANCE_SQL:
+            # P3 : vérification directe
+            table_map = {'cbr_95': ('essais_cbr','cbr_pct'), 'gamma_d': ('essais_proctor','gamma_d_max'),
+                         'w_opt': ('essais_proctor','w_opt')}
+            tbl, col = table_map[args.parameter]
+            cur.execute(f"SELECT COUNT(*) FROM atlas.{tbl} WHERE {col} IS NOT NULL")
+            n = cur.fetchone()[0]
+        else:
+            col_dry = {'vbs': 'vbs', 'ip': 'ip', 'wl': 'wl', 'wp': 'wp', 'eg': 'potentiel_gonflement'}[args.parameter]
+            cur.execute("SELECT COUNT(*) FROM atlas.v_echantillons_essais WHERE %s IS NOT NULL" % col_dry)
+            n = cur.fetchone()[0]
         print(f"  [OK] {n} echantillons {args.parameter} disponibles")
         cur.execute("SELECT COUNT(*) FROM atlas.v_scorpan_features")
         m = cur.fetchone()[0]
@@ -387,11 +511,23 @@ def main():
     print("Stockage resultats (avec variance PyKrige)...")
     run_id = store_results(conn, df_all, z_rk, ss_kriged, args.parameter, args.horizon, loo_rmse, reg_r2, n_terrain)
 
-    print(f"\n=== TERMINE ===")
-    print(f"  Run ID: {run_id}")
-    print(f"  Echantillons terrain: {n_terrain}")
-    print(f"  Regression R2: {reg_r2:.4f}")
-    print(f"  LOO-CV RMSE: {loo_rmse if loo_rmse else 'N/A'}")
+    print(f"\n=== TERMINE ===", file=sys.stderr)
+    print(f"  Run ID: {run_id}", file=sys.stderr)
+    print(f"  Echantillons terrain: {n_terrain}", file=sys.stderr)
+    print(f"  Regression R2: {reg_r2:.4f}", file=sys.stderr)
+    print(f"  LOO-CV RMSE: {loo_rmse if loo_rmse else 'N/A'}", file=sys.stderr)
+
+    # Sortie JSON pour le worker Rust (run_python_json attend du JSON sur stdout)
+    import json as _json
+    print(_json.dumps({
+        "status": "completed",
+        "parameter": args.parameter,
+        "horizon": args.horizon,
+        "run_id": str(run_id),
+        "n_terrain": n_terrain,
+        "regression_r2": round(reg_r2, 4),
+        "loo_rmse": round(loo_rmse, 4) if loo_rmse else None,
+    }))
 
     conn.close()
 

@@ -47,20 +47,30 @@ import logging
 from datetime import datetime, timezone
 from typing import Dict, List, Optional, Tuple
 
+# Traçabilité partagée
+sys.path.insert(0, os.path.dirname(__file__))
+try:
+    from utils._run_traceability import build_version_tag, make_run_meta
+except ImportError:
+    def build_version_tag(p, h=None): return f"{p}-nogit-nohp"
+    def make_run_meta(s, h, **kw): return {"script": s, "hyperparams": h}
+
 import numpy as np
 import psycopg2
 from psycopg2.extras import execute_batch, Json
 
 # ── Logging ──────────────────────────────────────────────────────────
-os.makedirs("logs", exist_ok=True)
+# Répertoire logs dans /tmp (monté RW) pour compatibilité container read-only
+_LOG_DIR = "/tmp/atlas_logs"
+os.makedirs(_LOG_DIR, exist_ok=True)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s.%(msecs)03d | %(levelname)-8s | %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[
-        logging.StreamHandler(sys.stdout),
+        logging.StreamHandler(sys.stderr),
         logging.FileHandler(
-            f"logs/ked_rk_fusion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log",
+            f"{_LOG_DIR}/ked_rk_fusion_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log",
             encoding="utf-8",
         ),
     ],
@@ -69,11 +79,16 @@ log = logging.getLogger("KED_RK_Fusion")
 
 # ── Constantes métier (DATA-02) ───────────────────────────────────────
 PHYSICAL_CLAMP: Dict[str, Tuple[float, float]] = {
-    "vbs": (0.0, 20.0),
-    "ip":  (0.0, 80.0),
-    "wl":  (20.0, 120.0),
-    "wp":  (10.0, 60.0),
-    "eg":  (0.0, 20.0),
+    "vbs":    (0.0,  20.0),
+    "ip":     (0.0,  80.0),
+    "wl":     (20.0, 120.0),
+    "wp":     (10.0, 60.0),
+    "eg":     (0.0,  20.0),
+    # Portance — ajout 2026-06-07 (décision hors roadmap documentée)
+    # gamma_d stocké en g/cm³ par KED (/10.0) et RK (/10.0 fixé)
+    "cbr_95":  (0.0,  150.0),
+    "gamma_d": (1.0,  2.5),
+    "w_opt":   (5.0,  35.0),
 }
 
 DB_DEFAULT = os.environ.get(
@@ -388,12 +403,13 @@ def run_fusion(
         """
         INSERT INTO atlas.ai_interpolation_runs
           (id, run_type, parameter_id, method, model_version, status, metrics,
-           started_at, finished_at, zone_id, kriging_domain_id)
+           started_at, finished_at, zone_id, kriging_domain_id, meta)
         VALUES
-          (%s, 'fusion', %s, %s, 'v1', 'finished', %s::jsonb, now(), now(), NULL, NULL)
+          (%s, 'fusion', %s, %s, %s, 'finished', %s::jsonb, %s, now(), NULL, NULL, %s::jsonb)
         """,
         (
             run_id, fusion_param_id, FUSION_METHOD,
+            build_version_tag("blup_fusion", {"param_kind": param_kind, "horizon": horizon_label}),
             json_safe({
                 "horizon_label": horizon_label,
                 "param_kind": param_kind,
@@ -402,6 +418,13 @@ def run_fusion(
                 "global_var": global_var,
                 **metrics,
             }),
+            _t_start if "_t_start" in dir() else "now()",
+            json_safe(make_run_meta(
+                script_name="ked_rk_fusion",
+                hyperparams={"param_kind": param_kind, "horizon_label": horizon_label,
+                             "ked_param": ked_param_id, "rk_param": rk_param_id},
+                metrics=metrics,
+            )),
         ),
     )
 
@@ -460,6 +483,53 @@ def run_fusion(
     }
 
 
+# ── Mode Rust API (rétro-compatibilité) ──────────────────────────────
+def run_via_rust_api(
+    api_url: str,
+    params: List[str],
+    horizons: List[str],
+    dry_run: bool,
+    jwt_token: Optional[str],
+) -> int:
+    """
+    Délègue le calcul au moteur Rust (POST /ai/fusion/run).
+    Utilisé quand --use-rust-api est fourni et que le service est disponible.
+    Fallback automatique vers Python si l'API est inaccessible.
+    """
+    try:
+        import urllib.request
+        import urllib.error
+
+        qs = f"params={','.join(params)}&horizons={','.join(horizons)}"
+        if dry_run:
+            qs += "&dry_run=true"
+        url = f"{api_url.rstrip('/')}/ai/fusion/run?{qs}"
+
+        headers = {"Content-Type": "application/json"}
+        if jwt_token:
+            headers["Authorization"] = f"Bearer {jwt_token}"
+
+        req = urllib.request.Request(url, method="POST", headers=headers, data=b"")
+        with urllib.request.urlopen(req, timeout=300) as resp:
+            body = json.loads(resp.read().decode())
+
+        ok_count = sum(1 for t in body.get("tasks", []) if not t.get("skipped"))
+        log.info(
+            "=== Rust BLUP engine : %d/%d tâches réussies (total=%dms) ===",
+            ok_count,
+            len(body.get("tasks", [])),
+            body.get("total_elapsed_ms", 0),
+        )
+        print(json_safe(body))
+        return 0
+
+    except Exception as exc:
+        log.warning(
+            "Rust API inaccessible (%s) — fallback Python en cours...", exc
+        )
+        return -1  # signal de fallback
+
+
 # ── Entrée principale ─────────────────────────────────────────────────
 def main() -> int:
     ap = argparse.ArgumentParser(
@@ -477,6 +547,22 @@ def main() -> int:
     ap.add_argument(
         "--dry-run", action="store_true", default=False,
         help="Valide les données sans écrire en base.",
+    )
+    ap.add_argument(
+        "--use-rust-api",
+        metavar="URL",
+        default=None,
+        help=(
+            "URL de l'API api-geo (ex: http://127.0.0.1:8000). "
+            "Délègue la fusion au moteur Rust. "
+            "Fallback automatique vers Python si indisponible."
+        ),
+    )
+    ap.add_argument(
+        "--rust-jwt",
+        metavar="TOKEN",
+        default=os.environ.get("ATLAS_JWT"),
+        help="JWT Bearer token pour l'authentification API (ou env ATLAS_JWT).",
     )
     args = ap.parse_args()
 
@@ -496,6 +582,16 @@ def main() -> int:
     log.info("=== BLOC B — Fusion KED-RK Bayésienne ===")
     log.info("Paramètres : %s | Horizons : %s | Dry-run : %s",
              params, horizons, args.dry_run)
+
+    # Tentative via moteur Rust (optionnelle)
+    if args.use_rust_api:
+        log.info("Moteur Rust : %s", args.use_rust_api)
+        rc = run_via_rust_api(
+            args.use_rust_api, params, horizons, args.dry_run, args.rust_jwt
+        )
+        if rc == 0:
+            return 0
+        log.info("Fallback Python activé.")
 
     conn = get_conn(args.database_url)
     try:

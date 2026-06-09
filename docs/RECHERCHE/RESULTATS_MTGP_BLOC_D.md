@@ -1,10 +1,17 @@
 # Résultats — Multi-Task Gaussian Process (MTGP) — BLOC D
 ## Atlas Géotechnique Togo
 
-**Date :** 2026-06-01  
+**Date initiale :** 2026-06-01 | **Dernière mise à jour :** 2026-06-04  
 **Script :** `scripts/mtgp_geotechnique.py`  
 **Méthode DB :** `mtgp_icm_gpflow`  
 **Librairie :** GPflow 2.x, modèle ICM (Intrinsic Coregionalization Model), rang 2
+
+> ⚠️ **STATUT 2026-06-04 — RÉSULTATS PROVISOIRES**
+> Le MTGP a été entraîné sur 260 sondages (empilés VBS+IP+EG) dont une fraction
+> inconnue appartient aux 187 sondages avec coordonnée fallback `POINT(1.0, 8.6)`.
+> L'ICM apprend des corrélations spatiales r(VBS,EG)≈0.78 qui peuvent être biaisées
+> par la concentration artificielle à Kaniamboua. Un relancement est planifié après
+> le re-géocodage. Ref : `AUDIT_GEOCODAGE_CRITIQUE_2026-06-04.md` — Phase 4.
 
 ---
 
@@ -127,5 +134,25 @@ mean_eg  = mean[:, 2]
 
 ---
 
+## 7. Mise à jour post-audit (2026-06-04)
+
+### Actions requises avant publication
+
+| Action | Statut | Notes |
+|--------|--------|-------|
+| Re-géocodage 187 sondages | ⏳ En cours | `regeocod_fuzzy_v1.py` |
+| Ré-extraction features GEE VBS/IP/EG | ⬜ Planifié | Après correction maille_code |
+| Relancement MTGP complet | ⬜ Planifié | `run_all_models_nightly_v2.py --models l4` |
+| Calcul LOO-RMSE MTGP | ⬜ Planifié | O(N³) tractable, N_corrigé < 260 |
+| Comparaison MTGP vs L2b BLUP | ⬜ Planifié | Après disponibilité des deux LOO |
+
+**Script de lancement post-correction :**
+```bash
+python scripts/run_all_models_nightly_v2.py --models l4
+```
+
+---
+
 *Script : `scripts/mtgp_geotechnique.py`*  
-*Paramètre catalog IDs : `vbs_mtgp_h1`, `ip_mtgp_h1`, `eg_mtgp_h1` (source='ia')*
+*Paramètre catalog IDs : `vbs_mtgp_h1`, `ip_mtgp_h1`, `eg_mtgp_h1` (source='ia')*  
+*Orchestration : `scripts/run_all_models_nightly_v2.py` (v2 via API Rust)*
