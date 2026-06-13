@@ -917,117 +917,293 @@ function ValidationTab() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   SOUS-ONGLET 4 : ML
+   SOUS-ONGLET 4 : ML — Pipeline L1-L5 + Supervisés
    ═══════════════════════════════════════════════════════════ */
+interface PipelineModel {
+  id: string; label: string; method_db: string; status: string
+  n_mailles: number; n_params: number; last_run_at: string | null
+  metrics: Record<string, any>; warnings: string[]
+}
+interface JobState { jobId: string; status: 'running' | 'done' | 'error'; message: string }
+
+const LEVEL_MAP: Record<string, string> = {
+  L1_KED_H: 'L1', L2a_RK: 'L2a', L2b_BLUP: 'L2b',
+  L3_VFS: 'L3', L4_MTGP: 'L4', L5_SGS: 'L5',
+}
+const JOB_TYPE_MAP: Record<string, string> = {
+  L1_KED_H: 'ked_recompute', L2a_RK: 'rk_recompute', L2b_BLUP: 'blup_recompute',
+  L3_VFS: 'vfs_extract', L4_MTGP: 'mtgp_recompute', L5_SGS: 'sgs_compute',
+}
+
 function MLTab() {
-  const [models, setModels] = useState<Row[]>([])
-  const [section, setSection] = useSectionState('ml', 'modeles')
+  const [pipelineModels, setPipelineModels] = useState<PipelineModel[]>([])
+  const [supervisedModels, setSupervisedModels] = useState<Row[]>([])
+  const [loadingPipeline, setLoadingPipeline] = useState(true)
+  const [jobStates, setJobStates] = useState<Record<string, JobState>>({})
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
+  const [section, setSection] = useSectionState('ml', 'pipeline')
+
+  const getHeaders = () => {
+    const token = localStorage.getItem('atlas_token') ?? ''
+    return token ? { Authorization: `Bearer ${token}` } : {}
+  }
+
+  const refreshPipeline = useCallback(async () => {
+    try {
+      const resp = await fetch('/api/ai/models/status', { headers: getHeaders() })
+      if (resp.ok) {
+        const data = await resp.json()
+        setPipelineModels(data.models ?? [])
+      }
+    } catch { /* ok */ }
+  }, [])
+
+  const pollJob = useCallback((modelId: string, jobId: string) => {
+    const check = async () => {
+      try {
+        const resp = await fetch(`/api/ai/jobs/${jobId}`, { headers: getHeaders() })
+        if (!resp.ok) return
+        const job = await resp.json()
+        if (job.status === 'finished') {
+          setJobStates(prev => ({ ...prev, [modelId]: { jobId, status: 'done', message: 'Terminé ✓' } }))
+          setTimeout(refreshPipeline, 1000)
+        } else if (job.status === 'failed') {
+          setJobStates(prev => ({ ...prev, [modelId]: { jobId, status: 'error', message: job.error_message ?? 'Erreur script' } }))
+        } else {
+          setJobStates(prev => ({ ...prev, [modelId]: { jobId, status: 'running', message: `${job.status}…` } }))
+          setTimeout(check, 3000)
+        }
+      } catch { setTimeout(check, 5000) }
+    }
+    setTimeout(check, 3000)
+  }, [refreshPipeline])
+
+  const handleTrigger = useCallback(async (modelId: string) => {
+    const jobType = JOB_TYPE_MAP[modelId]
+    if (!jobType) return
+    setJobStates(prev => ({ ...prev, [modelId]: { jobId: '', status: 'running', message: 'Envoi en queue…' } }))
+    try {
+      const resp = await fetch('/api/ai/jobs/enqueue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({ job_type: jobType, requested_by: 'expert-panel' }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }))
+        throw new Error(err.error ?? `HTTP ${resp.status}`)
+      }
+      const data = await resp.json()
+      const jobId = data.job_id
+      setJobStates(prev => ({ ...prev, [modelId]: { jobId, status: 'running', message: 'En queue…' } }))
+      pollJob(modelId, jobId)
+    } catch (e) {
+      setJobStates(prev => ({ ...prev, [modelId]: { jobId: '', status: 'error', message: String(e) } }))
+    }
+  }, [pollJob])
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
+      setLoadingPipeline(true)
       try {
-        const mlData = await api.get<any>('/api/stats/ml-registry')
+        const [pRes, mlRes] = await Promise.allSettled([
+          fetch('/api/ai/models/status', { headers: getHeaders() }).then(r => r.json()),
+          api.get<any>('/api/stats/ml-registry'),
+        ])
         if (!cancelled) {
-          setModels((mlData?.items ?? []) as Row[])
+          if (pRes.status === 'fulfilled') setPipelineModels(pRes.value.models ?? [])
+          if (mlRes.status === 'fulfilled') setSupervisedModels((mlRes.value?.items ?? []) as Row[])
         }
       } catch { /* ok */ }
+      finally { if (!cancelled) setLoadingPipeline(false) }
     })()
     return () => { cancelled = true }
   }, [])
 
-  if (models.length === 0) {
-    return (
-      <div style={{ background: DT.cardBg, border: DT.cardBorder, borderRadius: DT.cardRadius, boxShadow: DT.cardShadow }} className="p-8 text-center">
-        <Brain size={32} strokeWidth={1} style={{ color: '#CBD5E1' }} className="mx-auto mb-3" />
-        <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1E293B' }} className="mb-1">Aucun modèle ML entraîné</h3>
-        <p style={{ fontSize: '13px', color: DT.headerColor }} className="mb-4">Le pipeline CatBoost n'a pas encore été exécuté.</p>
-        <p style={{ fontSize: '12px', color: DT.headerColor }}>Aller dans l'onglet Infer/Opti et cliquer sur « Train supervisé »</p>
-      </div>
-    )
+  const statusBadgeNode = (status: string) => {
+    if (status === 'ready') return <Badge style={{ background: '#DCFCE7', color: '#166534', border: 'none', fontSize: '11px' }}><span style={{ color: '#22C55E', marginRight: 4 }}>●</span>Prêt</Badge>
+    if (status === 'partial') return <Badge style={{ background: '#FEF9C3', color: '#854D0E', border: 'none', fontSize: '11px' }}><span style={{ color: '#EAB308', marginRight: 4 }}>●</span>Partiel</Badge>
+    if (status === 'running') return <Badge style={{ background: '#DBEAFE', color: '#1E40AF', border: 'none', fontSize: '11px' }}><span style={{ color: '#3B82F6', marginRight: 4 }}>●</span>En cours</Badge>
+    return <Badge style={{ background: '#F1F5F9', color: '#475569', border: 'none', fontSize: '11px' }}><span style={{ color: '#94A3B8', marginRight: 4 }}>●</span>Non calculé</Badge>
   }
 
   const navItems: NavItem[] = [
-    { id: 'modeles', label: 'Modèles', badge: String(models.length) },
+    { id: 'pipeline', label: 'Pipeline L1-L5', badge: String(pipelineModels.length) },
+    { id: 'supervised', label: 'Supervisés CatBoost', badge: String(supervisedModels.length) },
   ]
 
-  const mlColumns = [
+  const supervisedColumns = [
     { key: 'model_target', label: 'Cible' },
-    { key: 'model_version', label: 'Version', render: (v: any) => <code style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', fontSize: '11px', fontFamily: 'monospace' }}>{String(v ?? '—')}</code> },
+    { key: 'model_version', label: 'Version', render: (v: any) => <code style={{ background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px', fontSize: '11px' }}>{String(v ?? '—')}</code> },
     { key: 'dataset_size', label: 'Dataset', align: 'right' as const, render: (v: any) => v ? <span>{v} sondages</span> : <span style={{ color: DT.mutedDash }}>—</span> },
-    { key: 'features_used', label: 'Features', render: () => <span style={{ fontSize: '11px' }}>altitude, zones, sondages, geol/pedo/hydro</span> },
     { key: 'rmse_cv', label: 'RMSE CV', align: 'right' as const, render: (v: any) => v != null ? <span>{Number(v).toFixed(3)}</span> : <span style={{ color: DT.mutedDash }}>—</span> },
     { key: 'r2_cv', label: 'R² CV', align: 'right' as const, render: (v: any) => {
       if (v == null) return <span style={{ color: DT.mutedDash }}>—</span>
       const n = Number(v)
       return <span style={{ color: n > 0 ? '#22C55E' : '#EF4444', fontWeight: 600 }}>{n.toFixed(3)}</span>
     }},
-    { key: 'created_at', label: 'Date', render: (v: any) => v ? <span>{String(v)}</span> : <span style={{ color: DT.mutedDash }}>—</span> },
-    { key: 'status', label: 'Statut', render: (v: any) => v === 'active' ? <Badge style={{ background: '#DCFCE7', color: '#166534', border: 'none', fontSize: '11px' }}><span style={{ color: '#22C55E', marginRight: 4 }}>●</span>En production</Badge> : <Badge style={{ background: '#F1F5F9', color: '#94A3B8', border: 'none', fontSize: '11px' }}>Non déployé</Badge> },
+    { key: 'status', label: 'Statut', render: (v: any) => v === 'active'
+      ? <Badge style={{ background: '#DCFCE7', color: '#166534', border: 'none', fontSize: '11px' }}><span style={{ color: '#22C55E', marginRight: 4 }}>●</span>En production</Badge>
+      : <Badge style={{ background: '#F1F5F9', color: '#94A3B8', border: 'none', fontSize: '11px' }}>Non déployé</Badge> },
     { key: 'actions', label: '', render: (_v: any, r: Row) => (
-      <button onClick={() => setExpandedRow(expandedRow === String(r.model_target) ? null : String(r.model_target))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: DT.activeBlue, fontSize: '11px' }}>
-        {expandedRow === String(r.model_target) ? 'Masquer détails' : 'Voir détails'}
+      <button onClick={() => setExpandedRow(expandedRow === String(r.model_target) ? null : String(r.model_target))}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', color: DT.activeBlue, fontSize: '11px' }}>
+        {expandedRow === String(r.model_target) ? 'Masquer' : 'Voir détails'}
       </button>
-    )}
+    )},
   ]
 
   return (
     <SectionLayout nav={<SectionNav items={navItems} active={section} onChange={setSection} />}>
-      {section === 'modeles' && (
-        <SectionCard icon={Brain} title="Registre des modèles" action={<ExportBtn rows={models} filename="model_registry.csv" />}>
-          <DataTable columns={mlColumns} rows={models} />
-          
-          {expandedRow && (() => {
-            const row = models.find(m => String(m.model_target) === expandedRow)
-            if (!row || !row.details) return null
-            const d = row.details as any
-            const r2_avg = Number(row.r2_cv)
-            return (
-              <div className="mt-4 p-4 rounded" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
-                <h4 className="font-semibold text-sm mb-3 text-slate-800">Détail par target ({String(row.model_target)})</h4>
-                
-                {r2_avg < 0 && (
-                  <div className="mb-4 p-3 rounded" style={{ background: '#FFF7ED', border: '1px solid #FB923C', fontSize: '12px', color: '#9A3412' }}>
-                    <strong>⚠️ R² négatifs —</strong> le modèle est moins précis que la moyenne. Insuffisamment de données d'entraînement. Résultats à utiliser avec précaution.
-                  </div>
-                )}
 
-                <table className="w-full text-sm">
+      {section === 'pipeline' && (
+        <SectionCard icon={Cpu} title="Pipeline géostatistique L1-L5"
+          action={
+            <button onClick={refreshPipeline} className="flex items-center gap-1 text-xs transition-colors"
+              style={{ color: DT.headerColor, background: 'none', border: 'none', cursor: 'pointer' }}>
+              <RefreshCw size={12} strokeWidth={1.5} /> Rafraîchir
+            </button>
+          }
+        >
+          {loadingPipeline ? (
+            <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" style={{ color: DT.activeBlue }} /></div>
+          ) : pipelineModels.length === 0 ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: DT.headerColor }}>
+              <AlertCircle size={28} style={{ margin: '0 auto 8px', opacity: 0.3 }} />
+              <p style={{ fontSize: 13 }}>Impossible de charger le statut des modèles</p>
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full" style={{ fontSize: '12px', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr className="border-b border-slate-200">
-                      <th className="text-left py-2 px-3">Target</th>
-                      <th className="text-right py-2 px-3">N train</th>
-                      <th className="text-right py-2 px-3">RMSE</th>
-                      <th className="text-right py-2 px-3">R²</th>
+                    <tr style={{ borderBottom: '1px solid #CBD5E1' }}>
+                      {['Niveau','Modèle','Statut','Params','Mailles','LOO-RMSE VBS H1','Dernier run','Action'].map(h => (
+                        <th key={h} style={{ padding: '10px 8px', textAlign: h === 'Action' || h === 'Niveau' || h === 'Statut' ? 'center' : h === 'Params' || h === 'Mailles' || h === 'LOO-RMSE VBS H1' ? 'right' : 'left', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em', color: DT.headerColor, background: DT.headerBg, whiteSpace: 'nowrap' }}>{h}</th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody>
-                    <tr className="border-b border-slate-100">
-                      <td className="py-2 px-3 font-medium">cg</td>
-                      <td className="text-right py-2 px-3">{d.n_cg ?? '—'}</td>
-                      <td className="text-right py-2 px-3">{d.rmse_cg?.toFixed(3) ?? '—'}</td>
-                      <td className="text-right py-2 px-3" style={{ color: (d.r2_cg ?? 0) > 0 ? '#16A34A' : '#DC2626' }}>{d.r2_cg?.toFixed(3) ?? '—'}</td>
-                    </tr>
-                    <tr className="border-b border-slate-100">
-                      <td className="py-2 px-3 font-medium">ip</td>
-                      <td className="text-right py-2 px-3">{d.n_ip ?? '—'}</td>
-                      <td className="text-right py-2 px-3">{d.rmse_ip?.toFixed(3) ?? '—'}</td>
-                      <td className="text-right py-2 px-3" style={{ color: (d.r2_ip ?? 0) > 0 ? '#16A34A' : '#DC2626' }}>{d.r2_ip?.toFixed(3) ?? '—'}</td>
-                    </tr>
-                    <tr>
-                      <td className="py-2 px-3 font-medium">vbs</td>
-                      <td className="text-right py-2 px-3">{d.n_vbs ?? '—'}</td>
-                      <td className="text-right py-2 px-3">{d.rmse_vbs?.toFixed(3) ?? '—'}</td>
-                      <td className="text-right py-2 px-3" style={{ color: (d.r2_vbs ?? 0) > 0 ? '#16A34A' : '#DC2626' }}>{d.r2_vbs?.toFixed(3) ?? '—'}</td>
-                    </tr>
+                    {pipelineModels.map(m => {
+                      const jState = jobStates[m.id]
+                      const isVfs = m.id === 'L3_VFS'
+                      const isRunning = jState?.status === 'running' || m.status === 'running'
+                      const level = LEVEL_MAP[m.id] ?? '?'
+                      const rmseRaw = m.metrics?.['vbs_ked_h1']?.loo_rmse ?? m.metrics?.['variance_reduction_pct']
+                      const rmseCell = rmseRaw != null
+                        ? (m.id === 'L2b_BLUP' ? `σ²↓${Number(rmseRaw).toFixed(1)}%` : Number(rmseRaw).toFixed(2))
+                        : '—'
+                      const lastRun = m.last_run_at ? new Date(m.last_run_at).toLocaleDateString('fr-FR') : '—'
+
+                      return (
+                        <tr key={m.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>
+                            <code style={{ fontSize: 11, background: '#EFF6FF', color: '#1D4ED8', padding: '2px 6px', borderRadius: 4, fontWeight: 700 }}>{level}</code>
+                          </td>
+                          <td style={{ padding: '8px', maxWidth: 220 }}>
+                            <strong style={{ fontSize: 12, color: DT.cellColor }}>{m.label}</strong>
+                            <code style={{ display: 'block', fontSize: 10, color: '#64748B', marginTop: 2 }}>{m.method_db}</code>
+                            {m.warnings?.[0] && (
+                              <span style={{ display: 'block', fontSize: 10, color: '#F59E0B', marginTop: 2 }}>
+                                ⚠ {m.warnings[0]}
+                              </span>
+                            )}
+                          </td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>{statusBadgeNode(m.status)}</td>
+                          <td style={{ padding: '8px', textAlign: 'right', color: DT.cellColor }}>{m.n_params ?? '—'}</td>
+                          <td style={{ padding: '8px', textAlign: 'right', color: DT.cellColor }}>{(m.n_mailles ?? 0).toLocaleString('fr-FR')}</td>
+                          <td style={{ padding: '8px', textAlign: 'right', color: '#3B82F6', fontFamily: 'monospace' }}>{rmseCell}</td>
+                          <td style={{ padding: '8px', color: DT.headerColor, whiteSpace: 'nowrap' }}>{lastRun}</td>
+                          <td style={{ padding: '8px', textAlign: 'center' }}>
+                            {isVfs ? (
+                              <span style={{ fontSize: 10, color: '#94A3B8' }} title="Requiert connexion internet + Google Earth Engine">GEE requis</span>
+                            ) : jState?.status === 'done' ? (
+                              <span style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>✓ Terminé</span>
+                            ) : jState?.status === 'error' ? (
+                              <span style={{ fontSize: 11, color: '#EF4444', cursor: 'help' }} title={jState.message}>✗ Erreur</span>
+                            ) : (
+                              <button
+                                disabled={isRunning}
+                                onClick={() => handleTrigger(m.id)}
+                                style={{
+                                  fontSize: 10, padding: '3px 10px',
+                                  border: `1px solid ${isRunning ? '#475569' : '#334155'}`,
+                                  borderRadius: 4, background: isRunning ? '#0F172A' : '#1E293B',
+                                  color: '#E2E8F0', cursor: isRunning ? 'not-allowed' : 'pointer',
+                                  opacity: isRunning ? 0.7 : 1, display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {isRunning
+                                  ? <><Loader2 size={10} className="animate-spin" />{jState?.message ?? 'En cours…'}</>
+                                  : m.status === 'not_computed'
+                                    ? <><Play size={10} /> Calculer</>
+                                    : <><RefreshCw size={10} /> Recalculer</>
+                                }
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
-            )
-          })()}
+              <p style={{ fontSize: 10, color: DT.headerColor, marginTop: 10, paddingTop: 8, borderTop: `1px solid #F1F5F9` }}>
+                Les calculs sont mis en file d'attente (atlas.ai_job_queue) et exécutés par le worker Rust en arrière-plan.
+                KED ~5 min • RK ~5 min • BLUP ~1 min • MTGP ~60 min • SGS ~30 min.
+                L3-VFS requiert une connexion internet + accès Google Earth Engine.
+              </p>
+            </>
+          )}
         </SectionCard>
       )}
+
+      {section === 'supervised' && (
+        <SectionCard icon={Brain} title="Modèles supervisés CatBoost" action={<ExportBtn rows={supervisedModels} filename="model_registry.csv" />}>
+          {supervisedModels.length === 0 ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: DT.headerColor }}>
+              <Brain size={32} strokeWidth={1} style={{ color: '#CBD5E1', margin: '0 auto 8px' }} />
+              <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#1E293B', marginBottom: 4 }}>Aucun modèle supervisé entraîné</h3>
+              <p style={{ fontSize: '12px' }}>Aller dans Infer/Opti → Train supervisé</p>
+            </div>
+          ) : (
+            <>
+              <DataTable columns={supervisedColumns} rows={supervisedModels} />
+              {expandedRow && (() => {
+                const row = supervisedModels.find(m => String(m.model_target) === expandedRow)
+                if (!row?.details) return null
+                const d = row.details as any
+                return (
+                  <div className="mt-4 p-4 rounded" style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                    <h4 style={{ fontSize: 13, fontWeight: 600, color: '#1E293B', marginBottom: 8 }}>Détail par target ({String(row.model_target)})</h4>
+                    {Number(row.r2_cv) < 0 && (
+                      <div className="mb-3 p-3 rounded" style={{ background: '#FFF7ED', border: '1px solid #FB923C', fontSize: '12px', color: '#9A3412' }}>
+                        <strong>⚠ R² négatifs</strong> — modèle moins précis que la moyenne. Données d'entraînement insuffisantes.
+                      </div>
+                    )}
+                    <table className="w-full text-sm">
+                      <thead><tr style={{ borderBottom: '1px solid #E2E8F0' }}>
+                        {['Target','N train','RMSE','R²'].map(h => <th key={h} style={{ textAlign: h === 'Target' ? 'left' : 'right', padding: '6px 10px' }}>{h}</th>)}
+                      </tr></thead>
+                      <tbody>
+                        {[['cg', d.n_cg, d.rmse_cg, d.r2_cg], ['ip', d.n_ip, d.rmse_ip, d.r2_ip], ['vbs', d.n_vbs, d.rmse_vbs, d.r2_vbs]].map(([tgt, n, rmse, r2]) => (
+                          <tr key={String(tgt)} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                            <td style={{ padding: '6px 10px', fontWeight: 500 }}>{tgt}</td>
+                            <td style={{ textAlign: 'right', padding: '6px 10px' }}>{n ?? '—'}</td>
+                            <td style={{ textAlign: 'right', padding: '6px 10px' }}>{rmse != null ? Number(rmse).toFixed(3) : '—'}</td>
+                            <td style={{ textAlign: 'right', padding: '6px 10px', color: (Number(r2) ?? 0) > 0 ? '#16A34A' : '#DC2626' }}>{r2 != null ? Number(r2).toFixed(3) : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })()}
+            </>
+          )}
+        </SectionCard>
+      )}
+
     </SectionLayout>
   )
 }

@@ -284,3 +284,18 @@ Write-Output "Proctor: $($details.proctor.Count) | CBR: $($details.cbr.Count) | 
 
 *Document créé le 2026-06-05 — Contexte : correctif critique sondages.rs (Proctor gamma_d_max + CBR + pressiomètre + pénétromètre)*  
 *Méthode : WSL2 Ubuntu 22.04 + Rust 1.86 natif + build sur FS ext4 natif → docker cp + restart*
+
+---
+
+## 8. Obstacles additionnels (session 2026-06-12 — printpdf + QR code)
+
+Obstacles rencontrés lors de l'ajout de `printpdf = "0.5"` et `qrcode = "0.14"` pour la génération du PDF ordre de mission. Voir le détail complet dans la mémoire Claude : `memory/feedback_compilation_sans_wifi.md`.
+
+| # | Obstacle | Cause | Solution rapide |
+|---|----------|-------|-----------------|
+| 1 | Contexte Docker 6GB+ → EOF | Build depuis la racine projet, `data/` (7.7GB) inclus | Builder depuis `services/api-geo/` directement |
+| 2 | `docker pull rust:1.88` → TLS timeout | DockerHub inaccessible | Rester sur rust:1.86, épingler les dépendances |
+| 3 | `image@0.25.10` exige rustc 1.88 | `printpdf 0.5.3` tire `image` 0.25.10 | `cargo update image --precise 0.25.5` dans le Cargo.lock |
+| 4 | `cargo generate-lockfile` upgrade `time` 0.3.44→0.3.48 | Régénère tout depuis zéro | Utiliser `cargo fetch` à la place (préserve le lock existant) |
+| 5 | `add_line()` inexistant | API printpdf 0.3→0.5 : renommé `add_shape()` | Remplacer globalement |
+| 6 | `doc.save(&mut Vec)` → type mismatch | printpdf 0.5 exige `BufWriter<W>` | `doc.save(&mut BufWriter::new(&mut buf))` |

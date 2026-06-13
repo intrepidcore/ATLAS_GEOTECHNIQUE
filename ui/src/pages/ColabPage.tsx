@@ -1761,6 +1761,7 @@ const ColabPage: React.FC = () => {
                         <th className="text-left font-medium px-4 py-3">Format</th>
                         <th className="text-left font-medium px-4 py-3">CRON</th>
                         <th className="text-left font-medium px-4 py-3">Actif</th>
+                        <th className="text-left font-medium px-4 py-3">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -1771,6 +1772,22 @@ const ColabPage: React.FC = () => {
                           <td className="px-4 py-3 text-foreground">{s.format}</td>
                           <td className="px-4 py-3 text-muted-foreground font-mono">{s.cron}</td>
                           <td className="px-4 py-3 text-muted-foreground">{s.is_active ? 'Oui' : 'Non'}</td>
+                          <td className="px-4 py-3">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                try {
+                                  await schedulesApi.deactivate(s.id);
+                                  setExportSchedules(prev => prev.filter(x => x.id !== s.id));
+                                } catch (e) {
+                                  setExportSchedulesError(e instanceof Error ? e.message : 'Erreur suppression');
+                                }
+                              }}
+                            >
+                              Désactiver
+                            </Button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
