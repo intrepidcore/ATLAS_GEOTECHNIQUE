@@ -16,15 +16,15 @@
     "format": "pg_dump -Fc --no-owner --no-privileges --schema=atlas"
   },
   "integrity": {
-    "sha256": "253b19209952978e0f9a53fefb6ceedf26a24e11d85009616dd5e3e831e813e5",
-    "size_bytes": 2328257357,
+    "sha256": "ee23acbd30824e106d41e34f00815625bfc551dcd275cb10f875a6c215b98f68",
+    "size_bytes": 161183028,
     "signed_by": "atlas-release-key-2026"
   },
   "compatibility": {
     "postgres_min_major": 16,
     "postgres_max_major": 17,
     "postgis_min_version": "3.4",
-    "max_migration_applied": "178",
+    "max_migration_applied": 178,
     "requires_extensions": [
       "postgis",
       "uuid-ossp",
