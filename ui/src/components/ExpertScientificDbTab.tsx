@@ -341,85 +341,11 @@ function useSectionState(tabName: string, defaultSection: string) {
    SOUS-ONGLET 1 : Données brutes
    ═══════════════════════════════════════════════════════════ */
 function DonneesBrutesTab({ catalog, jobs, plotCache }: { catalog: Row[]; jobs: Row[]; plotCache: Row[] }) {
-  const [variograms, setVariograms] = useState<Row[]>([])
-  const [coverage, setCoverage] = useState<Row[]>([])
-  const [familleFilter, setFamilleFilter] = useState('')
   const [section, setSection] = useSectionState('donnees-brutes', 'resume')
-  const [showCoverageMap, setShowCoverageMap] = useState(false)
-  const [mapParam, setMapParam] = useState<string>('vbs_avg')
-  const mapRef = useRef<HTMLDivElement>(null)
-  const leafletMapRef = useRef<any>(null)
-  const coverageLayerRef = useRef<any>(null)
-
-  useEffect(() => {
-    let cancelled = false
-    ;(async () => {
-      // Promise.allSettled : si l'un échoue (ex: DB Manager désactivé),
-      // l'autre charge quand même (résilience individuelle)
-      const [vRes, covRes] = await Promise.allSettled([
-        tablesApi.getData('atlas', 'ai_variograms', 100, 0),
-        api.get<any>('/api/stats/coverage'),
-      ])
-      if (!cancelled) {
-        if (vRes.status === 'fulfilled') setVariograms(vRes.value as Row[])
-        if (covRes.status === 'fulfilled') setCoverage(((covRes.value as any)?.items ?? []) as Row[])
-      }
-    })()
-    return () => { cancelled = true }
-  }, [])
-
-  const loadCoverageMap = useCallback(async (param: string) => {
-    if (!mapRef.current) return
-    const L = (window as any).L
-    if (!L) return
-
-    if (!leafletMapRef.current) {
-      leafletMapRef.current = L.map(mapRef.current, {
-        center: [8.5, 1.0], zoom: 7, zoomControl: true,
-      })
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OSM', maxZoom: 12,
-      }).addTo(leafletMapRef.current)
-    }
-
-    if (coverageLayerRef.current) {
-      leafletMapRef.current.removeLayer(coverageLayerRef.current)
-      coverageLayerRef.current = null
-    }
-
-    try {
-      const data = await api.get<any>(`/api/stats/coverage-map?parameter=${encodeURIComponent(param)}`)
-      if (!data?.features?.length) return
-
-      const layer = L.geoJSON(data, {
-        style: (feature: any) => ({
-          fillColor: feature.properties.status === 'interpolated' ? '#22C55E' : '#EF4444',
-          fillOpacity: 0.5,
-          color: feature.properties.status === 'interpolated' ? '#16A34A' : '#DC2626',
-          weight: 0.5,
-        }),
-        onEachFeature: (feature: any, lyr: any) => {
-          lyr.bindPopup(`<b>${feature.properties.code}</b><br/>Statut: ${feature.properties.status}`)
-        },
-      })
-      layer.addTo(leafletMapRef.current)
-      coverageLayerRef.current = layer
-      leafletMapRef.current.invalidateSize()
-    } catch { /* best effort */ }
-  }, [])
-
-  const deduped = dedupVariograms(variograms)
-  const filtered = familleFilter === '' ? deduped
-    : familleFilter === 'avg' ? deduped.filter(r => String(r.parameter_id).endsWith('_avg'))
-    : familleFilter === 'ked' ? deduped.filter(r => String(r.parameter_id).includes('_ked_'))
-    : deduped.filter(r => String(r.parameter_id).includes('_derived_'))
-  const maxRmse = Math.max(...filtered.map(v => Number(v.loo_rmse ?? 0)), 0.01)
 
   const navItems: NavItem[] = [
     { id: 'resume', label: 'Résumé', badge: '6' },
     { id: 'catalogue', label: 'Catalogue', badge: String(catalog.length) },
-    { id: 'loo', label: 'LOO RMSE', badge: String(filtered.length) },
-    { id: 'coverage', label: 'Couverture', badge: String(coverage.length) },
   ]
 
   return (
@@ -450,116 +376,6 @@ function DonneesBrutesTab({ catalog, jobs, plotCache }: { catalog: Row[]; jobs: 
             rows={catalog}
             maxRows={50}
           />
-        </SectionCard>
-      )}
-      {section === 'loo' && (
-        <SectionCard icon={Activity} title="Tableau LOO RMSE" action={<ExportBtn rows={filtered} filename="variograms.csv" />}>
-          <div className="flex items-center gap-2 mb-2">
-            <span style={{ fontSize: '11px', color: DT.headerColor }}>Famille :</span>
-            <select value={familleFilter} onChange={e => setFamilleFilter(e.target.value)} style={{ fontSize: '12px', border: '1px solid #E2E8F0', borderRadius: '4px', padding: '2px 6px', color: DT.cellColor }}>
-              <option value="">Toutes les familles</option>
-              <option value="avg">Kriging global (avg)</option>
-              <option value="ked">KED par horizon</option>
-              <option value="derived">IP dérivé</option>
-            </select>
-            <span style={{ fontSize: '11px', color: DT.headerColor, marginLeft: 'auto' }}>{filtered.length} entrées dédoublonnées</span>
-          </div>
-          <DataTable
-            columns={[
-              { key: 'parameter_id', label: 'Paramètre' },
-              { key: 'horizon_display', label: 'Horizon', render: (_v, r) => extractHorizon(String(r.parameter_id)) },
-              { key: 'model_type', label: 'Modèle' },
-              { key: 'nugget', label: 'Nugget', align: 'right', render: (v) => fmtDash(v) },
-              { key: 'sill', label: 'Sill', align: 'right', render: (v) => fmtDash(v) },
-              { key: 'range_m', label: 'Portée (km)', align: 'right', render: (v) => v != null ? (Number(v) / 1000).toFixed(1) : <span style={{ color: DT.mutedDash }}>—</span> },
-              { key: 'loo_rmse', label: 'LOO RMSE', align: 'right', render: (v) => {
-                if (v === null || v === undefined) return <span style={{ color: DT.mutedDash }}>—</span>
-                const n = Number(v)
-                if (!Number.isFinite(n) || n === 0) return <span style={{ color: DT.mutedDash }}>—</span>
-                return <Databar value={n} maxVal={maxRmse} />
-              }},
-            ]}
-            rows={filtered}
-            maxRows={50}
-          />
-        </SectionCard>
-      )}
-      {section === 'coverage' && (
-        <SectionCard icon={Layers} title="Couverture d'interpolation" action={<ExportBtn rows={coverage} filename="coverage.csv" />}>
-          <DataTable
-            columns={[
-              { key: 'parameter_id', label: 'Paramètre' },
-              { key: 'method', label: 'Méthode' },
-              { key: 'n_mailles', label: 'Mailles', align: 'right', render: (v) => fmtDash(v) },
-              { key: 'coverage_pct', label: 'Couverture %', align: 'right', render: (v) => v != null ? <span style={{ color: Number(v) >= 90 ? '#22C55E' : Number(v) >= 50 ? '#EAB308' : '#EF4444' }}>{Number(v).toFixed(1)}%</span> : <span style={{ color: DT.mutedDash }}>—</span> },
-              { key: 'loo_rmse', label: 'LOO RMSE', align: 'right', render: (v) => v != null && Number(v) > 0 ? <Databar value={Number(v)} maxVal={maxRmse} /> : <span style={{ color: DT.mutedDash }}>—</span> },
-              { key: 'status', label: 'Statut', render: (v) => {
-                const s = String(v ?? '')
-                if (s === 'complet') return <Badge style={{ background: '#DCFCE7', color: '#166534', border: 'none', fontSize: '11px' }}><span style={{ color: '#22C55E', marginRight: 4 }}>●</span>Complet</Badge>
-                if (s === 'partiel') return <Badge style={{ background: '#FEF9C3', color: '#854D0E', border: 'none', fontSize: '11px' }}><span style={{ color: '#EAB308', marginRight: 4 }}>●</span>Partiel</Badge>
-                return <Badge style={{ background: '#FEE2E2', color: '#991B1B', border: 'none', fontSize: '11px' }}><span style={{ color: '#EF4444', marginRight: 4 }}>●</span>Vide</Badge>
-              }},
-            ]}
-            rows={coverage}
-            maxRows={30}
-          />
-          <div style={{ marginTop: 16, borderTop: '1px solid #E2E8F0', paddingTop: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span style={{ fontSize: 12, fontWeight: 600, color: '#1E293B' }}>Visualisation spatiale</span>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <select
-                  value={mapParam}
-                  onChange={e => setMapParam(e.target.value)}
-                  style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, border: '1px solid #E2E8F0', background: DT.headerBg, color: DT.cellColor }}
-                >
-                  {coverage.map((c: any) => (
-                    <option key={String(c.parameter_id)} value={String(c.parameter_id)}>
-                      {String(c.parameter_id)} ({Number(c.coverage_pct ?? 0).toFixed(0)}%)
-                    </option>
-                  ))}
-                </select>
-                <button
-                  onClick={() => {
-                    const next = !showCoverageMap
-                    setShowCoverageMap(next)
-                    if (next) setTimeout(() => loadCoverageMap(mapParam), 100)
-                  }}
-                  style={{
-                    padding: '4px 12px', borderRadius: 4, fontSize: 11,
-                    border: `1px solid #E2E8F0`,
-                    background: showCoverageMap ? DT.activeBlue : 'transparent',
-                    color: showCoverageMap ? '#fff' : DT.headerColor, cursor: 'pointer',
-                  }}
-                >
-                  {showCoverageMap ? 'Masquer carte' : 'Voir carte'}
-                </button>
-              </div>
-            </div>
-            {showCoverageMap && (
-              <div style={{ position: 'relative' }}>
-                <div ref={mapRef} style={{ height: 350, borderRadius: 8, border: '1px solid #E2E8F0', overflow: 'hidden' }} />
-                <div style={{
-                  position: 'absolute', bottom: 8, right: 8, zIndex: 1000,
-                  background: 'rgba(15,23,42,0.85)', padding: '6px 10px',
-                  borderRadius: 4, fontSize: 11, color: '#F8FAFC',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ width: 12, height: 12, borderRadius: 2, background: '#22C55E', display: 'block' }} />
-                    Interpolé
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                    <span style={{ width: 12, height: 12, borderRadius: 2, background: '#EF4444', display: 'block' }} />
-                    Manquant
-                  </div>
-                </div>
-              </div>
-            )}
-            {showCoverageMap && (
-              <p style={{ fontSize: 10, color: DT.headerColor, marginTop: 4 }}>
-                Vert = mailles interpolées • Rouge = mailles sans données • Cliquer une maille pour les détails
-              </p>
-            )}
-          </div>
         </SectionCard>
       )}
     </SectionLayout>
@@ -654,7 +470,6 @@ function VariogrammesTab() {
 
   const params = [...new Set(variograms.map(v => String(v.parameter_id ?? '')))].filter(Boolean)
   const horizons = ['H1', 'H2', 'H3']
-  const maxRmse = Math.max(...variograms.map(v => Number(v.loo_rmse ?? 0)), 0.01)
 
   const navItems: NavItem[] = [
     { id: 'params', label: 'Paramètres' },
@@ -720,13 +535,6 @@ function VariogrammesTab() {
               { key: 'model_type', label: 'Modèle' },
               { key: 'nugget', label: 'Nugget', align: 'right', render: (v) => fmtDash(v) },
               { key: 'sill', label: 'Sill', align: 'right', render: (v) => fmtDash(v) },
-              { key: 'loo_rmse', label: 'LOO RMSE', align: 'right', render: (v) => {
-                if (v === null || v === undefined) return <span style={{ color: DT.mutedDash }}>—</span>
-                const n = Number(v)
-                if (!Number.isFinite(n) || n === 0) return <span style={{ color: DT.mutedDash }}>—</span>
-                return <Databar value={n} maxVal={maxRmse} />
-              }},
-              { key: 'loo_rmse_qual', label: 'Qualité', render: (_v, r) => <QualityPill value={r.loo_rmse as number | null} sill={r.sill as number | null} /> },
             ]}
             rows={variograms.filter(v => String(v.parameter_id) === selectedParam)}
             maxRows={20}
@@ -796,14 +604,6 @@ function VariogrammesTab() {
               { key: 'nugget', label: 'Nugget', align: 'right', render: (v) => fmtDash(v) },
               { key: 'sill', label: 'Sill', align: 'right', render: (v) => fmtDash(v) },
               { key: 'range_m', label: 'Portée (km)', align: 'right', render: (v) => v != null ? (Number(v) / 1000).toFixed(1) : <span style={{ color: DT.mutedDash }}>—</span> },
-              { key: 'loo_rmse', label: 'LOO RMSE', align: 'right', render: (_v, r) => {
-                const val = r.loo_rmse
-                if (val === null || val === undefined) return <span style={{color: DT.mutedDash}}>—</span>
-                const n = Number(val)
-                if (!Number.isFinite(n) || n === 0) return <span style={{color: DT.mutedDash}}>—</span>
-                return <Databar value={n} maxVal={maxRmse} />
-              }},
-              { key: 'loo_rmse_qual', label: 'Qualité', render: (_v, r) => <QualityPill value={r.loo_rmse as number | null} sill={r.sill as number | null} /> },
             ]}
             rows={dedupVariograms(variograms)}
             maxRows={50}
@@ -815,67 +615,140 @@ function VariogrammesTab() {
 }
 
 /* ═══════════════════════════════════════════════════════════
-   SOUS-ONGLET 3 : Validation
+   ONGLET PERFORMANCES
+   Fusion : ex-Validation + LOO RMSE + Couverture + Matrice
    ═══════════════════════════════════════════════════════════ */
-function ValidationTab() {
+function PerformancesTab() {
   const [variograms, setVariograms] = useState<Row[]>([])
   const [runs, setRuns] = useState<Row[]>([])
-  const [section, setSection] = useSectionState('validation', 'loo')
+  const [coverage, setCoverage] = useState<Row[]>([])
+  const [familleFilter, setFamilleFilter] = useState('')
+  const [showCoverageMap, setShowCoverageMap] = useState(false)
+  const [mapParam, setMapParam] = useState<string>('vbs_avg')
+  const mapRef = useRef<HTMLDivElement>(null)
+  const leafletMapRef = useRef<any>(null)
+  const coverageLayerRef = useRef<any>(null)
+  const [section, setSection] = useSectionState('performances', 'loo')
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
-      try {
-        const [vData, rData] = await Promise.all([
-          tablesApi.getData('atlas', 'ai_variograms', 100, 0),
-          tablesApi.getData('atlas', 'ai_interpolation_runs', 100, 0),
-        ])
-        if (!cancelled) {
-          setVariograms(vData as Row[])
-          setRuns(rData as Row[])
-        }
-      } catch { /* ok */ }
+      const [vRes, rRes, covRes] = await Promise.allSettled([
+        tablesApi.getData('atlas', 'ai_variograms', 100, 0),
+        tablesApi.getData('atlas', 'ai_interpolation_runs', 100, 0),
+        api.get<any>('/api/stats/coverage'),
+      ])
+      if (!cancelled) {
+        if (vRes.status === 'fulfilled') setVariograms(vRes.value as Row[])
+        if (rRes.status === 'fulfilled') setRuns(rRes.value as Row[])
+        if (covRes.status === 'fulfilled') setCoverage(((covRes.value as any)?.items ?? []) as Row[])
+      }
     })()
     return () => { cancelled = true }
   }, [])
 
-  const maxRmse = Math.max(...variograms.map(v => Number(v.loo_rmse ?? 0)), 0.01)
+  const loadCoverageMap = useCallback(async (param: string) => {
+    if (!mapRef.current) return
+    const L = (window as any).L
+    if (!L) return
+    if (!leafletMapRef.current) {
+      leafletMapRef.current = L.map(mapRef.current, { center: [8.5, 1.0], zoom: 7, zoomControl: true })
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM', maxZoom: 12 }).addTo(leafletMapRef.current)
+    }
+    if (coverageLayerRef.current) { leafletMapRef.current.removeLayer(coverageLayerRef.current); coverageLayerRef.current = null }
+    try {
+      const data = await api.get<any>(`/api/stats/coverage-map?parameter=${encodeURIComponent(param)}`)
+      if (!data?.features?.length) return
+      const layer = L.geoJSON(data, {
+        style: (feature: any) => ({
+          fillColor: feature.properties.status === 'interpolated' ? '#22C55E' : '#EF4444',
+          fillOpacity: 0.5, color: feature.properties.status === 'interpolated' ? '#16A34A' : '#DC2626', weight: 0.5,
+        }),
+        onEachFeature: (feature: any, lyr: any) => { lyr.bindPopup(`<b>${feature.properties.code}</b><br/>Statut: ${feature.properties.status}`) },
+      })
+      layer.addTo(leafletMapRef.current)
+      coverageLayerRef.current = layer
+      leafletMapRef.current.invalidateSize()
+    } catch { /* best effort */ }
+  }, [])
+
+  const deduped = dedupVariograms(variograms)
+  const filtered = familleFilter === '' ? deduped
+    : familleFilter === 'avg' ? deduped.filter(r => String(r.parameter_id).endsWith('_avg'))
+    : familleFilter === 'ked' ? deduped.filter(r => String(r.parameter_id).includes('_ked_'))
+    : deduped.filter(r => String(r.parameter_id).includes('_derived_'))
+  const maxRmse = Math.max(...filtered.map(v => Number(v.loo_rmse ?? 0)), 0.01)
+
+  const METHODS = [
+    { key: 'ked_hierarchical_5levels', label: 'KED-H' },
+    { key: 'regression_kriging_scorpan', label: 'RK SCORPAN' },
+    { key: 'ked_rk_fusion_bayesian', label: 'Fusion BLUP' },
+    { key: 'mtgp_icm_gpflow', label: 'MTGP' },
+    { key: 'sgs_gstools', label: 'SGS' },
+  ]
+  const matrixParams = [...new Set(runs.map(r => String(r.parameter_id ?? '')))].filter(Boolean).sort()
+  const matrixByParam: Record<string, Record<string, string>> = {}
+  for (const r of runs) {
+    const pid = String(r.parameter_id ?? '')
+    const m = String(r.method ?? '')
+    if (!matrixByParam[pid]) matrixByParam[pid] = {}
+    matrixByParam[pid][m] = String(r.status ?? 'unknown')
+  }
 
   const navItems: NavItem[] = [
-    { id: 'loo', label: 'LOO Validation', badge: String(variograms.length) },
+    { id: 'loo', label: 'LOO-RMSE', badge: String(filtered.length) },
     { id: 'rmse_param', label: 'RMSE param.', badge: String(variograms.length) },
-    { id: 'rmse_domaine', label: 'RMSE domaine', badge: String(runs.length) },
+    { id: 'couverture', label: 'Couverture', badge: String(coverage.length) },
+    { id: 'runs', label: 'Runs', badge: String(runs.length) },
+    { id: 'matrice', label: 'Matrice', badge: String(matrixParams.length) },
   ]
 
   return (
     <SectionLayout nav={<SectionNav items={navItems} active={section} onChange={setSection} />}>
+
       {section === 'loo' && (
-        <SectionCard icon={CheckSquare} title="Leave-One-Out Validation" action={<ExportBtn rows={variograms} filename="validation_loo.csv" />}>
+        <SectionCard icon={CheckSquare} title="LOO-RMSE par paramètre et horizon" action={<ExportBtn rows={filtered} filename="loo_rmse.csv" />}>
+          <div className="flex items-center gap-2 mb-2">
+            <span style={{ fontSize: '11px', color: DT.headerColor }}>Famille :</span>
+            <select value={familleFilter} onChange={e => setFamilleFilter(e.target.value)} style={{ fontSize: '12px', border: '1px solid #E2E8F0', borderRadius: '4px', padding: '2px 6px', color: DT.cellColor }}>
+              <option value="">Toutes les familles</option>
+              <option value="avg">Kriging global (avg)</option>
+              <option value="ked">KED par horizon</option>
+              <option value="derived">IP dérivé</option>
+            </select>
+            <span style={{ fontSize: '11px', color: DT.headerColor, marginLeft: 'auto' }}>{filtered.length} entrées</span>
+          </div>
           <DataTable
             columns={[
               { key: 'parameter_id', label: 'Paramètre' },
-              { key: 'horizon_label', label: 'Horizon', render: (v, r) => {
-                const fq = r.fit_quality as Record<string, unknown> | null
-                return fmtDash(fq?.horizon_label ?? v)
-              }},
+              { key: 'horizon_display', label: 'Horizon', render: (_v, r) => extractHorizon(String(r.parameter_id)) },
               { key: 'model_type', label: 'Modèle' },
               { key: 'nugget', label: 'Nugget', align: 'right', render: (v) => fmtDash(v) },
               { key: 'sill', label: 'Sill', align: 'right', render: (v) => fmtDash(v) },
               { key: 'range_m', label: 'Portée (km)', align: 'right', render: (v) => v != null ? (Number(v) / 1000).toFixed(1) : <span style={{ color: DT.mutedDash }}>—</span> },
-              { key: 'loo_rmse', label: 'LOO RMSE', align: 'right', render: (v) => {
+              { key: 'loo_rmse', label: 'LOO-CV', align: 'right', render: (v) => {
                 if (v === null || v === undefined) return <span style={{ color: DT.mutedDash }}>—</span>
                 const n = Number(v)
                 if (!Number.isFinite(n) || n === 0) return <span style={{ color: DT.mutedDash }}>—</span>
-                return <Databar value={n} maxVal={maxRmse} />
+                return <span style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'flex-end' }}><span style={{ fontFamily: 'monospace', fontSize: 11, color: '#3B82F6', minWidth: 36, textAlign: 'right' }}>{n.toFixed(2)}</span><Databar value={n} maxVal={maxRmse} /></span>
+              }},
+              { key: 'block_cv_rmse', label: 'Bloc-Spatial', align: 'right', render: (v) => {
+                if (v === null || v === undefined) return <span style={{ color: DT.mutedDash }}>—</span>
+                const n = Number(v)
+                if (!Number.isFinite(n) || n === 0) return <span style={{ color: DT.mutedDash }}>—</span>
+                return <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#7C3AED' }}>{n.toFixed(2)}</span>
               }},
               { key: 'loo_rmse_qual', label: 'Qualité', render: (_v, r) => <QualityPill value={r.loo_rmse as number | null} sill={r.sill as number | null} /> },
             ]}
-            rows={variograms}
+            rows={filtered}
             maxRows={50}
           />
-          <p style={{ fontSize: '10px', color: DT.headerColor, marginTop: 8 }}>LOO RMSE calculé sur les localités AMESSEFE</p>
+          <p style={{ fontSize: '10px', color: DT.headerColor, marginTop: 8 }}>
+            LOO-CV = Leave-One-Out (optimiste). Bloc-Spatial = erreur réelle sur blocs 100 km (Roberts et al. 2017). L'écart quantifie le biais d'autocorrélation spatiale (+10 à +38 %).
+          </p>
         </SectionCard>
       )}
+
       {section === 'rmse_param' && (
         <SectionCard icon={Activity} title="RMSE par paramètre" action={<ExportBtn rows={variograms} filename="rmse_by_param.csv" />}>
           <DataTable
@@ -885,11 +758,17 @@ function ValidationTab() {
                 const fq = r.fit_quality as Record<string, unknown> | null
                 return fmtDash(fq?.horizon_label ?? v)
               }},
-              { key: 'loo_rmse', label: 'RMSE', align: 'right', render: (v) => {
+              { key: 'loo_rmse', label: 'LOO-CV', align: 'right', render: (v) => {
                 if (v === null || v === undefined) return <span style={{ color: DT.mutedDash }}>—</span>
                 const n = Number(v)
                 if (!Number.isFinite(n) || n === 0) return <span style={{ color: DT.mutedDash }}>—</span>
                 return <Databar value={n} maxVal={maxRmse} />
+              }},
+              { key: 'block_cv_rmse', label: 'Bloc-Spatial', align: 'right', render: (v) => {
+                if (v === null || v === undefined) return <span style={{ color: DT.mutedDash }}>—</span>
+                const n = Number(v)
+                if (!Number.isFinite(n) || n === 0) return <span style={{ color: DT.mutedDash }}>—</span>
+                return <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#7C3AED' }}>{n.toFixed(2)}</span>
               }},
               { key: 'loo_rmse_qual', label: 'Qualité', render: (_v, r) => <QualityPill value={r.loo_rmse as number | null} sill={r.sill as number | null} /> },
             ]}
@@ -898,20 +777,117 @@ function ValidationTab() {
           />
         </SectionCard>
       )}
-      {section === 'rmse_domaine' && (
-        <SectionCard icon={Layers} title="RMSE par domaine géologique" action={<ExportBtn rows={runs} filename="rmse_by_domain.csv" />}>
+
+      {section === 'couverture' && (
+        <SectionCard icon={Layers} title="Couverture d'interpolation" action={<ExportBtn rows={coverage} filename="coverage.csv" />}>
+          <DataTable
+            columns={[
+              { key: 'parameter_id', label: 'Paramètre' },
+              { key: 'method', label: 'Méthode' },
+              { key: 'n_mailles', label: 'Mailles', align: 'right', render: (v) => fmtDash(v) },
+              { key: 'coverage_pct', label: 'Couverture %', align: 'right', render: (v) => v != null ? <span style={{ color: Number(v) >= 90 ? '#22C55E' : Number(v) >= 50 ? '#EAB308' : '#EF4444' }}>{Number(v).toFixed(1)}%</span> : <span style={{ color: DT.mutedDash }}>—</span> },
+              { key: 'status', label: 'Statut', render: (v) => {
+                const s = String(v ?? '')
+                if (s === 'complet') return <Badge style={{ background: '#DCFCE7', color: '#166534', border: 'none', fontSize: '11px' }}><span style={{ color: '#22C55E', marginRight: 4 }}>●</span>Complet</Badge>
+                if (s === 'partiel') return <Badge style={{ background: '#FEF9C3', color: '#854D0E', border: 'none', fontSize: '11px' }}><span style={{ color: '#EAB308', marginRight: 4 }}>●</span>Partiel</Badge>
+                return <Badge style={{ background: '#FEE2E2', color: '#991B1B', border: 'none', fontSize: '11px' }}><span style={{ color: '#EF4444', marginRight: 4 }}>●</span>Vide</Badge>
+              }},
+            ]}
+            rows={coverage}
+            maxRows={30}
+          />
+          <div style={{ marginTop: 16, borderTop: '1px solid #E2E8F0', paddingTop: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: '#1E293B' }}>Visualisation spatiale</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <select value={mapParam} onChange={e => setMapParam(e.target.value)} style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, border: '1px solid #E2E8F0', background: DT.headerBg, color: DT.cellColor }}>
+                  {coverage.map((c: any) => (<option key={String(c.parameter_id)} value={String(c.parameter_id)}>{String(c.parameter_id)} ({Number(c.coverage_pct ?? 0).toFixed(0)}%)</option>))}
+                </select>
+                <button
+                  onClick={() => { const next = !showCoverageMap; setShowCoverageMap(next); if (next) setTimeout(() => loadCoverageMap(mapParam), 100) }}
+                  style={{ padding: '4px 12px', borderRadius: 4, fontSize: 11, border: '1px solid #E2E8F0', background: showCoverageMap ? DT.activeBlue : 'transparent', color: showCoverageMap ? '#fff' : DT.headerColor, cursor: 'pointer' }}
+                >
+                  {showCoverageMap ? 'Masquer carte' : 'Voir carte'}
+                </button>
+              </div>
+            </div>
+            {showCoverageMap && (
+              <div style={{ position: 'relative' }}>
+                <div ref={mapRef} style={{ height: 350, borderRadius: 8, border: '1px solid #E2E8F0', overflow: 'hidden' }} />
+                <div style={{ position: 'absolute', bottom: 8, right: 8, zIndex: 1000, background: 'rgba(15,23,42,0.85)', padding: '6px 10px', borderRadius: 4, fontSize: 11, color: '#F8FAFC' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: '#22C55E', display: 'block' }} />Interpolé</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 4 }}><span style={{ width: 12, height: 12, borderRadius: 2, background: '#EF4444', display: 'block' }} />Manquant</div>
+                </div>
+              </div>
+            )}
+            {showCoverageMap && <p style={{ fontSize: 10, color: DT.headerColor, marginTop: 4 }}>Vert = mailles interpolées • Rouge = mailles sans données • Cliquer une maille pour les détails</p>}
+          </div>
+        </SectionCard>
+      )}
+
+      {section === 'runs' && (
+        <SectionCard icon={Layers} title="Runs d'interpolation" action={<ExportBtn rows={runs} filename="runs.csv" />}>
           <DataTable
             columns={[
               { key: 'parameter_id', label: 'Paramètre' },
               { key: 'method', label: 'Méthode' },
               { key: 'status', label: 'Statut', render: (v) => <StatusPill status={String(v ?? '')} /> },
-              { key: 'n_mailles', label: 'Mailles', align: 'right', render: (v) => fmtDash(v) },
+              { key: 'n_mailles', label: 'Mailles interp.', align: 'right', render: (v) => fmtDash(v) },
             ]}
             rows={runs}
             maxRows={30}
           />
         </SectionCard>
       )}
+
+      {section === 'matrice' && (
+        <SectionCard icon={Grid3x3} title="Matrice statuts — Paramètre × Méthode" action={<ExportBtn rows={runs} filename="statuts_matrice.csv" />}>
+          <div style={{ marginBottom: 8, fontSize: 11, color: DT.headerColor }}>
+            Légende :&nbsp;
+            <span style={{ background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: 3, marginRight: 4 }}>✓ calculé</span>
+            <span style={{ background: '#DBEAFE', color: '#1D4ED8', padding: '1px 6px', borderRadius: 3, marginRight: 4 }}>⏳ en queue</span>
+            <span style={{ background: '#FEE2E2', color: '#991B1B', padding: '1px 6px', borderRadius: 3, marginRight: 4 }}>✗ échec</span>
+            <span style={{ background: '#F1F5F9', color: '#94A3B8', padding: '1px 6px', borderRadius: 3 }}>— absent</span>
+          </div>
+          {matrixParams.length === 0 ? (
+            <div style={{ padding: '24px', textAlign: 'center', color: DT.headerColor, fontSize: 13 }}>
+              <AlertCircle size={20} style={{ margin: '0 auto 8px', opacity: 0.3 }} />
+              <div>Aucun run trouvé — lancez un calcul depuis l'onglet Registre ML</div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table style={{ width: '100%', fontSize: DT.cellFontSize, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #CBD5E1' }}>
+                    <th style={{ padding: '10px 16px', textAlign: 'left', fontSize: DT.headerFontSize, textTransform: 'uppercase', letterSpacing: '0.05em', color: DT.headerColor, background: DT.headerBg, whiteSpace: 'nowrap' }}>Paramètre</th>
+                    {METHODS.map(m => (
+                      <th key={m.key} style={{ padding: '10px 8px', textAlign: 'center', fontSize: DT.headerFontSize, textTransform: 'uppercase', letterSpacing: '0.05em', color: DT.headerColor, background: DT.headerBg, whiteSpace: 'nowrap' }}>{m.label}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {matrixParams.map(pid => (
+                    <tr key={pid} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                      <td style={{ padding: '8px 16px' }}>
+                        <code style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '1px 5px', borderRadius: 3, fontSize: 11 }}>{pid}</code>
+                      </td>
+                      {METHODS.map(m => {
+                        const status = matrixByParam[pid]?.[m.key]
+                        if (!status) return <td key={m.key} style={{ padding: '8px', textAlign: 'center' }}><span style={{ color: '#CBD5E1', fontSize: 11 }}>—</span></td>
+                        if (status === 'finished') return <td key={m.key} style={{ padding: '8px', textAlign: 'center' }}><span style={{ background: '#DCFCE7', color: '#166534', padding: '2px 6px', borderRadius: 3, fontSize: 10 }}>✓</span></td>
+                        if (status === 'queued' || status === 'running') return <td key={m.key} style={{ padding: '8px', textAlign: 'center' }}><span style={{ background: '#DBEAFE', color: '#1D4ED8', padding: '2px 6px', borderRadius: 3, fontSize: 10 }}>⏳</span></td>
+                        if (status === 'failed') return <td key={m.key} style={{ padding: '8px', textAlign: 'center' }}><span style={{ background: '#FEE2E2', color: '#991B1B', padding: '2px 6px', borderRadius: 3, fontSize: 10 }}>✗</span></td>
+                        return <td key={m.key} style={{ padding: '8px', textAlign: 'center' }}><span style={{ color: DT.mutedDash, fontSize: 11 }}>{status}</span></td>
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SectionCard>
+      )}
+
     </SectionLayout>
   )
 }
@@ -1656,10 +1632,10 @@ export function ExpertScientificDbTab() {
       </div>
       <Tabs defaultValue="donnees" className="w-full">
         <TabsList className="mb-4 flex-wrap" style={{ background: 'transparent', borderBottom: '1px solid #E2E8F0', borderRadius: 0, gap: 0 }}>
-          <TabsTrigger value="donnees" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><Table2 size={16} strokeWidth={1.5} className="mr-1.5 inline" /> Données brutes</TabsTrigger>
+          <TabsTrigger value="donnees" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><Table2 size={16} strokeWidth={1.5} className="mr-1.5 inline" /> Données</TabsTrigger>
           <TabsTrigger value="eda" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><BarChart2 size={16} strokeWidth={1.5} className="mr-1.5 inline" /> EDA</TabsTrigger>
           <TabsTrigger value="variogrammes" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><Activity size={16} strokeWidth={1.5} className="mr-1.5 inline" /> Variogrammes</TabsTrigger>
-          <TabsTrigger value="validation" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><CheckSquare size={16} strokeWidth={1.5} className="mr-1.5 inline" /> Validation</TabsTrigger>
+          <TabsTrigger value="performances" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><CheckSquare size={16} strokeWidth={1.5} className="mr-1.5 inline" /> Performances</TabsTrigger>
           <TabsTrigger value="ml" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><Brain size={16} strokeWidth={1.5} className="mr-1.5 inline" /> Registre ML</TabsTrigger>
           <TabsTrigger value="comparaison" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><GitCompare size={16} strokeWidth={1.5} className="mr-1.5 inline" /> Comparaison</TabsTrigger>
           <TabsTrigger value="systeme" className="data-[state=active]:border-b-2 data-[state=active]:border-blue-600 data-[state=active]:text-blue-600 data-[state=active]:shadow-none rounded-none border-b-2 border-transparent px-3 py-2 text-sm" style={{ color: DT.headerColor }}><Server size={16} strokeWidth={1.5} className="mr-1.5 inline" /> Système</TabsTrigger>
@@ -1667,7 +1643,7 @@ export function ExpertScientificDbTab() {
         <TabsContent value="donnees"><DonneesBrutesTab catalog={catalog} jobs={jobs} plotCache={plotCache} /></TabsContent>
         <TabsContent value="eda"><EdaTab /></TabsContent>
         <TabsContent value="variogrammes"><VariogrammesTab /></TabsContent>
-        <TabsContent value="validation"><ValidationTab /></TabsContent>
+        <TabsContent value="performances"><PerformancesTab /></TabsContent>
         <TabsContent value="ml"><MLTab /></TabsContent>
         <TabsContent value="comparaison"><ComparaisonTab /></TabsContent>
         <TabsContent value="systeme"><SystemeTab catalog={catalog} jobs={jobs} plotCache={plotCache} plotCacheCount={plotCacheCount} onRefresh={loadData} /></TabsContent>
