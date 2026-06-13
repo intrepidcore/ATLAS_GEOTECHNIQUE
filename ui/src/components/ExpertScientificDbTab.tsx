@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useRef } from 'react'
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import {
   Loader2, Download, RefreshCw, Eye, Trash2, X,
   Table2, BarChart2, Activity, CheckSquare, Brain,
@@ -136,19 +136,62 @@ function SectionCard({ title, icon: Icon, children, action }: { title: string; i
   )
 }
 
-/* ─── Data Table (Premium Dense Grid) ─── */
+/* ─── Data Table (Premium Dense Grid) — sortable + loading ─── */
 const PAGE_SIZE = 15
+const SKEL_WIDTHS = [75, 55, 65, 45, 60, 50, 70, 40]
 
-function DataTable({ columns, rows, maxRows, onRowAction }: {
+function SkeletonRows({ cols = 4, rows = 5 }: { cols?: number; rows?: number }) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, i) => (
+        <tr key={i} style={{ borderBottom: '1px solid #F1F5F9' }}>
+          {Array.from({ length: cols }).map((_, j) => (
+            <td key={j} style={{ padding: '10px 16px' }}>
+              <div className="animate-pulse" style={{ height: 12, borderRadius: 4, background: '#E2E8F0', width: `${SKEL_WIDTHS[(i + j) % SKEL_WIDTHS.length]}%` }} />
+            </td>
+          ))}
+        </tr>
+      ))}
+    </>
+  )
+}
+
+function DataTable({ columns, rows, maxRows, onRowAction, sortable = true, loading = false, emptyState }: {
   columns: { key: string; label: string; align?: 'left' | 'right'; render?: (v: unknown, row: Row) => React.ReactNode }[]
   rows: Row[]
   maxRows?: number
   onRowAction?: (row: Row, action: string) => void
+  sortable?: boolean
+  loading?: boolean
+  emptyState?: React.ReactNode
 }) {
   const [page, setPage] = useState(0)
+  const [sortKey, setSortKey] = useState<string | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+
   useEffect(() => { setPage(0) }, [rows])
 
-  const source = maxRows ? rows.slice(0, maxRows) : rows
+  const handleSort = (key: string) => {
+    if (!sortable) return
+    if (sortKey === key) {
+      if (sortDir === 'asc') setSortDir('desc')
+      else { setSortKey(null); setSortDir('asc') }
+    } else { setSortKey(key); setSortDir('asc') }
+  }
+
+  const source = useMemo(() => {
+    const base = maxRows ? rows.slice(0, maxRows) : rows
+    if (!sortable || !sortKey) return base
+    return [...base].sort((a, b) => {
+      const av = a[sortKey]; const bv = b[sortKey]
+      const an = Number(av); const bn = Number(bv)
+      const cmp = Number.isFinite(an) && Number.isFinite(bn)
+        ? an - bn
+        : String(av ?? '').localeCompare(String(bv ?? ''), 'fr', { sensitivity: 'base' })
+      return sortDir === 'asc' ? cmp : -cmp
+    })
+  }, [rows, maxRows, sortKey, sortDir, sortable])
+
   const totalPages = Math.max(1, Math.ceil(source.length / PAGE_SIZE))
   const display = source.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE)
 
@@ -157,38 +200,65 @@ function DataTable({ columns, rows, maxRows, onRowAction }: {
       <table className="w-full" style={{ fontSize: DT.cellFontSize }}>
         <thead>
           <tr style={{ borderBottom: '1px solid #CBD5E1' }}>
-            {columns.map(c => (
-              <th
-                key={c.key}
-                className="whitespace-nowrap"
-                style={{
-                  fontSize: DT.headerFontSize,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                  color: DT.headerColor,
-                  backgroundColor: DT.headerBg,
-                  padding: '12px 16px',
-                  textAlign: c.align === 'right' ? 'right' : 'left',
-                  fontWeight: 500,
-                }}
-              >{c.label}</th>
-            ))}
+            {columns.map(c => {
+              const isActive = sortKey === c.key
+              return (
+                <th
+                  key={c.key}
+                  className="whitespace-nowrap"
+                  onClick={() => sortable && handleSort(c.key)}
+                  style={{
+                    fontSize: DT.headerFontSize,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    color: isActive ? DT.activeBlue : DT.headerColor,
+                    backgroundColor: DT.headerBg,
+                    padding: '12px 16px',
+                    textAlign: c.align === 'right' ? 'right' : 'left',
+                    fontWeight: 500,
+                    cursor: sortable ? 'pointer' : 'default',
+                    userSelect: 'none',
+                    transition: 'color 0.1s',
+                  }}
+                >
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                    {c.label}
+                    {sortable && (
+                      <span style={{ fontSize: 9, opacity: isActive ? 1 : 0.3, color: isActive ? DT.activeBlue : DT.headerColor }}>
+                        {isActive ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+                      </span>
+                    )}
+                  </span>
+                </th>
+              )
+            })}
           </tr>
         </thead>
         <tbody>
-          {display.length === 0 ? (
-            <tr><td colSpan={columns.length} style={{ padding: '24px 16px', textAlign: 'center', color: DT.headerColor }}>Aucune donnée</td></tr>
+          {loading ? (
+            <SkeletonRows cols={columns.length} rows={5} />
+          ) : display.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} style={{ padding: '32px 16px', textAlign: 'center', color: DT.headerColor }}>
+                {emptyState ?? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+                    <span style={{ fontSize: 22, opacity: 0.2 }}>⊘</span>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: '#1E293B' }}>Aucune donnée</span>
+                    <span style={{ fontSize: 11 }}>Vérifier que le pipeline ML a été exécuté</span>
+                  </div>
+                )}
+              </td>
+            </tr>
           ) : display.map((r, i) => (
-            <tr key={i} className="group" style={{ borderBottom: '1px solid #F1F5F9' }}>
+            <tr key={i} className="group" style={{ borderBottom: '1px solid #F1F5F9' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = DT.hoverBg }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = '' }}
+            >
               {columns.map(c => (
                 <td
                   key={c.key}
                   className="align-top max-w-[280px]"
-                  style={{
-                    padding: '10px 16px',
-                    color: DT.cellColor,
-                    textAlign: c.align === 'right' ? 'right' : 'left',
-                  }}
+                  style={{ padding: '10px 16px', color: DT.cellColor, textAlign: c.align === 'right' ? 'right' : 'left' }}
                 >
                   {c.render ? c.render(r[c.key], r) : fmtDash(r[c.key])}
                 </td>
@@ -198,24 +268,14 @@ function DataTable({ columns, rows, maxRows, onRowAction }: {
         </tbody>
       </table>
       {totalPages > 1 && (
-        <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '8px 16px', borderTop: `1px solid ${DT.cardBorder.replace('1px solid ', '')}`,
-          fontSize: 12, color: DT.headerColor,
-        }}>
-          <span>{source.length} entrées</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', borderTop: `1px solid #E2E8F0`, fontSize: 12, color: DT.headerColor }}>
+          <span>{source.length} entrées{sortKey ? ` • trié par ${sortKey} ${sortDir === 'asc' ? '▲' : '▼'}` : ''}</span>
           <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-            <button
-              onClick={() => setPage(p => Math.max(0, p - 1))}
-              disabled={page === 0}
-              style={{ padding: '2px 8px', border: `1px solid #E2E8F0`, borderRadius: 4, background: 'none', cursor: 'pointer', opacity: page === 0 ? 0.4 : 1, fontSize: 12 }}
-            >‹</button>
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0}
+              style={{ padding: '2px 8px', border: `1px solid #E2E8F0`, borderRadius: 4, background: 'none', cursor: 'pointer', opacity: page === 0 ? 0.4 : 1, fontSize: 12 }}>‹</button>
             <span>{page + 1} / {totalPages}</span>
-            <button
-              onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
-              disabled={page === totalPages - 1}
-              style={{ padding: '2px 8px', border: `1px solid #E2E8F0`, borderRadius: 4, background: 'none', cursor: 'pointer', opacity: page === totalPages - 1 ? 0.4 : 1, fontSize: 12 }}
-            >›</button>
+            <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1}
+              style={{ padding: '2px 8px', border: `1px solid #E2E8F0`, borderRadius: 4, background: 'none', cursor: 'pointer', opacity: page === totalPages - 1 ? 0.4 : 1, fontSize: 12 }}>›</button>
           </div>
         </div>
       )}
@@ -223,14 +283,25 @@ function DataTable({ columns, rows, maxRows, onRowAction }: {
   )
 }
 
-/* ─── Databar (mini progress bar in cell) ─── */
-function Databar({ value, maxVal, color = DT.activeBlue }: { value: number; maxVal: number; color?: string }) {
-  const pct = maxVal > 0 ? Math.min((value / maxVal) * 100, 100) : 0
+/* ─── Databar (mini progress bar in cell) with optional legend ─── */
+function Databar({ value, maxVal, color = DT.activeBlue, minVal = 0, showLegend = false }: {
+  value: number; maxVal: number; color?: string; minVal?: number; showLegend?: boolean
+}) {
+  const range = maxVal - minVal
+  const pct = range > 0 ? Math.min(((value - minVal) / range) * 100, 100) : 0
   return (
-    <div className="relative w-full h-5" style={{ fontSize: '12px' }}>
-      <div className="absolute inset-0 rounded" style={{ background: `${color}15` }} />
-      <div className="absolute inset-y-0 left-0 rounded" style={{ width: `${pct}%`, background: `${color}30` }} />
-      <span className="relative z-10 font-medium" style={{ color }}>{value.toFixed(4)}</span>
+    <div style={{ fontSize: '12px', width: '100%' }}>
+      <div className="relative w-full h-5">
+        <div className="absolute inset-0 rounded" style={{ background: `${color}15` }} />
+        <div className="absolute inset-y-0 left-0 rounded" style={{ width: `${pct}%`, background: `${color}30`, transition: 'width 0.3s ease' }} />
+        <span className="relative z-10 font-medium" style={{ color, paddingLeft: 4 }}>{value.toFixed(4)}</span>
+      </div>
+      {showLegend && (
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: DT.headerColor, marginTop: 2 }}>
+          <span>{minVal.toFixed(3)}</span>
+          <span>{maxVal.toFixed(3)}</span>
+        </div>
+      )}
     </div>
   )
 }
@@ -337,32 +408,127 @@ function useSectionState(tabName: string, defaultSection: string) {
   return [section, setSection] as const
 }
 
+/* ─── Auth helper (module-level, stable reference) ─── */
+function getAuthHeaders(): Record<string, string> {
+  const token = localStorage.getItem('atlas_token') ?? ''
+  return token ? { Authorization: `Bearer ${token}` } : {}
+}
+
+/* ─── 11 paramètres géotechniques de base ─── */
+const BASE_PARAMS = [
+  { id: 'vbs', label: 'VBS — Valeur Bleu Soleil', unit: 'g/100g' },
+  { id: 'ip', label: 'IP — Indice de plasticité', unit: '%' },
+  { id: 'wl', label: 'WL — Limite de liquidité', unit: '%' },
+  { id: 'wp', label: 'WP — Limite de plasticité', unit: '%' },
+  { id: 'eg', label: 'EG — Équivalent Sable', unit: '%' },
+  { id: 'passant_80um', label: 'Passant 80 μm', unit: '%' },
+  { id: 'passant_2mm', label: 'Passant 2 mm', unit: '%' },
+  { id: 'kriging_vbs', label: 'Kriging VBS', unit: 'g/100g' },
+  { id: 'kriging_ip', label: 'Kriging IP', unit: '%' },
+  { id: 'cg', label: 'CG — Teneur en gros', unit: '%' },
+  { id: 'cbr', label: 'CBR — California Bearing Ratio', unit: '%' },
+]
+
+/* ─── Horizons pédologiques (profondeurs réelles Togo) ─── */
+const HORIZONS = [
+  { id: 'H1', label: 'H1 — 0–0.5 m', depth: '0–0.5 m' },
+  { id: 'H2', label: 'H2 — 0.5–1 m', depth: '0.5–1 m' },
+  { id: 'H3', label: 'H3 — 1–1.5 m', depth: '1–1.5 m' },
+  { id: 'all', label: 'Tous les horizons', depth: '' },
+]
+
+/* ─── Design Tokens dark mode (nouvelles sections uniquement) ─── */
+const DT_DARK = {
+  cardBg: '#1E293B',
+  cardBorder: '1px solid #334155',
+  headerBg: '#0F172A',
+  headerColor: '#94A3B8',
+  cellColor: '#CBD5E1',
+  hoverBg: '#334155',
+  activeBlue: '#60A5FA',
+  mutedDash: '#475569',
+}
+
+function useDarkTokens(): typeof DT | typeof DT_DARK {
+  const [dark, setDark] = useState(() =>
+    typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
+  )
+  useEffect(() => {
+    const obs = new MutationObserver(() => {
+      setDark(document.documentElement.classList.contains('dark'))
+    })
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+  return dark ? DT_DARK : DT
+}
+
+/* ─── Scientific Alert Banner ─── */
+type AlertLevel = 'warning' | 'info' | 'critical'
+interface SciAlert { level: AlertLevel; message: string; detail?: string }
+
+function ScientificAlertBanner({ alerts }: { alerts: SciAlert[] }) {
+  const [dismissed, setDismissed] = useState<Set<number>>(new Set())
+  if (!alerts.length) return null
+  const active = alerts.filter((_, i) => !dismissed.has(i))
+  if (!active.length) return null
+  const colorMap: Record<AlertLevel, { bg: string; border: string; text: string; icon: string }> = {
+    critical: { bg: '#FEF2F2', border: '#FECACA', text: '#DC2626', icon: '⚠' },
+    warning:  { bg: '#FFFBEB', border: '#FDE68A', text: '#D97706', icon: '△' },
+    info:     { bg: '#EFF6FF', border: '#BFDBFE', text: '#2563EB', icon: 'ℹ' },
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 12 }}>
+      {active.map((a, i) => {
+        const c = colorMap[a.level]
+        const origIdx = alerts.indexOf(a)
+        return (
+          <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 12px', background: c.bg, border: `1px solid ${c.border}`, borderRadius: 6 }}>
+            <span style={{ color: c.text, fontSize: 14, flexShrink: 0, marginTop: 1 }}>{c.icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 600, color: c.text }}>{a.message}</span>
+              {a.detail && <span style={{ fontSize: 11, color: '#64748B', marginLeft: 6 }}>{a.detail}</span>}
+            </div>
+            <button onClick={() => setDismissed(s => new Set([...s, origIdx]))}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: c.text, fontSize: 14, flexShrink: 0, padding: 0, opacity: 0.5, lineHeight: 1 }}>×</button>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 /* ═══════════════════════════════════════════════════════════
    SOUS-ONGLET 1 : Données brutes
    ═══════════════════════════════════════════════════════════ */
 function DonneesBrutesTab({ catalog, jobs, plotCache }: { catalog: Row[]; jobs: Row[]; plotCache: Row[] }) {
   const [section, setSection] = useSectionState('donnees-brutes', 'resume')
   const [sondages, setSondages] = useState<Row[]>([])
+  const [sondagesLoading, setSondagesLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
+    setSondagesLoading(true)
     ;(async () => {
       try {
         const data = await tablesApi.getData('atlas', 'sondages', 300, 0)
         if (!cancelled) setSondages(data as Row[])
-      } catch { /* ok */ }
+      } catch { /* ok */ } finally {
+        if (!cancelled) setSondagesLoading(false)
+      }
     })()
     return () => { cancelled = true }
   }, [])
 
-  const byRegion = sondages.reduce((acc, s) => {
+  const byRegion: Record<string, { total: number; haute: number }> = {}
+  for (const s of sondages) {
     const r = String(s.region ?? s.commune ?? 'Inconnue')
-    if (!acc[r]) acc[r] = { total: 0, haute: 0 }
-    acc[r].total++
-    if (['A', 'B', 'haute', 'good'].includes(String(s.fiabilite ?? s.quality ?? '').toLowerCase())) acc[r].haute++
-    return acc
-  }, {} as Record<string, { total: number; haute: number }>)
-  const regionEntries = Object.entries(byRegion).sort((a, b) => b[1].total - a[1].total)
+    if (!byRegion[r]) byRegion[r] = { total: 0, haute: 0 }
+    const entry = byRegion[r]!
+    entry.total++
+    if (['A', 'B', 'haute', 'good'].includes(String(s.fiabilite ?? s.quality ?? '').toLowerCase())) entry.haute++
+  }
+  const regionEntries = Object.entries(byRegion).sort(([, a], [, b]) => b.total - a.total)
   const maxSondages = Math.max(...regionEntries.map(([, v]) => v.total), 1)
 
   const navItems: NavItem[] = [
@@ -375,11 +541,23 @@ function DonneesBrutesTab({ catalog, jobs, plotCache }: { catalog: Row[]; jobs: 
     <SectionLayout nav={<SectionNav items={navItems} active={section} onChange={setSection} />}>
       {section === 'sondages' && (
         <SectionCard icon={MapPin} title="Distribution & fiabilité régionale des sondages" action={<ExportBtn rows={sondages} filename="sondages.csv" />}>
-          {sondages.length === 0 ? (
+          {sondagesLoading ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: DT.headerColor, fontSize: 13 }}>
+              <div className="animate-pulse" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {[80, 65, 75, 55, 70].map((w, i) => (
+                  <div key={i} style={{ height: 16, borderRadius: 4, background: '#E2E8F0', width: `${w}%`, margin: '0 auto' }} />
+                ))}
+              </div>
+            </div>
+          ) : sondages.length === 0 ? (
             <div style={{ padding: '32px', textAlign: 'center', color: DT.headerColor, fontSize: 13 }}>
               <MapPin size={28} style={{ margin: '0 auto 8px', opacity: 0.2 }} />
               <div style={{ fontWeight: 600, color: '#1E293B', marginBottom: 4 }}>Aucun sondage chargé</div>
               <div style={{ fontSize: 12 }}>Vérifier que la table <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>atlas.sondages</code> est peuplée</div>
+              <button
+                onClick={() => { setSondagesLoading(true); tablesApi.getData('atlas', 'sondages', 300, 0).then(d => setSondages(d as Row[])).catch(() => {}).finally(() => setSondagesLoading(false)) }}
+                style={{ marginTop: 12, padding: '6px 16px', fontSize: 12, background: DT.activeBlue, color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+              >Réessayer</button>
             </div>
           ) : (
             <>
@@ -779,7 +957,53 @@ function PerformancesTab() {
     matrixByParam[pid][m] = String(r.status ?? 'unknown')
   }
 
-  const blocRows = filtered.filter(r => r.block_cv_rmse != null && Number(r.block_cv_rmse) > 0 && r.loo_rmse != null && Number(r.loo_rmse) > 0)
+  const blocRows = deduped.filter(r => r.block_cv_rmse != null && Number(r.block_cv_rmse) > 0 && r.loo_rmse != null && Number(r.loo_rmse) > 0)
+
+  /* ─── Alertes scientifiques automatiques ─── */
+  const sciAlerts = useMemo<SciAlert[]>(() => {
+    const alerts: SciAlert[] = []
+    // n < 30 : effectif insuffisant
+    const smallN = deduped.filter(r => r.n_obs != null && Number(r.n_obs) > 0 && Number(r.n_obs) < 30)
+    if (smallN.length > 0) {
+      alerts.push({
+        level: 'warning',
+        message: `${smallN.length} paramètre(s) avec n < 30 observations`,
+        detail: 'Résultats de kriging statistiquement non fiables — collecter davantage de données.',
+      })
+    }
+    // LOO bias > 20% vs bloc-spatial
+    if (blocRows.length > 0) {
+      const avgBias = blocRows.reduce((s, r) => {
+        const loo = Number(r.loo_rmse); const bloc = Number(r.block_cv_rmse)
+        return s + ((loo - bloc) / bloc) * 100
+      }, 0) / blocRows.length
+      if (avgBias > 20) {
+        alerts.push({
+          level: 'critical',
+          message: `Biais LOO-CV moyen : +${avgBias.toFixed(1)}% vs Bloc-Spatial`,
+          detail: 'LOO-CV surestimé par autocorrélation spatiale (Roberts et al. 2017). Utiliser Bloc-Spatial pour reporter.',
+        })
+      } else if (avgBias > 10) {
+        alerts.push({
+          level: 'warning',
+          message: `Biais LOO-CV modéré : +${avgBias.toFixed(1)}% vs Bloc-Spatial`,
+          detail: 'Surveiller — le biais peut augmenter avec davantage de données.',
+        })
+      }
+    }
+    // Pipeline gaps : paramètres sans run
+    const paramsWithRun = new Set(runs.map(r => String(r.parameter_id ?? '')))
+    const paramsTotal = new Set(deduped.map(r => String(r.parameter_id ?? '')))
+    const missing = [...paramsTotal].filter(p => !paramsWithRun.has(p))
+    if (missing.length > 0) {
+      alerts.push({
+        level: 'info',
+        message: `${missing.length} paramètre(s) sans run pipeline`,
+        detail: `Exemples : ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? '…' : ''}`,
+      })
+    }
+    return alerts
+  }, [deduped, blocRows, runs])
 
   const navItems: NavItem[] = [
     { id: 'loo', label: 'LOO-RMSE', badge: String(filtered.length) },
@@ -792,6 +1016,8 @@ function PerformancesTab() {
 
   return (
     <SectionLayout nav={<SectionNav items={navItems} active={section} onChange={setSection} />}>
+
+      <ScientificAlertBanner alerts={sciAlerts} />
 
       {section === 'loo' && (
         <SectionCard icon={CheckSquare} title="LOO-RMSE par paramètre et horizon" action={<ExportBtn rows={filtered} filename="loo_rmse.csv" />}>
@@ -1075,22 +1301,26 @@ function MLTab() {
   const [paramCatalog, setParamCatalog] = useState<Row[]>([])
   const [isLaunching, setIsLaunching] = useState(false)
   const [launchMsg, setLaunchMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [launchParam, setLaunchParam] = useState('vbs')
+  const [launchHorizon, setLaunchHorizon] = useState('H1')
   const [launchForm, setLaunchForm] = useState<LaunchForm>({
     method: 'ked_hierarchical_5levels',
-    parameter_id: 'vbs_avg',
+    parameter_id: 'vbs_h1',
     horizon: 'H1',
     force_recompute: false,
     debug_mode: false,
   })
+  // Synchronise parameter_id quand param ou horizon change
+  useEffect(() => {
+    const pid = launchHorizon === 'all' ? `${launchParam}_avg` : `${launchParam}_${launchHorizon.toLowerCase()}`
+    setLaunchForm(f => ({ ...f, parameter_id: pid, horizon: launchHorizon === 'all' ? 'Tous' : launchHorizon }))
+  }, [launchParam, launchHorizon])
 
-  const getHeaders = () => {
-    const token = localStorage.getItem('atlas_token') ?? ''
-    return token ? { Authorization: `Bearer ${token}` } : {}
-  }
+  /* getHeaders remplacé par getAuthHeaders() module-level */
 
   const refreshPipeline = useCallback(async () => {
     try {
-      const resp = await fetch('/api/ai/models/status', { headers: getHeaders() })
+      const resp = await fetch('/api/ai/models/status', { headers: getAuthHeaders() })
       if (resp.ok) {
         const data = await resp.json()
         setPipelineModels(data.models ?? [])
@@ -1101,7 +1331,7 @@ function MLTab() {
   const pollJob = useCallback((modelId: string, jobId: string) => {
     const check = async () => {
       try {
-        const resp = await fetch(`/api/ai/jobs/${jobId}`, { headers: getHeaders() })
+        const resp = await fetch(`/api/ai/jobs/${jobId}`, { headers: getAuthHeaders() })
         if (!resp.ok) return
         const job = await resp.json()
         if (job.status === 'finished') {
@@ -1125,7 +1355,7 @@ function MLTab() {
     try {
       const resp = await fetch('/api/ai/jobs/enqueue', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ job_type: jobType, requested_by: 'expert-panel' }),
       })
       if (!resp.ok) {
@@ -1154,7 +1384,7 @@ function MLTab() {
       setLoadingPipeline(true)
       try {
         const [pRes, mlRes, catRes] = await Promise.allSettled([
-          fetch('/api/ai/models/status', { headers: getHeaders() }).then(r => r.json()),
+          fetch('/api/ai/models/status', { headers: getAuthHeaders() }).then(r => r.json()),
           api.get<any>('/api/stats/ml-registry'),
           tablesApi.getData('atlas', 'ai_parameter_catalog', 200, 0),
         ])
@@ -1187,7 +1417,7 @@ function MLTab() {
     try {
       const resp = await fetch('/api/ai/jobs/enqueue', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
           job_type: launchForm.method,
           parameter_id: launchForm.parameter_id,
@@ -1372,31 +1602,34 @@ function MLTab() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>Paramètre géotechnique</label>
+                <label style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
+                  Paramètre géotechnique
+                </label>
                 <select
-                  value={launchForm.parameter_id}
-                  onChange={e => setLaunchForm(p => ({ ...p, parameter_id: e.target.value }))}
+                  value={launchParam}
+                  onChange={e => setLaunchParam(e.target.value)}
                   style={{ width: '100%', fontSize: 12, padding: '6px 10px', borderRadius: 4, border: '1px solid #E2E8F0', background: DT.cardBg, color: DT.cellColor }}
                 >
-                  {paramCatalog.length === 0 && <option value="vbs_avg">vbs_avg</option>}
-                  {paramCatalog.map(p => (
-                    <option key={String(p.parameter_id)} value={String(p.parameter_id)}>
-                      {String(p.parameter_id)}{p.unit ? ` (${p.unit})` : ''}
-                    </option>
+                  {BASE_PARAMS.map(p => (
+                    <option key={p.id} value={p.id}>{p.label} ({p.unit})</option>
                   ))}
                 </select>
+                <div style={{ fontSize: 10, color: DT.headerColor, marginTop: 3 }}>
+                  ID généré : <code style={{ background: '#F1F5F9', padding: '1px 4px', borderRadius: 3 }}>{launchForm.parameter_id}</code>
+                </div>
               </div>
               <div>
-                <label style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>Horizon</label>
+                <label style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>
+                  Horizon de profondeur
+                </label>
                 <select
-                  value={launchForm.horizon}
-                  onChange={e => setLaunchForm(p => ({ ...p, horizon: e.target.value }))}
+                  value={launchHorizon}
+                  onChange={e => setLaunchHorizon(e.target.value)}
                   style={{ width: '100%', fontSize: 12, padding: '6px 10px', borderRadius: 4, border: '1px solid #E2E8F0', background: DT.cardBg, color: DT.cellColor }}
                 >
-                  <option value="H1">H1 — Horizon 1 (0-30 cm)</option>
-                  <option value="H2">H2 — Horizon 2 (30-60 cm)</option>
-                  <option value="H3">H3 — Horizon 3 (60-90 cm)</option>
-                  <option value="Tous">Tous les horizons</option>
+                  {HORIZONS.map(h => (
+                    <option key={h.id} value={h.id}>{h.label}</option>
+                  ))}
                 </select>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-end', paddingBottom: 4 }}>
