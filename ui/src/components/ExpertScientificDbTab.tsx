@@ -342,14 +342,98 @@ function useSectionState(tabName: string, defaultSection: string) {
    ═══════════════════════════════════════════════════════════ */
 function DonneesBrutesTab({ catalog, jobs, plotCache }: { catalog: Row[]; jobs: Row[]; plotCache: Row[] }) {
   const [section, setSection] = useSectionState('donnees-brutes', 'resume')
+  const [sondages, setSondages] = useState<Row[]>([])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const data = await tablesApi.getData('atlas', 'sondages', 300, 0)
+        if (!cancelled) setSondages(data as Row[])
+      } catch { /* ok */ }
+    })()
+    return () => { cancelled = true }
+  }, [])
+
+  const byRegion = sondages.reduce((acc, s) => {
+    const r = String(s.region ?? s.commune ?? 'Inconnue')
+    if (!acc[r]) acc[r] = { total: 0, haute: 0 }
+    acc[r].total++
+    if (['A', 'B', 'haute', 'good'].includes(String(s.fiabilite ?? s.quality ?? '').toLowerCase())) acc[r].haute++
+    return acc
+  }, {} as Record<string, { total: number; haute: number }>)
+  const regionEntries = Object.entries(byRegion).sort((a, b) => b[1].total - a[1].total)
+  const maxSondages = Math.max(...regionEntries.map(([, v]) => v.total), 1)
 
   const navItems: NavItem[] = [
     { id: 'resume', label: 'Résumé', badge: '6' },
+    { id: 'sondages', label: 'Sondages', badge: String(sondages.length) },
     { id: 'catalogue', label: 'Catalogue', badge: String(catalog.length) },
   ]
 
   return (
     <SectionLayout nav={<SectionNav items={navItems} active={section} onChange={setSection} />}>
+      {section === 'sondages' && (
+        <SectionCard icon={MapPin} title="Distribution & fiabilité régionale des sondages" action={<ExportBtn rows={sondages} filename="sondages.csv" />}>
+          {sondages.length === 0 ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: DT.headerColor, fontSize: 13 }}>
+              <MapPin size={28} style={{ margin: '0 auto 8px', opacity: 0.2 }} />
+              <div style={{ fontWeight: 600, color: '#1E293B', marginBottom: 4 }}>Aucun sondage chargé</div>
+              <div style={{ fontSize: 12 }}>Vérifier que la table <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>atlas.sondages</code> est peuplée</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 16 }}>
+                <div style={{ background: DT.headerBg, border: DT.cardBorder, borderRadius: 6, padding: '12px 16px' }}>
+                  <div style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Total sondages</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: '#1E293B' }}>{sondages.length}</div>
+                </div>
+                <div style={{ background: DT.headerBg, border: DT.cardBorder, borderRadius: 6, padding: '12px 16px' }}>
+                  <div style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Zones couvertes</div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: '#1E293B' }}>{regionEntries.length}</div>
+                </div>
+              </div>
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 600, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>Distribution par région / commune</div>
+                {regionEntries.map(([region, { total, haute }]) => (
+                  <div key={region} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{ width: 120, fontSize: 12, color: DT.cellColor, flexShrink: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={region}>{region}</div>
+                    <div style={{ flex: 1, background: '#F1F5F9', borderRadius: 4, height: 16, overflow: 'hidden', position: 'relative' }}>
+                      <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${(total / maxSondages) * 100}%`, background: '#DBEAFE', borderRadius: 4 }} />
+                      {haute > 0 && <div style={{ position: 'absolute', top: 0, left: 0, height: '100%', width: `${(haute / maxSondages) * 100}%`, background: '#3B82F6', borderRadius: 4 }} />}
+                    </div>
+                    <div style={{ fontSize: 11, color: '#3B82F6', fontFamily: 'monospace', width: 28, textAlign: 'right', flexShrink: 0 }}>{total}</div>
+                    {haute > 0 && <div style={{ fontSize: 10, color: '#22C55E', width: 44, textAlign: 'right', flexShrink: 0 }}>{((haute / total) * 100).toFixed(0)}% A/B</div>}
+                  </div>
+                ))}
+              </div>
+              <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: 10 }}>
+                <div style={{ fontSize: 11, color: DT.headerColor, marginBottom: 8, display: 'flex', gap: 12 }}>
+                  <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#3B82F6', marginRight: 4 }} />Haute fiabilité (A/B)</span>
+                  <span><span style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, background: '#DBEAFE', marginRight: 4 }} />Tous sondages</span>
+                </div>
+              </div>
+              <DataTable
+                columns={[
+                  { key: 'code', label: 'Code sondage' },
+                  { key: 'commune', label: 'Commune' },
+                  { key: 'region', label: 'Région' },
+                  { key: 'latitude', label: 'Lat.', align: 'right', render: (v) => v != null ? Number(v).toFixed(4) : <span style={{ color: DT.mutedDash }}>—</span> },
+                  { key: 'longitude', label: 'Lon.', align: 'right', render: (v) => v != null ? Number(v).toFixed(4) : <span style={{ color: DT.mutedDash }}>—</span> },
+                  { key: 'fiabilite', label: 'Fiab.', render: (v) => {
+                    const s = String(v ?? '—')
+                    const color = ['A', 'B', 'haute', 'good'].includes(s.toLowerCase()) ? '#166534' : s === 'C' ? '#854D0E' : DT.headerColor
+                    const bg = ['A', 'B', 'haute', 'good'].includes(s.toLowerCase()) ? '#DCFCE7' : s === 'C' ? '#FEF9C3' : '#F1F5F9'
+                    return <span style={{ background: bg, color, padding: '1px 6px', borderRadius: 3, fontSize: 11 }}>{s}</span>
+                  }},
+                ]}
+                rows={sondages}
+                maxRows={30}
+              />
+            </>
+          )}
+        </SectionCard>
+      )}
       {section === 'resume' && (
         <div className="flex flex-wrap gap-3">
           <MetricCard icon={MapPin} label="Sondages" value={123} color="#3B82F6" />
@@ -695,8 +779,11 @@ function PerformancesTab() {
     matrixByParam[pid][m] = String(r.status ?? 'unknown')
   }
 
+  const blocRows = filtered.filter(r => r.block_cv_rmse != null && Number(r.block_cv_rmse) > 0 && r.loo_rmse != null && Number(r.loo_rmse) > 0)
+
   const navItems: NavItem[] = [
     { id: 'loo', label: 'LOO-RMSE', badge: String(filtered.length) },
+    { id: 'bloc', label: 'Bloc-Spatial', badge: String(blocRows.length) },
     { id: 'rmse_param', label: 'RMSE param.', badge: String(variograms.length) },
     { id: 'couverture', label: 'Couverture', badge: String(coverage.length) },
     { id: 'runs', label: 'Runs', badge: String(runs.length) },
@@ -746,6 +833,70 @@ function PerformancesTab() {
           <p style={{ fontSize: '10px', color: DT.headerColor, marginTop: 8 }}>
             LOO-CV = Leave-One-Out (optimiste). Bloc-Spatial = erreur réelle sur blocs 100 km (Roberts et al. 2017). L'écart quantifie le biais d'autocorrélation spatiale (+10 à +38 %).
           </p>
+        </SectionCard>
+      )}
+
+      {section === 'bloc' && (
+        <SectionCard icon={Activity} title="LOO-CV vs Bloc-Spatial — Biais d'autocorrélation spatiale" action={<ExportBtn rows={blocRows} filename="biais_spatial.csv" />}>
+          {blocRows.length === 0 ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: DT.headerColor, fontSize: 13 }}>
+              <AlertCircle size={24} style={{ margin: '0 auto 8px', opacity: 0.25 }} />
+              <div style={{ fontWeight: 600, color: '#1E293B', marginBottom: 4 }}>Aucune donnée Bloc-Spatial</div>
+              <div style={{ fontSize: 12 }}>Renseigner <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>block_cv_rmse</code> dans <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>ai_variograms</code> pour activer cette vue</div>
+            </div>
+          ) : (
+            <>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 16 }}>
+                {(() => {
+                  const avgBias = blocRows.reduce((s, r) => {
+                    const loo = Number(r.loo_rmse); const bloc = Number(r.block_cv_rmse)
+                    return s + ((loo - bloc) / bloc) * 100
+                  }, 0) / blocRows.length
+                  const maxBias = Math.max(...blocRows.map(r => ((Number(r.loo_rmse) - Number(r.block_cv_rmse)) / Number(r.block_cv_rmse)) * 100))
+                  const pctOptimiste = blocRows.filter(r => Number(r.loo_rmse) < Number(r.block_cv_rmse)).length
+                  return [
+                    { label: 'Biais moyen', value: `+${avgBias.toFixed(1)}%`, sub: 'LOO-CV vs Bloc', color: avgBias > 20 ? '#DC2626' : '#F59E0B' },
+                    { label: 'Biais max', value: `+${maxBias.toFixed(1)}%`, sub: 'cas le plus optimiste', color: '#EF4444' },
+                    { label: 'Cas sous-estimés', value: `${blocRows.length - pctOptimiste}/${blocRows.length}`, sub: 'LOO-CV < Bloc-Spatial', color: '#7C3AED' },
+                  ].map(({ label, value, sub, color }) => (
+                    <div key={label} style={{ background: DT.headerBg, border: DT.cardBorder, borderRadius: 6, padding: '12px 16px' }}>
+                      <div style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>{label}</div>
+                      <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
+                      <div style={{ fontSize: 10, color: DT.headerColor, marginTop: 2 }}>{sub}</div>
+                    </div>
+                  ))
+                })()}
+              </div>
+              <DataTable
+                columns={[
+                  { key: 'parameter_id', label: 'Paramètre' },
+                  { key: 'horizon_display', label: 'Horizon', render: (_v, r) => extractHorizon(String(r.parameter_id)) },
+                  { key: 'model_type', label: 'Modèle' },
+                  { key: 'loo_rmse', label: 'LOO-CV', align: 'right', render: (v) => <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#3B82F6' }}>{Number(v).toFixed(3)}</span> },
+                  { key: 'block_cv_rmse', label: 'Bloc-Spatial', align: 'right', render: (v) => <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#7C3AED' }}>{Number(v).toFixed(3)}</span> },
+                  { key: 'biais_pct', label: 'Biais %', align: 'right', render: (_v, r) => {
+                    const loo = Number(r.loo_rmse); const bloc = Number(r.block_cv_rmse)
+                    const bias = ((loo - bloc) / bloc) * 100
+                    const color = bias > 30 ? '#DC2626' : bias > 10 ? '#D97706' : '#16A34A'
+                    const bg = bias > 30 ? '#FEE2E2' : bias > 10 ? '#FEF3C7' : '#DCFCE7'
+                    return <span style={{ background: bg, color, padding: '2px 7px', borderRadius: 4, fontSize: 11, fontFamily: 'monospace', fontWeight: 600 }}>{bias > 0 ? '+' : ''}{bias.toFixed(1)}%</span>
+                  }},
+                  { key: 'interpretation', label: 'Interprétation', render: (_v, r) => {
+                    const bias = ((Number(r.loo_rmse) - Number(r.block_cv_rmse)) / Number(r.block_cv_rmse)) * 100
+                    if (bias > 30) return <span style={{ fontSize: 11, color: '#DC2626' }}>Forte sous-estimation LOO</span>
+                    if (bias > 10) return <span style={{ fontSize: 11, color: '#D97706' }}>Biais modéré</span>
+                    return <span style={{ fontSize: 11, color: '#16A34A' }}>Acceptable</span>
+                  }},
+                ]}
+                rows={blocRows}
+                maxRows={50}
+              />
+              <p style={{ fontSize: '10px', color: DT.headerColor, marginTop: 8 }}>
+                Référence : Roberts et al. (2017) — LOO-CV sous-estime l'erreur de +10 à +38% en présence d'autocorrélation spatiale.
+                La validation Bloc-Spatial est l'estimateur non-biaisé de l'erreur de généralisation géographique.
+              </p>
+            </>
+          )}
         </SectionCard>
       )}
 
@@ -911,6 +1062,8 @@ const JOB_TYPE_MAP: Record<string, string> = {
   L3_VFS: 'vfs_extract', L4_MTGP: 'mtgp_recompute', L5_SGS: 'sgs_compute',
 }
 
+interface LaunchForm { method: string; parameter_id: string; horizon: string; force_recompute: boolean; debug_mode: boolean }
+
 function MLTab() {
   const [pipelineModels, setPipelineModels] = useState<PipelineModel[]>([])
   const [supervisedModels, setSupervisedModels] = useState<Row[]>([])
@@ -918,6 +1071,17 @@ function MLTab() {
   const [jobStates, setJobStates] = useState<Record<string, JobState>>({})
   const [expandedRow, setExpandedRow] = useState<string | null>(null)
   const [section, setSection] = useSectionState('ml', 'pipeline')
+  const [jobQueue, setJobQueue] = useState<Row[]>([])
+  const [paramCatalog, setParamCatalog] = useState<Row[]>([])
+  const [isLaunching, setIsLaunching] = useState(false)
+  const [launchMsg, setLaunchMsg] = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [launchForm, setLaunchForm] = useState<LaunchForm>({
+    method: 'ked_hierarchical_5levels',
+    parameter_id: 'vbs_avg',
+    horizon: 'H1',
+    force_recompute: false,
+    debug_mode: false,
+  })
 
   const getHeaders = () => {
     const token = localStorage.getItem('atlas_token') ?? ''
@@ -977,24 +1141,75 @@ function MLTab() {
     }
   }, [pollJob])
 
+  const refreshQueue = useCallback(async () => {
+    try {
+      const data = await tablesApi.getData('atlas', 'ai_job_queue', 50, 0)
+      setJobQueue(data as Row[])
+    } catch { /* ok */ }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       setLoadingPipeline(true)
       try {
-        const [pRes, mlRes] = await Promise.allSettled([
+        const [pRes, mlRes, catRes] = await Promise.allSettled([
           fetch('/api/ai/models/status', { headers: getHeaders() }).then(r => r.json()),
           api.get<any>('/api/stats/ml-registry'),
+          tablesApi.getData('atlas', 'ai_parameter_catalog', 200, 0),
         ])
         if (!cancelled) {
           if (pRes.status === 'fulfilled') setPipelineModels(pRes.value.models ?? [])
           if (mlRes.status === 'fulfilled') setSupervisedModels((mlRes.value?.items ?? []) as Row[])
+          if (catRes.status === 'fulfilled') setParamCatalog(catRes.value as Row[])
         }
       } catch { /* ok */ }
       finally { if (!cancelled) setLoadingPipeline(false) }
     })()
+    refreshQueue()
     return () => { cancelled = true }
-  }, [])
+  }, [refreshQueue])
+
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      setJobQueue(prev => {
+        const hasActive = prev.some(j => ['queued', 'running'].includes(String(j.status ?? '')))
+        if (hasActive) refreshQueue()
+        return prev
+      })
+    }, 5000)
+    return () => window.clearInterval(id)
+  }, [refreshQueue])
+
+  const handleLaunch = useCallback(async () => {
+    setIsLaunching(true)
+    setLaunchMsg(null)
+    try {
+      const resp = await fetch('/api/ai/jobs/enqueue', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getHeaders() },
+        body: JSON.stringify({
+          job_type: launchForm.method,
+          parameter_id: launchForm.parameter_id,
+          horizon: launchForm.horizon === 'Tous' ? null : launchForm.horizon,
+          force_recompute: launchForm.force_recompute,
+          debug_mode: launchForm.debug_mode,
+          requested_by: 'expert-panel',
+        }),
+      })
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: `HTTP ${resp.status}` }))
+        throw new Error(err.error ?? `HTTP ${resp.status}`)
+      }
+      const data = await resp.json()
+      setLaunchMsg({ type: 'ok', text: `Job enqueued — ID: ${data.job_id ?? '?'}` })
+      setTimeout(() => refreshQueue(), 1000)
+    } catch (e) {
+      setLaunchMsg({ type: 'err', text: String(e) })
+    } finally {
+      setIsLaunching(false)
+    }
+  }, [launchForm, refreshQueue])
 
   const statusBadgeNode = (status: string) => {
     if (status === 'ready') return <Badge style={{ background: '#DCFCE7', color: '#166534', border: 'none', fontSize: '11px' }}><span style={{ color: '#22C55E', marginRight: 4 }}>●</span>Prêt</Badge>
@@ -1003,8 +1218,12 @@ function MLTab() {
     return <Badge style={{ background: '#F1F5F9', color: '#475569', border: 'none', fontSize: '11px' }}><span style={{ color: '#94A3B8', marginRight: 4 }}>●</span>Non calculé</Badge>
   }
 
+  const queueRunning = jobQueue.filter(j => ['queued', 'running'].includes(String(j.status ?? ''))).length
+
   const navItems: NavItem[] = [
     { id: 'pipeline', label: 'Pipeline L1-L5', badge: String(pipelineModels.length) },
+    { id: 'lancer', label: 'Lancer un calcul' },
+    { id: 'queue', label: 'Queue IA', badge: queueRunning > 0 ? `${queueRunning} actif` : String(jobQueue.length) },
     { id: 'supervised', label: 'Supervisés CatBoost', badge: String(supervisedModels.length) },
   ]
 
@@ -1134,6 +1353,122 @@ function MLTab() {
         </SectionCard>
       )}
 
+      {section === 'lancer' && (
+        <SectionCard icon={Play} title="Lancer un calcul ML paramétré">
+          <div style={{ maxWidth: 520 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div>
+                <label style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>Méthode</label>
+                <select
+                  value={launchForm.method}
+                  onChange={e => setLaunchForm(p => ({ ...p, method: e.target.value }))}
+                  style={{ width: '100%', fontSize: 12, padding: '6px 10px', borderRadius: 4, border: '1px solid #E2E8F0', background: DT.cardBg, color: DT.cellColor }}
+                >
+                  <option value="ked_hierarchical_5levels">L1 — KED Hiérarchique (KED-H)</option>
+                  <option value="regression_kriging_scorpan">L2a — RK SCORPAN</option>
+                  <option value="ked_rk_fusion_bayesian">L2b — Fusion BLUP</option>
+                  <option value="mtgp_icm_gpflow">L4 — MTGP ICM</option>
+                  <option value="sgs_gstools">L5 — SGS gstools</option>
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>Paramètre géotechnique</label>
+                <select
+                  value={launchForm.parameter_id}
+                  onChange={e => setLaunchForm(p => ({ ...p, parameter_id: e.target.value }))}
+                  style={{ width: '100%', fontSize: 12, padding: '6px 10px', borderRadius: 4, border: '1px solid #E2E8F0', background: DT.cardBg, color: DT.cellColor }}
+                >
+                  {paramCatalog.length === 0 && <option value="vbs_avg">vbs_avg</option>}
+                  {paramCatalog.map(p => (
+                    <option key={String(p.parameter_id)} value={String(p.parameter_id)}>
+                      {String(p.parameter_id)}{p.unit ? ` (${p.unit})` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: DT.headerColor, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: 4 }}>Horizon</label>
+                <select
+                  value={launchForm.horizon}
+                  onChange={e => setLaunchForm(p => ({ ...p, horizon: e.target.value }))}
+                  style={{ width: '100%', fontSize: 12, padding: '6px 10px', borderRadius: 4, border: '1px solid #E2E8F0', background: DT.cardBg, color: DT.cellColor }}
+                >
+                  <option value="H1">H1 — Horizon 1 (0-30 cm)</option>
+                  <option value="H2">H2 — Horizon 2 (30-60 cm)</option>
+                  <option value="H3">H3 — Horizon 3 (60-90 cm)</option>
+                  <option value="Tous">Tous les horizons</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'flex-end', paddingBottom: 4 }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: DT.cellColor }}>
+                  <input type="checkbox" checked={launchForm.force_recompute} onChange={e => setLaunchForm(p => ({ ...p, force_recompute: e.target.checked }))} />
+                  Force recalcul (ignorer cache)
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 12, color: DT.cellColor }}>
+                  <input type="checkbox" checked={launchForm.debug_mode} onChange={e => setLaunchForm(p => ({ ...p, debug_mode: e.target.checked }))} />
+                  Mode debug (logs détaillés)
+                </label>
+              </div>
+            </div>
+            <div style={{ background: DT.headerBg, border: DT.cardBorder, borderRadius: 6, padding: '10px 14px', marginBottom: 12, fontSize: 11, color: DT.headerColor }}>
+              <strong style={{ color: DT.cellColor }}>Récapitulatif :</strong>{' '}
+              <code style={{ background: '#EFF6FF', color: '#1D4ED8', padding: '1px 5px', borderRadius: 3 }}>{launchForm.method}</code>{' '}
+              sur <code style={{ background: '#F3E8FF', color: '#7C3AED', padding: '1px 5px', borderRadius: 3 }}>{launchForm.parameter_id}</code>{' '}
+              horizon <strong>{launchForm.horizon}</strong>
+              {launchForm.force_recompute && <span style={{ color: '#D97706', marginLeft: 6 }}>• Force recalcul</span>}
+              {launchForm.debug_mode && <span style={{ color: '#7C3AED', marginLeft: 6 }}>• Debug</span>}
+            </div>
+            <button
+              disabled={isLaunching}
+              onClick={handleLaunch}
+              className="flex items-center gap-2 text-white rounded font-medium text-sm px-4 py-2 disabled:opacity-50"
+              style={{ background: isLaunching ? '#94A3B8' : '#1E293B', border: 'none', cursor: isLaunching ? 'not-allowed' : 'pointer' }}
+            >
+              {isLaunching ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+              {isLaunching ? 'Envoi en queue…' : 'Envoyer en queue'}
+            </button>
+            {launchMsg && (
+              <div style={{ marginTop: 10, padding: '8px 12px', borderRadius: 4, fontSize: 12, background: launchMsg.type === 'ok' ? '#DCFCE7' : '#FEE2E2', color: launchMsg.type === 'ok' ? '#166534' : '#991B1B', border: `1px solid ${launchMsg.type === 'ok' ? '#86EFAC' : '#FCA5A5'}` }}>
+                {launchMsg.type === 'ok' ? '✓ ' : '✗ '}{launchMsg.text}
+              </div>
+            )}
+            <p style={{ marginTop: 10, fontSize: 10, color: DT.headerColor }}>
+              KED ~5 min • RK ~5 min • BLUP ~1 min • MTGP ~60 min • SGS ~30 min — suivre dans l'onglet Queue IA
+            </p>
+          </div>
+        </SectionCard>
+      )}
+
+      {section === 'queue' && (
+        <SectionCard icon={Clock} title="Queue IA — ai_job_queue en temps réel"
+          action={
+            <button onClick={refreshQueue} className="flex items-center gap-1 text-xs" style={{ color: DT.headerColor, background: 'none', border: 'none', cursor: 'pointer' }}>
+              <RefreshCw size={12} strokeWidth={1.5} /> Rafraîchir
+            </button>
+          }
+        >
+          {queueRunning > 0 && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, padding: '6px 10px', borderRadius: 4, background: '#DBEAFE', border: '1px solid #93C5FD', fontSize: 12, color: '#1D4ED8' }}>
+              <Loader2 size={12} className="animate-spin" />
+              {queueRunning} job{queueRunning > 1 ? 's' : ''} en cours — rafraîchissement auto toutes les 5 s
+            </div>
+          )}
+          <DataTable
+            columns={[
+              { key: 'id', label: 'ID', render: (v) => <code style={{ fontSize: 10, background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>{String(v ?? '').slice(0, 8)}</code> },
+              { key: 'job_type', label: 'Type', render: (v) => <code style={{ fontSize: 11, background: '#EFF6FF', color: '#1D4ED8', padding: '1px 5px', borderRadius: 3 }}>{String(v ?? '')}</code> },
+              { key: 'parameter_id', label: 'Paramètre' },
+              { key: 'status', label: 'Statut', render: (v) => <StatusPill status={String(v ?? '')} /> },
+              { key: 'requested_at', label: 'Demandé', render: (v) => v ? <span style={{ fontSize: 11 }}>{new Date(String(v)).toLocaleString('fr-FR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span> : <span style={{ color: DT.mutedDash }}>—</span> },
+              { key: 'finished_at', label: 'Terminé', render: (v) => v ? <span style={{ fontSize: 11 }}>{new Date(String(v)).toLocaleString('fr-FR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span> : <span style={{ color: DT.mutedDash }}>—</span> },
+              { key: 'error_message', label: 'Erreur', render: (v) => v ? <span style={{ color: '#DC2626', fontSize: 10 }} title={String(v)}>{String(v).slice(0, 40)}{String(v).length > 40 ? '…' : ''}</span> : <span style={{ color: DT.mutedDash }}>—</span> },
+            ]}
+            rows={jobQueue}
+            maxRows={50}
+          />
+        </SectionCard>
+      )}
+
       {section === 'supervised' && (
         <SectionCard icon={Brain} title="Modèles supervisés CatBoost" action={<ExportBtn rows={supervisedModels} filename="model_registry.csv" />}>
           {supervisedModels.length === 0 ? (
@@ -1190,19 +1525,22 @@ function MLTab() {
 function ComparaisonTab() {
   const [variograms, setVariograms] = useState<Row[]>([])
   const [runs, setRuns] = useState<Row[]>([])
+  const [correlations, setCorrelations] = useState<{ params: string[]; matrix: number[][] } | null>(null)
   const [section, setSection] = useSectionState('comparaison', 'methodes')
 
   useEffect(() => {
     let cancelled = false
     ;(async () => {
       try {
-        const [vData, rData] = await Promise.all([
+        const [vData, rData, corData] = await Promise.allSettled([
           tablesApi.getData('atlas', 'ai_variograms', 100, 0),
           tablesApi.getData('atlas', 'ai_interpolation_runs', 100, 0),
+          api.get<any>('/api/stats/parameter-correlations'),
         ])
         if (!cancelled) {
-          setVariograms(vData as Row[])
-          setRuns(rData as Row[])
+          if (vData.status === 'fulfilled') setVariograms(vData.value as Row[])
+          if (rData.status === 'fulfilled') setRuns(rData.value as Row[])
+          if (corData.status === 'fulfilled' && corData.value?.params) setCorrelations(corData.value as { params: string[]; matrix: number[][] })
         }
       } catch { /* ok */ }
     })()
@@ -1214,6 +1552,7 @@ function ComparaisonTab() {
   const navItems: NavItem[] = [
     { id: 'methodes', label: 'Méthodes', badge: String(variograms.length) },
     { id: 'comparaison', label: 'Comparatif', badge: String(runs.length) },
+    { id: 'correlations', label: 'Corrélations' },
   ]
 
   return (
@@ -1259,6 +1598,79 @@ function ComparaisonTab() {
             rows={runs}
             maxRows={30}
           />
+        </SectionCard>
+      )}
+      {section === 'correlations' && (
+        <SectionCard icon={GitCompare} title="Heatmap de corrélations inter-paramètres géotechniques">
+          {!correlations ? (
+            <div style={{ padding: '32px', textAlign: 'center', color: DT.headerColor, fontSize: 13 }}>
+              <BarChart2 size={28} style={{ margin: '0 auto 12px', opacity: 0.2 }} />
+              <div style={{ fontWeight: 600, color: '#1E293B', marginBottom: 6 }}>Endpoint non disponible</div>
+              <div style={{ fontSize: 12, maxWidth: 360, margin: '0 auto', lineHeight: 1.6 }}>
+                L'endpoint <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>/api/stats/parameter-correlations</code> doit retourner
+                un objet <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>{'{ params: string[], matrix: number[][] }'}</code> calculé
+                à partir des mesures terrain de <code style={{ background: '#F1F5F9', padding: '1px 5px', borderRadius: 3 }}>atlas.tests_geotechniques</code>.
+              </div>
+              <div style={{ marginTop: 16, padding: '10px 14px', borderRadius: 6, background: '#F8FAFC', border: '1px solid #E2E8F0', fontSize: 11, color: DT.headerColor, textAlign: 'left', display: 'inline-block' }}>
+                Corrélations attendues (littérature) :<br />
+                IP ↔ VBS : r ≈ 0.82 (activité argileuse)<br />
+                VBS ↔ CBR : r ≈ -0.71 (résistance inverse à plasticité)<br />
+                WL ↔ IP : r ≈ 0.91 (lien Atterberg)<br />
+                CG ↔ IP : r ≈ 0.68 (teneur argile)
+              </div>
+            </div>
+          ) : (
+            <>
+              <div style={{ marginBottom: 10, display: 'flex', gap: 12, fontSize: 11, color: DT.headerColor, flexWrap: 'wrap' }}>
+                {[
+                  { label: 'Forte +', bg: '#15803D', color: '#fff', range: 'r > 0.7' },
+                  { label: 'Modérée +', bg: '#86EFAC', color: '#166534', range: '0.3–0.7' },
+                  { label: 'Faible', bg: '#F1F5F9', color: '#64748B', range: '-0.3–0.3' },
+                  { label: 'Modérée −', bg: '#FCA5A5', color: '#991B1B', range: '-0.7–-0.3' },
+                  { label: 'Forte −', bg: '#DC2626', color: '#fff', range: 'r < -0.7' },
+                ].map(({ label, bg, color, range }) => (
+                  <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 14, height: 14, borderRadius: 3, background: bg, display: 'inline-block' }} />
+                    <span style={{ color }}>{label}</span>
+                    <span style={{ color: DT.mutedDash }}>({range})</span>
+                  </span>
+                ))}
+              </div>
+              <div className="overflow-x-auto">
+                <table style={{ borderCollapse: 'collapse', fontSize: 11 }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: 80, padding: '6px 8px', background: DT.headerBg, color: DT.headerColor, fontSize: 10, textTransform: 'uppercase' }} />
+                      {correlations.params.map(p => (
+                        <th key={p} style={{ padding: '6px 8px', background: DT.headerBg, color: DT.headerColor, fontSize: 10, textTransform: 'uppercase', textAlign: 'center', whiteSpace: 'nowrap' }}>{p}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {correlations.params.map((rowParam, i) => (
+                      <tr key={rowParam}>
+                        <td style={{ padding: '6px 8px', fontWeight: 600, color: DT.cellColor, fontSize: 11, whiteSpace: 'nowrap', background: DT.headerBg }}>{rowParam}</td>
+                        {correlations.matrix[i].map((r, j) => {
+                          const isdiag = i === j
+                          const bg = isdiag ? '#1D4ED8' : r > 0.7 ? '#15803D' : r > 0.3 ? '#86EFAC' : r > -0.3 ? '#F1F5F9' : r > -0.7 ? '#FCA5A5' : '#DC2626'
+                          const textColor = isdiag || r > 0.7 || r < -0.7 ? '#fff' : r > 0.3 ? '#166534' : r < -0.3 ? '#991B1B' : '#475569'
+                          return (
+                            <td key={j} title={`${rowParam} ↔ ${correlations.params[j]} : r = ${r.toFixed(3)}`}
+                              style={{ padding: '6px 10px', textAlign: 'center', background: bg, color: textColor, fontFamily: 'monospace', cursor: 'default', borderRadius: 2 }}>
+                              {isdiag ? '1.00' : r.toFixed(2)}
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p style={{ fontSize: 10, color: DT.headerColor, marginTop: 8 }}>
+                Coefficients de Pearson calculés sur l'ensemble des sondages AMESSEFE. Survol d'une cellule = valeur exacte.
+              </p>
+            </>
+          )}
         </SectionCard>
       )}
     </SectionLayout>
