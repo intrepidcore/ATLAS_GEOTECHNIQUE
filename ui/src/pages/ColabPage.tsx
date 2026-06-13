@@ -26,6 +26,7 @@ import {
   BarChart3,
   ClipboardList,
   Trash2,
+  Bell,
 } from 'lucide-react';
 import {
   attributionsApi,
@@ -227,36 +228,71 @@ const ConfirmDeactivateModal: React.FC<{
   description: string;
   confirmLabel?: string;
   loading?: boolean;
+  destructive?: boolean;
   onClose: () => void;
   onConfirm: () => void;
-}> = ({ isOpen, title, description, confirmLabel = 'Désactiver', loading = false, onClose, onConfirm }) => {
+}> = ({ isOpen, title, description, confirmLabel = "Désactiver", loading = false, destructive = false, onClose, onConfirm }) => {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-card text-card-foreground border border-border rounded-2xl shadow-xl w-full max-w-lg mx-4">
-        <div className="flex items-center justify-between p-4 border-b">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
-            <X className="w-5 h-5" />
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-2xl shadow-2xl w-full max-w-md">
+        {/* Header */}
+        <div className="flex items-start justify-between px-6 pt-6 pb-4">
+          <div className="flex items-center gap-3">
+            {destructive ? (
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-red-600 dark:text-red-400" />
+              </div>
+            ) : (
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center">
+                <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              </div>
+            )}
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="ml-2 p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
+          >
+            <X className="w-4 h-4" />
           </button>
         </div>
-        <div className="p-4 text-sm text-foreground">{description}</div>
-        <div className="p-4 pt-0 flex justify-end gap-3">
-          <Button variant="outline" onClick={onClose} disabled={loading}>
+
+        {/* Body */}
+        <div className="px-6 pb-5">
+          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{description}</p>
+        </div>
+
+        {/* Footer */}
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-700/50 border-t border-slate-200 dark:border-slate-600 rounded-b-2xl flex justify-end gap-3">
+          <button
+            onClick={onClose}
+            disabled={loading}
+            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             Annuler
-          </Button>
-          <Button onClick={onConfirm} disabled={loading}>
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={loading}
+            className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+              destructive
+                ? "bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white"
+                : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white"
+            }`}
+          >
             {loading ? (
               <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Traitement...
               </>
             ) : (
               confirmLabel
             )}
-          </Button>
+          </button>
         </div>
       </div>
     </div>
@@ -630,6 +666,8 @@ const ColabPage: React.FC = () => {
   const [attrConfirmOpen, setAttrConfirmOpen] = useState(false);
   const [attrIncludeBbox, setAttrIncludeBbox] = useState(true);
   const [attrIncludeInstructions, setAttrIncludeInstructions] = useState(true);
+  const [attrIncludePdf, setAttrIncludePdf] = useState(true);
+  const [attrIncludeGeojson, setAttrIncludeGeojson] = useState(true);
   const [attrEnqueueLoading, setAttrEnqueueLoading] = useState(false);
   const [attrEnqueueError, setAttrEnqueueError] = useState<string | null>(null);
   const [attrHistory, setAttrHistory] = useState<AttributionNotificationHistoryItem[]>([]);
@@ -1261,6 +1299,14 @@ const ColabPage: React.FC = () => {
               setSelectedMissionToDelete(mission);
               setShowDeleteMissionModal(true);
             }}
+            onStatusChange={async (mission, newStatus) => {
+              try {
+                await missionsApi.update(mission.id, { status: newStatus });
+                await loadData();
+              } catch (err) {
+                console.error("Erreur changement statut:", err);
+              }
+            }}
             onOpenCreateMission={() => setShowCreateModal(true)}
           />
         )}
@@ -1738,15 +1784,15 @@ const ColabPage: React.FC = () => {
         {activeTab === 'attributions' && (
           <>
             {attrNotice && (
-              <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-800 flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5" />
+              <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-800 dark:text-green-300 flex items-center gap-3">
+                <CheckCircle2 className="w-5 h-5 shrink-0" />
                 <span>{attrNotice}</span>
               </div>
             )}
 
             {attrError && (
-              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center gap-3">
-                <AlertCircle className="w-5 h-5" />
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-red-700 dark:text-red-300 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 shrink-0" />
                 <span>{attrError}</span>
               </div>
             )}
@@ -1757,236 +1803,283 @@ const ColabPage: React.FC = () => {
                   title="Mailles notifiables"
                   value={attrSummary.total_assignments}
                   icon={<BarChart3 className="w-6 h-6" />}
-                  color="bg-blue-50 text-blue-900"
+                  color="bg-blue-50 dark:bg-blue-900/20 text-blue-900 dark:text-blue-200"
                 />
                 <StatsCard
                   title="Missions affectées"
                   value={attrSummary.missions_with_student}
                   icon={<Users className="w-6 h-6" />}
-                  color="bg-green-50 text-green-900"
+                  color="bg-green-50 dark:bg-green-900/20 text-green-900 dark:text-green-200"
                 />
                 <StatsCard
                   title="Notifications en attente"
                   value={attrSummary.pending_notifications}
                   icon={<FileText className="w-6 h-6" />}
-                  color="bg-orange-50 text-orange-900"
+                  color="bg-orange-50 dark:bg-orange-900/20 text-orange-900 dark:text-orange-200"
                 />
                 <StatsCard
                   title="Étudiants"
                   value={attrSummary.total_students}
                   icon={<ClipboardList className="w-6 h-6" />}
-                  color="bg-purple-50 text-purple-900"
+                  color="bg-purple-50 dark:bg-purple-900/20 text-purple-900 dark:text-purple-200"
                 />
               </div>
             )}
 
-            <div className="bg-card text-card-foreground rounded-xl border border-border p-4 mb-6">
+            {/* Barre filtres + actions */}
+            <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 mb-6">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                 <div className="md:col-span-2">
-                  <div className="text-sm font-medium text-foreground mb-1">Filtrer (étudiant/email/matricule)</div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                    Recherche
+                  </label>
                   <input
                     value={attrStudentFilter}
                     onChange={e => setAttrStudentFilter(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
-                    placeholder="ex: Diallo / email@..."
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Nom, email ou matricule..."
                   />
                 </div>
                 <div>
-                  <div className="text-sm font-medium text-foreground mb-1">Statut notification</div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-1.5">
+                    Statut notification
+                  </label>
                   <select
                     value={attrNotifStatusFilter}
                     onChange={e => setAttrNotifStatusFilter(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg text-sm"
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Tous</option>
                     <option value="unassigned">Sans étudiant</option>
-                    <option value="skipped">Affectée mais non notifiable</option>
-                    <option value="never">Jamais envoyée</option>
-                    <option value="pending">En attente</option>
-                    <option value="sent">Envoyée</option>
-                    <option value="failed">Échec</option>
+                    <option value="skipped">Non notifiable</option>
+                    <option value="never">Jamais notifié</option>
+                    <option value="pending">En attente d'envoi</option>
+                    <option value="sent">Notification envoyée</option>
+                    <option value="failed">Échec d'envoi</option>
                   </select>
                 </div>
                 <div className="flex items-end justify-end gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={async () => {
-                      setAttrHistoryLoading(true);
-                      setAttrHistoryError(null);
-                      try {
-                        const h = await attributionsApi.history();
-                        setAttrHistory(h.items);
-                      } catch (e) {
-                        setAttrHistoryError(e instanceof Error ? e.message : 'Erreur historique');
-                      } finally {
-                        setAttrHistoryLoading(false);
-                      }
-                    }}
-                    disabled={attrHistoryLoading}
-                  >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${attrHistoryLoading ? 'animate-spin' : ''}`} />
-                    Historique
-                  </Button>
                   <Button
                     onClick={() => {
                       setAttrEnqueueError(null);
                       setAttrConfirmOpen(true);
                     }}
                     disabled={Object.values(attrSelected).filter(Boolean).length === 0}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
                   >
-                    Notifier la sélection
+                    <Bell className="w-4 h-4 mr-2" />
+                    Notifier ({Object.values(attrSelected).filter(Boolean).length})
                   </Button>
                 </div>
               </div>
             </div>
 
-            {attrHistoryError && <div className="mt-3 text-sm text-red-600">{attrHistoryError}</div>}
-            {attrEnqueueError && <div className="mt-3 text-sm text-red-600">{attrEnqueueError}</div>}
+            {attrEnqueueError && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-sm text-red-700 dark:text-red-300 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {attrEnqueueError}
+              </div>
+            )}
 
+            {/* Table attributions */}
             <CollapsibleCard title="Attributions missions" subtitle={`${attrItems.length} lignes`} defaultOpen>
               <div className="max-h-[65vh] overflow-auto">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead className="bg-muted/50 text-muted-foreground sticky top-0">
-                      <tr>
-                        <th className="text-left px-4 py-3">
+                <table className="w-full text-sm">
+                  <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 sticky top-0 z-10">
+                    <tr>
+                      <th className="text-left px-4 py-3 w-10">
+                        <input
+                          type="checkbox"
+                          className="rounded"
+                          checked={
+                            attrItems.filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id).length > 0 &&
+                            attrItems
+                              .filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id)
+                              .every(i => !!attrSelected[i.assignment_id as string])
+                          }
+                          onChange={e => {
+                            const checked = e.target.checked;
+                            setAttrSelected(prev => {
+                              const next = { ...prev };
+                              for (const i of attrItems) {
+                                if (i.attribution_status !== 'notifiable' || !i.assignment_id) continue;
+                                next[i.assignment_id] = checked;
+                              }
+                              return next;
+                            });
+                          }}
+                        />
+                      </th>
+                      <th className="text-left px-4 py-3 font-semibold">Mission</th>
+                      <th className="text-left px-4 py-3 font-semibold">Maille</th>
+                      <th className="text-left px-4 py-3 font-semibold">Étudiant</th>
+                      <th className="text-left px-4 py-3 font-semibold">Attribution</th>
+                      <th className="text-left px-4 py-3 font-semibold">Notification</th>
+                      <th className="text-left px-4 py-3 font-semibold">Dernier envoi</th>
+                      <th className="text-right px-4 py-3 font-semibold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {attrItems.map(i => (
+                      <tr key={i.mission_id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                        <td className="px-4 py-3">
                           <input
                             type="checkbox"
-                            checked={
-                              attrItems.filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id).length > 0 &&
-                              attrItems
-                                .filter(i => i.attribution_status === 'notifiable' && !!i.assignment_id)
-                                .every(i => !!attrSelected[i.assignment_id as string])
-                            }
+                            className="rounded"
+                            disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
+                            checked={!!(i.assignment_id && attrSelected[i.assignment_id])}
                             onChange={e => {
-                              const checked = e.target.checked;
-                              setAttrSelected(prev => {
-                                const next = { ...prev };
-                                for (const i of attrItems) {
-                                  if (i.attribution_status !== 'notifiable' || !i.assignment_id) continue;
-                                  next[i.assignment_id] = checked;
-                                }
-                                return next;
-                              });
+                              if (!i.assignment_id) return;
+                              setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: e.target.checked }));
                             }}
                           />
-                        </th>
-                        <th className="text-left px-4 py-3">Mission</th>
-                        <th className="text-left px-4 py-3">Maille</th>
-                        <th className="text-left px-4 py-3">Étudiant</th>
-                        <th className="text-left px-4 py-3">Email</th>
-                        <th className="text-left px-4 py-3">Statut</th>
-                        <th className="text-left px-4 py-3">Raison</th>
-                        <th className="text-left px-4 py-3">Notification</th>
-                        <th className="text-left px-4 py-3">Dernier envoi</th>
-                        <th className="text-right px-4 py-3">Action</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {attrItems.map(i => (
-                        <tr key={i.mission_id} className="border-t hover:bg-muted/50">
-                          <td className="px-4 py-3">
-                            <input
-                              type="checkbox"
-                              disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
-                              checked={!!(i.assignment_id && attrSelected[i.assignment_id])}
-                              onChange={e => {
-                                if (!i.assignment_id) return;
-                                setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: e.target.checked }));
+                        </td>
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-slate-900 dark:text-slate-100 leading-snug">
+                            {i.mission_title || i.mission_code}
+                          </div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500 font-mono mt-0.5">{i.mission_code}</div>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className="font-mono text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded">
+                            {i.maille_code}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3">
+                          {i.full_name ? (
+                            <>
+                              <div className="font-medium text-slate-900 dark:text-slate-100">{i.full_name}</div>
+                              <div className="text-xs text-slate-400 dark:text-slate-500">{i.email || ''}</div>
+                            </>
+                          ) : (
+                            <span className="text-slate-400 dark:text-slate-500 italic text-xs">Non attribué</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {i.attribution_status === 'notifiable' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                              Prêt
+                            </span>
+                          )}
+                          {i.attribution_status === 'unassigned' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                              Sans étudiant
+                            </span>
+                          )}
+                          {i.attribution_status === 'notified' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                              Notifié
+                            </span>
+                          )}
+                          {i.attribution_status === 'assigned_not_notifiable' && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700 cursor-help"
+                              title={i.status_reason || ''}
+                            >
+                              Non notifiable
+                            </span>
+                          )}
+                          {i.attribution_status === 'error' && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 cursor-help"
+                              title={i.status_reason || ''}
+                            >
+                              Erreur
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3">
+                          {i.notification_status === 'sent' && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                              ✓ Envoyé
+                            </span>
+                          )}
+                          {i.notification_status === 'pending' && (
+                            <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700">
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse inline-block" />
+                              En attente
+                            </span>
+                          )}
+                          {i.notification_status === 'failed' && (
+                            <span
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700 cursor-help"
+                              title={i.notification_error || ''}
+                            >
+                              ✗ Échec
+                            </span>
+                          )}
+                          {(!i.notification_status || i.notification_status === 'never') && (
+                            <span className="text-xs text-slate-400 dark:text-slate-500">—</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                          {i.notification_sent_at
+                            ? new Date(i.notification_sent_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+                            : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {i.attribution_status === 'unassigned' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              onClick={() => {
+                                setAttrAssignError(null);
+                                setAttrAssignStudentQuery('');
+                                setAttrAssignStudents([]);
+                                setAttrAssignSelectedStudentId('');
+                                setAttrAssignMission(i);
+                                setAttrAssignOpen(true);
                               }}
-                            />
-                          </td>
-                          <td className="px-4 py-3 font-mono text-xs text-foreground">{i.mission_code}</td>
-                          <td className="px-4 py-3 font-mono text-xs text-foreground">{i.maille_code}</td>
-                          <td className="px-4 py-3 text-foreground">{i.full_name || '-'}</td>
-                          <td className="px-4 py-3 text-foreground">{i.email || '-'}</td>
-                          <td className="px-4 py-3">
-                            <Badge
-                              className={
-                                i.attribution_status === 'notifiable'
-                                  ? 'bg-green-100 text-green-800'
-                                  : i.attribution_status === 'notified'
-                                    ? 'bg-blue-100 text-blue-800'
-                                    : i.attribution_status === 'error'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-muted text-foreground'
-                              }
                             >
-                              {i.attribution_status}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground" title={i.status_reason || ''}>
-                            {i.status_reason || '-'}
-                          </td>
-                          <td className="px-4 py-3">
-                            <Badge
-                              className={
-                                i.notification_status === 'sent'
-                                  ? 'bg-green-100 text-green-800'
-                                  : i.notification_status === 'pending'
-                                    ? 'bg-orange-100 text-orange-800'
-                                    : i.notification_status === 'failed'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-muted text-foreground'
-                              }
+                              Attribuer
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-xs"
+                              disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
+                              onClick={() => {
+                                if (!i.assignment_id) return;
+                                setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: true }));
+                                setAttrConfirmOpen(true);
+                              }}
                             >
-                              {i.notification_status}
-                            </Badge>
-                          </td>
-                          <td className="px-4 py-3 text-muted-foreground">
-                            {i.notification_sent_at ? new Date(i.notification_sent_at).toLocaleString('fr-FR') : '-'}
-                          </td>
-                          <td className="px-4 py-3 text-right">
-                            {i.attribution_status === 'unassigned' ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => {
-                                  setAttrAssignError(null);
-                                  setAttrAssignStudentQuery('');
-                                  setAttrAssignStudents([]);
-                                  setAttrAssignSelectedStudentId('');
-                                  setAttrAssignMission(i);
-                                  setAttrAssignOpen(true);
-                                }}
-                              >
-                                Attribuer
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={i.attribution_status !== 'notifiable' || !i.assignment_id}
-                                onClick={() => {
-                                  if (!i.assignment_id) return;
-                                  setAttrSelected(prev => ({ ...prev, [i.assignment_id as string]: true }));
-                                  setAttrConfirmOpen(true);
-                                }}
-                              >
-                                Notifier
-                              </Button>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                      {attrItems.length === 0 && (
-                        <tr>
-                          <td className="px-4 py-6 text-center text-muted-foreground" colSpan={10}>
-                            Aucune attribution
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                              <Bell className="w-3 h-3 mr-1" />
+                              Notifier
+                            </Button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {attrItems.length === 0 && (
+                      <tr>
+                        <td className="px-4 py-10 text-center text-slate-400 dark:text-slate-500" colSpan={8}>
+                          Aucune attribution pour le moment
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </CollapsibleCard>
 
+            {/* Jobs d'envoi email */}
             <div className="mt-6">
-              <CollapsibleCard title="Jobs email (worker local)" subtitle={`${notifyJobs.length} jobs`} defaultOpen={false}>
-                <div className="p-4 border-b flex items-center justify-end">
+              <CollapsibleCard
+                title="Historique des envois"
+                subtitle={notifyJobs.length > 0 ? `${notifyJobs.length} envoi${notifyJobs.length > 1 ? 's' : ''}` : 'Aucun envoi'}
+                defaultOpen={notifyJobs.length > 0}
+              >
+                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Chaque ligne correspond à un groupe d'envois déclenché depuis l'interface.
+                  </p>
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={async () => {
                       setNotifyJobsLoading(true);
                       setNotifyJobsError(null);
@@ -2001,54 +2094,112 @@ const ColabPage: React.FC = () => {
                     }}
                     disabled={notifyJobsLoading}
                   >
-                    <RefreshCw className={`w-4 h-4 mr-2 ${notifyJobsLoading ? 'animate-spin' : ''}`} />
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${notifyJobsLoading ? 'animate-spin' : ''}`} />
                     Rafraîchir
                   </Button>
                 </div>
 
-                {notifyJobsError && <div className="px-4 py-3 text-sm text-red-600">{notifyJobsError}</div>}
+                {notifyJobsError && (
+                  <div className="px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {notifyJobsError}
+                  </div>
+                )}
 
                 <div className="max-h-[50vh] overflow-auto">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 text-muted-foreground sticky top-0">
-                        <tr>
-                          <th className="text-left px-4 py-3">Job</th>
-                          <th className="text-left px-4 py-3">Type</th>
-                          <th className="text-left px-4 py-3">Statut</th>
-                          <th className="text-left px-4 py-3">Créé</th>
-                          <th className="text-left px-4 py-3">Erreur</th>
-                          <th className="text-right px-4 py-3">Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {notifyJobs.map(j => (
-                          <tr key={j.id} className="border-t hover:bg-muted/50">
-                            <td className="px-4 py-3 font-mono text-xs text-foreground">{j.id}</td>
-                            <td className="px-4 py-3 text-foreground">{j.job_type}</td>
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 sticky top-0">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-semibold">Envoi</th>
+                        <th className="text-left px-4 py-3 font-semibold">Destinataires</th>
+                        <th className="text-left px-4 py-3 font-semibold">Statut</th>
+                        <th className="text-left px-4 py-3 font-semibold">Options</th>
+                        <th className="text-left px-4 py-3 font-semibold">Erreur</th>
+                        <th className="text-right px-4 py-3 font-semibold">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {notifyJobs.map(j => {
+                        const recipientCount = Array.isArray(j.params?.assignment_ids) ? j.params.assignment_ids.length : null;
+                        const opts = j.params?.options || {};
+                        return (
+                          <tr key={j.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
                             <td className="px-4 py-3">
-                              <Badge
-                                className={
-                                  j.status === 'completed'
-                                    ? 'bg-green-100 text-green-800'
-                                    : j.status === 'failed'
-                                      ? 'bg-red-100 text-red-800'
-                                      : j.status === 'running'
-                                        ? 'bg-blue-100 text-blue-800'
-                                        : j.status === 'cancelled'
-                                          ? 'bg-amber-500/15 text-amber-900 dark:text-amber-100'
-                                          : 'bg-muted text-foreground'
-                                }
+                              <div
+                                className="font-medium text-slate-900 dark:text-slate-100 cursor-help"
+                                title={j.id}
                               >
-                                {j.status}
-                              </Badge>
+                                {new Date(j.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                              {j.started_at && (
+                                <div className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
+                                  Traité à {new Date(j.started_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                                </div>
+                              )}
                             </td>
-                            <td className="px-4 py-3 text-muted-foreground">{new Date(j.created_at).toLocaleString('fr-FR')}</td>
-                            <td className="px-4 py-3 text-muted-foreground">{j.error || '-'}</td>
+                            <td className="px-4 py-3">
+                              {recipientCount !== null ? (
+                                <span className="inline-flex items-center gap-1 text-slate-700 dark:text-slate-300">
+                                  <Users className="w-3.5 h-3.5 text-slate-400" />
+                                  {recipientCount} étudiant{recipientCount > 1 ? 's' : ''}
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              {j.status === 'completed' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                  ✓ Terminé
+                                </span>
+                              )}
+                              {j.status === 'failed' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700">
+                                  ✗ Échoué
+                                </span>
+                              )}
+                              {j.status === 'running' && (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-700">
+                                  <RefreshCw className="w-3 h-3 animate-spin" />
+                                  En cours...
+                                </span>
+                              )}
+                              {j.status === 'pending' && (
+                                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse inline-block" />
+                                  En attente
+                                </span>
+                              )}
+                              {j.status === 'cancelled' && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400">
+                                  Annulé
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-1 flex-wrap">
+                                {opts.include_bbox && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded">bbox</span>
+                                )}
+                                {opts.include_pdf && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 rounded">PDF</span>
+                                )}
+                                {opts.include_geojson && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-300 rounded">GeoJSON</span>
+                                )}
+                                {opts.include_instructions && (
+                                  <span className="text-xs px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded">instructions</span>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-xs text-red-500 dark:text-red-400 max-w-[180px] truncate" title={j.error || ''}>
+                              {j.error || '—'}
+                            </td>
                             <td className="px-4 py-3 text-right">
                               <Button
                                 variant="outline"
                                 size="sm"
+                                className="text-xs"
                                 disabled={j.status !== 'pending'}
                                 onClick={async () => {
                                   setNotifyJobsError(null);
@@ -2067,106 +2218,209 @@ const ColabPage: React.FC = () => {
                               </Button>
                             </td>
                           </tr>
-                        ))}
-                        {notifyJobs.length === 0 && (
-                          <tr>
-                            <td className="px-4 py-6 text-center text-muted-foreground" colSpan={6}>
-                              Aucun job
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
+                        );
+                      })}
+                      {notifyJobs.length === 0 && (
+                        <tr>
+                          <td className="px-4 py-10 text-center text-slate-400 dark:text-slate-500" colSpan={6}>
+                            Aucun envoi pour le moment
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </CollapsibleCard>
             </div>
 
+            {/* Détail par étudiant */}
             <div className="mt-6">
-              <CollapsibleCard title="Historique & Logs" subtitle={`${attrHistory.length} entrées`} defaultOpen={false}>
-                <div className="max-h-[50vh] overflow-auto">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-muted/50 text-muted-foreground sticky top-0">
-                        <tr>
-                          <th className="text-left px-4 py-3">Date</th>
-                          <th className="text-left px-4 py-3">Étudiant</th>
-                          <th className="text-left px-4 py-3">Maille</th>
-                          <th className="text-left px-4 py-3">Statut</th>
-                          <th className="text-left px-4 py-3">Job</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {attrHistory.map(h => (
-                          <tr key={h.id} className="border-t hover:bg-muted/50">
-                            <td className="px-4 py-3 text-muted-foreground">{new Date(h.requested_at).toLocaleString('fr-FR')}</td>
-                            <td className="px-4 py-3 text-foreground">{h.full_name}</td>
-                            <td className="px-4 py-3 font-mono text-xs text-foreground">{h.maille_code}</td>
-                            <td className="px-4 py-3">
-                              <Badge
-                                className={
-                                  h.status === 'sent'
-                                    ? 'bg-green-100 text-green-800'
-                                    : h.status === 'pending'
-                                      ? 'bg-orange-100 text-orange-800'
-                                      : h.status === 'failed'
-                                        ? 'bg-red-100 text-red-800'
-                                        : 'bg-muted text-foreground'
-                                }
-                              >
-                                {h.status}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3 font-mono text-xs text-foreground">{h.email_job_id || '-'}</td>
-                          </tr>
-                        ))}
-                        {attrHistory.length === 0 && (
-                          <tr>
-                            <td className="px-4 py-6 text-center text-muted-foreground" colSpan={5}>
-                              Aucun historique
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+              <CollapsibleCard
+                title="Détail des envois par étudiant"
+                subtitle={attrHistory.length > 0 ? `${attrHistory.length} entrée${attrHistory.length > 1 ? 's' : ''}` : 'Aucune entrée'}
+                defaultOpen={false}
+              >
+                <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Trace individuelle de chaque notification envoyée à un étudiant. Se peuple automatiquement après chaque envoi réussi.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      setAttrHistoryLoading(true);
+                      setAttrHistoryError(null);
+                      try {
+                        const h = await attributionsApi.history();
+                        setAttrHistory(h.items);
+                      } catch (e) {
+                        setAttrHistoryError(e instanceof Error ? e.message : 'Erreur historique');
+                      } finally {
+                        setAttrHistoryLoading(false);
+                      }
+                    }}
+                    disabled={attrHistoryLoading}
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${attrHistoryLoading ? 'animate-spin' : ''}`} />
+                    Actualiser
+                  </Button>
+                </div>
+
+                {attrHistoryError && (
+                  <div className="px-4 py-3 text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    {attrHistoryError}
                   </div>
+                )}
+
+                <div className="max-h-[50vh] overflow-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 sticky top-0">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-semibold">Date d'envoi</th>
+                        <th className="text-left px-4 py-3 font-semibold">Étudiant</th>
+                        <th className="text-left px-4 py-3 font-semibold">Maille</th>
+                        <th className="text-left px-4 py-3 font-semibold">Résultat</th>
+                        <th className="text-left px-4 py-3 font-semibold">Détail</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      {attrHistory.map(h => (
+                        <tr key={h.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="px-4 py-3 text-slate-600 dark:text-slate-300 text-xs">
+                            {new Date(h.sent_at || h.requested_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          </td>
+                          <td className="px-4 py-3">
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{h.full_name}</div>
+                            <div className="text-xs text-slate-400 dark:text-slate-500">{h.email || ''}</div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span className="font-mono text-xs bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-1.5 py-0.5 rounded">
+                              {h.maille_code}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {h.status === 'sent' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700">
+                                ✓ Envoyé
+                              </span>
+                            )}
+                            {h.status === 'pending' && (
+                              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-50 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-200 dark:border-orange-700">
+                                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse inline-block" />
+                                En attente
+                              </span>
+                            )}
+                            {h.status === 'failed' && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-700">
+                                ✗ Échec
+                              </span>
+                            )}
+                            {h.status !== 'sent' && h.status !== 'pending' && h.status !== 'failed' && (
+                              <span className="text-xs text-slate-400 dark:text-slate-500">{h.status}</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-red-500 dark:text-red-400 max-w-[200px] truncate" title={h.error || ''}>
+                            {h.error || '—'}
+                          </td>
+                        </tr>
+                      ))}
+                      {attrHistory.length === 0 && (
+                        <tr>
+                          <td className="px-4 py-10 text-center" colSpan={5}>
+                            <div className="text-slate-400 dark:text-slate-500 text-sm">Aucune trace d'envoi pour le moment</div>
+                            <div className="text-slate-400 dark:text-slate-500 text-xs mt-1">Les données apparaîtront ici après le premier envoi réussi</div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </CollapsibleCard>
             </div>
 
             {attrConfirmOpen && (
-              <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4">
-                <div className="bg-card text-card-foreground w-full max-w-lg rounded-xl shadow-lg border border-border overflow-hidden">
-                  <div className="px-5 py-4 border-b">
-                    <div className="text-lg font-semibold text-foreground">Confirmer l’envoi des notifications</div>
-                    <div className="text-sm text-muted-foreground mt-1">
-                      Vous êtes sur le point de notifier <span className="font-semibold">{Object.values(attrSelected).filter(Boolean).length}</span> attribution(s).
+              <div
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4"
+                onClick={() => !attrEnqueueLoading && setAttrConfirmOpen(false)}
+              >
+                <div
+                  className="bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 w-full max-w-md rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-700"
+                  onClick={e => e.stopPropagation()}
+                >
+                  <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200 dark:border-slate-700">
+                    <div>
+                      <div className="text-base font-semibold">Confirmer l’envoi des notifications</div>
+                      <div className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {Object.values(attrSelected).filter(Boolean).length}
+                        </span> attribution(s)
+                      </div>
                     </div>
+                    <button
+                      onClick={() => setAttrConfirmOpen(false)}
+                      disabled={attrEnqueueLoading}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors disabled:opacity-40"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
                   </div>
 
-                  <div className="px-5 py-4 space-y-3">
-                    <label className="flex items-center gap-2 text-sm text-foreground">
-                      <input type="checkbox" checked={attrIncludeBbox} onChange={e => setAttrIncludeBbox(e.target.checked)} />
-                      Inclure la BBox des mailles
-                    </label>
-                    <label className="flex items-center gap-2 text-sm text-foreground">
+                  <div className="px-5 py-4 space-y-1">
+                    <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Contenu du mail</p>
+                    <label className="flex items-center gap-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 cursor-pointer select-none">
                       <input
                         type="checkbox"
+                        className="w-4 h-4 accent-blue-600"
+                        checked={attrIncludeBbox}
+                        onChange={e => setAttrIncludeBbox(e.target.checked)}
+                      />
+                      <span>Inclure la BBox (emprise géographique)</span>
+                    </label>
+                    <label className="flex items-center gap-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-blue-600"
                         checked={attrIncludeInstructions}
                         onChange={e => setAttrIncludeInstructions(e.target.checked)}
                       />
-                      Inclure les instructions standard
+                      <span>Inclure les instructions terrain</span>
                     </label>
-                    <div className="text-xs text-muted-foreground">
-                      Les emails seront envoyés automatiquement via le worker local. Cette action écrit uniquement en base.
+                    <div className="h-px bg-slate-100 dark:bg-slate-800 my-2" />
+                    <p className="text-xs font-medium text-slate-400 dark:text-slate-500 uppercase tracking-wide mb-2">Pièces jointes</p>
+                    <label className="flex items-center gap-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-blue-600"
+                        checked={attrIncludePdf}
+                        onChange={e => setAttrIncludePdf(e.target.checked)}
+                      />
+                      <span>Joindre le PDF ordre de mission</span>
+                    </label>
+                    <label className="flex items-center gap-3 py-1.5 text-sm text-slate-700 dark:text-slate-300 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 accent-blue-600"
+                        checked={attrIncludeGeojson}
+                        onChange={e => setAttrIncludeGeojson(e.target.checked)}
+                      />
+                      <span>Joindre le fichier GeoJSON de la maille (ZIP)</span>
+                    </label>
+                    <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/50 text-xs text-blue-700 dark:text-blue-300 leading-relaxed mt-2">
+                      Les emails sont traités par le worker local. Seul l'enregistrement est effectué ici.
                     </div>
+                    {attrEnqueueError && (
+                      <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-900/50 text-sm text-red-700 dark:text-red-300">
+                        {attrEnqueueError}
+                      </div>
+                    )}
                   </div>
 
-                  <div className="px-5 py-4 border-t flex justify-end gap-2">
+                  <div className="px-5 py-4 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-2">
                     <Button variant="outline" onClick={() => setAttrConfirmOpen(false)} disabled={attrEnqueueLoading}>
                       Annuler
                     </Button>
-                    <Button
+                    <button
                       onClick={async () => {
                         setAttrEnqueueError(null);
                         setAttrEnqueueLoading(true);
@@ -2178,6 +2432,8 @@ const ColabPage: React.FC = () => {
                             assignment_ids: ids,
                             include_bbox: attrIncludeBbox,
                             include_instructions: attrIncludeInstructions,
+                            include_pdf: attrIncludePdf,
+                            include_geojson: attrIncludeGeojson,
                           });
 
                           const [summaryRes, listRes, historyRes] = await Promise.all([
@@ -2190,21 +2446,33 @@ const ColabPage: React.FC = () => {
                             attributionsApi.history().catch(() => ({ items: [], total: 0 })),
                           ]);
                           setAttrSummary(summaryRes);
-                          setAttrItems(listRes.items);
+                          setAttrItems(listRes.items.map(item =>
+                            ids.includes(item.assignment_id as string)
+                              ? { ...item, notification_status: 'pending' }
+                              : item
+                          ));
                           setAttrHistory(historyRes.items || []);
-                          setAttrNotice('Notifications programmées (job en attente)');
-                          window.setTimeout(() => setAttrNotice(null), 3500);
+                          setAttrNotice(`${ids.length} notification${ids.length > 1 ? 's' : ''} programmée${ids.length > 1 ? 's' : ''} — job en attente de traitement`);
+                          window.setTimeout(() => setAttrNotice(null), 6000);
                           setAttrConfirmOpen(false);
                         } catch (e) {
-                          setAttrEnqueueError(e instanceof Error ? e.message : 'Erreur enregistrement');
+                          setAttrEnqueueError(e instanceof Error ? e.message : "Erreur enregistrement");
                         } finally {
                           setAttrEnqueueLoading(false);
                         }
                       }}
                       disabled={attrEnqueueLoading}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {attrEnqueueLoading ? 'Enregistrement…' : 'Confirmer'}
-                    </Button>
+                      {attrEnqueueLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          Enregistrement...
+                        </>
+                      ) : (
+                        "Confirmer"
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -2555,8 +2823,9 @@ const ColabPage: React.FC = () => {
       <ConfirmDeactivateModal
         isOpen={showDeleteMissionModal}
         title="Supprimer la mission"
-        description={selectedMissionToDelete ? `Confirmer la suppression de ${selectedMissionToDelete.title} ?` : 'Confirmer la suppression ?'}
+        description={selectedMissionToDelete ? `Confirmer la suppression de ${selectedMissionToDelete.title} ?` : "Confirmer la suppression ?"}
         confirmLabel="Supprimer"
+        destructive={true}
         loading={actionLoading}
         onClose={() => setShowDeleteMissionModal(false)}
         onConfirm={async () => {
@@ -2630,8 +2899,9 @@ const ColabPage: React.FC = () => {
       <ConfirmDeactivateModal
         isOpen={showDeleteStudentModal}
         title="Supprimer l'étudiant"
-        description={selectedStudent ? `Confirmer la suppression de ${selectedStudent.full_name} ?` : 'Confirmer la suppression ?'}
+        description={selectedStudent ? `Confirmer la suppression de ${selectedStudent.full_name} ?` : "Confirmer la suppression ?"}
         confirmLabel="Supprimer"
+        destructive={true}
         loading={actionLoading}
         onClose={() => setShowDeleteStudentModal(false)}
         onConfirm={async () => {
@@ -2672,8 +2942,9 @@ const ColabPage: React.FC = () => {
       <ConfirmDeactivateModal
         isOpen={showDeleteSupervisorModal}
         title="Supprimer le superviseur"
-        description={selectedSupervisor ? `Confirmer la suppression de ${selectedSupervisor.full_name} ?` : 'Confirmer la suppression ?'}
+        description={selectedSupervisor ? `Confirmer la suppression de ${selectedSupervisor.full_name} ?` : "Confirmer la suppression ?"}
         confirmLabel="Supprimer"
+        destructive={true}
         loading={actionLoading}
         onClose={() => setShowDeleteSupervisorModal(false)}
         onConfirm={async () => {

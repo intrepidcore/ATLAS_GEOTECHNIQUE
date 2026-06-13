@@ -24,12 +24,21 @@ export function ApiHealthIndicator() {
                 const latency = Date.now() - start;
                 
                 if (resp.ok) {
-                    const data = await resp.json();
+                    const text = await resp.text();
+                    let data: Record<string, unknown> = {};
+                    try { data = JSON.parse(text); } catch {
+                        if (text.trim() === 'ok') data = { db_connected: true };
+                    }
+                    const db = (data as any)?.database;
+                    const isHealthy = !!data.db_connected
+                        || data.status === 'ok'
+                        || data.status === 'healthy'
+                        || db?.connected === true;
                     setHealth({
-                        status: data.db_connected ? 'ok' : 'degraded',
+                        status: isHealthy ? 'ok' : 'degraded',
                         latency_ms: latency,
-                        api_version: data.version,
-                        db_connected: data.db_connected,
+                        api_version: (data.version ?? db?.version) as string | undefined,
+                        db_connected: (data.db_connected ?? db?.connected) as boolean | undefined,
                         last_ok: new Date()
                     });
                 } else {

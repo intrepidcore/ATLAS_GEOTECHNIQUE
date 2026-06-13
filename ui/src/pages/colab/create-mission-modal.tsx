@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Loader2, MapPin, Plus, X } from 'lucide-react';
+import { AlertCircle, Loader2, Map, MapPin, Plus, Trash2, X } from 'lucide-react';
+import { MaillePickerModal, GpsPickerModal } from './map-picker-modal';
 
 import {
   communesApi,
@@ -11,6 +12,7 @@ import {
   MissionListItem,
   missionsApi,
   regionsApi,
+  SondagePointInput,
   studentsApi,
   supervisorsApi,
   UserSuggestItem,
@@ -207,6 +209,8 @@ const CreateMissionModal: React.FC<{
   const [mailleLon, setMailleLon] = useState('');
   const [mailleResolveLoading, setMailleResolveLoading] = useState(false);
   const [mailleResolveError, setMailleResolveError] = useState<string | null>(null);
+  const [maillePickerOpen, setMaillePickerOpen] = useState(false);
+  const [gpsPickerOpen, setGpsPickerOpen] = useState(false);
 
   const [communeQuery, setCommuneQuery] = useState('');
   const [communeSuggestions, setCommuneSuggestions] = useState<string[]>([]);
@@ -235,7 +239,17 @@ const CreateMissionModal: React.FC<{
     commune: '',
     region: '',
     description: '',
+    depth_h1_m: undefined,
+    depth_h2_m: undefined,
+    depth_h3_m: undefined,
+    sondage_points: [],
   });
+
+  // Sondage points state
+  const [sondagePoints, setSondagePoints] = useState<SondagePointInput[]>([]);
+  const [spLat, setSpLat] = useState('');
+  const [spLon, setSpLon] = useState('');
+  const [spLabel, setSpLabel] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
@@ -255,6 +269,10 @@ const CreateMissionModal: React.FC<{
     setSupervisorQuery('');
     setSupervisorSuggestions([]);
     setSelectedSupervisor(null);
+    setSondagePoints([]);
+    setSpLat('');
+    setSpLon('');
+    setSpLabel('');
   }, [isOpen, initialMailleQuery]);
 
   useEffect(() => {
@@ -393,12 +411,14 @@ const CreateMissionModal: React.FC<{
         code: generateMissionCode(),
         supervisor_id: selectedSupervisor?.id,
         assigned_student_ids: selectedStudents.map(s => s.id),
+        sondage_points: sondagePoints.length > 0 ? sondagePoints : undefined,
       };
       const created = await missionsApi.create(payload);
       onCreatedMission?.(created);
       onCreated();
       onClose();
-      setForm({ code: '', title: '', theme: 'reconnaissance', commune: '', region: '', description: '' });
+      setForm({ code: '', title: '', theme: 'reconnaissance', commune: '', region: '', description: '', sondage_points: [] });
+      setSondagePoints([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création');
     } finally {
@@ -428,7 +448,17 @@ const CreateMissionModal: React.FC<{
           )}
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Maille (autocomplétion)</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Maille (autocomplétion)</label>
+              <button
+                type="button"
+                onClick={() => setMaillePickerOpen(true)}
+                className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 dark:hover:bg-blue-950/40 px-2 py-1 rounded-lg transition-colors"
+              >
+                <Map className="w-3.5 h-3.5" />
+                Choisir sur la carte
+              </button>
+            </div>
             <div className="relative">
               <Input placeholder="TG-0..." value={mailleQuery} onChange={e => setMailleQuery(e.target.value)} />
               {(mailleLoading || mailleSuggestions.length > 0) && (
@@ -441,8 +471,16 @@ const CreateMissionModal: React.FC<{
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                         onClick={() => {
-                          setForm({ ...form, maille_id: m.id, zone_label: m.code });
+                          setForm({
+                            ...form,
+                            maille_id: m.id,
+                            zone_label: m.code,
+                            commune: m.adm3_name || form.commune || '',
+                            region: m.adm1_name || form.region || '',
+                          });
                           setMailleQuery(m.code);
+                          setCommuneQuery(m.adm3_name || '');
+                          setRegionQuery(m.adm1_name || '');
                           setMailleSuggestions([]);
                         }}
                       >
@@ -720,6 +758,184 @@ const CreateMissionModal: React.FC<{
             </div>
           </div>
 
+          {/* Nombre de sondages attendus */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">
+              Nombre de sondages attendus
+            </label>
+            <Input
+              type="number"
+              min={0}
+              placeholder="ex: 3"
+              value={form.expected_sondages ?? ''}
+              onChange={e => setForm({ ...form, expected_sondages: e.target.value ? Number(e.target.value) : undefined })}
+            />
+          </div>
+
+          {/* Profondeurs indicatives */}
+          <div>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-2">
+              Profondeur indicative recommandée (en mètres)
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">H1</label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min={0}
+                  placeholder="ex: 6"
+                  value={form.depth_h1_m ?? ''}
+                  onChange={e => setForm({ ...form, depth_h1_m: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">H2</label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min={0}
+                  placeholder="ex: 10"
+                  value={form.depth_h2_m ?? ''}
+                  onChange={e => setForm({ ...form, depth_h2_m: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">H3</label>
+                <Input
+                  type="number"
+                  step="0.5"
+                  min={0}
+                  placeholder="ex: 15"
+                  value={form.depth_h3_m ?? ''}
+                  onChange={e => setForm({ ...form, depth_h3_m: e.target.value ? Number(e.target.value) : undefined })}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Points GPS des sondages planifiés */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Localisations des sondages prévus{' '}
+                <span className="font-normal text-slate-400">({sondagePoints.length} point{sondagePoints.length !== 1 ? 's' : ''})</span>
+              </label>
+              <button
+                type="button"
+                onClick={() => setGpsPickerOpen(true)}
+                className="inline-flex items-center gap-1 text-xs text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950/40 px-2 py-1 rounded-lg transition-colors"
+              >
+                <Map className="w-3.5 h-3.5" />
+                Placer sur la carte
+              </button>
+            </div>
+
+            {/* Liste des points ajoutés */}
+            {sondagePoints.length > 0 && (
+              <div className="mb-3 border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-slate-50 dark:bg-slate-800">
+                    <tr>
+                      <th className="px-2 py-1.5 text-left font-medium text-slate-500">N°</th>
+                      <th className="px-2 py-1.5 text-left font-medium text-slate-500">Label</th>
+                      <th className="px-2 py-1.5 text-left font-medium text-slate-500">Lat</th>
+                      <th className="px-2 py-1.5 text-left font-medium text-slate-500">Lon</th>
+                      <th className="px-2 py-1.5 text-left font-medium text-slate-500">Lien</th>
+                      <th className="px-2 py-1.5" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sondagePoints.map((sp, idx) => (
+                      <tr key={idx} className="border-t border-slate-100 dark:border-slate-700">
+                        <td className="px-2 py-1.5 font-mono font-semibold">{sp.numero}</td>
+                        <td className="px-2 py-1.5 text-slate-600 dark:text-slate-300">{sp.label || '—'}</td>
+                        <td className="px-2 py-1.5 font-mono">{sp.lat.toFixed(5)}</td>
+                        <td className="px-2 py-1.5 font-mono">{sp.lon.toFixed(5)}</td>
+                        <td className="px-2 py-1.5">
+                          <a
+                            href={`https://www.google.com/maps?q=${sp.lat},${sp.lon}&z=17`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:underline"
+                          >
+                            Maps
+                          </a>
+                        </td>
+                        <td className="px-2 py-1.5 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setSondagePoints(prev => prev.filter((_, i) => i !== idx))}
+                            className="text-red-400 hover:text-red-600"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Ajout d'un nouveau point */}
+            <div className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-3 bg-slate-50 dark:bg-slate-800/40">
+              <div className="text-xs text-slate-500 mb-2">Ajouter un point de sondage</div>
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Label</label>
+                  <Input
+                    placeholder="S1"
+                    value={spLabel}
+                    onChange={e => setSpLabel(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Latitude</label>
+                  <Input
+                    placeholder="6.1723"
+                    value={spLat}
+                    onChange={e => setSpLat(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-slate-400 mb-1">Longitude</label>
+                  <Input
+                    placeholder="1.2315"
+                    value={spLon}
+                    onChange={e => setSpLon(e.target.value)}
+                  />
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={!spLat || !spLon || !Number.isFinite(Number(spLat)) || !Number.isFinite(Number(spLon))}
+                onClick={() => {
+                  const lat = Number(spLat);
+                  const lon = Number(spLon);
+                  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
+                  setSondagePoints(prev => [
+                    ...prev,
+                    {
+                      numero: prev.length + 1,
+                      label: spLabel.trim() || undefined,
+                      lat,
+                      lon,
+                    },
+                  ]);
+                  setSpLat('');
+                  setSpLon('');
+                  setSpLabel('');
+                }}
+              >
+                <Plus className="w-3.5 h-3.5 mr-1.5" />
+                Ajouter ce point
+              </Button>
+            </div>
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Description</label>
             <textarea
@@ -763,6 +979,31 @@ const CreateMissionModal: React.FC<{
           setStudentSuggestions([]);
           setShowInlineCreateStudentModal(false);
         }}
+      />
+
+      <MaillePickerModal
+        isOpen={maillePickerOpen}
+        onClose={() => setMaillePickerOpen(false)}
+        onSelect={m => {
+          setForm(prev => ({
+            ...prev,
+            maille_id: m.id,
+            zone_label: m.code,
+            commune: m.adm3_name || prev.commune || '',
+            region: m.adm1_name || prev.region || '',
+          }));
+          setMailleQuery(m.code);
+          setCommuneQuery(m.adm3_name || '');
+          setRegionQuery(m.adm1_name || '');
+          setMailleSuggestions([]);
+        }}
+      />
+
+      <GpsPickerModal
+        isOpen={gpsPickerOpen}
+        onClose={() => setGpsPickerOpen(false)}
+        initialPoints={sondagePoints}
+        onConfirm={pts => setSondagePoints(pts)}
       />
     </div>
   );

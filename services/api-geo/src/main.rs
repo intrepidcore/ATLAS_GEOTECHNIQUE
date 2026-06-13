@@ -229,6 +229,10 @@ async fn main() -> anyhow::Result<()> {
     // Runs in-process (V1) with SKIP LOCKED claim to avoid double-processing.
     ai_jobs::spawn_job_worker(state.clone());
 
+    // Background worker: envoyer les emails Colab (notifications mailles étudiants).
+    // Désactivé automatiquement si GMAIL_USER/SMTP_USER non définis.
+    colab::email_worker::spawn_colab_email_worker(state.pool.clone());
+
     // NOTE: On expose les routes à la racine ET sous /api pour rester compatible
     // avec le frontend (fallback API_BASE_URL = origin + /api) et les reverse proxies.
     let mut base_api = Router::new()

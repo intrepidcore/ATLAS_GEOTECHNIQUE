@@ -79,9 +79,9 @@ pub async fn health_check(State(state): State<AppState>) -> Json<HealthResponse>
 }
 
 /// Healthcheck simple (pour Docker/K8s)
-pub async fn health_check_simple(State(state): State<AppState>) -> &'static str {
+pub async fn health_check_simple(State(state): State<AppState>) -> Json<serde_json::Value> {
     match sqlx::query("SELECT 1").fetch_one(&state.pool).await {
-        Ok(_) => "ok",
-        Err(_) => "error",
+        Ok(_) => Json(serde_json::json!({"status": "ok"})),
+        Err(_) => Json(serde_json::json!({"status": "error"})),
     }
 }

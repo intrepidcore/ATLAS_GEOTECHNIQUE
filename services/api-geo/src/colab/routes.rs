@@ -292,40 +292,22 @@ async fn create_mission(
     let mission_id: Uuid = sqlx::query_scalar(
         r#"
         INSERT INTO atlas.colab_missions (
-            code,
-            title,
-            theme,
-            status,
-            maille_id,
-            zone_label,
-            commune,
-            region,
-            supervisor_id,
-            expected_sondages,
-            start_date,
-            end_date,
-            description,
-            objectifs,
-            notes_internal,
+            code, title, theme, status,
+            maille_id, zone_label, commune, region,
+            supervisor_id, expected_sondages,
+            start_date, end_date,
+            description, objectifs, notes_internal,
+            depth_h1_m, depth_h2_m, depth_h3_m,
             created_by
         )
         VALUES (
-            $1,
-            $2,
-            $3::atlas.mission_theme,
-            'draft'::atlas.mission_status,
-            $4,
-            $5,
-            $6,
-            $7,
-            $8,
-            $9,
-            $10,
-            $11,
-            $12,
-            $13,
-            $14,
-            $15
+            $1, $2, $3::atlas.mission_theme, 'draft'::atlas.mission_status,
+            $4, $5, $6, $7,
+            $8, $9,
+            $10, $11,
+            $12, $13, $14,
+            $15, $16, $17,
+            $18
         )
         RETURNING id
         "#,
@@ -344,10 +326,31 @@ async fn create_mission(
     .bind(request.description.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
     .bind(request.objectifs.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
     .bind(request.notes_internal.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.depth_h1_m)
+    .bind(request.depth_h2_m)
+    .bind(request.depth_h3_m)
     .bind(auth.id)
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+    // Insérer les points de sondage planifiés
+    for sp in &request.sondage_points {
+        sqlx::query(
+            r#"INSERT INTO atlas.colab_mission_sondage_points
+               (mission_id, numero, label, lat, lon, notes)
+               VALUES ($1, $2, $3, $4, $5, $6)"#,
+        )
+        .bind(mission_id)
+        .bind(sp.numero)
+        .bind(sp.label.as_deref().filter(|s| !s.is_empty()))
+        .bind(sp.lat)
+        .bind(sp.lon)
+        .bind(sp.notes.as_deref().filter(|s| !s.is_empty()))
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Insertion sondage_points impossible", &e))))?;
+    }
 
     // Assignations initiales (idempotent)
     for student_id in request.assigned_student_ids.iter() {
@@ -725,21 +728,24 @@ async fn update_mission(
         r#"
         UPDATE atlas.colab_missions
         SET
-          title = COALESCE($2, title),
-          theme = COALESCE($3::atlas.mission_theme, theme),
-          status = COALESCE($4::atlas.mission_status, status),
-          maille_id = COALESCE($5, maille_id),
-          zone_label = COALESCE($6, zone_label),
-          commune = COALESCE($7, commune),
-          region = COALESCE($8, region),
-          supervisor_id = COALESCE($9, supervisor_id),
+          title             = COALESCE($2,  title),
+          theme             = COALESCE($3::atlas.mission_theme,   theme),
+          status            = COALESCE($4::atlas.mission_status,  status),
+          maille_id         = COALESCE($5,  maille_id),
+          zone_label        = COALESCE($6,  zone_label),
+          commune           = COALESCE($7,  commune),
+          region            = COALESCE($8,  region),
+          supervisor_id     = COALESCE($9,  supervisor_id),
           expected_sondages = COALESCE($10, expected_sondages),
-          start_date = COALESCE($11, start_date),
-          end_date = COALESCE($12, end_date),
-          description = COALESCE($13, description),
-          objectifs = COALESCE($14, objectifs),
-          notes_internal = COALESCE($15, notes_internal),
-          updated_at = NOW()
+          start_date        = COALESCE($11, start_date),
+          end_date          = COALESCE($12, end_date),
+          description       = COALESCE($13, description),
+          objectifs         = COALESCE($14, objectifs),
+          notes_internal    = COALESCE($15, notes_internal),
+          depth_h1_m        = COALESCE($16, depth_h1_m),
+          depth_h2_m        = COALESCE($17, depth_h2_m),
+          depth_h3_m        = COALESCE($18, depth_h3_m),
+          updated_at        = NOW()
         WHERE id = $1 AND deleted_at IS NULL
         "#,
     )
@@ -758,9 +764,37 @@ async fn update_mission(
     .bind(request.description.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
     .bind(request.objectifs.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
     .bind(request.notes_internal.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(request.depth_h1_m)
+    .bind(request.depth_h2_m)
+    .bind(request.depth_h3_m)
     .execute(&mut *tx)
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+
+    // Remplacement des points de sondage si fournis
+    if let Some(points) = &request.sondage_points {
+        sqlx::query("DELETE FROM atlas.colab_mission_sondage_points WHERE mission_id = $1")
+            .bind(mission_id)
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+        for sp in points {
+            sqlx::query(
+                r#"INSERT INTO atlas.colab_mission_sondage_points
+                   (mission_id, numero, label, lat, lon, notes)
+                   VALUES ($1, $2, $3, $4, $5, $6)"#,
+            )
+            .bind(mission_id)
+            .bind(sp.numero)
+            .bind(sp.label.as_deref().filter(|s| !s.is_empty()))
+            .bind(sp.lat)
+            .bind(sp.lon)
+            .bind(sp.notes.as_deref().filter(|s| !s.is_empty()))
+            .execute(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Sondage points impossible", &e))))?;
+        }
+    }
 
     if res.rows_affected() == 0 {
         return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))));
@@ -2723,6 +2757,8 @@ struct EnqueueAttributionsNotificationsRequest {
     assignment_ids: Vec<Uuid>,
     include_bbox: Option<bool>,
     include_instructions: Option<bool>,
+    include_pdf: Option<bool>,
+    include_geojson: Option<bool>,
 }
 
 async fn get_attributions_summary(
@@ -2940,7 +2976,9 @@ async fn enqueue_attributions_notifications(
         "assignment_ids": req.assignment_ids,
         "options": {
             "include_bbox": req.include_bbox.unwrap_or(true),
-            "include_instructions": req.include_instructions.unwrap_or(true)
+            "include_instructions": req.include_instructions.unwrap_or(true),
+            "include_pdf": req.include_pdf.unwrap_or(true),
+            "include_geojson": req.include_geojson.unwrap_or(true)
         }
     });
 
@@ -2970,7 +3008,9 @@ async fn enqueue_attributions_notifications(
         .bind(job_id)
         .bind(json!({
             "include_bbox": req.include_bbox.unwrap_or(true),
-            "include_instructions": req.include_instructions.unwrap_or(true)
+            "include_instructions": req.include_instructions.unwrap_or(true),
+            "include_pdf": req.include_pdf.unwrap_or(true),
+            "include_geojson": req.include_geojson.unwrap_or(true)
         }))
         .bind(auth.id)
         .execute(&state.pool)

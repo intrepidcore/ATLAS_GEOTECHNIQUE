@@ -66,6 +66,7 @@ const MissionsTab: React.FC<{
   onOperationalAction: (mission: MissionListItem, action: OperationalAction) => void | Promise<void>;
   onTransferMission: (mission: MissionListItem) => void;
   onDeleteMission: (mission: MissionListItem) => void;
+  onStatusChange: (mission: MissionListItem, newStatus: string) => void;
 
   onOpenCreateMission: () => void;
 }> = ({
@@ -101,6 +102,7 @@ const MissionsTab: React.FC<{
   onOperationalAction,
   onTransferMission,
   onDeleteMission,
+  onStatusChange,
   onOpenCreateMission,
 }) => {
   return (
@@ -286,6 +288,7 @@ const MissionsTab: React.FC<{
                       }
                     : undefined
                 }
+                onStatusChange={(m, newStatus) => onStatusChange(m, newStatus)}
                 onDelete={() => onDeleteMission(mission)}
               />
             ))}

@@ -46,14 +46,21 @@ export const StatsCard: React.FC<{
 // Composant Mission Card
 // ============================================================================
 
+const STATUS_TRANSITIONS: Record<string, { next: string; label: string }> = {
+  draft: { next: 'planned', label: 'Planifier la mission' },
+  planned: { next: 'in_progress', label: 'Démarrer la mission' },
+  in_progress: { next: 'completed', label: 'Marquer terminée' },
+};
+
 export const MissionCard: React.FC<{
   mission: MissionListItem;
   onClick: () => void;
   onDelete?: () => void;
   onEdit?: () => void;
   onTransfer?: () => void;
+  onStatusChange?: (mission: MissionListItem, newStatus: string) => void;
   onOperationalAction?: (mission: MissionListItem, action: OperationalAction) => void;
-}> = ({ mission, onClick, onDelete, onEdit, onTransfer, onOperationalAction }) => {
+}> = ({ mission, onClick, onDelete, onEdit, onTransfer, onStatusChange, onOperationalAction }) => {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -118,7 +125,7 @@ export const MissionCard: React.FC<{
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
+      className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-4 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-600 transition-all cursor-pointer"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -132,7 +139,7 @@ export const MissionCard: React.FC<{
         <div className="relative">
           <button
             type="button"
-            className="p-1 rounded-lg hover:bg-gray-100 text-gray-500 hover:text-gray-900"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             onClick={e => {
               e.stopPropagation();
               setMenuOpen(v => !v);
@@ -144,17 +151,17 @@ export const MissionCard: React.FC<{
 
           {menuOpen && (
             <div
-              className="absolute right-0 mt-2 w-64 bg-white border rounded-xl shadow-lg z-50 overflow-hidden"
+              className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl shadow-lg z-50 overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {menuActions.length > 0 && (
                 <>
-                  <div className="px-3 py-2 text-xs font-medium text-gray-500">Résoudre</div>
+                  <div className="px-3 py-2 text-xs font-medium text-slate-500 dark:text-slate-400">Résoudre</div>
                   {menuActions.map((action, idx) => (
                     <button
                       key={`${action.code}-${idx}`}
                       type="button"
-                      className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                      className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                       onClick={() => {
                         setMenuOpen(false);
                         onOperationalAction?.(mission, action);
@@ -163,13 +170,13 @@ export const MissionCard: React.FC<{
                       {action.label}
                     </button>
                   ))}
-                  <div className="h-px bg-gray-100" />
+                  <div className="h-px bg-slate-100 dark:bg-slate-800" />
                 </>
               )}
 
               <button
                 type="button"
-                className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                 onClick={() => {
                   setMenuOpen(false);
                   onClick();
@@ -181,7 +188,7 @@ export const MissionCard: React.FC<{
               {onEdit && (
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                  className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => {
                     setMenuOpen(false);
                     onEdit();
@@ -194,7 +201,7 @@ export const MissionCard: React.FC<{
               {onTransfer && (
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                  className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => {
                     setMenuOpen(false);
                     onTransfer();
@@ -207,7 +214,7 @@ export const MissionCard: React.FC<{
               {(mission.operational_reason || mission.conflict_mission_id) && (
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-gray-50"
+                  className="w-full text-left px-3 py-2 text-sm text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
                   onClick={() => {
                     setMenuOpen(false);
                     setDetailsOpen(v => !v);
@@ -217,10 +224,26 @@ export const MissionCard: React.FC<{
                 </button>
               )}
 
+              {onStatusChange && STATUS_TRANSITIONS[mission.status] && (
+                <>
+                  <div className="h-px bg-slate-100 dark:bg-slate-800" />
+                  <button
+                    type="button"
+                    className="w-full text-left px-3 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/40 font-medium transition-colors"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      onStatusChange(mission, STATUS_TRANSITIONS[mission.status].next);
+                    }}
+                  >
+                    {STATUS_TRANSITIONS[mission.status].label}
+                  </button>
+                </>
+              )}
+
               {onDelete && (
                 <button
                   type="button"
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-red-50 text-red-700"
+                  className="w-full text-left px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
                   onClick={() => {
                     setMenuOpen(false);
                     onDelete();

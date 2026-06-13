@@ -247,7 +247,7 @@ async fn enqueue_job(
 
     let allowed_types = [
         "ked_recompute", "rk_recompute", "blup_recompute",
-        "vfs_extract",   "mtgp_recompute",
+        "vfs_extract",   "mtgp_recompute", "sgs_compute",
         "3d_render",     "kriging", "kriging_interpolate",
         "catboost_predict", "train_supervised",
     ];
@@ -338,6 +338,7 @@ fn method_to_model_id(method: &str) -> &'static str {
         "ked_rk_fusion_bayesian"                         => "L2b_BLUP",
         "mtgp_icm_gpflow"                                => "L4_MTGP",
         "maille_spectral_vfs"                            => "L3_VFS",
+        "sgs_gstools" | "sgs_p50" | "sgs_p10" | "sgs_p90" => "L5_SGS",
         _                                                => "UNKNOWN",
     }
 }
@@ -415,6 +416,7 @@ async fn get_models_status(
         ("L2b_BLUP",  "Fusion Bayésienne BLUP",              "ked_rk_fusion_bayesian",  &["σ² réduit ~48% vs modèles individuels"]),
         ("L3_VFS",    "VfS-PLS Sentinel-2",                  "maille_spectral_vfs",     &["VBS surface uniquement — couverture partielle (végétation dense exclue)"]),
         ("L4_MTGP",   "MTGP/ICM GPflow (Multi-Tâches)",      "mtgp_icm_gpflow",         &["Expérimental — LOO-RMSE non calculée (O(N³))"]),
+        ("L5_SGS",    "SGS — Simulation Gaussienne Séquentielle", "sgs_p50",             &["Incertitude P10/P50/P90 — 29 407 mailles — dépend de L1 KED"]),
     ];
 
     let models: Vec<serde_json::Value> = model_defs.iter().map(|(id, label, method_db, warnings)| {
@@ -702,6 +704,11 @@ async fn try_process_ai_job_queue(pool: &PgPool) -> anyhow::Result<Option<serde_
         // L4 — MTGP GPflow
         "mtgp_recompute" => (
             script_path("../../scripts/mtgp_geotechnique.py"),
+            vec!["--database-url".to_string(), db_url],
+        ),
+        // L5 — SGS Simulation Gaussienne Séquentielle
+        "sgs_compute" => (
+            script_path("../../scripts/sgs_interpolation.py"),
             vec!["--database-url".to_string(), db_url],
         ),
         // Génération 3D (archetypes B/C/D)

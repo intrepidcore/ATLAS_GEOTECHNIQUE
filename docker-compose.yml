@@ -6,8 +6,8 @@ services:
     container_name: atlas-db
     restart: unless-stopped
     env_file:
-      - ./.env
       - ./.env.example
+      - ./.env
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -30,8 +30,8 @@ services:
     container_name: atlas-api-geo
     restart: unless-stopped
     env_file:
-      - ./.env
-      - ./.env.example
+      - ./.env.example  # defaults/placeholders — lowest priority
+      - ./.env          # actual secrets — highest priority (last wins)
     environment:
       # CONV-15/CONV-18 : Connexion à la base canonique port 5433 (source de vérité — tous les modèles L1-L4)
       # host.docker.internal = adresse de l'hôte depuis Docker Desktop for Windows
@@ -57,6 +57,7 @@ services:
       - ./exports:/data/exports
       - ./scripts:/opt/atlas/scripts:ro
       - ml-pip-cache:/root/.cache/pip    # Cache pip persistant (ML deps ~2.3GB)
+      - C:/PROJET_ATLAS_MASTER/pdf_debug:/data/pdf_debug
     # GPU pour les calculs MTGP/GPflow (ARCH-GPU-01)
     deploy:
       resources:
@@ -79,8 +80,8 @@ services:
     container_name: atlas-api-infer
     restart: unless-stopped
     env_file:
-      - ./.env
       - ./.env.example
+      - ./.env
     environment:
       DATABASE_URL: postgres://atlas_etl_user:${ATLAS_DB_ETL_PASSWORD}@db:5432/atlas_clean
       RUST_LOG: ${RUST_LOG:-info}
@@ -107,8 +108,8 @@ services:
     container_name: atlas-api-opti
     restart: unless-stopped
     env_file:
-      - ./.env
       - ./.env.example
+      - ./.env
     environment:
       RUST_LOG: ${RUST_LOG:-info}
       API_OPTI_PORT: 8000
@@ -133,8 +134,8 @@ services:
         - VITE_API_OPTI=${VITE_API_OPTI:-/api-opti}
     container_name: atlas-ui
     env_file:
-      - ./.env
       - ./.env.example
+      - ./.env
     environment:
       - VITE_API_BASE=${VITE_API_BASE:-http://localhost:8000}
       - VITE_API_GEO=${VITE_API_GEO}
@@ -161,8 +162,8 @@ services:
     build: ./etl
     container_name: atlas-etl
     env_file:
-      - ./.env
       - ./.env.example
+      - ./.env
     environment:
       DATABASE_URL: ${DATABASE_URL}
     depends_on:
@@ -180,8 +181,8 @@ services:
     container_name: atlas-qgis-worker
     restart: unless-stopped
     env_file:
-      - ./.env
       - ./.env.example
+      - ./.env
     environment:
       API_GEO_BASE: http://api-geo:8000
       QGIS_TEMPLATE: /app/templates/atlas_base_skeleton.qpt

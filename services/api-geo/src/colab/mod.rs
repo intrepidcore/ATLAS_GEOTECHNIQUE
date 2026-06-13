@@ -14,3 +14,4 @@ pub mod routes;
 pub mod mobile;
 pub mod comments;
 pub mod qa;
+pub mod email_worker;

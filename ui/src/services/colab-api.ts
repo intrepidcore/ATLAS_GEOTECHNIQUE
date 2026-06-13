@@ -170,6 +170,10 @@ export interface MissionDetail extends MissionListItem {
   description: string | null;
   objectifs: string | null;
   notes_internal: string | null;
+  depth_h1_m: number | null;
+  depth_h2_m: number | null;
+  depth_h3_m: number | null;
+  sondage_points: SondagePointInput[] | null;
   supervisor: SupervisorSummary | null;
   created_by: UserSummary | null;
   assigned_students: AssignedStudent[];
@@ -242,6 +246,14 @@ export interface UserSuggestItem {
   label: string;
 }
 
+export interface SondagePointInput {
+  numero?: number;
+  label?: string;
+  lat: number;
+  lon: number;
+  notes?: string;
+}
+
 export interface CreateMissionRequest {
   code: string;
   title: string;
@@ -258,6 +270,10 @@ export interface CreateMissionRequest {
   description?: string;
   objectifs?: string;
   notes_internal?: string;
+  depth_h1_m?: number;
+  depth_h2_m?: number;
+  depth_h3_m?: number;
+  sondage_points?: SondagePointInput[];
 }
 
 export interface UpdateMissionRequest {
@@ -275,6 +291,10 @@ export interface UpdateMissionRequest {
   description?: string;
   objectifs?: string;
   notes_internal?: string;
+  depth_h1_m?: number;
+  depth_h2_m?: number;
+  depth_h3_m?: number;
+  sondage_points?: SondagePointInput[];
 }
 
 export interface MissionFilters {
@@ -478,6 +498,8 @@ export interface EnqueueAttributionsNotificationsRequest {
   assignment_ids: string[];
   include_bbox?: boolean;
   include_instructions?: boolean;
+  include_pdf?: boolean;
+  include_geojson?: boolean;
 }
 
 export interface EnqueueAttributionsNotificationsResponse {
@@ -637,11 +659,15 @@ export interface UpdateStudentPrefsRequest {
 // ============================================================================
 
 export const MISSION_THEMES = [
-  { value: 'stabilisation', label: 'Stabilisation' },
-  { value: 'synthese', label: 'Synthèse' },
-  { value: 'reconnaissance', label: 'Reconnaissance' },
-  { value: 'etude_detaillee', label: 'Étude détaillée' },
-  { value: 'controle', label: 'Contrôle' },
+  { value: 'stabilisation', label: 'Stabilisation / Traitement des sols' },
+  { value: 'reconnaissance', label: 'Reconnaissance géotechnique' },
+  { value: 'etude_detaillee', label: 'Étude géotechnique détaillée' },
+  { value: 'fondation', label: 'Études de fondations' },
+  { value: 'voirie', label: 'Voirie & Infrastructure routière' },
+  { value: 'controle', label: 'Contrôle & Surveillance' },
+  { value: 'synthese', label: 'Synthèse bibliographique' },
+  { value: 'hydraulique', label: 'Hydraulique & Drainage' },
+  { value: 'risque', label: 'Risques géologiques' },
 ];
 
 export const MISSION_STATUSES = [
@@ -848,8 +874,15 @@ export const missionsApi = {
       const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
       throw new Error(error.error || 'Erreur lors de la suppression de la mission');
     }
-    
-    return response.json();
+
+    // 204 No Content ou body vide — pas de JSON à parser
+    const ct = response.headers.get('content-type') ?? '';
+    if (response.status === 204 || !ct.includes('application/json')) {
+      return { success: true, deleted: id };
+    }
+    const text = await response.text();
+    if (!text) return { success: true, deleted: id };
+    return JSON.parse(text);
   },
 
   async resolveConflict(id: string, input: ResolveConflictRequest): Promise<any> {
@@ -1488,8 +1521,12 @@ export const attributionsApi = {
     });
 
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
-      throw new Error(error.error || 'Erreur lors de l’enregistrement des notifications');
+      const error = await response.json().catch(() => ({ error: "Erreur réseau" }));
+      throw new Error(error.error || "Erreur lors de l’enregistrement des notifications");
+    }
+
+    if (response.status === 204 || response.headers.get("content-length") === "0") {
+      return { success: true } as EnqueueAttributionsNotificationsResponse;
     }
 
     return response.json();

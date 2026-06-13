@@ -318,35 +318,54 @@ pub struct MailleStateResponse {
 // Requêtes de création/modification
 // ============================================================================
 
+/// Point GPS d'un sondage planifié
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct SondagePointRequest {
+    pub numero: i32,
+    pub label: Option<String>,
+    pub lat: f64,
+    pub lon: f64,
+    pub notes: Option<String>,
+}
+
 /// Création d'une mission
 #[derive(Debug, Clone, Deserialize, Validate)]
 pub struct CreateMissionRequest {
     #[validate(length(min = 1, max = 50))]
     pub code: String,
-    
+
     #[validate(length(min = 1, max = 200))]
     pub title: String,
-    
+
     pub theme: String, // sera validé manuellement
-    
+
     pub maille_id: Option<Uuid>,
     pub zone_label: Option<String>,
     pub commune: Option<String>,
     pub region: Option<String>,
-    
+
     pub supervisor_id: Option<Uuid>,
-    
+
     pub expected_sondages: Option<i32>,
     pub start_date: Option<NaiveDate>,
     pub end_date: Option<NaiveDate>,
-    
+
     pub description: Option<String>,
     pub objectifs: Option<String>,
     pub notes_internal: Option<String>,
 
+    /// Profondeurs indicatives recommandées (en mètres)
+    pub depth_h1_m: Option<f64>,
+    pub depth_h2_m: Option<f64>,
+    pub depth_h3_m: Option<f64>,
+
     /// Liste d'étudiants à assigner à la mission (création transactionnelle)
     #[serde(default)]
     pub assigned_student_ids: Vec<Uuid>,
+
+    /// Points GPS des sondages planifiés
+    #[serde(default)]
+    pub sondage_points: Vec<SondagePointRequest>,
 }
 
 // ============================================================================
@@ -465,24 +484,32 @@ pub struct UpdateSupervisorRequest {
 pub struct UpdateMissionRequest {
     #[validate(length(min = 1, max = 200))]
     pub title: Option<String>,
-    
+
     pub theme: Option<String>,
     pub status: Option<String>,
-    
+
     pub maille_id: Option<Uuid>,
     pub zone_label: Option<String>,
     pub commune: Option<String>,
     pub region: Option<String>,
-    
+
     pub supervisor_id: Option<Uuid>,
-    
+
     pub expected_sondages: Option<i32>,
     pub start_date: Option<NaiveDate>,
     pub end_date: Option<NaiveDate>,
-    
+
     pub description: Option<String>,
     pub objectifs: Option<String>,
     pub notes_internal: Option<String>,
+
+    /// Profondeurs indicatives recommandées (en mètres)
+    pub depth_h1_m: Option<f64>,
+    pub depth_h2_m: Option<f64>,
+    pub depth_h3_m: Option<f64>,
+
+    /// Remplacement complet des points GPS (None = pas de changement)
+    pub sondage_points: Option<Vec<SondagePointRequest>>,
 }
 
 // ============================================================================
