@@ -662,26 +662,31 @@ export class ThematicPanel {
           <button type="button" id="openZoneEtudeLamaBtn" class="btn-secondary zone-etude-btn" title="Dépression de la Lama — data gap RGA">
             <span class="zone-dot zone-dot--lama" aria-hidden="true"></span>
             <span class="zone-name">Lama</span>
+            <span class="zone-km2-badge">547 km²</span>
             <input type="checkbox" id="zoneVisLama" data-zone="DEPRESSION_LAMA_TG" class="zone-vis-chk" aria-label="Afficher Lama sur la carte" title="Afficher/masquer sur la carte">
           </button>
           <button type="button" id="openZoneEtudeBadoBtn" class="btn-secondary zone-etude-btn" title="Dépression du Bado — data gap">
             <span class="zone-dot zone-dot--bado" aria-hidden="true"></span>
             <span class="zone-name">Bado</span>
+            <span class="zone-km2-badge">312 km²</span>
             <input type="checkbox" id="zoneVisBado" data-zone="DEPRESSION_BADO_TG" class="zone-vis-chk" aria-label="Afficher Bado sur la carte" title="Afficher/masquer sur la carte">
           </button>
           <button type="button" id="openZoneEtudeMonoBtn" class="btn-secondary zone-etude-btn" title="Plaine du Mono — data gap">
             <span class="zone-dot zone-dot--mono" aria-hidden="true"></span>
             <span class="zone-name">Mono</span>
+            <span class="zone-km2-badge">1 296 km²</span>
             <input type="checkbox" id="zoneVisMono" data-zone="PLAINE_MONO_TG" class="zone-vis-chk" aria-label="Afficher Mono sur la carte" title="Afficher/masquer sur la carte">
           </button>
           <button type="button" id="openZoneEtudeOtiBtn" class="btn-secondary zone-etude-btn" title="Plaine de l'Oti — data gap">
             <span class="zone-dot zone-dot--oti" aria-hidden="true"></span>
             <span class="zone-name">Oti</span>
+            <span class="zone-km2-badge">464 km²</span>
             <input type="checkbox" id="zoneVisOti" data-zone="PLAINE_OTI_TG" class="zone-vis-chk" aria-label="Afficher Oti sur la carte" title="Afficher/masquer sur la carte">
           </button>
           <button type="button" id="openZoneEtudeFosseBtn" class="btn-secondary zone-etude-btn zone-etude-btn--full" title="Fosse aux Lions — data gap">
             <span class="zone-dot zone-dot--fosse" aria-hidden="true"></span>
             <span class="zone-name">Fosse aux Lions</span>
+            <span class="zone-km2-badge">7 km²</span>
             <input type="checkbox" id="zoneVisFosse" data-zone="FOSSE_LIONS_TG" class="zone-vis-chk" aria-label="Afficher Fosse aux Lions sur la carte" title="Afficher/masquer sur la carte">
           </button>
         </div>

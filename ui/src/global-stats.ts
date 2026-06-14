@@ -172,6 +172,12 @@ function updateDepthChart(data: number[]): void {
     depthChart = null
   }
   
+  // Lire les CSS vars pour le thème courant
+  const style = getComputedStyle(document.documentElement)
+  const clrMuted = style.getPropertyValue('--muted').trim() || '#94a3b8'
+  const clrGrid  = style.getPropertyValue('--field-border').trim() || '#1e293b'
+  const clrText  = style.getPropertyValue('--text').trim() || '#f8fafc'
+
   // Créer le nouveau graphique
   depthChart = new Chart(ctx, {
     type: 'bar',
@@ -191,6 +197,11 @@ function updateDepthChart(data: number[]): void {
       plugins: {
         legend: { display: false },
         tooltip: {
+          backgroundColor: style.getPropertyValue('--card-bg').trim() || '#0f172a',
+          titleColor: clrText,
+          bodyColor: clrMuted,
+          borderColor: clrGrid,
+          borderWidth: 1,
           callbacks: {
             label: (ctx) => `${ctx.parsed.y} échantillons`
           }
@@ -199,12 +210,12 @@ function updateDepthChart(data: number[]): void {
       scales: {
         x: {
           grid: { display: false },
-          ticks: { color: '#94a3b8', font: { size: 10 } }
+          ticks: { color: clrMuted, font: { size: 10 } }
         },
         y: {
           beginAtZero: true,
-          grid: { color: '#1e293b' },
-          ticks: { color: '#94a3b8', font: { size: 10 } }
+          grid: { color: clrGrid },
+          ticks: { color: clrMuted, font: { size: 10 } }
         }
       }
     }

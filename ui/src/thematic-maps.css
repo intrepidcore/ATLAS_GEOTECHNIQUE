@@ -384,6 +384,20 @@
 .zone-dot--oti   { background: #0EA5E9; }
 .zone-dot--fosse { background: #8B5CF6; }
 
+/* ── Badge km² dans les boutons zone ─────────────────────────────────────── */
+.zone-km2-badge {
+  font-size: 9px;
+  color: var(--muted);
+  background: var(--field, #1e293b);
+  border: 1px solid var(--field-border, #334155);
+  border-radius: 4px;
+  padding: 1px 4px;
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+  letter-spacing: 0.02em;
+}
+
 /* ── Checkbox visibilité (dans le bouton, à droite) ──────────────────────── */
 .zone-vis-chk {
   width: 14px;

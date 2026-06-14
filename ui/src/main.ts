@@ -190,6 +190,7 @@ bus.on('maille:update', ({ mailleId }) => {
 
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
+import { createCartoDBDarkBasemap, createCartoDBPositronBasemap } from './map/basemaps'
 import { makeResizable } from './components/resizable-panel'
 import { initFloatingPanels } from './components/panel-float'
 import { createProfessionalMetricsControl } from './components/map/ProfessionalMetricsControl'
@@ -797,6 +798,21 @@ initOfflineTiles().then(() => {
   })
   
   console.log('[INIT] Tile layers + basemap control initialized')
+
+  // D1 — Sync tile layer with light/dark theme
+  let _themeBaseTile: L.TileLayer | null = null
+  function applyThemeTile() {
+    const isDark = document.documentElement.classList.contains('dark')
+    if (_themeBaseTile) { map.removeLayer(_themeBaseTile) }
+    _themeBaseTile = isDark ? createCartoDBDarkBasemap() : createCartoDBPositronBasemap()
+    _themeBaseTile.addTo(map)
+    _themeBaseTile.bringToBack()
+  }
+  applyThemeTile()
+  new MutationObserver(() => applyThemeTile()).observe(
+    document.documentElement,
+    { attributes: true, attributeFilter: ['class'] }
+  )
 })
 
 const codeInput = document.getElementById('codeInput') as HTMLInputElement
@@ -5107,6 +5123,33 @@ document.getElementById('resetFilters')?.addEventListener('click', () => {
   toast('Filtres réinitialisés', 'ok')
 })
 
+function updateBreadcrumbADM(): void {
+  const adm1 = document.getElementById('filterAdm1') as HTMLSelectElement | null
+  const adm2 = document.getElementById('filterAdm2') as HTMLSelectElement | null
+  const adm3 = document.getElementById('filterAdm3') as HTMLSelectElement | null
+
+  const v1 = adm1?.value || ''
+  const v2 = adm2?.value || ''
+  const v3 = adm3?.value || ''
+
+  const t1 = v1 ? (adm1!.selectedOptions[0]?.text ?? v1) : ''
+  const t2 = v2 ? (adm2!.selectedOptions[0]?.text ?? v2) : ''
+  const t3 = v3 ? (adm3!.selectedOptions[0]?.text ?? v3) : ''
+
+  const show = (id: string, visible: boolean) => {
+    const el = document.getElementById(id)
+    if (el) el.style.display = visible ? '' : 'none'
+  }
+  const setText = (id: string, text: string) => {
+    const el = document.getElementById(id)
+    if (el) el.textContent = text
+  }
+
+  show('bcSep1', !!v1); setText('bcRegion', t1); show('bcRegion', !!v1)
+  show('bcSep2', !!v2); setText('bcPref', t2);   show('bcPref', !!v2)
+  show('bcSep3', !!v3); setText('bcCommune', t3); show('bcCommune', !!v3)
+}
+
 /**
  * Applique les filtres à toutes les couches de la carte
  * Utilise l'état centralisé depuis filters-state.ts
@@ -5143,7 +5186,8 @@ function applyFilters() {
   // 4. Calculer et afficher les statistiques
   const stats = computeFilteredStats(filteredFeatures)
   updateStatsDOM(stats)
-  
+  updateBreadcrumbADM()
+
   // 5. Notifier les autres composants du changement
   notifyFilterChange()
   

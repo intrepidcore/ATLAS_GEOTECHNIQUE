@@ -473,6 +473,16 @@ body.scientific-open #thematicPanel{
     <div id="container">
       <!-- PANNEAU GAUCHE: Affichage Données -->
       <aside id="dashboard">
+        <!-- Breadcrumb ADM -->
+        <nav id="breadcrumbAdm" aria-label="Localisation" style="font-size:11px;padding:5px 0 2px 0;color:var(--muted);display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-height:22px">
+          <span id="bcTogo" style="color:var(--accent);font-weight:600">Togo</span>
+          <span id="bcSep1" style="display:none;opacity:.5">›</span>
+          <span id="bcRegion" style="display:none;font-weight:500;color:var(--text)"></span>
+          <span id="bcSep2" style="display:none;opacity:.5">›</span>
+          <span id="bcPref" style="display:none;color:var(--text)"></span>
+          <span id="bcSep3" style="display:none;opacity:.5">›</span>
+          <span id="bcCommune" style="display:none;color:var(--text)"></span>
+        </nav>
         <!-- KPI Bar globale -->
         <div class="kpi-bar-global">
           <div class="kpi-card-g"><span class="kv" id="kpiGlobalMailles"><span id="statVisible">0</span></span><span class="kl">Mailles</span></div>
@@ -727,10 +737,12 @@ body.scientific-open #thematicPanel{
             </div>
 
             <!-- 6. Synthèse automatique -->
-            <div id="ficheSummary" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border-left:3px solid var(--accent);font-size:11px;color:var(--text);line-height:1.5">
-              <div style="color:var(--accent);font-weight:600;margin-bottom:4px;letter-spacing:0.08em;text-transform:uppercase">Synthèse</div>
-              <div id="ficheSummaryText" style="font-style:italic">—</div>
-            </div>
+            <details class="atlas-accordion" open style="margin-top:12px">
+              <summary class="accordion-header">Synthèse</summary>
+              <div class="accordion-body" id="ficheSummary" style="padding:10px;border-left:3px solid var(--accent);font-size:11px;color:var(--text);line-height:1.5;background:var(--card-bg,#0f172a);border-radius:0 0 7px 7px">
+                <div id="ficheSummaryText" style="font-style:italic">—</div>
+              </div>
+            </details>
 
             <!-- 7. Liste des sondages de la maille -->
             <div style="margin-top:12px">
