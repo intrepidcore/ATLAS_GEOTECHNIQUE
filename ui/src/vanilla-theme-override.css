@@ -28,3 +28,14 @@ body{
 .kpi b{
   color:var(--text);
 }
+
+/* D3 — États focus WCAG AA (2px solid accent + offset) */
+button:focus-visible,
+select:focus-visible,
+input:focus-visible,
+a:focus-visible,
+[tabindex]:focus-visible,
+details summary:focus-visible {
+  outline: 2px solid var(--accent, #2563EB);
+  outline-offset: 2px;
+}

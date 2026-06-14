@@ -384,6 +384,53 @@
 .zone-dot--oti   { background: #0EA5E9; }
 .zone-dot--fosse { background: #8B5CF6; }
 
+/* ── Chips essais disponibles (B3) ───────────────────────────────────────── */
+.essai-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 7px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: opacity .15s;
+}
+.essai-chip--ok {
+  background: rgba(34,197,94,0.18);
+  color: #22c55e;
+  border: 1px solid rgba(34,197,94,0.35);
+}
+.essai-chip--missing {
+  background: var(--field, #1e293b);
+  color: var(--muted, #64748b);
+  border: 1px solid var(--field-border, #334155);
+  opacity: .75;
+}
+/* D3 — overrides thème clair pour contraste AA */
+:root:not(.dark) .essai-chip--ok {
+  background: rgba(34,197,94,0.12);
+  color: #15803d;
+  border-color: rgba(22,163,74,0.35);
+}
+:root:not(.dark) .essai-chip--missing {
+  background: #f1f5f9;
+  color: #475569;
+  border-color: #cbd5e1;
+  opacity: 1;
+}
+
+/* ── Badges zones dans header fiche maille (B4) ──────────────────────────── */
+.zone-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 7px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
 /* ── Badge km² dans les boutons zone ─────────────────────────────────────── */
 .zone-km2-badge {
   font-size: 9px;

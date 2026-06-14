@@ -71,6 +71,8 @@ import {
   getGridFeatureStyle,
   setZoneMailleMetadata,
   setZoneVisibility,
+  getZonesForMaille,
+  ZONE_PASTEL_COLORS,
   COLORS,
   WEIGHT,
   OPACITY,
@@ -2018,6 +2020,38 @@ function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
     ficheLocBadge.style.fontSize = '10px'
   }
   
+  // B4 — Badges zones d'étude dans le header fiche
+  const ficheZoneBadges = document.getElementById('ficheZoneBadges')
+  if (ficheZoneBadges) {
+    const zones = getZonesForMaille(code)
+    if (zones.length > 0) {
+      ficheZoneBadges.innerHTML = zones.map(({ zoneCode, pct }) => {
+        const key = zoneCode.split('_')[1]?.toLowerCase() ?? ''
+        const palKey = Object.keys(ZONE_PASTEL_COLORS).find(k => zoneCode.toUpperCase().includes(k.toUpperCase().replace('DEPRESSION_', '').replace('PLAINE_', '').replace('FOSSE_', ''))) ?? ''
+        const isDarkTheme = document.documentElement.classList.contains('dark')
+        const colorMap: Record<string, { bg: string; border: string; text: string }> = {
+          'DEPRESSION_LAMA_TG':  { bg: 'rgba(245,158,11,0.15)',  border: 'rgba(245,158,11,0.5)',  text: isDarkTheme ? '#F59E0B' : '#B45309' },
+          'DEPRESSION_BADO_TG':  { bg: 'rgba(239,68,68,0.15)',   border: 'rgba(239,68,68,0.5)',   text: isDarkTheme ? '#EF4444' : '#b91c1c' },
+          'PLAINE_MONO_TG':      { bg: 'rgba(16,185,129,0.15)',  border: 'rgba(16,185,129,0.5)',  text: isDarkTheme ? '#10B981' : '#059669' },
+          'PLAINE_OTI_TG':       { bg: 'rgba(14,165,233,0.15)',  border: 'rgba(14,165,233,0.5)',  text: isDarkTheme ? '#0EA5E9' : '#0369A1' },
+          'FOSSE_LIONS_TG':      { bg: 'rgba(139,92,246,0.15)',  border: 'rgba(139,92,246,0.5)',  text: isDarkTheme ? '#8B5CF6' : '#6d28d9' },
+        }
+        const dotClass: Record<string, string> = {
+          'DEPRESSION_LAMA_TG': 'lama', 'DEPRESSION_BADO_TG': 'bado',
+          'PLAINE_MONO_TG': 'mono', 'PLAINE_OTI_TG': 'oti', 'FOSSE_LIONS_TG': 'fosse',
+        }
+        const c = colorMap[zoneCode] ?? { bg: 'rgba(100,116,139,0.15)', border: 'rgba(100,116,139,0.5)', text: '#94a3b8' }
+        const name = zoneCode.includes('LAMA') ? 'Lama' : zoneCode.includes('BADO') ? 'Bado' : zoneCode.includes('MONO') ? 'Mono' : zoneCode.includes('OTI') ? 'Oti' : 'Fosse'
+        const pctStr = pct > 0 ? ` ${Math.round(pct)}%` : ''
+        return `<span class="zone-badge zone-badge--${dotClass[zoneCode] ?? 'other'}" style="background:${c.bg};border:1px solid ${c.border};color:${c.text}">● ${name}${pctStr}</span>`
+      }).join('')
+      ficheZoneBadges.style.display = 'flex'
+    } else {
+      ficheZoneBadges.innerHTML = ''
+      ficheZoneBadges.style.display = 'none'
+    }
+  }
+
   // Coordonnées UTM31 (nouveau)
   const ficheUtm31 = document.getElementById('ficheUtm31')
   const utmXRange = document.getElementById('utmXRange')
@@ -2081,21 +2115,33 @@ function renderMailleDepth(metrics: CellMetrics) {
 
 function renderMailleEssaisParType(metrics: CellMetrics) {
   const types = metrics.essaisParType
-  
-  const setTypeCount = (id: string, count: number) => {
+
+  // Mise à jour compteurs cachés (rétrocompat)
+  const setCount = (id: string, count: number) => {
     const el = document.getElementById(id)
-    if (el) {
-      el.textContent = count.toString()
-      el.style.opacity = count > 0 ? '1' : '0.4'
-    }
+    if (el) el.textContent = count.toString()
   }
-  
-  setTypeCount('cellAtterberg', types.atterberg)
-  setTypeCount('cellVbs', types.vbs)
-  setTypeCount('cellClassif', types.classif)
-  setTypeCount('cellProctor', types.proctor)
-  setTypeCount('cellGranulo', types.granulo)
-  setTypeCount('cellGonflement', types.gonflement)
+  setCount('cellAtterberg', types.atterberg)
+  setCount('cellVbs', types.vbs)
+  setCount('cellClassif', types.classif)
+  setCount('cellProctor', types.proctor)
+  setCount('cellGranulo', types.granulo)
+  setCount('cellGonflement', types.gonflement)
+
+  // B3 — Mise à jour chips ✓/✗
+  const setChip = (chipId: string, count: number, label: string) => {
+    const chip = document.getElementById(chipId)
+    if (!chip) return
+    const ok = count > 0
+    chip.className = ok ? 'essai-chip essai-chip--ok' : 'essai-chip essai-chip--missing'
+    chip.textContent = (ok ? '✓ ' : '✗ ') + label
+  }
+  setChip('chipAtterberg', types.atterberg, 'Atterb.')
+  setChip('chipVbs',       types.vbs,       'VBS')
+  setChip('chipClassif',   types.classif,   'Classif')
+  setChip('chipProctor',   types.proctor,   'Proctor')
+  setChip('chipGranulo',   types.granulo,   'Granulo')
+  setChip('chipGonflement',types.gonflement,'Gonfl.')
 }
 
 function renderMailleArgilosite(metrics: CellMetrics) {

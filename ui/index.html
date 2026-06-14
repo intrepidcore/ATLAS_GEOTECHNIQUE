@@ -627,10 +627,11 @@ body.scientific-open #thematicPanel{
             <div class="maille-header">
               <div class="maille-code-badge" id="ficheCode">—</div>
               <div class="maille-adm" id="ficheAdm">—</div>
-              <div class="maille-badges" style="display:flex;gap:6px;margin-top:4px">
+              <div class="maille-badges" style="display:flex;gap:6px;margin-top:4px;flex-wrap:wrap">
                 <span id="ficheDataBadge" class="badge-sm" style="display:none">avec données</span>
                 <span id="ficheLocBadge" class="badge-sm" style="display:none">exact</span>
               </div>
+              <div id="ficheZoneBadges" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px"></div>
               <div id="ficheAssignment" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:6px;border-left:3px solid #a855f7"></div>
               <!-- Coordonnées UTM31 -->
               <div id="ficheUtm31" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:4px;border-left:3px solid #3b82f6">
@@ -704,16 +705,22 @@ body.scientific-open #thematicPanel{
               </div>
             </div>
 
-            <!-- 4. Essais par type – maille (6 types) -->
-            <div style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
-              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:6px;letter-spacing:0.08em;text-transform:uppercase">Essais par type (maille)</div>
-              <div id="cellEssaisTypes" style="display:grid;grid-template-columns:repeat(3, 1fr);gap:4px;font-size:10px">
-                <span><strong id="cellAtterberg" style="color:#51cf66">0</strong> <span style="color:var(--muted)">Atterberg</span></span>
-                <span><strong id="cellVbs" style="color:#4c6ef5">0</strong> <span style="color:var(--muted)">VBS</span></span>
-                <span><strong id="cellClassif" style="color:#e85d68">0</strong> <span style="color:var(--muted)">Classif</span></span>
-                <span><strong id="cellProctor" style="color:#f59e0b">0</strong> <span style="color:var(--muted)">Proctor</span></span>
-                <span><strong id="cellGranulo" style="color:#8b5cf6">0</strong> <span style="color:var(--muted)">Granulo</span></span>
-                <span><strong id="cellGonflement" style="color:#ec4899">0</strong> <span style="color:var(--muted)">Gonfl.</span></span>
+            <!-- 4. Essais disponibles – chips ✓/✗ (B3) -->
+            <div style="margin-top:12px;padding:10px;background:var(--card-bg,#0f172a);border-radius:8px;border:1px solid var(--card-border,#1c2843)">
+              <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase">Essais disponibles</div>
+              <div id="cellEssaisTypes" style="display:flex;flex-wrap:wrap;gap:5px">
+                <span id="chipAtterberg" class="essai-chip essai-chip--missing" title="Atterberg (WL/WP/IP)">Atterb.</span>
+                <span id="chipVbs" class="essai-chip essai-chip--missing" title="VBS">VBS</span>
+                <span id="chipClassif" class="essai-chip essai-chip--missing" title="Classification">Classif</span>
+                <span id="chipProctor" class="essai-chip essai-chip--missing" title="Proctor">Proctor</span>
+                <span id="chipGranulo" class="essai-chip essai-chip--missing" title="Granulométrie">Granulo</span>
+                <span id="chipGonflement" class="essai-chip essai-chip--missing" title="Gonflement">Gonfl.</span>
+              </div>
+              <!-- Compteurs cachés conservés pour compatibilité JS -->
+              <div style="display:none">
+                <span id="cellAtterberg">0</span><span id="cellVbs">0</span>
+                <span id="cellClassif">0</span><span id="cellProctor">0</span>
+                <span id="cellGranulo">0</span><span id="cellGonflement">0</span>
               </div>
             </div>
 

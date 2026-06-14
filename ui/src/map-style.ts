@@ -409,6 +409,18 @@ export function getGridHoverStyle(feature: any): L.PathOptions {
   };
 }
 
+/** Retourne les zones qui contiennent cette maille avec % intersection. */
+export function getZonesForMaille(mailleCode: string): Array<{ zoneCode: string; pct: number }> {
+  const mc = String(mailleCode || '').trim()
+  const result: Array<{ zoneCode: string; pct: number }> = []
+  for (const [zoneCode, metaMap] of zoneMailleMetaByCode.entries()) {
+    const meta = metaMap.get(mc)
+    if (meta) result.push({ zoneCode, pct: meta.pct_intersection })
+  }
+  result.sort((a, b) => b.pct - a.pct)
+  return result
+}
+
 // =============================================================================
 // LÉGENDE
 // =============================================================================
