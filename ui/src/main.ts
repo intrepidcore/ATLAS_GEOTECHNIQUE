@@ -559,15 +559,10 @@ async function ensurePublishedZonesVisible(): Promise<void> {
   }
 }
 
-/** Affiche/masque le polygon d'une zone sur la carte selon la visibilité. */
-function setPublishedZoneVisible(code: string, visible: boolean): void {
-  const layer = publishedZoneLayersByCode.get(code.toUpperCase())
-  if (!layer) return
-  if (visible) {
-    if (!map.hasLayer(layer)) layer.addTo(map)
-  } else {
-    if (map.hasLayer(layer)) map.removeLayer(layer)
-  }
+/** Polygones zone désactivés — rendu porté uniquement par les bordures de mailles. */
+function setPublishedZoneVisible(_code: string, _visible: boolean): void {
+  // no-op intentionnel : les polygones de zone ne sont plus affichés sur la carte.
+  // La symbologie zone passe exclusivement par getGridFeatureStyle() (map-style.ts).
 }
 
 const ALL_ZONE_CODES = [

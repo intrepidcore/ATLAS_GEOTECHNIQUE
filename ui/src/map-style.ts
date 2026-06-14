@@ -362,13 +362,21 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   // Les zones d'étude (Lama, Bado, …) sont rendues comme polygones sous la grille (main.ts) ;
   // ici on ne mélange plus la teinte « zone » au remplissage pour garder la légende statut données lisible.
 
-  // Zone d'étude : bordure dégradée par pct_intersection, sans toucher au fill.
+  // Zone d'étude : bordure intensifiée + très légère tinte fill sur mailles sans données.
+  // Le polygone zone est désactivé ; l'effet visuel est entièrement porté par les mailles.
   if (dominantZone) {
     const colors = ZONE_PASTEL_COLORS[dominantZone.zoneCode]
     if (colors) {
       strokeColor = interpolateZoneStroke(colors.from, colors.to, dominantZone.pct)
-      strokeWeight = weight
-      strokeOpacity = 0.85
+      // Bordure plus épaisse et plein opaque pour compenser l'absence du fond polygone
+      strokeWeight = Math.max(weight * 1.8, 2.2)
+      strokeOpacity = 1.0
+      // Légère tinte zone sur fond transparent (mailles sans données uniquement)
+      if (!hasData && !isColabHighlighted) {
+        const hex = colors.hex
+        fillColor = hex
+        fillOpacity = 0.08
+      }
     }
   }
 
