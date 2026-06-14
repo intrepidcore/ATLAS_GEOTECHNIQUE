@@ -59,7 +59,7 @@ function App() {
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [activeModal, setActiveModal] = useState<string | null>(null)
   const [selectedTable, setSelectedTable] = useState<string>('sondages')
-  const [selectedSchema, setSelectedSchema] = useState<string>('public')
+  const [selectedSchema, setSelectedSchema] = useState<string>('atlas')
   const [tables, setTables] = useState<Table[]>([])
   const [columns, setColumns] = useState<Column[]>([])
   const [tableData, setTableData] = useState<any[]>([])

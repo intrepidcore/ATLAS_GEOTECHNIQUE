@@ -282,11 +282,6 @@ fn emit_startup_progress_handle(handle: &tauri::AppHandle, step: &str, message: 
     let _ = handle.emit("startup:progress", payload);
 }
 
-fn emit_startup_error_handle(handle: &tauri::AppHandle, message: &str) {
-    let payload = serde_json::json!({ "message": message });
-    let _ = handle.emit("startup:error", payload);
-}
-
 fn emit_startup_progress(app: &tauri::App, step: &str, message: &str, percent: u8) {
     let payload = StartupProgress {
         step: step.to_string(),

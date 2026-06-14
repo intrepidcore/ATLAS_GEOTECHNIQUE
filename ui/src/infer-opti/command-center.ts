@@ -384,7 +384,9 @@ class InferOptiCommandCenter {
       })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) {
-        this.log(`[WARN] Jobs — HTTP ${res.status} ${(data as any)?.error || ''}`.trim(), 'WARN')
+        // 404 attendu quand api-geo (Docker) est arrêté — pas une anomalie opérationnelle
+        const level: 'INFO' | 'WARN' = res.status === 404 ? 'INFO' : 'WARN'
+        this.log(`Jobs — HTTP ${res.status}${res.status === 404 ? ' (api-geo inactif)' : ` ${(data as any)?.error || ''}`}`.trim(), level)
         this.jobs = []
       } else {
         const list = Array.isArray((data as any)?.jobs) ? (data as any).jobs : []

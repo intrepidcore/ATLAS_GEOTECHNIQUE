@@ -148,6 +148,52 @@ if (-not [string]::IsNullOrWhiteSpace($MsiPath)) {
   }
 }
 
+# ── Checks métier v3+ (seed v3.0.0) ────────────────────────────────────────
+if (Test-Path $seedJson) {
+  try {
+    $m = Get-Content $seedJson -Raw | ConvertFrom-Json
+    $rows = $m.contents.rows_estimate
+
+    $sondages = if ($rows -and $rows.PSObject.Properties.Name -contains 'atlas.sondages') {
+      [int]$rows.'atlas.sondages' } else { 0 }
+    $aiValues = if ($rows -and $rows.PSObject.Properties.Name -contains 'atlas.ai_interpolation_values') {
+      [long]$rows.'atlas.ai_interpolation_values' } else { 0 }
+    $users = if ($rows -and $rows.PSObject.Properties.Name -contains 'atlas.users') {
+      [int]$rows.'atlas.users' } else { -1 }
+
+    Check 'manifest: sondages >= 573 (V10 complet)' ($sondages -ge 573) "sondages=$sondages"
+    Check 'manifest: ai_values >= 25M (seed complet)' ($aiValues -ge 25000000) "ai_interpolation_values=$aiValues"
+    Check 'manifest: users == 0 (sécurité)' ($users -eq 0) "users=$users"
+
+    $invCount = if ($m.invariants) { @($m.invariants).Count } else { 0 }
+    Check 'manifest: >= 8 invariants définis' ($invCount -ge 8) "invariants=$invCount"
+  } catch {
+    Check 'manifest checks métier' $false ($_.Exception.Message)
+  }
+}
+
+# ── Checks dette technique (code source) ────────────────────────────────────
+$libRs = Join-Path $RepoRoot 'apps\atlas-pro\src-tauri\src\lib.rs'
+if (Test-Path $libRs) {
+  $deadCode = Select-String -Path $libRs -Pattern 'emit_startup_error_handle' -SimpleMatch
+  Check 'DT-001: dead code emit_startup_error_handle supprimé' ($deadCode.Count -eq 0) `
+    $(if ($deadCode.Count -gt 0) { "$($deadCode.Count) occurrence(s) — retirer la fonction orpheline" } else { '' })
+}
+
+$appTsx = Join-Path $RepoRoot 'ui\src\App.tsx'
+if (Test-Path $appTsx) {
+  $wrongSchema = Select-String -Path $appTsx -Pattern "useState<string>\('public'\)" -SimpleMatch
+  Check "DT-003: App.tsx schema default = 'atlas' (pas 'public')" ($wrongSchema.Count -eq 0) `
+    $(if ($wrongSchema.Count -gt 0) { "Trouvé useState<string>('public') — fix requis" } else { '' })
+}
+
+$ccTs = Join-Path $RepoRoot 'ui\src\infer-opti\command-center.ts'
+if (Test-Path $ccTs) {
+  $warnJobs = Select-String -Path $ccTs -Pattern "'WARN'.*Jobs.*HTTP.*404|404.*WARN.*Jobs" -SimpleMatch
+  Check "DT-004: /ai/jobs/recent 404 → INFO (pas WARN)" ($warnJobs.Count -eq 0) `
+    $(if ($warnJobs.Count -gt 0) { "Level toujours WARN pour 404 — fix command-center.ts" } else { '' })
+}
+
 if ($script:failed -gt 0) {
   Write-Host "`n❌ $($script:failed) check(s) failed. Do not build MSI until fixed." -ForegroundColor Red
   exit 1

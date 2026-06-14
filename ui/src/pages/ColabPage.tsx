@@ -229,15 +229,16 @@ const ConfirmDeactivateModal: React.FC<{
   confirmLabel?: string;
   loading?: boolean;
   destructive?: boolean;
+  error?: string | null;
   onClose: () => void;
   onConfirm: () => void;
-}> = ({ isOpen, title, description, confirmLabel = "Désactiver", loading = false, destructive = false, onClose, onConfirm }) => {
+}> = ({ isOpen, title, description, confirmLabel = "Désactiver", loading = false, destructive = false, error, onClose, onConfirm }) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded-2xl shadow-2xl w-full max-w-md">
+      <div className="relative bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-2xl w-full max-w-md">
         {/* Header */}
         <div className="flex items-start justify-between px-6 pt-6 pb-4">
           <div className="flex items-center gap-3">
@@ -262,8 +263,14 @@ const ConfirmDeactivateModal: React.FC<{
         </div>
 
         {/* Body */}
-        <div className="px-6 pb-5">
+        <div className="px-6 pb-5 space-y-3">
           <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{description}</p>
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 px-3 py-2">
+              <AlertCircle className="w-4 h-4 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-red-700 dark:text-red-300 leading-relaxed">{error}</p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
@@ -271,7 +278,7 @@ const ConfirmDeactivateModal: React.FC<{
           <button
             onClick={onClose}
             disabled={loading}
-            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-700 border border-slate-300 dark:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-300 bg-white dark:bg-slate-600 border border-slate-300 dark:border-slate-500 hover:bg-slate-50 dark:hover:bg-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Annuler
           </button>
@@ -280,8 +287,8 @@ const ConfirmDeactivateModal: React.FC<{
             disabled={loading}
             className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
               destructive
-                ? "bg-red-600 hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600 text-white"
-                : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white"
+                ? "bg-red-600 hover:bg-red-700 dark:bg-red-600 dark:hover:bg-red-500 text-white"
+                : "bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-400 text-white"
             }`}
           >
             {loading ? (
@@ -343,6 +350,7 @@ const ColabPage: React.FC = () => {
   const [showTransferMissionModal, setShowTransferMissionModal] = useState(false);
   const [selectedMissionToTransfer, setSelectedMissionToTransfer] = useState<MissionListItem | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const { can } = usePermissions();
   const canTransferMission = can('colab.missions.reassign');
@@ -2844,16 +2852,21 @@ const ColabPage: React.FC = () => {
         confirmLabel="Supprimer"
         destructive={true}
         loading={actionLoading}
-        onClose={() => setShowDeleteMissionModal(false)}
+        error={actionError}
+        onClose={() => { setShowDeleteMissionModal(false); setActionError(null); }}
         onConfirm={async () => {
           if (!selectedMissionToDelete) return;
           setActionLoading(true);
+          setActionError(null);
           try {
             await missionsApi.delete(selectedMissionToDelete.id);
             setMissions(prev => prev.filter(m => m.id !== selectedMissionToDelete.id));
             setTotal(prev => Math.max(0, prev - 1));
             setStats(prev => (prev ? { ...prev, total_missions: Math.max(0, prev.total_missions - 1) } : prev));
             setShowDeleteMissionModal(false);
+            setActionError(null);
+          } catch (err) {
+            setActionError(err instanceof Error ? err.message : 'Erreur lors de la suppression');
           } finally {
             setActionLoading(false);
           }

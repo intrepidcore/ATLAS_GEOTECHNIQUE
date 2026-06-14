@@ -9,16 +9,68 @@
 
 import L from 'leaflet';
 
-type LamaMailleMeta = {
+type ZoneMailleMeta = {
   pct_intersection: number
   priorite_recherche: number
 }
 
-let lamaMailleCodes: Set<string> = new Set();
-let lamaMailleMetaByCode: Map<string, LamaMailleMeta> = new Map();
+// ── Couleurs pastel par zone (from=clair, to=saturé) ──────────────────
+export const ZONE_PASTEL_COLORS: Record<string, { from: string; to: string; hex: string }> = {
+  DEPRESSION_LAMA_TG: { from: '#FDE68A', to: '#B45309', hex: '#F59E0B' },  // Ambre
+  DEPRESSION_BADO_TG: { from: '#FCA5A5', to: '#B91C1C', hex: '#EF4444' },  // Rouge corail
+  PLAINE_MONO_TG:     { from: '#6EE7B7', to: '#065F46', hex: '#10B981' },  // Vert émeraude
+  PLAINE_OTI_TG:      { from: '#BAE6FD', to: '#0C4A6E', hex: '#0EA5E9' },  // Bleu ciel
+  FOSSE_LIONS_TG:     { from: '#E9D5FF', to: '#5B21B6', hex: '#8B5CF6' },  // Violet lavande
+}
+
+// Zones par code → set de maille_code + meta
+const zoneMailleCodes: Map<string, Set<string>> = new Map()
+const zoneMailleMetaByCode: Map<string, Map<string, ZoneMailleMeta>> = new Map()
+// Visibilité par zone (localStorage)
+const zoneVisibility: Map<string, boolean> = new Map()
 
 /** Priorité campagne reconnaissance (api-opti / AG) — rang 1 = plus prioritaire */
 let campaignPriorityByCode: Map<string, number> = new Map();
+
+/** Enregistre les mailles d'une zone (générique, toutes les 5 zones). */
+export function setZoneMailleMetadata(
+  zoneCode: string,
+  mailles: Array<{ maille_code: string; pct_intersection?: number; priorite_recherche?: number }>
+): void {
+  const code = String(zoneCode || '').toUpperCase().trim()
+  if (!code) return
+  const metaMap = new Map<string, ZoneMailleMeta>()
+  const codeSet = new Set<string>()
+  for (const item of mailles || []) {
+    const mc = String(item?.maille_code || '').trim()
+    if (!mc) continue
+    const pct = Number(item?.pct_intersection ?? 0)
+    const pr = Number(item?.priorite_recherche ?? 4)
+    metaMap.set(mc, {
+      pct_intersection: Number.isFinite(pct) ? Math.max(pct, 0) : 0,
+      priorite_recherche: Number.isFinite(pr) ? pr : 4,
+    })
+    codeSet.add(mc)
+  }
+  zoneMailleMetaByCode.set(code, metaMap)
+  zoneMailleCodes.set(code, codeSet)
+}
+
+/** Contrôle la visibilité de la symbologie de bordure d'une zone. */
+export function setZoneVisibility(zoneCode: string, visible: boolean): void {
+  zoneVisibility.set(String(zoneCode || '').toUpperCase(), visible)
+}
+
+/** Rétrocompatibilité Lama (utilisé dans main.ts v1) */
+export function setLamaMailleMetadata(
+  mailles: Array<{ maille_code: string; pct_intersection?: number; priorite_recherche?: number }>
+): void {
+  setZoneMailleMetadata('DEPRESSION_LAMA_TG', mailles)
+}
+
+export function setLamaMailleCodes(codes: string[]): void {
+  // rétrocompatiblité — délégué à setZoneMailleMetadata
+}
 
 export function setCampaignPriorities(
   entries: Array<{ maille_code: string; rank: number }> | null | undefined
@@ -41,29 +93,6 @@ export function clearCampaignPriorities(): void {
   campaignPriorityByCode = new Map();
 }
 
-export function setLamaMailleCodes(codes: string[]): void {
-  lamaMailleCodes = new Set((codes || []).map(c => String(c).trim()).filter(Boolean));
-}
-
-export function setLamaMailleMetadata(
-  mailles: Array<{ maille_code: string; pct_intersection?: number; priorite_recherche?: number }>
-): void {
-  const m = new Map<string, LamaMailleMeta>();
-  const codes: string[] = [];
-  for (const item of mailles || []) {
-    const code = String(item?.maille_code || '').trim();
-    if (!code) continue;
-    const pct = Number(item?.pct_intersection ?? 0);
-    const pr = Number(item?.priorite_recherche ?? 4);
-    m.set(code, {
-      pct_intersection: Number.isFinite(pct) ? pct : 0,
-      priorite_recherche: Number.isFinite(pr) ? pr : 4,
-    });
-    codes.push(code);
-  }
-  lamaMailleMetaByCode = m;
-  setLamaMailleCodes(codes);
-}
 
 // =============================================================================
 // COULEURS DE BASE
@@ -128,12 +157,34 @@ export const WEIGHT: Record<string, number> = {
 
 // Petites helpers pour interpolations couleurs rapides (Leaflet styling)
 const clamp01 = (v: number) => Math.max(0, Math.min(1, v));
-const lerpInt = (a: number, b: number, t: number) => Math.round(a + (b - a) * t);
 const rgbToHex = (r: number, g: number, b: number) => `#${[r, g, b].map((x) => x.toString(16).padStart(2, '0')).join('')}`;
 
-const LAMA_STROKE_FROM_RGB = { r: 0xFE, g: 0xD7, b: 0xAA };
-// Max tone volontairement moins sombre pour rester lisible sur fond clair + bordures grises.
-const LAMA_STROKE_TO_RGB = { r: 0xB4, g: 0x53, b: 0x09 };
+function hexToRgb(hex: string): { r: number; g: number; b: number } {
+  const n = parseInt(hex.replace('#', ''), 16)
+  return { r: (n >> 16) & 0xff, g: (n >> 8) & 0xff, b: n & 0xff }
+}
+
+function interpolateZoneStroke(fromHex: string, toHex: string, pct: number): string {
+  const t = clamp01((pct || 1) / 100)  // min pct=1 pour bordure visible même sur touch
+  const f = hexToRgb(fromHex), to = hexToRgb(toHex)
+  const lerp = (a: number, b: number) => Math.round(a + (b - a) * t)
+  return rgbToHex(lerp(f.r, to.r), lerp(f.g, to.g), lerp(f.b, to.b))
+}
+
+/** Retourne {zoneCode, pct} de la zone la plus présente dans cette maille (pour la bordure). */
+function getDominantZone(cellCode: string): { zoneCode: string; pct: number } | null {
+  let best: { zoneCode: string; pct: number } | null = null
+  for (const [zoneCode, codeSet] of zoneMailleCodes.entries()) {
+    if (!codeSet.has(cellCode)) continue
+    // Zone non visible → skip
+    const vis = zoneVisibility.get(zoneCode)
+    if (vis === false) continue
+    const meta = zoneMailleMetaByCode.get(zoneCode)?.get(cellCode)
+    const pct = meta?.pct_intersection ?? 1
+    if (!best || pct > best.pct) best = { zoneCode, pct }
+  }
+  return best
+}
 
 // =============================================================================
 // STYLES PRÉDÉFINIS

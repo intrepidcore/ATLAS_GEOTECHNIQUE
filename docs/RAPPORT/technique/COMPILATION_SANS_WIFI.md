@@ -287,7 +287,92 @@ Write-Output "Proctor: $($details.proctor.Count) | CBR: $($details.cbr.Count) | 
 
 ---
 
-## 8. Obstacles additionnels (session 2026-06-12 — printpdf + QR code)
+## 8. Ce qu'il faut absolument préserver pour compiler offline
+
+> **Règle d'or** : ne jamais purger ces dossiers si tu peux te retrouver sans connexion internet.
+> Une seule commande `cargo clean` ou `docker system prune -a` mal placée oblige un retéléchargement
+> de plusieurs GB (crates + images Docker) et rend le build impossible sans WiFi.
+
+### 8.1 WSL2 Ubuntu 22.04 — build `api-geo` (binaire Linux)
+
+| Chemin dans WSL2 | Taille typique | Rôle | Supprimer ? |
+|------------------|---------------|------|-------------|
+| `~/.rustup/toolchains/1.86.0-x86_64-unknown-linux-gnu/` | ~600 MB | Compilateur Rust 1.86 + std | ❌ JAMAIS |
+| `~/.cargo/registry/cache/` | ~800 MB–1 GB | Sources des crates téléchargées (zips) | ❌ JAMAIS sans WiFi |
+| `~/.cargo/registry/src/` | ~200–400 MB | Crates décompressées (compilées depuis ici) | ⚠️ Recreatable depuis cache/ |
+| `~/api-geo-build/target/` | 5–10 GB | Artefacts build incrémental | ✅ Supprimable (rebuild = 15–20 min) |
+| `~/api-geo-build/src/` | ~50 MB | Copie des sources (re-copiées depuis Windows) | ✅ Supprimable |
+
+**Vérification rapide de l'état WSL offline :**
+```bash
+wsl -d Ubuntu-22.04 -- bash -c "
+  source /root/.cargo/env
+  echo 'Rust:' \$(rustc --version)
+  echo 'Cargo:' \$(cargo --version)
+  echo 'Registry cache:' \$(du -sh ~/.cargo/registry/cache 2>/dev/null | cut -f1)
+  echo 'Build target:' \$(du -sh ~/api-geo-build/target 2>/dev/null | cut -f1)
+"
+```
+
+### 8.2 Windows natif — build `atlas-pro` Tauri (binaire Windows)
+
+| Chemin Windows | Taille typique | Rôle | Supprimer ? |
+|----------------|---------------|------|-------------|
+| `C:\Users\…\.rustup\toolchains\stable-x86_64-pc-windows-msvc\` | ~1.2 GB | Compilateur Rust MSVC + std | ❌ JAMAIS |
+| `C:\Users\…\.cargo\registry\cache\` | ~600–900 MB | Sources crates Windows | ❌ JAMAIS sans WiFi |
+| `apps\atlas-pro\src-tauri\target\release\` | ~2–3 GB | Binaire + artefacts release | ✅ Supprimable (rebuild = 10–15 min) |
+| `apps\atlas-pro\src-tauri\target\debug\` | ~2–4 GB | Artefacts debug | ✅ Supprimable si plus utilisé |
+| `services\api-geo\target\` | ~9 GB | Build Windows de api-geo (non utilisé en prod) | ✅ Supprimable |
+
+**Variable critique pour tout build offline Tauri :**
+```powershell
+$env:SQLX_OFFLINE = "true"   # OBLIGATOIRE — sinon cargo tente de contacter la DB au compile-time
+```
+
+### 8.3 Docker — images à conserver pour le runtime
+
+Ces images sont nécessaires pour `docker compose up` sans rien retélécharger :
+
+| Image | Taille | Supprimer ? |
+|-------|--------|-------------|
+| `atlas-api-geo:latest` | 8.63 GB | ❌ Runtime principal |
+| `atlas-qgis-worker:latest` | 11.1 GB | ❌ Worker QGIS actif |
+| `atlas-api-infer:latest` | 1.16 GB | ❌ Pipeline ML |
+| `atlas-api-opti:latest` | 140 MB | ❌ Pipeline optimisation |
+| `postgis/postgis:17-3.4` | 857 MB | ❌ Base de données |
+| `atlas-ui:latest` | 79 MB | ⚠️ Rebuild trivial (2 min) |
+| `ubuntu:22.04` | 119 MB | ⚠️ Léger, garder |
+| `alpine:latest` | 13 MB | ⚠️ Léger, garder |
+| `atlas-api-geo-builder:latest` | 2.33 GB | ✅ Builder stage, inutile au runtime |
+| `api-geo-builder:latest` | 2.29 GB | ✅ Ancienne version, doublon |
+| `mcp/playwright` (×2) | 2.86 GB | ✅ Non lié à Atlas |
+| `lcpi-qgis-service:latest` | 6.71 GB | ✅ Non utilisé (remplacé par atlas-qgis-worker) |
+
+**Build cache Docker :** 25 GB dont ~7.4 GB reclaimable via `docker builder prune -f`.
+Ne pas faire `docker builder prune -a` (supprime aussi les caches actifs potentiels).
+
+### 8.4 Commandes de nettoyage sûres (à exécuter avec WiFi OU sans WiFi)
+
+```powershell
+# Sûr même sans WiFi — ne supprime rien nécessaire au build ni au runtime
+docker rm atlas-ui                            # container stoppé (94 MB)
+docker rmi atlas-api-geo-builder:latest       # builder stage inutile (2.33 GB)
+docker rmi api-geo-builder:latest             # doublon ancien (2.29 GB)
+docker rmi lcpi-qgis-service:latest           # remplacé par atlas-qgis-worker (6.71 GB)
+docker image prune -f --filter "dangling=true" # images <none> orphelines
+docker builder prune -f                       # cache BuildKit reclaimable (7.4 GB)
+# Total attendu : ~19-21 GB récupérés
+
+# À NE PAS FAIRE sans WiFi
+# docker system prune -a    → supprime TOUTES images non actives (impossible rebuild sans net)
+# docker volume prune       → détruit atlas_ml-pip-cache (pip cache ML)
+# cargo clean               → vide target/, rebuild = 15-20 min (OK mais long)
+# rm -rf ~/.cargo/registry  → DÉSASTRE sans WiFi
+```
+
+---
+
+## 9. Obstacles additionnels (session 2026-06-12 — printpdf + QR code)
 
 Obstacles rencontrés lors de l'ajout de `printpdf = "0.5"` et `qrcode = "0.14"` pour la génération du PDF ordre de mission. Voir le détail complet dans la mémoire Claude : `memory/feedback_compilation_sans_wifi.md`.
 
