@@ -169,7 +169,14 @@ body.scientific-open #thematicPanel{
 .list{list-style:none;padding:0;margin:0}
 .list li{padding:4px 0;border-bottom:1px solid #1c284333}
 #mailleDetails{display:none}
-#mailleDetails.active{display:block;background:#0a1018;padding:10px;border-radius:8px}
+#mailleDetails.active{display:block;background:var(--card-bg,#0a1018);padding:10px;border-radius:8px;animation:slideInFiche 220ms ease-out}
+@keyframes slideInFiche{from{opacity:0;transform:translateX(18px)}to{opacity:1;transform:translateX(0)}}
+.kpi-bar-global{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-bottom:10px}
+.kpi-bar-global .kpi-card-g{background:var(--card-bg,#0f172a);border:1px solid var(--card-border,#1c2843);border-radius:6px;padding:7px 5px;text-align:center}
+.kpi-bar-global .kpi-card-g .kv{display:block;font-size:17px;font-weight:700;color:var(--accent)}
+.kpi-bar-global .kpi-card-g .kl{display:block;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:1px}
+.btn-back-maille{display:flex;align-items:center;gap:6px;padding:6px 10px;background:none;border:1px solid var(--field-border,#334155);border-radius:6px;color:var(--muted);font-size:12px;cursor:pointer;margin-bottom:8px;min-height:36px;transition:color .15s,border-color .15s}
+.btn-back-maille:hover{color:var(--text);border-color:var(--accent)}
 #surveyList{max-height:calc(100vh - 200px);overflow-y:auto}
 .survey-card{background:#0f172a;border:1px solid #22304d;border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer;transition:border-color 0.2s}
 .survey-card:hover{border-color:#3aa6ff}
@@ -466,14 +473,15 @@ body.scientific-open #thematicPanel{
     <div id="container">
       <!-- PANNEAU GAUCHE: Affichage Données -->
       <aside id="dashboard">
+        <!-- KPI Bar globale -->
+        <div class="kpi-bar-global">
+          <div class="kpi-card-g"><span class="kv" id="kpiGlobalMailles"><span id="statVisible">0</span></span><span class="kl">Mailles</span></div>
+          <div class="kpi-card-g"><span class="kv" id="kpiGlobalData"><span id="statWithData">0</span></span><span class="kl">Avec data</span></div>
+          <div class="kpi-card-g"><span class="kv"><span id="statSondages">0</span></span><span class="kl">Sondages</span></div>
+          <div class="kpi-card-g"><span class="kv"><span id="statEssais">0</span></span><span class="kl">Essais</span></div>
+        </div>
         <div class="section">
-          <h4>Statistiques (filtrées)</h4>
-          <div id="filterStats" style="font-size:12px;color:var(--muted);line-height:1.6">
-            <div><strong>Mailles visibles:</strong> <span id="statVisible">0</span></div>
-            <div><strong>Avec données:</strong> <span id="statWithData">0</span></div>
-            <div><strong>Sondages:</strong> <span id="statSondages">0</span></div>
-            <div><strong>Essais:</strong> <span id="statEssais">0</span></div>
-          </div>
+          <div id="filterStats" style="display:none"></div>
 
           <div id="zonesEtudeMapHelp" class="section" style="display:none;margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843;font-size:10px;line-height:1.45;color:var(--muted)">
             <div style="font-size:11px;color:var(--accent);margin-bottom:6px;font-weight:600;letter-spacing:0.06em;text-transform:uppercase">Zones d'étude (carte)</div>
@@ -594,6 +602,9 @@ body.scientific-open #thematicPanel{
 
         <!-- Fiche Géotechnique de la Maille (sans onglets) -->
         <div id="mailleDetails" class="section">
+          <button id="btnRetourGlobal" class="btn-back-maille" aria-label="Retour vue globale" style="display:none">
+            &#8592; Vue globale
+          </button>
           <!-- État initial: aucune maille sélectionnée -->
           <div id="mailleEmpty" style="padding:20px;text-align:center;color:var(--muted);font-size:12px">
             <div style="font-size:12px;margin-bottom:8px;color:var(--muted)">○</div>

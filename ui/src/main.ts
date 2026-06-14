@@ -1767,7 +1767,10 @@ async function loadMailleDetails(code: string) {
     const mailleContent = document.getElementById('mailleContent')
     if (mailleEmpty) mailleEmpty.style.display = 'none'
     if (mailleContent) mailleContent.style.display = 'block'
-    
+
+    const btnRetour = document.getElementById('btnRetourGlobal') as HTMLButtonElement | null
+    if (btnRetour) btnRetour.style.display = 'flex'
+
     const ficheDiv = document.getElementById('mailleDetails')
     if (ficheDiv) {
       ficheDiv.classList.add('active')
@@ -5583,12 +5586,32 @@ function initTabsPanel() {
 }
 
 function initLegacyPanel() {
-  // Code existant
   initAccordions()
   initDirectButtons()
   initKeyboardShortcuts()
   initFilterListeners()
   initCloseMailleActions()
+
+  // Bouton "← Vue globale" dans la fiche maille
+  const btnRetour = document.getElementById('btnRetourGlobal')
+  if (btnRetour) {
+    btnRetour.addEventListener('click', () => {
+      const mailleEmpty = document.getElementById('mailleEmpty')
+      const mailleContent = document.getElementById('mailleContent')
+      const ficheDiv = document.getElementById('mailleDetails')
+      if (mailleEmpty) mailleEmpty.style.display = ''
+      if (mailleContent) mailleContent.style.display = 'none'
+      if (ficheDiv) ficheDiv.classList.remove('active')
+      btnRetour.style.display = 'none'
+      // Désélectionner la maille courante
+      if (selectedCell) {
+        selectedCell.setStyle(styleFeature(selectedMailleProps ? { properties: selectedMailleProps } : {}))
+        selectedCell = null
+        selectedMailleCode = null
+        selectedMailleProps = null
+      }
+    })
+  }
 }
 
 /* =========================
