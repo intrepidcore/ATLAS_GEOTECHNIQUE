@@ -443,7 +443,8 @@ let zoneMaillesLayer: L.GeoJSON | null = null
 let zoneMailleLayerByCode: Map<string, L.Path> = new Map()
 let zoneHighlightTimer: ReturnType<typeof setTimeout> | null = null
 let lamaBandLayer: L.GeoJSON | null = null
-let publishedZonesLayer: L.GeoJSON | null = null
+let publishedZonesLayer: L.GeoJSON | null = null          // legacy — non utilisé
+const publishedZoneLayersByCode: Map<string, L.GeoJSON> = new Map()
 let depressionsLegendControl: L.Control | null = null
 let lamaZoneGeojsonCache: GeoJSON.Geometry | null = null
 
@@ -515,70 +516,57 @@ async function ensureLamaBandVisible(): Promise<void> {
 }
 
 async function ensurePublishedZonesVisible(): Promise<void> {
-  if (publishedZonesLayer) return
+  if (publishedZoneLayersByCode.size > 0) return
   try {
-    // Liste + geojson publics (pas besoin de JWT ; évite échec silencieux avant login)
     const listRes = await fetch(`${API_GEO}/zones-etude`)
     if (!listRes.ok) throw new Error(`zones-etude HTTP ${listRes.status}`)
-    const zones = (await listRes.json()) as Array<{
-      code: string
-      risque_rga?: string
-      carte_overlay_order?: number
-    }>
-    const sorted = [...(zones || [])].sort((a, b) => {
-      const oa = Number(a.carte_overlay_order ?? 100)
-      const ob = Number(b.carte_overlay_order ?? 100)
-      if (oa !== ob) return oa - ob
-      return String(a.code).localeCompare(String(b.code))
-    })
-    const features: GeoJSON.Feature[] = []
-    for (const z of sorted) {
-      const code = String(z?.code || '').trim()
+    const zones = (await listRes.json()) as Array<{ code: string; risque_rga?: string; carte_overlay_order?: number }>
+    for (const z of zones || []) {
+      const code = String(z?.code || '').trim().toUpperCase()
       if (!code) continue
       try {
         const gRes = await fetch(`${API_GEO}/zones-etude/${encodeURIComponent(code)}/geojson`)
         if (!gRes.ok) continue
         const raw = await gRes.json()
         const geom = parseZoneGeoJsonBody(raw)
-        if (!geom) {
-          console.warn('[ZonesEtude] geojson vide pour', code)
-          continue
-        }
-        features.push({
-          type: 'Feature',
-          geometry: geom as any,
-          properties: {
-            code,
-            risque_rga: z?.risque_rga || null,
-          },
-        })
+        if (!geom) continue
+        const c = getDepressionColorByCode(code) || getZoneRiskColor(z?.risque_rga)
+        const layer = L.geoJSON(
+          { type: 'Feature', geometry: geom as any, properties: { code } } as any,
+          {
+            pane: 'zoneStudyFillPane',
+            interactive: false,
+            style: {
+              color: c,
+              opacity: ZONE_STUDY_STROKE_OPACITY,
+              weight: 1.5,
+              fillColor: c,
+              fillOpacity: ZONE_STUDY_FILL_OPACITY,
+            },
+          }
+        )
+        publishedZoneLayersByCode.set(code, layer)
+        // N'afficher que si la case est cochée dans localStorage
+        const stored = localStorage.getItem(`zone_visible_${code}`)
+        if (stored === 'true') layer.addTo(map)
       } catch (e) {
         console.warn('[ZonesEtude] geojson unavailable for zone:', code, e)
       }
     }
-
-    publishedZonesLayer = L.geoJSON(
-      { type: 'FeatureCollection', features } as any,
-      {
-        pane: 'zoneStudyFillPane',
-        interactive: false,
-        style: (feature: any) => {
-          const code = String(feature?.properties?.code || '').toUpperCase()
-          const c = getDepressionColorByCode(code) || getZoneRiskColor(feature?.properties?.risque_rga)
-          return {
-            color: c,
-            opacity: ZONE_STUDY_STROKE_OPACITY,
-            weight: 1,
-            fillColor: c,
-            fillOpacity: ZONE_STUDY_FILL_OPACITY,
-          }
-        },
-      }
-    )
-    publishedZonesLayer.addTo(map)
     ensureDepressionsLegendVisible()
   } catch (e) {
     console.warn('[ZonesEtude] Impossible d afficher les zones publiees:', e)
+  }
+}
+
+/** Affiche/masque le polygon d'une zone sur la carte selon la visibilité. */
+function setPublishedZoneVisible(code: string, visible: boolean): void {
+  const layer = publishedZoneLayersByCode.get(code.toUpperCase())
+  if (!layer) return
+  if (visible) {
+    if (!map.hasLayer(layer)) layer.addTo(map)
+  } else {
+    if (map.hasLayer(layer)) map.removeLayer(layer)
   }
 }
 
@@ -810,7 +798,8 @@ function highlightZoneMaille(mailleCode: string) {
 
 // Exposé pour ThematicPanel checkboxes de visibilité zone
 ;(window as any).__setZoneVisibility = (code: string, visible: boolean) => {
-  setZoneVisibility(code, visible)
+  setZoneVisibility(code, visible)           // bordures mailles
+  setPublishedZoneVisible(code, visible)     // polygone zone sur la carte
 }
 ;(window as any).__refreshGridStyle = () => {
   if (gridLayer) gridLayer.setStyle((feature: any) => styleFeature(feature))

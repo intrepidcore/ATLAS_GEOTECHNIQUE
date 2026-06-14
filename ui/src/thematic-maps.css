@@ -339,28 +339,34 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-/* ── Zones d'étude — boutons + toggles de visibilité ─────────────────────── */
+/* ── Zones d'étude — grille de boutons ───────────────────────────────────── */
 .zone-etude-btn-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
   margin-top: 4px;
 }
 
-.zone-etude-row {
+.zone-etude-btn {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  min-height: 36px;
 }
 
-.zone-etude-row .zone-etude-btn {
+.zone-name {
   flex: 1;
-  min-height: 36px;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  padding: 6px 10px;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Fosse aux Lions — pleine largeur */
+.zone-etude-btn--full {
+  grid-column: 1 / -1;
 }
 
 /* ── Zone dots (indicateurs couleur) ─────────────────────────────────────── */
@@ -369,7 +375,7 @@
   height: 9px;
   border-radius: 50%;
   flex-shrink: 0;
-  border: 1.5px solid rgba(255,255,255,0.3);
+  border: 1.5px solid rgba(255,255,255,0.25);
 }
 .zone-dot--lama  { background: #F59E0B; }
 .zone-dot--bado  { background: #EF4444; }
@@ -377,59 +383,14 @@
 .zone-dot--oti   { background: #0EA5E9; }
 .zone-dot--fosse { background: #8B5CF6; }
 
-/* ── Toggle visibilité zone (WCAG AA, touch ≥44px) ──────────────────────── */
-.zone-vis-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  min-width: 44px;
-  min-height: 36px;
-  padding: 4px 6px;
-  border-radius: 6px;
-  border: 1px solid hsl(var(--border, 215 20% 30%));
-  background: hsl(var(--muted, 215 20% 15%));
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: background 150ms ease-out, border-color 150ms ease-out;
-  user-select: none;
-}
-
-.zone-vis-toggle:hover {
-  background: hsl(var(--muted) / 0.8);
-  border-color: hsl(var(--primary, 210 100% 56%));
-}
-
+/* ── Checkbox visibilité (dans le bouton, à droite) ──────────────────────── */
 .zone-vis-chk {
   width: 14px;
   height: 14px;
+  margin-left: auto;
+  flex-shrink: 0;
   accent-color: hsl(var(--primary, 210 100% 56%));
   cursor: pointer;
-  flex-shrink: 0;
-}
-
-.zone-vis-label {
-  font-size: 10px;
-  color: hsl(var(--muted-foreground, 215 15% 55%));
-  white-space: nowrap;
-  line-height: 1;
-}
-
-.zone-vis-chk:checked ~ .zone-vis-label,
-.zone-vis-toggle:has(.zone-vis-chk:checked) .zone-vis-label {
-  color: hsl(var(--primary, 210 100% 56%));
-  font-weight: 600;
-}
-
-.zone-vis-toggle:has(.zone-vis-chk:checked) {
-  border-color: hsl(var(--primary, 210 100% 56%));
-  background: hsl(var(--primary, 210 100% 56%) / 0.12);
-}
-
-.zone-etude-row--wide {
-  /* Fosse aux Lions — bouton large */
-}
-.zone-etude-row--wide .zone-etude-btn--wide {
-  flex: 1;
 }
 
 /* Tooltip thématique */

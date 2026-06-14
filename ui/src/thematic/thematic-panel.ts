@@ -639,51 +639,31 @@ export class ThematicPanel {
           Ouvrir le panneau d'analyse par zone. Les mailles concernées sont colorées sur la grille (légende ci‑dessous).
         </p>
         <div class="zone-etude-btn-grid">
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeLamaBtn" class="btn-secondary zone-etude-btn" title="Dépression de la Lama — data gap RGA">
-              <span class="zone-dot zone-dot--lama" aria-hidden="true"></span><span>Lama</span>
-            </button>
-            <label class="zone-vis-toggle" title="Afficher symbologie Lama sur la carte">
-              <input type="checkbox" id="zoneVisLama" data-zone="DEPRESSION_LAMA_TG" class="zone-vis-chk" aria-label="Afficher symbologie Lama">
-              <span class="zone-vis-label">Carte</span>
-            </label>
-          </div>
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeBadoBtn" class="btn-secondary zone-etude-btn" title="Dépression du Bado — data gap">
-              <span class="zone-dot zone-dot--bado" aria-hidden="true"></span><span>Bado</span>
-            </button>
-            <label class="zone-vis-toggle" title="Afficher symbologie Bado sur la carte">
-              <input type="checkbox" id="zoneVisBado" data-zone="DEPRESSION_BADO_TG" class="zone-vis-chk" aria-label="Afficher symbologie Bado">
-              <span class="zone-vis-label">Carte</span>
-            </label>
-          </div>
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeMonoBtn" class="btn-secondary zone-etude-btn" title="Plaine du Mono — data gap">
-              <span class="zone-dot zone-dot--mono" aria-hidden="true"></span><span>Mono</span>
-            </button>
-            <label class="zone-vis-toggle" title="Afficher symbologie Mono sur la carte">
-              <input type="checkbox" id="zoneVisMono" data-zone="PLAINE_MONO_TG" class="zone-vis-chk" aria-label="Afficher symbologie Mono">
-              <span class="zone-vis-label">Carte</span>
-            </label>
-          </div>
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeOtiBtn" class="btn-secondary zone-etude-btn" title="Plaine de l'Oti — data gap">
-              <span class="zone-dot zone-dot--oti" aria-hidden="true"></span><span>Oti</span>
-            </button>
-            <label class="zone-vis-toggle" title="Afficher symbologie Oti sur la carte">
-              <input type="checkbox" id="zoneVisOti" data-zone="PLAINE_OTI_TG" class="zone-vis-chk" aria-label="Afficher symbologie Oti">
-              <span class="zone-vis-label">Carte</span>
-            </label>
-          </div>
-          <div class="zone-etude-row zone-etude-row--wide">
-            <button type="button" id="openZoneEtudeFosseBtn" class="btn-secondary zone-etude-btn zone-etude-btn--wide" title="Fosse aux Lions — data gap">
-              <span class="zone-dot zone-dot--fosse" aria-hidden="true"></span><span>Fosse aux Lions</span>
-            </button>
-            <label class="zone-vis-toggle" title="Afficher symbologie Fosse aux Lions sur la carte">
-              <input type="checkbox" id="zoneVisFosse" data-zone="FOSSE_LIONS_TG" class="zone-vis-chk" aria-label="Afficher symbologie Fosse aux Lions">
-              <span class="zone-vis-label">Carte</span>
-            </label>
-          </div>
+          <button type="button" id="openZoneEtudeLamaBtn" class="btn-secondary zone-etude-btn" title="Dépression de la Lama — data gap RGA">
+            <span class="zone-dot zone-dot--lama" aria-hidden="true"></span>
+            <span class="zone-name">Lama</span>
+            <input type="checkbox" id="zoneVisLama" data-zone="DEPRESSION_LAMA_TG" class="zone-vis-chk" aria-label="Afficher Lama sur la carte" title="Afficher/masquer sur la carte">
+          </button>
+          <button type="button" id="openZoneEtudeBadoBtn" class="btn-secondary zone-etude-btn" title="Dépression du Bado — data gap">
+            <span class="zone-dot zone-dot--bado" aria-hidden="true"></span>
+            <span class="zone-name">Bado</span>
+            <input type="checkbox" id="zoneVisBado" data-zone="DEPRESSION_BADO_TG" class="zone-vis-chk" aria-label="Afficher Bado sur la carte" title="Afficher/masquer sur la carte">
+          </button>
+          <button type="button" id="openZoneEtudeMonoBtn" class="btn-secondary zone-etude-btn" title="Plaine du Mono — data gap">
+            <span class="zone-dot zone-dot--mono" aria-hidden="true"></span>
+            <span class="zone-name">Mono</span>
+            <input type="checkbox" id="zoneVisMono" data-zone="PLAINE_MONO_TG" class="zone-vis-chk" aria-label="Afficher Mono sur la carte" title="Afficher/masquer sur la carte">
+          </button>
+          <button type="button" id="openZoneEtudeOtiBtn" class="btn-secondary zone-etude-btn" title="Plaine de l'Oti — data gap">
+            <span class="zone-dot zone-dot--oti" aria-hidden="true"></span>
+            <span class="zone-name">Oti</span>
+            <input type="checkbox" id="zoneVisOti" data-zone="PLAINE_OTI_TG" class="zone-vis-chk" aria-label="Afficher Oti sur la carte" title="Afficher/masquer sur la carte">
+          </button>
+          <button type="button" id="openZoneEtudeFosseBtn" class="btn-secondary zone-etude-btn zone-etude-btn--full" title="Fosse aux Lions — data gap">
+            <span class="zone-dot zone-dot--fosse" aria-hidden="true"></span>
+            <span class="zone-name">Fosse aux Lions</span>
+            <input type="checkbox" id="zoneVisFosse" data-zone="FOSSE_LIONS_TG" class="zone-vis-chk" aria-label="Afficher Fosse aux Lions sur la carte" title="Afficher/masquer sur la carte">
+          </button>
         </div>
         <div class="thematic-actions">
           <button id="refreshAiSourcesBtn" class="btn-secondary full-width" title="Recalcule infer / interpolation / fondation">
@@ -1696,12 +1676,14 @@ export class ThematicPanel {
         if (!zone) return
         const stored = localStorage.getItem(`zone_visible_${zone}`)
         chk.checked = stored === 'true'
-        chk.addEventListener('change', () => {
+        // Empêche le clic checkbox de déclencher le bouton parent
+        chk.addEventListener('click', (e) => e.stopPropagation())
+        chk.addEventListener('change', (e) => {
+          e.stopPropagation()
           const visible = chk.checked
           localStorage.setItem(`zone_visible_${zone}`, String(visible))
           const setVis = (window as any).__setZoneVisibility as ((code: string, v: boolean) => void) | undefined
           if (setVis) setVis(zone, visible)
-          // Redéclencher le re-style de la grille
           const refresh = (window as any).__refreshGridStyle as (() => void) | undefined
           if (refresh) refresh()
         })
