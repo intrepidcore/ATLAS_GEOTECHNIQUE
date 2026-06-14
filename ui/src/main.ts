@@ -69,7 +69,8 @@ import { router } from './router'
 import { SondagesManagerPage } from './pages/sondages-manager-page'
 import {
   getGridFeatureStyle,
-  setLamaMailleMetadata,
+  setZoneMailleMetadata,
+  setZoneVisibility,
   COLORS,
   WEIGHT,
   OPACITY,
@@ -581,18 +582,37 @@ async function ensurePublishedZonesVisible(): Promise<void> {
   }
 }
 
-async function loadLamaMailleCodes(): Promise<void> {
-  try {
-    const mailles = await fetchWithBearerJSON<Array<{ maille_code: string; pct_intersection?: number; priorite_recherche?: number }>>(
-      `${API_GEO}/zones-etude/DEPRESSION_LAMA_TG/mailles?limit=5000`
-    )
-    setLamaMailleMetadata(mailles || [])
-    if (gridLayer) {
-      gridLayer.setStyle((feature: any) => styleFeature(feature))
+const ALL_ZONE_CODES = [
+  'DEPRESSION_LAMA_TG',
+  'DEPRESSION_BADO_TG',
+  'PLAINE_MONO_TG',
+  'PLAINE_OTI_TG',
+  'FOSSE_LIONS_TG',
+] as const
+
+async function loadAllZoneMailleCodes(): Promise<void> {
+  const promises = ALL_ZONE_CODES.map(async (code) => {
+    try {
+      const mailles = await fetchWithBearerJSON<Array<{ maille_code: string; pct_intersection?: number; priorite_recherche?: number }>>(
+        `${API_GEO}/zones-etude/${code}/mailles?limit=5000`
+      )
+      setZoneMailleMetadata(code, mailles || [])
+      // Restaurer visibilité depuis localStorage
+      const stored = localStorage.getItem(`zone_visible_${code}`)
+      if (stored !== null) setZoneVisibility(code, stored === 'true')
+    } catch (e) {
+      console.warn(`[ZonesEtude] ${code} mailles unavailable:`, e)
     }
-  } catch (e) {
-    console.warn('[ZonesEtude] Lama mailles unavailable:', e)
+  })
+  await Promise.all(promises)
+  if (gridLayer) {
+    gridLayer.setStyle((feature: any) => styleFeature(feature))
   }
+}
+
+/** @deprecated use loadAllZoneMailleCodes */
+async function loadLamaMailleCodes(): Promise<void> {
+  return loadAllZoneMailleCodes()
 }
 
 function clearZoneEtudeOnMap() {
@@ -788,6 +808,14 @@ function highlightZoneMaille(mailleCode: string) {
   openZoneEtudeModal({ zoneCode })
 }
 
+// Exposé pour ThematicPanel checkboxes de visibilité zone
+;(window as any).__setZoneVisibility = (code: string, visible: boolean) => {
+  setZoneVisibility(code, visible)
+}
+;(window as any).__refreshGridStyle = () => {
+  if (gridLayer) gridLayer.setStyle((feature: any) => styleFeature(feature))
+}
+
 // Initialiser les tuiles avec gestion online/offline automatique
 // 1) D'abord configurer le tileserver (async), puis initialiser les layers
 initOfflineTiles().then(() => {
@@ -812,8 +840,8 @@ initOfflineTiles().then(() => {
     },
   }).addTo(map)
 
-  // Fond orange Lama + contours de mailles (dégradés par % intersection).
-  loadLamaMailleCodes()
+  // Contours de mailles dégradés par zone (5 zones, % intersection).
+  loadAllZoneMailleCodes()
   if (ENABLE_LAMA_ORANGE_BACKGROUND_BAND) {
     ensureLamaBandVisible().catch(() => {
       // best-effort

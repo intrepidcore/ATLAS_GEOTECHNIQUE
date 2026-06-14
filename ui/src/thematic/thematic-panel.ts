@@ -639,21 +639,51 @@ export class ThematicPanel {
           Ouvrir le panneau d'analyse par zone. Les mailles concernées sont colorées sur la grille (légende ci‑dessous).
         </p>
         <div class="zone-etude-btn-grid">
-          <button type="button" id="openZoneEtudeLamaBtn" class="btn-secondary zone-etude-btn" title="Dépression de la Lama — data gap RGA">
-            <span class="zone-dot zone-dot--lama" aria-hidden="true"></span><span>Lama</span>
-          </button>
-          <button type="button" id="openZoneEtudeBadoBtn" class="btn-secondary zone-etude-btn" title="Dépression du Bado — data gap">
-            <span class="zone-dot zone-dot--bado" aria-hidden="true"></span><span>Bado</span>
-          </button>
-          <button type="button" id="openZoneEtudeMonoBtn" class="btn-secondary zone-etude-btn" title="Plaine du Mono — data gap">
-            <span class="zone-dot zone-dot--mono" aria-hidden="true"></span><span>Mono</span>
-          </button>
-          <button type="button" id="openZoneEtudeOtiBtn" class="btn-secondary zone-etude-btn" title="Plaine de l'Oti — data gap">
-            <span class="zone-dot zone-dot--oti" aria-hidden="true"></span><span>Oti</span>
-          </button>
-          <button type="button" id="openZoneEtudeFosseBtn" class="btn-secondary zone-etude-btn zone-etude-btn--wide" title="Fosse aux Lions — data gap">
-            <span class="zone-dot zone-dot--fosse" aria-hidden="true"></span><span>Fosse aux Lions</span>
-          </button>
+          <div class="zone-etude-row">
+            <button type="button" id="openZoneEtudeLamaBtn" class="btn-secondary zone-etude-btn" title="Dépression de la Lama — data gap RGA">
+              <span class="zone-dot zone-dot--lama" aria-hidden="true"></span><span>Lama</span>
+            </button>
+            <label class="zone-vis-toggle" title="Afficher symbologie Lama sur la carte">
+              <input type="checkbox" id="zoneVisLama" data-zone="DEPRESSION_LAMA_TG" class="zone-vis-chk" aria-label="Afficher symbologie Lama">
+              <span class="zone-vis-label">Carte</span>
+            </label>
+          </div>
+          <div class="zone-etude-row">
+            <button type="button" id="openZoneEtudeBadoBtn" class="btn-secondary zone-etude-btn" title="Dépression du Bado — data gap">
+              <span class="zone-dot zone-dot--bado" aria-hidden="true"></span><span>Bado</span>
+            </button>
+            <label class="zone-vis-toggle" title="Afficher symbologie Bado sur la carte">
+              <input type="checkbox" id="zoneVisBado" data-zone="DEPRESSION_BADO_TG" class="zone-vis-chk" aria-label="Afficher symbologie Bado">
+              <span class="zone-vis-label">Carte</span>
+            </label>
+          </div>
+          <div class="zone-etude-row">
+            <button type="button" id="openZoneEtudeMonoBtn" class="btn-secondary zone-etude-btn" title="Plaine du Mono — data gap">
+              <span class="zone-dot zone-dot--mono" aria-hidden="true"></span><span>Mono</span>
+            </button>
+            <label class="zone-vis-toggle" title="Afficher symbologie Mono sur la carte">
+              <input type="checkbox" id="zoneVisMono" data-zone="PLAINE_MONO_TG" class="zone-vis-chk" aria-label="Afficher symbologie Mono">
+              <span class="zone-vis-label">Carte</span>
+            </label>
+          </div>
+          <div class="zone-etude-row">
+            <button type="button" id="openZoneEtudeOtiBtn" class="btn-secondary zone-etude-btn" title="Plaine de l'Oti — data gap">
+              <span class="zone-dot zone-dot--oti" aria-hidden="true"></span><span>Oti</span>
+            </button>
+            <label class="zone-vis-toggle" title="Afficher symbologie Oti sur la carte">
+              <input type="checkbox" id="zoneVisOti" data-zone="PLAINE_OTI_TG" class="zone-vis-chk" aria-label="Afficher symbologie Oti">
+              <span class="zone-vis-label">Carte</span>
+            </label>
+          </div>
+          <div class="zone-etude-row zone-etude-row--wide">
+            <button type="button" id="openZoneEtudeFosseBtn" class="btn-secondary zone-etude-btn zone-etude-btn--wide" title="Fosse aux Lions — data gap">
+              <span class="zone-dot zone-dot--fosse" aria-hidden="true"></span><span>Fosse aux Lions</span>
+            </button>
+            <label class="zone-vis-toggle" title="Afficher symbologie Fosse aux Lions sur la carte">
+              <input type="checkbox" id="zoneVisFosse" data-zone="FOSSE_LIONS_TG" class="zone-vis-chk" aria-label="Afficher symbologie Fosse aux Lions">
+              <span class="zone-vis-label">Carte</span>
+            </label>
+          </div>
         </div>
         <div class="thematic-actions">
           <button id="refreshAiSourcesBtn" class="btn-secondary full-width" title="Recalcule infer / interpolation / fondation">
@@ -1658,6 +1688,26 @@ export class ThematicPanel {
     bindZoneBtn('openZoneEtudeMonoBtn', 'PLAINE_MONO_TG')
     bindZoneBtn('openZoneEtudeOtiBtn', 'PLAINE_OTI_TG')
     bindZoneBtn('openZoneEtudeFosseBtn', 'FOSSE_LIONS_TG')
+
+    // Checkboxes visibilité zone (localStorage + setZoneVisibility)
+    const initZoneVisCheckboxes = () => {
+      document.querySelectorAll<HTMLInputElement>('.zone-vis-chk').forEach((chk) => {
+        const zone = chk.dataset.zone || ''
+        if (!zone) return
+        const stored = localStorage.getItem(`zone_visible_${zone}`)
+        chk.checked = stored === 'true'
+        chk.addEventListener('change', () => {
+          const visible = chk.checked
+          localStorage.setItem(`zone_visible_${zone}`, String(visible))
+          const setVis = (window as any).__setZoneVisibility as ((code: string, v: boolean) => void) | undefined
+          if (setVis) setVis(zone, visible)
+          // Redéclencher le re-style de la grille
+          const refresh = (window as any).__refreshGridStyle as (() => void) | undefined
+          if (refresh) refresh()
+        })
+      })
+    }
+    initZoneVisCheckboxes()
 
     const refreshAiBtn = document.getElementById('refreshAiSourcesBtn')
     if (refreshAiBtn) {

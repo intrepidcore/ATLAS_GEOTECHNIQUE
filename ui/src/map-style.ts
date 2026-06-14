@@ -302,7 +302,7 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
     props.code_28km_lisible ||
     props.grid_code ||
     null;
-  const isLamaMaille = !!cellCode && lamaMailleCodes.has(String(cellCode));
+  const dominantZone = cellCode ? getDominantZone(String(cellCode)) : null;
   
   // Calcul du poids dynamique selon le zoom
   const baseWeight = hasData ? WEIGHT.GRID_WITH_DATA : WEIGHT.GRID_NO_DATA;
@@ -362,24 +362,14 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
   // Les zones d'étude (Lama, Bado, …) sont rendues comme polygones sous la grille (main.ts) ;
   // ici on ne mélange plus la teinte « zone » au remplissage pour garder la légende statut données lisible.
 
-  // Accent Lama harmonisé: bordure graduée par % intersection,
-  // sans toucher au remplissage (pour conserver la légende des catégories).
-  if (isLamaMaille) {
-    const meta = cellCode ? lamaMailleMetaByCode.get(String(cellCode)) : undefined;
-    const pct = Number(meta?.pct_intersection ?? 0);
-    const t = clamp01(pct / 100);
-    const lerp = (a: number, b: number) => Math.round(a + (b - a) * t);
-    const stroke = rgbToHex(
-      lerp(LAMA_STROKE_FROM_RGB.r, LAMA_STROKE_TO_RGB.r),
-      lerp(LAMA_STROKE_FROM_RGB.g, LAMA_STROKE_TO_RGB.g),
-      lerp(LAMA_STROKE_FROM_RGB.b, LAMA_STROKE_TO_RGB.b),
-    );
-    strokeColor = stroke;
-    // Garder l'épaisseur identique aux autres mailles (grid-with-data / no-data),
-    // pour éviter que les contours Lama paraissent trop "épais".
-    strokeWeight = weight;
-    // Légèrement translucide pour éviter un rendu "trop sombre" quand la grille est dense.
-    strokeOpacity = 0.75;
+  // Zone d'étude : bordure dégradée par pct_intersection, sans toucher au fill.
+  if (dominantZone) {
+    const colors = ZONE_PASTEL_COLORS[dominantZone.zoneCode]
+    if (colors) {
+      strokeColor = interpolateZoneStroke(colors.from, colors.to, dominantZone.pct)
+      strokeWeight = weight
+      strokeOpacity = 0.85
+    }
   }
 
   const campRank = cellCode ? campaignPriorityByCode.get(String(cellCode)) : undefined;
