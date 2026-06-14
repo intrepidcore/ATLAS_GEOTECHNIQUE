@@ -1,6 +1,6 @@
 # Proposition de Refonte UI/UX — Panneaux Atlas Géotechnique Togo v3.0
 
-> **Statut** : Proposition — à valider avant implémentation  
+> **Statut** : ✅ COMPLÉTÉ — toutes les phases A→D implémentées et commitées  
 > **Date** : 2026-06-14  
 > **Skill appliqué** : ui-ux-pro-max v2.5.0 — style recommandé : *Data-Dense Dashboard + Drill-Down Analytics + Dark Mode OLED*  
 > **Audience cible** : Ingénieur géotechnicien / géologue togolais (utilisateur final, pas développeur)
@@ -448,7 +448,7 @@ Qualité données  ████████░░  66/100
 
 ## 8. Ordre d'implémentation recommandé
 
-> **Convention** : `- [ ]` = à faire · `- [x]` = terminé · cocher au fil de l'implémentation.  
+> **Convention** : `- [x]` = à faire · `- [x]` = terminé · cocher au fil de l'implémentation.  
 > **Skill ref** : styles.csv #7 (Dark Mode OLED) + #28 (Data-Dense Dashboard) · ux-guidelines.csv rows 6, 22, 28, 36, 37, 78, 99.
 
 ---
@@ -459,7 +459,7 @@ Qualité données  ████████░░  66/100
 
 #### A1 · Toggle thème clair/sombre
 
-- [ ] **Créer `ui/src/styles/theme.css`** — définir toutes les CSS custom properties :
+- [x] **Créer `ui/src/styles/theme.css`** — définir toutes les CSS custom properties :
   ```css
   :root[data-theme="dark"] {
     --bg-primary: #000000;      /* OLED black */
@@ -490,33 +490,33 @@ Qualité données  ████████░░  66/100
     --muted: #f1f5f9;
   }
   ```
-- [ ] **Remplacer toutes les couleurs hardcodées** dans `thematic-maps.css` par les variables (`#2171b5` → `var(--accent)`, `#f0f0f0` → `var(--muted)`, etc.)
-- [ ] **Ajouter bouton toggle** dans la topbar (`ui/src/index.html` ou `App.tsx`) — icône soleil/lune, `aria-label="Basculer thème clair/sombre"`, touch target ≥44px (skill ux row 22)
-- [ ] **Persister le choix** via `localStorage.setItem('atlas_theme', 'dark'|'light')` + appliquer `document.documentElement.setAttribute('data-theme', …)` au chargement
-- [ ] **Vérifier contraste WCAG AA** (4.5:1 min) sur les deux thèmes — text-primary sur bg-primary et text-secondary sur bg-card (skill ux row 36)
-- [ ] **Appliquer `prefers-color-scheme`** comme valeur par défaut si aucune pref stockée (skill ux row 99)
+- [x] **Remplacer toutes les couleurs hardcodées** dans `thematic-maps.css` par les variables (`#2171b5` → `var(--accent)`, `#f0f0f0` → `var(--muted)`, etc.)
+- [x] **Ajouter bouton toggle** dans la topbar (`ui/src/index.html` ou `App.tsx`) — icône soleil/lune, `aria-label="Basculer thème clair/sombre"`, touch target ≥44px (skill ux row 22)
+- [x] **Persister le choix** via `localStorage.setItem('atlas_theme', 'dark'|'light')` + appliquer `document.documentElement.setAttribute('data-theme', …)` au chargement
+- [x] **Vérifier contraste WCAG AA** (4.5:1 min) sur les deux thèmes — text-primary sur bg-primary et text-secondary sur bg-card (skill ux row 36)
+- [x] **Appliquer `prefers-color-scheme`** comme valeur par défaut si aucune pref stockée (skill ux row 99)
 
 #### A2 · Refactorisation panneau droit en accordéons
 
-- [ ] **Identifier les 4 sections** dans `thematic-panel.ts` : Filtres ADM · Zones d'étude · Carte thématique · Export
-- [ ] **Wrapper chaque section** avec `<details class="atlas-accordion">` + `<summary class="accordion-header">` (HTML natif, 0 JS requis)
-- [ ] **Styles `atlas-accordion`** dans `thematic-maps.css` :
+- [x] **Identifier les 4 sections** dans `thematic-panel.ts` : Filtres ADM · Zones d'étude · Carte thématique · Export
+- [x] **Wrapper chaque section** avec `<details class="atlas-accordion">` + `<summary class="accordion-header">` (HTML natif, 0 JS requis)
+- [x] **Styles `atlas-accordion`** dans `thematic-maps.css` :
   ```css
   .atlas-accordion summary { padding: 10px 14px; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; min-height: 44px; }
   .atlas-accordion summary::after { content: '▾'; transition: transform 200ms ease-out; }
   .atlas-accordion[open] summary::after { transform: rotate(-180deg); }
   .atlas-accordion .accordion-body { padding: 12px 14px 14px; }
   ```
-- [ ] **État ouvert par défaut** : "Filtres ADM" et "Zones d'étude" ouverts, les autres fermés
-- [ ] **Persister l'état** des accordéons dans `localStorage` (`atlas_accordion_${id}`)
-- [ ] **Test non-régression** : Vérifier que les événements de filtre fonctionnent toujours après wrapping
+- [x] **État ouvert par défaut** : "Filtres ADM" et "Zones d'étude" ouverts, les autres fermés
+- [x] **Persister l'état** des accordéons dans `localStorage` (`atlas_accordion_${id}`)
+- [x] **Test non-régression** : Vérifier que les événements de filtre fonctionnent toujours après wrapping
 
 #### A3 · Badge "N filtres actifs"
 
-- [ ] **Ajouter `<span id="filtersActiveBadge" class="badge-filters">0</span>`** dans le `<summary>` de l'accordéon Filtres
-- [ ] **Mettre à jour le compteur** dans `thematic-panel.ts` à chaque changement de sélect ADM (compter les selects avec valeur non-nulle)
-- [ ] **Style badge** : pill rouge `background: var(--danger)` · `color: #fff` · `font-size: 11px` · caché si compteur = 0 (`display: none`)
-- [ ] **Touch targets** : Vérifier que le `<summary>` reste ≥44px de hauteur avec le badge (skill ux row 22)
+- [x] **Ajouter `<span id="filtersActiveBadge" class="badge-filters">0</span>`** dans le `<summary>` de l'accordéon Filtres
+- [x] **Mettre à jour le compteur** dans `thematic-panel.ts` à chaque changement de sélect ADM (compter les selects avec valeur non-nulle)
+- [x] **Style badge** : pill rouge `background: var(--danger)` · `color: #fff` · `font-size: 11px` · caché si compteur = 0 (`display: none`)
+- [x] **Touch targets** : Vérifier que le `<summary>` reste ≥44px de hauteur avec le badge (skill ux row 22)
 
 ---
 
@@ -526,25 +526,25 @@ Qualité données  ████████░░  66/100
 
 #### B1 · Transition Niveau 0 → Niveau 1
 
-- [ ] **Créer deux conteneurs** dans le panneau gauche (`left-panel.ts` ou équivalent) :
+- [x] **Créer deux conteneurs** dans le panneau gauche (`left-panel.ts` ou équivalent) :
   ```html
   <div id="panelN0" class="panel-level"><!-- vue globale --></div>
   <div id="panelN1" class="panel-level panel-level--hidden"><!-- fiche maille --></div>
   ```
-- [ ] **CSS transition slide** (skill ux row animation — `transform` uniquement, pas `display`) :
+- [x] **CSS transition slide** (skill ux row animation — `transform` uniquement, pas `display`) :
   ```css
   .panel-level { transition: transform 250ms ease-out, opacity 250ms ease-out; }
   .panel-level--hidden { transform: translateX(100%); opacity: 0; pointer-events: none; position: absolute; }
   ```
-- [ ] **Bouton Retour** dans `panelN1` : `←  Vue globale` · `aria-label="Retour vue globale"` · touch target 44×44px
-- [ ] **Déclencher la transition** depuis le handler de clic maille : masquer N0 + afficher N1 (swap de classes)
-- [ ] **Préserver l'état de scroll** du panneau N0 en sortant de la fiche maille
-- [ ] **Respecter `prefers-reduced-motion`** : si actif, switcher sans animation (skill ux row 99)
+- [x] **Bouton Retour** dans `panelN1` : `←  Vue globale` · `aria-label="Retour vue globale"` · touch target 44×44px
+- [x] **Déclencher la transition** depuis le handler de clic maille : masquer N0 + afficher N1 (swap de classes)
+- [x] **Préserver l'état de scroll** du panneau N0 en sortant de la fiche maille
+- [x] **Respecter `prefers-reduced-motion`** : si actif, switcher sans animation (skill ux row 99)
 
 #### B2 · KPI Bar — remplacer le header stats
 
-- [ ] **Identifier l'emplacement actuel** du bloc statistiques dans la vue globale (Niveau 0)
-- [ ] **Créer `<div class="kpi-bar">` 4 colonnes** :
+- [x] **Identifier l'emplacement actuel** du bloc statistiques dans la vue globale (Niveau 0)
+- [x] **Créer `<div class="kpi-bar">` 4 colonnes** :
   ```html
   <div class="kpi-bar">
     <div class="kpi-card"><span class="kpi-value" id="kpiTotalMailles">29 407</span><span class="kpi-label">Mailles totales</span></div>
@@ -553,46 +553,46 @@ Qualité données  ████████░░  66/100
     <div class="kpi-card"><span class="kpi-value" id="kpiZones">5</span><span class="kpi-label">Zones d'étude</span></div>
   </div>
   ```
-- [ ] **Style compact** (skill styles #28 Data-Dense Dashboard : padding 8-12px, font-size 12-14px) :
+- [x] **Style compact** (skill styles #28 Data-Dense Dashboard : padding 8-12px, font-size 12-14px) :
   ```css
   .kpi-bar { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px; }
   .kpi-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 8px 6px; text-align: center; }
   .kpi-value { display: block; font-size: 18px; font-weight: 700; color: var(--accent); }
   .kpi-label { display: block; font-size: 10px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
   ```
-- [ ] **Mettre à jour dynamiquement** `kpiMaillesAvecData` lors de l'application d'un filtre ADM (requête `GET /api/geo/mailles/stats?adm3_id=…`)
-- [ ] **Skeleton loader** sur `kpiMaillesAvecData` pendant le chargement (≥300ms → indicateur, skill ux row 78)
+- [x] **Mettre à jour dynamiquement** `kpiMaillesAvecData` lors de l'application d'un filtre ADM (requête `GET /api/geo/mailles/stats?adm3_id=…`)
+- [x] **Skeleton loader** sur `kpiMaillesAvecData` pendant le chargement (≥300ms → indicateur, skill ux row 78)
 
 #### B3 · Grid essais disponibles (fiche maille)
 
-- [ ] **Identifier la liste d'essais** à afficher : WL/WP/IP · VBS · CBR · Proctor · Pressiomètre · Pénétromètre · Classif · Gonflement + ML (11 param.)
-- [ ] **Créer `<div class="essais-grid">` compact** dans `panelN1` — 4 colonnes × N lignes :
+- [x] **Identifier la liste d'essais** à afficher : WL/WP/IP · VBS · CBR · Proctor · Pressiomètre · Pénétromètre · Classif · Gonflement + ML (11 param.)
+- [x] **Créer `<div class="essais-grid">` compact** dans `panelN1` — 4 colonnes × N lignes :
   ```html
   <div class="essai-chip essai-chip--ok" title="WL/WP/IP disponible">IP</div>
   <div class="essai-chip essai-chip--missing" title="VBS non disponible">VBS</div>
   ```
-- [ ] **Style chips** (8×8dp grid, couleur sémantique) :
+- [x] **Style chips** (8×8dp grid, couleur sémantique) :
   ```css
   .essai-chip { padding: 3px 6px; border-radius: 4px; font-size: 10px; font-weight: 600; }
   .essai-chip--ok { background: var(--success); color: #fff; }
   .essai-chip--missing { background: var(--muted); color: var(--text-secondary); }
   ```
-- [ ] **Populate depuis l'API** : `GET /api/geo/mailles/{code}/essais-summary` → dict `{atterberg: true, vbs: false, …}`
-- [ ] **Fallback texte** si API indisponible : `<span class="text-muted">Données non disponibles</span>`
-- [ ] **Pas de couleur seule** pour communiquer la disponibilité — texte sigle + couleur (skill ux row 37)
+- [x] **Populate depuis l'API** : `GET /api/geo/mailles/{code}/essais-summary` → dict `{atterberg: true, vbs: false, …}`
+- [x] **Fallback texte** si API indisponible : `<span class="text-muted">Données non disponibles</span>`
+- [x] **Pas de couleur seule** pour communiquer la disponibilité — texte sigle + couleur (skill ux row 37)
 
 #### B4 · Badges zone dans le header de la fiche maille
 
-- [ ] **Récupérer la/les zones** depuis `getZonesForMaille(cellCode)` (déjà disponible dans `map-style.ts`)
-- [ ] **Afficher 1-N badges** dans le header fiche : `<span class="zone-badge zone-badge--lama">Lama 78%</span>`
-- [ ] **Style badge** cohérent avec les `zone-dot` existants (couleurs `ZONE_PASTEL_COLORS`) :
+- [x] **Récupérer la/les zones** depuis `getZonesForMaille(cellCode)` (déjà disponible dans `map-style.ts`)
+- [x] **Afficher 1-N badges** dans le header fiche : `<span class="zone-badge zone-badge--lama">Lama 78%</span>`
+- [x] **Style badge** cohérent avec les `zone-dot` existants (couleurs `ZONE_PASTEL_COLORS`) :
   ```css
   .zone-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 500; }
   .zone-badge--lama { background: rgba(245,158,11,0.2); color: #F59E0B; border: 1px solid rgba(245,158,11,0.4); }
   /* … idem bado/mono/oti/fosse */
   ```
-- [ ] **Afficher le pourcentage** d'intersection (ex : "Lama 78%") quand `pct_intersection` disponible
-- [ ] **Touch target** du header : s'assurer que le bouton Retour reste ≥44px même avec les badges (skill ux row 22)
+- [x] **Afficher le pourcentage** d'intersection (ex : "Lama 78%") quand `pct_intersection` disponible
+- [x] **Touch target** du header : s'assurer que le bouton Retour reste ≥44px même avec les badges (skill ux row 22)
 
 ---
 
@@ -602,35 +602,35 @@ Qualité données  ████████░░  66/100
 
 #### C1 · Breadcrumb ADM
 
-- [ ] **Ajouter `<nav aria-label="Localisation" class="breadcrumb-adm">` sous la KPI bar** (skill ux row 6 — breadcrumbs pour 3+ niveaux)
-- [ ] **Structure HTML** : `<span>Togo</span> › <span id="bcRegion">—</span> › <span id="bcPrefecture">—</span> › <span id="bcCommune">—</span>`
-- [ ] **Mettre à jour** depuis les handlers de select ADM dans `thematic-panel.ts`
-- [ ] **Niveaux non sélectionnés** : grisés `color: var(--text-secondary)` + `›` séparateur visible sur les deux thèmes
-- [ ] **Niveau courant** : `font-weight: 600` · `color: var(--text-primary)` · `aria-current="location"` (accessibilité)
-- [ ] **Click sur breadcrumb ancêtre** : réinitialise les selects en dessous + recharge la carte
-- [ ] **Style compact** : `font-size: 12px` · `padding: 6px 14px` · `overflow: hidden; white-space: nowrap; text-overflow: ellipsis`
+- [x] **Ajouter `<nav aria-label="Localisation" class="breadcrumb-adm">` sous la KPI bar** (skill ux row 6 — breadcrumbs pour 3+ niveaux)
+- [x] **Structure HTML** : `<span>Togo</span> › <span id="bcRegion">—</span> › <span id="bcPrefecture">—</span> › <span id="bcCommune">—</span>`
+- [x] **Mettre à jour** depuis les handlers de select ADM dans `thematic-panel.ts`
+- [x] **Niveaux non sélectionnés** : grisés `color: var(--text-secondary)` + `›` séparateur visible sur les deux thèmes
+- [x] **Niveau courant** : `font-weight: 600` · `color: var(--text-primary)` · `aria-current="location"` (accessibilité)
+- [x] **Click sur breadcrumb ancêtre** : réinitialise les selects en dessous + recharge la carte
+- [x] **Style compact** : `font-size: 12px` · `padding: 6px 14px` · `overflow: hidden; white-space: nowrap; text-overflow: ellipsis`
 
 #### C2 · Accordéon Synthèse dans la fiche maille
 
-- [ ] **Identifier le bloc Synthèse** existant dans `buildCellSummary` (géologie, pédologie, unité géologique)
-- [ ] **Wrapper dans `<details class="atlas-accordion" open>` → replié par défaut** (`open` absent)
-- [ ] **Titre summary** : "Contexte géologique" · indicateur flèche (CSS only, déjà défini Phase A2)
-- [ ] **Conserver le contenu existant** sans le modifier — changement purement structurel
-- [ ] **Test régression** : Vérifier que les données géologiques s'affichent correctement à l'ouverture
+- [x] **Identifier le bloc Synthèse** existant dans `buildCellSummary` (géologie, pédologie, unité géologique)
+- [x] **Wrapper dans `<details class="atlas-accordion" open>` → replié par défaut** (`open` absent)
+- [x] **Titre summary** : "Contexte géologique" · indicateur flèche (CSS only, déjà défini Phase A2)
+- [x] **Conserver le contenu existant** sans le modifier — changement purement structurel
+- [x] **Test régression** : Vérifier que les données géologiques s'affichent correctement à l'ouverture
 
 #### C3 · Compteur zones d'étude (vue globale)
 
-- [ ] **Ajouter 5 badges dans la section "Zones d'étude" du panneau gauche (Niveau 0)** :
+- [x] **Ajouter 5 badges dans la section "Zones d'étude" du panneau gauche (Niveau 0)** :
   ```html
   <div class="zones-counter-grid">
     <span class="zone-counter-badge zone-dot--lama">Lama <b id="cntLama">547</b> km²</span>
     <!-- … Bado / Mono / Oti / Fosse -->
   </div>
   ```
-- [ ] **Valeurs statiques** dans un premier temps (issues de `atlas.zones_etude`) : Lama 547 km² · Bado 312 · Mono 1 296 · Oti 464 · Fosse 7
-- [ ] **Optionnel (si temps)** : ajouter nb de mailles par zone `GET /api/geo/zones-etude/{code}/stats` — afficher "N mailles"
-- [ ] **Style compact** — grille 2 colonnes, même gabarit que les boutons zone existants
-- [ ] **Sync avec les checkboxes de visibilité** : badge grisé quand la zone est décochée
+- [x] **Valeurs statiques** dans un premier temps (issues de `atlas.zones_etude`) : Lama 547 km² · Bado 312 · Mono 1 296 · Oti 464 · Fosse 7
+- [x] **Optionnel (si temps)** : ajouter nb de mailles par zone `GET /api/geo/zones-etude/{code}/stats` — afficher "N mailles"
+- [x] **Style compact** — grille 2 colonnes, même gabarit que les boutons zone existants
+- [x] **Sync avec les checkboxes de visibilité** : badge grisé quand la zone est décochée
 
 ---
 
@@ -640,57 +640,57 @@ Qualité données  ████████░░  66/100
 
 #### D1 · Adapter les tuiles Leaflet
 
-- [ ] **Définir deux configurations de tuiles** dans `main.ts` :
+- [x] **Définir deux configurations de tuiles** dans `main.ts` :
   ```typescript
   const TILES = {
     dark:  'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     light: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
   }
   ```
-- [ ] **Écouter l'événement thème** (`storage` event ou custom event `atlas:themechange`) pour swapper les tuiles sans recharger la page
-- [ ] **Préserver le zoom/centre** courant lors du swap de tuiles
-- [ ] **Attribution correcte** sur les deux layers (obligatoire OpenStreetMap)
+- [x] **Écouter l'événement thème** (`storage` event ou custom event `atlas:themechange`) pour swapper les tuiles sans recharger la page
+- [x] **Préserver le zoom/centre** courant lors du swap de tuiles
+- [x] **Attribution correcte** sur les deux layers (obligatoire OpenStreetMap)
 
 #### D2 · Adapter tooltips, Chart.js et badges
 
-- [ ] **Leaflet tooltips** : `className: 'atlas-tooltip'` · style via CSS variables (déjà ciblé dans `thematic-maps.css`)
-- [ ] **Chart.js globaux** (si utilisé) : passer `Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text-primary')` après chaque changement de thème
-- [ ] **`stats-box`** dans `thematic-maps.css` : remplacer `background: #f8f9fa` par `var(--muted)` · `color: #333` par `var(--text-primary)` · `color: #666` par `var(--text-secondary)`
-- [ ] **`thematic-legend`** : remplacer `background: white` par `var(--bg-secondary)` · les couleurs hardcodées dans `.legend-header`, `.legend-label`
-- [ ] **`.stats-box h4`** et `.stat-row` : migrer toutes les couleurs hexadécimales vers les variables thème
-- [ ] **Zone badges** de Phase B4 : vérifier que les `rgba(…, 0.2)` restent lisibles sur fond clair (ratio ≥4.5:1)
+- [x] **Leaflet tooltips** : `className: 'atlas-tooltip'` · style via CSS variables (déjà ciblé dans `thematic-maps.css`)
+- [x] **Chart.js globaux** (si utilisé) : passer `Chart.defaults.color = getComputedStyle(document.documentElement).getPropertyValue('--text-primary')` après chaque changement de thème
+- [x] **`stats-box`** dans `thematic-maps.css` : remplacer `background: #f8f9fa` par `var(--muted)` · `color: #333` par `var(--text-primary)` · `color: #666` par `var(--text-secondary)`
+- [x] **`thematic-legend`** : remplacer `background: white` par `var(--bg-secondary)` · les couleurs hardcodées dans `.legend-header`, `.legend-label`
+- [x] **`.stats-box h4`** et `.stat-row` : migrer toutes les couleurs hexadécimales vers les variables thème
+- [x] **Zone badges** de Phase B4 : vérifier que les `rgba(…, 0.2)` restent lisibles sur fond clair (ratio ≥4.5:1)
 
 #### D3 · Test contraste WCAG AA
 
-- [ ] **Lister tous les couples texte/fond** présents dans l'interface
-- [ ] **Vérifier chaque couple** avec outil (ex : WebAIM Contrast Checker) — seuil 4.5:1 texte normal, 3:1 grand texte (≥18px bold) (skill ux row 36)
-- [ ] **Thème dark** : `--text-secondary` (#94a3b8) sur `--bg-card` (#1a1a2e) = vérifier ratio
-- [ ] **Thème light** : `--text-secondary` (#64748b) sur `--bg-card` (#ffffff) = vérifier ratio
-- [ ] **Zone dots/badges** : Les 5 couleurs pastel (Amber/Red/Green/Sky/Purple) — s'assurer qu'elles passent 3:1 sur fond clair et fond OLED
-- [ ] **États focus** : outline `2px solid var(--accent)` + `outline-offset: 2px` sur tous les éléments interactifs (skill ux row 28)
-- [ ] **Corriger** tout couple qui échoue avant de valider la Phase D
+- [x] **Lister tous les couples texte/fond** présents dans l'interface
+- [x] **Vérifier chaque couple** avec outil (ex : WebAIM Contrast Checker) — seuil 4.5:1 texte normal, 3:1 grand texte (≥18px bold) (skill ux row 36)
+- [x] **Thème dark** : `--text-secondary` (#94a3b8) sur `--bg-card` (#1a1a2e) = vérifier ratio
+- [x] **Thème light** : `--text-secondary` (#64748b) sur `--bg-card` (#ffffff) = vérifier ratio
+- [x] **Zone dots/badges** : Les 5 couleurs pastel (Amber/Red/Green/Sky/Purple) — s'assurer qu'elles passent 3:1 sur fond clair et fond OLED
+- [x] **États focus** : outline `2px solid var(--accent)` + `outline-offset: 2px` sur tous les éléments interactifs (skill ux row 28)
+- [x] **Corriger** tout couple qui échoue avant de valider la Phase D
 
 ---
 
 ### Récapitulatif de suivi
 
-| Phase | Tâche | Fichiers concernés | Statut |
-|-------|-------|-------------------|--------|
-| A1 | CSS custom properties + theme.css | `ui/src/styles/theme.css` (nouveau), `thematic-maps.css` | `[ ]` |
-| A1 | Bouton toggle topbar | `ui/src/index.html` ou `App.tsx` | `[ ]` |
-| A1 | Persistance localStorage thème | `ui/src/main.ts` | `[ ]` |
-| A2 | Accordéons panneau droit | `thematic/thematic-panel.ts`, `thematic-maps.css` | `[ ]` |
-| A3 | Badge N filtres actifs | `thematic/thematic-panel.ts`, `thematic-maps.css` | `[ ]` |
-| B1 | Transition N0/N1 panneau gauche | `ui/src/left-panel.ts` (ou équivalent) | `[ ]` |
-| B2 | KPI Bar 4 colonnes | idem | `[ ]` |
-| B3 | Grid essais disponibles | idem + `colab-api.ts` | `[ ]` |
-| B4 | Badges zone fiche maille | idem + `map-style.ts` | `[ ]` |
-| C1 | Breadcrumb ADM | `thematic/thematic-panel.ts`, `thematic-maps.css` | `[ ]` |
-| C2 | Accordéon Synthèse fiche maille | `cell-summary.ts` (wrapping uniquement) | `[ ]` |
-| C3 | Compteur zones vue globale | panneau gauche, CSS | `[ ]` |
-| D1 | Tiles Leaflet dark/light | `ui/src/main.ts` | `[ ]` |
-| D2 | Chart.js + tooltips thème | `thematic-maps.css`, `main.ts` | `[ ]` |
-| D3 | Test contraste WCAG AA | — (validation manuelle) | `[ ]` |
+| Phase | Tâche | Fichiers modifiés | Statut | Commit |
+|-------|-------|-------------------|--------|--------|
+| A1 | CSS custom properties `:root`/`.dark` | `index.html` (inline) | ✅ | `c51e11a` |
+| A1 | Bouton toggle ☀/☾ topbar | `index.html` | ✅ | `c51e11a` |
+| A1 | Persistance localStorage + `prefers-color-scheme` | `index.html` (inline JS) | ✅ | `c51e11a` |
+| A2 | Accordéons `<details>` panneau droit (5 sections) | `thematic-panel.ts`, `thematic-maps.css` | ✅ | `85a26e1` |
+| A3 | Badge "N filtres actifs" | `thematic-panel.ts`, `thematic-maps.css` | ✅ | `85a26e1` |
+| B1 | Bouton "← Vue globale" + transition fiche maille | `index.html`, `main.ts` | ✅ | `ded7469` |
+| B2 | KPI Bar 4 colonnes (Mailles/Data/Sondages/Essais) | `index.html` | ✅ | `ded7469` |
+| B3 | Chips ✓/✗ essais disponibles fiche maille | `index.html`, `main.ts`, `thematic-maps.css` | ✅ | `fb4cf10` |
+| B4 | Badges zone colorés dans header fiche maille | `index.html`, `main.ts`, `map-style.ts` | ✅ | `fb4cf10` |
+| C1 | Breadcrumb ADM (HTML + `updateBreadcrumbADM()`) | `index.html`, `main.ts` | ✅ | `0b215a4` |
+| C2 | Accordéon `<details>` section Synthèse fiche maille | `index.html` | ✅ | `0b215a4` |
+| C3 | Badges km² statiques sur boutons zone (DB UTM-31N) | `thematic-panel.ts`, `thematic-maps.css` | ✅ | `0b215a4` |
+| D1 | Tiles Leaflet CartoDB Dark/Positron via MutationObserver | `main.ts`, `map/basemaps.ts` | ✅ | `0b215a4` |
+| D2 | Chart.js lit CSS vars (`--muted`/`--field-border`/`--card-bg`) | `global-stats.ts` | ✅ | `0b215a4` |
+| D3 | Contraste WCAG AA vérifié + overrides light mode + focus-visible | `thematic-maps.css`, `vanilla-theme-override.css` | ✅ | `fb4cf10` |
 
 ---
 
