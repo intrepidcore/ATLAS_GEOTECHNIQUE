@@ -368,8 +368,7 @@ export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions 
     const colors = ZONE_PASTEL_COLORS[dominantZone.zoneCode]
     if (colors) {
       strokeColor = interpolateZoneStroke(colors.from, colors.to, dominantZone.pct)
-      // Bordure plus épaisse et plein opaque pour compenser l'absence du fond polygone
-      strokeWeight = Math.max(weight * 1.8, 2.2)
+      strokeWeight = Math.max(weight + 0.4, 1.6)
       strokeOpacity = 1.0
       // Légère tinte zone sur fond transparent (mailles sans données uniquement)
       if (!hasData && !isColabHighlighted) {

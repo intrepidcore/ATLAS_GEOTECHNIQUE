@@ -515,48 +515,9 @@ async function ensureLamaBandVisible(): Promise<void> {
   }
 }
 
+/** Polygones zone désactivés — rendu exclusivement par les bordures de mailles (map-style.ts). */
 async function ensurePublishedZonesVisible(): Promise<void> {
-  if (publishedZoneLayersByCode.size > 0) return
-  try {
-    const listRes = await fetch(`${API_GEO}/zones-etude`)
-    if (!listRes.ok) throw new Error(`zones-etude HTTP ${listRes.status}`)
-    const zones = (await listRes.json()) as Array<{ code: string; risque_rga?: string; carte_overlay_order?: number }>
-    for (const z of zones || []) {
-      const code = String(z?.code || '').trim().toUpperCase()
-      if (!code) continue
-      try {
-        const gRes = await fetch(`${API_GEO}/zones-etude/${encodeURIComponent(code)}/geojson`)
-        if (!gRes.ok) continue
-        const raw = await gRes.json()
-        const geom = parseZoneGeoJsonBody(raw)
-        if (!geom) continue
-        const c = getDepressionColorByCode(code) || getZoneRiskColor(z?.risque_rga)
-        const layer = L.geoJSON(
-          { type: 'Feature', geometry: geom as any, properties: { code } } as any,
-          {
-            pane: 'zoneStudyFillPane',
-            interactive: false,
-            style: {
-              color: c,
-              opacity: ZONE_STUDY_STROKE_OPACITY,
-              weight: 1.5,
-              fillColor: c,
-              fillOpacity: ZONE_STUDY_FILL_OPACITY,
-            },
-          }
-        )
-        publishedZoneLayersByCode.set(code, layer)
-        // N'afficher que si la case est cochée dans localStorage
-        const stored = localStorage.getItem(`zone_visible_${code}`)
-        if (stored === 'true') layer.addTo(map)
-      } catch (e) {
-        console.warn('[ZonesEtude] geojson unavailable for zone:', code, e)
-      }
-    }
-    ensureDepressionsLegendVisible()
-  } catch (e) {
-    console.warn('[ZonesEtude] Impossible d afficher les zones publiees:', e)
-  }
+  // no-op intentionnel : aucun polygone de zone ajouté à la carte.
 }
 
 /** Polygones zone désactivés — rendu porté uniquement par les bordures de mailles. */
