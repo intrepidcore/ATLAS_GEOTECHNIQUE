@@ -332,6 +332,10 @@ export class ThematicPanel {
           </label>
         </div>
 
+        <details class="atlas-accordion" id="accordionCarte" open>
+          <summary class="accordion-header">Carte thématique</summary>
+          <div class="accordion-body">
+
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <!-- BLOC A : Source de données -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -412,6 +416,16 @@ export class ThematicPanel {
           </div>
         </div>
         
+          </div><!-- /accordion-body Carte -->
+        </details><!-- /accordionCarte -->
+
+        <details class="atlas-accordion" id="accordionFiltres" open>
+          <summary class="accordion-header">
+            Filtres
+            <span id="filtersActiveBadge" class="badge-filters" style="display:none">0</span>
+          </summary>
+          <div class="accordion-body">
+
         <!-- ═══════════════════════════════════════════════════════════════════ -->
         <!-- BLOC C : Filtres -->
         <!-- ═══════════════════════════════════════════════════════════════════ -->
@@ -524,10 +538,13 @@ export class ThematicPanel {
           </div>
         </div>
 
-          <div class="thematic-divider">
-            <span>Couches de contexte (QGIS)</span>
-          </div>
-          
+          </div><!-- /accordion-body Filtres -->
+        </details><!-- /accordionFiltres -->
+
+        <details class="atlas-accordion" id="accordionContexte">
+          <summary class="accordion-header">Couches contexte (QGIS)</summary>
+          <div class="accordion-body">
+
           <!-- Panneau QGIS-like pour couches contextuelles avec légendes dépliables -->
           <div class="context-layers-panel" style="background:#0a1018;border-radius:8px;padding:10px;margin-bottom:10px">
           
@@ -632,9 +649,12 @@ export class ThematicPanel {
           </div>
           </div>
 
-        <div class="thematic-divider">
-          <span>Zones d'étude (data gap)</span>
-        </div>
+          </div><!-- /accordion-body Contexte -->
+        </details><!-- /accordionContexte -->
+
+        <details class="atlas-accordion" id="accordionZones" open>
+          <summary class="accordion-header">Zones d'étude</summary>
+          <div class="accordion-body">
         <p class="thematic-zone-hint">
           Ouvrir le panneau d'analyse par zone. Les mailles concernées sont colorées sur la grille (légende ci‑dessous).
         </p>
@@ -678,12 +698,12 @@ export class ThematicPanel {
             ${icons.flaskConical()}<span>Kriging</span>
           </button>
         </div>
-        
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- BLOC D : Résumé & Actions -->
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
+          </div><!-- /accordion-body Zones -->
+        </details><!-- /accordionZones -->
+
+        <!-- ═══ BLOC D : Résumé & Actions ═══ -->
         <div id="dataSummary" class="data-summary"></div>
-        
+
         <div class="thematic-actions">
           <button id="applyThematic" class="btn-primary">
             ${icons.check()}<span>Appliquer</span>
@@ -692,16 +712,16 @@ export class ThematicPanel {
             ${icons.crosshair()}<span>Auto-Zoom</span>
           </button>
         </div>
-        
+
         <div class="thematic-actions">
           <button id="resetThematic" class="btn-reset-subtle" type="button">
             ${icons.rotateCcw()}<span>Réinitialiser</span>
           </button>
         </div>
-        
-        <div class="thematic-divider">
-          <span>Exports</span>
-        </div>
+
+        <details class="atlas-accordion" id="accordionExports">
+          <summary class="accordion-header">Exports</summary>
+          <div class="accordion-body">
         
         <div class="thematic-actions">
           <button id="exportThematicPro" class="btn-primary full-width" title="Export cartographique professionnel avec grille, titre, légende">
@@ -723,7 +743,7 @@ export class ThematicPanel {
             ${icons.layers()}<span>QGIS</span>
           </button>
         </div>
-        
+
         <div class="thematic-actions export-grid-2">
           <button id="exportThematicGeoJSON" class="btn-small">
             ${icons.fileJson()}<span>GeoJSON brut</span>
@@ -732,6 +752,8 @@ export class ThematicPanel {
             ${icons.save()}<span>Sauvegarder config</span>
           </button>
         </div>
+          </div><!-- /accordion-body Exports -->
+        </details><!-- /accordionExports -->
       </div>
     `
   }
@@ -1872,21 +1894,28 @@ export class ThematicPanel {
   private updateAdmFilterSummary(): void {
     const summary = document.getElementById('admFilterSummary')
     if (!summary) return
-    
+
     const adm1 = this.elements.adm1Select?.value
     const adm2 = this.elements.adm2Select?.value
     const adm3 = this.elements.adm3Select?.value
-    
+
+    const count = [adm1, adm2, adm3].filter(Boolean).length
+    const badge = document.getElementById('filtersActiveBadge')
+    if (badge) {
+      badge.textContent = String(count)
+      badge.style.display = count > 0 ? 'inline' : 'none'
+    }
+
     if (!adm1 && !adm2 && !adm3) {
       summary.style.display = 'none'
       return
     }
-    
+
     const parts: string[] = []
     if (adm1) parts.push(`Région: <strong>${adm1}</strong>`)
     if (adm2) parts.push(`Préfecture: <strong>${adm2}</strong>`)
     if (adm3) parts.push(`Commune: <strong>${adm3}</strong>`)
-    
+
     summary.innerHTML = `<div class="filter-badge">${parts.join(' → ')}</div>`
     summary.style.display = 'block'
   }
