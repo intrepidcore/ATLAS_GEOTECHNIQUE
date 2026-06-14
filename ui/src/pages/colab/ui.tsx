@@ -66,13 +66,19 @@ export const Input: React.FC<{
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   disabled?: boolean;
   className?: string;
-}> = ({ type = 'text', placeholder, value, onChange, disabled, className = '' }) => (
+  min?: number | string;
+  max?: number | string;
+  step?: number | string;
+}> = ({ type = 'text', placeholder, value, onChange, disabled, className = '', min, max, step }) => (
   <input
     type={type}
     placeholder={placeholder}
     value={value}
     onChange={onChange}
     disabled={disabled}
+    min={min}
+    max={max}
+    step={step}
     className={`block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-500 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-400 ${disabled ? 'opacity-50 cursor-not-allowed bg-slate-50 dark:bg-slate-800' : ''} ${className}`}
   />
 );

@@ -13,6 +13,7 @@ import {
 import { MapContainer, TileLayer, Marker, Popup, Polygon, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import * as turf from '@turf/turf';
+import type { Feature as GeoFeature, Polygon as GeoPolygon } from 'geojson';
 import { mobileApi, gpsService, type MapContext, type GPSPosition } from '@/services/colab-mobile-api';
 import 'leaflet/dist/leaflet.css';
 
@@ -180,7 +181,7 @@ const ColabMobileMissionMapPage: React.FC = () => {
   const [flyTo, setFlyTo] = useState<{ center: [number, number]; zoom: number } | null>(null);
   
   const watchIdRef = useRef<number>(-1);
-  const maillePolygonRef = useRef<turf.Feature<turf.Polygon> | null>(null);
+  const maillePolygonRef = useRef<GeoFeature<GeoPolygon> | null>(null);
 
   // Charger le contexte carte
   useEffect(() => {
@@ -225,7 +226,7 @@ const ColabMobileMissionMapPage: React.FC = () => {
       
       // Préparer le polygone Turf pour la détection
       if (context.maille_geojson) {
-        maillePolygonRef.current = turf.feature(context.maille_geojson as turf.Polygon);
+        maillePolygonRef.current = turf.feature(context.maille_geojson as GeoPolygon);
       }
     } catch (err: any) {
       setError(err.message);

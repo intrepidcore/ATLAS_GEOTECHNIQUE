@@ -767,7 +767,7 @@ const CreateMissionModal: React.FC<{
               type="number"
               min={0}
               placeholder="ex: 3"
-              value={form.expected_sondages ?? ''}
+              value={form.expected_sondages != null ? String(form.expected_sondages) : ''}
               onChange={e => setForm({ ...form, expected_sondages: e.target.value ? Number(e.target.value) : undefined })}
             />
           </div>
@@ -785,7 +785,7 @@ const CreateMissionModal: React.FC<{
                   step="0.5"
                   min={0}
                   placeholder="ex: 6"
-                  value={form.depth_h1_m ?? ''}
+                  value={form.depth_h1_m != null ? String(form.depth_h1_m) : ''}
                   onChange={e => setForm({ ...form, depth_h1_m: e.target.value ? Number(e.target.value) : undefined })}
                 />
               </div>
@@ -796,7 +796,7 @@ const CreateMissionModal: React.FC<{
                   step="0.5"
                   min={0}
                   placeholder="ex: 10"
-                  value={form.depth_h2_m ?? ''}
+                  value={form.depth_h2_m != null ? String(form.depth_h2_m) : ''}
                   onChange={e => setForm({ ...form, depth_h2_m: e.target.value ? Number(e.target.value) : undefined })}
                 />
               </div>
@@ -807,7 +807,7 @@ const CreateMissionModal: React.FC<{
                   step="0.5"
                   min={0}
                   placeholder="ex: 15"
-                  value={form.depth_h3_m ?? ''}
+                  value={form.depth_h3_m != null ? String(form.depth_h3_m) : ''}
                   onChange={e => setForm({ ...form, depth_h3_m: e.target.value ? Number(e.target.value) : undefined })}
                 />
               </div>
