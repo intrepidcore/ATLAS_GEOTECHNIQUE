@@ -11,19 +11,29 @@
     <style>
 :root{
   --scientific-drawer-height: 0px;
+  /* === LIGHT THEME (défaut) === */
+  --bg:#f8fafc; --panel:#ffffff; --muted:#64748b; --text:#0f172a;
+  --field:#f1f5f9; --field-border:#e2e8f0; --field-focus:#3B82F6;
+  --ok:#059669; --warn:#d97706; --err:#dc2626; --accent:#2563EB; --accent-hover:#1D4ED8;
+  --with-data:#e85d68; --no-data:#94a3b8; --selected:#dbeafe;
+  --grid-stroke:#6b778c44; --grid-stroke-hover:#e85d6866;
+  --topbar-border:#e2e8f0; --card-bg:#ffffff; --card-border:#e2e8f0;
+}
+.dark{
+  /* === DARK THEME === */
   --bg:#0F172A; --panel:#0F172A; --muted:#94A3B8; --text:#F8FAFC;
   --field:#1E293B; --field-border:#334155; --field-focus:#3B82F6;
   --ok:#0bb07b; --warn:#f4b740; --err:#ef476f; --accent:#2563EB; --accent-hover:#1D4ED8;
   --with-data:#e85d68; --no-data:#cfd8e3; --selected:#111a2a;
-  --grid-stroke:#6b778c44; --grid-stroke-hover:#e85d6866;
+  --topbar-border:#1b2740; --card-bg:#0f172a; --card-border:#1c2843;
 }
 *{box-sizing:border-box}
 .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
-body{margin:0;font:14px/1.5 Inter,system-ui,Segoe UI,Roboto,sans-serif;background:#0e1525;color:var(--text)}
-#topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--bg);border-bottom:1px solid #1b2740;position:sticky;top:0;z-index:1000}
+body{margin:0;font:14px/1.5 Inter,system-ui,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+#topbar{display:flex;align-items:center;gap:12px;padding:10px 16px;background:var(--bg);border-bottom:1px solid var(--topbar-border);position:sticky;top:0;z-index:1000}
 .brand{font-weight:700;font-size:18px;letter-spacing:.3px}
 .kpis{display:flex;gap:8px;flex-wrap:wrap}
-.kpi{background:#0f172a;border:1px solid #1c2843;border-radius:10px;padding:8px 10px;display:flex;gap:8px;align-items:center}
+.kpi{background:var(--card-bg,#0f172a);border:1px solid var(--card-border,#1c2843);border-radius:10px;padding:8px 10px;display:flex;gap:8px;align-items:center}
 .kpi b{font-size:16px}
 #container{display:grid;grid-template-columns:380px 1fr 380px;min-height:calc(100vh - 52px)}
 #dashboard{background:var(--panel);border-right:1px solid var(--field-border);padding:18px;overflow-y:auto;height:calc(100vh - 52px);position:relative}
@@ -41,10 +51,10 @@ select.input, #gridLevelSelect, #thematicPanel .thematic-select{appearance:none;
 .legend .row{display:flex;align-items:center;gap:8px;color:#c9d7e3}
 .swatch{width:14px;height:14px;border-radius:3px;border:1px solid #0003}
 .status{margin-top:8px;font-size:12px;color:var(--muted)}
-.toast{position:fixed;right:14px;bottom:14px;background:#0f172a;border:1px solid #2a3b61;color:var(--text);padding:12px 14px;border-radius:10px;box-shadow:0 10px 30px #0006;z-index:9999}
+.toast{position:fixed;right:14px;bottom:14px;background:var(--card-bg,#0f172a);border:1px solid var(--card-border,#2a3b61);color:var(--text);padding:12px 14px;border-radius:10px;box-shadow:0 10px 30px #0006;z-index:9999}
 .toast.ok{border-color:#115744}
 .toast.err{border-color:#6b1b2c}
-.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid #1c2843;background:#0f172a;color:#bcd0e0}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;border:1px solid var(--card-border,#1c2843);background:var(--card-bg,#0f172a);color:var(--text)}
 .badge .dot{width:8px;height:8px;border-radius:50%}
 #surveyDrawer{position:fixed;top:0;right:-500px;width:480px;height:100vh;background:var(--panel);border-left:1px solid #1b2740;box-shadow:-4px 0 20px #0006;z-index:2000;transition:right 0.3s ease;overflow-y:auto;padding:20px}
 #surveyDrawer.open{right:0}
@@ -446,6 +456,10 @@ body.scientific-open #thematicPanel{
       <div class="kpis" id="kpis"></div>
       <!-- Bouton Gestion BDD retiré - accessible via menu profil -->
       <div style="margin-left:auto"></div>
+      <button id="themeToggleBtn" aria-label="Basculer thème clair/sombre" title="Thème clair / sombre"
+        style="background:none;border:1px solid var(--field-border);border-radius:8px;color:var(--text);cursor:pointer;padding:6px 10px;font-size:16px;line-height:1;min-width:44px;min-height:36px;display:flex;align-items:center;justify-content:center;transition:background .15s">
+        <span id="themeToggleIcon">&#9788;</span>
+      </button>
       <div class="badge" id="apiBadge" title="Vérification de l'API..."><span class="dot" id="apiHealthDot" style="background:var(--warn)"></span> API</div>
       <div class="badge" id="gridBadge"><span class="dot" style="background:var(--warn)"></span> Grille</div>
     </div>
@@ -1264,5 +1278,24 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     
     <script type="module" src="/src/main.ts"></script>
+    <script>
+      (function() {
+        var STORAGE_KEY = 'atlas_theme_mode';
+        var btn = document.getElementById('themeToggleBtn');
+        var icon = document.getElementById('themeToggleIcon');
+        function isDark() { return document.documentElement.classList.contains('dark'); }
+        function updateIcon() { if (icon) icon.innerHTML = isDark() ? '&#9788;' : '&#9790;'; }
+        updateIcon();
+        if (btn) {
+          btn.addEventListener('click', function() {
+            var next = isDark() ? 'light' : 'dark';
+            if (next === 'dark') document.documentElement.classList.add('dark');
+            else document.documentElement.classList.remove('dark');
+            try { localStorage.setItem(STORAGE_KEY, next); } catch(e) {}
+            updateIcon();
+          });
+        }
+      })();
+    </script>
   </body>
 </html>

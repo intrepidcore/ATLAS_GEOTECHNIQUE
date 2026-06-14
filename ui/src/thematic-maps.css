@@ -22,7 +22,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  background: linear-gradient(135deg, #2171b5 0%, #08519c 100%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-hover) 100%);
   color: white;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
@@ -61,7 +61,7 @@
   flex: 1;
   max-height: calc(100vh - 140px);
   scrollbar-width: thin;
-  scrollbar-color: #2171b5 #f0f0f0;
+  scrollbar-color: var(--accent) #f0f0f0;
 }
 
 .panel-body::-webkit-scrollbar {
@@ -74,12 +74,12 @@
 }
 
 .panel-body::-webkit-scrollbar-thumb {
-  background: #2171b5;
+  background: var(--accent);
   border-radius: 4px;
 }
 
 .panel-body::-webkit-scrollbar-thumb:hover {
-  background: #08519c;
+  background: var(--accent-hover);
 }
 
 /* Form groups */
@@ -116,7 +116,7 @@
 .form-group select:focus,
 .form-group input:focus {
   outline: none;
-  border-color: #2171b5;
+  border-color: var(--accent);
 }
 
 .form-group small {
@@ -147,12 +147,12 @@
 }
 
 .btn-primary {
-  background: #2171b5;
+  background: var(--accent);
   color: white;
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #08519c;
+  background: var(--accent-hover);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(33, 113, 181, 0.3);
 }
@@ -173,7 +173,8 @@
 
 /* Stats box */
 .stats-box {
-  background: #f8f9fa;
+  background: var(--card-bg, #f8f9fa);
+  border: 1px solid var(--card-border, #e2e8f0);
   padding: 12px;
   border-radius: 6px;
   margin-top: 16px;
@@ -183,7 +184,7 @@
   margin: 0 0 10px 0;
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text, #333);
 }
 
 .stat-row {
@@ -194,17 +195,17 @@
 }
 
 .stat-row span {
-  color: #666;
+  color: var(--muted, #666);
 }
 
 .stat-row b {
-  color: #333;
+  color: var(--text, #333);
   font-weight: 600;
 }
 
 /* Légende thématique */
 .thematic-legend {
-  background: white;
+  background: var(--panel, white);
   padding: 15px;
   border-radius: 8px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
@@ -220,17 +221,17 @@
 }
 
 .thematic-legend::-webkit-scrollbar-track {
-  background: #f5f5f5;
+  background: var(--field, #f5f5f5);
   border-radius: 3px;
 }
 
 .thematic-legend::-webkit-scrollbar-thumb {
-  background: #2171b5;
+  background: var(--accent);
   border-radius: 3px;
 }
 
 .thematic-legend::-webkit-scrollbar-thumb:hover {
-  background: #08519c;
+  background: var(--accent-hover);
 }
 
 .legend-header {
@@ -239,21 +240,21 @@
   align-items: center;
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #e0e0e0;
+  border-bottom: 2px solid var(--field-border, #e0e0e0);
 }
 
 .legend-header h4 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #333;
+  color: var(--text, #333);
 }
 
 .legend-close {
   background: none;
   border: none;
   font-size: 20px;
-  color: #999;
+  color: var(--muted, #999);
   cursor: pointer;
   padding: 0;
   width: 24px;
@@ -266,8 +267,8 @@
 }
 
 .legend-close:hover {
-  background: #f0f0f0;
-  color: #333;
+  background: var(--field, #f0f0f0);
+  color: var(--text, #333);
 }
 
 .legend-body {
@@ -285,7 +286,7 @@
 }
 
 .legend-item:hover {
-  background: #f5f5f5;
+  background: var(--field, #f5f5f5);
 }
 
 .legend-item.disabled {
@@ -296,7 +297,7 @@
   width: 24px;
   height: 18px;
   margin-right: 8px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--field-border, #ccc);
   border-radius: 3px;
   flex-shrink: 0;
 }
@@ -304,12 +305,12 @@
 .legend-label {
   flex: 1;
   font-size: 12px;
-  color: #333;
+  color: var(--text, #333);
 }
 
 .legend-stats {
   padding-top: 10px;
-  border-top: 1px solid #e0e0e0;
+  border-top: 1px solid var(--field-border, #e0e0e0);
 }
 
 /* Floating button */
@@ -320,7 +321,7 @@
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #2171b5;
+  background: var(--accent);
   color: white;
   border: none;
   font-size: 24px;
@@ -334,7 +335,7 @@
 }
 
 .floating-btn:hover {
-  background: #08519c;
+  background: var(--accent-hover);
   transform: scale(1.1);
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
@@ -401,7 +402,7 @@
 .thematic-tooltip strong {
   display: block;
   margin-bottom: 4px;
-  color: #2171b5;
+  color: var(--accent);
   font-size: 14px;
 }
 

@@ -1,6 +1,10 @@
 body{
-  background:#0e1525;
+  background:var(--bg);
   color:var(--text);
+}
+
+.dark body{
+  background:#0e1525;
 }
 
 #topbar,#dashboard,#sidebar{
@@ -9,6 +13,7 @@ body{
 
 #dashboard,#sidebar{
   background:var(--panel);
+  border-color:var(--field-border);
 }
 
 #topbar{
