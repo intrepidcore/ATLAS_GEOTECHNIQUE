@@ -29,6 +29,68 @@ body{
   color:var(--text);
 }
 
+/* ── Light mode — override inline dark backgrounds hardcodés ─────────────── */
+/* Les inline style="background:#0f172a" ne sont pas overridables autrement */
+:root:not(.dark) [style*="background:#0f172a"],
+:root:not(.dark) [style*="background: #0f172a"] {
+  background: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+}
+:root:not(.dark) [style*="background:#0a1018"],
+:root:not(.dark) [style*="background: #0a1018"] {
+  background: var(--field) !important;
+  border-color: var(--field-border) !important;
+}
+:root:not(.dark) [style*="border:1px solid #1c2843"] {
+  border-color: var(--card-border) !important;
+}
+
+/* Classes hardcodées dark → light */
+:root:not(.dark) .test-item,
+:root:not(.dark) .maille-header,
+:root:not(.dark) .kpi-card,
+:root:not(.dark) .survey-card,
+:root:not(.dark) .sondage-item,
+:root:not(.dark) .btn-sm,
+:root:not(.dark) .essai-header,
+:root:not(.dark) .essai-content {
+  background: var(--card-bg) !important;
+  border-color: var(--card-border) !important;
+}
+:root:not(.dark) .charts-section canvas {
+  background: var(--field) !important;
+}
+:root:not(.dark) .btn-sm:hover,
+:root:not(.dark) .sondage-header:hover,
+:root:not(.dark) .essai-header:hover {
+  background: var(--field) !important;
+}
+:root:not(.dark) #surveyDrawer .form-group input,
+:root:not(.dark) #surveyDrawer .form-group select,
+:root:not(.dark) #surveyDrawer .form-group textarea {
+  background: var(--field) !important;
+  border-color: var(--field-border) !important;
+  color: var(--text) !important;
+}
+:root:not(.dark) .section h4 {
+  color: var(--muted) !important;
+}
+:root:not(.dark) #thematicPanel .thematic-panel-header,
+:root:not(.dark) #thematicPanel .btn-secondary,
+:root:not(.dark) #thematicPanel .btn-small,
+:root:not(.dark) #thematicPanel .data-summary {
+  background: var(--field) !important;
+  border-color: var(--field-border) !important;
+}
+:root:not(.dark) #thematicPanel {
+  background: var(--panel) !important;
+  border-color: var(--field-border) !important;
+}
+:root:not(.dark) .filter-section-card {
+  background: rgba(0,0,0,0.03) !important;
+  border-color: var(--field-border) !important;
+}
+
 /* D3 — États focus WCAG AA (2px solid accent + offset) */
 button:focus-visible,
 select:focus-visible,
