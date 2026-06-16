@@ -305,112 +305,138 @@ body.scientific-open #thematicPanel{
 /* ═══════════════════════════════════════════════════════════════════════════ */
 /* PANNEAU CARTES THÉMATIQUES v2.0 */
 /* ═══════════════════════════════════════════════════════════════════════════ */
-#thematicPanel{position:fixed;top:52px;right:0;width:320px;height:calc(100vh - 52px);background:var(--panel);border-left:1px solid #1b2740;z-index:1500;overflow-y:auto;box-shadow:-4px 0 20px rgba(0,0,0,0.3)}
-#thematicPanel .thematic-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#0a1018;border-bottom:1px solid #1b2740;position:sticky;top:0;z-index:10}
-#thematicPanel .thematic-panel-header h3{margin:0;font-size:15px;font-weight:600;color:var(--text)}
-#thematicPanel .btn-close{background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:4px}
-#thematicPanel .btn-close:hover{background:#1b2740;color:var(--text)}
-#thematicPanel .thematic-panel-body{padding:16px 18px 24px}
+/* ═══════════════════════════════════════════════════════════════════════════ */
+/* PANNEAU DROIT UNIFIÉ v4.0 — shell back-stack */
+/* ═══════════════════════════════════════════════════════════════════════════ */
+#rightPanelShell{position:fixed;top:52px;right:0;width:360px;height:calc(100vh - 52px);background:var(--panel);border-left:1px solid #1b2740;z-index:1500;display:flex;flex-direction:column;box-shadow:-4px 0 24px rgba(0,0,0,0.35);overflow:hidden}
+#rightPanelShell[hidden]{display:none}
+/* Header nav */
+#rpsHeader{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--panel);border-bottom:1px solid #1b2740;flex-shrink:0;min-height:48px;gap:8px}
+.rps-back-btn{display:flex;align-items:center;gap:6px;background:transparent;border:1px solid #22304d;border-radius:6px;color:var(--muted);font-size:12px;font-weight:600;padding:5px 10px;cursor:pointer;transition:border-color .15s,color .15s;flex-shrink:0}
+.rps-back-btn:hover{border-color:var(--accent);color:var(--text)}
+.rps-back-btn svg{flex-shrink:0}
+#rpsTitle{flex:1;font-size:13px;font-weight:700;color:var(--text);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rps-close-btn{display:flex;align-items:center;justify-content:center;background:transparent;border:none;color:var(--muted);cursor:pointer;padding:5px;border-radius:6px;transition:color .15s,background .15s;flex-shrink:0}
+.rps-close-btn:hover{color:var(--text);background:#1b2740}
+/* Vue racine */
+#rpsRoot{display:flex;flex-direction:column;padding:16px;gap:6px;overflow-y:auto;flex:1}
+.rps-root-label{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:4px 0 2px 2px;margin-top:4px}
+.rps-root-label:first-child{margin-top:0}
+.rps-nav-btn{display:flex;align-items:center;gap:10px;width:100%;padding:11px 14px;background:var(--field);border:1px solid var(--field-border);border-radius:10px;color:var(--text);font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s;text-align:left}
+.rps-nav-btn:hover{border-color:var(--accent);background:#1e3a5f}
+.rps-nav-btn svg.rps-icon{flex-shrink:0;opacity:.85}
+.rps-nav-btn:hover svg.rps-icon{opacity:1}
+.rps-nav-btn .rps-chevron{margin-left:auto;flex-shrink:0;opacity:.45}
+/* Slots contenus */
+.rps-slot{display:flex;flex-direction:column;flex:1;overflow-y:auto;overflow-x:hidden}
+.rps-slot[hidden]{display:none}
+/* #thematicPanel inside shell — perd position:fixed */
+#thematicPanel{display:block;width:100%;overflow-y:auto}
+#thematicPanel, #campaignPanel .thematic-panel-header{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;background:#0a1018;border-bottom:1px solid #1b2740;position:sticky;top:0;z-index:10}
+#thematicPanel, #campaignPanel .thematic-panel-header h3{margin:0;font-size:15px;font-weight:600;color:var(--text)}
+#thematicPanel, #campaignPanel .btn-close{background:transparent;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:4px}
+#thematicPanel, #campaignPanel .btn-close:hover{background:#1b2740;color:var(--text)}
+#thematicPanel, #campaignPanel .thematic-panel-body{padding:16px 18px 24px}
 
 /* Sections */
-#thematicPanel .thematic-section{margin-bottom:16px}
-#thematicPanel .section-label{font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.1em;font-weight:600}
-#thematicPanel .param-description{font-size:11px;color:#6b8299;margin-top:4px;line-height:1.4}
-#thematicPanel .param-description code.formula{display:block;background:#0a1018;padding:4px 8px;border-radius:4px;margin-top:4px;font-family:monospace;font-size:10px;color:var(--accent)}
+#thematicPanel, #campaignPanel .thematic-section{margin-bottom:16px}
+#thematicPanel, #campaignPanel .section-label{font-size:11px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.1em;font-weight:600}
+#thematicPanel, #campaignPanel .param-description{font-size:11px;color:#6b8299;margin-top:4px;line-height:1.4}
+#thematicPanel, #campaignPanel .param-description code.formula{display:block;background:#0a1018;padding:4px 8px;border-radius:4px;margin-top:4px;font-family:monospace;font-size:10px;color:var(--accent)}
 
 /* Inputs & Selects */
-#thematicPanel .thematic-select,
-#thematicPanel .thematic-input{width:100%;padding:10px 12px;background:var(--field);border:1px solid var(--field-border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;transition:border-color .15s, box-shadow .15s}
-#thematicPanel .thematic-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:36px}
-#thematicPanel .thematic-select:focus,
-#thematicPanel .thematic-input:focus{outline:none;border-color:var(--field-focus);box-shadow:0 0 0 2px rgba(59,130,246,0.2)}
-#thematicPanel .thematic-input.small{width:calc(50% - 12px)}
+#thematicPanel, #campaignPanel .thematic-select,
+#thematicPanel, #campaignPanel .thematic-input{width:100%;padding:10px 12px;background:var(--field);border:1px solid var(--field-border);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;transition:border-color .15s, box-shadow .15s}
+#thematicPanel, #campaignPanel .thematic-select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:36px}
+#thematicPanel, #campaignPanel .thematic-select:focus,
+#thematicPanel, #campaignPanel .thematic-input:focus{outline:none;border-color:var(--field-focus);box-shadow:0 0 0 2px rgba(59,130,246,0.2)}
+#thematicPanel, #campaignPanel .thematic-input.small{width:calc(50% - 12px)}
 
 /* Opacity control — slider « pro » */
-#thematicPanel .opacity-control{display:flex;align-items:center;gap:12px}
-#thematicPanel .opacity-control input[type="range"]{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:linear-gradient(90deg,#334155 0%,#334155 100%);border-radius:4px}
-#thematicPanel .opacity-control input[type="range"]::-webkit-slider-runnable-track{height:4px;background:#334155;border-radius:4px}
-#thematicPanel .opacity-control input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;background:#3B82F6;border:2px solid #1E293B;border-radius:50%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35)}
-#thematicPanel .opacity-control input[type="range"]::-moz-range-track{height:4px;background:#334155;border-radius:4px;border:0}
-#thematicPanel .opacity-control input[type="range"]::-moz-range-thumb{width:14px;height:14px;background:#3B82F6;border:2px solid #1E293B;border-radius:50%;cursor:pointer}
-#thematicPanel .opacity-value{font-size:12px;color:var(--muted);min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
+#thematicPanel, #campaignPanel .opacity-control{display:flex;align-items:center;gap:12px}
+#thematicPanel, #campaignPanel .opacity-control input[type="range"]{flex:1;height:4px;-webkit-appearance:none;appearance:none;background:linear-gradient(90deg,#334155 0%,#334155 100%);border-radius:4px}
+#thematicPanel, #campaignPanel .opacity-control input[type="range"]::-webkit-slider-runnable-track{height:4px;background:#334155;border-radius:4px}
+#thematicPanel, #campaignPanel .opacity-control input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;margin-top:-5px;background:#3B82F6;border:2px solid #1E293B;border-radius:50%;cursor:pointer;box-shadow:0 1px 4px rgba(0,0,0,.35)}
+#thematicPanel, #campaignPanel .opacity-control input[type="range"]::-moz-range-track{height:4px;background:#334155;border-radius:4px;border:0}
+#thematicPanel, #campaignPanel .opacity-control input[type="range"]::-moz-range-thumb{width:14px;height:14px;background:#3B82F6;border:2px solid #1E293B;border-radius:50%;cursor:pointer}
+#thematicPanel, #campaignPanel .opacity-value{font-size:12px;color:var(--muted);min-width:40px;text-align:right;font-variant-numeric:tabular-nums}
 
 /* Dividers */
-#thematicPanel .thematic-divider{display:flex;align-items:center;margin:16px 0 12px;gap:10px}
-#thematicPanel .thematic-divider::before,
-#thematicPanel .thematic-divider::after{content:'';flex:1;height:1px;background:#1b2740}
-#thematicPanel .thematic-divider span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+#thematicPanel, #campaignPanel .thematic-divider{display:flex;align-items:center;margin:16px 0 12px;gap:10px}
+#thematicPanel, #campaignPanel .thematic-divider::before,
+#thematicPanel, #campaignPanel .thematic-divider::after{content:'';flex:1;height:1px;background:#1b2740}
+#thematicPanel, #campaignPanel .thematic-divider span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
 
 /* Checkboxes */
-#thematicPanel .checkbox-section{margin-bottom:8px}
-#thematicPanel .checkbox-label{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px;color:var(--text)}
-#thematicPanel .checkbox-label input[type="checkbox"]:not(.atlas-switch){width:16px;height:16px;accent-color:var(--accent)}
-#thematicPanel .thematic-toggle-label{align-items:center;justify-content:space-between;gap:12px}
-#thematicPanel .thematic-toggle-label span{flex:1;line-height:1.35}
+#thematicPanel, #campaignPanel .checkbox-section{margin-bottom:8px}
+#thematicPanel, #campaignPanel .checkbox-label{display:flex;align-items:center;gap:10px;cursor:pointer;font-size:12px;color:var(--text)}
+#thematicPanel, #campaignPanel .checkbox-label input[type="checkbox"]:not(.atlas-switch){width:16px;height:16px;accent-color:var(--accent)}
+#thematicPanel, #campaignPanel .thematic-toggle-label{align-items:center;justify-content:space-between;gap:12px}
+#thematicPanel, #campaignPanel .thematic-toggle-label span{flex:1;line-height:1.35}
 
 /* Range inputs */
-#thematicPanel .range-inputs{display:flex;align-items:center;gap:8px}
-#thematicPanel .range-separator{color:var(--muted)}
+#thematicPanel, #campaignPanel .range-inputs{display:flex;align-items:center;gap:8px}
+#thematicPanel, #campaignPanel .range-separator{color:var(--muted)}
 
 /* Advanced filters */
-#thematicPanel .advanced-filters{margin:12px 0;border:1px solid #1b2740;border-radius:6px}
-#thematicPanel .advanced-filters summary{padding:10px 12px;cursor:pointer;font-size:12px;color:var(--muted);list-style:none}
-#thematicPanel .advanced-filters summary::-webkit-details-marker{display:none}
-#thematicPanel .advanced-filters[open] summary{border-bottom:1px solid #1b2740}
-#thematicPanel .advanced-content{padding:12px}
+#thematicPanel, #campaignPanel .advanced-filters{margin:12px 0;border:1px solid #1b2740;border-radius:6px}
+#thematicPanel, #campaignPanel .advanced-filters summary{padding:10px 12px;cursor:pointer;font-size:12px;color:var(--muted);list-style:none}
+#thematicPanel, #campaignPanel .advanced-filters summary::-webkit-details-marker{display:none}
+#thematicPanel, #campaignPanel .advanced-filters[open] summary{border-bottom:1px solid #1b2740}
+#thematicPanel, #campaignPanel .advanced-content{padding:12px}
 
 /* Data summary */
-#thematicPanel .data-summary{background:#0a1018;border:1px solid #1b2740;border-radius:6px;padding:10px 12px;margin:12px 0;display:none}
-#thematicPanel .summary-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}
-#thematicPanel .summary-row:last-child{margin-bottom:0}
-#thematicPanel .summary-label{color:var(--muted)}
-#thematicPanel .summary-value{color:var(--text);font-weight:500}
+#thematicPanel, #campaignPanel .data-summary{background:#0a1018;border:1px solid #1b2740;border-radius:6px;padding:10px 12px;margin:12px 0;display:none}
+#thematicPanel, #campaignPanel .summary-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}
+#thematicPanel, #campaignPanel .summary-row:last-child{margin-bottom:0}
+#thematicPanel, #campaignPanel .summary-label{color:var(--muted)}
+#thematicPanel, #campaignPanel .summary-value{color:var(--text);font-weight:500}
 
 /* Buttons */
-#thematicPanel .thematic-actions{display:flex;gap:8px;margin-bottom:8px}
-#thematicPanel .btn-primary{flex:1;padding:10px 14px;background:var(--accent);border:none;border-radius:6px;color:#0d1526;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
-#thematicPanel .btn-primary:hover{background:#5ab8ff}
-#thematicPanel .btn-primary:disabled{opacity:0.6;cursor:not-allowed}
-#thematicPanel .btn-secondary{flex:1;padding:10px 14px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
-#thematicPanel .btn-secondary:hover{border-color:#3aa6ff;background:#131d30}
-#thematicPanel .btn-outline{flex:1;padding:10px 14px;background:transparent;border:1px solid #22304d;border-radius:6px;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
-#thematicPanel .btn-outline:hover{border-color:var(--accent);color:var(--text)}
-#thematicPanel .btn-small{flex:1;padding:8px 12px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
-#thematicPanel .btn-small:hover{border-color:#3aa6ff}
-#thematicPanel .btn-small.full-width{flex:none;width:100%}
-#thematicPanel .btn-icon{font-size:14px}
-#thematicPanel .btn-icon-svg{flex-shrink:0;opacity:0.85}
-#thematicPanel .btn-primary .btn-icon-svg,#thematicPanel .btn-secondary:hover .btn-icon-svg,#thematicPanel .btn-small:hover .btn-icon-svg{opacity:1}
-#thematicPanel .thematic-panel-title{display:flex;align-items:center;gap:8px;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-weight:600}
-#thematicPanel .thematic-panel-title .btn-icon-svg{color:#94a3b8}
-#thematicPanel .thematic-zone-hint{font-size:10px;color:#94a3b8;margin:0 0 10px 0;line-height:1.45;font-weight:400}
-#thematicPanel .zone-etude-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
-#thematicPanel .zone-etude-btn{min-height:40px;font-size:12px;font-weight:500;text-align:left;justify-content:flex-start;gap:10px;padding-left:12px}
-#thematicPanel .zone-etude-btn--wide{grid-column:1 / -1}
-#thematicPanel .zone-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
-#thematicPanel .zone-dot--lama{background:#D97706}
-#thematicPanel .zone-dot--bado{background:#FB923C}
-#thematicPanel .zone-dot--mono{background:#059669}
-#thematicPanel .zone-dot--oti{background:#0284C7}
-#thematicPanel .zone-dot--fosse{background:#7C3AED}
-#thematicPanel .btn-clear-adm,#thematicPanel .btn-reset-subtle{display:flex;align-items:center;justify-content:center;gap:8px}
-#thematicPanel .btn-reset-subtle{flex:1;width:100%;padding:8px 12px;background:transparent;border:none;border-radius:6px;color:#64748b;font-size:12px;font-weight:500;cursor:pointer}
-#thematicPanel .btn-reset-subtle:hover{color:#94a3b8;background:rgba(148,163,184,0.08)}
-#thematicPanel .btn-reset-subtle .btn-icon-svg{color:#64748b}
-#thematicPanel .export-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-#thematicPanel .thematic-actions.export-grid-2{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:8px;margin-bottom:8px}
-#thematicPanel .btn-primary{background:#3B82F6;color:#f8fafc}
-#thematicPanel .btn-primary:hover{background:#2563EB}
-#thematicPanel .btn-secondary{background:#1E293B;border-color:#334155;color:#F8FAFC}
-#thematicPanel .btn-secondary .btn-icon-svg{color:#94A3B8}
-#thematicPanel .btn-secondary:hover{border-color:#475569;background:#273549}
-#thematicPanel .btn-small{background:#1E293B;border-color:#334155}
-#thematicPanel .btn-small .btn-icon-svg{color:#94A3B8}
+#thematicPanel, #campaignPanel .thematic-actions{display:flex;gap:8px;margin-bottom:8px}
+#thematicPanel, #campaignPanel .btn-primary{flex:1;padding:10px 14px;background:var(--accent);border:none;border-radius:6px;color:#0d1526;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel, #campaignPanel .btn-primary:hover{background:#5ab8ff}
+#thematicPanel, #campaignPanel .btn-primary:disabled{opacity:0.6;cursor:not-allowed}
+#thematicPanel, #campaignPanel .btn-secondary{flex:1;padding:10px 14px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel, #campaignPanel .btn-secondary:hover{border-color:#3aa6ff;background:#131d30}
+#thematicPanel, #campaignPanel .btn-outline{flex:1;padding:10px 14px;background:transparent;border:1px solid #22304d;border-radius:6px;color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
+#thematicPanel, #campaignPanel .btn-outline:hover{border-color:var(--accent);color:var(--text)}
+#thematicPanel, #campaignPanel .btn-small{flex:1;padding:8px 12px;background:#0f172a;border:1px solid #22304d;border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px}
+#thematicPanel, #campaignPanel .btn-small:hover{border-color:#3aa6ff}
+#thematicPanel, #campaignPanel .btn-small.full-width{flex:none;width:100%}
+#thematicPanel, #campaignPanel .btn-icon{font-size:14px}
+#thematicPanel, #campaignPanel .btn-icon-svg{flex-shrink:0;opacity:0.85}
+#thematicPanel, #campaignPanel .btn-primary .btn-icon-svg,#thematicPanel, #campaignPanel .btn-secondary:hover .btn-icon-svg,#thematicPanel, #campaignPanel .btn-small:hover .btn-icon-svg{opacity:1}
+#thematicPanel, #campaignPanel .thematic-panel-title{display:flex;align-items:center;gap:8px;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-weight:600}
+#thematicPanel, #campaignPanel .thematic-panel-title .btn-icon-svg{color:#94a3b8}
+#thematicPanel, #campaignPanel .thematic-zone-hint{font-size:10px;color:#94a3b8;margin:0 0 10px 0;line-height:1.45;font-weight:400}
+#thematicPanel, #campaignPanel .zone-etude-btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+#thematicPanel, #campaignPanel .zone-etude-btn{min-height:40px;font-size:12px;font-weight:500;text-align:left;justify-content:flex-start;gap:10px;padding-left:12px}
+#thematicPanel, #campaignPanel .zone-etude-btn--wide{grid-column:1 / -1}
+#thematicPanel, #campaignPanel .zone-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;display:inline-block}
+#thematicPanel, #campaignPanel .zone-dot--lama{background:#D97706}
+#thematicPanel, #campaignPanel .zone-dot--bado{background:#FB923C}
+#thematicPanel, #campaignPanel .zone-dot--mono{background:#059669}
+#thematicPanel, #campaignPanel .zone-dot--oti{background:#0284C7}
+#thematicPanel, #campaignPanel .zone-dot--fosse{background:#7C3AED}
+#thematicPanel, #campaignPanel .btn-clear-adm,#thematicPanel, #campaignPanel .btn-reset-subtle{display:flex;align-items:center;justify-content:center;gap:8px}
+#thematicPanel, #campaignPanel .btn-reset-subtle{flex:1;width:100%;padding:8px 12px;background:transparent;border:none;border-radius:6px;color:#64748b;font-size:12px;font-weight:500;cursor:pointer}
+#thematicPanel, #campaignPanel .btn-reset-subtle:hover{color:#94a3b8;background:rgba(148,163,184,0.08)}
+#thematicPanel, #campaignPanel .btn-reset-subtle .btn-icon-svg{color:#64748b}
+#thematicPanel, #campaignPanel .export-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+#thematicPanel, #campaignPanel .thematic-actions.export-grid-2{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:8px;margin-bottom:8px}
+#thematicPanel, #campaignPanel .btn-primary{background:#3B82F6;color:#f8fafc}
+#thematicPanel, #campaignPanel .btn-primary:hover{background:#2563EB}
+#thematicPanel, #campaignPanel .btn-secondary{background:#1E293B;border-color:#334155;color:#F8FAFC}
+#thematicPanel, #campaignPanel .btn-secondary .btn-icon-svg{color:#94A3B8}
+#thematicPanel, #campaignPanel .btn-secondary:hover{border-color:#475569;background:#273549}
+#thematicPanel, #campaignPanel .btn-small{background:#1E293B;border-color:#334155}
+#thematicPanel, #campaignPanel .btn-small .btn-icon-svg{color:#94A3B8}
 
 /* ADM Filter Summary */
-#thematicPanel .adm-filter-summary{background:#1e3a5f;border:1px solid #3aa6ff;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:11px;color:#e0f2fe}
-#thematicPanel .adm-filter-summary .filter-badge{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
-#thematicPanel .adm-filter-summary strong{color:#7dd3fc}
+#thematicPanel, #campaignPanel .adm-filter-summary{background:#1e3a5f;border:1px solid #3aa6ff;border-radius:6px;padding:8px 10px;margin:8px 0;font-size:11px;color:#e0f2fe}
+#thematicPanel, #campaignPanel .adm-filter-summary .filter-badge{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+#thematicPanel, #campaignPanel .adm-filter-summary strong{color:#7dd3fc}
 
 /* Ancien FAB — désactivé (ouverture depuis panneau droit) */
 #openThematicPanel{display:none}
@@ -588,11 +614,6 @@ body.scientific-open #thematicPanel{
               <span style="font-size:10px;color:var(--muted)">Chargement…</span>
             </div>
           </div>
-        </div>
-
-        <div class="section" id="campaignPlannerSection">
-          <h4>Plan de campagne terrain</h4>
-          <div id="campaignPlannerMount"></div>
         </div>
 
         <!-- Détection de Doublons -->
@@ -818,16 +839,18 @@ body.scientific-open #thematicPanel{
         <div class="search-unified">
           <input type="text" id="unifiedSearch" placeholder="Rechercher maille, sondage…" autocomplete="off" />
         </div>
-        <button type="button" id="openThematicPanelSidebar" class="sidebar-open-thematic" title="Cartes thématiques">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
-          Cartes thématiques
+        <!-- Bouton unique d'accès au panneau droit unifié v4.0 -->
+        <button type="button" id="openThematicPanelSidebar" class="sidebar-open-thematic" title="Ouvrir le panneau Actions">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Cartes &amp; Campagne
         </button>
-        <button type="button" id="openInferOptiCommandCenter" class="sidebar-open-thematic" title="Infer / Opti — pilotage IA">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></svg>
+        <!-- Boutons directs pour overlays dédiés (restent hors shell Phase 1) -->
+        <button type="button" id="openInferOptiCommandCenter" class="sidebar-open-thematic" title="Infer / Opti — pilotage IA" style="font-size:12px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></svg>
           Infer / Opti
         </button>
-        <button type="button" id="openScientificDrawerBtn" class="sidebar-open-thematic" title="Analyse scientifique (EDA / corrélations / variogrammes)">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3h18v18H3z"/><path d="M8 8h8"/><path d="M8 12h8"/><path d="M8 16h5"/></svg>
+        <button type="button" id="openScientificDrawerBtn" class="sidebar-open-thematic" title="Analyse scientifique" style="font-size:12px">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
           Analyse scientifique
         </button>
 
@@ -1311,9 +1334,67 @@ Note: Laissez vide les colonnes non disponibles. Minimum requis: code, lat, lon,
       </div>
     </div>
     
-    <!-- Panneau Cartes Thématiques v2.0 (contenu généré dynamiquement par JS) -->
-    <div id="thematicPanel" style="display:none;"></div>
-    
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <!-- PANNEAU DROIT UNIFIÉ v4.0 — back-stack navigation               -->
+    <!-- ═══════════════════════════════════════════════════════════════════ -->
+    <div id="rightPanelShell" hidden aria-label="Panneau actions">
+
+      <!-- Header : bouton Retour + titre + bouton Fermer -->
+      <div id="rpsHeader" style="display:none">
+        <button id="rpsBack" class="rps-back-btn" aria-label="Retour à l'accueil du panneau">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+          Retour
+        </button>
+        <span id="rpsTitle"></span>
+        <button id="rpsClose" class="rps-close-btn" aria-label="Fermer le panneau">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Vue racine : navigation entre les modules -->
+      <div id="rpsRoot" style="display:flex">
+        <div class="rps-root-label">Cartographie & IA</div>
+
+        <button class="rps-nav-btn" data-rps-view="thematic" data-rps-title="Cartes thématiques" type="button">
+          <svg class="rps-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+          Cartes thématiques
+          <svg class="rps-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+
+        <button class="rps-nav-btn" data-rps-view="campaign" data-rps-title="Plan de campagne terrain" type="button">
+          <svg class="rps-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 20H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3"/><path d="m9 7 4-4 4 4"/><path d="M13 3v9"/><circle cx="17" cy="17" r="3"/><path d="m21.5 21.5-1.4-1.4"/></svg>
+          Plan de campagne terrain
+          <svg class="rps-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+
+        <div class="rps-root-label">Outils ML</div>
+
+        <button class="rps-nav-btn" id="rpsOpenInfer" type="button">
+          <svg class="rps-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2M15 20v2M2 15h2M2 9h2M20 15h2M20 9h2M9 2v2M9 20v2"/></svg>
+          Infer / Opti
+          <svg class="rps-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+
+        <button class="rps-nav-btn" id="rpsOpenScientific" type="button">
+          <svg class="rps-icon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v18m0 0h10a2 2 0 0 0 2-2V9M9 21H5a2 2 0 0 1-2-2V9m0 0h18"/></svg>
+          Analyse scientifique
+          <svg class="rps-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+
+      <!-- Slot : Cartes thématiques (généré dynamiquement par ThematicPanel.ts) -->
+      <div id="rpsSlot-thematic" class="rps-slot" hidden>
+        <div id="thematicPanel" style="display:none;"></div>
+      </div>
+
+      <!-- Slot : Plan de campagne terrain -->
+      <div id="rpsSlot-campaign" class="rps-slot" hidden>
+        <div id="campaignPlannerMount"></div>
+      </div>
+
+    </div>
+    <!-- Fin #rightPanelShell -->
+
     <!-- Bouton flottant pour ouvrir le panneau -->
     <button id="openThematicPanel" title="Cartes Thématiques" type="button" aria-label="Ouvrir cartes thématiques">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.106 5.553a2 2 0 0 0-1.788 0l-7.447 3.724a1 1 0 0 0-.553.894v6.758a1 1 0 0 0 .553.894l7.447 3.724a2 2 0 0 0 1.788 0l7.447-3.724a1 1 0 0 0 .553-.894V10.17a1 1 0 0 0-.553-.894z"/><path d="M15 6.51l-6-3"/><path d="M3.51 9.5 12 13.5l8.49-4"/></svg>

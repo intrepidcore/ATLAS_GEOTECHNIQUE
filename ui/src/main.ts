@@ -50,6 +50,7 @@ import { ThematicPanel } from './thematic/thematic-panel'
 import { initInferOptiCommandCenter } from './infer-opti/command-center'
 import { initScientificDrawer } from './scientific-drawer'
 import { initCampaignPlanner } from './mission/campaign-planner'
+import { initRightPanelShell } from './right-panel-shell'
 import { createSearchController, type SearchResult } from './search-controller'
 // import { ImportBulkWizard } from './import-bulk-wizard' // V2 - désactivé
 import { bootImportWizardV3 } from './import-bulk-wizard_v3'
@@ -5341,6 +5342,13 @@ console.log('[INIT] Initialisation cartes thématiques...')
 const thematicManager = new ThematicMapManager(map, API_GEO)
 const thematicPanel = new ThematicPanel(thematicManager)
 console.log('[INIT] ✅ Cartes thématiques initialisées (Export Pro intégré dans le panneau)')
+
+// Panneau droit unifié v4.0 — doit être initialisé APRÈS ThematicPanel
+const rps = initRightPanelShell()
+rps.setThematicHooks(
+  () => thematicPanel.open(),
+  () => thematicPanel.close(),
+)
 
 initInferOptiCommandCenter({
   getApiBase: () => API_GEO,
