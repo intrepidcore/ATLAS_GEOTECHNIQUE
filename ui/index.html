@@ -580,6 +580,14 @@ body.scientific-open #thematicPanel{
               —
             </div>
           </div>
+
+          <!-- Niveau 0 — Zones d'étude actives (5 badges colorés + compteur mailles) -->
+          <div id="zonesEtudeActivesBadges" style="margin-top:12px;padding:10px;background:#0f172a;border-radius:8px;border:1px solid #1c2843">
+            <div style="font-size:10px;color:var(--accent);font-weight:600;margin-bottom:8px;letter-spacing:0.08em;text-transform:uppercase">Zones d'étude actives</div>
+            <div id="zonesEtudeActivesGrid" style="display:flex;flex-wrap:wrap;gap:5px">
+              <span style="font-size:10px;color:var(--muted)">Chargement…</span>
+            </div>
+          </div>
         </div>
 
         <div class="section" id="campaignPlannerSection">
@@ -632,6 +640,15 @@ body.scientific-open #thematicPanel{
                 <span id="ficheLocBadge" class="badge-sm" style="display:none">exact</span>
               </div>
               <div id="ficheZoneBadges" style="display:flex;gap:4px;flex-wrap:wrap;margin-top:6px"></div>
+              <!-- C1 Niveau 1 — Localisation ADM Région › Préfecture › Commune -->
+              <div id="ficheAdmBreadcrumb" style="display:none;margin-top:6px;font-size:11px;color:var(--muted);line-height:1.6">
+                <span id="ficheAdmRegion" style="font-weight:500;color:var(--text)"></span><span id="ficheAdmSep1" style="display:none;opacity:0.5;margin:0 4px">›</span><span id="ficheAdmPref"></span><span id="ficheAdmSep2" style="display:none;opacity:0.5;margin:0 4px">›</span><span id="ficheAdmCommune" style="font-weight:500"></span>
+              </div>
+              <!-- Niveau 1 — Actions -->
+              <div id="ficheActions" style="display:none;margin-top:10px;gap:6px">
+                <button id="btnFicheGererSondages" style="flex:1;font-size:10px;padding:5px 8px;background:#4c6ef522;border:1px solid #4c6ef5;color:#4c6ef5;border-radius:5px;cursor:pointer;font-weight:500">Gérer sondages</button>
+                <button id="btnFicheExportPdf" style="flex:1;font-size:10px;padding:5px 8px;background:#64748b22;border:1px solid #64748b;color:var(--muted);border-radius:5px;cursor:pointer;font-weight:500">Exporter PDF</button>
+              </div>
               <div id="ficheAssignment" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:6px;border-left:3px solid #a855f7"></div>
               <!-- Coordonnées UTM31 -->
               <div id="ficheUtm31" style="display:none;margin-top:8px;padding:8px;background:#0a0e17;border-radius:4px;border-left:3px solid #3b82f6">

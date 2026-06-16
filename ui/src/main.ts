@@ -72,6 +72,7 @@ import {
   setZoneMailleMetadata,
   setZoneVisibility,
   getZonesForMaille,
+  getZoneMailleCount,
   ZONE_PASTEL_COLORS,
   COLORS,
   WEIGHT,
@@ -555,6 +556,23 @@ async function loadAllZoneMailleCodes(): Promise<void> {
   if (gridLayer) {
     gridLayer.setStyle((feature: any) => styleFeature(feature))
   }
+  refreshZonesEtudePanel()
+}
+
+function refreshZonesEtudePanel(): void {
+  const grid = document.getElementById('zonesEtudeActivesGrid')
+  if (!grid) return
+  const ZONES = [
+    { code: 'DEPRESSION_LAMA_TG', label: 'Lama',  color: '#F59E0B' },
+    { code: 'DEPRESSION_BADO_TG', label: 'Bado',  color: '#EF4444' },
+    { code: 'PLAINE_MONO_TG',     label: 'Mono',  color: '#10B981' },
+    { code: 'PLAINE_OTI_TG',      label: 'Oti',   color: '#0EA5E9' },
+    { code: 'FOSSE_LIONS_TG',     label: 'Fosse', color: '#8B5CF6' },
+  ]
+  grid.innerHTML = ZONES.map(z => {
+    const count = getZoneMailleCount(z.code)
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;border:1px solid ${z.color}55;background:${z.color}18;font-size:10px;color:${z.color};font-weight:500;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:${z.color};flex-shrink:0"></span>${z.label} <span style="background:${z.color}33;border-radius:8px;padding:0 5px;font-weight:700;margin-left:2px">${count}</span></span>`
+  }).join('')
 }
 
 /** @deprecated use loadAllZoneMailleCodes */
@@ -1957,6 +1975,11 @@ function renderMailleHeaderMinimal(code: string) {
   }
   
   if (ficheLocBadge) ficheLocBadge.style.display = 'none'
+
+  const ficheAdmBreadcrumb = document.getElementById('ficheAdmBreadcrumb')
+  if (ficheAdmBreadcrumb) ficheAdmBreadcrumb.style.display = 'none'
+  const ficheActions = document.getElementById('ficheActions')
+  if (ficheActions) ficheActions.style.display = 'none'
 }
 
 function renderMailleKpisEmpty() {
@@ -1979,12 +2002,35 @@ function renderMailleHeader(code: string, metrics: CellMetrics, data: any) {
   
   if (ficheCode) ficheCode.textContent = code
   
-  // ADM path
+  // ADM path (texte résumé conservé pour accessibilité)
   if (ficheAdm) {
     const admPath = [metrics.region, metrics.prefecture, metrics.commune]
-      .filter(Boolean).join(' > ')
+      .filter(Boolean).join(' › ')
     ficheAdm.textContent = admPath || '—'
   }
+
+  // C1 — Breadcrumb ADM détaillé Région › Préfecture › Commune
+  const ficheAdmBreadcrumb = document.getElementById('ficheAdmBreadcrumb')
+  if (ficheAdmBreadcrumb) {
+    const region = metrics.region || ''
+    const pref = metrics.prefecture || ''
+    const commune = metrics.commune || ''
+    const elRegion = document.getElementById('ficheAdmRegion')
+    const elSep1 = document.getElementById('ficheAdmSep1')
+    const elPref = document.getElementById('ficheAdmPref')
+    const elSep2 = document.getElementById('ficheAdmSep2')
+    const elCommune = document.getElementById('ficheAdmCommune')
+    if (elRegion) elRegion.textContent = region
+    if (elSep1) elSep1.style.display = (region && pref) ? 'inline' : 'none'
+    if (elPref) elPref.textContent = pref
+    if (elSep2) elSep2.style.display = (pref && commune) ? 'inline' : 'none'
+    if (elCommune) elCommune.textContent = commune
+    ficheAdmBreadcrumb.style.display = (region || pref || commune) ? 'block' : 'none'
+  }
+
+  // Niveau 1 — Boutons Actions
+  const ficheActions = document.getElementById('ficheActions')
+  if (ficheActions) ficheActions.style.display = 'flex'
   
   // Badges
   const hasData = metrics.nSondages > 0
@@ -5681,6 +5727,23 @@ function initLegacyPanel() {
   initKeyboardShortcuts()
   initFilterListeners()
   initCloseMailleActions()
+
+  // Niveau 1 — Bouton Gérer sondages (header fiche)
+  const btnFicheGererSondages = document.getElementById('btnFicheGererSondages')
+  if (btnFicheGererSondages) {
+    btnFicheGererSondages.addEventListener('click', () => {
+      const surveysList = document.getElementById('cellSurveysList')
+      if (surveysList) surveysList.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  // Niveau 1 — Bouton Exporter PDF
+  const btnFicheExportPdf = document.getElementById('btnFicheExportPdf')
+  if (btnFicheExportPdf) {
+    btnFicheExportPdf.addEventListener('click', () => {
+      window.print()
+    })
+  }
 
   // Bouton "← Vue globale" dans la fiche maille
   const btnRetour = document.getElementById('btnRetourGlobal')

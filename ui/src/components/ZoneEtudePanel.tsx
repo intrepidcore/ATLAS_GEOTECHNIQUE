@@ -16,7 +16,9 @@ const PRIORITE_COLORS: Record<number, string> = {
   4: '#66bb6a',
 }
 
-export type ZoneEtudeFilter = 'tous' | 'prio1' | 'sans_donnees'
+// Solution 1 — Ajout filtre 'avec_sondages' (logique métier : mailles déjà documentées =
+// données de référence pour le krigeage à dérive externe)
+export type ZoneEtudeFilter = 'tous' | 'prio1' | 'sans_donnees' | 'avec_sondages'
 
 export function ZoneEtudePanel(props: {
   zone: ZoneEtude
@@ -33,6 +35,7 @@ export function ZoneEtudePanel(props: {
   const maillesFiltrees = useMemo(() => {
     if (filter === 'prio1') return mailles.filter(m => m.priorite_recherche === 1)
     if (filter === 'sans_donnees') return mailles.filter(m => m.statut_donnees === 'aucune_donnee')
+    if (filter === 'avec_sondages') return mailles.filter(m => m.nb_sondages > 0)
     return mailles
   }, [filter, mailles])
 
@@ -48,19 +51,26 @@ export function ZoneEtudePanel(props: {
   const risqueColor = RISQUE_COLORS[zone.risque_rga]
 
   return (
+    // Solution 2 — dark: variants ajoutés sur tous les éléments du panel
     <div className="flex h-full flex-col">
       {/* En-tête */}
-      <div className="flex items-start justify-between gap-4 border-b border-slate-200 p-4">
+      <div className="flex items-start justify-between gap-4 border-b border-slate-200 dark:border-slate-700 p-4">
         <div className="min-w-0">
-          <h2 className="truncate text-lg font-semibold text-slate-900">{zone.nom}</h2>
+          <h2 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">{zone.nom}</h2>
           <div className="mt-1 flex items-center gap-2">
-            <span className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold" style={{ background: risqueColor, color: 'white' }}>
+            <span
+              className="inline-flex items-center rounded-md px-2 py-1 text-xs font-semibold"
+              style={{ background: risqueColor, color: 'white' }}
+            >
               Risque RGA {zone.risque_rga.replace('_', ' ')}
             </span>
-            <span className="text-xs text-slate-500">• {stats.total} mailles</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">• {stats.total} mailles</span>
           </div>
         </div>
-        <button onClick={onClose} className="rounded-md p-1 hover:bg-slate-100">
+        <button
+          onClick={onClose}
+          className="rounded-md p-1 hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300"
+        >
           ✕
         </button>
       </div>
@@ -69,12 +79,17 @@ export function ZoneEtudePanel(props: {
       <div className="flex-1 overflow-y-auto p-4">
         {/* Infos géologiques */}
         <div className="space-y-2">
-          {zone.description ? <p className="text-sm text-slate-700">{zone.description}</p> : null}
+          {zone.description ? (
+            <p className="text-sm text-slate-700 dark:text-slate-300">{zone.description}</p>
+          ) : null}
           {zone.mineraux_argileux?.length ? (
             <div className="flex flex-wrap gap-2">
-              <span className="text-xs font-semibold text-slate-700">Minéraux argileux</span>
+              <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">Minéraux argileux</span>
               {zone.mineraux_argileux.map(m => (
-                <span key={m} className="rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
+                <span
+                  key={m}
+                  className="rounded-full bg-slate-100 dark:bg-slate-700 px-3 py-1 text-xs text-slate-700 dark:text-slate-300"
+                >
                   {m}
                 </span>
               ))}
@@ -82,38 +97,38 @@ export function ZoneEtudePanel(props: {
           ) : null}
         </div>
 
-        {/* Statistiques */}
+        {/* Statistiques — 4 KPI cards */}
         <div className="mt-4 grid grid-cols-4 gap-3">
-          <div className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="text-2xl font-bold text-slate-900">{stats.total}</div>
-            <div className="text-xs text-slate-600">Mailles totales</div>
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.total}</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400">Mailles totales</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="text-2xl font-bold text-slate-900">{stats.avecSondages}</div>
-            <div className="text-xs text-slate-600">Avec sondages</div>
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.avecSondages}</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400">Avec sondages</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="text-2xl font-bold text-slate-900">{stats.sansDonnees}</div>
-            <div className="text-xs text-slate-600">Sans données</div>
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.sansDonnees}</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400">Sans données</div>
           </div>
-          <div className="rounded-lg border border-slate-200 bg-white p-3">
-            <div className="text-2xl font-bold text-slate-900">{stats.prio1}</div>
-            <div className="text-xs text-slate-600">Priorité 1</div>
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3">
+            <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.prio1}</div>
+            <div className="text-xs text-slate-600 dark:text-slate-400">Priorité 1</div>
           </div>
         </div>
 
         {/* Coverage bar */}
         <div className="mt-3">
-          <div className="flex items-center justify-between text-xs text-slate-600">
+          <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
             <span>Couverture données</span>
             <span className="font-semibold">{coveragePct}%</span>
           </div>
-          <div className="mt-2 h-2 w-full rounded-full bg-slate-100">
+          <div className="mt-2 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-700">
             <div className="h-2 rounded-full bg-blue-500" style={{ width: `${coveragePct}%` }} />
           </div>
         </div>
 
-        {/* Filtres */}
+        {/* Filtres — Solution 1 : 4ème tab 'avec_sondages' */}
         <div className="mt-4 flex flex-wrap gap-2">
           <Button variant={filter === 'tous' ? 'primary' : 'outline'} size="sm" onClick={() => setFilter('tous')}>
             Toutes ({stats.total})
@@ -128,12 +143,19 @@ export function ZoneEtudePanel(props: {
           >
             À investiguer ({stats.sansDonnees})
           </Button>
+          <Button
+            variant={filter === 'avec_sondages' ? 'primary' : 'outline'}
+            size="sm"
+            onClick={() => setFilter('avec_sondages')}
+          >
+            Avec sondages ({stats.avecSondages})
+          </Button>
         </div>
 
         {/* Liste mailles */}
         <div className="mt-4 space-y-2">
           {maillesFiltrees.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm text-slate-600">
+            <div className="rounded-lg border border-dashed border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 p-3 text-sm text-slate-600 dark:text-slate-400">
               Aucune maille pour ce filtre.
             </div>
           ) : (
@@ -148,30 +170,53 @@ export function ZoneEtudePanel(props: {
                       ? '✓ Documenté'
                       : m.statut_donnees
 
+              // Indicateur visuel du tier d'appartenance (doc §1.6 + §6)
+              // pct >= 50% → cœur de zone (carottage lourd requis) → bordure gauche rouge
+              // pct 10-50% → bordure de zone (RGA actif) → bordure gauche orange
+              const tierBorderColor =
+                m.pct_intersection >= 50 ? '#d32f2f' : '#f57c00'
+
               return (
                 <button
                   key={m.id}
                   onClick={() => onMailleClick(m.maille_code)}
-                  className="w-full rounded-xl border border-slate-200 bg-white p-3 text-left hover:bg-slate-50"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 text-left hover:bg-slate-50 dark:hover:bg-slate-700/60"
+                  style={{ borderLeftWidth: '3px', borderLeftColor: tierBorderColor }}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="truncate font-mono text-sm font-semibold text-slate-900">{m.maille_code}</div>
-                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600">
-                        <span className="rounded-md bg-slate-100 px-2 py-1">Priorité {m.priorite_recherche}</span>
-                        <span className="rounded-md bg-slate-100 px-2 py-1">{Math.round(m.pct_intersection)}% zone</span>
+                      <div className="truncate font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {m.maille_code}
+                      </div>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-600 dark:text-slate-400">
+                        <span className="rounded-md bg-slate-100 dark:bg-slate-700 px-2 py-1">
+                          Priorité {m.priorite_recherche}
+                        </span>
+                        <span className="rounded-md bg-slate-100 dark:bg-slate-700 px-2 py-1">
+                          {Math.round(m.pct_intersection)}% zone
+                        </span>
+                        {m.pct_intersection >= 50 && (
+                          <span className="rounded-md bg-red-100 dark:bg-red-900/30 px-2 py-1 text-red-700 dark:text-red-400 font-semibold">
+                            Cœur — carottage
+                          </span>
+                        )}
                       </div>
                     </div>
 
                     <div className="shrink-0">
-                      <span className="inline-flex rounded-full px-3 py-1 text-xs font-semibold" style={{ background: color, color: 'white' }}>
+                      <span
+                        className="inline-flex rounded-full px-3 py-1 text-xs font-semibold"
+                        style={{ background: color, color: 'white' }}
+                      >
                         {badgeText}
                       </span>
                     </div>
                   </div>
 
-                  <div className="mt-2 text-xs text-slate-600">
-                    <span className="font-semibold">Sondages:</span> {m.nb_sondages} • <span className="font-semibold">VBS:</span> {m.nb_essais_vbs}
+                  <div className="mt-2 text-xs text-slate-600 dark:text-slate-400">
+                    <span className="font-semibold">Sondages:</span> {m.nb_sondages}{' '}
+                    •{' '}
+                    <span className="font-semibold">VBS:</span> {m.nb_essais_vbs}
                     {m.vbs_moyen != null ? ` • Moy VBS: ${m.vbs_moyen.toFixed(1)}` : ''}
                     {' • '}
                     <span className="font-semibold">Atterberg:</span> {m.nb_essais_atterberg}
@@ -184,7 +229,7 @@ export function ZoneEtudePanel(props: {
       </div>
 
       {/* Footer exports */}
-      <div className="border-t border-slate-200 p-4">
+      <div className="border-t border-slate-200 dark:border-slate-700 p-4">
         <div className="flex gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={() => onExportCsv(maillesFiltrees)}>
             Exporter liste mailles (CSV)
@@ -197,4 +242,3 @@ export function ZoneEtudePanel(props: {
     </div>
   )
 }
-

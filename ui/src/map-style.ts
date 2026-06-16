@@ -421,6 +421,11 @@ export function getZonesForMaille(mailleCode: string): Array<{ zoneCode: string;
   return result
 }
 
+/** Retourne le nombre de mailles enregistrées pour une zone. */
+export function getZoneMailleCount(zoneCode: string): number {
+  return zoneMailleCodes.get(String(zoneCode || '').toUpperCase().trim())?.size ?? 0
+}
+
 // =============================================================================
 // LÉGENDE
 // =============================================================================

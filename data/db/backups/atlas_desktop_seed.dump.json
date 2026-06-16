@@ -2,22 +2,22 @@
   "$schema": "https://atlas.intrepidcore.io/schemas/seed-manifest-v2.json",
   "schema_version": "2.0",
   "identity": {
-    "seed_id": "atlas-seed-20260601-966e51a",
-    "seed_version": "2.0.0",
+    "seed_id": "atlas-seed-20260613-v3",
+    "seed_version": "3.0.0",
     "environment": "production",
     "classification": "internal"
   },
   "source": {
-    "created_at": "2026-06-01T17:31:35Z",
+    "created_at": "2026-06-13T17:59:19Z",
     "created_by": "serge.tabedjato",
-    "git_commit": "966e51a",
+    "git_commit": "atlas_v2_clean",
     "git_branch": "atlas_v2_clean",
     "db_name": "atlas_clean",
-    "format": "pg_dump -Fc --no-owner --no-privileges --schema=atlas"
+    "format": "pg_dump -Fc --no-owner --no-privileges --schema=atlas --exclude-table=atlas.users --exclude-table=atlas.mv_legacy_mapping --exclude-table=atlas.sessions --exclude-table=atlas.password_reset_tokens --exclude-table=atlas.auth_audit_log --exclude-table=atlas.audit_log"
   },
   "integrity": {
-    "sha256": "ee23acbd30824e106d41e34f00815625bfc551dcd275cb10f875a6c215b98f68",
-    "size_bytes": 161183028,
+    "sha256": "d6a5ef1a7fc1611dadf46b8a7cc1139c273bd6034c5f408ed22e6ffc32807ad8",
+    "size_bytes": 3543628631,
     "signed_by": "atlas-release-key-2026"
   },
   "compatibility": {
@@ -32,40 +32,40 @@
     ]
   },
   "contents": {
-    "schemas": [
-      "atlas"
-    ],
+    "schemas": ["atlas"],
     "tables_count": 210,
     "rows_estimate": {
       "atlas.mailles": 29407,
-      "atlas.sondages": 492,
-      "atlas.echantillons": 1244,
-      "atlas.essais_vbs": 810,
-      "atlas.essais_atterberg": 909,
-      "atlas.essais_proctor": 292,
-      "atlas.essais_cbr": 567,
+      "atlas.sondages": 573,
+      "atlas.echantillons": 1323,
+      "atlas.essais_vbs": 844,
+      "atlas.essais_atterberg": 988,
+      "atlas.essais_proctor": 371,
+      "atlas.essais_cbr": 714,
       "atlas.essais_penetrometre": 411,
       "atlas.essais_pressiometre": 26,
-      "atlas.ai_interpolation_runs": 314,
-      "atlas.ai_interpolation_values": 6399738,
+      "atlas.ai_interpolation_runs": 1377,
+      "atlas.ai_interpolation_values": 25102590,
       "atlas.users": 0
     },
     "contains_pii": false,
     "contains_user_data": false,
     "geographic_scope": "TGO",
     "import_batch": "v10_master_import_2026",
-    "new_v10_parameters": [
-      "essais_cbr (CBR %%)",
-      "essais_penetrometre (Rd MPa)",
-      "essais_pressiometre (Em MPa)",
-      "essais_classif.indice_groupe (IG)",
-      "essais_proctor.OPM (gamma_d kN/m3)"
+    "excluded_tables": [
+      "atlas.users",
+      "atlas.mv_legacy_mapping",
+      "atlas.sessions",
+      "atlas.password_reset_tokens",
+      "atlas.auth_audit_log",
+      "atlas.audit_log"
     ]
   },
   "retention": {
-    "expires_at": "2027-06-01T00:00:00Z",
+    "expires_at": "2027-06-13T00:00:00Z",
     "superseded_by": null,
-    "keep_versions": 3
+    "keep_versions": 3,
+    "previous_version": "atlas-seed-20260601-966e51a"
   },
   "invariants": [
     {
@@ -100,10 +100,11 @@
     },
     {
       "id": "INV-005",
-      "description": "Sondages V10 importes",
-      "severity": "high",
-      "query": "SELECT COUNT(*) FROM atlas.sondages WHERE created_by_batch='v10_master_import_2026'",
-      "expected_min": 300
+      "description": "573 sondages V10 importes",
+      "severity": "critical",
+      "query": "SELECT COUNT(*) FROM atlas.sondages",
+      "expected_min": 573,
+      "expected_max": 573
     },
     {
       "id": "INV-006",
@@ -114,24 +115,31 @@
     },
     {
       "id": "INV-007",
-      "description": "CBR importes",
+      "description": "CBR importes (>=500)",
       "severity": "high",
       "query": "SELECT COUNT(*) FROM atlas.essais_cbr",
       "expected_min": 500
     },
     {
       "id": "INV-008",
-      "description": "AI interpolation values present",
+      "description": "AI interpolation values present (25M+)",
       "severity": "high",
       "query": "SELECT COUNT(*) FROM atlas.ai_interpolation_values",
-      "expected_min": 6000000
+      "expected_min": 25000000
     },
     {
       "id": "INV-009",
-      "description": "h_canon backfille sur echantillons",
+      "description": "Echantillons avec h_canon backfille",
       "severity": "medium",
       "query": "SELECT COUNT(*) FROM atlas.echantillons WHERE h_canon IS NOT NULL",
       "expected_min": 1200
+    },
+    {
+      "id": "INV-010",
+      "description": "AI runs presents (pipeline ML complet)",
+      "severity": "high",
+      "query": "SELECT COUNT(*) FROM atlas.ai_interpolation_runs",
+      "expected_min": 1000
     }
   ]
 }
