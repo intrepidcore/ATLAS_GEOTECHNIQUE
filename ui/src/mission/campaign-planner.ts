@@ -115,41 +115,41 @@ export function initCampaignPlanner(opts: PlannerOpts): void {
 <div style="font-family:system-ui,-apple-system,sans-serif">
 
   <!-- En-tête -->
-  <div style="padding:14px 16px 10px;background:#0a1018;border-bottom:1px solid #1c2843">
-    <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Plan de campagne terrain</div>
-    <p style="margin:0;font-size:11px;color:#94a3b8;line-height:1.45">Sélection sous contrainte budget. Moteur : api-opti (AG ou heuristique).</p>
+  <div style="padding:14px 16px 10px;background:var(--panel);border-bottom:1px solid #1c2843">
+    <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px">Plan de campagne terrain</div>
+    <p style="margin:0;font-size:11px;color:var(--muted);line-height:1.45">Sélection sous contrainte budget. Moteur : api-opti (AG ou heuristique).</p>
   </div>
 
   <!-- Section A : Cadrage -->
-  <div style="padding:12px 14px;border-bottom:1px solid #1c284344">
-    <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Cadrage</div>
+  <div style="padding:12px 14px;border-bottom:1px solid var(--field-border)">
+    <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Cadrage</div>
 
-    <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:3px" for="cpZone">Zone d'étude</label>
+    <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px" for="cpZone">Zone d'étude</label>
     <select id="cpZone" class="cp-input" style="margin-bottom:8px"><option value="">Chargement…</option></select>
 
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
       <div>
-        <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:3px" for="cpGrid">Grille carte</label>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px" for="cpGrid">Grille carte</label>
         <select id="cpGrid" class="cp-input"><option value="2km">2 km</option><option value="28km">28 km</option></select>
       </div>
       <div>
-        <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:3px" for="cpBudget">Budget sondages</label>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px" for="cpBudget">Budget sondages</label>
         <input id="cpBudget" type="number" min="1" max="200" value="12" class="cp-input" />
       </div>
     </div>
 
-    <label style="font-size:11px;color:#94a3b8;display:block;margin-bottom:3px" for="cpPreset">Objectif de la campagne</label>
+    <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:3px" for="cpPreset">Objectif de la campagne</label>
     <select id="cpPreset" class="cp-input" style="margin-bottom:6px">
       ${PRESETS.map(p => `<option value="${p.id}">${p.label}</option>`).join('')}
     </select>
-    <div id="cpPresetDesc" style="font-size:10px;color:#64748b;line-height:1.4;padding:5px 8px;background:#0a1018;border-radius:5px;border:1px solid #1c2843"></div>
+    <div id="cpPresetDesc" style="font-size:10px;color:var(--muted);line-height:1.4;padding:5px 8px;background:var(--field);border-radius:5px;border:1px solid var(--field-border)"></div>
   </div>
 
   <!-- Section B : Contraintes & Expert -->
-  <div style="padding:12px 14px;border-bottom:1px solid #1c284344">
-    <div style="font-size:10px;color:#64748b;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Contraintes</div>
+  <div style="padding:12px 14px;border-bottom:1px solid var(--field-border)">
+    <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Contraintes</div>
 
-    <label style="font-size:11px;color:#e2e8f0;display:flex;gap:8px;align-items:center;cursor:pointer;margin-bottom:10px">
+    <label style="font-size:11px;color:var(--text);display:flex;gap:8px;align-items:center;cursor:pointer;margin-bottom:10px">
       <input type="checkbox" id="cpDepHard" checked style="width:14px;height:14px;accent-color:#3b82f6" />
       Dépression géologique (contrainte dure)
     </label>
@@ -159,12 +159,12 @@ export function initCampaignPlanner(opts: PlannerOpts): void {
       <span style="color:#a855f7;font-weight:600">Mode expert — ajuster les poids</span>
     </label>
 
-    <div id="cpWeights" style="display:none;margin-top:10px;padding:10px;background:#0a1018;border-radius:6px;border:1px solid #1c2843">
+    <div id="cpWeights" style="display:none;margin-top:10px;padding:10px;background:var(--field);border-radius:6px;border:1px solid var(--field-border)">
       ${weightSliderKeys.map(k => `
         <div style="margin-bottom:8px">
-          <div style="display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;margin-bottom:3px">
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-bottom:3px">
             <span>${WEIGHT_LABELS[k]}</span>
-            <span id="cpW_${k}_val" style="font-variant-numeric:tabular-nums;color:#e2e8f0;font-weight:600">1.0</span>
+            <span id="cpW_${k}_val" style="font-variant-numeric:tabular-nums;color:var(--text);font-weight:600">1.0</span>
           </div>
           <input type="range" id="cpW_${k}" min="0" max="2" step="0.1" value="1.0"
             style="width:100%;height:3px;accent-color:#a855f7;cursor:pointer" />
@@ -186,24 +186,24 @@ export function initCampaignPlanner(opts: PlannerOpts): void {
       </button>
     </div>
 
-    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:11px;color:#94a3b8">
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;font-size:11px;color:var(--muted)">
       <label style="display:flex;gap:6px;align-items:center;cursor:pointer">
         <input type="checkbox" id="cpShowMap" checked style="width:12px;height:12px;accent-color:#3b82f6" />
         Afficher sur la carte
       </label>
-      <button type="button" id="cpClearMap" style="margin-left:auto;background:transparent;border:1px solid #22304d;border-radius:4px;color:#64748b;font-size:10px;padding:3px 8px;cursor:pointer;transition:border-color .15s">Effacer</button>
+      <button type="button" id="cpClearMap" style="margin-left:auto;background:transparent;border:1px solid var(--field-border);border-radius:4px;color:var(--muted);font-size:10px;padding:3px 8px;cursor:pointer;transition:border-color .15s">Effacer</button>
     </div>
 
-    <div id="cpStatus" style="min-height:1.4em;font-size:11px;color:#94a3b8;margin-bottom:6px"></div>
-    <div id="cpMetrics" style="display:none;font-size:11px;color:#cbd5e1;line-height:1.6;margin-bottom:8px;padding:8px;background:#0a1018;border-radius:6px;border:1px solid #1c2843"></div>
+    <div id="cpStatus" style="min-height:1.4em;font-size:11px;color:var(--muted);margin-bottom:6px"></div>
+    <div id="cpMetrics" style="display:none;font-size:11px;color:var(--text);line-height:1.6;margin-bottom:8px;padding:8px;background:var(--field);border-radius:6px;border:1px solid var(--field-border)"></div>
 
-    <div style="border:1px solid #1c2843;border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto">
+    <div style="border:1px solid var(--field-border);border-radius:8px;overflow:hidden;max-height:220px;overflow-y:auto">
       <table style="width:100%;border-collapse:collapse;font-size:11px">
-        <thead style="position:sticky;top:0;background:#0a1018;z-index:1">
+        <thead style="position:sticky;top:0;background:var(--panel);z-index:1">
           <tr>
-            <th style="text-align:left;padding:6px 8px;color:#64748b;font-weight:600">#</th>
-            <th style="text-align:left;padding:6px 8px;color:#64748b;font-weight:600">Maille</th>
-            <th style="text-align:right;padding:6px 8px;color:#64748b;font-weight:600">Score</th>
+            <th style="text-align:left;padding:6px 8px;color:var(--muted);font-weight:600">#</th>
+            <th style="text-align:left;padding:6px 8px;color:var(--muted);font-weight:600">Maille</th>
+            <th style="text-align:right;padding:6px 8px;color:var(--muted);font-weight:600">Score</th>
           </tr>
         </thead>
         <tbody id="cpTableBody"></tbody>
@@ -213,11 +213,11 @@ export function initCampaignPlanner(opts: PlannerOpts): void {
 </div>
 
 <style>
-.cp-input{width:100%;padding:8px 10px;background:#0f1e30;border:1px solid #22304d;border-radius:7px;color:#e2e8f0;font-size:12px;font-family:inherit;transition:border-color .15s;display:block}
+.cp-input{width:100%;padding:8px 10px;background:var(--field);border:1px solid var(--field-border);border-radius:7px;color:var(--text);font-size:12px;font-family:inherit;transition:border-color .15s;display:block}
 .cp-input:focus{outline:none;border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,.2)}
 select.cp-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394A3B8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:30px}
-.cp-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 12px;background:#0f1e30;border:1px solid #22304d;border-radius:7px;color:#e2e8f0;font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s}
-.cp-btn:hover{border-color:#3b82f6;background:#1e3a5f}
+.cp-btn{display:flex;align-items:center;justify-content:center;gap:5px;padding:9px 12px;background:var(--field);border:1px solid var(--field-border);border-radius:7px;color:var(--text);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s}
+.cp-btn:hover{border-color:var(--accent);background:var(--selected)}
 .cp-btn--primary{background:#1d4ed8;border-color:#2563eb;color:#f0f9ff}
 .cp-btn--primary:hover{background:#2563eb;border-color:#60a5fa}
 .cp-btn:disabled{opacity:.45;cursor:not-allowed}
@@ -329,12 +329,12 @@ select.cp-input{appearance:none;background-image:url("data:image/svg+xml,%3Csvg 
     tbody.innerHTML = ''
     for (const m of list) {
       const tr = document.createElement('tr')
-      tr.style.borderBottom = '1px solid #1c284322'
+      tr.style.borderBottom = '1px solid var(--field-border)'
       tr.innerHTML = `
         <td style="padding:5px 8px;font-weight:700;color:#a855f7">${m.rank}</td>
         <td style="padding:5px 8px">
-          <div style="font-weight:600;color:#e2e8f0">${m.maille_code}</div>
-          <div style="font-size:9px;color:#475569;margin-top:1px">${(m.justification || []).slice(0, 2).join(' · ')}</div>
+          <div style="font-weight:600;color:var(--text)">${m.maille_code}</div>
+          <div style="font-size:9px;color:var(--muted);margin-top:1px">${(m.justification || []).slice(0, 2).join(' · ')}</div>
         </td>
         <td style="padding:5px 8px;text-align:right;color:#f4b740;font-variant-numeric:tabular-nums">${m.score_critique.toFixed(3)}</td>
       `

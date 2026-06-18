@@ -870,19 +870,24 @@ export const missionsApi = {
       method: 'DELETE',
     });
     
+    // Lecture text-first pour éviter SyntaxError sur body vide (204/401/etc.)
+    const bodyText = await response.text().catch(() => '');
+    const ct = response.headers.get('content-type') ?? '';
+
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
-      throw new Error(error.error || 'Erreur lors de la suppression de la mission');
+      let errMsg = 'Erreur lors de la suppression de la mission';
+      if (bodyText && ct.includes('application/json')) {
+        try { errMsg = JSON.parse(bodyText).error || errMsg; } catch {}
+      }
+      throw new Error(errMsg);
     }
 
-    // 204 No Content ou body vide — pas de JSON à parser
-    const ct = response.headers.get('content-type') ?? '';
-    if (response.status === 204 || !ct.includes('application/json')) {
+    if (!bodyText || !ct.includes('application/json')) {
       return { success: true, deleted: id };
     }
-    const text = await response.text();
-    if (!text) return { success: true, deleted: id };
-    return JSON.parse(text);
+    try { return JSON.parse(bodyText); } catch {
+      return { success: true, deleted: id };
+    }
   },
 
   async resolveConflict(id: string, input: ResolveConflictRequest): Promise<any> {
@@ -986,7 +991,13 @@ export const documentsApi = {
       throw new Error(error.error || 'Erreur lors de la suppression du document');
     }
 
-    return response.json();
+    const ctDoc = response.headers.get('content-type') ?? '';
+    if (response.status === 204 || !ctDoc.includes('application/json')) {
+      return { success: true, document_id: documentId, deleted: true };
+    }
+    const textDoc = await response.text();
+    if (!textDoc) return { success: true, document_id: documentId, deleted: true };
+    return JSON.parse(textDoc);
   },
 };
 
@@ -1090,7 +1101,13 @@ export const supervisorsApi = {
       throw new Error(error.error || 'Erreur lors de la suppression du superviseur');
     }
 
-    return response.json();
+    const ctSup = response.headers.get('content-type') ?? '';
+    if (response.status === 204 || !ctSup.includes('application/json')) {
+      return { success: true, supervisor_id: id, deactivated: true };
+    }
+    const textSup = await response.text();
+    if (!textSup) return { success: true, supervisor_id: id, deactivated: true };
+    return JSON.parse(textSup);
   },
 };
 
@@ -1221,7 +1238,13 @@ export const studentsApi = {
       throw new Error(error.error || "Erreur lors de la suppression de l'étudiant");
     }
 
-    return response.json();
+    const ctStu = response.headers.get('content-type') ?? '';
+    if (response.status === 204 || !ctStu.includes('application/json')) {
+      return { success: true, student_id: id, deactivated: true };
+    }
+    const textStu = await response.text();
+    if (!textStu) return { success: true, student_id: id, deactivated: true };
+    return JSON.parse(textStu);
   },
 };
 

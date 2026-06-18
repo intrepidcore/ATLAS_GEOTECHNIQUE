@@ -1149,49 +1149,49 @@ export class ThematicPanel {
     const style = document.createElement('style')
     style.id = 'palette-select-styles'
     style.textContent = `
-      /* Sélecteur de palette - DARK MODE (v3.5.1) */
+      /* Sélecteur de palette - CSS vars light/dark (v3.6.0) */
       .palette-custom-select {
         position: relative;
         width: 100%;
       }
-      
+
       .palette-selected {
         display: flex;
         align-items: center;
         gap: 8px;
         padding: 8px 12px;
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: var(--field);
+        border: 1px solid var(--field-border);
         border-radius: 6px;
         cursor: pointer;
         transition: border-color 0.2s, background 0.2s;
       }
-      
+
       .palette-selected:hover {
-        border-color: #3b82f6;
-        background: #1e3a5f;
+        border-color: var(--accent);
+        background: var(--selected);
       }
-      
+
       .palette-selected:focus {
         outline: none;
-        border-color: #3b82f6;
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+        border-color: var(--field-focus);
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
       }
-      
+
       .palette-gradient {
         width: 60px;
         height: 16px;
         border-radius: 3px;
         flex-shrink: 0;
-        border: 1px solid rgba(255,255,255,0.15);
+        border: 1px solid var(--field-border);
       }
-      
+
       .palette-badge {
         font-size: 9px;
         font-weight: 600;
         letter-spacing: 0.04em;
-        color: #94a3b8;
-        border: 1px solid #475569;
+        color: var(--muted);
+        border: 1px solid var(--field-border);
         border-radius: 4px;
         padding: 1px 5px;
       }
@@ -1200,19 +1200,19 @@ export class ThematicPanel {
         flex: 1;
         font-size: 13px;
         font-family: 'Consolas', 'Monaco', monospace;
-        color: #e2e8f0;
+        color: var(--text);
       }
-      
+
       .palette-chevron {
         font-size: 10px;
-        color: #94a3b8;
+        color: var(--muted);
         transition: transform 0.2s;
       }
-      
+
       .palette-custom-select.open .palette-chevron {
         transform: rotate(180deg);
       }
-      
+
       .palette-dropdown {
         position: absolute;
         top: 100%;
@@ -1220,19 +1220,19 @@ export class ThematicPanel {
         right: 0;
         max-height: 250px;
         overflow-y: auto;
-        background: #1e293b;
-        border: 1px solid #334155;
+        background: var(--panel);
+        border: 1px solid var(--field-border);
         border-radius: 6px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
         z-index: 1000;
         display: none;
         margin-top: 4px;
       }
-      
+
       .palette-custom-select.open .palette-dropdown {
         display: block;
       }
-      
+
       .palette-option {
         display: flex;
         align-items: center;
@@ -1240,41 +1240,35 @@ export class ThematicPanel {
         padding: 8px 12px;
         cursor: pointer;
         transition: background 0.15s;
-        color: #e2e8f0;
+        color: var(--text);
       }
-      
+
       .palette-option:hover {
-        background: #334155;
+        background: var(--field);
       }
-      
+
       .palette-option.selected {
-        background: #1e3a5f;
+        background: var(--selected);
       }
-      
+
       .palette-option .palette-gradient {
         width: 50px;
         height: 14px;
       }
-      
+
       .palette-badge {
         font-size: 11px;
         padding: 2px 4px;
-        background: #dbeafe;
-        color: #1d4ed8;
+        background: var(--selected);
+        color: var(--accent);
         border-radius: 3px;
       }
-      
-      /* Scrollbar styling */
-      .palette-dropdown::-webkit-scrollbar {
-        width: 6px;
-      }
-      .palette-dropdown::-webkit-scrollbar-track {
-        background: #f1f1f1;
-      }
-      .palette-dropdown::-webkit-scrollbar-thumb {
-        background: #c1c1c1;
-        border-radius: 3px;
-      }
+
+      /* Scrollbar fine */
+      .palette-dropdown::-webkit-scrollbar { width: 5px; }
+      .palette-dropdown::-webkit-scrollbar-track { background: transparent; }
+      .palette-dropdown::-webkit-scrollbar-thumb { background: var(--field-border); border-radius: 3px; }
+      .palette-dropdown { scrollbar-width: thin; scrollbar-color: var(--field-border) transparent; }
     `
     document.head.appendChild(style)
   }

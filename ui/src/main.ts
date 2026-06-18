@@ -572,7 +572,7 @@ function refreshZonesEtudePanel(): void {
   ]
   grid.innerHTML = ZONES.map(z => {
     const count = getZoneMailleCount(z.code)
-    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:12px;border:1px solid ${z.color}55;background:${z.color}18;font-size:10px;color:${z.color};font-weight:500;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:${z.color};flex-shrink:0"></span>${z.label} <span style="background:${z.color}33;border-radius:8px;padding:0 5px;font-weight:700;margin-left:2px">${count}</span></span>`
+    return `<span style="display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:12px;border:1px solid ${z.color}55;background:${z.color}18;font-size:10px;color:${z.color};font-weight:500;white-space:nowrap;max-width:100%;box-sizing:border-box"><span style="width:7px;height:7px;border-radius:50%;background:${z.color};flex-shrink:0"></span>${z.label}<span style="background:${z.color}33;border-radius:8px;padding:0 4px;font-weight:700;margin-left:2px">${count}</span></span>`
   }).join('')
 }
 
@@ -5946,38 +5946,41 @@ function initResizablePanels() {
   const dashboard = document.getElementById('dashboard')
   if (dashboard) {
     const savedWidth = localStorage.getItem('atlas-home-left-panel-width')
-    const initialWidth = savedWidth ? parseInt(savedWidth) : 380
-    
+    const initialWidth = Math.min(savedWidth ? parseInt(savedWidth) : 380, 420)
+
+    const getGridCols = (w: number) => {
+      const sb = document.getElementById('sidebar')
+      const sidebarHidden = !sb || window.getComputedStyle(sb).display === 'none'
+      return sidebarHidden ? `${w}px 1fr` : `${w}px 1fr 380px`
+    }
+
     makeResizable('#dashboard', {
       direction: 'horizontal',
       minSize: 200,
-      maxSize: 500,
+      maxSize: 420,
       defaultSize: initialWidth,
       storageKey: 'atlas-home-left-panel-width',
       handlePosition: 'end',
       onResize: (newWidth) => {
-        // Modifier grid-template-columns du container
-        container.style.gridTemplateColumns = `${newWidth}px 1fr 380px`
-        console.log(`[Resizable] Dashboard resize: ${newWidth}px`)
+        container.style.gridTemplateColumns = getGridCols(newWidth)
       },
       onResizeEnd: (newWidth) => {
-        container.style.gridTemplateColumns = `${newWidth}px 1fr 380px`
+        container.style.gridTemplateColumns = getGridCols(newWidth)
         invalidateMapSize()
-        console.log(`[Resizable] Dashboard final: ${newWidth}px`)
       }
     })
     // Appliquer la largeur initiale
-    container.style.gridTemplateColumns = `${initialWidth}px 1fr 380px`
+    container.style.gridTemplateColumns = getGridCols(initialWidth)
     console.log('[Resizable] ✅ Panneau gauche (dashboard) activé')
   }
   
   // Panneau droit (sidebar) - handle à GAUCHE
   const sidebar = document.getElementById('sidebar')
+  const isSidebarVisible = () => !!sidebar && window.getComputedStyle(sidebar).display !== 'none'
   if (sidebar) {
     const savedWidth = localStorage.getItem('atlas-home-right-panel-width')
     const initialWidth = savedWidth ? parseInt(savedWidth) : 380
-    const dashboardWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
-    
+
     makeResizable('#sidebar', {
       direction: 'horizontal',
       minSize: 250,
@@ -5986,22 +5989,23 @@ function initResizablePanels() {
       storageKey: 'atlas-home-right-panel-width',
       handlePosition: 'start',
       onResize: (newWidth) => {
-        // Modifier grid-template-columns du container
+        if (!isSidebarVisible()) return
         const leftWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
         container.style.gridTemplateColumns = `${leftWidth}px 1fr ${newWidth}px`
-        console.log(`[Resizable] Sidebar resize: ${newWidth}px`)
       },
       onResizeEnd: (newWidth) => {
+        if (!isSidebarVisible()) return
         const leftWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
         container.style.gridTemplateColumns = `${leftWidth}px 1fr ${newWidth}px`
         invalidateMapSize()
-        console.log(`[Resizable] Sidebar final: ${newWidth}px`)
       }
     })
-    // Appliquer la largeur initiale
-    const leftWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
-    container.style.gridTemplateColumns = `${leftWidth}px 1fr ${initialWidth}px`
-    console.log('[Resizable] ✅ Panneau droit (sidebar) activé')
+    // Appliquer la largeur initiale seulement si le sidebar est visible
+    if (isSidebarVisible()) {
+      const leftWidth = dashboard ? parseInt(dashboard.style.width || '380') : 380
+      container.style.gridTemplateColumns = `${leftWidth}px 1fr ${initialWidth}px`
+      console.log('[Resizable] ✅ Panneau droit (sidebar) activé')
+    }
   }
   
   // Panneau thématique (apparaît dynamiquement) - Observer pour l'activer quand il devient visible
