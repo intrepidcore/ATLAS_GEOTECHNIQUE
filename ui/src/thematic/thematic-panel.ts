@@ -171,29 +171,35 @@ export class ThematicPanel {
    * - Expert: affiche sélection domaine (layers) + filtre horizon (profondeur)
    */
   private async applyExpertMode(enabled: boolean): Promise<void> {
-    if (this.elements.expertContextLayersContainer) {
-      this.elements.expertContextLayersContainer.style.display = enabled ? '' : 'none'
+    // C11-H : empty state visible en mode standard, caché en mode expert
+    const emptyState = this.panelElement.querySelector<HTMLElement>('#couchesEmptyState')
+    if (emptyState) emptyState.style.display = enabled ? 'none' : ''
+
+    // P4 : couches visibles mais désactivées (opacity + pointer-events) en mode standard
+    const expertLayers = this.panelElement.querySelector<HTMLElement>('#expertContextLayers')
+    if (expertLayers) {
+      if (enabled) {
+        expertLayers.classList.remove('tp-expert-layers--disabled')
+      } else {
+        expertLayers.classList.add('tp-expert-layers--disabled')
+      }
     }
+
     if (this.elements.expertHorizonFilterContainer) {
       this.elements.expertHorizonFilterContainer.style.display = enabled ? '' : 'none'
     }
 
     if (!enabled) {
-      // Garantir "zéro élément visuel lié aux domaines" en standard mode
       if (this.elements.toggleGeologieCheckbox) this.elements.toggleGeologieCheckbox.checked = false
       if (this.elements.togglePedologieCheckbox) this.elements.togglePedologieCheckbox.checked = false
       if (this.elements.toggleRisqueGonflementCheckbox) this.elements.toggleRisqueGonflementCheckbox.checked = false
       if (this.elements.toggleDsmCheckbox) this.elements.toggleDsmCheckbox.checked = false
 
-      // Couper les overlays côté Leaflet (idempotent)
       await this.manager.toggleContextLayer('geologie', false)
       await this.manager.toggleContextLayer('pedologie', false)
       await this.manager.toggleContextLayer('risque-gonflement', false)
       await this.manager.toggleContextLayer('dsm', false)
     } else {
-      // Mode expert activé:
-      // - afficher par défaut la couche géologie (contours domaines) pour satisfaire la spec roadmap
-      // - laisser les autres couches contextuelles désactivées par défaut
       if (this.elements.toggleGeologieCheckbox) this.elements.toggleGeologieCheckbox.checked = true
       if (this.elements.togglePedologieCheckbox) this.elements.togglePedologieCheckbox.checked = false
       if (this.elements.toggleRisqueGonflementCheckbox) this.elements.toggleRisqueGonflementCheckbox.checked = false
@@ -317,437 +323,425 @@ export class ThematicPanel {
   /**
    * Render the complete panel HTML
    */
+  /** P6 : page courante du panneau ('main' | 'detail') */
+  private panelPage: 'main' | 'detail' = 'main'
+
+  /** P6 : naviguer vers une vue interne et déplacer le focus */
+  public navigateTo(page: 'main' | 'detail', title = 'Cartes thématiques'): void {
+    this.panelPage = page
+    const retourBtn = this.panelElement.querySelector<HTMLElement>('#btnRetourThematic')
+    const titleEl  = this.panelElement.querySelector<HTMLElement>('#thematicPanelTitle')
+    if (retourBtn) retourBtn.style.display = page === 'detail' ? '' : 'none'
+    if (titleEl)   titleEl.textContent = title
+    // Focus sur le titre (screen readers, WCAG §9 focus-on-route-change)
+    titleEl?.setAttribute('tabindex', '-1')
+    titleEl?.focus()
+  }
+
   private renderPanel(): void {
     this.panelElement.innerHTML = `
+      <!-- P6 : header avec bouton Retour séparé du ✕ fermeture -->
       <div class="thematic-panel-header">
-        <h3 class="thematic-panel-title">${icons.layers()} Cartes thématiques</h3>
+        <button id="btnRetourThematic" class="tp-btn-retour" style="display:none" aria-label="Retour">
+          ← <span>Retour</span>
+        </button>
+        <h3 class="thematic-panel-title" id="thematicPanelTitle" tabindex="-1">${icons.layers()} Cartes thématiques</h3>
         <button id="closeThematicPanel" class="btn-close" title="Fermer" aria-label="Fermer">×</button>
       </div>
-      
-      <div class="thematic-panel-body">
-        <div class="thematic-section checkbox-section">
-          <label class="checkbox-label thematic-toggle-label">
-            <input type="checkbox" class="atlas-switch" id="toggleExpertMode">
-            <span>Mode expert</span>
-          </label>
-        </div>
 
-        <details class="atlas-accordion" id="accordionCarte" open>
-          <summary class="accordion-header">Carte thématique</summary>
-          <div class="accordion-body">
+      <!-- C11-D : tabs ARIA conformes WCAG (role tablist/tab/tabpanel) -->
+      <div class="tp-tabs-nav" role="tablist" aria-label="Configuration thématique">
+        <button role="tab" id="tab-donnees"  class="tp-tab tp-tab--active"
+                aria-selected="true"  aria-controls="panel-donnees"  tabindex="0">Données</button>
+        <button role="tab" id="tab-rendu"    class="tp-tab"
+                aria-selected="false" aria-controls="panel-rendu"    tabindex="-1">Rendu</button>
+        <button role="tab" id="tab-couches"  class="tp-tab"
+                aria-selected="false" aria-controls="panel-couches"  tabindex="-1">Couches</button>
+      </div>
 
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- BLOC A : Source de données -->
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <div class="thematic-section" id="thematicSourceSection">
-          <div class="section-label">Source de données</div>
-          <select id="thematicAiSource" class="thematic-select">
-            <optgroup label="Données terrain">
-              <option value="base">Base — Données terrain (sondages)</option>
-            </optgroup>
-            <optgroup label="Machine Learning géostatistique">
-              <option value="l1_ked" data-model-id="L1_KED_H">ML L1 — KED Hiérarchique (5 niveaux)</option>
-              <option value="l2a_rk" data-model-id="L2a_RK">ML L2a — RK-SCORPAN (Regression Kriging)</option>
-              <option value="l2b_blup" data-model-id="L2b_BLUP">ML L2b — Fusion Bayésienne BLUP</option>
-              <option value="l3_vfs" data-model-id="L3_VFS">ML L3 — VfS-PLS (Sentinel-2, VBS uniquement)</option>
-              <option value="l4_mtgp" data-model-id="L4_MTGP">ML L4 — MTGP/ICM (Multi-Tâches, exp.)</option>
-            </optgroup>
-          </select>
-          <div id="sourceModelBadge" class="source-badge source-model-badge" style="display:none" aria-live="polite">
-            <i data-lucide="activity" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
-            <span id="sourceRmseLabel">—</span>
+      <!-- C11-C : zone scrollable — padding-bottom calculé dynamiquement -->
+      <div class="tp-tabs-content" id="tpTabsContent">
+
+        <!-- ═══ TAB DONNÉES ═══ -->
+        <div role="tabpanel" id="panel-donnees" aria-labelledby="tab-donnees" class="tp-panel tp-panel--active">
+
+          <div class="thematic-section" id="thematicSourceSection">
+            <div class="section-label">Source de données</div>
+            <select id="thematicAiSource" class="thematic-select">
+              <optgroup label="Données terrain">
+                <option value="base">Base — Données terrain (sondages)</option>
+              </optgroup>
+              <optgroup label="Machine Learning géostatistique">
+                <option value="l1_ked"  data-model-id="L1_KED_H">ML L1 — KED Hiérarchique (5 niveaux)</option>
+                <option value="l2a_rk"  data-model-id="L2a_RK">ML L2a — RK-SCORPAN (Regression Kriging)</option>
+                <option value="l2b_blup" data-model-id="L2b_BLUP">ML L2b — Fusion Bayésienne BLUP</option>
+                <option value="l3_vfs"  data-model-id="L3_VFS">ML L3 — VfS-PLS (Sentinel-2, VBS uniquement)</option>
+                <option value="l4_mtgp" data-model-id="L4_MTGP">ML L4 — MTGP/ICM (Multi-Tâches, exp.)</option>
+              </optgroup>
+            </select>
+            <div id="sourceModelBadge" class="source-badge source-model-badge" style="display:none" aria-live="polite">
+              <i data-lucide="activity" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+              <span id="sourceRmseLabel">—</span>
+            </div>
+            <div id="sourceWarningBanner" class="tp-warning-banner" style="display:none;" role="alert" aria-live="polite"></div>
           </div>
-          <div id="sourceWarningBanner" style="display:none;margin-top:4px;padding:5px 8px;background:#422006;border:1px solid #92400e;border-radius:4px;font-size:11px;color:#fbbf24;" role="alert" aria-live="polite"></div>
-        </div>
 
-        <div class="thematic-section">
-          <div class="section-label">Catégorie</div>
-          <select id="thematicObjectif" class="thematic-select"></select>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Paramètre</div>
-          <select id="thematicParameter" class="thematic-select"></select>
-          <div id="parameterDescription" class="param-description"></div>
-        </div>
-
-        <div class="thematic-section" id="thematicHorizonRow" style="display:none;">
-          <div class="section-label">Horizon</div>
-          <select id="thematicHorizon" class="thematic-select" aria-label="Horizon ML">
-            <option value="H1">H1 (0,5 m)</option>
-            <option value="H2" selected>H2 (1,5 m)</option>
-            <option value="H3">H3 (2,0 m)</option>
-          </select>
-        </div>
-        
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- BLOC B : Style & Classification -->
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <div class="thematic-section">
-          <div class="section-label">Type de carte</div>
-          <select id="mapType" class="thematic-select"></select>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Méthode de classification</div>
-          <select id="classificationMethod" class="thematic-select"></select>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Nombre de classes</div>
-          <input type="number" id="nClasses" class="thematic-input" value="5" min="3" max="9">
-        </div>
-        
-        <div id="manualBreaksContainer" class="thematic-section" style="display:none;">
-          <div class="section-label">Seuils manuels (séparés par virgule)</div>
-          <input type="text" id="manualBreaks" class="thematic-input" placeholder="ex: 1, 2, 3, 4, 5">
-        </div>
-
-        <!-- P9 : seuil binaire (TODO ligne 1416 résolu) -->
-        <div id="binaryThresholdContainer" class="thematic-section" style="display:none;">
-          <div class="section-label">Seuil binaire</div>
-          <input type="number" id="binaryThreshold" class="thematic-input" value="0" step="0.01" placeholder="ex: 35">
-          <small>Les mailles ≥ seuil sont colorées, les autres transparentes.</small>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Palette de couleurs</div>
-          <select id="colorPalette" class="thematic-select"></select>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Opacité</div>
-          <div class="opacity-control">
-            <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.7">
-            <span id="opacityValue" class="opacity-value">70%</span>
+          <div class="thematic-section">
+            <div class="section-label">Catégorie</div>
+            <select id="thematicObjectif" class="thematic-select"></select>
           </div>
-        </div>
 
-        <!-- P8 : Niveau de grille déplacé ici (display, pas filtre) -->
-        <div class="thematic-section checkbox-section">
-          <label class="checkbox-label thematic-toggle-label">
-            <input type="checkbox" class="atlas-switch" id="toggleGridLayer" checked>
-            <span>Afficher la grille de fond</span>
-          </label>
-        </div>
-
-        <div class="thematic-divider">
-          <span>Niveau de grille</span>
-        </div>
-
-        <div class="thematic-section">
-          <div class="radio-group">
-            <label class="radio-label">
-              <input type="radio" name="gridLevel" value="2km" checked>
-              <span>Grille 2 km</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="gridLevel" value="combined">
-              <span>Grille combinée (2 km + 28 km)</span>
-            </label>
-            <label class="radio-label">
-              <input type="radio" name="gridLevel" value="28km">
-              <span>Grille 28 km (Profils)</span>
-            </label>
+          <div class="thematic-section">
+            <div class="section-label">Paramètre</div>
+            <select id="thematicParameter" class="thematic-select"></select>
+            <div id="parameterDescription" class="param-description"></div>
           </div>
-        </div>
 
-          </div><!-- /accordion-body Carte -->
-        </details><!-- /accordionCarte -->
+          <div class="thematic-section" id="thematicHorizonRow" style="display:none;">
+            <div class="section-label">Horizon</div>
+            <select id="thematicHorizon" class="thematic-select" aria-label="Horizon ML">
+              <option value="H1">H1 (0,5 m)</option>
+              <option value="H2" selected>H2 (1,5 m)</option>
+              <option value="H3">H3 (2,0 m)</option>
+            </select>
+          </div>
 
-        <details class="atlas-accordion" id="accordionFiltres" open>
-          <summary class="accordion-header">
-            Filtres
-            <span id="filtersActiveBadge" class="badge-filters" style="display:none">0</span>
-          </summary>
-          <div class="accordion-body">
-
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <!-- BLOC C : Filtres -->
-        <!-- ═══════════════════════════════════════════════════════════════════ -->
-        <div class="thematic-divider">
-          <span>Filtres géographiques</span>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Région (ADM1)</div>
-          <select id="thematicAdm1" class="thematic-select">
-            <option value="">— toutes régions —</option>
-          </select>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Préfecture (ADM2)</div>
-          <select id="thematicAdm2" class="thematic-select">
-            <option value="">— toutes préfectures —</option>
-          </select>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Commune (ADM3)</div>
-          <select id="thematicAdm3" class="thematic-select">
-            <option value="">— toutes communes —</option>
-          </select>
-        </div>
-        
-        <div id="admFilterSummary" class="adm-filter-summary" style="display:none;"></div>
-        
-        <button id="clearAdmFilters" class="btn-small full-width btn-clear-adm" style="margin-bottom:12px;">
-          ${icons.rotateCcw()}<span>Effacer filtres géographiques</span>
-        </button>
-        
-        <div class="thematic-divider">
-          <span>Filtres données</span>
-        </div>
-        
-        <div class="thematic-section">
-          <div class="section-label">Sondages minimum</div>
-          <input type="number" id="minSondages" class="thematic-input" value="0" min="0" max="10">
-        </div>
-        
-        <div class="thematic-section checkbox-section">
-          <label class="checkbox-label thematic-toggle-label">
-            <input type="checkbox" class="atlas-switch" id="excludeNoData" checked>
-            <span>Exclure mailles sans données</span>
-          </label>
-        </div>
-        
-        <div class="thematic-section checkbox-section">
-          <label class="checkbox-label thematic-toggle-label">
-            <input type="checkbox" class="atlas-switch" id="excludeOutsideAdm">
-            <span>Exclure mailles hors sélection ADM</span>
-          </label>
-        </div>
-        
-        <!-- Filtres horizon (expert-only) -->
-        <div id="expertHorizonFilter" style="display:none;">
-          <!-- Filtres avancés (repliables) -->
-          <details class="advanced-filters">
-            <summary>Filtres avancés</summary>
-            <div class="advanced-content">
+          <!-- Filtres géographiques -->
+          <details class="atlas-accordion" id="accordionFiltresGeo">
+            <summary class="accordion-header">
+              Filtres géographiques
+              <span id="filtersActiveBadge" class="badge-filters" style="display:none">0</span>
+            </summary>
+            <div class="accordion-body">
               <div class="thematic-section">
-                <div class="section-label">Profondeur (m)</div>
-                <div class="range-inputs">
-                  <input type="number" id="depthMin" class="thematic-input small" placeholder="Min" min="0" step="0.5">
-                  <span class="range-separator" aria-hidden="true">→</span>
-                  <input type="number" id="depthMax" class="thematic-input small" placeholder="Max" min="0" step="0.5">
+                <div class="section-label">Région (ADM1)</div>
+                <select id="thematicAdm1" class="thematic-select"><option value="">— toutes régions —</option></select>
+              </div>
+              <div class="thematic-section">
+                <div class="section-label">Préfecture (ADM2)</div>
+                <select id="thematicAdm2" class="thematic-select"><option value="">— toutes préfectures —</option></select>
+              </div>
+              <div class="thematic-section">
+                <div class="section-label">Commune (ADM3)</div>
+                <select id="thematicAdm3" class="thematic-select"><option value="">— toutes communes —</option></select>
+              </div>
+              <div id="admFilterSummary" class="adm-filter-summary" style="display:none;"></div>
+              <button id="clearAdmFilters" class="btn-small full-width btn-clear-adm" style="margin-bottom:4px;">
+                ${icons.rotateCcw()}<span>Effacer filtres géographiques</span>
+              </button>
+            </div>
+          </details>
+
+          <!-- Filtres données -->
+          <details class="atlas-accordion" id="accordionFiltresDonnees">
+            <summary class="accordion-header">Filtres données</summary>
+            <div class="accordion-body">
+              <div class="thematic-section">
+                <div class="section-label">Sondages minimum</div>
+                <input type="number" id="minSondages" class="thematic-input" value="0" min="0" max="10">
+                <!-- C11-F : zone d'erreur inline -->
+                <div class="tp-field-error" id="errorMinSondages" role="alert" aria-live="polite"></div>
+              </div>
+              <div class="thematic-section checkbox-section">
+                <label class="checkbox-label thematic-toggle-label">
+                  <input type="checkbox" class="atlas-switch" id="excludeNoData" checked>
+                  <span>Exclure mailles sans données</span>
+                </label>
+              </div>
+              <div class="thematic-section checkbox-section">
+                <label class="checkbox-label thematic-toggle-label">
+                  <input type="checkbox" class="atlas-switch" id="excludeOutsideAdm">
+                  <span>Exclure mailles hors sélection ADM</span>
+                </label>
+              </div>
+              <!-- Expert-only : filtre profondeur -->
+              <div id="expertHorizonFilter" style="display:none;">
+                <details class="advanced-filters">
+                  <summary>Filtres avancés</summary>
+                  <div class="advanced-content">
+                    <div class="thematic-section">
+                      <div class="section-label">Profondeur (m)</div>
+                      <div class="range-inputs">
+                        <input type="number" id="depthMin" class="thematic-input small" placeholder="Min" min="0" step="0.5">
+                        <span class="range-separator" aria-hidden="true">→</span>
+                        <input type="number" id="depthMax" class="thematic-input small" placeholder="Max" min="0" step="0.5">
+                      </div>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            </div>
+          </details>
+
+        </div><!-- /panel-donnees -->
+
+        <!-- ═══ TAB RENDU ═══ -->
+        <div role="tabpanel" id="panel-rendu" aria-labelledby="tab-rendu" class="tp-panel" hidden>
+
+          <div class="thematic-section">
+            <div class="section-label">Type de carte</div>
+            <select id="mapType" class="thematic-select"></select>
+          </div>
+
+          <!-- P9 : seuil binaire -->
+          <div id="binaryThresholdContainer" class="thematic-section" style="display:none;">
+            <div class="section-label">Seuil binaire</div>
+            <input type="number" id="binaryThreshold" class="thematic-input" value="0" step="0.01" placeholder="ex: 35">
+            <div class="tp-field-error" id="errorBinaryThreshold" role="alert" aria-live="polite"></div>
+            <small>Les mailles ≥ seuil sont colorées, les autres transparentes.</small>
+          </div>
+
+          <div class="thematic-divider"><span>Grille</span></div>
+          <div class="thematic-section checkbox-section">
+            <label class="checkbox-label thematic-toggle-label">
+              <input type="checkbox" class="atlas-switch" id="toggleGridLayer" checked>
+              <span>Afficher la grille de fond</span>
+            </label>
+          </div>
+          <div class="thematic-section">
+            <div class="radio-group">
+              <label class="radio-label"><input type="radio" name="gridLevel" value="2km" checked><span>Grille 2 km</span></label>
+              <label class="radio-label"><input type="radio" name="gridLevel" value="combined"><span>Grille combinée</span></label>
+              <label class="radio-label"><input type="radio" name="gridLevel" value="28km"><span>Grille 28 km</span></label>
+            </div>
+          </div>
+
+          <div class="thematic-divider"><span>Classification</span></div>
+          <div class="thematic-section">
+            <div class="section-label">Méthode de classification</div>
+            <select id="classificationMethod" class="thematic-select"></select>
+          </div>
+          <div class="thematic-section">
+            <div class="section-label">Nombre de classes</div>
+            <input type="number" id="nClasses" class="thematic-input" value="5" min="3" max="9">
+            <!-- C11-F : erreur inline -->
+            <div class="tp-field-error" id="errorNClasses" role="alert" aria-live="polite"></div>
+          </div>
+          <div id="manualBreaksContainer" class="thematic-section" style="display:none;">
+            <div class="section-label">Seuils manuels (séparés par virgule)</div>
+            <input type="text" id="manualBreaks" class="thematic-input" placeholder="ex: 1, 2, 3, 4, 5">
+          </div>
+
+          <div class="thematic-divider"><span>Style</span></div>
+          <div class="thematic-section">
+            <div class="section-label">Palette de couleurs</div>
+            <select id="colorPalette" class="thematic-select"></select>
+          </div>
+          <div class="thematic-section">
+            <div class="section-label">Opacité</div>
+            <div class="opacity-control">
+              <input type="range" id="opacity" min="0" max="1" step="0.05" value="0.7">
+              <span id="opacityValue" class="opacity-value">70%</span>
+            </div>
+          </div>
+
+        </div><!-- /panel-rendu -->
+
+        <!-- ═══ TAB COUCHES ═══ -->
+        <div role="tabpanel" id="panel-couches" aria-labelledby="tab-couches" class="tp-panel" hidden>
+
+          <!-- C11-H : empty state mode standard -->
+          <div id="couchesEmptyState" class="tp-empty-state">
+            <div class="tp-empty-icon">${icons.layers()}</div>
+            <p class="tp-empty-msg">Activez le <strong>Mode expert</strong> pour accéder aux couches contextuelles.</p>
+            <button type="button" id="activateExpertFromCouches" class="btn-secondary" style="margin-top:8px;width:100%;">
+              Activer le Mode Expert →
+            </button>
+          </div>
+
+          <!-- P4 : couches désactivées (opacity + pointer-events) en mode standard -->
+          <div id="expertContextLayers" class="tp-expert-layers">
+            <div class="context-layers-panel">
+              <details class="context-layer-accordion context-layer-accordion--geologie">
+                <summary class="context-layer-summary">
+                  <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+                    <input type="checkbox" id="toggleGeologie">
+                    <span style="font-weight:600">Géologie</span>
+                  </label>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="layer-badge layer-badge--geologie">vecteur</span>
+                    <span class="layer-chevron">▼</span>
+                  </div>
+                </summary>
+                <div class="layer-content">
+                  <div class="layer-opacity-row">
+                    <span>Opacité:</span>
+                    <input type="range" id="geologieOpacity" min="10" max="80" value="45">
+                    <span id="geologieOpacityValue">45%</span>
+                  </div>
+                  <div id="geologieLegend" class="layer-legend" style="max-height:150px;overflow-y:auto;font-size:10px">
+                    <div style="color:var(--muted);font-style:italic">Cochez pour charger la légende...</div>
+                  </div>
+                </div>
+              </details>
+              <details class="context-layer-accordion context-layer-accordion--pedologie">
+                <summary class="context-layer-summary">
+                  <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+                    <input type="checkbox" id="togglePedologie">
+                    <span style="font-weight:600">Pédologie</span>
+                  </label>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="layer-badge layer-badge--pedologie">vecteur</span>
+                    <span class="layer-chevron">▼</span>
+                  </div>
+                </summary>
+                <div class="layer-content">
+                  <div class="layer-opacity-row">
+                    <span>Opacité:</span>
+                    <input type="range" id="pedologieOpacity" min="10" max="80" value="45">
+                    <span id="pedologieOpacityValue">45%</span>
+                  </div>
+                  <div id="pedologieLegend" class="layer-legend" style="max-height:150px;overflow-y:auto;font-size:10px">
+                    <div style="color:var(--muted);font-style:italic">Cochez pour charger la légende...</div>
+                  </div>
+                </div>
+              </details>
+              <details class="context-layer-accordion context-layer-accordion--risque">
+                <summary class="context-layer-summary">
+                  <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+                    <input type="checkbox" id="toggleRisqueGonflement">
+                    <span style="font-weight:600">Risque gonflement</span>
+                  </label>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="layer-badge layer-badge--risque">vecteur</span>
+                    <span class="layer-chevron">▼</span>
+                  </div>
+                </summary>
+                <div class="layer-content">
+                  <div class="layer-opacity-row">
+                    <span>Opacité:</span>
+                    <input type="range" id="risqueOpacity" min="10" max="80" value="50">
+                    <span id="risqueOpacityValue">50%</span>
+                  </div>
+                  <div id="risqueLegend" class="layer-legend" style="max-height:120px;overflow-y:auto;font-size:10px">
+                    <div style="color:var(--muted);font-style:italic">Cochez pour charger la légende...</div>
+                  </div>
+                </div>
+              </details>
+              <details class="context-layer-accordion context-layer-accordion--dsm">
+                <summary class="context-layer-summary">
+                  <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
+                    <input type="checkbox" id="toggleDsm">
+                    <span style="font-weight:600">Relief (Altitude)</span>
+                  </label>
+                  <div style="display:flex;align-items:center;gap:6px">
+                    <span class="layer-badge layer-badge--dsm">raster</span>
+                    <span class="layer-chevron">▼</span>
+                  </div>
+                </summary>
+                <div class="layer-content">
+                  <div class="layer-opacity-row">
+                    <span>Opacité:</span>
+                    <input type="range" id="dsmOpacity" min="20" max="90" value="60">
+                    <span id="dsmOpacityValue">60%</span>
+                  </div>
+                  <div style="font-size:10px;color:var(--muted);padding:4px;background:var(--field);border-radius:4px">
+                    Info : utilise <strong>togo_map</strong> comme fond relief
+                  </div>
+                </div>
+              </details>
+              <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center">
+                Cliquez sur ▼ pour la légende — données dans les infobulles.
+              </div>
+            </div>
+            <div class="thematic-section checkbox-section">
+              <label class="checkbox-label thematic-toggle-label">
+                <input type="checkbox" class="atlas-switch" id="toggleReliabilityOverlay">
+                <span>Overlay fiabilité (hachure si &lt; 3 sondages / 20 km)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Zones d'étude -->
+          <details class="atlas-accordion" id="accordionZones" open>
+            <summary class="accordion-header">Zones d'étude</summary>
+            <div class="accordion-body">
+              <p class="thematic-zone-hint">Ouvrir le panneau d'analyse par zone.</p>
+              <div class="zone-etude-btn-grid">
+                <div class="zone-etude-row">
+                  <button type="button" id="openZoneEtudeLamaBtn" class="btn-secondary zone-etude-btn" title="Dépression de la Lama">
+                    <span class="zone-dot zone-dot--lama" aria-hidden="true"></span>
+                    <span class="zone-name">Lama</span><span class="zone-km2-badge">547 km²</span>
+                  </button>
+                  <label class="zone-vis-label" title="Afficher Lama sur la carte">
+                    <input type="checkbox" id="zoneVisLama" data-zone="DEPRESSION_LAMA_TG" class="zone-vis-chk" aria-label="Afficher Lama">
+                  </label>
+                </div>
+                <div class="zone-etude-row">
+                  <button type="button" id="openZoneEtudeBadoBtn" class="btn-secondary zone-etude-btn" title="Dépression du Bado">
+                    <span class="zone-dot zone-dot--bado" aria-hidden="true"></span>
+                    <span class="zone-name">Bado</span><span class="zone-km2-badge">312 km²</span>
+                  </button>
+                  <label class="zone-vis-label" title="Afficher Bado sur la carte">
+                    <input type="checkbox" id="zoneVisBado" data-zone="DEPRESSION_BADO_TG" class="zone-vis-chk" aria-label="Afficher Bado">
+                  </label>
+                </div>
+                <div class="zone-etude-row">
+                  <button type="button" id="openZoneEtudeMonoBtn" class="btn-secondary zone-etude-btn" title="Plaine du Mono">
+                    <span class="zone-dot zone-dot--mono" aria-hidden="true"></span>
+                    <span class="zone-name">Mono</span><span class="zone-km2-badge">1 296 km²</span>
+                  </button>
+                  <label class="zone-vis-label" title="Afficher Mono sur la carte">
+                    <input type="checkbox" id="zoneVisMono" data-zone="PLAINE_MONO_TG" class="zone-vis-chk" aria-label="Afficher Mono">
+                  </label>
+                </div>
+                <div class="zone-etude-row">
+                  <button type="button" id="openZoneEtudeOtiBtn" class="btn-secondary zone-etude-btn" title="Plaine de l'Oti">
+                    <span class="zone-dot zone-dot--oti" aria-hidden="true"></span>
+                    <span class="zone-name">Oti</span><span class="zone-km2-badge">464 km²</span>
+                  </button>
+                  <label class="zone-vis-label" title="Afficher Oti sur la carte">
+                    <input type="checkbox" id="zoneVisOti" data-zone="PLAINE_OTI_TG" class="zone-vis-chk" aria-label="Afficher Oti">
+                  </label>
+                </div>
+                <div class="zone-etude-row">
+                  <button type="button" id="openZoneEtudeFosseBtn" class="btn-secondary zone-etude-btn" title="Fosse aux Lions">
+                    <span class="zone-dot zone-dot--fosse" aria-hidden="true"></span>
+                    <span class="zone-name">Fosse aux Lions</span><span class="zone-km2-badge">7 km²</span>
+                  </button>
+                  <label class="zone-vis-label" title="Afficher Fosse aux Lions sur la carte">
+                    <input type="checkbox" id="zoneVisFosse" data-zone="FOSSE_LIONS_TG" class="zone-vis-chk" aria-label="Afficher Fosse aux Lions">
+                  </label>
                 </div>
               </div>
             </div>
           </details>
+
+          <!-- Calcul ML -->
+          <details class="atlas-accordion" id="accordionCalculML">
+            <summary class="accordion-header">Calcul ML</summary>
+            <div class="accordion-body">
+              <p class="thematic-zone-hint">Actions non annulables — durée estimée plusieurs minutes.</p>
+              <div class="thematic-actions">
+                <button id="refreshAiSourcesBtn" class="btn-secondary full-width" title="Recalcule infer / interpolation / fondation">
+                  ${icons.refreshCw()}<span>Recalculer sources IA/AG</span>
+                </button>
+              </div>
+              <div class="thematic-actions export-grid-2">
+                <button id="runTrainInferThematicBtn" class="btn-small" title="Lancer entraînement + inférence supervisée">
+                  ${icons.brain()}<span>Train IA</span>
+                </button>
+                <button id="runKrigingThematicBtn" class="btn-small" title="Lancer interpolation kriging globale">
+                  ${icons.flaskConical()}<span>Kriging</span>
+                </button>
+              </div>
+            </div>
+          </details>
+
+        </div><!-- /panel-couches -->
+
+      </div><!-- /tp-tabs-content -->
+
+      <!-- C11-C : sticky footer — contenu ne passe pas dessous -->
+      <div class="tp-footer" id="tpFooter">
+        <!-- Expert toggle déplacé ici (Passe 3) -->
+        <div class="tp-expert-row">
+          <label class="checkbox-label tp-expert-label">
+            <input type="checkbox" class="atlas-switch" id="toggleExpertMode">
+            <span>Mode expert</span>
+          </label>
         </div>
-        
-        <div id="expertContextLayers" style="display:none;">
-          <div class="thematic-section checkbox-section">
-            <label class="checkbox-label thematic-toggle-label">
-              <input type="checkbox" class="atlas-switch" id="toggleReliabilityOverlay">
-              <span>Overlay fiabilité (hachure si &lt; 3 sondages / 20 km)</span>
-            </label>
-          </div>
-        </div>
-
-          </div><!-- /accordion-body Filtres (grid level déplacé dans Carte) -->
-        </details><!-- /accordionFiltres -->
-
-        <details class="atlas-accordion" id="accordionContexte">
-          <summary class="accordion-header">Couches contexte (QGIS)</summary>
-          <div class="accordion-body">
-
-          <!-- C11-I : couches contextuelles — tokens CSS (plus d'inline styles) -->
-          <div class="context-layers-panel">
-
-          <!-- Géologie -->
-          <details class="context-layer-accordion context-layer-accordion--geologie">
-            <summary class="context-layer-summary">
-              <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
-                <input type="checkbox" id="toggleGeologie">
-                <span style="font-weight:600">Géologie</span>
-              </label>
-              <div style="display:flex;align-items:center;gap:6px">
-                <span class="layer-badge layer-badge--geologie">vecteur</span>
-                <span class="layer-chevron">▼</span>
-              </div>
-            </summary>
-            <div class="layer-content">
-              <div class="layer-opacity-row">
-                <span>Opacité:</span>
-                <input type="range" id="geologieOpacity" min="10" max="80" value="45">
-                <span id="geologieOpacityValue">45%</span>
-              </div>
-              <div id="geologieLegend" class="layer-legend" style="max-height:150px;overflow-y:auto;font-size:10px">
-                <div style="color:var(--muted);font-style:italic">Cochez pour charger la légende...</div>
-              </div>
-            </div>
-          </details>
-
-          <!-- Pédologie -->
-          <details class="context-layer-accordion context-layer-accordion--pedologie">
-            <summary class="context-layer-summary">
-              <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
-                <input type="checkbox" id="togglePedologie">
-                <span style="font-weight:600">Pédologie</span>
-              </label>
-              <div style="display:flex;align-items:center;gap:6px">
-                <span class="layer-badge layer-badge--pedologie">vecteur</span>
-                <span class="layer-chevron">▼</span>
-              </div>
-            </summary>
-            <div class="layer-content">
-              <div class="layer-opacity-row">
-                <span>Opacité:</span>
-                <input type="range" id="pedologieOpacity" min="10" max="80" value="45">
-                <span id="pedologieOpacityValue">45%</span>
-              </div>
-              <div id="pedologieLegend" class="layer-legend" style="max-height:150px;overflow-y:auto;font-size:10px">
-                <div style="color:var(--muted);font-style:italic">Cochez pour charger la légende...</div>
-              </div>
-            </div>
-          </details>
-
-          <!-- Risque de gonflement -->
-          <details class="context-layer-accordion context-layer-accordion--risque">
-            <summary class="context-layer-summary">
-              <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
-                <input type="checkbox" id="toggleRisqueGonflement">
-                <span style="font-weight:600">Risque gonflement</span>
-              </label>
-              <div style="display:flex;align-items:center;gap:6px">
-                <span class="layer-badge layer-badge--risque">vecteur</span>
-                <span class="layer-chevron">▼</span>
-              </div>
-            </summary>
-            <div class="layer-content">
-              <div class="layer-opacity-row">
-                <span>Opacité:</span>
-                <input type="range" id="risqueOpacity" min="10" max="80" value="50">
-                <span id="risqueOpacityValue">50%</span>
-              </div>
-              <div id="risqueLegend" class="layer-legend" style="max-height:120px;overflow-y:auto;font-size:10px">
-                <div style="color:var(--muted);font-style:italic">Cochez pour charger la légende...</div>
-              </div>
-            </div>
-          </details>
-
-          <!-- DSM/Relief -->
-          <details class="context-layer-accordion context-layer-accordion--dsm">
-            <summary class="context-layer-summary">
-              <label class="checkbox-label" style="margin:0;display:flex;align-items:center;gap:6px" onclick="event.stopPropagation()">
-                <input type="checkbox" id="toggleDsm">
-                <span style="font-weight:600">Relief (Altitude)</span>
-              </label>
-              <div style="display:flex;align-items:center;gap:6px">
-                <span class="layer-badge layer-badge--dsm">raster</span>
-                <span class="layer-chevron">▼</span>
-              </div>
-            </summary>
-            <div class="layer-content">
-              <div class="layer-opacity-row">
-                <span>Opacité:</span>
-                <input type="range" id="dsmOpacity" min="20" max="90" value="60">
-                <span id="dsmOpacityValue">60%</span>
-              </div>
-              <div style="font-size:10px;color:var(--muted);padding:4px;background:var(--field);border-radius:4px">
-                Info : utilise <strong>togo_map</strong> comme fond relief (dsm-cop30 non configuré sur tileserver)
-              </div>
-            </div>
-          </details>
-
-          <div style="font-size:10px;color:var(--muted);margin-top:8px;text-align:center">
-            Cliquez sur ▼ pour la légende — données dans les infobulles.
-          </div>
-          </div>
-
-          </div><!-- /accordion-body Contexte -->
-        </details><!-- /accordionContexte -->
-
-        <details class="atlas-accordion" id="accordionZones" open>
-          <summary class="accordion-header">Zones d'étude</summary>
-          <div class="accordion-body">
-        <p class="thematic-zone-hint">
-          Ouvrir le panneau d'analyse par zone. Les mailles concernées sont colorées sur la grille (légende ci‑dessous).
-        </p>
-        <!-- C11-G : checkbox séparée du bouton (pas d'éléments interactifs imbriqués) -->
-        <div class="zone-etude-btn-grid">
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeLamaBtn" class="btn-secondary zone-etude-btn" title="Dépression de la Lama — data gap RGA">
-              <span class="zone-dot zone-dot--lama" aria-hidden="true"></span>
-              <span class="zone-name">Lama</span>
-              <span class="zone-km2-badge">547 km²</span>
-            </button>
-            <label class="zone-vis-label" title="Afficher Lama sur la carte">
-              <input type="checkbox" id="zoneVisLama" data-zone="DEPRESSION_LAMA_TG" class="zone-vis-chk" aria-label="Afficher Lama sur la carte">
-            </label>
-          </div>
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeBadoBtn" class="btn-secondary zone-etude-btn" title="Dépression du Bado — data gap">
-              <span class="zone-dot zone-dot--bado" aria-hidden="true"></span>
-              <span class="zone-name">Bado</span>
-              <span class="zone-km2-badge">312 km²</span>
-            </button>
-            <label class="zone-vis-label" title="Afficher Bado sur la carte">
-              <input type="checkbox" id="zoneVisBado" data-zone="DEPRESSION_BADO_TG" class="zone-vis-chk" aria-label="Afficher Bado sur la carte">
-            </label>
-          </div>
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeMonoBtn" class="btn-secondary zone-etude-btn" title="Plaine du Mono — data gap">
-              <span class="zone-dot zone-dot--mono" aria-hidden="true"></span>
-              <span class="zone-name">Mono</span>
-              <span class="zone-km2-badge">1 296 km²</span>
-            </button>
-            <label class="zone-vis-label" title="Afficher Mono sur la carte">
-              <input type="checkbox" id="zoneVisMono" data-zone="PLAINE_MONO_TG" class="zone-vis-chk" aria-label="Afficher Mono sur la carte">
-            </label>
-          </div>
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeOtiBtn" class="btn-secondary zone-etude-btn" title="Plaine de l'Oti — data gap">
-              <span class="zone-dot zone-dot--oti" aria-hidden="true"></span>
-              <span class="zone-name">Oti</span>
-              <span class="zone-km2-badge">464 km²</span>
-            </button>
-            <label class="zone-vis-label" title="Afficher Oti sur la carte">
-              <input type="checkbox" id="zoneVisOti" data-zone="PLAINE_OTI_TG" class="zone-vis-chk" aria-label="Afficher Oti sur la carte">
-            </label>
-          </div>
-          <div class="zone-etude-row">
-            <button type="button" id="openZoneEtudeFosseBtn" class="btn-secondary zone-etude-btn" title="Fosse aux Lions — data gap">
-              <span class="zone-dot zone-dot--fosse" aria-hidden="true"></span>
-              <span class="zone-name">Fosse aux Lions</span>
-              <span class="zone-km2-badge">7 km²</span>
-            </button>
-            <label class="zone-vis-label" title="Afficher Fosse aux Lions sur la carte">
-              <input type="checkbox" id="zoneVisFosse" data-zone="FOSSE_LIONS_TG" class="zone-vis-chk" aria-label="Afficher Fosse aux Lions sur la carte">
-            </label>
-          </div>
-        </div>
-          </div><!-- /accordion-body Zones -->
-        </details><!-- /accordionZones -->
-
-        <!-- P5 : Calcul ML — accordéon séparé (hors Zones) -->
-        <details class="atlas-accordion" id="accordionCalculML">
-          <summary class="accordion-header">Calcul ML</summary>
-          <div class="accordion-body">
-            <p class="thematic-zone-hint">
-              Actions non annulables — durée estimée plusieurs minutes.
-            </p>
-            <div class="thematic-actions">
-              <button id="refreshAiSourcesBtn" class="btn-secondary full-width" title="Recalcule infer / interpolation / fondation">
-                ${icons.refreshCw()}<span>Recalculer sources IA/AG</span>
-              </button>
-            </div>
-            <div class="thematic-actions export-grid-2">
-              <button id="runTrainInferThematicBtn" class="btn-small" title="Lancer entraînement + inférence supervisée">
-                ${icons.brain()}<span>Train IA</span>
-              </button>
-              <button id="runKrigingThematicBtn" class="btn-small" title="Lancer interpolation kriging globale">
-                ${icons.flaskConical()}<span>Kriging</span>
-              </button>
-            </div>
-          </div><!-- /accordion-body CalculML -->
-        </details><!-- /accordionCalculML -->
-
-        <!-- ═══ BLOC D : Résumé & Actions ═══ -->
         <div id="dataSummary" class="data-summary"></div>
-
         <div class="thematic-actions">
           <button id="applyThematic" class="btn-primary">
             ${icons.check()}<span>Appliquer</span>
@@ -756,51 +750,46 @@ export class ThematicPanel {
             ${icons.crosshair()}<span>Auto-Zoom</span>
           </button>
         </div>
-
         <div class="thematic-actions">
           <button id="resetThematic" class="btn-reset-subtle" type="button">
             ${icons.rotateCcw()}<span>Réinitialiser</span>
           </button>
         </div>
-
         <details class="atlas-accordion" id="accordionExports">
           <summary class="accordion-header">Exports</summary>
           <div class="accordion-body">
-        
-        <div class="thematic-actions">
-          <button id="exportThematicPro" class="btn-primary full-width" title="Export cartographique professionnel avec grille, titre, légende">
-            ${icons.upload()}<span>Export Pro (PNG/PDF)</span>
-          </button>
-        </div>
-        
-        <div class="thematic-actions">
-          <button id="exportThematicAtlas" class="btn-secondary full-width" title="Exporter toutes les cartes thématiques pour tous les ADM">
-            ${icons.bookOpen()}<span>Export Atlas complet</span>
-          </button>
-        </div>
-        
-        <div class="thematic-actions export-grid-2">
-          <button id="exportThematicPNG" class="btn-small" title="Capture rapide de la carte">
-            ${icons.image()}<span>PNG rapide</span>
-          </button>
-          <button id="exportThematicQGIS" class="btn-small" title="GeoJSON + style QML pour QGIS">
-            ${icons.layers()}<span>QGIS</span>
-          </button>
-        </div>
-
-        <div class="thematic-actions export-grid-2">
-          <button id="exportThematicGeoJSON" class="btn-small">
-            ${icons.fileJson()}<span>GeoJSON brut</span>
-          </button>
-          <button id="saveThematicConfig" class="btn-small">
-            ${icons.save()}<span>Sauvegarder config</span>
-          </button>
-        </div>
-          </div><!-- /accordion-body Exports -->
-        </details><!-- /accordionExports -->
-      </div>
+            <div class="thematic-actions">
+              <button id="exportThematicPro" class="btn-primary full-width" title="Export cartographique professionnel">
+                ${icons.upload()}<span>Export Pro (PNG/PDF)</span>
+              </button>
+            </div>
+            <div class="thematic-actions">
+              <button id="exportThematicAtlas" class="btn-secondary full-width" title="Exporter toutes les cartes">
+                ${icons.bookOpen()}<span>Export Atlas complet</span>
+              </button>
+            </div>
+            <div class="thematic-actions export-grid-2">
+              <button id="exportThematicPNG" class="btn-small" title="Capture rapide">
+                ${icons.image()}<span>PNG rapide</span>
+              </button>
+              <button id="exportThematicQGIS" class="btn-small" title="GeoJSON + QML">
+                ${icons.layers()}<span>QGIS</span>
+              </button>
+            </div>
+            <div class="thematic-actions export-grid-2">
+              <button id="exportThematicGeoJSON" class="btn-small">
+                ${icons.fileJson()}<span>GeoJSON brut</span>
+              </button>
+              <button id="saveThematicConfig" class="btn-small">
+                ${icons.save()}<span>Sauvegarder config</span>
+              </button>
+            </div>
+          </div>
+        </details>
+      </div><!-- /tp-footer -->
     `
   }
+
   
   /**
    * Cache DOM elements for performance
@@ -1483,6 +1472,101 @@ export class ThematicPanel {
     if (closeBtn) {
       closeBtn.addEventListener('click', () => this.close())
     }
+
+    // P6 — Bouton Retour
+    this.panelElement.querySelector('#btnRetourThematic')?.addEventListener('click', () => {
+      this.navigateTo('main')
+    })
+
+    // C11-D — Commutation d'onglets ARIA + navigation clavier (flèches)
+    const tabNav = this.panelElement.querySelector<HTMLElement>('.tp-tabs-nav')
+    if (tabNav) {
+      const tabs = Array.from(tabNav.querySelectorAll<HTMLElement>('[role="tab"]'))
+      const activateTab = (tab: HTMLElement) => {
+        tabs.forEach(t => {
+          const isActive = t === tab
+          t.setAttribute('aria-selected', String(isActive))
+          t.setAttribute('tabindex', isActive ? '0' : '-1')
+          t.classList.toggle('tp-tab--active', isActive)
+          const panelId = t.getAttribute('aria-controls')
+          if (panelId) {
+            const panel = this.panelElement.querySelector<HTMLElement>(`#${panelId}`)
+            if (panel) {
+              if (isActive) {
+                panel.removeAttribute('hidden')
+                panel.classList.add('tp-panel--active')
+              } else {
+                panel.setAttribute('hidden', '')
+                panel.classList.remove('tp-panel--active')
+              }
+            }
+          }
+        })
+        tab.focus()
+      }
+
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => activateTab(tab))
+        tab.addEventListener('keydown', (e: KeyboardEvent) => {
+          const idx = tabs.indexOf(tab)
+          if (e.key === 'ArrowRight') {
+            e.preventDefault()
+            activateTab(tabs[(idx + 1) % tabs.length])
+          } else if (e.key === 'ArrowLeft') {
+            e.preventDefault()
+            activateTab(tabs[(idx - 1 + tabs.length) % tabs.length])
+          } else if (e.key === 'Home') {
+            e.preventDefault()
+            activateTab(tabs[0])
+          } else if (e.key === 'End') {
+            e.preventDefault()
+            activateTab(tabs[tabs.length - 1])
+          }
+        })
+      })
+    }
+
+    // C11-C — Hauteur footer → variable CSS pour le padding-bottom du scroll
+    const footer = this.panelElement.querySelector<HTMLElement>('#tpFooter')
+    const tabsContent = this.panelElement.querySelector<HTMLElement>('#tpTabsContent')
+    if (footer && tabsContent) {
+      const syncFooterHeight = () => {
+        const h = footer.getBoundingClientRect().height
+        tabsContent.style.setProperty('--tp-footer-height', `${h}px`)
+      }
+      syncFooterHeight()
+      new ResizeObserver(syncFooterHeight).observe(footer)
+    }
+
+    // C11-F — Validation inline : nClasses [3–9]
+    this.elements.nClassesInput?.addEventListener('input', () => {
+      const v = parseInt(this.elements.nClassesInput!.value, 10)
+      const err = this.panelElement.querySelector<HTMLElement>('#errorNClasses')
+      if (err) err.textContent = (isNaN(v) || v < 3 || v > 9) ? 'Valeur entre 3 et 9' : ''
+    })
+
+    // C11-F — Validation inline : minSondages ≥ 0
+    this.elements.minSondagesInput?.addEventListener('input', () => {
+      const v = parseInt(this.elements.minSondagesInput!.value, 10)
+      const err = this.panelElement.querySelector<HTMLElement>('#errorMinSondages')
+      if (err) err.textContent = (isNaN(v) || v < 0) ? 'Valeur ≥ 0' : ''
+    })
+
+    // C11-F — Validation inline : binaryThreshold (requis si visible)
+    this.panelElement.querySelector<HTMLInputElement>('#binaryThreshold')?.addEventListener('input', (e) => {
+      const v = parseFloat((e.target as HTMLInputElement).value)
+      const err = this.panelElement.querySelector<HTMLElement>('#errorBinaryThreshold')
+      if (err) err.textContent = isNaN(v) ? 'Valeur numérique requise' : ''
+    })
+
+    // C11-H — Bouton "Activer le Mode Expert" depuis l'onglet Couches
+    this.panelElement.querySelector('#activateExpertFromCouches')?.addEventListener('click', () => {
+      const checkbox = this.panelElement.querySelector<HTMLInputElement>('#toggleExpertMode')
+      if (checkbox && !checkbox.checked) {
+        checkbox.checked = true
+        void this.applyExpertMode(true)
+      }
+    })
     
     // Ouvrir panneau (bouton carte retiré par défaut + entrée barre latérale)
     ;['openThematicPanel', 'openThematicPanelSidebar'].forEach((id) => {

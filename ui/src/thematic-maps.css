@@ -671,3 +671,170 @@
     opacity: 1;
   }
 }
+
+/* ═══════════════════════════════════════════════════════
+   PASSE 3 — Composants tp- (C11-C, C11-D, C11-F, C11-H, P4, P6)
+   Animations : fonctionnelles uniquement (quick-reference.md §7)
+   ═══════════════════════════════════════════════════════ */
+
+/* P6 — Bouton Retour */
+.tp-btn-retour {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  min-height: 44px;
+  min-width: 44px;
+  background: transparent;
+  border: none;
+  color: var(--text, #e2e8f0);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 150ms ease;
+}
+.tp-btn-retour:hover {
+  background: var(--hover, rgba(255,255,255,0.08));
+}
+.tp-btn-retour:focus-visible {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: 2px;
+}
+
+/* C11-D — Navigation par onglets ARIA */
+.tp-tabs-nav {
+  display: flex;
+  border-bottom: 1px solid var(--border, #334155);
+  flex-shrink: 0;
+}
+
+.tp-tab {
+  flex: 1;
+  padding: 8px 4px;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--muted, #94a3b8);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+.tp-tab:hover {
+  color: var(--text, #e2e8f0);
+}
+.tp-tab:focus-visible {
+  outline: 2px solid var(--accent, #3b82f6);
+  outline-offset: -2px;
+}
+.tp-tab--active,
+.tp-tab[aria-selected="true"] {
+  color: var(--text, #e2e8f0);
+  border-bottom-color: var(--accent, #3b82f6);
+}
+
+/* C11-C — Zone scrollable avec padding-bottom dynamique */
+.tp-tabs-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px 0;
+}
+
+/* Panneaux d'onglet */
+.tp-panel {
+  display: none;
+  padding: 0 12px;
+}
+.tp-panel--active,
+.tp-panel:not([hidden]) {
+  display: block;
+}
+.tp-panel[hidden] {
+  display: none;
+}
+
+/* C11-C — Footer sticky */
+.tp-footer {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  background: var(--panel-bg, #1e293b);
+  border-top: 1px solid var(--border, #334155);
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+
+/* Expert toggle dans le footer */
+.tp-expert-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.tp-expert-label {
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* P4 — Couches contextuelles désactivées en mode standard */
+.tp-expert-layers {
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 150ms ease;
+}
+.tp-expert-layers--disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* C11-H — Empty state mode standard (Couches tab) */
+.tp-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  text-align: center;
+}
+.tp-empty-icon {
+  color: var(--muted, #94a3b8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tp-empty-icon svg {
+  width: 32px;
+  height: 32px;
+  stroke: var(--muted, #94a3b8);
+}
+.tp-empty-msg {
+  font-size: 13px;
+  color: var(--muted, #94a3b8);
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* C11-F — Erreurs inline de validation */
+.tp-field-error {
+  font-size: 11px;
+  color: #f87171;
+  min-height: 16px;
+  margin-top: 2px;
+  display: block;
+}
+.tp-field-error:empty {
+  display: none;
+}
+
+/* Bannière d'avertissement source */
+.tp-warning-banner {
+  margin-top: 4px;
+  padding: 5px 8px;
+  background: #422006;
+  border: 1px solid #92400e;
+  border-radius: 4px;
+  font-size: 11px;
+  color: #fbbf24;
+}
