@@ -340,21 +340,48 @@
   box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
-/* ── Zones d'étude — grille de boutons ───────────────────────────────────── */
+/* ── Zones d'étude — C11-A touch target + C11-G nested conflict ─────────── */
 .zone-etude-btn-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 5px;
   margin-top: 4px;
 }
 
+/* C11-G : chaque ligne = [btn] + [label checkbox], éléments séparés */
+.zone-etude-row {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+}
+
 .zone-etude-btn {
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
   font-size: 12px;
-  min-height: 36px;
+  min-height: 44px; /* C11-A */
+}
+
+/* C11-G : label isolé, cible touch ≥ 44px */
+.zone-vis-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+  flex-shrink: 0;
+  border: 1px solid var(--field-border, #334155);
+  border-radius: 6px;
+  background: var(--field, #1e293b);
+  transition: border-color 0.15s;
+}
+
+.zone-vis-label:hover {
+  border-color: var(--accent, #3aa6ff);
 }
 
 .zone-name {
@@ -513,6 +540,84 @@
   border-radius: 999px;
   margin-left: 6px;
   line-height: 1.4;
+}
+
+/* ── C11-A : touch target ≥ 44px pour tous les boutons interactifs ───────── */
+.btn-close {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+/* ── C11-B : badge RMSE — taille 13px + token couleur (WCAG AA ≥ 4.5:1) ─── */
+.source-model-badge {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 4px 0;
+  min-height: 18px;
+}
+
+/* ── C11-I : couches contextuelles — migration inline styles → tokens ────── */
+.context-layers-panel {
+  background: var(--field, #0a1018);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.context-layer-accordion {
+  margin-bottom: 8px;
+  background: var(--card-bg, #0f172a);
+  border-radius: 6px;
+}
+
+.context-layer-accordion--geologie  { border-left: 3px solid #8B4513; }
+.context-layer-accordion--pedologie { border-left: 3px solid #FFB6C1; }
+.context-layer-accordion--risque    { border-left: 3px solid #ff9933; }
+.context-layer-accordion--dsm      { border-left: 3px solid #4682B4; }
+
+.context-layer-summary {
+  padding: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  list-style: none;
+}
+.context-layer-summary::-webkit-details-marker { display: none; }
+
+.layer-content {
+  padding: 8px;
+  border-top: 1px solid var(--field-border, #1c2843);
+}
+
+.layer-opacity-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--muted, #94a3b8);
+  margin-bottom: 8px;
+}
+
+.layer-opacity-row input[type="range"] {
+  flex: 1;
+  height: 4px;
+}
+
+.layer-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.layer-badge--geologie  { background: rgba(139,69,19,0.2);  color: #D2691E; }
+.layer-badge--pedologie { background: rgba(255,182,193,0.2); color: #FF69B4; }
+.layer-badge--risque    { background: rgba(255,153,51,0.2);  color: #ff9933; }
+.layer-badge--dsm       { background: rgba(70,130,180,0.2);  color: #87CEEB; }
+
+.layer-chevron {
+  font-size: 12px;
+  color: var(--muted, #64748b);
 }
 
 /* Tooltip thématique */

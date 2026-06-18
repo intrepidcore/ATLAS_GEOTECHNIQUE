@@ -534,21 +534,21 @@ du tab, **pas** sur `#thematicPanel`.
 ### B — Migration incrémentale (3 passes)
 
 **Passe 1 (rapide) :**
-- [ ] Déplacer "Niveau de grille" dans l'onglet "Rendu"
-- [ ] Déplacer IA/Kriging → accordéon "Calcul ML" (hors Zones)
-- [ ] Implémenter seuil binaire (TODO ligne 1416)
+- [x] Déplacer "Niveau de grille" dans la section "Carte thématique"
+- [x] Déplacer IA/Kriging → accordéon "Calcul ML" (hors Zones)
+- [x] Implémenter seuil binaire (TODO ligne 1416)
 - [ ] Logique Expert : `disabled` (pas caché) sur les checkboxes couches en mode standard
-- [ ] C11-A — `btn-sm` min-height 44px + `zone-etude-btn` + `btn-close`
-- [ ] C11-B — Badge RMSE : 13px + contraste ≥4.5:1 (`var(--muted)`)
-- [ ] C11-D — Tabs ARIA (`role="tablist/tab/tabpanel"`) + navigation clavier flèches
-- [ ] C11-E — Confirmation dialog avant Train IA / Kriging / Recalculer sources
+- [x] C11-A — `btn-small` min-height 44px + `zone-etude-btn` + `btn-close`
+- [x] C11-B — Badge RMSE : 13px + contraste ≥4.5:1 (`var(--muted)`)
+- [ ] C11-D — Tabs ARIA (`role="tablist/tab/tabpanel"`) + navigation clavier flèches (Passe 3)
+- [x] C11-E — Confirmation dialog avant Train IA / Kriging / Recalculer sources
 
 **Passe 2 (medium) :**
 - [ ] C11-C — Sticky footer : `padding-bottom` dynamique sur `.tabs-content`
 - [ ] C11-F — Inline validation sur inputs numériques (classes, opacité, seuils)
-- [ ] C11-G — Séparer zone-button et checkbox (éléments interactifs imbriqués)
+- [x] C11-G — Séparer zone-button et checkbox (éléments interactifs imbriqués)
 - [ ] C11-H — Empty state onglet Couches (mode standard sans expert)
-- [ ] C11-I — Migrer inline styles `#0f172a` / `#0a1018` → tokens CSS
+- [x] C11-I — Migrer inline styles `#0f172a` / `#0a1018` → tokens CSS
 - [ ] P4 — Logique Expert : `disabled` couches en mode standard
 - [ ] P6 — Navigation Retour + ARIA + focus sur changement de page
 - [ ] Chip recommandation palette
@@ -572,18 +572,18 @@ comme fallback. Voir C11-I.
 
 | Statut | Priorité | Changement | Problème résolu | Fichier |
 |--------|----------|------------|-----------------|---------|
-| [ ] | **P0** | Déplacer IA/Kriging → accordéon "Calcul ML" | P5 | thematic-panel.ts |
-| [ ] | **P0** | Déplacer "Niveau de grille" → onglet "Rendu" | P8 | thematic-panel.ts |
-| [ ] | **P0** | Implémenter seuil binaire (TODO ligne 1416) | P9 | thematic-panel.ts |
-| [ ] | **P0** | `btn-sm` min-height 44px | **C11-A** | thematic-maps.css |
-| [ ] | **P0** | Badge RMSE : 13px + contraste ≥4.5:1 | **C11-B** | thematic-panel.ts |
-| [ ] | **P0** | Tabs ARIA (`role="tablist/tab/tabpanel"`) + focus on nav | **C11-D** | thematic-panel.ts |
-| [ ] | **P0** | Confirmation dialog boutons ML | **C11-E** | thematic-panel.ts |
+| [x] | **P0** | Déplacer IA/Kriging → accordéon "Calcul ML" | P5 | thematic-panel.ts |
+| [x] | **P0** | Déplacer "Niveau de grille" → section "Carte" | P8 | thematic-panel.ts |
+| [x] | **P0** | Implémenter seuil binaire (TODO ligne 1416) | P9 | thematic-panel.ts |
+| [x] | **P0** | `btn-small` min-height 44px | **C11-A** | index.html + thematic-maps.css |
+| [x] | **P0** | Badge RMSE : 13px + contraste ≥4.5:1 | **C11-B** | thematic-panel.ts + thematic-maps.css |
+| [ ] | **P0** | Tabs ARIA (`role="tablist/tab/tabpanel"`) + focus on nav | **C11-D** | thematic-panel.ts (Passe 3) |
+| [x] | **P0** | Confirmation dialog boutons ML | **C11-E** | thematic-panel.ts |
 | [ ] | **P1** | Sticky footer : padding-bottom sur tabs-content | **C11-C** | thematic-maps.css |
 | [ ] | **P1** | Inline validation sur inputs numériques | **C11-F** | thematic-panel.ts |
-| [ ] | **P1** | Séparer zone-button et checkbox (nested conflict) | **C11-G** | thematic-panel.ts |
+| [x] | **P1** | Séparer zone-button et checkbox (nested conflict) | **C11-G** | thematic-panel.ts + thematic-maps.css |
 | [ ] | **P1** | Empty state onglet Couches (mode standard) | **C11-H** | thematic-panel.ts |
-| [ ] | **P1** | Migrer inline styles `#0f172a` → tokens CSS | **C11-I** | thematic-panel.ts + thematic-maps.css |
+| [x] | **P1** | Migrer inline styles `#0f172a` → tokens CSS | **C11-I** | thematic-panel.ts + thematic-maps.css |
 | [ ] | **P1** | Logique Expert : `disabled` couches en mode standard | P4 | thematic-panel.ts |
 | [ ] | **P1** | Navigation Retour + ARIA | P6 | thematic-panel.ts |
 | [ ] | **P1** | Chip recommandation palette | P3 | thematic-panel.ts |
