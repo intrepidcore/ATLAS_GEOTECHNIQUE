@@ -102,6 +102,10 @@ export interface SupervisorSummary {
   user_id: string;
   username: string;
   full_name: string;
+  email: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  telephone: string | null;
   specialite: string | null;
   institution: string | null;
   is_active: boolean;
@@ -1274,6 +1278,13 @@ export const maillesApi = {
     }
 
     return response.json();
+  },
+
+  async getGeometry(code: string): Promise<{ type: string; coordinates: unknown } | null> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/grid/${encodeURIComponent(code)}/shape`);
+    if (!response.ok) return null;
+    const feature = await response.json().catch(() => null);
+    return feature?.geometry ?? null;
   },
 };
 

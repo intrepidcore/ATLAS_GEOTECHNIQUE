@@ -173,6 +173,57 @@ export const MaillePickerModal: React.FC<MaillePickerModalProps> = ({
   );
 };
 
+// ─── Tile utilities for GPS picker ───────────────────────────────────────────
+
+export type TileId =
+  | 'esri_sat' | 'esri_topo'
+  | 'google_hybrid' | 'google_sat' | 'google_road' | 'google_terrain'
+  | 'carto_voyager' | 'carto_positron' | 'carto_dark'
+  | 'stamen_terrain' | 'opentopo' | 'osm';
+
+const TILE_DEFS: Record<TileId, { url: string; subdomains?: string | string[]; maxZoom: number; label: string }> = {
+  esri_sat:       { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'ESRI Sat' },
+  esri_topo:      { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'ESRI Topo' },
+  google_hybrid:  { url: 'http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'G-Hybride' },
+  google_sat:     { url: 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'G-Sat' },
+  google_road:    { url: 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'G-Route' },
+  google_terrain: { url: 'http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'G-Relief' },
+  carto_voyager:  { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 19, label: 'Voyager' },
+  carto_positron: { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 19, label: 'Clair' },
+  carto_dark:     { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 19, label: 'Sombre' },
+  stamen_terrain: { url: 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg', subdomains: 'abcd', maxZoom: 18, label: 'Terrain' },
+  opentopo:       { url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', maxZoom: 17, label: 'OpenTopo' },
+  osm:            { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', maxZoom: 19, label: 'OSM' },
+};
+
+export function createTileLayer(id: TileId): L.TileLayer {
+  const def = TILE_DEFS[id];
+  return L.tileLayer(def.url, { maxZoom: def.maxZoom, subdomains: def.subdomains as any });
+}
+
+interface TileSelectorProps {
+  current: TileId;
+  onChange: (id: TileId) => void;
+}
+
+const TileSelector: React.FC<TileSelectorProps> = ({ current, onChange }) => (
+  <div className="absolute bottom-2 left-2 flex gap-1 z-[1000]">
+    {(Object.entries(TILE_DEFS) as [TileId, typeof TILE_DEFS[TileId]][]).map(([id, def]) => (
+      <button
+        key={id}
+        onClick={() => onChange(id)}
+        className={`px-2 py-0.5 rounded text-[10px] font-medium shadow transition-colors ${
+          current === id
+            ? 'bg-blue-600 text-white'
+            : 'bg-white/90 text-slate-700 hover:bg-white border border-slate-200'
+        }`}
+      >
+        {def.label}
+      </button>
+    ))}
+  </div>
+);
+
 // ─── GPS sondage picker ───────────────────────────────────────────────────────
 
 interface GpsPickerModalProps {
@@ -182,6 +233,8 @@ interface GpsPickerModalProps {
   initialPoints?: SondagePointInput[];
   initialLat?: number;
   initialLon?: number;
+  /** Codes des mailles (ex: "TG-0048-0045-01") — affichées en bordure rose, fond transparent */
+  mailleCodes?: string[];
 }
 
 export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
@@ -191,13 +244,19 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
   initialPoints = [],
   initialLat = 8.6,
   initialLon = 0.8,
+  mailleCodes = [],
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const leafletRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.Marker[]>([]);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
+  const mailleLayerRef = useRef<L.GeoJSON | null>(null);
+  const initialPointsRef = useRef(initialPoints);
+  const [tileId, setTileId] = useState<TileId>('esri_sat');
   const [points, setPoints] = useState<SondagePointInput[]>(initialPoints);
   const [editingLabel, setEditingLabel] = useState<number | null>(null);
   const [labelInput, setLabelInput] = useState('');
+  const [mailleLoadError, setMailleLoadError] = useState<string | null>(null);
 
   const redrawMarkers = useCallback((map: L.Map, pts: SondagePointInput[], onRemove: (idx: number) => void) => {
     markersRef.current.forEach(m => m.remove());
@@ -220,6 +279,7 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
     });
   }, []);
 
+  // ── Map initialisation ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen || !mapRef.current) return;
 
@@ -234,12 +294,11 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
       zoomControl: true,
     });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap',
-      maxZoom: 18,
-    }).addTo(map);
+    const tile = createTileLayer(tileId);
+    tile.addTo(map);
+    tileLayerRef.current = tile;
 
-    let currentPoints = [...initialPoints];
+    let currentPoints = [...initialPointsRef.current];
 
     const handleRemove = (idx: number) => {
       currentPoints = currentPoints.filter((_, i) => i !== idx);
@@ -266,8 +325,77 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
       map.remove();
       leafletRef.current = null;
       markersRef.current = [];
+      tileLayerRef.current = null;
+      mailleLayerRef.current = null;
     };
-  }, [isOpen]);
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Maille overlay — se recharge si isOpen ou mailleCodes change ──────────
+  const mailleCodesKey = mailleCodes.join(',');
+  useEffect(() => {
+    if (!isOpen) return;
+    const map = leafletRef.current;
+    if (!map) return;
+
+    let cancelled = false;
+    setMailleLoadError(null);
+
+    if (mailleCodes.length === 0) {
+      if (mailleLayerRef.current) { mailleLayerRef.current.remove(); mailleLayerRef.current = null; }
+      return;
+    }
+
+    (async () => {
+      if (mailleLayerRef.current) { mailleLayerRef.current.remove(); mailleLayerRef.current = null; }
+      try {
+        const geometries = await Promise.all(
+          mailleCodes.map(code => maillesApi.getGeometry(code).catch((err: unknown) => {
+            console.warn('[GpsPickerModal] geometry fetch failed for', code, err);
+            return null;
+          }))
+        );
+        if (cancelled || !leafletRef.current) return;
+
+        const features = geometries.flatMap((geom, i) =>
+          geom ? [{ type: 'Feature' as const, geometry: geom, properties: { code: mailleCodes[i] } }] : []
+        );
+
+        if (features.length === 0) {
+          setMailleLoadError(`Géométrie indisponible pour ${mailleCodes.length} maille(s)`);
+          return;
+        }
+
+        const layer = L.geoJSON(
+          { type: 'FeatureCollection', features } as any,
+          { style: { color: '#ec4899', weight: 2.5, opacity: 1, fillColor: '#ec4899', fillOpacity: 0.08 } }
+        ).addTo(leafletRef.current);
+
+        mailleLayerRef.current = layer;
+
+        if (initialPointsRef.current.length === 0) {
+          try {
+            const bounds = layer.getBounds();
+            if (bounds.isValid()) leafletRef.current.fitBounds(bounds, { padding: [30, 30] });
+          } catch { /* ignore */ }
+        }
+      } catch (err: unknown) {
+        if (!cancelled) setMailleLoadError('Erreur chargement contours mailles');
+        console.error('[GpsPickerModal] maille geometry error:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
+  }, [isOpen, mailleCodesKey]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ── Tile swap ──────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!leafletRef.current) return;
+    if (tileLayerRef.current) tileLayerRef.current.remove();
+    const newTile = createTileLayer(tileId);
+    newTile.addTo(leafletRef.current);
+    if (mailleLayerRef.current) mailleLayerRef.current.bringToFront();
+    tileLayerRef.current = newTile;
+  }, [tileId]);
 
   const removePoint = (idx: number) => {
     const updated = points.filter((_, i) => i !== idx);
@@ -299,8 +427,19 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
               <MapPin className="w-4 h-4 text-green-500" />
               Localiser les sondages prévus
             </div>
-            <div className="text-xs text-slate-500 mt-0.5">
+            <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2">
               Cliquez sur la carte pour ajouter des points — {points.length} point{points.length !== 1 ? 's' : ''}
+              {mailleCodes.length > 0 && !mailleLoadError && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-pink-50 text-pink-600 text-[10px] font-medium">
+                  <span className="w-2 h-2 rounded-full bg-pink-400 inline-block" />
+                  {mailleCodes.length} maille{mailleCodes.length !== 1 ? 's' : ''} affichée{mailleCodes.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              {mailleLoadError && (
+                <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 text-[10px] font-medium">
+                  ⚠ {mailleLoadError}
+                </span>
+              )}
             </div>
           </div>
           <button
@@ -314,7 +453,10 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
         {/* Body — map + list side by side */}
         <div className="flex flex-1 min-h-0">
           {/* Map */}
-          <div ref={mapRef} className="flex-1" style={{ zIndex: 1 }} />
+          <div className="flex-1 relative" style={{ zIndex: 1 }}>
+            <div ref={mapRef} className="w-full h-full" />
+            <TileSelector current={tileId} onChange={setTileId} />
+          </div>
 
           {/* Points list */}
           <div className="w-56 shrink-0 border-l border-slate-200 dark:border-slate-700 flex flex-col">

@@ -238,17 +238,20 @@ async fn send_assignment_emails(
         return Ok(0);
     }
 
-    // Requête principale — part de colab_maille_assignments (les IDs viennent de cette table)
+    // Requête principale — part de colab_mission_assignments (IDs exposés par l'UI via la vue).
+    // colab_maille_assignments est vide pour les étudiants sans matricule → on l'évite.
     let rows = sqlx::query(
         r#"
         SELECT
-            mca.assignment_id                            AS assignment_id,
+            cma.id                                       AS assignment_id,
             COALESCE(cma.role, 'primary')                AS assignment_role,
             cma.notes                                    AS assignment_notes,
             u.email                                      AS student_email,
-            u.first_name || ' ' || u.last_name          AS student_name,
+            COALESCE(NULLIF(TRIM(u.first_name || ' ' || u.last_name), ''),
+                     NULLIF(TRIM(u.last_name  || ' ' || u.first_name), ''),
+                     u.username, u.email)                AS student_name,
             COALESCE(cs.matricule, '')                   AS matricule,
-            COALESCE(ma.code, cm.ex_maille_code, '')     AS maille_code,
+            COALESCE(ma.code, '')                        AS maille_code,
             cm.title                                     AS mission_title,
             cm.code                                      AS mission_code,
             cm.theme::text                               AS mission_theme,
@@ -332,21 +335,19 @@ async fn send_assignment_emails(
                  WHERE sp.mission_id = cm.id),
                 '[]'::json
             )                                            AS sondage_points_json
-        FROM atlas.colab_maille_assignments mca
-        JOIN  atlas.colab_missions      cm  ON cm.maille_id = mca.maille_id
+        FROM atlas.colab_mission_assignments cma
+        JOIN  atlas.colab_missions      cm  ON cm.id   = cma.mission_id
                                            AND cm.deleted_at IS NULL
-        JOIN  atlas.colab_mission_assignments cma
-                                        ON cma.mission_id = cm.id
-                                       AND cma.student_id = mca.student_id
-                                       AND cma.unassigned_at IS NULL
-        JOIN  atlas.colab_students      cs  ON cs.id  = mca.student_id
+        JOIN  atlas.colab_students      cs  ON cs.id   = cma.student_id
                                            AND cs.deleted_at IS NULL
-        JOIN  atlas.users               u   ON u.id   = cs.user_id
-        LEFT JOIN atlas.mailles         ma  ON ma.id  = cm.maille_id
+        JOIN  atlas.users               u   ON u.id    = cs.user_id
+        LEFT JOIN atlas.mailles         ma  ON ma.id   = cm.maille_id
         LEFT JOIN atlas.colab_supervisors sup ON sup.id = cm.supervisor_id
-        LEFT JOIN atlas.users           su  ON su.id  = sup.user_id
+        LEFT JOIN atlas.users           su  ON su.id   = sup.user_id
         LEFT JOIN atlas.maille_climate_features cl ON cl.maille_code = ma.code
-        WHERE mca.assignment_id = ANY($1)
+        WHERE cma.id = ANY($1)
+          AND cma.unassigned_at IS NULL
+          AND u.email IS NOT NULL AND u.email <> ''
         "#,
     )
     .bind(&assignment_ids)

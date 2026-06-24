@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Loader2, Map, MapPin, Plus, Trash2, X } from 'lucide-react';
 import { MaillePickerModal, GpsPickerModal } from './map-picker-modal';
 
@@ -19,6 +19,8 @@ import {
   MISSION_THEMES,
 } from '../../services/colab-api';
 import { Button, Input, Select } from './ui';
+
+const DRAFT_KEY = 'atlas_draft_new_mission';
 
 function generateMissionCode(): string {
   const ts = new Date();
@@ -200,10 +202,14 @@ const CreateMissionModal: React.FC<{
   initialMailleQuery?: string;
 }> = ({ isOpen, onClose, onCreated, onCreatedMission, onOpenExistingStudent, initialMailleQuery }) => {
   const [loading, setLoading] = useState(false);
+  const [draftLoading, setDraftLoading] = useState(false);
+  const [draftStatus, setDraftStatus] = useState<'saved' | null>(null);
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mailleQuery, setMailleQuery] = useState('');
   const [mailleSuggestions, setMailleSuggestions] = useState<MailleSuggestItem[]>([]);
   const [mailleLoading, setMailleLoading] = useState(false);
+  const [selectedMailles, setSelectedMailles] = useState<MailleSuggestItem[]>([]);
 
   const [mailleLat, setMailleLat] = useState('');
   const [mailleLon, setMailleLon] = useState('');
@@ -253,7 +259,24 @@ const CreateMissionModal: React.FC<{
 
   useEffect(() => {
     if (!isOpen) return;
+    // Tenter de restaurer le brouillon
+    try {
+      const saved = localStorage.getItem(DRAFT_KEY);
+      if (saved) {
+        const d = JSON.parse(saved);
+        if (d.form) setForm(prev => ({ ...prev, ...d.form }));
+        if (d.selectedMailles) setSelectedMailles(d.selectedMailles);
+        if (d.selectedStudents) setSelectedStudents(d.selectedStudents);
+        if (d.selectedSupervisor) setSelectedSupervisor(d.selectedSupervisor);
+        if (d.sondagePoints) setSondagePoints(d.sondagePoints);
+        if (d.mailleQuery) setMailleQuery(d.mailleQuery);
+        if (d.communeQuery) setCommuneQuery(d.communeQuery);
+        if (d.regionQuery) setRegionQuery(d.regionQuery);
+        return;
+      }
+    } catch { /* ignore */ }
     setMailleQuery(initialMailleQuery ?? '');
+    setSelectedMailles([]);
     setMailleSuggestions([]);
     setMailleLat('');
     setMailleLon('');
@@ -274,6 +297,24 @@ const CreateMissionModal: React.FC<{
     setSpLon('');
     setSpLabel('');
   }, [isOpen, initialMailleQuery]);
+
+  // Auto-save brouillon (debounce 800ms)
+  useEffect(() => {
+    if (!isOpen) return;
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      try {
+        localStorage.setItem(DRAFT_KEY, JSON.stringify({
+          form, selectedMailles, selectedStudents, selectedSupervisor,
+          sondagePoints, mailleQuery, communeQuery, regionQuery,
+        }));
+        setDraftStatus('saved');
+        setTimeout(() => setDraftStatus(null), 2000);
+      } catch { /* ignore */ }
+    }, 800);
+    return () => { if (draftTimer.current) clearTimeout(draftTimer.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form, selectedMailles, selectedStudents, selectedSupervisor, sondagePoints]);
 
   useEffect(() => {
     let cancelled = false;
@@ -400,29 +441,57 @@ const CreateMissionModal: React.FC<{
     };
   }, [regionQuery, isOpen]);
 
+  const buildPayload = (): CreateMissionRequest => ({
+    ...form,
+    code: generateMissionCode(),
+    maille_id: selectedMailles[0]?.id,
+    zone_label: selectedMailles[0]?.code,
+    supervisor_id: selectedSupervisor?.id,
+    assigned_student_ids: selectedStudents.map(s => s.id),
+    sondage_points: sondagePoints.length > 0 ? sondagePoints : undefined,
+  });
+
+  const clearDraft = () => { try { localStorage.removeItem(DRAFT_KEY); } catch { /* ignore */ } };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
-
     try {
-      const payload: CreateMissionRequest = {
-        ...form,
-        code: generateMissionCode(),
-        supervisor_id: selectedSupervisor?.id,
-        assigned_student_ids: selectedStudents.map(s => s.id),
-        sondage_points: sondagePoints.length > 0 ? sondagePoints : undefined,
-      };
-      const created = await missionsApi.create(payload);
+      const created = await missionsApi.create(buildPayload());
+      // Passe de draft → planned
+      await missionsApi.update(created.id, { status: 'planned' });
+      clearDraft();
       onCreatedMission?.(created);
       onCreated();
       onClose();
-      setForm({ code: '', title: '', theme: 'reconnaissance', commune: '', region: '', description: '', sondage_points: [] });
-      setSondagePoints([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erreur lors de la création');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    setError(null);
+    setDraftLoading(true);
+    try {
+      const payload = buildPayload();
+      if (!payload.title) {
+        const now = new Date();
+        const dd = String(now.getDate()).padStart(2, '0');
+        const mm = String(now.getMonth() + 1).padStart(2, '0');
+        payload.title = `Brouillon ${dd}/${mm}/${now.getFullYear()}`;
+      }
+      const created = await missionsApi.create(payload);
+      clearDraft();
+      onCreatedMission?.(created);
+      onCreated();
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erreur lors de la sauvegarde');
+    } finally {
+      setDraftLoading(false);
     }
   };
 
@@ -449,7 +518,9 @@ const CreateMissionModal: React.FC<{
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">Maille (autocomplétion)</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-200">
+                Mailles <span className="font-normal text-slate-400">({selectedMailles.length} sélectionnée{selectedMailles.length !== 1 ? 's' : ''})</span>
+              </label>
               <button
                 type="button"
                 onClick={() => setMaillePickerOpen(true)}
@@ -459,8 +530,28 @@ const CreateMissionModal: React.FC<{
                 Choisir sur la carte
               </button>
             </div>
+            {/* Chips rose des mailles sélectionnées */}
+            {selectedMailles.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {selectedMailles.map(m => (
+                  <span
+                    key={m.id}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-pink-50 border border-pink-200 text-pink-700 text-xs font-medium"
+                  >
+                    ♦ {m.code}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMailles(prev => prev.filter(x => x.id !== m.id))}
+                      className="hover:text-pink-900"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="relative">
-              <Input placeholder="TG-0..." value={mailleQuery} onChange={e => setMailleQuery(e.target.value)} />
+              <Input placeholder="TG-0... (ajouter une maille)" value={mailleQuery} onChange={e => setMailleQuery(e.target.value)} />
               {(mailleLoading || mailleSuggestions.length > 0) && (
                 <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow max-h-48 overflow-auto">
                   {mailleLoading && <div className="px-3 py-2 text-sm text-slate-500">Chargement...</div>}
@@ -471,16 +562,13 @@ const CreateMissionModal: React.FC<{
                         type="button"
                         className="w-full text-left px-3 py-2 text-sm hover:bg-slate-50 dark:hover:bg-slate-800"
                         onClick={() => {
-                          setForm({
-                            ...form,
-                            maille_id: m.id,
-                            zone_label: m.code,
-                            commune: m.adm3_name || form.commune || '',
-                            region: m.adm1_name || form.region || '',
-                          });
-                          setMailleQuery(m.code);
-                          setCommuneQuery(m.adm3_name || '');
-                          setRegionQuery(m.adm1_name || '');
+                          setSelectedMailles(prev => prev.some(x => x.id === m.id) ? prev : [...prev, m]);
+                          if (selectedMailles.length === 0) {
+                            setCommuneQuery(m.adm3_name || '');
+                            setRegionQuery(m.adm1_name || '');
+                            setForm(prev => ({ ...prev, commune: m.adm3_name || prev.commune || '', region: m.adm1_name || prev.region || '' }));
+                          }
+                          setMailleQuery('');
                           setMailleSuggestions([]);
                         }}
                       >
@@ -493,11 +581,6 @@ const CreateMissionModal: React.FC<{
                 </div>
               )}
             </div>
-            {form.maille_id && (
-              <div className="mt-1 text-xs text-slate-500">
-                Sélectionné: <span className="font-mono">{form.zone_label || form.maille_id}</span>
-              </div>
-            )}
           </div>
 
           <div className="border rounded-lg p-3">
@@ -542,8 +625,8 @@ const CreateMissionModal: React.FC<{
                   setMailleResolveLoading(true);
                   try {
                     const m = await maillesApi.resolve({ lat, lon });
-                    setForm(prev => ({ ...prev, maille_id: m.id, zone_label: m.code }));
-                    setMailleQuery(m.code);
+                    setSelectedMailles(prev => prev.some(x => x.id === m.id) ? prev : [...prev, m]);
+                    setMailleQuery('');
                     setMailleSuggestions([]);
                   } catch (e) {
                     setMailleResolveError(e instanceof Error ? e.message : 'Erreur résolution');
@@ -947,23 +1030,40 @@ const CreateMissionModal: React.FC<{
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button variant="outline" onClick={onClose} disabled={loading}>
-              Annuler
-            </Button>
-            <Button type="submit" disabled={loading || !form.title}>
-              {loading ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Création...
-                </>
-              ) : (
-                <>
-                  <Plus className="w-4 h-4 mr-2" />
-                  Créer la mission
-                </>
+          <div className="flex items-center justify-between pt-4 border-t">
+            <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={onClose} disabled={loading || draftLoading}>
+                Annuler
+              </Button>
+              {draftStatus === 'saved' && (
+                <span className="text-xs text-green-600">✓ Brouillon sauvegardé</span>
               )}
-            </Button>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading || draftLoading}
+                onClick={handleSaveDraft}
+                className="text-slate-600"
+              >
+                {draftLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                Enregistrer en brouillon
+              </Button>
+              <Button type="submit" disabled={loading || draftLoading || !form.title}>
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Création...
+                  </>
+                ) : (
+                  <>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Créer la mission
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </form>
       </div>
@@ -985,16 +1085,12 @@ const CreateMissionModal: React.FC<{
         isOpen={maillePickerOpen}
         onClose={() => setMaillePickerOpen(false)}
         onSelect={m => {
-          setForm(prev => ({
-            ...prev,
-            maille_id: m.id,
-            zone_label: m.code,
-            commune: m.adm3_name || prev.commune || '',
-            region: m.adm1_name || prev.region || '',
-          }));
-          setMailleQuery(m.code);
-          setCommuneQuery(m.adm3_name || '');
-          setRegionQuery(m.adm1_name || '');
+          setSelectedMailles(prev => prev.some(x => x.id === m.id) ? prev : [...prev, m]);
+          if (selectedMailles.length === 0) {
+            setCommuneQuery(m.adm3_name || '');
+            setRegionQuery(m.adm1_name || '');
+            setForm(prev => ({ ...prev, commune: m.adm3_name || prev.commune || '', region: m.adm1_name || prev.region || '' }));
+          }
           setMailleSuggestions([]);
         }}
       />
@@ -1004,6 +1100,7 @@ const CreateMissionModal: React.FC<{
         onClose={() => setGpsPickerOpen(false)}
         initialPoints={sondagePoints}
         onConfirm={pts => setSondagePoints(pts)}
+        mailleCodes={selectedMailles.map(m => m.code)}
       />
     </div>
   );

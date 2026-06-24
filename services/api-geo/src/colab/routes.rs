@@ -1662,6 +1662,10 @@ async fn list_supervisors(
             s.user_id,
             u.username,
             COALESCE(NULLIF(BTRIM(u.first_name || ' ' || u.last_name), ''), u.username, u.email) as full_name,
+            u.email,
+            u.first_name,
+            u.last_name,
+            COALESCE(s.telephone, u.telephone) AS telephone,
             s.specialite,
             s.institution,
             u.is_active
@@ -1688,6 +1692,10 @@ async fn list_supervisors(
             user_id: r.get("user_id"),
             username: r.get("username"),
             full_name: r.get("full_name"),
+            email: r.try_get("email").ok(),
+            first_name: r.try_get("first_name").ok().flatten(),
+            last_name: r.try_get("last_name").ok().flatten(),
+            telephone: r.try_get("telephone").ok().flatten(),
             specialite: r.get("specialite"),
             institution: r.get("institution"),
             is_active: r.get("is_active"),
@@ -1716,100 +1724,105 @@ async fn create_supervisor(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
 
-    // Email unique (comptes non supprimés)
-    let existing_email: Option<(Uuid,)> = sqlx::query_as(
+    // 1. Déjà superviseur actif ? → erreur claire
+    let existing_sup: Option<(Uuid,)> = sqlx::query_as(
         r#"
-        SELECT s.id
-        FROM atlas.users u
+        SELECT s.id FROM atlas.users u
         JOIN atlas.colab_supervisors s ON s.user_id = u.id
-        WHERE u.deleted_at IS NULL
-          AND s.deleted_at IS NULL
-          AND u.email = $1
-        LIMIT 1
+        WHERE u.deleted_at IS NULL AND s.deleted_at IS NULL AND u.email = $1 LIMIT 1
         "#,
     )
     .bind(&request.email)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
-    if let Some((existing_supervisor_id,)) = existing_email {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Email déjà utilisé", "existing_supervisor_id": existing_supervisor_id })),
-        ));
+    if existing_sup.is_some() {
+        return Err((StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Cet email est déjà associé à un superviseur" }))));
     }
 
-    // Garde anti-doublon téléphone (comptes non supprimés)
-    if let Some(tel) = request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
-        let exists_tel: Option<(Uuid,)> = sqlx::query_as(
+    // 2. Déjà étudiant actif ? → erreur claire
+    let existing_stu: Option<(Uuid,)> = sqlx::query_as(
+        r#"
+        SELECT s.id FROM atlas.users u
+        JOIN atlas.colab_students s ON s.user_id = u.id
+        WHERE u.deleted_at IS NULL AND s.deleted_at IS NULL AND u.email = $1 LIMIT 1
+        "#,
+    )
+    .bind(&request.email)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    if existing_stu.is_some() {
+        return Err((StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Cet email est déjà associé à un étudiant" }))));
+    }
+
+    // 3. Compte atlas.users existant (sans profil superviseur) → réutiliser
+    let existing_user: Option<(Uuid,)> = sqlx::query_as(
+        r#"SELECT id FROM atlas.users WHERE email = $1 AND deleted_at IS NULL LIMIT 1"#,
+    )
+    .bind(&request.email)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+    let (user_id, account_reused, temp_password) = if let Some((uid,)) = existing_user {
+        (uid, true, None::<String>)
+    } else {
+        // Garde anti-doublon téléphone
+        if let Some(tel) = request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+            let exists_tel: Option<(Uuid,)> = sqlx::query_as(
+                r#"
+                SELECT s.id FROM atlas.users u
+                JOIN atlas.colab_supervisors s ON s.user_id = u.id
+                WHERE u.deleted_at IS NULL AND s.deleted_at IS NULL
+                  AND u.telephone IS NOT NULL AND BTRIM(u.telephone) = $1 LIMIT 1
+                "#,
+            )
+            .bind(tel)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+            if exists_tel.is_some() {
+                return Err((StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "Téléphone déjà utilisé par un autre superviseur" }))));
+            }
+        }
+
+        let base = request.email.split('@').next().unwrap_or("user");
+        let username = ensure_unique_username(&mut tx, base)
+            .await
+            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+        let token = Uuid::new_v4().to_string().replace('-', "");
+        let pw = format!("A{}!a1", &token[..8]);
+        let password_hasher = PasswordHasher::new(state.auth_config.clone());
+        let hash = password_hasher.hash_password(&pw)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+        let uid: Uuid = sqlx::query_scalar(
             r#"
-            SELECT s.id
-            FROM atlas.users u
-            JOIN atlas.colab_supervisors s ON s.user_id = u.id
-            WHERE u.deleted_at IS NULL
-              AND s.deleted_at IS NULL
-              AND u.telephone IS NOT NULL
-              AND BTRIM(u.telephone) <> ''
-              AND u.telephone = $1
-            LIMIT 1
+            INSERT INTO atlas.users (email, username, password_hash, first_name, last_name, telephone, is_active, is_verified)
+            VALUES ($1, $2, $3, $4, $5, $6, TRUE, FALSE) RETURNING id
             "#,
         )
-        .bind(tel)
-        .fetch_optional(&mut *tx)
+        .bind(request.email.trim())
+        .bind(&username)
+        .bind(&hash)
+        .bind(request.first_name.trim())
+        .bind(request.last_name.trim())
+        .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+        .fetch_one(&mut *tx)
         .await
         .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
-        if let Some((existing_supervisor_id,)) = exists_tel {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "Téléphone déjà utilisé", "existing_supervisor_id": existing_supervisor_id })),
-            ));
-        }
-    }
+        (uid, false, Some(pw))
+    };
 
-    // Générer username unique à partir de l'email
-    let base = request.email.split('@').next().unwrap_or("user");
-    let username = ensure_unique_username(&mut tx, base)
+    // Assigner le rôle "supervisor" (idempotent)
+    sqlx::query(r#"INSERT INTO atlas.user_roles (user_id, role_id) VALUES ($1, 'supervisor') ON CONFLICT DO NOTHING"#)
+        .bind(user_id)
+        .execute(&mut *tx)
         .await
         .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
-
-    // Générer un mot de passe temporaire
-    let token = Uuid::new_v4().to_string().replace('-', "");
-    let suffix: String = token.chars().take(8).collect();
-    let temp_password = format!("A{}!a1", suffix);
-    let password_hasher = PasswordHasher::new(state.auth_config.clone());
-    let password_hash = password_hasher
-        .hash_password(&temp_password)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    let user_id: Uuid = sqlx::query_scalar(
-        r#"
-        INSERT INTO atlas.users (email, username, password_hash, first_name, last_name, telephone, is_active, is_verified)
-        VALUES ($1, $2, $3, $4, $5, $6, TRUE, FALSE)
-        RETURNING id
-        "#,
-    )
-    .bind(request.email.trim())
-    .bind(&username)
-    .bind(&password_hash)
-    .bind(request.first_name.trim())
-    .bind(request.last_name.trim())
-    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .fetch_one(&mut *tx)
-    .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
-
-    // Assigner le rôle "supervisor"
-    sqlx::query(
-        r#"
-        INSERT INTO atlas.user_roles (user_id, role_id)
-        VALUES ($1, 'supervisor')
-        ON CONFLICT DO NOTHING
-        "#,
-    )
-    .bind(user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
 
     let supervisor_id: Uuid = sqlx::query_scalar(
         r#"
@@ -1839,6 +1852,7 @@ async fn create_supervisor(
         "success": true,
         "supervisor_id": supervisor_id,
         "user_id": user_id,
+        "account_reused": account_reused,
         "temp_password": temp_password
     })))
 }
@@ -2005,101 +2019,106 @@ async fn create_student(
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
 
-    // Email unique (comptes non supprimés)
-    let existing_email: Option<(Uuid,)> = sqlx::query_as(
+    // 1. Déjà étudiant actif ? → erreur claire
+    let existing_stu: Option<(Uuid,)> = sqlx::query_as(
         r#"
-        SELECT s.id
-        FROM atlas.users u
+        SELECT s.id FROM atlas.users u
         JOIN atlas.colab_students s ON s.user_id = u.id
-        WHERE u.deleted_at IS NULL
-          AND s.deleted_at IS NULL
-          AND u.email = $1
-        LIMIT 1
+        WHERE u.deleted_at IS NULL AND s.deleted_at IS NULL AND u.email = $1 LIMIT 1
         "#,
     )
     .bind(&request.email)
     .fetch_optional(&mut *tx)
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
-    if let Some((existing_student_id,)) = existing_email {
-        return Err((
-            StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Email déjà utilisé", "existing_student_id": existing_student_id })),
-        ));
+    if existing_stu.is_some() {
+        return Err((StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Cet email est déjà associé à un étudiant" }))));
     }
 
-    // Garde anti-doublon téléphone (comptes non supprimés)
-    if let Some(tel) = request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
-        let exists_tel: Option<(Uuid,)> = sqlx::query_as(
-            r#"
-            SELECT s.id
-            FROM atlas.users u
-            JOIN atlas.colab_students s ON s.user_id = u.id
-            WHERE u.deleted_at IS NULL
-              AND s.deleted_at IS NULL
-              AND u.telephone IS NOT NULL
-              AND BTRIM(u.telephone) <> ''
-              AND u.telephone = $1
-            LIMIT 1
-            "#,
-        )
-        .bind(tel)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
-        if let Some((existing_student_id,)) = exists_tel {
-            return Err((
-                StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "Téléphone déjà utilisé", "existing_student_id": existing_student_id })),
-            ));
-        }
-    }
-
-    // Générer username unique à partir de l'email
-    let base = request.email.split('@').next().unwrap_or("user");
-    let username = ensure_unique_username(&mut tx, base)
-        .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
-
-    // Générer un mot de passe temporaire
-    let token = Uuid::new_v4().to_string().replace('-', "");
-    let suffix: String = token.chars().take(8).collect();
-    let temp_password = format!("A{}!a1", suffix);
-    let password_hasher = PasswordHasher::new(state.auth_config.clone());
-    let password_hash = password_hasher
-        .hash_password(&temp_password)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
-
-    let user_id: Uuid = sqlx::query_scalar(
+    // 2. Déjà superviseur actif ? → erreur claire
+    let existing_sup: Option<(Uuid,)> = sqlx::query_as(
         r#"
-        INSERT INTO atlas.users (email, username, password_hash, first_name, last_name, telephone, is_active, is_verified, created_by)
-        VALUES ($1, $2, $3, $4, $5, $6, TRUE, FALSE, $7)
-        RETURNING id
+        SELECT s.id FROM atlas.users u
+        JOIN atlas.colab_supervisors s ON s.user_id = u.id
+        WHERE u.deleted_at IS NULL AND s.deleted_at IS NULL AND u.email = $1 LIMIT 1
         "#,
     )
     .bind(&request.email)
-    .bind(&username)
-    .bind(&password_hash)
-    .bind(&request.first_name)
-    .bind(&request.last_name)
-    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(auth.id)
-    .fetch_one(&mut *tx)
+    .fetch_optional(&mut *tx)
+    .await
+    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    if existing_sup.is_some() {
+        return Err((StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Cet email est déjà associé à un superviseur" }))));
+    }
+
+    // 3. Compte atlas.users existant mais sans profil étudiant → réutiliser
+    let existing_user: Option<(Uuid,)> = sqlx::query_as(
+        r#"SELECT id FROM atlas.users WHERE email = $1 AND deleted_at IS NULL LIMIT 1"#,
+    )
+    .bind(&request.email)
+    .fetch_optional(&mut *tx)
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
 
-    // Assigner le rôle student
-    sqlx::query(
-        r#"
-        INSERT INTO atlas.user_roles (user_id, role_id)
-        VALUES ($1, 'student')
-        ON CONFLICT DO NOTHING
-        "#,
-    )
-    .bind(user_id)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    let (user_id, account_reused, temp_password) = if let Some((uid,)) = existing_user {
+        (uid, true, None::<String>)
+    } else {
+        // Garde anti-doublon téléphone
+        if let Some(tel) = request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+            let exists_tel: Option<(Uuid,)> = sqlx::query_as(
+                r#"
+                SELECT s.id FROM atlas.users u
+                JOIN atlas.colab_students s ON s.user_id = u.id
+                WHERE u.deleted_at IS NULL AND s.deleted_at IS NULL
+                  AND u.telephone IS NOT NULL AND BTRIM(u.telephone) = $1 LIMIT 1
+                "#,
+            )
+            .bind(tel)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+            if exists_tel.is_some() {
+                return Err((StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "Téléphone déjà utilisé par un autre étudiant" }))));
+            }
+        }
+
+        let base = request.email.split('@').next().unwrap_or("user");
+        let username = ensure_unique_username(&mut tx, base)
+            .await
+            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+        let token = Uuid::new_v4().to_string().replace('-', "");
+        let pw = format!("A{}!a1", &token[..8]);
+        let password_hasher = PasswordHasher::new(state.auth_config.clone());
+        let hash = password_hasher.hash_password(&pw)
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+        let uid: Uuid = sqlx::query_scalar(
+            r#"
+            INSERT INTO atlas.users (email, username, password_hash, first_name, last_name, telephone, is_active, is_verified, created_by)
+            VALUES ($1, $2, $3, $4, $5, $6, TRUE, FALSE, $7) RETURNING id
+            "#,
+        )
+        .bind(&request.email)
+        .bind(&username)
+        .bind(&hash)
+        .bind(&request.first_name)
+        .bind(&request.last_name)
+        .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+        .bind(auth.id)
+        .fetch_one(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+        (uid, false, Some(pw))
+    };
+
+    // Assigner le rôle student (idempotent)
+    sqlx::query(r#"INSERT INTO atlas.user_roles (user_id, role_id) VALUES ($1, 'student') ON CONFLICT DO NOTHING"#)
+        .bind(user_id)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
 
     let student_id: Uuid = sqlx::query_scalar(
         r#"
@@ -2127,6 +2146,7 @@ async fn create_student(
         "success": true,
         "student_id": student_id,
         "user_id": user_id,
+        "account_reused": account_reused,
         "temp_password": temp_password
     })))
 }

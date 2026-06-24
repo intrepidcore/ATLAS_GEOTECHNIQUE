@@ -20,12 +20,13 @@ const UpdateSupervisorModal: React.FC<{
     if (!supervisor) return;
     setNewPassword('');
     setForm({
-      email: (supervisor as any).email || undefined,
-      first_name: (supervisor as any).first_name || undefined,
-      last_name: (supervisor as any).last_name || undefined,
+      email: supervisor.email || undefined,
+      first_name: supervisor.first_name || undefined,
+      last_name: supervisor.last_name || undefined,
+      telephone: supervisor.telephone || undefined,
       specialite: supervisor.specialite || undefined,
       institution: supervisor.institution || undefined,
-      is_active: (supervisor as any).is_active ?? true,
+      is_active: supervisor.is_active,
     });
   }, [supervisor]);
 
@@ -104,6 +105,11 @@ const UpdateSupervisorModal: React.FC<{
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
             <Input value={form.email || ''} onChange={e => setForm({ ...form, email: e.target.value || undefined })} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
+            <Input value={form.telephone || ''} onChange={e => setForm({ ...form, telephone: e.target.value || undefined })} placeholder="+228 90 00 00 00" />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
