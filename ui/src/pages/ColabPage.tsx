@@ -3,7 +3,7 @@
  * Liste des missions terrain avec filtres et création
  */
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Search,
   Plus,
@@ -681,6 +681,8 @@ const ColabPage: React.FC = () => {
   const [attrHistory, setAttrHistory] = useState<AttributionNotificationHistoryItem[]>([]);
   const [attrHistoryLoading, setAttrHistoryLoading] = useState(false);
   const [attrHistoryError, setAttrHistoryError] = useState<string | null>(null);
+  const [attrJobTracking, setAttrJobTracking] = useState<{ jobId: string; status: 'polling' | 'completed' | 'failed'; sent?: number; error?: string } | null>(null);
+  const attrJobPollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const effectiveTotal = total || (activeTab === 'documents' ? documents.length : 0);
 
@@ -1809,9 +1811,28 @@ const ColabPage: React.FC = () => {
         {activeTab === 'attributions' && (
           <>
             {attrNotice && (
-              <div className="mb-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-800 dark:text-green-300 flex items-center gap-3">
+              <div className="mb-4 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-green-800 dark:text-green-300 flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 shrink-0" />
                 <span>{attrNotice}</span>
+              </div>
+            )}
+
+            {attrJobTracking && (
+              <div className={`mb-4 p-4 rounded-xl border flex items-center gap-3 ${
+                attrJobTracking.status === 'polling'
+                  ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300'
+                  : attrJobTracking.status === 'completed'
+                  ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300'
+              }`}>
+                {attrJobTracking.status === 'polling' && <Loader2 className="w-5 h-5 shrink-0 animate-spin" />}
+                {attrJobTracking.status === 'completed' && <CheckCircle2 className="w-5 h-5 shrink-0" />}
+                {attrJobTracking.status === 'failed' && <AlertCircle className="w-5 h-5 shrink-0" />}
+                <span className="text-sm font-medium">
+                  {attrJobTracking.status === 'polling' && '📧 Envoi en cours — suivi automatique toutes les 3 s…'}
+                  {attrJobTracking.status === 'completed' && `✓ Envoi terminé — ${attrJobTracking.sent ?? 0} email${(attrJobTracking.sent ?? 0) > 1 ? 's' : ''} envoyé${(attrJobTracking.sent ?? 0) > 1 ? 's' : ''}. L'historique et le détail par étudiant ont été mis à jour.`}
+                  {attrJobTracking.status === 'failed' && `✗ Échec de l'envoi${attrJobTracking.error ? ` : ${attrJobTracking.error}` : ''}`}
+                </span>
               </div>
             )}
 
@@ -2263,7 +2284,7 @@ const ColabPage: React.FC = () => {
               <CollapsibleCard
                 title="Détail des envois par étudiant"
                 subtitle={attrHistory.length > 0 ? `${attrHistory.length} entrée${attrHistory.length > 1 ? 's' : ''}` : 'Aucune entrée'}
-                defaultOpen={false}
+                defaultOpen={attrHistory.length > 0}
               >
                 <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
                   <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -2350,7 +2371,17 @@ const ColabPage: React.FC = () => {
                           </td>
                         </tr>
                       ))}
-                      {attrHistory.length === 0 && (
+                      {attrHistory.length === 0 && attrJobTracking?.status === 'polling' && (
+                        <tr>
+                          <td className="px-4 py-8 text-center" colSpan={5}>
+                            <div className="flex flex-col items-center gap-2">
+                              <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                              <div className="text-blue-600 dark:text-blue-400 text-sm">Envoi en cours… les détails apparaîtront ici</div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      {attrHistory.length === 0 && !attrJobTracking && (
                         <tr>
                           <td className="px-4 py-10 text-center" colSpan={5}>
                             <div className="text-slate-400 dark:text-slate-500 text-sm">Aucune trace d'envoi pour le moment</div>
@@ -2453,7 +2484,7 @@ const ColabPage: React.FC = () => {
                           const ids = Object.entries(attrSelected)
                             .filter(([, v]) => v)
                             .map(([k]) => k);
-                          await attributionsApi.enqueueNotifications({
+                          const enqueueRes = await attributionsApi.enqueueNotifications({
                             assignment_ids: ids,
                             include_bbox: attrIncludeBbox,
                             include_instructions: attrIncludeInstructions,
@@ -2461,14 +2492,13 @@ const ColabPage: React.FC = () => {
                             include_geojson: attrIncludeGeojson,
                           });
 
-                          const [summaryRes, listRes, historyRes] = await Promise.all([
+                          const [summaryRes, listRes] = await Promise.all([
                             attributionsApi.summary(),
                             attributionsApi.list({
                               student: attrStudentFilter.trim() || undefined,
                               notif_status: attrNotifStatusFilter || undefined,
                               limit: 500,
                             }),
-                            attributionsApi.history().catch(() => ({ items: [], total: 0 })),
                           ]);
                           setAttrSummary(summaryRes);
                           setAttrItems(listRes.items.map(item =>
@@ -2476,10 +2506,38 @@ const ColabPage: React.FC = () => {
                               ? { ...item, notification_status: 'pending' }
                               : item
                           ));
-                          setAttrHistory(historyRes.items || []);
-                          setAttrNotice(`${ids.length} notification${ids.length > 1 ? 's' : ''} programmée${ids.length > 1 ? 's' : ''} — job en attente de traitement`);
-                          window.setTimeout(() => setAttrNotice(null), 6000);
                           setAttrConfirmOpen(false);
+
+                          // Démarrer le suivi du job
+                          const jobId = enqueueRes?.job_id;
+                          if (jobId) {
+                            setAttrJobTracking({ jobId, status: 'polling' });
+                            if (attrJobPollRef.current) clearInterval(attrJobPollRef.current);
+                            attrJobPollRef.current = setInterval(async () => {
+                              try {
+                                const jobRes = await notifyApi.get(jobId);
+                                if (jobRes.job.status === 'completed' || jobRes.job.status === 'failed') {
+                                  if (attrJobPollRef.current) clearInterval(attrJobPollRef.current);
+                                  const [historyRes, notifyRes, listRes2, summaryRes2] = await Promise.all([
+                                    attributionsApi.history().catch(() => ({ items: [] })),
+                                    notifyApi.list(50).catch(() => ({ jobs: [] })),
+                                    attributionsApi.list({ student: attrStudentFilter.trim() || undefined, notif_status: attrNotifStatusFilter || undefined, limit: 500 }).catch(() => ({ items: [] })),
+                                    attributionsApi.summary().catch(() => null),
+                                  ]);
+                                  setAttrHistory(historyRes.items || []);
+                                  setNotifyJobs(notifyRes.jobs || []);
+                                  if (listRes2.items.length) setAttrItems(listRes2.items);
+                                  if (summaryRes2) setAttrSummary(summaryRes2);
+                                  const sentCount = (historyRes.items || []).filter((h) => h.email_job_id === jobId && h.status === 'sent').length;
+                                  setAttrJobTracking({ jobId, status: jobRes.job.status as 'completed' | 'failed', sent: sentCount, error: jobRes.job.error ?? undefined });
+                                  window.setTimeout(() => setAttrJobTracking(null), 10000);
+                                }
+                              } catch {}
+                            }, 3000);
+                          } else {
+                            setAttrNotice(`${ids.length} notification${ids.length > 1 ? 's' : ''} programmée${ids.length > 1 ? 's' : ''}`);
+                            window.setTimeout(() => setAttrNotice(null), 6000);
+                          }
                         } catch (e) {
                           setAttrEnqueueError(e instanceof Error ? e.message : "Erreur enregistrement");
                         } finally {
