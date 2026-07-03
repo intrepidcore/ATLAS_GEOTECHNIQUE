@@ -31,6 +31,32 @@ Référence :
     Deutsch, C.V. & Journel, A.G. (1998). GSLIB: Geostatistical Software Library.
     Chilès, J.P. & Delfiner, P. (2012). Geostatistics, 2nd ed. Wiley.
     gstools : https://gstools.readthedocs.io/
+
+⚠️  ATTENTION — PORTAGE EN AVAL (2026-07-03) ⚠️
+================================================
+La logique de `run_sgs()` (fit du variogramme sphérique §"Fitter le
+variogramme" + conditioning trick de Journel-Huijbregts §"Générer N
+réalisations") a été PORTÉE dans le dépôt IntrepidCore/lcpi :
+
+    D:\lcpi\python-orchestrator\atlas_pack\sgs.py
+    (fonctions fit_spherical_variogram / simulate_conditional_field)
+
+Ce portage sert le contrat `AtlasPack.draw_realizations` du Scenario
+Compiler (SDD-Scenario-Compiler-v1 §2.1, roadmap S18). Il a retiré l'accès
+PostgreSQL (les deux modules ne se testent PAS ensemble en CI — aucun lien
+automatisé entre ce script et le portage) et a rendu explicites les
+paramètres de repli du variogramme dégénéré (`len_scale=120km` etc., ici
+codés en dur pour le VBS aux lignes ~253-258 de `run_sgs()` — dans le
+portage, ce sont des arguments nommés, PAS un défaut silencieusement
+appliqué à tout paramètre).
+
+**Si vous modifiez la logique de `run_sgs()` ci-dessous (autre modèle de
+variogramme, autre générateur que gstools SRF/RandMeth, autre technique que
+le conditioning trick, changement des constantes de repli), le portage
+`atlas_pack/sgs.py` divergera silencieusement tant qu'il n'est pas mis à
+jour en miroir.** Il n'y a aucun garde-fou automatique (pas de CI
+cross-dépôt) — c'est une dette de synchronisation manuelle assumée,
+documentée côté portage également.
 """
 
 from __future__ import annotations
