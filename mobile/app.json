@@ -1,0 +1,56 @@
+{
+  "expo": {
+    "name": "Atlas Terrain",
+    "slug": "atlas-mobile",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#2563eb"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.intrepidcore.atlasmobile",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Atlas Terrain a besoin de votre position pour situer les points de sondage sur la carte de mission.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Atlas Terrain peut suivre votre trajet pendant une mission active pour enregistrer une trace GPS, même écran éteint.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "package": "com.intrepidcore.atlasmobile",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE"
+      ],
+      "adaptiveIcon": {
+        "backgroundColor": "#2563eb"
+      }
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Atlas Terrain a besoin de votre position pour la carte de mission et le suivi de trace pendant que l'app est ouverte ou en arrière-plan."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#2563eb"
+        }
+      ]
+    ],
+    "extra": {
+      "apiBaseUrl": "http://localhost:8000/api",
+      "eas": {
+        "projectId": "REPLACE_WITH_EAS_PROJECT_ID"
+      }
+    }
+  }
+}

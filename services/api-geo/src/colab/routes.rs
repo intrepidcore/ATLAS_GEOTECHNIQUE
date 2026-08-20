@@ -297,7 +297,7 @@ async fn create_mission(
             supervisor_id, expected_sondages,
             start_date, end_date,
             description, objectifs, notes_internal,
-            depth_h1_m, depth_h2_m, depth_h3_m,
+            depth_h1_m, depth_h2_m, depth_h3_m, sondage_tolerance_m,
             created_by
         )
         VALUES (
@@ -306,8 +306,8 @@ async fn create_mission(
             $8, $9,
             $10, $11,
             $12, $13, $14,
-            $15, $16, $17,
-            $18
+            $15, $16, $17, $18,
+            $19
         )
         RETURNING id
         "#,
@@ -329,6 +329,7 @@ async fn create_mission(
     .bind(request.depth_h1_m)
     .bind(request.depth_h2_m)
     .bind(request.depth_h3_m)
+    .bind(request.sondage_tolerance_m)
     .bind(auth.id)
     .fetch_one(&mut *tx)
     .await
@@ -381,6 +382,23 @@ async fn create_mission(
         .execute(&mut *tx)
         .await
         .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+
+        // Notifie l'étudiant assigné (visible dans l'app mobile, cf. docs/mobile).
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO atlas.colab_notifications (user_id, notification_type, title, message, mission_id, payload)
+            SELECT s.user_id, 'mission_assigned', 'Nouvelle mission assignée', $2, $1,
+                   jsonb_build_object('mission_code', $3::text)
+            FROM atlas.colab_students s WHERE s.id = $4
+            "#,
+        )
+        .bind(mission_id)
+        .bind(format!("Vous avez été assigné à la mission \"{}\"", request.title.trim()))
+        .bind(&request.code)
+        .bind(student_id)
+        .execute(&mut *tx)
+        .await
+        .ok();
     }
 
     // Si une maille est connue, on tente de synchroniser la table dérivée.
@@ -749,6 +767,7 @@ async fn update_mission(
           depth_h1_m        = COALESCE($16, depth_h1_m),
           depth_h2_m        = COALESCE($17, depth_h2_m),
           depth_h3_m        = COALESCE($18, depth_h3_m),
+          sondage_tolerance_m = COALESCE($19, sondage_tolerance_m),
           updated_at        = NOW()
         WHERE id = $1 AND deleted_at IS NULL
         "#,
@@ -771,6 +790,7 @@ async fn update_mission(
     .bind(request.depth_h1_m)
     .bind(request.depth_h2_m)
     .bind(request.depth_h3_m)
+    .bind(request.sondage_tolerance_m)
     .execute(&mut *tx)
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
@@ -805,13 +825,16 @@ async fn update_mission(
     }
 
     // Sync derived maille assignment if maille_id is set (or kept)
-    let current_maille_id: Option<Uuid> = sqlx::query_scalar(
+    // maille_id may legitimately be NULL in the row, so decode as Option<Option<Uuid>>
+    // (row-not-found vs column-null) and flatten to a single Option<Uuid>.
+    let current_maille_id: Option<Uuid> = sqlx::query_scalar::<_, Option<Uuid>>(
         r#"SELECT maille_id FROM atlas.colab_missions WHERE id = $1 AND deleted_at IS NULL"#,
     )
     .bind(mission_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?
+    .flatten();
 
     if current_maille_id.is_some() {
         let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
@@ -1473,6 +1496,19 @@ async fn reassign_mission(
     .execute(&mut *tx)
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Réattribution impossible", &e))))?;
+
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO atlas.colab_notifications (user_id, notification_type, title, message, mission_id, payload)
+        SELECT s.user_id, 'mission_assigned', 'Mission réattribuée', 'Une mission vous a été réattribuée', $1, '{}'::jsonb
+        FROM atlas.colab_students s WHERE s.id = $2
+        "#,
+    )
+    .bind(new_mission_id)
+    .bind(request.student_id)
+    .execute(&mut *tx)
+    .await
+    .ok();
 
     // Sync derived maille assignment
     let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")
@@ -3288,6 +3324,20 @@ async fn assign_attribution(
     .fetch_one(&mut *tx)
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Attribution impossible", &e))))?;
+
+    let _ = sqlx::query(
+        r#"
+        INSERT INTO atlas.colab_notifications (user_id, notification_type, title, message, mission_id, payload)
+        SELECT s.user_id, 'mission_assigned', 'Nouvelle mission assignée',
+               'Vous avez été assigné à une mission de terrain', $1, '{}'::jsonb
+        FROM atlas.colab_students s WHERE s.id = $2
+        "#,
+    )
+    .bind(req.mission_id)
+    .bind(req.student_id)
+    .execute(&mut *tx)
+    .await
+    .ok();
 
     // Sync derived table colab_maille_assignments from missions
     let _ = sqlx::query("SELECT atlas.sync_colab_maille_assignment_for_mission($1)")

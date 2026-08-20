@@ -1,0 +1,48 @@
+# Build cloud iOS + Android via EAS (pas de macOS/SDK Android requis sur le
+# runner). Voir docs/mobile/adr/ADR-MOBILE-003. Nécessite le secret de dépôt
+# EXPO_TOKEN (créé par l'utilisateur sur expo.dev, gratuit) — sans lui ce
+# workflow échoue proprement à l'étape eas whoami plutôt que silencieusement.
+name: Mobile EAS Build
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "mobile/**"
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "Profil EAS (development/preview/production)"
+        required: false
+        default: preview
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+
+      - name: npm install
+        run: npm install
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Vérifie l'authentification EAS
+        run: eas whoami
+
+      - name: Build Android + iOS (cloud, non bloquant sur l'attente)
+        run: |
+          eas build --platform android --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive --no-wait
+          eas build --platform ios --profile ${{ github.event.inputs.profile || 'preview' }} --non-interactive --no-wait

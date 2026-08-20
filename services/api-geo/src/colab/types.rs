@@ -363,6 +363,10 @@ pub struct CreateMissionRequest {
     pub depth_h2_m: Option<f64>,
     pub depth_h3_m: Option<f64>,
 
+    /// Tolérance GPS (m) pour confirmer un point de prélèvement prévu côté mobile.
+    /// None = défaut système (ATLAS_DEFAULT_SONDAGE_TOLERANCE_M). Voir ADR-MOBILE-004.
+    pub sondage_tolerance_m: Option<i32>,
+
     /// Liste d'étudiants à assigner à la mission (création transactionnelle)
     #[serde(default)]
     pub assigned_student_ids: Vec<Uuid>,
@@ -511,6 +515,9 @@ pub struct UpdateMissionRequest {
     pub depth_h1_m: Option<f64>,
     pub depth_h2_m: Option<f64>,
     pub depth_h3_m: Option<f64>,
+
+    /// Tolérance GPS (m), None = pas de changement (voir ADR-MOBILE-004)
+    pub sondage_tolerance_m: Option<i32>,
 
     /// Remplacement complet des points GPS (None = pas de changement)
     pub sondage_points: Option<Vec<SondagePointRequest>>,

@@ -6,6 +6,9 @@ target/
 services/api-geo/target/
 ui/node_modules/
 ui/dist/
+mobile/node_modules/
+mobile/.expo/
+mobile/web-build/
 
 # SQLx offline data (on garde pour offline mode)
 # .sqlx/
