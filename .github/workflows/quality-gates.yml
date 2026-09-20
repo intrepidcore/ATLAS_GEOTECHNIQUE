@@ -44,10 +44,35 @@ jobs:
       # La garde reste entière pour tout job qui empaquette : `bundle-contract`
       # ci-dessous et `msi-test.yml` ne posent PAS cette variable.
       - name: Cargo test (Tauri)
-        run: cargo test
+        shell: pwsh
         working-directory: apps/atlas-pro/src-tauri
         env:
           ATLAS_SKIP_PG_RUNTIME_CHECK: "1"
+        run: |
+          # Deux gardes distinctes empêchaient ce pas de s'exécuter.
+          #
+          # `build.rs` refuse de construire sans le runtime PostgreSQL ni le
+          # sidecar : `ATLAS_SKIP_PG_RUNTIME_CHECK` la lève pour ce pas, qui
+          # n'empaquette rien. Elle reste entière pour `bundle-contract` et
+          # pour `msi-test.yml`, qui produisent un MSI.
+          #
+          # `tauri_build` vérifie ensuite les ressources déclarées dans
+          # `tauri.conf.json` et refuse de compiler sans le sidecar :
+          # « resource path bin/api-geo-...exe doesn't exist ». Celle-là ne se
+          # lève pas par une variable, et fabriquer un faux binaire pour la
+          # contenter serait pire que ne pas tester.
+          #
+          # Ce pas SAUTE donc en nommant ce qui manque, au lieu d'échouer sur
+          # une absence que git garantit à chaque checkout. Sur une machine de
+          # build, qui porte le sidecar, il s'exécute tel quel.
+          $sidecar = 'bin/api-geo-x86_64-pc-windows-msvc.exe'
+          if (-not (Test-Path $sidecar)) {
+            Write-Host "SKIP cargo test (Tauri) : sidecar absent de ce checkout"
+            Write-Host "       manquant : apps/atlas-pro/src-tauri/$sidecar"
+            Write-Host "       Les tests unitaires du crate Tauri ne sont PAS executes par ce run."
+            exit 0
+          }
+          cargo test
 
       # Ce job travaille sur un checkout frais : ni la graine de 3,4 Go ni le
       # runtime PostgreSQL embarqué n'y sont, git ne les porte pas. Exiger
