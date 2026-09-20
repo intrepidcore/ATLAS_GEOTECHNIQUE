@@ -34,9 +34,20 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      # `build.rs` refuse de construire sans le runtime PostgreSQL embarqué ni
+      # le sidecar `api-geo`. C'est une garde d'EMPAQUETAGE, et elle a sa
+      # raison d'être : un MSI sans ces deux-là ne fonctionne pas. Mais cette
+      # étape-ci ne produit aucun MSI, elle exécute des tests unitaires ; et
+      # ces artefacts ne sont pas dans Git, donc jamais dans un checkout de CI.
+      # L'étape échouait sur une absence garantie, avant d'exécuter un test.
+      #
+      # La garde reste entière pour tout job qui empaquette : `bundle-contract`
+      # ci-dessous et `msi-test.yml` ne posent PAS cette variable.
       - name: Cargo test (Tauri)
         run: cargo test
         working-directory: apps/atlas-pro/src-tauri
+        env:
+          ATLAS_SKIP_PG_RUNTIME_CHECK: "1"
 
       # Ce job travaille sur un checkout frais : ni la graine de 3,4 Go ni le
       # runtime PostgreSQL embarqué n'y sont, git ne les porte pas. Exiger
