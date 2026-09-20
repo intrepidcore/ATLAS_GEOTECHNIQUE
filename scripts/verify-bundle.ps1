@@ -1,9 +1,34 @@
 param(
   [string]$RepoRoot = (Get-Location).Path,
-  [string]$MsiPath = ''
+  [string]$MsiPath = '',
+  # Ce script vérifie DEUX choses de nature différente :
+  #
+  #  * le CONTRAT de bundle — `tauri.conf.json`, les chemins et destinations
+  #    déclarés dans `bundle.resources`, le manifeste de graine et ses
+  #    invariants métier, l'absence de code mort. Vérifiable partout, et
+  #    c'est ce qui casse quand quelqu'un change la configuration ;
+  #  * la PRÉSENCE des artefacts — la graine de 3,5 Go (ignorée par git,
+  #    cf. `.gitignore`), le sidecar `api-geo` compilé, le runtime
+  #    PostgreSQL embarqué. Ils n'existent que sur une machine de build.
+  #
+  # Un runner GitHub hébergé n'a jamais les seconds : exiger leur présence
+  # y rendait ce job rouge par construction, et un job rouge en permanence
+  # ne dit plus rien le jour où le contrat casse vraiment.
+  # `-ConfigurationOnly` saute les vérifications d'artefacts EN LE DISANT.
+  [switch]$ConfigurationOnly
 )
 
 $ErrorActionPreference = 'Stop'
+
+# Vérification d'un ARTEFACT : ignorée, et annoncée comme telle, quand le
+# script tourne sans les fichiers de build.
+function CheckArtifact([string]$name, [bool]$ok, [string]$details = '') {
+  if ($ConfigurationOnly) {
+    Write-Host "SKIP $name (artefact non versionné : hors du contrat vérifié ici)" -ForegroundColor DarkYellow
+    return
+  }
+  Check $name $ok $details
+}
 
 function Check([string]$name, [bool]$ok, [string]$details = '') {
   if ($ok) {
@@ -25,11 +50,11 @@ $conf = Get-Content $tauriConf -Raw | ConvertFrom-Json
 $seedDump = Join-Path $RepoRoot 'data\db\backups\atlas_desktop_seed.dump'
 $seedJson = Join-Path $RepoRoot 'data\db\backups\atlas_desktop_seed.dump.json'
 
-Check 'seed dump present' (Test-Path $seedDump) $seedDump
+CheckArtifact 'seed dump present' (Test-Path $seedDump) $seedDump
 if (Test-Path $seedDump) {
   Check 'seed dump size > 10MB' ((Get-Item $seedDump).Length -gt 10MB) ("size=" + (Get-Item $seedDump).Length)
 }
-Check 'seed dump json present' (Test-Path $seedJson) $seedJson
+CheckArtifact 'seed dump json present' (Test-Path $seedJson) $seedJson
 
 if ((Test-Path $seedDump) -and (Test-Path $seedJson)) {
   try {
@@ -51,7 +76,7 @@ if ((Test-Path $seedDump) -and (Test-Path $seedJson)) {
 }
 
 $sidecar = Join-Path $RepoRoot 'apps\atlas-pro\src-tauri\bin\api-geo-x86_64-pc-windows-msvc.exe'
-Check 'api-geo sidecar present' (Test-Path $sidecar) $sidecar
+CheckArtifact 'api-geo sidecar present' (Test-Path $sidecar) $sidecar
 if (Test-Path $sidecar) {
   Check 'api-geo sidecar size > 5MB' ((Get-Item $sidecar).Length -gt 5MB) ("size=" + (Get-Item $sidecar).Length)
 }
@@ -110,7 +135,7 @@ Check 'bundle.resources seed json destination (contract)' $seedJsonDestOk 'Expec
 Check 'bundle.resources pg destination (contract)' $pgDestOk 'Expected destination pg/'
 
 $pgCtl = Join-Path $RepoRoot 'apps\atlas-pro\src-tauri\pg\bin\pg_ctl.exe'
-Check 'embedded pg runtime present' (Test-Path $pgCtl) $pgCtl
+CheckArtifact 'embedded pg runtime present' (Test-Path $pgCtl) $pgCtl
 
 if (-not [string]::IsNullOrWhiteSpace($MsiPath)) {
   Check 'msi path present' (Test-Path $MsiPath) $MsiPath

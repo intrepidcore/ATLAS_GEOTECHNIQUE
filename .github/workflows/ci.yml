@@ -112,10 +112,13 @@ jobs:
         with:
           lfs: true
 
-      - name: Verify bundle inputs
+      # Runner hébergé : il n'a ni la graine de 3,5 Go (ignorée par git) ni
+      # le sidecar compilé. On y vérifie le CONTRAT de bundle ; la présence
+      # des artefacts est vérifiée par le job MSI, sur la machine qui les a.
+      - name: Verify bundle inputs (contrat seulement)
         shell: pwsh
         run: |
-          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\verify-bundle.ps1
+          pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\verify-bundle.ps1 -ConfigurationOnly
   
   ui:
     runs-on: ubuntu-latest
