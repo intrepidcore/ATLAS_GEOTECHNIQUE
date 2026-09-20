@@ -9,27 +9,19 @@ jobs:
   # Le job `rust` vérifiait deux choses de nature différente dans le même
   # bloc : la forme du code (fmt, clippy, check), qui ne demande rien, et son
   # comportement contre une base PostGIS, qui demande un conteneur de service.
-  # Les conteneurs de service n'existent que sur un runner Linux. Le dépôt
-  # n'ayant plus de runner hébergé (facturation), les deux sont séparés :
-  # la forme continue d'être vérifiée, le comportement est explicitement à
-  # l'arrêt plutôt que rouge en permanence.
+  # Les séparer donne deux verdicts lisibles au lieu d'un seul : une requête
+  # SQL fausse et un `use` mal ordonné ne se diagnostiquent pas pareil.
   rust-forme:
-    runs-on: [self-hosted, windows, atlas]
+    runs-on: ubuntu-latest
 
     env:
       # `services/api-geo/.sqlx` porte les requêtes hors ligne : sans cette
       # variable, les macros sqlx chercheraient une base à la compilation.
       SQLX_OFFLINE: "true"
-      # Le runner tourne sur un poste de travail partagé avec du travail
-      # humain. Deux tâches de compilation lui laissent de la machine.
-      CARGO_BUILD_JOBS: 2
       CARGO_TERM_COLOR: never
-      # La CI ne débogue pas : couper les fichiers de débogage évite qu'un
-      # `target` de plusieurs dizaines de gigaoctets remplisse le disque.
+      # La CI ne débogue pas : couper les fichiers de débogage raccourcit la
+      # compilation et évite de saturer le disque du runner.
       CARGO_PROFILE_DEV_DEBUG: 0
-      # Cible commune aux trois services, hors de l'espace de travail que
-      # `actions/checkout` nettoie. Chemin propre à CE runner auto-hébergé.
-      CARGO_TARGET_DIR: D:\ci-target-atlas
 
     strategy:
       fail-fast: false
@@ -70,7 +62,7 @@ jobs:
 
   bundle-validation:
     name: Validation Bundle Desktop
-    runs-on: [self-hosted, windows, atlas]
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -85,13 +77,7 @@ jobs:
           pwsh -NoProfile -ExecutionPolicy Bypass -File scripts\verify-bundle.ps1 -ConfigurationOnly
   
   ui:
-    # Tournait sur `ubuntu-latest`. Ses étapes sont écrites en POSIX : `bash`
-    # (livré avec Git pour Windows) les exécute telles quelles. Ce qui n'est
-    # plus vérifié : que l'interface se construise sous Linux.
-    runs-on: [self-hosted, windows, atlas]
-    defaults:
-      run:
-        shell: bash
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       
@@ -126,9 +112,8 @@ jobs:
           fi
           echo "✅ TypeScript OK (0 erreur hors orphelins @ts-nocheck)"
 
-      # `python3` n'est pas le nom de l'interpréteur sur un poste Windows.
       - name: thematic params TS/Rust consistency
-        run: python scripts/ci/check_thematic_params_consistency.py
+        run: python3 scripts/ci/check_thematic_params_consistency.py
 
       - name: lint
         run: |
@@ -217,25 +202,12 @@ jobs:
             ui/ui-lint.log
           retention-days: 14
 
-  # À L'ARRÊT depuis le 20 septembre 2026 — ET VOICI CE QUI N'EST PLUS VÉRIFIÉ :
-  #   * `validate_migrations.py` : qu'une migration s'applique sur une base
-  #     neuve, dans l'ordre, sans erreur ;
-  #   * `cargo test` d'`api-geo` : tout ce qui interroge la base ;
-  #   * `db_manager_tests` en `--ignored` : l'intégration du gestionnaire ;
-  #   * `healthcheck_geotech_db.py` : les portes de qualité géotechnique ;
-  #   * `cargo sqlx prepare --check` : que les requêtes hors ligne du dépôt
-  #     correspondent encore au schéma. Une requête SQL fausse passera donc
-  #     la CI jusqu'à ce que ce job reprenne.
-  #
-  # POURQUOI : ces étapes ont besoin d'un conteneur de service PostGIS. Les
-  # conteneurs de service n'existent que sur un runner Linux, et ce dépôt n'a
-  # plus de runner hébergé. Le laisser sur `ubuntu-latest` le rendrait rouge
-  # à chaque poussée sans exécuter une ligne — un rouge qui ne dit rien.
-  #
-  # POUR LE REMETTRE : retirer le `if`, dès qu'un runner Linux (hébergé ou
-  # auto-hébergé) sert ce dépôt.
+  # La moitié du job `rust` qui a besoin d'une base : migrations, tests
+  # d'`api-geo`, intégration du gestionnaire, portes de qualité
+  # géotechnique, et `sqlx prepare --check` — celui qui détecte une requête
+  # SQL devenue fausse. Un conteneur de service PostGIS n'existe que sur un
+  # runner Linux : ce job ne peut pas migrer ailleurs.
   rust-base:
-    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
 
     services:

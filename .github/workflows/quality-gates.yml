@@ -8,10 +8,7 @@ on:
 
 jobs:
   build-test-verify:
-    # Tournait sur `windows-latest`. Les runners hébergés par GitHub ne
-    # démarrent plus sur ce dépôt (facturation) : les jobs échouaient en
-    # zéro étape. Le runner auto-hébergé `poste-serge-atlas` les exécute.
-    runs-on: [self-hosted, windows, atlas]
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -124,7 +121,7 @@ jobs:
   # POUR LE REMETTRE : le déclencher à la main depuis une machine de build qui
   # porte ces trois artefacts, ou les publier là où la CI peut les récupérer.
   bundle-contract:
-    runs-on: [self-hosted, windows, atlas]
+    runs-on: windows-latest
     if: github.event_name == 'workflow_dispatch'
 
     steps:
