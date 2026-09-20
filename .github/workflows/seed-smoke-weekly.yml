@@ -5,9 +5,32 @@ on:
     - cron: '0 6 * * 1'
   workflow_dispatch:
 
+# Le shell par défaut d'un `run:` est `bash -e`, SANS `pipefail`. Quatorze
+# étapes de ces workflows finissent par `| tee <journal>` : le code de sortie
+# retenu était alors celui de `tee`, toujours zéro. Mesuré le 20 septembre
+# 2026 sur `rust-forme (api-geo)` : l'étape clippy s'est terminée sur
+# « error: could not compile `api-geo` (lib) due to 17 previous errors »
+# et a été rapportée verte. Les étapes fmt, clippy, check, test et
+# `sqlx prepare --check` étaient dans ce cas : aucune ne POUVAIT rougir.
+#
+# `shell: bash` demande explicitement `bash --noprofile --norc -eo pipefail`,
+# où l'échec d'un maillon du tube fait échouer l'étape. Les étapes qui
+# déclarent déjà `shell: pwsh` gardent le leur.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   seed-smoke:
     runs-on: ubuntu-22.04
+
+    # `secrets` n'est PAS lisible dans une expression `if:` — GitHub
+    # refuse le fichier entier avec « Unrecognized named-value: 'secrets' ».
+    # Ce workflow échouait donc à CHAQUE poussée, sans exécuter un seul job,
+    # et n'avait jamais pu tourner à son heure du lundi. Le secret passe par
+    # l'environnement, que `if:` sait lire.
+    env:
+      SMTP_SERVER: ${{ secrets.SMTP_SERVER }}
 
     services:
       postgres:
@@ -105,7 +128,7 @@ jobs:
           retention-days: 30
 
       - name: Notify via email (optional)
-        if: failure() && secrets.SMTP_SERVER != ''
+        if: failure() && env.SMTP_SERVER != ''
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: ${{ secrets.SMTP_SERVER }}
@@ -118,7 +141,7 @@ jobs:
           from: ${{ secrets.SMTP_FROM }}
 
       - name: Open GitHub issue (fallback notification)
-        if: failure() && secrets.SMTP_SERVER == ''
+        if: failure() && env.SMTP_SERVER == ''
         uses: actions/github-script@v7
         with:
           script: |

@@ -5,6 +5,21 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Le shell par défaut d'un `run:` est `bash -e`, SANS `pipefail`. Quatorze
+# étapes de ces workflows finissent par `| tee <journal>` : le code de sortie
+# retenu était alors celui de `tee`, toujours zéro. Mesuré le 20 septembre
+# 2026 sur `rust-forme (api-geo)` : l'étape clippy s'est terminée sur
+# « error: could not compile `api-geo` (lib) due to 17 previous errors »
+# et a été rapportée verte. Les étapes fmt, clippy, check, test et
+# `sqlx prepare --check` étaient dans ce cas : aucune ne POUVAIT rougir.
+#
+# `shell: bash` demande explicitement `bash --noprofile --norc -eo pipefail`,
+# où l'échec d'un maillon du tube fait échouer l'étape. Les étapes qui
+# déclarent déjà `shell: pwsh` gardent le leur.
+defaults:
+  run:
+    shell: bash
+
 jobs:
   # Le job `rust` vérifiait deux choses de nature différente dans le même
   # bloc : la forme du code (fmt, clippy, check), qui ne demande rien, et son
