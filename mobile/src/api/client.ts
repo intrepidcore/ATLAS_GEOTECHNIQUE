@@ -1,6 +1,7 @@
 import { API_BASE_URL } from './config';
 import { tokenStorage } from './tokenStorage';
 import { authApi } from './auth';
+import { fetchWithTimeout } from './transport';
 
 // Même comportement que ui/src/services/colab-api.ts fetchWithAuth : retry
 // une fois sur 401 après refresh silencieux, sinon on propage l'échec.
@@ -12,7 +13,7 @@ export async function apiFetch(path: string, options: RequestInit = {}): Promise
       ...(options.headers as Record<string, string> | undefined),
     };
     if (token) headers['Authorization'] = `Bearer ${token}`;
-    return fetch(`${API_BASE_URL}${path}`, { ...options, headers });
+    return fetchWithTimeout(`${API_BASE_URL}${path}`, { ...options, headers });
   };
 
   const res = await doFetch();

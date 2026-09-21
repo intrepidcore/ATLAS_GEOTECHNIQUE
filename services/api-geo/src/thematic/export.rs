@@ -65,12 +65,16 @@ pub async fn export_qgis_package(
     Json(req): Json<ThematicExportRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, String)> {
     let pool = &state.pool;
-    
-    tracing::info!("Export QGIS request: parameter={}, filters={:?}", req.parameter_id, req.filters);
+
+    tracing::info!(
+        "Export QGIS request: parameter={}, filters={:?}",
+        req.parameter_id,
+        req.filters
+    );
 
     // 1. Récupérer les données des mailles avec géométrie
     let column = parameter_to_column(&req.parameter_id);
-    
+
     let mut query = format!(
         r#"
         SELECT 
@@ -121,13 +125,13 @@ pub async fn export_qgis_package(
         sql_query = sql_query.bind(p);
     }
 
-    let rows = sql_query
-        .fetch_all(pool)
-        .await
-        .map_err(|e| {
-            tracing::error!("DB error in QGIS export: {}", e);
-            (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {}", e))
-        })?;
+    let rows = sql_query.fetch_all(pool).await.map_err(|e| {
+        tracing::error!("DB error in QGIS export: {}", e);
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("DB error: {}", e),
+        )
+    })?;
 
     // 2. Construire le GeoJSON
     let mut features = Vec::new();
@@ -158,8 +162,12 @@ pub async fn export_qgis_package(
                 }
             }
 
-            let geometry: serde_json::Value = serde_json::from_str(&geom_json)
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("JSON parse error: {}", e)))?;
+            let geometry: serde_json::Value = serde_json::from_str(&geom_json).map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("JSON parse error: {}", e),
+                )
+            })?;
 
             let mut props = serde_json::Map::new();
             props.insert("code".into(), serde_json::json!(code));
@@ -185,8 +193,12 @@ pub async fn export_qgis_package(
         features,
     };
 
-    let geojson_str = serde_json::to_string_pretty(&geojson)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("JSON error: {}", e)))?;
+    let geojson_str = serde_json::to_string_pretty(&geojson).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("JSON error: {}", e),
+        )
+    })?;
 
     // 3. Construire le style QML
     let qml = build_qml_style(&req);
@@ -223,8 +235,15 @@ Généré le : {}
         req.filters.adm1.as_deref().unwrap_or("Toutes"),
         req.filters.adm2.as_deref().unwrap_or("Toutes"),
         req.filters.adm3.as_deref().unwrap_or("Toutes"),
-        req.filters.min_sondages.map(|n| n.to_string()).unwrap_or("Aucun".into()),
-        req.classes.iter().map(|c| format!("  - Classe {} : {} ({})", c.index, c.label, c.color)).collect::<Vec<_>>().join("\n"),
+        req.filters
+            .min_sondages
+            .map(|n| n.to_string())
+            .unwrap_or("Aucun".into()),
+        req.classes
+            .iter()
+            .map(|c| format!("  - Classe {} : {} ({})", c.index, c.label, c.color))
+            .collect::<Vec<_>>()
+            .join("\n"),
         chrono::Utc::now().format("%Y-%m-%d %H:%M:%S UTC")
     );
 
@@ -239,30 +258,59 @@ Généré le : {}
 
         // GeoJSON
         zip.start_file("mailles_thematique.geojson", options)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("ZIP error: {}", e)))?;
-        zip.write_all(geojson_str.as_bytes())
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("ZIP write error: {}", e)))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("ZIP error: {}", e),
+                )
+            })?;
+        zip.write_all(geojson_str.as_bytes()).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("ZIP write error: {}", e),
+            )
+        })?;
 
         // QML Style
-        zip.start_file("style.qml", options)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("ZIP error: {}", e)))?;
-        zip.write_all(qml.as_bytes())
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("ZIP write error: {}", e)))?;
+        zip.start_file("style.qml", options).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("ZIP error: {}", e),
+            )
+        })?;
+        zip.write_all(qml.as_bytes()).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("ZIP write error: {}", e),
+            )
+        })?;
 
         // README
-        zip.start_file("README.txt", options)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("ZIP error: {}", e)))?;
-        zip.write_all(readme.as_bytes())
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("ZIP write error: {}", e)))?;
+        zip.start_file("README.txt", options).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("ZIP error: {}", e),
+            )
+        })?;
+        zip.write_all(readme.as_bytes()).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("ZIP write error: {}", e),
+            )
+        })?;
 
-        zip.finish()
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("ZIP finish error: {}", e)))?;
+        zip.finish().map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("ZIP finish error: {}", e),
+            )
+        })?;
     }
 
     // 6. Retourner le ZIP
     let filename = format!("atlas_{}_qgis.zip", req.parameter_id);
     let content_disposition = format!("attachment; filename=\"{}\"", filename);
-    
+
     Ok((
         [
             (header::CONTENT_TYPE, "application/zip".to_string()),
@@ -293,20 +341,20 @@ fn parameter_to_column(param_id: &str) -> &str {
         "passant_80um_avg" => "passant_80um_avg",
         "passant_2mm_avg" => "passant_2mm_avg",
         "passant_20mm_avg" => "passant_20mm_avg",
-        _ => "n_sondages"
+        _ => "n_sondages",
     }
 }
 
 fn build_qml_style(req: &ThematicExportRequest) -> String {
     let mut categories = String::new();
-    
+
     for c in &req.classes {
         // Convertir la couleur hex en RGB
         let color = &c.color;
         let r = u8::from_str_radix(&color[1..3], 16).unwrap_or(0);
         let g = u8::from_str_radix(&color[3..5], 16).unwrap_or(0);
         let b = u8::from_str_radix(&color[5..7], 16).unwrap_or(0);
-        
+
         categories.push_str(&format!(
             r#"        <category symbol="{}" value="{}" label="{}" render="true"/>
 "#,
@@ -320,7 +368,7 @@ fn build_qml_style(req: &ThematicExportRequest) -> String {
         let r = u8::from_str_radix(&color[1..3], 16).unwrap_or(0);
         let g = u8::from_str_radix(&color[3..5], 16).unwrap_or(0);
         let b = u8::from_str_radix(&color[5..7], 16).unwrap_or(0);
-        
+
         symbols.push_str(&format!(
             r#"        <symbol name="{}" type="fill" clip_to_extent="1" force_rhr="0" alpha="0.8">
           <layer pass="0" class="SimpleFill" enabled="1" locked="0">

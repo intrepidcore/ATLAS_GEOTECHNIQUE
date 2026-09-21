@@ -3,8 +3,10 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ActivityIndicator, View } from 'react-native';
+import { ClipboardList, NotebookTabs, UserRound } from 'lucide-react-native';
 import { colors } from '@/theme/tokens';
 import { useAuth } from '@/context/AuthContext';
+import { useAtlasPackUnlocked } from '@/hooks/useAtlasPackSession';
 import { LoginScreen } from '@/screens/LoginScreen';
 import { MissionsListScreen } from '@/screens/MissionsListScreen';
 import { MissionDetailScreen } from '@/screens/MissionDetailScreen';
@@ -12,6 +14,10 @@ import { MissionMapScreen } from '@/screens/MissionMapScreen';
 import { SondageFormScreen } from '@/screens/SondageFormScreen';
 import { ActivityScreen } from '@/screens/ActivityScreen';
 import { ProfileScreen } from '@/screens/ProfileScreen';
+import { ExportDataScreen } from '@/screens/ExportDataScreen';
+import { LabResultsScreen } from '@/screens/LabResultsScreen';
+import { AuditLogScreen } from '@/screens/AuditLogScreen';
+import { BackupScreen } from '@/screens/BackupScreen';
 import { SyncStatusBanner } from '@/components/SyncStatusBanner';
 import { TAB_ROUTES, type RootStackParamList, type TabParamList } from './routes';
 
@@ -24,16 +30,35 @@ const SCREEN_COMPONENTS: Record<TabParamList extends infer T ? keyof T : never, 
   Profile: ProfileScreen,
 };
 
+const TAB_ICONS = {
+  Missions: ClipboardList,
+  Activity: NotebookTabs,
+  Profile: UserRound,
+};
+
 const Tabs: React.FC = () => (
-  <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.blue600 }}>
+  <Tab.Navigator screenOptions={{ headerShown: false, tabBarActiveTintColor: colors.blue600, tabBarInactiveTintColor: colors.gray400 }}>
     {TAB_ROUTES.map((route) => (
-      <Tab.Screen key={route.name} name={route.name} component={SCREEN_COMPONENTS[route.name]} options={{ title: route.label }} />
+      <Tab.Screen
+        key={route.name}
+        name={route.name}
+        component={SCREEN_COMPONENTS[route.name]}
+        options={{
+          title: route.label,
+          tabBarIcon: ({ color, size }) => {
+            const Icon = TAB_ICONS[route.name];
+            return <Icon color={color} size={size} strokeWidth={2} />;
+          },
+        }}
+      />
     ))}
   </Tab.Navigator>
 );
 
 export const RootNavigator: React.FC = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated: onlineAuthenticated, loading } = useAuth();
+  const offlineUnlocked = useAtlasPackUnlocked();
+  const isAuthenticated = onlineAuthenticated || offlineUnlocked;
 
   if (loading) {
     return (
@@ -51,7 +76,11 @@ export const RootNavigator: React.FC = () => {
           <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
           <Stack.Screen name="MissionDetail" component={MissionDetailScreen} options={{ title: 'Mission' }} />
           <Stack.Screen name="MissionMap" component={MissionMapScreen} options={{ headerShown: false }} />
+          <Stack.Screen name="LabResults" component={LabResultsScreen} options={{ title: 'Résultats de laboratoire' }} />
           <Stack.Screen name="SondageForm" component={SondageFormScreen} options={{ title: 'Nouveau sondage' }} />
+          <Stack.Screen name="ExportData" component={ExportDataScreen} options={{ title: 'Exporter les données' }} />
+          <Stack.Screen name="AuditLog" component={AuditLogScreen} options={{ title: "Journal d'audit" }} />
+          <Stack.Screen name="Backup" component={BackupScreen} options={{ title: 'Sauvegarde locale' }} />
         </Stack.Navigator>
       ) : (
         <LoginScreen />

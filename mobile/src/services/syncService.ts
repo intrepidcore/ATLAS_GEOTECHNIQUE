@@ -1,6 +1,8 @@
 import NetInfo from '@react-native-community/netinfo';
-import { repository, newClientId } from '@/db/repository';
+import { repository } from '@/db/repository';
 import { mobileApi, type CreateFieldSondageRequest } from '@/api/mobile';
+import { atlaspackRepository, newUuid } from '@/services/atlaspack/repository';
+import { atlaspackSession } from '@/services/atlaspack/session';
 
 export type SyncState = 'idle' | 'syncing' | 'offline' | 'error';
 
@@ -56,9 +58,10 @@ class SyncServiceImpl {
   async createSondageOffline(
     missionId: string,
     data: CreateFieldSondageRequest,
-    plannedPointId: string | null
+    plannedPointId: string | null,
+    mode: 'confirm' | 'relocate' = 'confirm'
   ): Promise<string> {
-    const clientId = newClientId('sondage');
+    const clientId = newUuid();
     await repository.saveDraft({
       client_id: clientId,
       mission_id: missionId,
@@ -67,18 +70,41 @@ class SyncServiceImpl {
       latitude: data.latitude,
       location_accuracy_m: data.location_accuracy_m ?? null,
       depth_m: data.depth_m ?? null,
-      layers_count: data.layers_count ?? null,
+      layers_count: null,
       profile_description: data.profile_description ?? null,
       notes: data.notes ?? null,
+      point_name: data.point_name ?? null,
+      relocation_reason: data.relocation_reason ?? null,
       status: 'queued',
       server_id: null,
       created_at: new Date().toISOString(),
     });
-    await repository.enqueue(clientId, plannedPointId ? 'confirm_sondage_point' : 'create_sondage', {
+    const actionType = !plannedPointId
+      ? 'create_sondage'
+      : mode === 'relocate' ? 'relocate_sondage_point' : 'confirm_sondage_point';
+    await repository.enqueue(clientId, actionType, {
       mission_id: missionId,
       planned_point_id: plannedPointId,
       ...data,
     });
+
+    const operatorUserId = atlaspackSession.get()?.operatorUserId ?? null;
+    await atlaspackRepository.recordAuditEvent({
+      eventType: mode === 'relocate' ? 'relocate_point' : 'gps_capture',
+      operatorUserId,
+      missionId,
+      objectType: 'sondage',
+      objectId: clientId,
+      oldValues: null,
+      newValues: {
+        longitude: data.longitude,
+        latitude: data.latitude,
+        location_accuracy_m: data.location_accuracy_m ?? null,
+        planned_point_id: plannedPointId,
+      },
+      metadata: { point_name: data.point_name ?? null, relocation_reason: data.relocation_reason ?? null },
+    });
+
     await this.refreshPendingCount();
     void this.flush();
     return clientId;
@@ -108,7 +134,10 @@ class SyncServiceImpl {
           planned_point_id: string | null;
         };
         let serverId: string;
-        if (item.action_type === 'confirm_sondage_point' && payload.planned_point_id) {
+        if (item.action_type === 'relocate_sondage_point' && payload.planned_point_id) {
+          const res = await mobileApi.relocateSondagePoint(payload.mission_id, payload.planned_point_id, payload);
+          serverId = res.id as string;
+        } else if (item.action_type === 'confirm_sondage_point' && payload.planned_point_id) {
           const res = await mobileApi.confirmSondagePoint(payload.mission_id, payload.planned_point_id, payload);
           if (!res.within_tolerance) throw new Error(res.message);
           serverId = res.id as string;

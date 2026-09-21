@@ -48,7 +48,10 @@ pub async fn list_audit_logs(
     .to_string();
 
     if let Some(entity) = &q.entity {
-        query.push_str(&format!(" AND table_name = '{}'", entity.replace("'", "''")));
+        query.push_str(&format!(
+            " AND table_name = '{}'",
+            entity.replace("'", "''")
+        ));
     }
 
     if let Some(entity_id) = &q.entity_id {
@@ -125,7 +128,10 @@ pub async fn export_audit_csv(
     .to_string();
 
     if let Some(entity) = &q.entity {
-        query.push_str(&format!(" AND table_name = '{}'", entity.replace("'", "''")));
+        query.push_str(&format!(
+            " AND table_name = '{}'",
+            entity.replace("'", "''")
+        ));
     }
 
     if let Some(entity_id) = &q.entity_id {

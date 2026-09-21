@@ -18,12 +18,15 @@ use uuid::Uuid;
 #[derive(Debug, Deserialize)]
 #[serde(tag = "mode", rename_all = "lowercase")]
 pub enum GeocodeRequest {
-    Adm3 { 
+    Adm3 {
         adm3_id: i32,
         #[serde(default = "default_placement")]
         placement: String,
     },
-    Coords { lon: f64, lat: f64 },
+    Coords {
+        lon: f64,
+        lat: f64,
+    },
 }
 
 fn default_placement() -> String {
@@ -60,9 +63,7 @@ pub async fn geocode_sondage(
         GeocodeRequest::Adm3 { adm3_id, placement } => {
             geocode_by_adm3(pool, ws_tx, id, adm3_id, &placement).await
         }
-        GeocodeRequest::Coords { lon, lat } => {
-            geocode_by_coords(pool, ws_tx, id, lon, lat).await
-        }
+        GeocodeRequest::Coords { lon, lat } => geocode_by_coords(pool, ws_tx, id, lon, lat).await,
     }
 }
 
@@ -79,13 +80,11 @@ async fn geocode_by_adm3(
     placement: &str,
 ) -> Result<Json<GeocodeResponse>, (StatusCode, String)> {
     // Vérifier que l'ADM3 existe
-    let adm3_exists: bool = sqlx::query_scalar(
-        "SELECT EXISTS(SELECT 1 FROM adm3 WHERE gid = $1)"
-    )
-    .bind(adm3_id)
-    .fetch_one(pool)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let adm3_exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM adm3 WHERE gid = $1)")
+        .bind(adm3_id)
+        .fetch_one(pool)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
     if !adm3_exists {
         return Err((
@@ -123,24 +122,21 @@ async fn geocode_by_adm3(
         geom_func, location_mode_val, placement
     );
 
-    let result = sqlx::query_as::<_, (Uuid, String, String, bool, Option<i32>, Option<String>)>(&query)
-        .bind(sondage_id)
-        .bind(adm3_id)
-        .fetch_one(pool)
-        .await
-        .map_err(|e| match e {
-            sqlx::Error::RowNotFound => (
-                StatusCode::NOT_FOUND,
-                format!("Sondage {} not found", sondage_id),
-            ),
-            _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
-        })?;
+    let result =
+        sqlx::query_as::<_, (Uuid, String, String, bool, Option<i32>, Option<String>)>(&query)
+            .bind(sondage_id)
+            .bind(adm3_id)
+            .fetch_one(pool)
+            .await
+            .map_err(|e| match e {
+                sqlx::Error::RowNotFound => (
+                    StatusCode::NOT_FOUND,
+                    format!("Sondage {} not found", sondage_id),
+                ),
+                _ => (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()),
+            })?;
 
-    tracing::info!(
-        "Sondage {} géocodé par ADM3 (id={})",
-        sondage_id,
-        adm3_id
-    );
+    tracing::info!("Sondage {} géocodé par ADM3 (id={})", sondage_id, adm3_id);
 
     // Broadcaster l'événement WebSocket
     crate::websocket::broadcast_event(
@@ -203,7 +199,7 @@ async fn geocode_by_coords(
             )
         WHERE id = $1
         RETURNING id, code, location_mode, is_geocoded
-        "#
+        "#,
     )
     .bind(sondage_id)
     .bind(lon)

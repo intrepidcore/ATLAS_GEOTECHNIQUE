@@ -184,6 +184,35 @@ export interface MissionDetail extends MissionListItem {
   linked_sondages: LinkedSondage[];
 }
 
+export type LabResultStatus = 'draft' | 'complete';
+
+export interface LabResultRecord {
+  id: string;
+  mission_id: string;
+  sondage_id: string;
+  sondage_code: string | null;
+  sample_code: string;
+  depth_top_m: number;
+  depth_bottom_m: number;
+  depth_m: number;
+  horizon: string;
+  sample: Record<string, unknown>;
+  tests: Record<string, unknown>;
+  status: LabResultStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LabResultInput {
+  sondage_id: string;
+  sample_code: string;
+  depth_top_m: number;
+  depth_bottom_m: number;
+  sample: Record<string, unknown>;
+  tests: Record<string, unknown>;
+  status: LabResultStatus;
+}
+
 export interface MailleSuggestItem {
   id: string;
   code: string;
@@ -222,6 +251,165 @@ export const regionsApi = {
   },
 };
 
+export const labResultsApi = {
+  async list(missionId: string): Promise<{ items: LabResultRecord[]; total: number }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/missions/${missionId}/lab-results`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Chargement des résultats impossible');
+    }
+    return response.json();
+  },
+
+  async create(missionId: string, input: LabResultInput): Promise<LabResultRecord> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/missions/${missionId}/lab-results`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Enregistrement impossible');
+    }
+    return response.json();
+  },
+
+  async update(missionId: string, resultId: string, input: LabResultInput): Promise<LabResultRecord> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/missions/${missionId}/lab-results/${resultId}`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Mise à jour impossible');
+    }
+    return response.json();
+  },
+
+  async delete(missionId: string, resultId: string): Promise<void> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/missions/${missionId}/lab-results/${resultId}`, { method: 'DELETE' });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Suppression impossible');
+    }
+  },
+};
+
+export interface AtlasPackPackage {
+  id: string;
+  operator_user_id: string;
+  student_id: string | null;
+  operator_email: string;
+  operator_name: string;
+  matricule: string | null;
+  status: 'not_prepared' | 'preparing' | 'ready' | 'stale' | 'failed';
+  format_version: number;
+  schema_version: number;
+  mission_ids: string[];
+  mission_count: number;
+  generated_at: string | null;
+  expires_at: string | null;
+  signing_key_id: string | null;
+  package_sha256: string | null;
+  file_size_bytes: number | null;
+  tile_count: number | null;
+  tile_zoom_min: number | null;
+  tile_zoom_max: number | null;
+  tiles_truncated: boolean;
+  tiles_truncation_reason: string | null;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AtlasPackReturn {
+  id: string;
+  package_id: string | null;
+  operator_user_id: string;
+  operator_email: string;
+  generated_at: string;
+  missions_count: number;
+  sondages_count: number;
+  essais_count: number;
+  attachments_count: number;
+  size_bytes: number;
+  sha256: string;
+  status: 'received' | 'validated' | 'rejected' | 'applied';
+  rejection_reason: string | null;
+  received_at: string;
+  applied_at: string | null;
+}
+
+export const atlaspackApi = {
+  async listPackages(status?: string): Promise<{ items: AtlasPackPackage[]; total: number }> {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : '';
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/atlaspack/packages${qs}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Chargement des paquets impossible');
+    }
+    return response.json();
+  },
+
+  async getForStudent(studentId: string): Promise<AtlasPackPackage> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/atlaspack/students/${studentId}/package`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Chargement du paquet impossible');
+    }
+    return response.json();
+  },
+
+  async generate(studentId: string): Promise<{ package_id: string; status: string }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/atlaspack/students/${studentId}/package/generate`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Génération impossible');
+    }
+    return response.json();
+  },
+
+  async download(packageId: string): Promise<Blob> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/atlaspack/packages/${packageId}/download`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Téléchargement impossible');
+    }
+    return response.blob();
+  },
+
+  async listReturns(): Promise<{ items: AtlasPackReturn[]; total: number }> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/atlaspack/returns`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Chargement des retours impossible');
+    }
+    return response.json();
+  },
+
+  async importReturn(file: File): Promise<{
+    export_id: string;
+    already_imported: boolean;
+    missions_count: number;
+    sondages_count: number;
+    essais_count: number;
+    resultats_count: number;
+    attachments_count: number;
+    warnings: string[];
+  }> {
+    const form = new FormData();
+    form.append('file', file);
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/atlaspack/returns/import`, {
+      method: 'POST',
+      body: form,
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Import du retour terrain refusé');
+    }
+    return response.json();
+  },
+};
+
 export interface ColabDocument {
   id: string;
   mission_id: string;
@@ -256,6 +444,28 @@ export interface SondagePointInput {
   lat: number;
   lon: number;
   notes?: string;
+}
+
+export interface GenerateSondagePointsResponse {
+  mission_code: string;
+  generated: number;
+  close_pairs: number;
+  design: string;
+  mailles: Array<{
+    code: string;
+    area_m2: number;
+    points: number;
+    spacing_m: number;
+    close_pairs: number;
+  }>;
+  points: Array<{
+    numero: number;
+    label: string;
+    lat: number;
+    lon: number;
+    maille_code: string;
+    kind: 'reseau' | 'couple_rapproche';
+  }>;
 }
 
 export interface CreateMissionRequest {
@@ -745,6 +955,30 @@ async function fetchWithAuth(url: string, options: RequestInit = {}): Promise<Re
 // API Missions
 // ============================================================================
 
+/**
+ * Extrait un message d'erreur exploitable d'une réponse en échec.
+ *
+ * Toutes les erreurs ne sont pas du JSON : un corps de requête refusé par le
+ * serveur (422) revient en texte brut décrivant le champ fautif. L'ancien
+ * `.catch(() => ({ error: 'Erreur réseau' }))` écrasait ce diagnostic par un
+ * message qui accusait le réseau alors que la requête avait parfaitement
+ * abouti — et faisait chercher la panne au mauvais endroit.
+ */
+export async function readApiError(response: Response, fallback: string): Promise<string> {
+  const raw = await response.text().catch(() => '');
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.error === 'string' && parsed.error) return parsed.error;
+      if (parsed && typeof parsed.message === 'string' && parsed.message) return parsed.message;
+    } catch {
+      // Corps non JSON : on le rend tel quel, tronqué.
+      return `${fallback} (${response.status}) : ${raw.slice(0, 300)}`;
+    }
+  }
+  return `${fallback} (${response.status})`;
+}
+
 export const missionsApi = {
   /**
    * Liste des missions avec filtres et pagination
@@ -782,6 +1016,30 @@ export const missionsApi = {
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
       throw new Error(error.error || 'Erreur lors de la désassignation');
+    }
+
+    return response.json();
+  },
+
+  /**
+   * Génère automatiquement les points de sondage prévisionnels de la mission.
+   *
+   * Le plan est calculé côté serveur (réseau triangulaire + couples
+   * rapprochés) : le front ne recalcule aucune géométrie, il affiche ce que le
+   * serveur a réellement écrit en base.
+   */
+  async generateSondagePoints(
+    id: string,
+    input: { target_count?: number; points_per_maille?: number; close_pairs?: boolean; replace?: boolean } = {}
+  ): Promise<GenerateSondagePointsResponse> {
+    const response = await fetchWithAuth(`${API_BASE_URL}/colab/missions/${id}/sondage-points/generate`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
+      throw new Error(error.error || 'Erreur lors de la génération des points');
     }
 
     return response.json();
@@ -842,8 +1100,7 @@ export const missionsApi = {
     });
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
-      throw new Error(error.error || 'Erreur lors de la création de la mission');
+      throw new Error(await readApiError(response, 'Création de la mission impossible'));
     }
     
     return response.json();
@@ -859,8 +1116,7 @@ export const missionsApi = {
     });
     
     if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Erreur réseau' }));
-      throw new Error(error.error || 'Erreur lors de la mise à jour de la mission');
+      throw new Error(await readApiError(response, 'Mise à jour de la mission impossible'));
     }
     
     return response.json();

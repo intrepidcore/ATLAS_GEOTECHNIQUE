@@ -1,0 +1,955 @@
+### sondages
+code_site	localite	region	prefecture_adm2	canton_adm3	date_sondage	lat_wgs84	lon_wgs84	x_utm31	y_utm31	position_source	precision_m	prof_totale_m	niveau_nappe_m	bureau_etude	type_document	ref_document	commentaire
+PC06-S0		Plateaux			Avril 2018			262407	762121	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.39	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 0 + 100; profil C/Droit. Incertitude annoncée ±3 m.
+PC06-S1		Plateaux			Avril 2018			262885	760296	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.39	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 2 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC06-S2		Plateaux			Avril 2018			263448	758459	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.39	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 4 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC06-S3		Plateaux			Avril 2018			263543	756484	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.39	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 6+000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC06-S4		Plateaux			Avril 2018			264888	755289	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.39	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 8 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC06-S5		Plateaux			Avril 2018			266502	754317	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.40	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 10 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC06-S6		Plateaux			Avril 2018			268504	754071	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.40	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 12 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC06-S7		Plateaux			Avril 2018			269754	752837	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.40	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 14 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC06-S8		Plateaux			Avril 2018			269296	751068	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.40	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 16+000; profil C/Droit. Incertitude annoncée ±3 m.
+PC06-S9		Plateaux			Avril 2018			271539	748326	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.40	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 18 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC06-S10		Plateaux			Avril 2018			270516	750011	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.41	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC06 Kati – Missiobé; PK 20+000; profil C/Droit. Incertitude annoncée ±3 m.
+PC11-S0		Plateaux			Avril 2018			325544	774393	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.43	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC11 Kablè Kondji – Akétohoui – Atsohoé; PK 0 + 100; profil C/Droit. Incertitude annoncée ±3 m.
+PC11-S1		Plateaux			Avril 2018			325978	772569	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.43	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC11 Kablè Kondji – Akétohoui – Atsohoé; PK 2 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC11-S2		Plateaux			Avril 2018			325182	770863	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.43	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC11 Kablè Kondji – Akétohoui – Atsohoé; PK 4 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC11-S3		Plateaux			Avril 2018			326102	769367	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.43	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC11 Kablè Kondji – Akétohoui – Atsohoé; PK 6+000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC11-S4		Plateaux			Avril 2018			326242	767717	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.43	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC11 Kablè Kondji – Akétohoui – Atsohoé; PK 8 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC12-S0		Plateaux			Avril 2018			311435	769615	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.45	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 0 + 100; profil C/Gauche. Incertitude annoncée ±3 m.
+PC12-S1		Plateaux			Avril 2018			312256	768070	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.45	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 2 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC12-S2		Plateaux			Avril 2018			313660	766737	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.45	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 4 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC12-S3		Plateaux			Avril 2018			314773	765113	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.45	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 6+000; profil C/Droit. Incertitude annoncée ±3 m.
+PC12-S4		Plateaux			Avril 2018			316303	763972	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.45	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 8 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC12-S5		Plateaux			Avril 2018			317987	762907	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.45	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 10+000; profil C/Droit. Incertitude annoncée ±3 m.
+PC12-S6		Plateaux			Avril 2018			319714	761869	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.46	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 12 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC12-S7		Plateaux			Avril 2018			321339	760746	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.46	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 14 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC12-S8		Plateaux			Avril 2018			321042	759086	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.46	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 16+000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC12-S9		Plateaux			Avril 2018			319895	757435	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.46	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 18 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC12-S10		Plateaux			Avril 2018			318619	756146	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.46	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 20 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC12-S11		Plateaux			Avril 2018			316915	756013	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.46	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 22 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC12-S12		Plateaux			Avril 2018			315184	756823	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.47	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 24 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC12-S13		Plateaux			Avril 2018			313325	757351	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.47	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 26 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC12-S14		Plateaux			Avril 2018			310514	758338	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.47	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 28 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC12-S15		Plateaux			Avril 2018			311472	758075	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.47	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC12 Sotouméhoé – Démé – Déwé – Agoto - Sodja Kopé; PK 29 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC14-S0		Plateaux			Avril 2018			306088	756304	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.49	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC14 Seydou Kopé – Donnvé – Akénon; PK 0 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC14-S1		Plateaux			Avril 2018			307897	756574	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.49	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC14 Seydou Kopé – Donnvé – Akénon; PK 2 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC14-S2		Plateaux			Avril 2018			309798	756676	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.49	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC14 Seydou Kopé – Donnvé – Akénon; PK 4 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC14-S3		Plateaux			Avril 2018			310923	755807	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.49	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC14 Seydou Kopé – Donnvé – Akénon; PK 6+000; profil C/Droit. Incertitude annoncée ±3 m.
+PC16-S0		Plateaux			Avril 2018			275729	764934	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.51	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC16 Djatékpé – Batoumé – Nuyanuké Kopé - rivière; PK 0 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC16-S1		Plateaux			Avril 2018			275718	762325	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.51	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC16 Djatékpé – Batoumé – Nuyanuké Kopé - rivière; PK 2 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC16-S2		Plateaux			Avril 2018			276028	760675	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.51	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC16 Djatékpé – Batoumé – Nuyanuké Kopé - rivière; PK 4 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC16-S3		Plateaux			Avril 2018			275040	757094	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.51	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC16 Djatékpé – Batoumé – Nuyanuké Kopé - rivière; PK 6+000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC16-S4		Plateaux			Avril 2018			273949	757445	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.51	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC16 Djatékpé – Batoumé – Nuyanuké Kopé - rivière; PK 8 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC16-S5		Plateaux			Avril 2018			272923	755873	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.51	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC16 Djatékpé – Batoumé – Nuyanuké Kopé - rivière; PK 10 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC18-S0		Plateaux			Avril 2018			312711	818347	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.53	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 0 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC18-S1		Plateaux			Avril 2018			314700	818273	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.53	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 2 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC18-S2		Plateaux			Avril 2018			316613	817770	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.53	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 4 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC18-S3		Plateaux			Avril 2018			318214	817294	GPS terrain (UTM)	3	0,6		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.53	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 6+000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC18-S4		Plateaux			Avril 2018			318558	815691	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.53	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 8 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC18-S5		Plateaux			Avril 2018			320156	814522	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.53	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 10 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC18-S6		Plateaux			Avril 2018			321498	813096	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.53	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 12 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC18-S7		Plateaux			Avril 2018			322646	811512	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.54	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 14 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC18-S8		Plateaux			Avril 2018			323852	809960	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.54	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 16+000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC18-S9		Plateaux			Avril 2018			325167	808707	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.54	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 18 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC18-S10		Plateaux			Avril 2018			325174	807006	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.54	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 20 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC18-S11		Plateaux			Avril 2018			324166	805625	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.55	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 22 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC18-S12		Plateaux			Avril 2018			324582	804813	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.55	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC18 Kélékpé N’taré – Agbata – Irandomi; PK 23 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC20-S0		Plateaux			Avril 2018			270634	781709	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.57	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 0 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC20-S1		Plateaux			Avril 2018			269236	780460	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.57	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 2 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC20-S2		Plateaux			Avril 2018			267403	780013	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.57	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 4 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC20-S3		Plateaux			Avril 2018			265605	780703	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.57	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 6+000; profil C/Droit. Incertitude annoncée ±3 m.
+PC20-S4		Plateaux			Avril 2018			264809	781201	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.57	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 8 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC20-S5		Plateaux			Avril 2018			263238	780697	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.57	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 10 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC20-S6		Plateaux			Avril 2018			263572	782397	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.57	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 12 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC20-S7		Plateaux			Avril 2018			263238	784250	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.58	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 14 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC20-S8		Plateaux			Avril 2018			263427	785849	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.58	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC20 Carrefour - Nunyagnigbé - Damonou; PK 15+600; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC21-S0		Plateaux			Avril 2018			271243	784059	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.60	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC21 Sim Kopé – Fotowui Kopé - carrefour Kilim Kopé; PK 0 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC21-S1		Plateaux			Avril 2018			271531	785822	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.60	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC21 Sim Kopé – Fotowui Kopé - carrefour Kilim Kopé; PK 2 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC21-S2		Plateaux			Avril 2018			270568	787509	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.60	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC21 Sim Kopé – Fotowui Kopé - carrefour Kilim Kopé; PK 4 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC21-S3		Plateaux			Avril 2018			269509	789150	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.60	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC21 Sim Kopé – Fotowui Kopé - carrefour Kilim Kopé; PK 6+000; profil C/Droit. Incertitude annoncée ±3 m.
+PC21-S4		Plateaux			Avril 2018			267629	789543	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.60	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC21 Sim Kopé – Fotowui Kopé - carrefour Kilim Kopé; PK 8 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC22-S0		Plateaux			Avril 2018			337155	838795	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.62	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC22 Glitto-Kavé-Gbagou; PK 0 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC22-S1		Plateaux			Avril 2018			335259	839357	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.62	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC22 Glitto-Kavé-Gbagou; PK 2 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC22-S2		Plateaux			Avril 2018			334128	837847	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.62	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC22 Glitto-Kavé-Gbagou; PK 4 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC22-S3		Plateaux			Avril 2018			333372	836031	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.62	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC22 Glitto-Kavé-Gbagou; PK 6+000; profil C/Droit. Incertitude annoncée ±3 m.
+PC22-S4		Plateaux			Avril 2018			332643	834199	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.62	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC22 Glitto-Kavé-Gbagou; PK 8 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC22-S5		Plateaux			Avril 2018			332397	832280	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.62	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC22 Glitto-Kavé-Gbagou; PK 10 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC22-S6		Plateaux			Avril 2018			332175	831329	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.63	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC22 Glitto-Kavé-Gbagou; PK 11 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC23-S0		Plateaux			Avril 2018			332800	821645	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.65	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 0 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC23-S1		Plateaux			Avril 2018			334267	822977	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.65	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 2 + 100; profil C/Droit. Incertitude annoncée ±3 m.
+PC23-S2		Plateaux			Avril 2018			335466	824545	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.65	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 4 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC23-S3		Plateaux			Avril 2018			335643	824695	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.65	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 4+300; profil C/Droit. Incertitude annoncée ±3 m.
+PC23-S4		Plateaux			Avril 2018			337128	825333	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.65	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 6 + 100; profil C/Gauche. Incertitude annoncée ±3 m.
+PC23-S5		Plateaux			Avril 2018			338918	825930	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.66	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 8 + 300; profil C/Droit. Incertitude annoncée ±3 m.
+PC23-S6		Plateaux			Avril 2018			340854	826125	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.66	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 10 + 200; profil C/Gauche. Incertitude annoncée ±3 m.
+PC23-S7		Plateaux			Avril 2018			342758	825591	GPS terrain (UTM)	3	0,45		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.66	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 12 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC23-S8		Plateaux			Avril 2018			344723	825091	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.66	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 14+000; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC23-S9		Plateaux			Avril 2018			345283	826942	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.67	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 16 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC23-S10		Plateaux			Avril 2018			344851	828768	GPS terrain (UTM)	3	0,3		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.67	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 18+000; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC23-S11		Plateaux			Avril 2018			344778	830679	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.67	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 20+ 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC23-S12		Plateaux			Avril 2018			343864	832398	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.67	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 22+000; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC23-S13		Plateaux			Avril 2018			344877	834225	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.68	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 24+ 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC23-S14		Plateaux			Avril 2018			344883	836000	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.68	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 26 + 000; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC23-S15		Plateaux			Avril 2018			346629	836049	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.68	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 28+000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC23-S16		Plateaux			Avril 2018			347392	835527	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.68	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC23 (Nangbéto) - Carrefour Abalo kopé - Lové – Koufota; PK 28+900; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC25-S0		Plateaux			Avril 2018			317939	792155	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.70	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 0 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC25-S1		Plateaux			Avril 2018			327254	838909	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.70	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 2 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC25-S2		Plateaux			Avril 2018			329205	838805	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.70	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 4 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC25-S3		Plateaux			Avril 2018			330729	839634	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.70	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 6+100; profil C/Droit. Incertitude annoncée ±3 m.
+PC25-S4		Plateaux			Avril 2018			331289	841555	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.70	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 8 + 100; profil C/Gauche. Incertitude annoncée ±3 m.
+PC25-S5		Plateaux			Avril 2018			331680	843404	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.70	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 10 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC25-S6		Plateaux			Avril 2018			331777	845265	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.71	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 12 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC25-S7		Plateaux			Avril 2018			331873	847126	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.71	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 14 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC25-S8		Plateaux			Avril 2018			331177	848970	GPS terrain (UTM)	3			Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.71	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 16+000; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC25-S9		Plateaux			Avril 2018			330083	850519	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.71	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 18 + 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC25-S10		Plateaux			Avril 2018			329097	852249	GPS terrain (UTM)	3	0,6		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.71	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 20+000; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC25-S11		Plateaux			Avril 2018			328147	853970	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.71	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 22+ 000; profil C/ Droit. Incertitude annoncée ±3 m.
+PC25-S12		Plateaux			Avril 2018			327220	855478	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.72	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC25 Azonaha – Kogo Kopé 2 – Adégbénou; PK 23+800; profil C/ Gauche. Incertitude annoncée ±3 m.
+PC26-S0		Plateaux			Avril 2018			346321	842322	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.74	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC26 Dassagba - Aplavé - Glito; PK 0 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC26-S1		Plateaux			Avril 2018			344453	841773	GPS terrain (UTM)	3	0,2		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.74	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC26 Dassagba - Aplavé - Glito; PK 2 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC26-S2		Plateaux			Avril 2018			342556	841288	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.74	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC26 Dassagba - Aplavé - Glito; PK 4 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC26-S3		Plateaux			Avril 2018			340641	841207	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.74	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC26 Dassagba - Aplavé - Glito; PK 6+000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC26-S4		Plateaux			Avril 2018			338988	840138	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.74	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC26 Dassagba - Aplavé - Glito; PK 8 + 000; profil C/Droit. Incertitude annoncée ±3 m.
+PC26-S5		Plateaux			Avril 2018			337441	838898	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.74	[N1] Coord.GPS UTM 31N explicitement reportées; axe PC26 Dassagba - Aplavé - Glito; PK 10 + 000; profil C/Gauche. Incertitude annoncée ±3 m.
+PC30-S0		Plateaux			Avril 2018			317113	909606	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.76	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 0 + 008; profil C/Droit. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S1		Plateaux			Avril 2018			318811	909918	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.76	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 2 + 000; profil C/Gauche. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S2		Plateaux			Avril 2018			320526	909900	GPS terrain (UTM)	3	0,45		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.76	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 4 + 000; profil C/Droit. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S3		Plateaux			Avril 2018			321516	911334	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.76	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 6+100; profil C/Gauche. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S4		Plateaux			Avril 2018			322959	910762	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.76	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 8 + 100; profil C/Droit. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S5		Plateaux			Avril 2018			324586	909843	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.76	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 10 + 100; profil C/Gauche. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S6		Plateaux			Avril 2018			324214	908033	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.77	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 12 + 100; profil C/Droit. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S7		Plateaux			Avril 2018			324039	906192	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.77	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 14 + 100; profil C/Gauche. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S8		Plateaux			Avril 2018			323235	904401	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.77	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 16 + 100; profil C/Droit. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S9		Plateaux			Avril 2018			321894	903006	GPS terrain (UTM)	3	0,6		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.77	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 18 + 100; profil C/Gauche. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S10		Plateaux			Avril 2018			320182	902111	GPS terrain (UTM)	3	0,6		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.77	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 20 + 100; profil C/Droit. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+PC30-S11		Plateaux			Avril 2018			328359	902747	GPS terrain (UTM)	3	1		Groupement INROS Lackner / HP Gauff / DECO -IC	Rapport géotechnique	Rapport d’étude géotechnique PAPR – Région des Plateaux (207,7 km), annexe 1, p.78	[N1] Coord.GPS UTM 31P explicitement reportées; axe PC30 Otitoyi – Dpaong Kopé - Odokpo - Konta; PK 22+ 100; profil C/Gauche. Incertitude annoncée ±3 m. Le rapport imprime «31P» sur les fiches PC30, contrairement à «31N» sur les autres axes.
+
+### echantillons
+code_site	depth_top_m	depth_bot_m	depth_m	horizon	date_prelevement	laboratoire_essai	nature_sol	remanie	commentaire
+PC06-S0	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S1	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S2	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S3	0,2	0,5	0,35	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 0,50». Échantillon remanié (rapport p.9).
+PC06-S3	0,5	1	0,75	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,50 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S4	0	0,15	0,075	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,00 - 0,15». Échantillon remanié (rapport p.9).
+PC06-S4	0,15	1	0,575	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S5	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S6	0,25	0,35	0,3	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 0,35». Échantillon remanié (rapport p.9).
+PC06-S6	0,35	1	0,675	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,35 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S7	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S8	0,15	0,45	0,3	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 0,45». Échantillon remanié (rapport p.9).
+PC06-S8	0,45	1	0,725	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,45 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S9	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC06-S10	0,15	1	0,575	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.11, tableau 5; intervalle imprimé «0,15 - 1,00». Échantillon remanié (rapport p.9).
+PC11-S0	0,1	1	0,55	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 1,00». Échantillon remanié (rapport p.9).
+PC11-S1	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.11, tableau 6; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC11-S2	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC11-S3	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC11-S4	0,1	0,3	0,2	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 0,30». Échantillon remanié (rapport p.9).
+PC11-S4	0,3	1	0,65	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.11, tableau 6; intervalle imprimé «0,30 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S0	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «)      0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S1	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S2	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S3	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S4	0	0,6	0,3	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,00 - 0,60». Échantillon remanié (rapport p.9).
+PC12-S4	0,6	1	0,8	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,60 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S5	0,15	1	0,575	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S6	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «m)    0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC12-S6	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S7	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S8	0,15	1	0,575	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S9	0,15	1	0,575	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S10	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S11	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.12, tableau 7; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S12	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 7; intervalle imprimé «)      0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S13	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S14	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC12-S15	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC14-S0	0	0,25	0,125	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 8; intervalle imprimé «m)     0,00 - 0,25». Échantillon remanié (rapport p.9).
+PC14-S0	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC14-S1	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC14-S2	0,35	1	0,675	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 8; intervalle imprimé «0,35 - 1,00». Échantillon remanié (rapport p.9).
+PC14-S3	0,25	0,45	0,35	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 0,45». Échantillon remanié (rapport p.9).
+PC14-S3	0,45	1	0,725	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.13, tableau 8; intervalle imprimé «0,45 - 1,00». Échantillon remanié (rapport p.9).
+PC16-S0	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC16-S1	0,1	1	0,55	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.14, tableau 9; intervalle imprimé «0,10 - 1,00». Échantillon remanié (rapport p.9).
+PC16-S2	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC16-S3	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC16-S4	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC16-S5	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S0	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S1	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S2	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S3	0	0,6	0,3	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,60». Échantillon remanié (rapport p.9).
+PC18-S4	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S5	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S6	0	0,25	0,125	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25». Échantillon remanié (rapport p.9).
+PC18-S6	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «)     0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S7	0	0,25	0,125	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25». Échantillon remanié (rapport p.9).
+PC18-S7	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S8	0	0,4	0,2	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,40». Échantillon remanié (rapport p.9).
+PC18-S8	0,4	1	0,7	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,40 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S9	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S10	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S11	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC18-S12	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S0	0,3	1	0,65	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S1	0,3	1	0,65	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S2	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S3	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S4	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S5	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S6	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S7	0,1	1	0,55	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,10 - 1,00». Échantillon remanié (rapport p.9).
+PC20-S8	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC21-S0	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 12; intervalle imprimé «m)     0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC21-S1	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC21-S2	0,15	0,5	0,325	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 12; intervalle imprimé «0,15 - 0,50». Échantillon remanié (rapport p.9).
+PC21-S2	0,5	1	0,75	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 12; intervalle imprimé «0,50 - 1,00». Échantillon remanié (rapport p.9).
+PC21-S3	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC21-S4	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 12; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC22-S0	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 13; intervalle imprimé «)      0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC22-S1	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC22-S2	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC22-S3	0	0,3	0,15	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 0,30». Échantillon remanié (rapport p.9).
+PC22-S3	0,3	1	0,65	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 13; intervalle imprimé «0,30 - 1,00». Échantillon remanié (rapport p.9).
+PC22-S4	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC22-S5	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC22-S6	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.18, tableau 13; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S0	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S1	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC23-S1	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S2	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC23-S2	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S3	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S4	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S5	0	0,25	0,125	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,25». Échantillon remanié (rapport p.9).
+PC23-S5	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S6	0	0,15	0,075	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,15». Échantillon remanié (rapport p.9).
+PC23-S6	0,15	1	0,575	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,15 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S7	0	0,45	0,225	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,45». Échantillon remanié (rapport p.9).
+PC23-S8	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC23-S8	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S9	0	0,25	0,125	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25». Échantillon remanié (rapport p.9).
+PC23-S9	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S10	0	0,3	0,15	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,30». Échantillon remanié (rapport p.9).
+PC23-S11	0	0,25	0,125	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25». Échantillon remanié (rapport p.9).
+PC23-S11	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S12	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC23-S12	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S13	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC23-S13	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S14	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S15	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC23-S16	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S6	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S7	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S8				H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0015 - 1,00». Profondeur suspecte/non interprétée; depth_m laissé vide.
+PC25-S9	0,1	1	0,55	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,10 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S10	0	0,6	0,3	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,60». Échantillon remanié (rapport p.9).
+PC25-S11	0	0,4	0,2	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,40». Échantillon remanié (rapport p.9).
+PC25-S11	0,4	1	0,7	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,40 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S0	0,25	1	0,625	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «m)     0,25 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S1	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S2	0,1	1	0,55	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,10 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S3	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S4	0	0,45	0,225	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,45». Échantillon remanié (rapport p.9).
+PC25-S4	0,45	1	0,725	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,45 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S5	0,15	1	0,575	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.20, tableau 15; intervalle imprimé «0,15 - 1,00». Échantillon remanié (rapport p.9).
+PC25-S12	0,3	1	0,65	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.21, tableau 15; intervalle imprimé «0,30 - 1,00». Échantillon remanié (rapport p.9).
+PC26-S0	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.21, tableau 16; intervalle imprimé «)      0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC26-S0	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC26-S1	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.21, tableau 16; intervalle imprimé «0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC26-S2	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC26-S3	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC26-S4	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.21, tableau 16; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC26-S5	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S0	0,1	1	0,55	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «m)     0,10 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S1	0	0,65	0,325	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,65». Échantillon remanié (rapport p.9).
+PC30-S1	0,65	1	0,825	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,65 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S2	0,25	0,45	0,35	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,25 - 0,45». Échantillon remanié (rapport p.9).
+PC30-S3	0,1	1	0,55	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,10 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S4	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S5	0,2	0,5	0,35	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 0,50». Échantillon remanié (rapport p.9).
+PC30-S5	0,5	1	0,75	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,50 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S6	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S7	0	0,2	0,1	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,20». Échantillon remanié (rapport p.9).
+PC30-S7	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S8	0,2	1	0,6	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». Échantillon remanié (rapport p.9).
+PC30-S9	0	0,6	0,3	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60». Échantillon remanié (rapport p.9).
+PC30-S10	0	0,6	0,3	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60». Échantillon remanié (rapport p.9).
+PC30-S11	0	1	0,5	H1 (0-1 m)	Avril 2018	LNBTP		oui	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00». Échantillon remanié (rapport p.9).
+
+### atterberg
+code_site	depth_m	wl_pct	wp_pct	ip_calc	ip_rapport	norme	commentaire
+PC06-S0	0,625	22			11	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S1	0,6	33			16	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S3	0,35	22			12	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 0,50». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S4	0,575	24			9	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S5	0,625	23			10	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S6	0,675	23			11	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,35 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S7	0,625	20			10	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S8	0,3	22			11	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 0,45». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S8	0,725	26			11	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,45 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC06-S9	0,6	26			12	NF P 94-051	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC11-S0	0,55	36			17	NF P 94-051	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC11-S1	0,5	19			7	NF P 94-051	Rapport p.11, tableau 6; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC11-S2	0,6	65			34	NF P 94-051	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC11-S3	0,6	34			17	NF P 94-051	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC11-S4	0,2	19			7	NF P 94-051	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 0,30». WP non fourni dans le tableau; aucune reconstitution.
+PC11-S4	0,65	35			16	NF P 94-051	Rapport p.11, tableau 6; intervalle imprimé «0,30 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S0	0,625	33			15	NF P 94-051	Rapport p.12, tableau 7; intervalle imprimé «)      0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S1	0,6	46			22	NF P 94-051	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S3	0,6	43			20	NF P 94-051	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S5	0,575	21			9	NF P 94-051	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S6	0,6	34			18	NF P 94-051	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S7	0,625	37			21	NF P 94-051	Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S12	0,5	41			20	NF P 94-051	Rapport p.13, tableau 7; intervalle imprimé «)      0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S13	0,5	45			21	NF P 94-051	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC12-S15	0,5	49			23	NF P 94-051	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S2	0,5	37			20	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S3	0,3	24			10	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,60». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S5	0,5	33			16	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S6	0,125	21			8	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S6	0,625	36			18	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «)     0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S7	0,125	23			7	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S7	0,625	34			17	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S8	0,2	20			9	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,40». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S8	0,7	51			29	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,40 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S9	0,5	24			12	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S10	0,5	43			24	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S11	0,5	37			18	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC18-S12	0,5	48			27	NF P 94-051	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC22-S6	0,5	23			11	NF P 94-051	Rapport p.18, tableau 13; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S0	0,5	42			21	NF P 94-051	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S1	0,1	26			11	NF P 94-051	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S1	0,6	22			9	NF P 94-051	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S2	0,1	47			24	NF P 94-051	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S2	0,6	33			15	NF P 94-051	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S4	0,5	46			23	NF P 94-051	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S5	0,625	20			8	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S6	0,075	22			8	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,15». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S6	0,575	24			12	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,15 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S8	0,6	19			9	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S9	0,125	19			9	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S9	0,625	23			11	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S11	0,625	18			8	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S12	0,1	38			19	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S12	0,6	22			8	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S13	0,1	28			15	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,20». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S14	0,5	33			15	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S15	0,5	21			9	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC23-S16	0,5	26			11	NF P 94-051	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC25-S7	0,5	21			9	NF P 94-051	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC25-S1	0,5	25			8	NF P 94-051	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC25-S2	0,55	24			7	NF P 94-051	Rapport p.20, tableau 15; intervalle imprimé «0,10 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC25-S4	0,225	23			8	NF P 94-051	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,45». WP non fourni dans le tableau; aucune reconstitution.
+PC25-S4	0,725	22			10	NF P 94-051	Rapport p.20, tableau 15; intervalle imprimé «0,45 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC25-S5	0,575	24			8	NF P 94-051	Rapport p.20, tableau 15; intervalle imprimé «0,15 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC25-S12	0,65	41			20	NF P 94-051	Rapport p.21, tableau 15; intervalle imprimé «0,30 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S0	0,55	24			9	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «m)     0,10 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S1	0,325	34			16	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,65». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S1	0,825	40			18	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,65 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S2	0,35	20			9	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,25 - 0,45». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S3	0,55	29			12	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,10 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S4	0,5	27			10	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S6	0,6	21			7	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S7	0,6	54			18	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S9	0,3	22			11	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60». WP non fourni dans le tableau; aucune reconstitution.
+PC30-S11	0,5	22			9	NF P 94-051	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00». WP non fourni dans le tableau; aucune reconstitution.
+
+### proctor
+code_site	depth_m	proctor_type	gamma_d_max_knm3	w_opt_pct	provenance	commentaire
+PC06-S0	0,625	OPM		6,3	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,03 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S1	0,6	OPM		8	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,03 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S2	0,625	OPM		7,4	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». γOPM rapport=1,98 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S3	0,35	OPM		7,2	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 0,50». γOPM rapport=1,99 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S3	0,75	OPM		6	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,50 - 1,00». γOPM rapport=2,24 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S4	0,075	OPM		6	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,00 - 0,15». γOPM rapport=2,17 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S4	0,575	OPM		8,4	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 1,00». γOPM rapport=2,02 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S5	0,625	OPM		6,6	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S6	0,675	OPM		6,3	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,35 - 1,00». γOPM rapport=1,97 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S7	0,625	OPM		6	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,18 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S8	0,3	OPM		6,3	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 0,45». γOPM rapport=2,11 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S8	0,725	OPM		6,3	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,45 - 1,00». γOPM rapport=2,11 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S9	0,6	OPM		8,2	Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,13 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC06-S10	0,575	OPM		6,6	Tracé / plateforme	Rapport p.11, tableau 5; intervalle imprimé «0,15 - 1,00». γOPM rapport=2,24 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC11-S0	0,55	OPM		7,2	Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 1,00». γOPM rapport=2,19 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC11-S1	0,5	OPM		7,1	Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,19 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC11-S2	0,6	OPM		7,5	Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,12 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC11-S3	0,6	OPM		8,4	Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,03 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC11-S4	0,2	OPM		6,1	Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 0,30». γOPM rapport=2,15 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC11-S4	0,65	OPM		6,1	Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,30 - 1,00». γOPM rapport=2,26 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S0	0,625	OPM		7	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «)      0,25 - 1,00». γOPM rapport=2,27 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S1	0,6	OPM		8,1	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,14 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S2	0,625	OPM		5,9	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,16 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S3	0,6	OPM		7,7	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,21 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S4	0,3	OPM		8,2	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,00 - 0,60». γOPM rapport=2,03 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S4	0,8	OPM		6,9	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,60 - 1,00». γOPM rapport=2,05 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S5	0,575	OPM		7,7	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». γOPM rapport=2,07 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S6	0,1	OPM		6,6	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «m)    0,00 - 0,20». γOPM rapport=1,95 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S6	0,6	OPM		7,9	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». γOPM rapport=2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S7	0,625	OPM		5,6	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,03 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S8	0,575	OPM		6,7	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». γOPM rapport=2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S9	0,575	OPM		7,6	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». γOPM rapport=1,98 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S10	0,6	OPM		9,4	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,03 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S11	0,5	OPM		7,9	Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,00 - 1,00». γOPM rapport=1,97 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S12	0,5	OPM		7,4	Tracé / plateforme	Rapport p.13, tableau 7; intervalle imprimé «)      0,00 - 1,00». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S13	0,5	OPM		8,9	Tracé / plateforme	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,07 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S14	0,5	OPM		7	Tracé / plateforme	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,11 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC12-S15	0,5	OPM		7,9	Tracé / plateforme	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,08 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC14-S0	0,125	OPM		7,1	Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «m)     0,00 - 0,25». γOPM rapport=2,19 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC14-S0	0,625	OPM		5,9	Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,26 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC14-S1	0,625	OPM		6,9	Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,1 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC14-S2	0,675	OPM		8,8	Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,35 - 1,00». γOPM rapport=1,94 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC14-S3	0,35	OPM		6,9	Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 0,45». γOPM rapport=2,11 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC14-S3	0,725	OPM		9,5	Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,45 - 1,00». γOPM rapport=2,05 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC16-S0	0,625	OPM		7,4	Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,07 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC16-S1	0,55	OPM		7,8	Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,10 - 1,00». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC16-S2	0,6	OPM		9,9	Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00». γOPM rapport=1,99 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC16-S3	0,6	OPM		8,6	Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,1 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC16-S4	0,625	OPM		7,6	Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,14 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC16-S5	0,6	OPM		8	Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,06 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S0	0,5	OPM		6,3	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00». γOPM rapport=20,9 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S1	0,5	OPM		6,7	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». γOPM rapport=1,99 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S2	0,5	OPM		9,9	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». γOPM rapport=1,99 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S3	0,3	OPM		8,3	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,60». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S4	0,5	OPM		6,4	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». γOPM rapport=1,82 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S5	0,5	OPM		6,6	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». γOPM rapport=2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S6	0,125	OPM		7,9	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S6	0,625	OPM		7,6	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «)     0,25 - 1,00». γOPM rapport=2,21 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S7	0,125	OPM		7,5	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25». γOPM rapport=1,95 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S7	0,625	OPM		6,2	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,01 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S8	0,2	OPM		7,3	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,40». γOPM rapport=2,02 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S8	0,7	OPM		7,6	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,40 - 1,00». γOPM rapport=1,99 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S9	0,5	OPM		9,9	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». γOPM rapport=1,94 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S10	0,5	OPM		9,8	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». γOPM rapport=1,98 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S11	0,5	OPM		9,9	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00». γOPM rapport=1,9 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC18-S12	0,5	OPM		8,8	Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». γOPM rapport=1,92 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S0	0,65	OPM		8,4	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00». γOPM rapport=2,14 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S1	0,65	OPM		8,7	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00». γOPM rapport=1,94 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S2	0,625	OPM		9,2	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». γOPM rapport=1,96 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S3	0,625	OPM		6,4	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,23 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S4	0,625	OPM		9,5	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». γOPM rapport=1,95 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S5	0,6	OPM		5,6	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,33 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S6	0,5	OPM		6,5	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,11 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S7	0,55	OPM		6,8	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,10 - 1,00». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC20-S8	0,5	OPM		5,7	Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,3 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC21-S0	0,625	OPM		7,4	Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «m)     0,25 - 1,00». γOPM rapport=2,16 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC21-S1	0,6	OPM		6,2	Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,27 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC21-S2	0,325	OPM		8,5	Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,15 - 0,50». γOPM rapport=2,06 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC21-S2	0,75	OPM		7,1	Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,50 - 1,00». γOPM rapport=2,15 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC21-S3	0,6	OPM		6,3	Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,28 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC21-S4	0,625	OPM		9,4	Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,31 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC22-S0	0,5	OPM		7	Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «)      0,00 - 1,00». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC22-S1	0,5	OPM		5,5	Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC22-S2	0,5	OPM		5,9	Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,38 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC22-S3	0,15	OPM		9,6	Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 0,30». γOPM rapport=2,13 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC22-S3	0,65	OPM		8,5	Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,30 - 1,00». γOPM rapport=1,99 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC22-S4	0,5	OPM		7	Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,31 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC22-S5	0,5	OPM		6,8	Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC22-S6	0,5	OPM		7	Tracé / plateforme	Rapport p.18, tableau 13; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,07 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S0	0,5	OPM		8,8	Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,06 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S1	0,1	OPM		6	Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20». γOPM rapport=2,22 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S1	0,6	OPM		7,3	Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S2	0,1	OPM		9,6	Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20». γOPM rapport=2,12 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S2	0,6	OPM		6,2	Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,07 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S3	0,5	OPM		11,9	Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,07 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S4	0,5	OPM		7,8	Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S5	0,125	OPM		6,6	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,25». γOPM rapport=2,21 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S5	0,625	OPM		7,3	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,29 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S6	0,075	OPM		5,5	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,15». γOPM rapport=2,24 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S6	0,575	OPM		7,7	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,15 - 1,00». γOPM rapport=2,01 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S7	0,225	OPM		6,2	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,45». γOPM rapport=2,22 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S8	0,1	OPM		6,8	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20». γOPM rapport=2,01 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S8	0,6	OPM		7,2	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,21 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S9	0,125	OPM		5,4	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25». γOPM rapport=2,06 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S9	0,625	OPM		5,2	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,26 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S10	0,15	OPM		6,6	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,30». γOPM rapport=1,93 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S11	0,125	OPM		6,5	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25». γOPM rapport=1,85 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S11	0,625	OPM		6,9	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». γOPM rapport=2,21 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S12	0,1	OPM		8,8	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20». γOPM rapport=2,05 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S12	0,6	OPM		7	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,17 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S13	0,1	OPM		8,3	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,20». γOPM rapport=2,1 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S13	0,6	OPM		8,3	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,03 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S14	0,5	OPM		7,9	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,21 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S15	0,5	OPM		7,1	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,04 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC23-S16	0,5	OPM		7,9	Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,24 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S7	0,5	OPM		6,4	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,08 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S10	0,3	OPM		7,3	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,60». γOPM rapport=2,04 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S11	0,2	OPM		7,4	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,40». γOPM rapport=2,11 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S11	0,7	OPM		6,3	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,40 - 1,00». γOPM rapport=2,3 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S0	0,625	OPM		5,9	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «m)     0,25 - 1,00». γOPM rapport=2,18 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S1	0,5	OPM		6,8	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,22 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S2	0,55	OPM		7,6	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,10 - 1,00». γOPM rapport=2,12 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S4	0,225	OPM		6,8	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,45». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S4	0,725	OPM		7,5	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,45 - 1,00». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S5	0,575	OPM		7	Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,15 - 1,00». γOPM rapport=2,24 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC25-S12	0,65	OPM		7,4	Tracé / plateforme	Rapport p.21, tableau 15; intervalle imprimé «0,30 - 1,00». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC26-S0	0,6	OPM		7,9	Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,1 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC26-S1	0,1	OPM		6,4	Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,00 - 0,20». γOPM rapport=1,88 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC26-S2	0,6	OPM		7,1	Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC26-S3	0,6	OPM		6,4	Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,19 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC26-S4	0,5	OPM		8,3	Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,21 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC26-S5	0,6	OPM		7,7	Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,02 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S0	0,55	OPM		8,3	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «m)     0,10 - 1,00». γOPM rapport=2,13 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S1	0,325	OPM		6,6	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,65». γOPM rapport=2,25 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S1	0,825	OPM		9,3	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,65 - 1,00». γOPM rapport=2,12 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S2	0,35	OPM		7,8	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,25 - 0,45». γOPM rapport=2,1 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S3	0,55	OPM		6,3	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,10 - 1,00». γOPM rapport=2,17 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S4	0,5	OPM		6,2	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,2 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S5	0,35	OPM		7,7	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 0,50». γOPM rapport=2,02 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S5	0,75	OPM		8,9	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,50 - 1,00». γOPM rapport=1,99 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S6	0,6	OPM		7,9	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,1 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S7	0,6	OPM		11,5	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». γOPM rapport=1,95 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S8	0,6	OPM		8,6	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». γOPM rapport=2,08 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S9	0,3	OPM		7,6	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S10	0,3	OPM		6,6	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60». γOPM rapport=2,17 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+PC30-S11	0,5	OPM		7,5	Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00». γOPM rapport=2,09 (unité non explicitée dans ce tableau); non reporté dans gamma_d_max_knm3 pour éviter toute conversion/interprétation.
+
+### cbr
+code_site	depth_m	cbr_pct	compactage_pct	proctor_ref	immersion_j	n_coups	provenance	commentaire
+PC06-S0	0,625	14	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S1	0,6	23	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S2	0,625	15	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S3	0,35	11	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 0,50». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S3	0,75	20	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,50 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S4	0,075	32	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,00 - 0,15». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S4	0,575	2	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S5	0,625	18	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S6	0,675	10	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,35 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S7	0,625	39	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S8	0,3	23	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 0,45». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S8	0,725	16	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,45 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S9	0,6	20	95	OPM			Tracé / plateforme	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC06-S10	0,575	25	95	OPM			Tracé / plateforme	Rapport p.11, tableau 5; intervalle imprimé «0,15 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC11-S0	0,55	10	95	OPM			Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC11-S1	0,5	43	95	OPM			Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC11-S2	0,6	9	95	OPM			Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC11-S4	0,2	14	95	OPM			Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 0,30». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC11-S4	0,65	21	95	OPM			Tracé / plateforme	Rapport p.11, tableau 6; intervalle imprimé «0,30 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S0	0,625	18	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «)      0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S1	0,6	11	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S2	0,625	9	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S3	0,6	28	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S4	0,3	12	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,00 - 0,60». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S4	0,8	7	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,60 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S5	0,575	9	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S6	0,1	6	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «m)    0,00 - 0,20». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S6	0,6	2	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S8	0,575	4	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S10	0,6	2	95	OPM			Tracé / plateforme	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S12	0,5	16	95	OPM			Tracé / plateforme	Rapport p.13, tableau 7; intervalle imprimé «)      0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S13	0,5	4	95	OPM			Tracé / plateforme	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S14	0,5	20	95	OPM			Tracé / plateforme	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC12-S15	0,5	18	95	OPM			Tracé / plateforme	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC14-S0	0,125	9	95	OPM			Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «m)     0,00 - 0,25». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC14-S0	0,625	10	95	OPM			Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC14-S1	0,625	13	95	OPM			Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC14-S2	0,675	2	95	OPM			Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,35 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC14-S3	0,35	10	95	OPM			Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 0,45». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC14-S3	0,725	2	95	OPM			Tracé / plateforme	Rapport p.13, tableau 8; intervalle imprimé «0,45 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC16-S0	0,625	20	95	OPM			Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC16-S1	0,55	21	95	OPM			Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,10 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC16-S2	0,6	2	95	OPM			Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC16-S3	0,6	2	95	OPM			Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC16-S4	0,625	14	95	OPM			Tracé / plateforme	Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S0	0,5	11	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S1	0,5	11	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S2	0,5	2	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S3	0,3	15	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,60». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S4	0,5	7	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S5	0,5	2	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S6	0,125	3	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S6	0,625	9	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «)     0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S7	0,125	6	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S7	0,625	2	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S8	0,2	8	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,40». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC18-S10	0,5	2	95	OPM			Tracé / plateforme	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S0	0,65	26	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S1	0,65	7	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S2	0,625	2	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S3	0,625	47	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S4	0,625	2	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S5	0,6	52	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S6	0,5	15	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S7	0,55	13	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,10 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC20-S8	0,5	36	95	OPM			Tracé / plateforme	Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC21-S0	0,625	16	95	OPM			Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «m)     0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC21-S1	0,6	27	95	OPM			Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC21-S2	0,325	7	95	OPM			Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,15 - 0,50». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC21-S2	0,75	9	95	OPM			Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,50 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC21-S3	0,6	16	95	OPM			Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC21-S4	0,625	21	95	OPM			Tracé / plateforme	Rapport p.17, tableau 12; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC22-S0	0,5	15	95	OPM			Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «)      0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC22-S1	0,5	28	95	OPM			Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC22-S2	0,5	36	95	OPM			Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC22-S3	0,15	11	95	OPM			Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 0,30». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC22-S3	0,65	2	95	OPM			Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,30 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC22-S4	0,5	22	95	OPM			Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC22-S5	0,5	2	95	OPM			Tracé / plateforme	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC22-S6	0,5	6	95	OPM			Tracé / plateforme	Rapport p.18, tableau 13; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S0	0,5	14	95	OPM			Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S1	0,1	14	95	OPM			Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S1	0,6	8	95	OPM			Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S2	0,1	7	95	OPM			Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S2	0,6	2	95	OPM			Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S3	0,5	3	95	OPM			Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S4	0,5	18	95	OPM			Tracé / plateforme	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S5	0,125	25	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,25». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S5	0,625	32	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S6	0,075	22	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,15». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S6	0,575	3	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,15 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S7	0,225	18	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,45». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S8	0,1	21	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S8	0,6	34	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S9	0,125	18	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S9	0,625	39	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S10	0,15	12	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,30». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S11	0,125	8	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S11	0,625	52	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S12	0,1	9	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S12	0,6	21	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S13	0,1	3	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,20». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S13	0,6	3	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S14	0,5	28	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S15	0,5	25	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC23-S16	0,5	32	95	OPM			Tracé / plateforme	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S7	0,5	63	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S10	0,3	30	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,60». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S11	0,2	37	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,40». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S11	0,7	60	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,40 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S0	0,625	75	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «m)     0,25 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S1	0,5	60	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S2	0,55	25	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,10 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S4	0,225	68	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,45». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S4	0,725	40	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,45 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S5	0,575	65	95	OPM			Tracé / plateforme	Rapport p.20, tableau 15; intervalle imprimé «0,15 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC25-S12	0,65	16	95	OPM			Tracé / plateforme	Rapport p.21, tableau 15; intervalle imprimé «0,30 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC26-S0	0,6	36	95	OPM			Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC26-S1	0,1	10	95	OPM			Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,00 - 0,20». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC26-S2	0,6	28	95	OPM			Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC26-S3	0,6	32	95	OPM			Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC26-S4	0,5	22	95	OPM			Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC26-S5	0,6	48	95	OPM			Tracé / plateforme	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S0	0,55	45	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «m)     0,10 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S1	0,325	52	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,65». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S1	0,825	24	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,65 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S2	0,35	42	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,25 - 0,45». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S3	0,55	56	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,10 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S4	0,5	68	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S5	0,35	48	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 0,50». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S5	0,75	43	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,50 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S6	0,6	33	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S7	0,6	14	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S8	0,6	33	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S9	0,3	53	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S10	0,3	65	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+PC30-S11	0,5	64	95	OPM			Tracé / plateforme	Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00». Rapport p.9: Proctor-modifié-CBR à 96 heures d’immersion, 3 énergies; immersion_j et n_coups laissés vides sans conversion/déduction.
+
+### granulometrie
+code_site	depth_m	sieve_mm	passant_pct	methode	commentaire
+PC06-S0	0,625	0,08	22	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00».
+PC06-S1	0,6	0,08	14	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00».
+PC06-S2	0,625	0,08	21	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00».
+PC06-S3	0,35	0,08	23	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 0,50».
+PC06-S3	0,75	0,08	14	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,50 - 1,00».
+PC06-S4	0,075	0,08	18	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,00 - 0,15».
+PC06-S4	0,575	0,08	37	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 1,00».
+PC06-S5	0,625	0,08	12	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00».
+PC06-S6	0,675	0,08	15	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,35 - 1,00».
+PC06-S7	0,625	0,08	17	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00».
+PC06-S8	0,3	0,08	19	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,15 - 0,45».
+PC06-S8	0,725	0,08	11	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,45 - 1,00».
+PC06-S9	0,6	0,08	20	NF P 94-056	Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00».
+PC06-S10	0,575	0,08	12	NF P 94-056	Rapport p.11, tableau 5; intervalle imprimé «0,15 - 1,00».
+PC11-S0	0,55	0,08	19	NF P 94-056	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 1,00».
+PC11-S1	0,5	0,08	9	NF P 94-056	Rapport p.11, tableau 6; intervalle imprimé «0,00 - 1,00».
+PC11-S2	0,6	0,08	23	NF P 94-056	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00».
+PC11-S3	0,6	0,08	34	NF P 94-056	Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00».
+PC11-S4	0,2	0,08	29	NF P 94-056	Rapport p.11, tableau 6; intervalle imprimé «0,10 - 0,30».
+PC11-S4	0,65	0,08	12	NF P 94-056	Rapport p.11, tableau 6; intervalle imprimé «0,30 - 1,00».
+PC12-S0	0,625	0,08	19	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «)      0,25 - 1,00».
+PC12-S1	0,6	0,08	16	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00».
+PC12-S2	0,625	0,08	23	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00».
+PC12-S3	0,6	0,08	20	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00».
+PC12-S4	0,3	0,08	17	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,00 - 0,60».
+PC12-S4	0,8	0,08	32	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,60 - 1,00».
+PC12-S5	0,575	0,08	29	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00».
+PC12-S6	0,1	0,08	26	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «m)    0,00 - 0,20».
+PC12-S6	0,6	0,08	50	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00».
+PC12-S7	0,625	0,08	58	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00».
+PC12-S8	0,575	0,08	24	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00».
+PC12-S9	0,575	0,08	47	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00».
+PC12-S10	0,6	0,08	43	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00».
+PC12-S11	0,5	0,08	54	NF P 94-056	Rapport p.12, tableau 7; intervalle imprimé «0,00 - 1,00».
+PC12-S12	0,5	0,08	22	NF P 94-056	Rapport p.13, tableau 7; intervalle imprimé «)      0,00 - 1,00».
+PC12-S13	0,5	0,08	26	NF P 94-056	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00».
+PC12-S14	0,5	0,08	26	NF P 94-056	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00».
+PC12-S15	0,5	0,08	17	NF P 94-056	Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00».
+PC14-S0	0,125	0,08	33	NF P 94-056	Rapport p.13, tableau 8; intervalle imprimé «m)     0,00 - 0,25».
+PC14-S0	0,625	0,08	21	NF P 94-056	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00».
+PC14-S1	0,625	0,08	30	NF P 94-056	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00».
+PC14-S2	0,675	0,08	64	NF P 94-056	Rapport p.13, tableau 8; intervalle imprimé «0,35 - 1,00».
+PC14-S3	0,35	0,08	37	NF P 94-056	Rapport p.13, tableau 8; intervalle imprimé «0,25 - 0,45».
+PC14-S3	0,725	0,08	24	NF P 94-056	Rapport p.13, tableau 8; intervalle imprimé «0,45 - 1,00».
+PC16-S0	0,625	0,08	20	NF P 94-056	Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00».
+PC16-S1	0,55	0,08	15	NF P 94-056	Rapport p.14, tableau 9; intervalle imprimé «0,10 - 1,00».
+PC16-S2	0,6	0,08	19	NF P 94-056	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00».
+PC16-S3	0,6	0,08	32	NF P 94-056	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00».
+PC16-S4	0,625	0,08	18	NF P 94-056	Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00».
+PC16-S5	0,6	0,08	31	NF P 94-056	Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00».
+PC18-S0	0,5	0,08	14	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00».
+PC18-S1	0,5	0,08	14	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S2	0,5	0,08	48	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S3	0,3	0,08	24	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,60».
+PC18-S4	0,5	0,08	16	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S5	0,5	0,08	60	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S6	0,125	0,08	33	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25».
+PC18-S6	0,625	0,08	18	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «)     0,25 - 1,00».
+PC18-S7	0,125	0,08	53	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25».
+PC18-S7	0,625	0,08	55	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,25 - 1,00».
+PC18-S8	0,2	0,08	28	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,40».
+PC18-S8	0,7	0,08	37	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,40 - 1,00».
+PC18-S9	0,5	0,08	54	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S10	0,5	0,08	50	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S11	0,5	0,08	54	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00».
+PC18-S12	0,5	0,08	58	NF P 94-056	Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC20-S0	0,65	0,08	12	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00».
+PC20-S1	0,65	0,08	14	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00».
+PC20-S2	0,625	0,08	52	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00».
+PC20-S3	0,625	0,08	20	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00».
+PC20-S4	0,625	0,08	48	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00».
+PC20-S5	0,6	0,08	11	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,20 - 1,00».
+PC20-S6	0,5	0,08	13	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00».
+PC20-S7	0,55	0,08	16	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,10 - 1,00».
+PC20-S8	0,5	0,08	5	NF P 94-056	Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00».
+PC21-S0	0,625	0,08	17	NF P 94-056	Rapport p.17, tableau 12; intervalle imprimé «m)     0,25 - 1,00».
+PC21-S1	0,6	0,08	12	NF P 94-056	Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00».
+PC21-S2	0,325	0,08	34	NF P 94-056	Rapport p.17, tableau 12; intervalle imprimé «0,15 - 0,50».
+PC21-S2	0,75	0,08	20	NF P 94-056	Rapport p.17, tableau 12; intervalle imprimé «0,50 - 1,00».
+PC21-S3	0,6	0,08	9	NF P 94-056	Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00».
+PC21-S4	0,625	0,08	8	NF P 94-056	Rapport p.17, tableau 12; intervalle imprimé «0,25 - 1,00».
+PC22-S0	0,5	0,08	15	NF P 94-056	Rapport p.17, tableau 13; intervalle imprimé «)      0,00 - 1,00».
+PC22-S1	0,5	0,08	23	NF P 94-056	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC22-S2	0,5	0,08	13	NF P 94-056	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC22-S3	0,15	0,08	40	NF P 94-056	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 0,30».
+PC22-S3	0,65	0,08	44	NF P 94-056	Rapport p.17, tableau 13; intervalle imprimé «0,30 - 1,00».
+PC22-S4	0,5	0,08	21	NF P 94-056	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC22-S5	0,5	0,08	41	NF P 94-056	Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC22-S6	0,5	0,08	23	NF P 94-056	Rapport p.18, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC23-S0	0,5	0,08	19	NF P 94-056	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S1	0,1	0,08	19	NF P 94-056	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20».
+PC23-S1	0,6	0,08	32	NF P 94-056	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S2	0,1	0,08	21	NF P 94-056	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20».
+PC23-S2	0,6	0,08	41	NF P 94-056	Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S3	0,5	0,08	50	NF P 94-056	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S4	0,5	0,08	15	NF P 94-056	Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S5	0,125	0,08	17	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,25».
+PC23-S5	0,625	0,08	13	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00».
+PC23-S6	0,075	0,08	17	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,15».
+PC23-S6	0,575	0,08	34	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,15 - 1,00».
+PC23-S7	0,225	0,08	19	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,45».
+PC23-S8	0,1	0,08	27	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20».
+PC23-S8	0,6	0,08	19	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S9	0,125	0,08	13	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25».
+PC23-S9	0,625	0,08	11	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00».
+PC23-S10	0,15	0,08	14	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,30».
+PC23-S11	0,125	0,08	20	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25».
+PC23-S11	0,625	0,08	8	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00».
+PC23-S12	0,1	0,08	23	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20».
+PC23-S12	0,6	0,08	22	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S13	0,1	0,08	33	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,20».
+PC23-S13	0,6	0,08	42	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S14	0,5	0,08	21	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S15	0,5	0,08	18	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S16	0,5	0,08	12	NF P 94-056	Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC25-S12	0,65	0,08	22	NF P 94-056	Rapport p.21, tableau 15; intervalle imprimé «0,30 - 1,00».
+PC26-S0	0,6	0,08	7	NF P 94-056	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00».
+PC26-S1	0,1	0,08	18	NF P 94-056	Rapport p.21, tableau 16; intervalle imprimé «0,00 - 0,20».
+PC26-S2	0,6	0,08	26	NF P 94-056	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00».
+PC26-S3	0,6	0,08	15	NF P 94-056	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00».
+PC26-S4	0,5	0,08	20	NF P 94-056	Rapport p.21, tableau 16; intervalle imprimé «0,00 - 1,00».
+PC26-S5	0,6	0,08	9	NF P 94-056	Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00».
+
+### classification
+code_site	depth_m	classe_gtr	classe_hrb	classe_usc	w_nat_pct	rho_s_gcm3	commentaire
+PC06-S0	0,625		A-2-6				Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00».
+PC06-S1	0,6		A-2-6				Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00».
+PC06-S2	0,625		A-2-7				Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00».
+PC06-S3	0,35		A-2-6				Rapport p.10, tableau 5; intervalle imprimé «0,20 - 0,50».
+PC06-S3	0,75		A-2-7				Rapport p.10, tableau 5; intervalle imprimé «0,50 - 1,00».
+PC06-S4	0,075		A-2-7				Rapport p.10, tableau 5; intervalle imprimé «0,00 - 0,15».
+PC06-S4	0,575		A-4				Rapport p.10, tableau 5; intervalle imprimé «0,15 - 1,00».
+PC06-S5	0,625		A-2-4				Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00».
+PC06-S6	0,675		A-2-6				Rapport p.10, tableau 5; intervalle imprimé «0,35 - 1,00».
+PC06-S7	0,625		A-2-4				Rapport p.10, tableau 5; intervalle imprimé «0,25 - 1,00».
+PC06-S8	0,3		A-2-6				Rapport p.10, tableau 5; intervalle imprimé «0,15 - 0,45».
+PC06-S8	0,725		A-2-6				Rapport p.10, tableau 5; intervalle imprimé «0,45 - 1,00».
+PC06-S9	0,6		A-2-6				Rapport p.10, tableau 5; intervalle imprimé «0,20 - 1,00».
+PC06-S10	0,575		A-2-7				Rapport p.11, tableau 5; intervalle imprimé «0,15 - 1,00».
+PC11-S0	0,55		A-2-6				Rapport p.11, tableau 6; intervalle imprimé «0,10 - 1,00».
+PC11-S1	0,5		A-2-4				Rapport p.11, tableau 6; intervalle imprimé «0,00 - 1,00».
+PC11-S2	0,6		A-2-7				Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00».
+PC11-S3	0,6		A-2-6				Rapport p.11, tableau 6; intervalle imprimé «0,20 - 1,00».
+PC11-S4	0,2		A-2-4				Rapport p.11, tableau 6; intervalle imprimé «0,10 - 0,30».
+PC11-S4	0,65		A-2-6				Rapport p.11, tableau 6; intervalle imprimé «0,30 - 1,00».
+PC12-S0	0,625		A-2-6				Rapport p.12, tableau 7; intervalle imprimé «)      0,25 - 1,00».
+PC12-S1	0,6		A-2-7				Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00».
+PC12-S2	0,625		A-2-7				Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00».
+PC12-S3	0,6		A-2-7				Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00».
+PC12-S4	0,3		A-2-7				Rapport p.12, tableau 7; intervalle imprimé «0,00 - 0,60».
+PC12-S4	0,8		A-2-7				Rapport p.12, tableau 7; intervalle imprimé «0,60 - 1,00».
+PC12-S5	0,575		A-2-4				Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00».
+PC12-S6	0,1		A-2-7				Rapport p.12, tableau 7; intervalle imprimé «m)    0,00 - 0,20».
+PC12-S6	0,6		A-6				Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00».
+PC12-S7	0,625		A-6				Rapport p.12, tableau 7; intervalle imprimé «0,25 - 1,00».
+PC12-S8	0,575		A-2-7				Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00».
+PC12-S9	0,575		A-4				Rapport p.12, tableau 7; intervalle imprimé «0,15 - 1,00».
+PC12-S10	0,6		A-4				Rapport p.12, tableau 7; intervalle imprimé «0,20 - 1,00».
+PC12-S11	0,5		A-4				Rapport p.12, tableau 7; intervalle imprimé «0,00 - 1,00».
+PC12-S12	0,5		A-2-7				Rapport p.13, tableau 7; intervalle imprimé «)      0,00 - 1,00».
+PC12-S13	0,5		A-2-7				Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00».
+PC12-S14	0,5		A-2-7				Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00».
+PC12-S15	0,5		A-2-7				Rapport p.13, tableau 7; intervalle imprimé «0,00 - 1,00».
+PC14-S0	0,125		A-2-7				Rapport p.13, tableau 8; intervalle imprimé «m)     0,00 - 0,25».
+PC14-S0	0,625		A-2-7				Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00».
+PC14-S1	0,625		A-2-7				Rapport p.13, tableau 8; intervalle imprimé «0,25 - 1,00».
+PC14-S3	0,725		A-2-7				Rapport p.13, tableau 8; intervalle imprimé «0,45 - 1,00».
+PC16-S0	0,625		A-2-7				Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00».
+PC16-S1	0,55		A-2-7				Rapport p.14, tableau 9; intervalle imprimé «0,10 - 1,00».
+PC16-S2	0,6		A-2-7				Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00».
+PC16-S3	0,6		A-2-7				Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00».
+PC16-S4	0,625		A-2-7				Rapport p.14, tableau 9; intervalle imprimé «0,25 - 1,00».
+PC16-S5	0,6		A-2-7				Rapport p.14, tableau 9; intervalle imprimé «0,20 - 1,00».
+PC18-S0	0,5		A-2-7				Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00».
+PC18-S1	0,5		A-2-7				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S2	0,5		A-6				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S3	0,3		A-2-4				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,60».
+PC18-S4	0,5		A-2-7				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S5	0,5		A-6				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S6	0,125		A-2-4				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25».
+PC18-S6	0,625		A-2-6				Rapport p.15, tableau 10; intervalle imprimé «)     0,25 - 1,00».
+PC18-S7	0,125		A-4				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,25».
+PC18-S7	0,625		A-6				Rapport p.15, tableau 10; intervalle imprimé «0,25 - 1,00».
+PC18-S8	0,2		A-2-4				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 0,40».
+PC18-S8	0,7		A-7-6				Rapport p.15, tableau 10; intervalle imprimé «0,40 - 1,00».
+PC18-S9	0,5		A-6				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S10	0,5		A-7-6				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC18-S11	0,5		A-6				Rapport p.15, tableau 10; intervalle imprimé «)      0,00 - 1,00».
+PC18-S12	0,5		A-7-6				Rapport p.15, tableau 10; intervalle imprimé «0,00 - 1,00».
+PC20-S0	0,65		A-2-7				Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00».
+PC20-S1	0,65		A-2-7				Rapport p.16, tableau 11; intervalle imprimé «0,30 - 1,00».
+PC20-S3	0,625		A-2-7				Rapport p.16, tableau 11; intervalle imprimé «0,25 - 1,00».
+PC20-S5	0,6		A-2-7				Rapport p.16, tableau 11; intervalle imprimé «0,20 - 1,00».
+PC20-S6	0,5		A-2-7				Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00».
+PC20-S7	0,55		A-2-7				Rapport p.16, tableau 11; intervalle imprimé «0,10 - 1,00».
+PC20-S8	0,5		A-2-7				Rapport p.16, tableau 11; intervalle imprimé «0,00 - 1,00».
+PC21-S0	0,625		A-2-7				Rapport p.17, tableau 12; intervalle imprimé «m)     0,25 - 1,00».
+PC21-S1	0,6		A-2-7				Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00».
+PC21-S2	0,325		A-2-7				Rapport p.17, tableau 12; intervalle imprimé «0,15 - 0,50».
+PC21-S2	0,75		A-2-7				Rapport p.17, tableau 12; intervalle imprimé «0,50 - 1,00».
+PC21-S3	0,6		A-2-7				Rapport p.17, tableau 12; intervalle imprimé «0,20 - 1,00».
+PC21-S4	0,625		A-2-7				Rapport p.17, tableau 12; intervalle imprimé «0,25 - 1,00».
+PC22-S0	0,5		A-2-7				Rapport p.17, tableau 13; intervalle imprimé «)      0,00 - 1,00».
+PC22-S1	0,5		A-2-7				Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC22-S2	0,5		A-2-7				Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC22-S4	0,5		A-2-7				Rapport p.17, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC22-S6	0,5		A-2-6				Rapport p.18, tableau 13; intervalle imprimé «0,00 - 1,00».
+PC23-S0	0,5		A-2-7				Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S1	0,1		A-2-6				Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20».
+PC23-S1	0,6		A-2-4				Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S2	0,1		A-2-7				Rapport p.18, tableau 14; intervalle imprimé «0,00 - 0,20».
+PC23-S2	0,6		A-6				Rapport p.18, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S4	0,5		A-2-7				Rapport p.18, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S5	0,125		A-2-7				Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,25».
+PC23-S5	0,625		A-2-4				Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00».
+PC23-S6	0,075		A-2-4				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,15».
+PC23-S6	0,575		A-2-6				Rapport p.19, tableau 14; intervalle imprimé «0,15 - 1,00».
+PC23-S7	0,225		A-2-7				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,45».
+PC23-S8	0,1		A-2-7				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20».
+PC23-S8	0,6		A-2-4				Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S9	0,125		A-2-4				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25».
+PC23-S9	0,625		A-2-6				Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00».
+PC23-S10	0,15		A-2-7				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,30».
+PC23-S11	0,125		A-2-7				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,25».
+PC23-S11	0,625		A-2-4				Rapport p.19, tableau 14; intervalle imprimé «0,25 - 1,00».
+PC23-S12	0,1		A-2-6				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 0,20».
+PC23-S12	0,6		A-2-4				Rapport p.19, tableau 14; intervalle imprimé «0,20 - 1,00».
+PC23-S13	0,1		A-2-6				Rapport p.19, tableau 14; intervalle imprimé «m)     0,00 - 0,20».
+PC23-S14	0,5		A-2-6				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S15	0,5		A-2-4				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC23-S16	0,5		A-2-6				Rapport p.19, tableau 14; intervalle imprimé «0,00 - 1,00».
+PC25-S6	0,625		A-1a				Rapport p.20, tableau 15; intervalle imprimé «0,25 - 1,00».
+PC25-S7	0,5		A-2-4				Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00».
+PC25-S9	0,55		A-1a				Rapport p.20, tableau 15; intervalle imprimé «0,10 - 1,00».
+PC25-S10	0,3		A-1a				Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,60».
+PC25-S11	0,2		A-1a				Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,40».
+PC25-S11	0,7		A-1a				Rapport p.20, tableau 15; intervalle imprimé «0,40 - 1,00».
+PC25-S0	0,625		A-1a				Rapport p.20, tableau 15; intervalle imprimé «m)     0,25 - 1,00».
+PC25-S1	0,5		A-2-4				Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00».
+PC25-S2	0,55		A-2-4				Rapport p.20, tableau 15; intervalle imprimé «0,10 - 1,00».
+PC25-S3	0,5		A-1a				Rapport p.20, tableau 15; intervalle imprimé «0,00 - 1,00».
+PC25-S4	0,225		A-2-4				Rapport p.20, tableau 15; intervalle imprimé «0,00 - 0,45».
+PC25-S4	0,725		A-2-4				Rapport p.20, tableau 15; intervalle imprimé «0,45 - 1,00».
+PC25-S5	0,575		A-2-4				Rapport p.20, tableau 15; intervalle imprimé «0,15 - 1,00».
+PC25-S12	0,65		A-2-7				Rapport p.21, tableau 15; intervalle imprimé «0,30 - 1,00».
+PC26-S0	0,1		A-1a				Rapport p.21, tableau 16; intervalle imprimé «)      0,00 - 0,20».
+PC26-S0	0,6		A-2-7				Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00».
+PC26-S1	0,1		A-2-7				Rapport p.21, tableau 16; intervalle imprimé «0,00 - 0,20».
+PC26-S2	0,6		A-2-7				Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00».
+PC26-S3	0,6		A-2-7				Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00».
+PC26-S4	0,5		A-2-7				Rapport p.21, tableau 16; intervalle imprimé «0,00 - 1,00».
+PC26-S5	0,6		A-2-7				Rapport p.21, tableau 16; intervalle imprimé «0,20 - 1,00».
+PC30-S0	0,55		A-2-4				Rapport p.22, tableau 17; intervalle imprimé «m)     0,10 - 1,00».
+PC30-S1	0,325		A-2-6				Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,65».
+PC30-S1	0,825		A-2-6				Rapport p.22, tableau 17; intervalle imprimé «0,65 - 1,00».
+PC30-S2	0,35		A-2-4				Rapport p.22, tableau 17; intervalle imprimé «0,25 - 0,45».
+PC30-S3	0,55		A-2-6				Rapport p.22, tableau 17; intervalle imprimé «0,10 - 1,00».
+PC30-S4	0,5		A-2-4				Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00».
+PC30-S5	0,35		A-1a				Rapport p.22, tableau 17; intervalle imprimé «0,20 - 0,50».
+PC30-S5	0,75		A-2-7				Rapport p.22, tableau 17; intervalle imprimé «0,50 - 1,00».
+PC30-S6	0,6		A-2-4				Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00».
+PC30-S7	0,1		A-1a				Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,20».
+PC30-S7	0,6		A-2-7				Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00».
+PC30-S8	0,6		A-1a				Rapport p.22, tableau 17; intervalle imprimé «0,20 - 1,00».
+PC30-S9	0,3		A-2-6				Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60».
+PC30-S10	0,3		A-1a				Rapport p.22, tableau 17; intervalle imprimé «0,00 - 0,60».
+PC30-S11	0,5		A-2-4				Rapport p.22, tableau 17; intervalle imprimé «0,00 - 1,00».
+
+### JOURNAL
+PHASE 0 — RECONNAISSANCE
+- Support : PDF à texte natif exploitable (261 pages), avec tableaux et planches vectorielles. Aucune page indispensable n’a été classée illisible comme scan.
+- Structure : garde et contrôle documentaire (p.1-2), sommaire (p.3), corps de l’étude (p.5-35), annexes de coupes de sondages à partir de p.39, schémas itinéraires à partir de p.79, puis fiches d’emprunts et résultats associés.
+- Ouvrage : réhabilitation de pistes rurales. 13 axes étudiés pour 207,7 km. 124 puits manuels en chaussée, identifiants S0…Sn réutilisés par axe; code_site du canevas construit sous forme PCxx-Sn pour éviter l’ambiguïté inter-axes.
+
+1. RÈGLES D'IMPLANTATION trouvées
+- « puits exécutés manuellement et implantés à environ tous les deux milles mètres (2KM) en quinconce le long des tracés et les zones défavorables » (p.9). S’applique aux sondages de chaussée des 13 axes. Pour la rejouer sans les coordonnées du rapport, il faudrait la géométrie exacte de chaque axe, son origine PK et la convention droite/gauche.
+- p.7 donne aussi : « une série de sondages par puits manuels exécutés à environ tous les deux kilomètres et les zones défavorables (bas fond et dépotoirs ou dépressions), le long du tracé ».
+
+2. CONTRADICTIONS internes
+- p.9 indique « 124 puits manuels dans le cadre des trois pistes prioritaires étudiés », alors que le tableau 4 de la même page ventile 124 puits sur 13 pistes. Aucune résolution silencieuse.
+- PC30 : les fiches de coupes p.76-78 impriment « Coord.GPS UTM 31P », alors que les autres axes impriment « 31N ». Les coordonnées ont été transcrites dans x_utm31/y_utm31 car le rapport les présente comme GPS UTM zone 31; la divergence 31P/31N est conservée en commentaire.
+- PC25-S8, p.20 : profondeur imprimée « 0015 - 1,00 ». Valeur suspecte; elle n’a pas été corrigée. depth_top_m/depth_bot_m/depth_m restent vides pour cette ligne et les essais associés ne sont pas créés.
+
+3. CE QUE J'AI DÉDUIT plutôt que lu
+- code_site PCxx-Sn est une clé construite pour désambiguïser les identifiants S0/S1… qui sont réutilisés sur chaque piste; les identifiants de rapport restent mentionnés dans les commentaires.
+- depth_m est le milieu de l’intervalle top/bottom, conformément à la règle explicite du canevas. Aucun autre calcul géotechnique n’a été effectué.
+- Les groupes de chiffres UTM imprimés avec espaces (ex. « 26 24 07 ») ont été saisis comme 262407, sans changement de système ni conversion.
+
+4. À VÉRIFIER PAR UN HUMAIN
+- p.20, PC25-S8 : profondeur « 0015 - 1,00 ».
+- p.76-78 : mention « 31P » sur PC30 à confirmer par rapport au système géodésique attendu.
+- Les colonnes gamma_d_max_knm3 sont laissées vides : les tableaux de chaussée donnent γOPM autour de 2,0 sans unité explicite compatible avec kN/m³; les valeurs originales sont conservées en commentaire proctor, sans conversion.
+- Les emprunts/carrières ne sont pas intégrés dans cette passe comme sondages de chaussée : ils forment un second jeu de sites avec leurs propres fiches, maillages et points GPS. À traiter séparément pour éviter de mélanger provenance et position.
+
+5. BILAN
+- Sondages de chaussée : 124 distincts; 124 en N1 (GPS UTM explicite), 0 en N2.
+- Échantillons : 153 lignes d’intervalle, dont 1 profondeur suspecte laissée sans depth_m.
+- Atterberg : 75 lignes; WP non fourni dans les tableaux récapitulatifs, donc laissé vide; IP du rapport recopié.
+- Proctor : 146 lignes; w_opt recopié; gamma_d_max_knm3 laissé vide faute d’unité compatible explicitée.
+- CBR : 137 lignes; CBR à 95% OPM recopié; immersion_j et n_coups laissés vides car le corps donne 96 h et « 3 énergies » sans correspondance directe aux colonnes demandées.
+- Granulométrie : 122 lignes au tamis 0,08 mm uniquement, valeur explicitement disponible dans les tableaux; aucune courbe n’a été numérisée.
+- Classification : 142 lignes HRB recopiées; classes GTR/USC non présentes dans ces tableaux.
+- Feuilles non remplies : vbs, gonflement_eg, penetrometre_rd, pressiometre — aucune valeur fiable correspondante identifiée dans les tableaux de sondages de chaussée.

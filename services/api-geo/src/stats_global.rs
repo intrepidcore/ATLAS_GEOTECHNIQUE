@@ -63,7 +63,7 @@ pub struct ProfondeurBin {
 #[derive(Debug, Serialize)]
 pub struct ArgilositeStats {
     pub vbs_moyen: Option<f64>,
-    pub pct_argileux: Option<f64>,  // % échantillons avec VBS > 2.5
+    pub pct_argileux: Option<f64>, // % échantillons avec VBS > 2.5
     pub ip_moyen: Option<f64>,
 }
 
@@ -106,7 +106,7 @@ pub async fn get_global_stats(
             COALESCE(SUM(n_essais_total), 0)::bigint AS essais
         FROM filtered
     "#;
-    
+
     // 1b) Compteurs d'essais par type - directement depuis les tables (pas de double comptage)
     let essais_query = r#"
         SELECT
@@ -127,26 +127,25 @@ pub async fn get_global_stats(
         .fetch_one(pool)
         .await;
 
-    let (mailles_total, mailles_filtrees, mailles_avec_donnees, sondages, echantillons, essais) = match mailles_row {
-        Ok(row) => (
-            row.try_get::<i64, _>("total").unwrap_or(0),
-            row.try_get::<i64, _>("filtrees").unwrap_or(0),
-            row.try_get::<i64, _>("avec_donnees").unwrap_or(0),
-            row.try_get::<i64, _>("sondages").unwrap_or(0),
-            row.try_get::<i64, _>("echantillons").unwrap_or(0),
-            row.try_get::<i64, _>("essais").unwrap_or(0),
-        ),
-        Err(e) => {
-            tracing::error!(error=?e, "Failed to fetch mailles stats");
-            (0, 0, 0, 0, 0, 0)
-        }
-    };
-    
+    let (mailles_total, mailles_filtrees, mailles_avec_donnees, sondages, echantillons, essais) =
+        match mailles_row {
+            Ok(row) => (
+                row.try_get::<i64, _>("total").unwrap_or(0),
+                row.try_get::<i64, _>("filtrees").unwrap_or(0),
+                row.try_get::<i64, _>("avec_donnees").unwrap_or(0),
+                row.try_get::<i64, _>("sondages").unwrap_or(0),
+                row.try_get::<i64, _>("echantillons").unwrap_or(0),
+                row.try_get::<i64, _>("essais").unwrap_or(0),
+            ),
+            Err(e) => {
+                tracing::error!(error=?e, "Failed to fetch mailles stats");
+                (0, 0, 0, 0, 0, 0)
+            }
+        };
+
     // Récupérer les compteurs d'essais par type (COUNT DISTINCT depuis les tables)
-    let essais_row = sqlx::query(essais_query)
-        .fetch_one(pool)
-        .await;
-    
+    let essais_row = sqlx::query(essais_query).fetch_one(pool).await;
+
     let (n_atterberg, n_vbs, n_classif, n_proctor, n_granulo, n_gonflement) = match essais_row {
         Ok(row) => (
             row.try_get::<i64, _>("n_atterberg").unwrap_or(0),
@@ -197,10 +196,22 @@ pub async fn get_global_stats(
             max_m: row.try_get("max_m").ok(),
             moy_m: row.try_get("moy_m").ok(),
             bins: vec![
-                ProfondeurBin { range: "0-1".to_string(), count: row.try_get("bin_0_1").unwrap_or(0) },
-                ProfondeurBin { range: "1-1.5".to_string(), count: row.try_get("bin_1_15").unwrap_or(0) },
-                ProfondeurBin { range: "1.5-2".to_string(), count: row.try_get("bin_15_2").unwrap_or(0) },
-                ProfondeurBin { range: ">2".to_string(), count: row.try_get("bin_2_plus").unwrap_or(0) },
+                ProfondeurBin {
+                    range: "0-1".to_string(),
+                    count: row.try_get("bin_0_1").unwrap_or(0),
+                },
+                ProfondeurBin {
+                    range: "1-1.5".to_string(),
+                    count: row.try_get("bin_1_15").unwrap_or(0),
+                },
+                ProfondeurBin {
+                    range: "1.5-2".to_string(),
+                    count: row.try_get("bin_15_2").unwrap_or(0),
+                },
+                ProfondeurBin {
+                    range: ">2".to_string(),
+                    count: row.try_get("bin_2_plus").unwrap_or(0),
+                },
             ],
         },
         Err(e) => {
@@ -342,18 +353,14 @@ pub struct CoverageResponse {
     pub items: Vec<CoverageItem>,
 }
 
-pub async fn get_stats_coverage(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn get_stats_coverage(State(state): State<AppState>) -> impl IntoResponse {
     let pool = &state.pool;
 
     // Nombre total de mailles de référence
-    let total_mailles: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.mailles"
-    )
-    .fetch_one(pool)
-    .await
-    .unwrap_or(29407);
+    let total_mailles: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.mailles")
+        .fetch_one(pool)
+        .await
+        .unwrap_or(29407);
 
     // Couverture par (parameter_id, method) depuis ai_interpolation_values
     // Joint avec ai_variograms pour le LOO-RMSE si disponible

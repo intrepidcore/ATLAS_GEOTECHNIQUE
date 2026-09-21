@@ -1,12 +1,12 @@
 //! API Q&A pour Atlas Colab
-//! 
+//!
 //! Gestion des questions, réponses, tags et gamification
 
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use serde::{Deserialize, Serialize};
@@ -82,7 +82,7 @@ pub struct Tag {
 pub struct CreateQuestionRequest {
     pub title: String,
     pub body: String,
-    pub tags: Option<Vec<String>>,  // Tag slugs
+    pub tags: Option<Vec<String>>, // Tag slugs
     pub mission_id: Option<Uuid>,
     pub sondage_id: Option<Uuid>,
     pub maille_id: Option<Uuid>,
@@ -102,7 +102,7 @@ pub struct CreateAnswerRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct VoteRequest {
-    pub vote: i8,  // +1 ou -1
+    pub vote: i8, // +1 ou -1
 }
 
 #[derive(Debug, Deserialize)]
@@ -112,7 +112,7 @@ pub struct QuestionsQuery {
     pub search: Option<String>,
     pub is_closed: Option<bool>,
     pub has_best_answer: Option<bool>,
-    pub sort: Option<String>,  // score, date, views
+    pub sort: Option<String>, // score, date, views
     pub limit: Option<i32>,
     pub offset: Option<i32>,
 }
@@ -191,7 +191,10 @@ pub async fn list_questions(
         sql.push_str(" AND (q.title ILIKE '%' || $5 || '%' OR q.body ILIKE '%' || $5 || '%')");
     }
 
-    sql.push_str(&format!(" ORDER BY q.is_pinned DESC, {} LIMIT $1 OFFSET $2", order_by));
+    sql.push_str(&format!(
+        " ORDER BY q.is_pinned DESC, {} LIMIT $1 OFFSET $2",
+        order_by
+    ));
 
     let questions = sqlx::query_as::<_, QuestionListItem>(&sql)
         .bind(limit)
@@ -397,16 +400,19 @@ pub async fn update_question(
     Json(req): Json<UpdateQuestionRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     // Vérifier que l'utilisateur est l'auteur
-    let author_id: Option<Uuid> = sqlx::query_scalar(
-        "SELECT author_id FROM atlas.colab_questions WHERE id = $1",
-    )
-    .bind(question_id)
-    .fetch_optional(&state.pool)
-    .await
-    .ok()
-    .flatten();
+    let author_id: Option<Uuid> =
+        sqlx::query_scalar("SELECT author_id FROM atlas.colab_questions WHERE id = $1")
+            .bind(question_id)
+            .fetch_optional(&state.pool)
+            .await
+            .ok()
+            .flatten();
 
-    if author_id != Some(auth.id) && !auth.permissions.contains(&"colab.questions.delete".to_string()) {
+    if author_id != Some(auth.id)
+        && !auth
+            .permissions
+            .contains(&"colab.questions.delete".to_string())
+    {
         return Err((
             StatusCode::FORBIDDEN,
             Json(serde_json::json!({ "error": "Non autorisé" })),
@@ -414,12 +420,14 @@ pub async fn update_question(
     }
 
     if let Some(title) = &req.title {
-        sqlx::query("UPDATE atlas.colab_questions SET title = $1, updated_at = NOW() WHERE id = $2")
-            .bind(title)
-            .bind(question_id)
-            .execute(&state.pool)
-            .await
-            .ok();
+        sqlx::query(
+            "UPDATE atlas.colab_questions SET title = $1, updated_at = NOW() WHERE id = $2",
+        )
+        .bind(title)
+        .bind(question_id)
+        .execute(&state.pool)
+        .await
+        .ok();
     }
 
     if let Some(body) = &req.body {
@@ -517,14 +525,13 @@ pub async fn create_answer(
     update_user_stats(&state, auth.id, "answer").await;
 
     // Notifier l'auteur de la question
-    let question_author: Option<Uuid> = sqlx::query_scalar(
-        "SELECT author_id FROM atlas.colab_questions WHERE id = $1",
-    )
-    .bind(question_id)
-    .fetch_optional(&state.pool)
-    .await
-    .ok()
-    .flatten();
+    let question_author: Option<Uuid> =
+        sqlx::query_scalar("SELECT author_id FROM atlas.colab_questions WHERE id = $1")
+            .bind(question_id)
+            .fetch_optional(&state.pool)
+            .await
+            .ok()
+            .flatten();
 
     if let Some(author_id) = question_author {
         if author_id != auth.id {
@@ -563,14 +570,13 @@ pub async fn mark_best_answer(
     Path(answer_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     // Récupérer la question et vérifier les droits
-    let answer_info: Option<(Uuid, Uuid)> = sqlx::query_as(
-        "SELECT question_id, author_id FROM atlas.colab_answers WHERE id = $1",
-    )
-    .bind(answer_id)
-    .fetch_optional(&state.pool)
-    .await
-    .ok()
-    .flatten();
+    let answer_info: Option<(Uuid, Uuid)> =
+        sqlx::query_as("SELECT question_id, author_id FROM atlas.colab_answers WHERE id = $1")
+            .bind(answer_id)
+            .fetch_optional(&state.pool)
+            .await
+            .ok()
+            .flatten();
 
     let (question_id, answer_author_id) = answer_info.ok_or_else(|| {
         (
@@ -580,21 +586,24 @@ pub async fn mark_best_answer(
     })?;
 
     // Vérifier que l'utilisateur est l'auteur de la question ou superviseur
-    let question_author: Option<Uuid> = sqlx::query_scalar(
-        "SELECT author_id FROM atlas.colab_questions WHERE id = $1",
-    )
-    .bind(question_id)
-    .fetch_optional(&state.pool)
-    .await
-    .ok()
-    .flatten();
+    let question_author: Option<Uuid> =
+        sqlx::query_scalar("SELECT author_id FROM atlas.colab_questions WHERE id = $1")
+            .bind(question_id)
+            .fetch_optional(&state.pool)
+            .await
+            .ok()
+            .flatten();
 
-    let is_supervisor = auth.permissions.contains(&"colab.answers.mark_best".to_string());
-    
+    let is_supervisor = auth
+        .permissions
+        .contains(&"colab.answers.mark_best".to_string());
+
     if question_author != Some(auth.id) && !is_supervisor {
         return Err((
             StatusCode::FORBIDDEN,
-            Json(serde_json::json!({ "error": "Seul l'auteur de la question ou un superviseur peut marquer la meilleure réponse" })),
+            Json(
+                serde_json::json!({ "error": "Seul l'auteur de la question ou un superviseur peut marquer la meilleure réponse" }),
+            ),
         ));
     }
 
@@ -630,7 +639,9 @@ pub async fn mark_best_answer(
     // Vérifier et attribuer des badges
     check_and_award_badges(&state, answer_author_id).await;
 
-    Ok(Json(serde_json::json!({ "message": "Meilleure réponse marquée" })))
+    Ok(Json(
+        serde_json::json!({ "message": "Meilleure réponse marquée" }),
+    ))
 }
 
 /// POST /colab/answers/:id/vote - Voter sur une réponse
@@ -678,14 +689,13 @@ pub async fn vote_answer(
         .ok();
 
     // Mettre à jour la réputation de l'auteur
-    let author_id: Option<Uuid> = sqlx::query_scalar(
-        "SELECT author_id FROM atlas.colab_answers WHERE id = $1",
-    )
-    .bind(answer_id)
-    .fetch_optional(&state.pool)
-    .await
-    .ok()
-    .flatten();
+    let author_id: Option<Uuid> =
+        sqlx::query_scalar("SELECT author_id FROM atlas.colab_answers WHERE id = $1")
+            .bind(answer_id)
+            .fetch_optional(&state.pool)
+            .await
+            .ok()
+            .flatten();
 
     if let Some(author_id) = author_id {
         let rep_change = if vote_value > 0 { 10 } else { -2 };

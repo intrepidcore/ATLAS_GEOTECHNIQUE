@@ -46,7 +46,8 @@ pub async fn forward_infer_kriging() -> Result<Option<Value>, String> {
     let Some(base) = infer_base() else {
         return Ok(None);
     };
-    let token = internal_token().ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-infer".to_string())?;
+    let token = internal_token()
+        .ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-infer".to_string())?;
     let client = http_client()?;
     let url = format!("{}/internal/kriging/recompute", base);
     let resp = client
@@ -66,11 +67,15 @@ pub async fn forward_infer_kriging() -> Result<Option<Value>, String> {
 }
 
 /// Entraînement supervisé côté api-infer si configuré.
-pub async fn forward_infer_supervised(model_version: &str, target: &str) -> Result<Option<Value>, String> {
+pub async fn forward_infer_supervised(
+    model_version: &str,
+    target: &str,
+) -> Result<Option<Value>, String> {
     let Some(base) = infer_base() else {
         return Ok(None);
     };
-    let token = internal_token().ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-infer".to_string())?;
+    let token = internal_token()
+        .ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-infer".to_string())?;
     let client = http_client()?;
     let url = format!("{}/internal/supervised/train", base);
     let resp = client
@@ -97,7 +102,8 @@ pub async fn forward_opti_strategie(body: Value) -> Result<Option<Value>, String
     let Some(base) = opti_base() else {
         return Ok(None);
     };
-    let token = internal_token().ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-opti".to_string())?;
+    let token = internal_token()
+        .ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-opti".to_string())?;
     let client = http_client()?;
     let url = format!("{}/internal/opti/strategie", base);
     let resp = client
@@ -121,7 +127,8 @@ pub async fn forward_opti_campaign_simple(body: Value) -> Result<Option<Value>, 
     let Some(base) = opti_base() else {
         return Ok(None);
     };
-    let token = internal_token().ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-opti".to_string())?;
+    let token = internal_token()
+        .ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-opti".to_string())?;
     let client = http_client()?;
     let url = format!("{}/internal/opti/campaign/simple", base);
     let resp = client
@@ -145,7 +152,8 @@ pub async fn forward_opti_campaign_ga(body: Value) -> Result<Option<Value>, Stri
     let Some(base) = opti_base() else {
         return Ok(None);
     };
-    let token = internal_token().ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-opti".to_string())?;
+    let token = internal_token()
+        .ok_or_else(|| "ATLAS_INTERNAL_SERVICE_TOKEN requis pour appeler api-opti".to_string())?;
     let client = http_client()?;
     let url = format!("{}/internal/opti/campaign", base);
     let resp = client

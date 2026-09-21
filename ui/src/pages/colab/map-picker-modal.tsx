@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { MapPin, Plus, Trash2, X, CheckCircle2 } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Layers3, MapPin, Plus, Trash2, X } from 'lucide-react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { maillesApi, MailleSuggestItem, SondagePointInput } from '../../services/colab-api';
@@ -179,26 +179,37 @@ export type TileId =
   | 'esri_sat' | 'esri_topo'
   | 'google_hybrid' | 'google_sat' | 'google_road' | 'google_terrain'
   | 'carto_voyager' | 'carto_positron' | 'carto_dark'
-  | 'stamen_terrain' | 'opentopo' | 'osm';
+  | 'opentopo' | 'osm' | 'osm_hot' | 'osm_fr';
 
-const TILE_DEFS: Record<TileId, { url: string; subdomains?: string | string[]; maxZoom: number; label: string }> = {
-  esri_sat:       { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'ESRI Sat' },
-  esri_topo:      { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'ESRI Topo' },
-  google_hybrid:  { url: 'http://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'G-Hybride' },
-  google_sat:     { url: 'http://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'G-Sat' },
-  google_road:    { url: 'http://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'G-Route' },
-  google_terrain: { url: 'http://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'G-Relief' },
-  carto_voyager:  { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 19, label: 'Voyager' },
-  carto_positron: { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 19, label: 'Clair' },
-  carto_dark:     { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 19, label: 'Sombre' },
-  stamen_terrain: { url: 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg', subdomains: 'abcd', maxZoom: 18, label: 'Terrain' },
-  opentopo:       { url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', maxZoom: 17, label: 'OpenTopo' },
-  osm:            { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', maxZoom: 19, label: 'OSM' },
+type TileDefinition = { url: string; subdomains?: string | string[]; maxZoom: number; label: string; attribution: string; experimental?: boolean };
+
+const TILE_DEFS: Record<TileId, TileDefinition> = {
+  osm:            { url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', maxZoom: 19, label: 'OSM Standard', attribution: '&copy; OpenStreetMap contributors' },
+  osm_hot:        { url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png', maxZoom: 20, label: 'OSM Humanitaire', attribution: '&copy; OpenStreetMap contributors, Tiles style by HOT' },
+  osm_fr:         { url: 'https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', maxZoom: 20, label: 'OSM France', attribution: '&copy; OpenStreetMap contributors, Tiles style by OSM France' },
+  carto_positron: { url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 20, label: 'Carto Positron', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' },
+  carto_voyager:  { url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 20, label: 'Carto Voyager', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' },
+  carto_dark:     { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', subdomains: 'abcd', maxZoom: 20, label: 'Carto Sombre', attribution: '&copy; OpenStreetMap contributors &copy; CARTO' },
+  opentopo:       { url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', maxZoom: 17, label: 'OpenTopoMap', attribution: 'Map data &copy; OpenStreetMap contributors, SRTM | Style &copy; OpenTopoMap' },
+  esri_sat:       { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'Esri Satellite', attribution: 'Tiles &copy; Esri' },
+  esri_topo:      { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', maxZoom: 19, label: 'Esri Topographique', attribution: 'Tiles &copy; Esri' },
+  google_road:    { url: 'https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'Google Routes', attribution: '&copy; Google', experimental: true },
+  google_sat:     { url: 'https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'Google Satellite', attribution: '&copy; Google', experimental: true },
+  google_hybrid:  { url: 'https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'Google Hybride', attribution: '&copy; Google', experimental: true },
+  google_terrain: { url: 'https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', subdomains: ['mt0','mt1','mt2','mt3'], maxZoom: 20, label: 'Google Relief', attribution: '&copy; Google', experimental: true },
 };
+
+const SHOW_EXPERIMENTAL_GOOGLE =
+  import.meta.env.DEV || import.meta.env.VITE_ENABLE_EXPERIMENTAL_GOOGLE_TILES === 'true';
 
 export function createTileLayer(id: TileId): L.TileLayer {
   const def = TILE_DEFS[id];
-  return L.tileLayer(def.url, { maxZoom: def.maxZoom, subdomains: def.subdomains as any });
+  const options: L.TileLayerOptions = { maxZoom: def.maxZoom, attribution: def.attribution };
+  // Leaflet fournit ses propres sous-domaines par défaut. Lui transmettre
+  // explicitement `undefined` écrase cette valeur et TileLayer tente ensuite
+  // de lire `.length`, ce qui faisait tomber tout GpsPickerModal.
+  if (def.subdomains !== undefined) options.subdomains = def.subdomains;
+  return L.tileLayer(def.url, options);
 }
 
 interface TileSelectorProps {
@@ -206,23 +217,31 @@ interface TileSelectorProps {
   onChange: (id: TileId) => void;
 }
 
-const TileSelector: React.FC<TileSelectorProps> = ({ current, onChange }) => (
-  <div className="absolute bottom-2 left-2 flex gap-1 z-[1000]">
-    {(Object.entries(TILE_DEFS) as [TileId, typeof TILE_DEFS[TileId]][]).map(([id, def]) => (
-      <button
-        key={id}
-        onClick={() => onChange(id)}
-        className={`px-2 py-0.5 rounded text-[10px] font-medium shadow transition-colors ${
-          current === id
-            ? 'bg-blue-600 text-white'
-            : 'bg-white/90 text-slate-700 hover:bg-white border border-slate-200'
-        }`}
-      >
-        {def.label}
+const TileSelector: React.FC<TileSelectorProps> = ({ current, onChange }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="absolute top-2 right-2 z-[1000]">
+      <button type="button" onClick={() => setOpen(v => !v)} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-700 shadow-md hover:bg-slate-50">
+        <Layers3 className="h-4 w-4" />
+        {TILE_DEFS[current].label}
       </button>
-    ))}
-  </div>
-);
+      {open && (
+        <div className="mt-2 w-64 rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+          <div className="grid grid-cols-2 gap-1">
+            {(Object.entries(TILE_DEFS) as [TileId, TileDefinition][])
+              .filter(([, def]) => !def.experimental || SHOW_EXPERIMENTAL_GOOGLE)
+              .map(([id, def]) => (
+              <button key={id} type="button" onClick={() => { onChange(id); setOpen(false); }} className={`rounded-lg px-2 py-2 text-left text-[11px] transition-colors ${current === id ? 'bg-blue-600 text-white' : 'text-slate-700 hover:bg-slate-100'}`}>
+                <span className="block font-medium">{def.label}</span>
+                {def.experimental && <span className={`block text-[9px] ${current === id ? 'text-blue-100' : 'text-amber-600'}`}>Test de compatibilité</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 // ─── GPS sondage picker ───────────────────────────────────────────────────────
 
@@ -252,7 +271,7 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
   const tileLayerRef = useRef<L.TileLayer | null>(null);
   const mailleLayerRef = useRef<L.GeoJSON | null>(null);
   const initialPointsRef = useRef(initialPoints);
-  const [tileId, setTileId] = useState<TileId>('esri_sat');
+  const [tileId, setTileId] = useState<TileId>('osm');
   const [points, setPoints] = useState<SondagePointInput[]>(initialPoints);
   const [editingLabel, setEditingLabel] = useState<number | null>(null);
   const [labelInput, setLabelInput] = useState('');
@@ -301,7 +320,9 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
     let currentPoints = [...initialPointsRef.current];
 
     const handleRemove = (idx: number) => {
-      currentPoints = currentPoints.filter((_, i) => i !== idx);
+      currentPoints = currentPoints
+        .filter((_, i) => i !== idx)
+        .map((pt, i) => ({ ...pt, numero: i + 1 }));
       setPoints([...currentPoints]);
       redrawMarkers(map, currentPoints, handleRemove);
     };
@@ -309,6 +330,10 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
     map.on('click', (e: L.LeafletMouseEvent) => {
       const { lat, lng } = e.latlng;
       const newPoint: SondagePointInput = {
+        // `numero` est obligatoire côté serveur : un point posé sur la carte
+        // sans numéro faisait échouer la désérialisation du corps entier, donc
+        // la création de la mission — en 422, affiché « Erreur réseau ».
+        numero: currentPoints.length + 1,
         lat: Math.round(lat * 1000000) / 1000000,
         lon: Math.round(lng * 1000000) / 1000000,
         label: `S${currentPoints.length + 1}`,
@@ -372,12 +397,13 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
 
         mailleLayerRef.current = layer;
 
-        if (initialPointsRef.current.length === 0) {
-          try {
-            const bounds = layer.getBounds();
-            if (bounds.isValid()) leafletRef.current.fitBounds(bounds, { padding: [30, 30] });
-          } catch { /* ignore */ }
-        }
+        try {
+          const bounds = layer.getBounds();
+          if (bounds.isValid()) {
+            leafletRef.current.invalidateSize();
+            leafletRef.current.fitBounds(bounds, { padding: [36, 36], maxZoom: 17 });
+          }
+        } catch { /* ignore */ }
       } catch (err: unknown) {
         if (!cancelled) setMailleLoadError('Erreur chargement contours mailles');
         console.error('[GpsPickerModal] maille geometry error:', err);
@@ -437,7 +463,7 @@ export const GpsPickerModal: React.FC<GpsPickerModalProps> = ({
               )}
               {mailleLoadError && (
                 <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 text-[10px] font-medium">
-                  ⚠ {mailleLoadError}
+                  <AlertCircle className="h-3 w-3" /> {mailleLoadError}
                 </span>
               )}
             </div>

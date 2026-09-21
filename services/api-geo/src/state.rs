@@ -2,6 +2,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
+use crate::atlaspack::config::AtlasPackState;
 use crate::auth::AuthConfig;
 
 #[derive(Clone)]
@@ -11,4 +12,5 @@ pub struct AppState {
     pub metrics: Arc<crate::metrics::Metrics>,
     pub ws_tx: broadcast::Sender<crate::events::WsEvent>,
     pub auth_config: AuthConfig,
+    pub atlaspack: AtlasPackState,
 }

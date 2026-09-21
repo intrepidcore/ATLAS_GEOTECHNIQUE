@@ -1099,7 +1099,7 @@ const CreateMissionModal: React.FC<{
         isOpen={gpsPickerOpen}
         onClose={() => setGpsPickerOpen(false)}
         initialPoints={sondagePoints}
-        onConfirm={pts => setSondagePoints(pts)}
+        onConfirm={pts => setSondagePoints(pts.map((pt, i) => ({ ...pt, numero: i + 1 })))}
         mailleCodes={selectedMailles.map(m => m.code)}
       />
     </div>

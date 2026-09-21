@@ -363,6 +363,33 @@ export function createTileControl(map: L.Map): L.Control {
  * Crée un contrôle de couches avec tous les fonds de carte disponibles
  * Inclut OSM, ESRI, et optionnellement Mapbox/Azure si les clés sont configurées
  */
+/**
+ * Fonds de carte connus du contrôle de couches.
+ *
+ * Leaflet ne retire, au changement de fond, que les couches qu'il gère
+ * lui-même. Or trois mécanismes ajoutaient un fond ici : `initTileLayer`, ce
+ * contrôle, et la synchronisation avec le thème clair/sombre. Les fonds des
+ * deux premiers restaient donc empilés sous le nouveau, et un fond sans clé
+ * d'API transparaissait par plaques. Ce registre permet de tous les retirer,
+ * quel que soit celui qui les a posés — sans toucher aux surcouches, qui sont
+ * elles aussi des `TileLayer` mais doivent rester.
+ */
+const knownBasemaps = new Set<L.Layer>();
+
+/** Déclare une couche comme fond de carte, donc exclusive des autres. */
+export function registerBasemap(layer: L.Layer | null | undefined): void {
+  if (layer) knownBasemaps.add(layer);
+}
+
+/** Retire tous les fonds de carte sauf celui qui vient d'être choisi. */
+export function removeOtherBasemaps(map: L.Map, keep: L.Layer | null): void {
+  for (const layer of knownBasemaps) {
+    if (layer !== keep && map.hasLayer(layer)) {
+      map.removeLayer(layer);
+    }
+  }
+}
+
 export function createBasemapLayerControl(
   map: L.Map,
   overlays?: Record<string, L.Layer>
@@ -381,7 +408,19 @@ export function createBasemapLayerControl(
   }
   
   console.log('[TileManager] Basemaps disponibles:', Object.keys(basemaps));
-  
+
+  for (const layer of Object.values(basemaps)) registerBasemap(layer);
+  // La couche déjà posée par initTileLayer entre dans le registre : sans elle,
+  // elle survivait à tous les changements de fond.
+  registerBasemap(activeLayer);
+
+  map.on('baselayerchange', (e: any) => {
+    removeOtherBasemaps(map, e?.layer ?? null);
+    if (e?.layer && typeof e.layer.bringToBack === 'function') {
+      e.layer.bringToBack();
+    }
+  });
+
   return L.control.layers(basemaps, overlays || {}, {
     position: 'topright',
     collapsed: true,

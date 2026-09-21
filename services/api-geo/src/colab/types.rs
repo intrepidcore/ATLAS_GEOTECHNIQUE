@@ -187,6 +187,10 @@ pub struct MissionDetail {
     // Relations
     pub assigned_students: Vec<AssignedStudent>,
     pub linked_sondages: Vec<LinkedSondage>,
+    /// Points de sondage prévisionnels. Le détail ne les renvoyait pas, si
+    /// bien que l'écran d'édition les affichait toujours vides — et les
+    /// réécrivait vides à l'enregistrement, effaçant le plan de la mission.
+    pub sondage_points: Vec<SondagePointRequest>,
 }
 
 #[derive(Debug, Clone, Deserialize, Validate)]

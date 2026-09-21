@@ -1,9 +1,9 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
-use crate::export::formats::{ExportDataSource, ExportFormat, ExportFilters, ExportJobStatus};
+use crate::export::formats::{ExportDataSource, ExportFilters, ExportFormat, ExportJobStatus};
 
 #[derive(Debug, Serialize, Deserialize, FromRow)]
 pub struct ExportJob {
@@ -22,7 +22,12 @@ pub struct ExportJob {
 }
 
 impl ExportJob {
-    pub fn new(source: ExportDataSource, format: ExportFormat, filters: ExportFilters, created_by: String) -> Self {
+    pub fn new(
+        source: ExportDataSource,
+        format: ExportFormat,
+        filters: ExportFilters,
+        created_by: String,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             source,

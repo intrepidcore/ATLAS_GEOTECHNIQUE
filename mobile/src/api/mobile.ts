@@ -15,6 +15,7 @@ export interface MobileMission {
   expected_sondages: number;
   completed_sondages: number;
   percent_done: number;
+  synced_at?: string | null;
 }
 
 export interface BoundingBox {
@@ -68,8 +69,9 @@ export interface CreateFieldSondageRequest {
   location_accuracy_m?: number;
   depth_m?: number;
   profile_description?: string;
-  layers_count?: number;
   notes?: string;
+  point_name?: string;
+  relocation_reason?: string;
 }
 
 export interface ConfirmSondageResponse {
@@ -90,6 +92,39 @@ export interface MobileProfile {
   permissions: string[];
   is_student: boolean;
   is_supervisor: boolean;
+}
+
+export interface MobileNotification {
+  id: string;
+  notification_type: string;
+  title: string;
+  message: string | null;
+  payload: Record<string, unknown>;
+  mission_id: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export type LabJson = Record<string, unknown>;
+
+export interface MobileLabResultInput {
+  sondage_id: string;
+  sample_code: string;
+  depth_top_m: number;
+  depth_bottom_m: number;
+  sample: LabJson;
+  tests: LabJson;
+  status: 'draft' | 'complete';
+}
+
+export interface MobileLabResult extends MobileLabResultInput {
+  id: string;
+  mission_id: string;
+  sondage_code: string | null;
+  depth_m: number;
+  horizon: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SyncAction {
@@ -126,6 +161,12 @@ export const mobileApi = {
       { method: 'POST', body: JSON.stringify(data) }
     ),
 
+  relocateSondagePoint: (missionId: string, pointId: string, data: CreateFieldSondageRequest) =>
+    apiJson<ConfirmSondageResponse>(
+      `/colab/mobile/missions/${missionId}/sondage-points/${pointId}/relocate`,
+      { method: 'POST', body: JSON.stringify(data) }
+    ),
+
   sync: (actions: SyncAction[]) =>
     apiJson<{ results: SyncActionResult[]; synced_count: number; failed_count: number }>(
       '/colab/mobile/sync',
@@ -133,6 +174,21 @@ export const mobileApi = {
     ),
 
   getProfile: () => apiJson<MobileProfile>('/colab/mobile/profile'),
+
+  getNotifications: () => apiJson<{ notifications: MobileNotification[]; unread_count: number; total: number }>(
+    '/colab/notifications?limit=50'
+  ),
+
+  markNotificationRead: (id: string) => apiJson<{ message: string }>(`/colab/notifications/${id}/read`, { method: 'POST' }),
+
+  getLabResults: (missionId: string) =>
+    apiJson<{ items: MobileLabResult[]; total: number }>(`/colab/missions/${missionId}/lab-results`),
+
+  createLabResult: (missionId: string, data: MobileLabResultInput) =>
+    apiJson<MobileLabResult>(`/colab/missions/${missionId}/lab-results`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 
   registerPushToken: (expoToken: string, platform: 'ios' | 'android') =>
     apiJson<{ message: string }>('/colab/mobile/push-tokens', {

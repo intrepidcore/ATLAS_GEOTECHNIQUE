@@ -855,7 +855,10 @@ mod tests {
         assert_eq!(ThematicParameter::IpAvg.sql_column(), "ip_avg");
         assert_eq!(ThematicParameter::VbsAvg.sql_column(), "vbs_avg");
         assert_eq!(ThematicParameter::EgAvg.sql_column(), "eg_avg");
-        assert_eq!(ThematicParameter::NEchantillons.sql_column(), "n_echantillons");
+        assert_eq!(
+            ThematicParameter::NEchantillons.sql_column(),
+            "n_echantillons"
+        );
         assert_eq!(ThematicParameter::NEssaisGeo.sql_column(), "n_essais_geo");
     }
 

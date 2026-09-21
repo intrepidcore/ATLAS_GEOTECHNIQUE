@@ -64,11 +64,7 @@ pub async fn get_maille_lookup(
         )
     };
 
-    let row = match sqlx::query(sql)
-        .bind(bind_value)
-        .fetch_optional(pool)
-        .await
-    {
+    let row = match sqlx::query(sql).bind(bind_value).fetch_optional(pool).await {
         Ok(r) => r,
         Err(e) => {
             tracing::error!(?e, code, "get_maille_lookup db error");
@@ -152,7 +148,8 @@ pub async fn get_coverage_adm_boundaries(
 
     for (table, gid_col, name_col) in candidates {
         // Déterminer les filtres voulus (un seul filtre parent principal)
-        let (parent_value, parent_cols): (Option<String>, Vec<&'static str>) = match level.as_str() {
+        let (parent_value, parent_cols): (Option<String>, Vec<&'static str>) = match level.as_str()
+        {
             "adm2" => (
                 adm1.clone(),
                 vec![
@@ -246,7 +243,12 @@ pub async fn get_coverage_adm_boundaries(
             let rows = match q.fetch_all(pool).await {
                 Ok(r) => r,
                 Err(e) => {
-                    tracing::warn!(?e, table, level, "adm-boundaries query failed (trying next candidate)");
+                    tracing::warn!(
+                        ?e,
+                        table,
+                        level,
+                        "adm-boundaries query failed (trying next candidate)"
+                    );
                     last_error = Some(format!("{}", e));
                     continue;
                 }
@@ -290,7 +292,14 @@ pub async fn get_coverage_adm_boundaries(
     }
 
     // Aucun candidat n'a fonctionné -> retourner collection vide, mais loggable côté serveur.
-    tracing::warn!(level, ?adm1, ?adm2, ?adm3, ?last_error, "adm-boundaries: no candidate table/columns matched");
+    tracing::warn!(
+        level,
+        ?adm1,
+        ?adm2,
+        ?adm3,
+        ?last_error,
+        "adm-boundaries: no candidate table/columns matched"
+    );
     let fc = serde_json::json!({
         "type": "FeatureCollection",
         "features": []
@@ -365,7 +374,10 @@ pub async fn legacy_lookup(
     match rows {
         Ok(rows) => {
             if rows.is_empty() {
-                return (StatusCode::NOT_FOUND, Json(serde_json::json!({"error": "legacy code introuvable"})))
+                return (
+                    StatusCode::NOT_FOUND,
+                    Json(serde_json::json!({"error": "legacy code introuvable"})),
+                )
                     .into_response();
             }
 
@@ -382,7 +394,10 @@ pub async fn legacy_lookup(
         }
         Err(e) => {
             tracing::error!(?e, "legacy_lookup db error");
-            (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({"error": "db error"})))
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "db error"})),
+            )
                 .into_response()
         }
     }
@@ -395,10 +410,10 @@ pub async fn get_adm_neighbors(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let level = params.level.to_lowercase();
     let name = params.name.clone();
-    
+
     // Déterminer la table et le champ selon le niveau
     // Tables: adm1_tg, adm2_tg, adm3_tg avec champ "name"
     let table = match level.as_str() {
@@ -409,11 +424,12 @@ pub async fn get_adm_neighbors(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({"error": "Invalid level. Use adm1, adm2, or adm3"})),
-            ).into_response();
+            )
+                .into_response();
         }
     };
     let name_field = "name"; // Champ commun à toutes les tables
-    
+
     // Récupérer le centroïde de l'ADM cible
     let target_query = format!(
         r#"
@@ -426,12 +442,12 @@ pub async fn get_adm_neighbors(
         "#,
         table, name_field
     );
-    
+
     let target_row = sqlx::query(&target_query)
         .bind(&name)
         .fetch_optional(pool)
         .await;
-    
+
     let (center_lon, center_lat) = match target_row {
         Ok(Some(row)) => {
             let lon: f64 = row.try_get("center_lon").unwrap_or(1.2);
@@ -442,18 +458,20 @@ pub async fn get_adm_neighbors(
             return (
                 StatusCode::NOT_FOUND,
                 Json(serde_json::json!({"error": format!("ADM '{}' not found", name)})),
-            ).into_response();
+            )
+                .into_response();
         }
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": format!("Database error: {}", e)})),
-            ).into_response();
+            )
+                .into_response();
         }
     };
-    
+
     let mut neighbors: Vec<AdmNeighbor> = Vec::new();
-    
+
     // Récupérer les ADM voisins du même niveau
     let neighbors_query = format!(
         r#"
@@ -473,7 +491,7 @@ pub async fn get_adm_neighbors(
         "#,
         table, name_field, name_field, table, name_field
     );
-    
+
     if let Ok(rows) = sqlx::query(&neighbors_query)
         .bind(&name)
         .fetch_all(pool)
@@ -483,16 +501,24 @@ pub async fn get_adm_neighbors(
             let neighbor_name: String = row.try_get("name").unwrap_or_default();
             let n_center_lon: f64 = row.try_get("neighbor_center_lon").unwrap_or(0.0);
             let n_center_lat: f64 = row.try_get("neighbor_center_lat").unwrap_or(0.0);
-            
+
             // Calculer la direction
             let dx = n_center_lon - center_lon;
             let dy = n_center_lat - center_lat;
             let direction = if dx.abs() > dy.abs() {
-                if dx > 0.0 { "E" } else { "W" }
+                if dx > 0.0 {
+                    "E"
+                } else {
+                    "W"
+                }
             } else {
-                if dy > 0.0 { "N" } else { "S" }
+                if dy > 0.0 {
+                    "N"
+                } else {
+                    "S"
+                }
             };
-            
+
             // Formater le label selon le niveau
             let label = match level.as_str() {
                 "adm1" => format!("Région {}", neighbor_name),
@@ -500,7 +526,7 @@ pub async fn get_adm_neighbors(
                 "adm3" => neighbor_name.clone(),
                 _ => neighbor_name.clone(),
             };
-            
+
             neighbors.push(AdmNeighbor {
                 code: None,
                 name: neighbor_name,
@@ -512,7 +538,7 @@ pub async fn get_adm_neighbors(
             });
         }
     }
-    
+
     // Pour ADM1, ajouter les pays voisins
     if level == "adm1" {
         let country_check_query = r#"
@@ -525,7 +551,7 @@ pub async fn get_adm_neighbors(
                 ST_YMax(t.geom) as ymax
             FROM target t
         "#;
-        
+
         if let Ok(Some(row)) = sqlx::query(country_check_query)
             .bind(&name)
             .fetch_optional(pool)
@@ -534,7 +560,7 @@ pub async fn get_adm_neighbors(
             let xmin: f64 = row.try_get("xmin").unwrap_or(1.0);
             let xmax: f64 = row.try_get("xmax").unwrap_or(1.0);
             let ymax: f64 = row.try_get("ymax").unwrap_or(7.0);
-            
+
             // Ghana à l'ouest (si xmin < 0.3)
             if xmin < 0.3 {
                 neighbors.push(AdmNeighbor {
@@ -573,7 +599,7 @@ pub async fn get_adm_neighbors(
             }
         }
     }
-    
+
     (
         StatusCode::OK,
         Json(AdmNeighborsResponse {
@@ -581,7 +607,8 @@ pub async fn get_adm_neighbors(
             adm_name: name,
             neighbors,
         }),
-    ).into_response()
+    )
+        .into_response()
 }
 
 async fn get_grid(
@@ -591,14 +618,14 @@ async fn get_grid(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     let grid_type = params.get("grid").map(|s| s.as_str()).unwrap_or("2km");
-    
+
     // Déterminer la table selon le type de grille
     let table_name = if grid_type == "28km" {
         "atlas.maille_28km"
     } else {
         "atlas.mailles"
     };
-    
+
     // Maille bbox (4326) + stats
     let query_str = format!(
         r#"
@@ -615,7 +642,7 @@ async fn get_grid(
         "#,
         table_name
     );
-    
+
     let row_opt = sqlx::query(&query_str)
         .bind(&code)
         .fetch_optional(pool)
@@ -667,7 +694,7 @@ async fn get_grid(
         "#,
         table_name
     );
-    
+
     let n_sondages: i64 = sqlx::query_scalar(&count_query_sondages)
         .bind(maille_id)
         .fetch_one(pool)
@@ -683,7 +710,7 @@ async fn get_grid(
         "#,
         table_name
     );
-    
+
     let n_essais: i64 = sqlx::query_scalar(&count_query_essais)
         .bind(maille_id)
         .fetch_one(pool)
@@ -701,7 +728,7 @@ async fn get_grid(
         "#,
         table_name
     );
-    
+
     let rows = sqlx::query(&by_type_query)
         .bind(maille_id)
         .fetch_all(pool)
@@ -845,13 +872,15 @@ pub async fn get_maille_by_code(
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "Database error", "details": e.to_string()})),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
     let geojson_str: String = row.try_get("g").unwrap_or_default();
-    let geom: serde_json::Value = serde_json::from_str(&geojson_str).unwrap_or(serde_json::json!({}));
-    
+    let geom: serde_json::Value =
+        serde_json::from_str(&geojson_str).unwrap_or(serde_json::json!({}));
+
     let mut properties = serde_json::json!({
         "code": row.try_get::<String, _>("code").unwrap_or_default(),
         "n_sondages": row.try_get::<i64, _>("n_sondages").unwrap_or(0),
@@ -862,19 +891,26 @@ pub async fn get_maille_by_code(
 
     // Ajouter propriétés spécifiques selon le type de grille
     if grid_type == "28km" {
-        properties["n_mailles_2km"] = serde_json::json!(row.try_get::<i64, _>("n_mailles_2km").unwrap_or(0));
-        properties["n_mailles_2km_with_data"] = serde_json::json!(row.try_get::<i64, _>("n_mailles_2km_with_data").unwrap_or(0));
+        properties["n_mailles_2km"] =
+            serde_json::json!(row.try_get::<i64, _>("n_mailles_2km").unwrap_or(0));
+        properties["n_mailles_2km_with_data"] = serde_json::json!(row
+            .try_get::<i64, _>("n_mailles_2km_with_data")
+            .unwrap_or(0));
     } else {
-        properties["pref_name"] = serde_json::json!(row.try_get::<Option<String>, _>("pref_name").unwrap_or(None));
-        properties["adm2_name"] = serde_json::json!(row.try_get::<Option<String>, _>("adm2_name").unwrap_or(None));
+        properties["pref_name"] = serde_json::json!(row
+            .try_get::<Option<String>, _>("pref_name")
+            .unwrap_or(None));
+        properties["adm2_name"] = serde_json::json!(row
+            .try_get::<Option<String>, _>("adm2_name")
+            .unwrap_or(None));
     }
-    
+
     let feature = serde_json::json!({
         "type": "Feature",
         "geometry": geom,
         "properties": properties
     });
- 
+
     Json(feature).into_response()
 }
 
@@ -892,7 +928,9 @@ pub async fn get_coverage_mailles(
     );
 
     if grid_type == "28km" {
-        return get_coverage_mailles_28km(params, state).await.into_response();
+        return get_coverage_mailles_28km(params, state)
+            .await
+            .into_response();
     }
 
     // Construire la requête avec filtre bbox optionnel
@@ -921,6 +959,10 @@ pub async fn get_coverage_mailles(
             vs.responsible_source AS assigned_source
         FROM atlas.mv_mailles_geotech mv
         LEFT JOIN atlas.mailles m ON m.code = mv.code
+        -- ADR-001 : `atlas.v_maille_status` est l'unique source de vérité du
+        -- statut d'une maille, et l'API la LIT plutôt que de recalculer la
+        -- règle en Rust. La vue tient compte de toutes les mailles d'une
+        -- mission depuis la migration 110.
         LEFT JOIN atlas.v_maille_status vs ON vs.maille_id = m.id
         LEFT JOIN atlas.colab_students cs ON cs.id::text = vs.responsible_student_id AND cs.deleted_at IS NULL
         LEFT JOIN atlas.users u ON u.id = cs.user_id AND u.deleted_at IS NULL
@@ -1021,8 +1063,7 @@ pub async fn get_coverage_mailles(
             if has_data {
                 with_data_rows += 1;
             }
-        }
-        else {
+        } else {
             geom_parse_fail += 1;
         }
     }
@@ -1048,7 +1089,7 @@ async fn get_coverage_mailles_28km(
         bbox = ?params.get("bbox").cloned(),
         "coverage/mailles(28km) begin"
     );
-    
+
     // Requête sur atlas.v_coverage_mailles_28km_clip (geom clipée ADM0 + colonnes compatibles)
     let mut query = r#"
         SELECT code_m28,
@@ -1101,7 +1142,9 @@ async fn get_coverage_mailles_28km(
     let mut has_data_rows = 0usize;
     for r in rows {
         let code_m28: i32 = r.try_get("code_m28").unwrap_or(0);
-        let code_lisible: String = r.try_get("code_lisible").unwrap_or_else(|_| format!("TG-28KM-{:03}", code_m28));
+        let code_lisible: String = r
+            .try_get("code_lisible")
+            .unwrap_or_else(|_| format!("TG-28KM-{:03}", code_m28));
         let profil_num: i32 = r.try_get("profil_num").unwrap_or(0);
         let g: String = r.get("g");
         let n_sondages: i64 = r.try_get("n_sondages").unwrap_or(0);
@@ -1112,7 +1155,7 @@ async fn get_coverage_mailles_28km(
         let n_mailles_2km: i64 = r.try_get("n_mailles_2km").unwrap_or(0);
         let n_mailles_2km_with_data: i64 = r.try_get("n_mailles_2km_with_data").unwrap_or(0);
         let has_data: bool = n_sondages > 0;
-        
+
         // Calculer has_exact_location et has_random_location pour compatibilité avec style UI
         let has_exact_location = n_sondages_exact > 0;
         let has_random_location = n_sondages_random > 0;
@@ -1143,12 +1186,11 @@ async fn get_coverage_mailles_28km(
             if has_data {
                 has_data_rows += 1;
             }
-        }
-        else {
+        } else {
             geom_parse_fail += 1;
         }
     }
-    
+
     tracing::info!(
         features = features.len(),
         geom_ok = geom_ok,
@@ -1525,7 +1567,7 @@ async fn get_grid_details(
 ) -> impl IntoResponse {
     let pool = &state.pool;
     let grid_type = params.get("grid").map(|s| s.as_str()).unwrap_or("2km");
-    
+
     // Déterminer la table selon le type de grille
     let table_name = if grid_type == "28km" {
         "atlas.maille_28km"
@@ -1566,7 +1608,7 @@ async fn get_grid_details(
             table_name
         )
     };
-    
+
     let maille_row = match sqlx::query(&query_str)
         .bind(&code)
         .fetch_optional(pool)
@@ -1638,7 +1680,7 @@ async fn get_grid_details(
         "#,
         table_name
     );
-    
+
     let kpi_row = match sqlx::query(&kpi_query)
         .bind(maille_id)
         .fetch_one(pool)
@@ -1690,7 +1732,7 @@ async fn get_grid_details(
         "#,
         table_name
     );
-    
+
     let sondages_rows = match sqlx::query(&sondages_query)
         .bind(maille_id)
         .fetch_all(pool)
@@ -1842,9 +1884,21 @@ pub async fn get_adm_boundary_geojson(
 
     let candidates: Vec<(&'static str, &'static str, &'static str)> = match level.as_str() {
         // Plusieurs schémas existent selon les environnements (adm1/adm1_tg/adm1_togo)
-        "adm1" => vec![("adm1", "gid", "adm1_fr"), ("adm1_tg", "gid", "name"), ("adm1_togo", "gid", "adm1_fr")],
-        "adm2" => vec![("adm2", "gid", "adm2_fr"), ("adm2_tg", "gid", "name"), ("adm2_togo", "gid", "adm2_fr")],
-        "adm3" => vec![("adm3", "gid", "adm3_fr"), ("adm3_tg", "gid", "name"), ("adm3_togo", "gid", "adm3_fr")],
+        "adm1" => vec![
+            ("adm1", "gid", "adm1_fr"),
+            ("adm1_tg", "gid", "name"),
+            ("adm1_togo", "gid", "adm1_fr"),
+        ],
+        "adm2" => vec![
+            ("adm2", "gid", "adm2_fr"),
+            ("adm2_tg", "gid", "name"),
+            ("adm2_togo", "gid", "adm2_fr"),
+        ],
+        "adm3" => vec![
+            ("adm3", "gid", "adm3_fr"),
+            ("adm3_tg", "gid", "name"),
+            ("adm3_togo", "gid", "adm3_fr"),
+        ],
         _ => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -1895,7 +1949,13 @@ pub async fn get_adm_boundary_geojson(
             }
             Ok(None) => continue,
             Err(e) => {
-                tracing::warn!(?e, table, level, id, "ADM boundary query failed (trying next candidate)");
+                tracing::warn!(
+                    ?e,
+                    table,
+                    level,
+                    id,
+                    "ADM boundary query failed (trying next candidate)"
+                );
                 continue;
             }
         }

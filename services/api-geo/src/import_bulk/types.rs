@@ -37,12 +37,13 @@ impl ToString for ImportStatus {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum GeolocationMode {
     Exact,
     Centroid,
     Random,
+    #[default]
     Unknown,
     Maille,
 }
@@ -87,9 +88,10 @@ pub enum FileFormat {
     Json,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum DataStructure {
+    #[default]
     Long,  // Une ligne par mesure
     Large, // Profondeurs en colonnes
 }
@@ -155,7 +157,7 @@ pub struct ImportRequest {
     pub save_file: Option<bool>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct MappingConfig {
     // Colonnes identité
     pub localite_col: Option<String>,
@@ -194,7 +196,7 @@ pub struct MappingConfig {
     pub maille_col: Option<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone)]
 pub struct GeolocationConfig {
     pub mode: GeolocationMode,
     pub seed: Option<i32>,

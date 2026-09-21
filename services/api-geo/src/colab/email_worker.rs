@@ -1,3 +1,4 @@
+use anyhow::Context as _;
 use lettre::{
     message::{header::ContentType, Attachment, MultiPart, SinglePart},
     transport::smtp::authentication::Credentials,
@@ -26,20 +27,37 @@ struct SmtpConfig {
     dry_run: bool,
     subject: String,
     instructions: String,
+    /// URL de téléchargement de l'APK Atlas Terrain proposée dans l'email.
+    ///
+    /// `ATLAS_TERRAIN_APK_URL` a la priorité (lien Google Drive, partage
+    /// public…) ; à défaut on retombe sur l'endpoint servi par l'API
+    /// (`ATLAS_API_PUBLIC_BASE_URL` + /colab/app/latest), qui n'est
+    /// joignable que depuis le réseau Tailscale. Absent -> le bloc
+    /// "Application" du corps HTML est simplement omis.
+    apk_download_url: Option<String>,
 }
 
 impl SmtpConfig {
     fn from_env() -> Option<Self> {
         let non_empty = |s: String| if s.is_empty() { None } else { Some(s) };
-        let user = std::env::var("GMAIL_USER").ok().and_then(non_empty)
+        let user = std::env::var("GMAIL_USER")
+            .ok()
+            .and_then(non_empty)
             .or_else(|| std::env::var("SMTP_USER").ok().and_then(non_empty))?;
-        let password = std::env::var("GMAIL_APP_PASSWORD").ok().and_then(non_empty)
+        let password = std::env::var("GMAIL_APP_PASSWORD")
+            .ok()
+            .and_then(non_empty)
             .or_else(|| std::env::var("SMTP_PASSWORD").ok().and_then(non_empty))?;
-        let from = std::env::var("GMAIL_FROM").ok().and_then(non_empty)
+        let from = std::env::var("GMAIL_FROM")
+            .ok()
+            .and_then(non_empty)
             .or_else(|| std::env::var("SMTP_FROM").ok().and_then(non_empty))
             .unwrap_or_else(|| user.clone());
         let host = std::env::var("SMTP_HOST").unwrap_or_else(|_| "smtp.gmail.com".to_string());
-        let port = std::env::var("SMTP_PORT").ok().and_then(|p| p.parse().ok()).unwrap_or(587u16);
+        let port = std::env::var("SMTP_PORT")
+            .ok()
+            .and_then(|p| p.parse().ok())
+            .unwrap_or(587u16);
         let dry_run = std::env::var("COLAB_NOTIFY_DRY_RUN")
             .map(|v| v == "true" || v == "1")
             .unwrap_or(false);
@@ -47,7 +65,27 @@ impl SmtpConfig {
             "Atlas Géotechnique Togo — Ordre de mission de reconnaissance terrain".to_string()
         });
         let instructions = std::env::var("COLAB_NOTIFY_INSTRUCTIONS").unwrap_or_default();
-        Some(SmtpConfig { host, port, user, password, from, dry_run, subject, instructions })
+        let apk_download_url = std::env::var("ATLAS_TERRAIN_APK_URL")
+            .ok()
+            .and_then(non_empty)
+            .map(|s| s.trim().to_string())
+            .or_else(|| {
+                std::env::var("ATLAS_API_PUBLIC_BASE_URL")
+                    .ok()
+                    .and_then(non_empty)
+                    .map(|s| format!("{}/colab/app/latest", s.trim_end_matches('/')))
+            });
+        Some(SmtpConfig {
+            host,
+            port,
+            user,
+            password,
+            from,
+            dry_run,
+            subject,
+            instructions,
+            apk_download_url,
+        })
     }
 }
 
@@ -66,6 +104,7 @@ struct SondagePoint {
 
 struct EmailData {
     assignment_id: Uuid,
+    student_id: Uuid,
     assignment_role: String,
     assignment_notes: Option<String>,
     student_email: String,
@@ -143,8 +182,12 @@ pub fn spawn_colab_email_worker(pool: PgPool) {
         let mut backoff_ms: u64 = 5_000;
         loop {
             match process_one_email_job(&pool, &cfg).await {
-                Ok(Some(_)) => { backoff_ms = 2_000; }
-                Ok(None) => { backoff_ms = (backoff_ms * 2).min(60_000); }
+                Ok(Some(_)) => {
+                    backoff_ms = 2_000;
+                }
+                Ok(None) => {
+                    backoff_ms = (backoff_ms * 2).min(60_000);
+                }
                 Err(e) => {
                     tracing::error!(error = %e, "colab email worker error");
                     backoff_ms = (backoff_ms * 2).min(60_000);
@@ -176,15 +219,39 @@ async fn process_one_email_job(pool: &PgPool, cfg: &SmtpConfig) -> anyhow::Resul
     let job_id: Uuid = job.get("id");
     let params: Value = job.get("params");
 
-    sqlx::query("UPDATE atlas.colab_email_jobs SET status = 'running', started_at = NOW() WHERE id = $1")
-        .bind(job_id)
-        .execute(&mut *tx)
-        .await?;
+    sqlx::query(
+        "UPDATE atlas.colab_email_jobs SET status = 'running', started_at = NOW() WHERE id = $1",
+    )
+    .bind(job_id)
+    .execute(&mut *tx)
+    .await?;
     tx.commit().await?;
 
-    log_job(pool, job_id, "info", "Job démarré", json!({"params": &params})).await;
+    log_job(
+        pool,
+        job_id,
+        "info",
+        "Job démarré",
+        json!({"params": &params}),
+    )
+    .await;
 
     let result = send_assignment_emails(pool, cfg, job_id, &params).await;
+
+    // Les mots de passe en clair ne survivent pas au job, quel qu'en soit le
+    // sort. Un envoi échoué laisse un job « failed » consultable : il ne doit
+    // pas laisser un secret lisible dans la base avec lui.
+    if params.get("passwords").is_some() {
+        if let Err(e) = sqlx::query(
+            "UPDATE atlas.colab_email_jobs SET params = params - 'passwords' WHERE id = $1",
+        )
+        .bind(job_id)
+        .execute(pool)
+        .await
+        {
+            tracing::error!(error = %e, %job_id, "effacement des mots de passe du job impossible");
+        }
+    }
 
     match &result {
         Ok(sent) => {
@@ -194,7 +261,14 @@ async fn process_one_email_job(pool: &PgPool, cfg: &SmtpConfig) -> anyhow::Resul
             .bind(job_id)
             .execute(pool)
             .await?;
-            log_job(pool, job_id, "info", &format!("{} email(s) traité(s)", sent), json!({"sent": sent})).await;
+            log_job(
+                pool,
+                job_id,
+                "info",
+                &format!("{} email(s) traité(s)", sent),
+                json!({"sent": sent}),
+            )
+            .await;
         }
         Err(e) => {
             sqlx::query(
@@ -204,7 +278,14 @@ async fn process_one_email_job(pool: &PgPool, cfg: &SmtpConfig) -> anyhow::Resul
             .bind(e.to_string())
             .execute(pool)
             .await?;
-            log_job(pool, job_id, "error", "Échec traitement job", json!({"error": e.to_string()})).await;
+            log_job(
+                pool,
+                job_id,
+                "error",
+                "Échec traitement job",
+                json!({"error": e.to_string()}),
+            )
+            .await;
         }
     }
 
@@ -229,14 +310,35 @@ async fn send_assignment_emails(
         .collect();
 
     let opts = &params["options"];
-    let include_bbox         = opts["include_bbox"].as_bool().unwrap_or(true);
+    let include_bbox = opts["include_bbox"].as_bool().unwrap_or(true);
     let include_instructions = opts["include_instructions"].as_bool().unwrap_or(true);
-    let include_pdf          = opts["include_pdf"].as_bool().unwrap_or(true);
-    let include_geojson      = opts["include_geojson"].as_bool().unwrap_or(true);
+    let include_pdf = opts["include_pdf"].as_bool().unwrap_or(true);
+    let include_geojson = opts["include_geojson"].as_bool().unwrap_or(true);
+    let include_atlaspack = opts["include_atlaspack"].as_bool().unwrap_or(true);
+
+    // Mots de passe à usage unique, indexés par identifiant d'affectation.
+    // Ils ne transitent que par ce job et sont effacés de `params` dès la fin
+    // de l'envoi : la base ne conserve pas de mot de passe en clair.
+    let one_time_passwords = &params["passwords"];
 
     if assignment_ids.is_empty() {
         return Ok(0);
     }
+
+    // Calculé une seule fois pour tout le job (pas par email) : lire un
+    // binaire de ~24 Mo et le hasher à chaque destinataire serait un
+    // gaspillage inutile pour un fichier identique pour tout le monde.
+    let apk_info: Option<(String, u64)> = if cfg.apk_download_url.is_some() {
+        match crate::colab::app_download::read_apk() {
+            Ok((bytes, sha256)) => Some((sha256, bytes.len() as u64)),
+            Err(e) => {
+                tracing::warn!(error = %e, "APK indisponible — email envoyé sans lien d'installation");
+                None
+            }
+        }
+    } else {
+        None
+    };
 
     // Requête principale — part de colab_mission_assignments (IDs exposés par l'UI via la vue).
     // colab_maille_assignments est vide pour les étudiants sans matricule → on l'évite.
@@ -244,6 +346,7 @@ async fn send_assignment_emails(
         r#"
         SELECT
             cma.id                                       AS assignment_id,
+            cs.id                                         AS student_id,
             COALESCE(cma.role, 'primary')                AS assignment_role,
             cma.notes                                    AS assignment_notes,
             u.email                                      AS student_email,
@@ -426,7 +529,12 @@ async fn send_assignment_emails(
                     );
                     // Debug: sauvegarder le PDF dans /tmp si COLAB_PDF_DEBUG_DIR est défini
                     if let Ok(debug_dir) = std::env::var("COLAB_PDF_DEBUG_DIR") {
-                        let path = format!("{}/{}-{}.pdf", debug_dir, sanitize_filename(&data.mission_code), &data.assignment_id.to_string()[..8]);
+                        let path = format!(
+                            "{}/{}-{}.pdf",
+                            debug_dir,
+                            sanitize_filename(&data.mission_code),
+                            &data.assignment_id.to_string()[..8]
+                        );
                         if let Err(e) = std::fs::write(&path, &pdf_bytes) {
                             tracing::warn!("PDF debug save failed: {}", e);
                         } else {
@@ -444,19 +552,89 @@ async fn send_assignment_emails(
             None
         };
 
+        // ── Paquet opérateur .atlaspack ─────────────────────────────────────
+        // Le paquet est généré de façon asynchrone par un worker séparé
+        // (atlaspack::jobs) — potentiellement lent (téléchargement de tuiles
+        // hors-ligne). On n'attend jamais ici : si aucun paquet 'ready'
+        // n'existe encore pour cet opérateur, on déclenche sa génération
+        // pour la prochaine fois et on envoie l'ordre de mission sans lui
+        // plutôt que de bloquer toute la notification dessus.
+        let atlaspack_attachment = if include_atlaspack {
+            match fetch_ready_atlaspack(pool, data.student_id).await {
+                Ok(Some((bytes, generated_at))) => {
+                    let filename = format!(
+                        "AtlasTerrain-{}.atlaspack",
+                        sanitize_filename(&data.matricule)
+                    );
+                    tracing::info!(
+                        student = %student_email,
+                        generated_at = %generated_at,
+                        size_bytes = bytes.len(),
+                        "Paquet .atlaspack joint à l'email"
+                    );
+                    Some((bytes, filename))
+                }
+                Ok(None) => {
+                    tracing::warn!(
+                        student = %student_email,
+                        student_id = %data.student_id,
+                        "Aucun paquet .atlaspack prêt — envoi sans lui, génération déclenchée pour la prochaine fois"
+                    );
+                    if let Err(e) = crate::atlaspack::jobs::enqueue_or_refresh_package_for_student(
+                        pool,
+                        data.student_id,
+                        None,
+                    )
+                    .await
+                    {
+                        tracing::warn!(error = %e, "déclenchement génération .atlaspack échoué");
+                    }
+                    None
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "lecture paquet .atlaspack échouée — email envoyé sans lui");
+                    None
+                }
+            }
+        } else {
+            None
+        };
+
         // ── Corps HTML ───────────────────────────────────────────────────────
-        let instructions_str = if include_instructions { cfg.instructions.as_str() } else { "" };
-        let body = build_email_html(&data, instructions_str, include_bbox, job_id, &geojson_sha256);
+        let instructions_str = if include_instructions {
+            cfg.instructions.as_str()
+        } else {
+            ""
+        };
+        let one_time_password = one_time_passwords
+            .get(assignment_id.to_string())
+            .and_then(|v| v.as_str());
+        let body = build_email_html(
+            &data,
+            instructions_str,
+            include_bbox,
+            job_id,
+            &geojson_sha256,
+            one_time_password,
+            atlaspack_attachment.as_ref().map(|(bytes, name)| (name.as_str(), bytes.len())),
+            apk_info
+                .as_ref()
+                .map(|(sha256, size)| (cfg.apk_download_url.as_deref().unwrap_or(""), sha256.as_str(), *size)),
+        );
 
         let send_result = if cfg.dry_run {
             tracing::info!(
                 "[DRY_RUN] -> {} <{}> | maille={} | mission={}",
-                data.student_name, student_email, data.maille_code, data.mission_code
+                data.student_name,
+                student_email,
+                data.maille_code,
+                data.mission_code
             );
             Ok(())
         } else {
-            let zip_att  = zip_attachment.as_ref().map(|(b, f)| (b.clone(), f.clone()));
-            let pdf_att  = pdf_attachment.as_ref().map(|(b, f)| (b.clone(), f.clone()));
+            let zip_att = zip_attachment.as_ref().map(|(b, f)| (b.clone(), f.clone()));
+            let pdf_att = pdf_attachment.as_ref().map(|(b, f)| (b.clone(), f.clone()));
+            let atlaspack_att = atlaspack_attachment.as_ref().map(|(b, f)| (b.clone(), f.clone()));
             send_one_email(
                 transport.as_ref().unwrap(),
                 &cfg.from,
@@ -466,6 +644,7 @@ async fn send_assignment_emails(
                 &body,
                 zip_att,
                 pdf_att,
+                atlaspack_att,
             )
             .await
         };
@@ -478,15 +657,25 @@ async fn send_assignment_emails(
                     mission = %data.mission_code,
                     sha256  = %geojson_sha256,
                     pdf     = pdf_attachment.is_some(),
+                    atlaspack = atlaspack_attachment.is_some(),
                     "Email Colab envoyé"
                 );
-                log_job(pool, job_id, "info", &format!("Email envoyé à {}", student_email), json!({
-                    "assignment_id":  assignment_id,
-                    "maille_code":    data.maille_code,
-                    "geojson_sha256": geojson_sha256,
-                    "zip":            zip_attachment.is_some(),
-                    "pdf":            pdf_attachment.is_some(),
-                })).await;
+                log_job(
+                    pool,
+                    job_id,
+                    "info",
+                    &format!("Email envoyé à {}", student_email),
+                    json!({
+                        "assignment_id":  assignment_id,
+                        "maille_code":    data.maille_code,
+                        "geojson_sha256": geojson_sha256,
+                        "zip":            zip_attachment.is_some(),
+                        "pdf":            pdf_attachment.is_some(),
+                        "atlaspack":      atlaspack_attachment.is_some(),
+                        "apk_link":       apk_info.is_some(),
+                    }),
+                )
+                .await;
                 sqlx::query(
                     r#"UPDATE atlas.colab_maille_notification_logs
                        SET status = 'sent', sent_at = NOW()
@@ -512,14 +701,47 @@ async fn send_assignment_emails(
                 .execute(pool)
                 .await
                 .ok();
-                log_job(pool, job_id, "warn", &format!("Échec email {}", student_email), json!({
-                    "error": e.to_string(), "assignment_id": assignment_id
-                })).await;
+                log_job(
+                    pool,
+                    job_id,
+                    "warn",
+                    &format!("Échec email {}", student_email),
+                    json!({
+                        "error": e.to_string(), "assignment_id": assignment_id
+                    }),
+                )
+                .await;
             }
         }
     }
 
     Ok(sent_count)
+}
+
+/// Dernier paquet `.atlaspack` prêt pour un opérateur, lu depuis le disque.
+/// Retourne `None` (pas d'erreur) si aucun paquet n'est en statut `ready` —
+/// c'est un état normal (pas encore généré, ou en cours), pas une panne.
+async fn fetch_ready_atlaspack(
+    pool: &PgPool,
+    student_id: Uuid,
+) -> anyhow::Result<Option<(Vec<u8>, chrono::DateTime<chrono::Utc>)>> {
+    let row: Option<(String, chrono::DateTime<chrono::Utc>)> = sqlx::query_as(
+        r#"SELECT file_path, generated_at FROM atlas.atlaspack_packages
+           WHERE student_id = $1 AND status = 'ready' AND file_path IS NOT NULL
+           ORDER BY generated_at DESC NULLS LAST
+           LIMIT 1"#,
+    )
+    .bind(student_id)
+    .fetch_optional(pool)
+    .await
+    .context("lecture atlas.atlaspack_packages")?;
+
+    let Some((file_path, generated_at)) = row else {
+        return Ok(None);
+    };
+    let bytes = std::fs::read(&file_path)
+        .with_context(|| format!("lecture du fichier .atlaspack: {file_path}"))?;
+    Ok(Some((bytes, generated_at)))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -535,59 +757,105 @@ fn extract_email_data(row: &sqlx::postgres::PgRow) -> anyhow::Result<EmailData> 
             .into_iter()
             .filter_map(|obj| {
                 let numero = obj.get("numero")?.as_i64()? as i32;
-                let lat    = obj.get("lat")?.as_f64()?;
-                let lon    = obj.get("lon")?.as_f64()?;
-                let label  = obj.get("label").and_then(|v| v.as_str()).map(|s| s.to_string());
-                let notes  = obj.get("notes").and_then(|v| v.as_str()).map(|s| s.to_string());
-                Some(SondagePoint { numero, label, lat, lon, notes })
+                let lat = obj.get("lat")?.as_f64()?;
+                let lon = obj.get("lon")?.as_f64()?;
+                let label = obj
+                    .get("label")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                let notes = obj
+                    .get("notes")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                Some(SondagePoint {
+                    numero,
+                    label,
+                    lat,
+                    lon,
+                    notes,
+                })
             })
             .collect()
     };
 
     Ok(EmailData {
-        assignment_id:    row.try_get("assignment_id")?,
-        assignment_role:  row.try_get::<String, _>("assignment_role").unwrap_or_else(|_| "primary".to_string()),
+        assignment_id: row.try_get("assignment_id")?,
+        student_id: row.try_get("student_id")?,
+        assignment_role: row
+            .try_get::<String, _>("assignment_role")
+            .unwrap_or_else(|_| "primary".to_string()),
         assignment_notes: row.try_get("assignment_notes").ok(),
-        student_email:    row.try_get("student_email")?,
-        student_name:     row.try_get("student_name")?,
-        matricule:        row.try_get::<String, _>("matricule").unwrap_or_default(),
-        maille_code:      row.try_get("maille_code")?,
-        mission_title:    row.try_get("mission_title")?,
-        mission_code:     row.try_get("mission_code")?,
-        mission_theme:    row.try_get::<String, _>("mission_theme").unwrap_or_else(|_| "reconnaissance".to_string()),
+        student_email: row.try_get("student_email")?,
+        student_name: row.try_get("student_name")?,
+        matricule: row.try_get::<String, _>("matricule").unwrap_or_default(),
+        maille_code: row.try_get("maille_code")?,
+        mission_title: row.try_get("mission_title")?,
+        mission_code: row.try_get("mission_code")?,
+        mission_theme: row
+            .try_get::<String, _>("mission_theme")
+            .unwrap_or_else(|_| "reconnaissance".to_string()),
         mission_objectifs: row.try_get("mission_objectifs").ok(),
         expected_sondages: row.try_get("expected_sondages").ok(),
-        start_date:       row.try_get("start_date").ok(),
-        end_date:         row.try_get("end_date").ok(),
-        depth_h1_m:       row.try_get::<f64, _>("depth_h1_m").ok(),
-        depth_h2_m:       row.try_get::<f64, _>("depth_h2_m").ok(),
-        depth_h3_m:       row.try_get::<f64, _>("depth_h3_m").ok(),
-        supervisor_name:  row.try_get::<String, _>("supervisor_name").unwrap_or_default(),
-        supervisor_email: row.try_get::<String, _>("supervisor_email").unwrap_or_default(),
-        supervisor_phone: row.try_get::<String, _>("supervisor_phone").unwrap_or_default(),
-        supervisor_titre: row.try_get::<String, _>("supervisor_titre").unwrap_or_default(),
-        lat:              row.try_get("lat").ok(),
-        lon:              row.try_get("lon").ok(),
-        bbox_ymin:        row.try_get("bbox_ymin").ok(),
-        bbox_xmin:        row.try_get("bbox_xmin").ok(),
-        bbox_ymax:        row.try_get("bbox_ymax").ok(),
-        bbox_xmax:        row.try_get("bbox_xmax").ok(),
-        maille_geojson:   row.try_get("maille_geojson").ok(),
-        prefecture:       row.try_get::<String, _>("prefecture").ok().filter(|s| !s.is_empty()),
-        commune:          row.try_get::<String, _>("commune").ok().filter(|s| !s.is_empty()),
-        region:           row.try_get::<String, _>("region").ok().filter(|s| !s.is_empty()),
-        canton:           row.try_get::<String, _>("canton").ok().filter(|s| !s.is_empty()),
-        altitude_mean:    row.try_get::<f64, _>("altitude_mean").ok(),
+        start_date: row.try_get("start_date").ok(),
+        end_date: row.try_get("end_date").ok(),
+        depth_h1_m: row.try_get::<f64, _>("depth_h1_m").ok(),
+        depth_h2_m: row.try_get::<f64, _>("depth_h2_m").ok(),
+        depth_h3_m: row.try_get::<f64, _>("depth_h3_m").ok(),
+        supervisor_name: row
+            .try_get::<String, _>("supervisor_name")
+            .unwrap_or_default(),
+        supervisor_email: row
+            .try_get::<String, _>("supervisor_email")
+            .unwrap_or_default(),
+        supervisor_phone: row
+            .try_get::<String, _>("supervisor_phone")
+            .unwrap_or_default(),
+        supervisor_titre: row
+            .try_get::<String, _>("supervisor_titre")
+            .unwrap_or_default(),
+        lat: row.try_get("lat").ok(),
+        lon: row.try_get("lon").ok(),
+        bbox_ymin: row.try_get("bbox_ymin").ok(),
+        bbox_xmin: row.try_get("bbox_xmin").ok(),
+        bbox_ymax: row.try_get("bbox_ymax").ok(),
+        bbox_xmax: row.try_get("bbox_xmax").ok(),
+        maille_geojson: row.try_get("maille_geojson").ok(),
+        prefecture: row
+            .try_get::<String, _>("prefecture")
+            .ok()
+            .filter(|s| !s.is_empty()),
+        commune: row
+            .try_get::<String, _>("commune")
+            .ok()
+            .filter(|s| !s.is_empty()),
+        region: row
+            .try_get::<String, _>("region")
+            .ok()
+            .filter(|s| !s.is_empty()),
+        canton: row
+            .try_get::<String, _>("canton")
+            .ok()
+            .filter(|s| !s.is_empty()),
+        altitude_mean: row.try_get::<f64, _>("altitude_mean").ok(),
         dem_slope_mean_deg: row.try_get::<f64, _>("dem_slope_mean_deg").ok(),
         distance_river_m: row.try_get::<f64, _>("distance_river_m").ok(),
-        vbs_rk_h1:        row.try_get::<f64, _>("vbs_rk_h1").ok(),
-        ip_rk_h1:         row.try_get::<f64, _>("ip_rk_h1").ok(),
-        prec_annual:      row.try_get::<f64, _>("prec_annual").ok(),
-        prec_dry:         row.try_get::<f64, _>("prec_dry").ok(),
-        prec_wet:         row.try_get::<f64, _>("prec_wet").ok(),
-        geologie:         row.try_get::<String, _>("geologie").ok().filter(|s| !s.is_empty()),
-        pedologie:        row.try_get::<String, _>("pedologie").ok().filter(|s| !s.is_empty()),
-        risque_gonflement: row.try_get::<String, _>("risque_gonflement").ok().filter(|s| !s.is_empty()),
+        vbs_rk_h1: row.try_get::<f64, _>("vbs_rk_h1").ok(),
+        ip_rk_h1: row.try_get::<f64, _>("ip_rk_h1").ok(),
+        prec_annual: row.try_get::<f64, _>("prec_annual").ok(),
+        prec_dry: row.try_get::<f64, _>("prec_dry").ok(),
+        prec_wet: row.try_get::<f64, _>("prec_wet").ok(),
+        geologie: row
+            .try_get::<String, _>("geologie")
+            .ok()
+            .filter(|s| !s.is_empty()),
+        pedologie: row
+            .try_get::<String, _>("pedologie")
+            .ok()
+            .filter(|s| !s.is_empty()),
+        risque_gonflement: row
+            .try_get::<String, _>("risque_gonflement")
+            .ok()
+            .filter(|s| !s.is_empty()),
         nb_sondages_existants: row.try_get::<i32, _>("nb_sondages_existants").unwrap_or(0),
         sondage_points,
     })
@@ -609,41 +877,60 @@ fn build_geojson(data: &EmailData, job_id: Uuid) -> String {
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
 
     let mut props = Map::new();
-    let ins = |m: &mut Map<String, Value>, k: &str, v: Value| { m.insert(k.to_string(), v); };
+    let ins = |m: &mut Map<String, Value>, k: &str, v: Value| {
+        m.insert(k.to_string(), v);
+    };
 
-    ins(&mut props, "code_maille",     json!(data.maille_code));
-    ins(&mut props, "mission_code",    json!(data.mission_code));
-    ins(&mut props, "mission_title",   json!(data.mission_title));
-    ins(&mut props, "theme",           json!(data.mission_theme));
-    ins(&mut props, "role_operateur",  json!(data.assignment_role));
-    ins(&mut props, "region",          json!(data.region));
-    ins(&mut props, "prefecture",      json!(data.prefecture));
-    ins(&mut props, "commune",         json!(data.commune));
-    ins(&mut props, "canton",          json!(data.canton));
-    ins(&mut props, "centroid_lat",    json!(data.lat));
-    ins(&mut props, "centroid_lon",    json!(data.lon));
-    ins(&mut props, "bbox_N_deg",      json!(data.bbox_ymax));
-    ins(&mut props, "bbox_S_deg",      json!(data.bbox_ymin));
-    ins(&mut props, "bbox_E_deg",      json!(data.bbox_xmax));
-    ins(&mut props, "bbox_O_deg",      json!(data.bbox_xmin));
-    ins(&mut props, "altitude_moy_m",  json!(data.altitude_mean));
-    ins(&mut props, "pente_moy_deg",   json!(data.dem_slope_mean_deg));
-    ins(&mut props, "dist_riviere_m",  json!(data.distance_river_m));
-    ins(&mut props, "prec_annual_mm",  json!(data.prec_annual));
-    ins(&mut props, "prec_dry_mm",     json!(data.prec_dry));
-    ins(&mut props, "prec_wet_mm",     json!(data.prec_wet));
-    ins(&mut props, "geologie",        json!(data.geologie));
-    ins(&mut props, "pedologie",       json!(data.pedologie));
-    ins(&mut props, "risque_gonflement", json!(data.risque_gonflement));
-    ins(&mut props, "vbs_rk_h1",      json!(data.vbs_rk_h1));
-    ins(&mut props, "ip_rk_h1",       json!(data.ip_rk_h1));
-    ins(&mut props, "depth_h1_m",     json!(data.depth_h1_m));
-    ins(&mut props, "depth_h2_m",     json!(data.depth_h2_m));
-    ins(&mut props, "depth_h3_m",     json!(data.depth_h3_m));
-    ins(&mut props, "nb_sondages_existants", json!(data.nb_sondages_existants));
-    ins(&mut props, "date_debut",     json!(data.start_date.map(|d| d.to_string())));
-    ins(&mut props, "date_fin",       json!(data.end_date.map(|d| d.to_string())));
-    ins(&mut props, "superviseur",    json!(data.supervisor_name));
+    ins(&mut props, "code_maille", json!(data.maille_code));
+    ins(&mut props, "mission_code", json!(data.mission_code));
+    ins(&mut props, "mission_title", json!(data.mission_title));
+    ins(&mut props, "theme", json!(data.mission_theme));
+    ins(&mut props, "role_operateur", json!(data.assignment_role));
+    ins(&mut props, "region", json!(data.region));
+    ins(&mut props, "prefecture", json!(data.prefecture));
+    ins(&mut props, "commune", json!(data.commune));
+    ins(&mut props, "canton", json!(data.canton));
+    ins(&mut props, "centroid_lat", json!(data.lat));
+    ins(&mut props, "centroid_lon", json!(data.lon));
+    ins(&mut props, "bbox_N_deg", json!(data.bbox_ymax));
+    ins(&mut props, "bbox_S_deg", json!(data.bbox_ymin));
+    ins(&mut props, "bbox_E_deg", json!(data.bbox_xmax));
+    ins(&mut props, "bbox_O_deg", json!(data.bbox_xmin));
+    ins(&mut props, "altitude_moy_m", json!(data.altitude_mean));
+    ins(&mut props, "pente_moy_deg", json!(data.dem_slope_mean_deg));
+    ins(&mut props, "dist_riviere_m", json!(data.distance_river_m));
+    ins(&mut props, "prec_annual_mm", json!(data.prec_annual));
+    ins(&mut props, "prec_dry_mm", json!(data.prec_dry));
+    ins(&mut props, "prec_wet_mm", json!(data.prec_wet));
+    ins(&mut props, "geologie", json!(data.geologie));
+    ins(&mut props, "pedologie", json!(data.pedologie));
+    ins(
+        &mut props,
+        "risque_gonflement",
+        json!(data.risque_gonflement),
+    );
+    // vbs_rk_h1 / ip_rk_h1 volontairement exclus : données géotechniques
+    // propriétaires (substituts d'essais labo commercialisés), jamais dans
+    // un fichier qui quitte la plateforme. Cf. mémoire projet.
+    ins(&mut props, "depth_h1_m", json!(data.depth_h1_m));
+    ins(&mut props, "depth_h2_m", json!(data.depth_h2_m));
+    ins(&mut props, "depth_h3_m", json!(data.depth_h3_m));
+    ins(
+        &mut props,
+        "nb_sondages_existants",
+        json!(data.nb_sondages_existants),
+    );
+    ins(
+        &mut props,
+        "date_debut",
+        json!(data.start_date.map(|d| d.to_string())),
+    );
+    ins(
+        &mut props,
+        "date_fin",
+        json!(data.end_date.map(|d| d.to_string())),
+    );
+    ins(&mut props, "superviseur", json!(data.supervisor_name));
     ins(&mut props, "superviseur_tel", json!(data.supervisor_phone));
 
     // Maille polygon feature
@@ -654,23 +941,27 @@ fn build_geojson(data: &EmailData, job_id: Uuid) -> String {
     });
 
     // Sondage point features
-    let sondage_features: Vec<Value> = data.sondage_points.iter().map(|sp| {
-        json!({
-            "type": "Feature",
-            "geometry": {
-                "type": "Point",
-                "coordinates": [sp.lon, sp.lat]
-            },
-            "properties": {
-                "type": "sondage_prevu",
-                "numero": sp.numero,
-                "label": sp.label,
-                "notes": sp.notes,
-                "mission_code": data.mission_code,
-                "maille_code": data.maille_code
-            }
+    let sondage_features: Vec<Value> = data
+        .sondage_points
+        .iter()
+        .map(|sp| {
+            json!({
+                "type": "Feature",
+                "geometry": {
+                    "type": "Point",
+                    "coordinates": [sp.lon, sp.lat]
+                },
+                "properties": {
+                    "type": "sondage_prevu",
+                    "numero": sp.numero,
+                    "label": sp.label,
+                    "notes": sp.notes,
+                    "mission_code": data.mission_code,
+                    "maille_code": data.maille_code
+                }
+            })
         })
-    }).collect();
+        .collect();
 
     let mut features = vec![maille_feature];
     features.extend(sondage_features);
@@ -678,7 +969,7 @@ fn build_geojson(data: &EmailData, job_id: Uuid) -> String {
     let fc = json!({
         "type": "FeatureCollection",
         "metadata": {
-            "source":         "Atlas Géotechnique Togo — DGTP/MTPTMU",
+            "source":         "Atlas Géotechnique Togo — IntrepidCore",
             "generated_at":   now,
             "job_id":         job_id.to_string(),
             "classification": "USAGE INTERNE — NE PAS DIFFUSER",
@@ -714,7 +1005,13 @@ fn sha256_hex(bytes: &[u8]) -> String {
 
 fn sanitize_filename(s: &str) -> String {
     s.chars()
-        .map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -728,16 +1025,43 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
     let layer = doc.get_page(page1).get_layer(layer1);
 
     // Fontes intégrées (aucun fichier requis)
-    let f  = doc.add_builtin_font(BuiltinFont::Helvetica)
+    let f = doc
+        .add_builtin_font(BuiltinFont::Helvetica)
         .map_err(|e| anyhow::anyhow!("font: {}", e))?;
-    let fb = doc.add_builtin_font(BuiltinFont::HelveticaBold)
+    let fb = doc
+        .add_builtin_font(BuiltinFont::HelveticaBold)
         .map_err(|e| anyhow::anyhow!("font bold: {}", e))?;
 
-    let navy  = Color::Rgb(Rgb { r: 0.106, g: 0.227, b: 0.361, icc_profile: None });
-    let white = Color::Rgb(Rgb { r: 1.0,   g: 1.0,   b: 1.0,   icc_profile: None });
-    let black = Color::Rgb(Rgb { r: 0.0,   g: 0.0,   b: 0.0,   icc_profile: None });
-    let lgray = Color::Rgb(Rgb { r: 0.94,  g: 0.95,  b: 0.96,  icc_profile: None });
-    let mgray = Color::Rgb(Rgb { r: 0.55,  g: 0.55,  b: 0.55,  icc_profile: None });
+    let navy = Color::Rgb(Rgb {
+        r: 0.106,
+        g: 0.227,
+        b: 0.361,
+        icc_profile: None,
+    });
+    let white = Color::Rgb(Rgb {
+        r: 1.0,
+        g: 1.0,
+        b: 1.0,
+        icc_profile: None,
+    });
+    let black = Color::Rgb(Rgb {
+        r: 0.0,
+        g: 0.0,
+        b: 0.0,
+        icc_profile: None,
+    });
+    let lgray = Color::Rgb(Rgb {
+        r: 0.94,
+        g: 0.95,
+        b: 0.96,
+        icc_profile: None,
+    });
+    let mgray = Color::Rgb(Rgb {
+        r: 0.55,
+        g: 0.55,
+        b: 0.55,
+        icc_profile: None,
+    });
 
     let today = chrono::Utc::now().format("%d/%m/%Y").to_string();
     let ref_str = format!("Ref. ATLAS-{}", data.mission_code);
@@ -747,26 +1071,38 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
 
     layer.set_fill_color(white.clone());
     layer.use_text("ORDRE DE MISSION", 18.0, Mm(14.0), Mm(283.5), &fb);
-    layer.use_text("Republique Togolaise — Programme Atlas Geotechnique Togo", 8.5, Mm(14.0), Mm(277.0), &f);
+    layer.use_text(
+        "IntrepidCore — Programme Atlas Geotechnique Togo",
+        8.5,
+        Mm(14.0),
+        Mm(277.0),
+        &f,
+    );
     layer.use_text(&ref_str, 8.0, Mm(133.0), Mm(284.5), &f);
     layer.use_text(&format!("Emis le {}", today), 8.0, Mm(133.0), Mm(279.5), &f);
 
     // ── Bande grise légère sous l'en-tête ────────────────────────────────────
     fill_rect(&layer, lgray.clone(), 0.0, 268.0, 210.0, 273.0);
     layer.set_fill_color(navy.clone());
-    layer.use_text("DOCUMENT OFFICIEL — A CONSERVER POUR LA DUREE DE LA MISSION", 7.5, Mm(14.0), Mm(269.5), &fb);
+    layer.use_text(
+        "DOCUMENT OFFICIEL — A CONSERVER POUR LA DUREE DE LA MISSION",
+        7.5,
+        Mm(14.0),
+        Mm(269.5),
+        &fb,
+    );
 
     // ── Contenu — deux colonnes ───────────────────────────────────────────────
     // Colonne gauche : x 14..125mm
     // Colonne droite  : x 133..196mm (QR code)
 
-    let lx  = 14.0_f64; // left x
-    let vx  = 72.0_f64; // value x
+    let lx = 14.0_f64; // left x
+    let vx = 72.0_f64; // value x
     let mut y = 260.0_f64;
 
-    let row_h    = 5.0_f64;  // hauteur d'une ligne de données
-    let sec_gap  = 3.5_f64;  // espace entre sections
-    let sec_size = 8.0_f64;  // taille police section header
+    let row_h = 5.0_f64; // hauteur d'une ligne de données
+    let sec_gap = 3.5_f64; // espace entre sections
+    let sec_size = 8.0_f64; // taille police section header
 
     // Helper macros inline
     macro_rules! sec {
@@ -782,7 +1118,10 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
                     (Point::new(Mm(lx), Mm(y)), false),
                     (Point::new(Mm(123.0), Mm(y)), false),
                 ],
-                is_closed: false, has_fill: false, has_stroke: true, is_clipping_path: false,
+                is_closed: false,
+                has_fill: false,
+                has_stroke: true,
+                is_clipping_path: false,
             });
             y -= row_h;
         }};
@@ -811,20 +1150,27 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
     // ── Section BENEFICIAIRE ──────────────────────────────────────────────────
     sec!("BENEFICIAIRE");
     let role_label = match data.assignment_role.as_str() {
-        "primary"   => "Operateur principal",
+        "primary" => "Operateur principal",
         "assistant" => "Operateur assistant",
-        "observer"  => "Observateur",
-        other       => other,
+        "observer" => "Observateur",
+        other => other,
     };
     rowb!("Nom complet", &data.student_name);
-    row!("Matricule",    &if data.matricule.is_empty() { "—".to_string() } else { data.matricule.clone() });
-    row!("Role",         role_label);
-    row!("Email",        &data.student_email);
+    row!(
+        "Matricule",
+        &if data.matricule.is_empty() {
+            "—".to_string()
+        } else {
+            data.matricule.clone()
+        }
+    );
+    row!("Role", role_label);
+    row!("Email", &data.student_email);
     y -= sec_gap;
 
     // ── Section MISSION ───────────────────────────────────────────────────────
     sec!("MISSION");
-    rowb!("Code",   &data.mission_code);
+    rowb!("Code", &data.mission_code);
 
     // Titre : wrap sur 2-3 lignes par mots (max 34 chars/ligne — colonne valeur = 62mm à 8pt)
     {
@@ -840,10 +1186,14 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
             } else {
                 lines.push(current.clone());
                 current = word.to_string();
-                if lines.len() == 2 { break; }
+                if lines.len() == 2 {
+                    break;
+                }
             }
         }
-        if !current.is_empty() && lines.len() < 3 { lines.push(current); }
+        if !current.is_empty() && lines.len() < 3 {
+            lines.push(current);
+        }
 
         // Ligne 1
         layer.set_fill_color(mgray.clone());
@@ -862,19 +1212,22 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
     }
 
     let theme_fr = match data.mission_theme.as_str() {
-        "reconnaissance"  => "Reconnaissance geotechnique",
+        "reconnaissance" => "Reconnaissance geotechnique",
         "etude_detaillee" => "Etude geotechnique detaillee",
-        "stabilisation"   => "Stabilisation / Traitement des sols",
-        "synthese"        => "Synthese bibliographique",
-        "controle"        => "Controle et surveillance",
-        "fondation"       => "Etudes de fondations",
-        "voirie"          => "Voirie et infrastructure routiere",
-        "hydraulique"     => "Hydraulique et drainage",
-        "risque"          => "Risques geologiques",
-        other             => other,
+        "stabilisation" => "Stabilisation / Traitement des sols",
+        "synthese" => "Synthese bibliographique",
+        "controle" => "Controle et surveillance",
+        "fondation" => "Etudes de fondations",
+        "voirie" => "Voirie et infrastructure routiere",
+        "hydraulique" => "Hydraulique et drainage",
+        "risque" => "Risques geologiques",
+        other => other,
     };
     row!("Theme", theme_fr);
-    let fmt_d = |d: Option<chrono::NaiveDate>| d.map(|x| x.format("%d/%m/%Y").to_string()).unwrap_or_else(|| "—".to_string());
+    let fmt_d = |d: Option<chrono::NaiveDate>| {
+        d.map(|x| x.format("%d/%m/%Y").to_string())
+            .unwrap_or_else(|| "—".to_string())
+    };
     let period = format!("{} au {}", fmt_d(data.start_date), fmt_d(data.end_date));
     row!("Periode", &period);
     y -= sec_gap;
@@ -882,9 +1235,15 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
     // ── Section ZONE D'INTERVENTION ──────────────────────────────────────────
     sec!("ZONE D'INTERVENTION");
     rowb!("Code maille", &data.maille_code);
-    if let Some(r) = &data.region    { row!("Region", r); }
-    if let Some(p) = &data.prefecture { row!("Prefecture", p); }
-    if let Some(c) = &data.canton    { row!("Canton", c); }
+    if let Some(r) = &data.region {
+        row!("Region", r);
+    }
+    if let Some(p) = &data.prefecture {
+        row!("Prefecture", p);
+    }
+    if let Some(c) = &data.canton {
+        row!("Canton", c);
+    }
     if let (Some(la), Some(lo)) = (data.lat, data.lon) {
         row!("Centroide WGS84", &format!("{:.5} N,  {:.5} E", la, lo));
     }
@@ -894,10 +1253,23 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
     if y > 50.0 {
         sec!("PROTOCOLE DE RECONNAISSANCE");
         let nb = data.expected_sondages.unwrap_or(0);
-        row!("Sondages attendus", &if nb > 0 { nb.to_string() } else { "A definir".to_string() });
-        if let Some(h1) = data.depth_h1_m { row!("Profondeur H1", &format!("{:.1} m", h1)); }
-        if let Some(h2) = data.depth_h2_m { row!("Profondeur H2", &format!("{:.1} m", h2)); }
-        if let Some(h3) = data.depth_h3_m { row!("Profondeur H3", &format!("{:.1} m", h3)); }
+        row!(
+            "Sondages attendus",
+            &if nb > 0 {
+                nb.to_string()
+            } else {
+                "A definir".to_string()
+            }
+        );
+        if let Some(h1) = data.depth_h1_m {
+            row!("Profondeur H1", &format!("{:.1} m", h1));
+        }
+        if let Some(h2) = data.depth_h2_m {
+            row!("Profondeur H2", &format!("{:.1} m", h2));
+        }
+        if let Some(h3) = data.depth_h3_m {
+            row!("Profondeur H3", &format!("{:.1} m", h3));
+        }
         y -= sec_gap;
     }
 
@@ -908,21 +1280,104 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
         // En-tête tableau
         fill_rect(&layer, lgray.clone(), lx - 0.5, y - 1.0, 123.5, y + 3.5);
         layer.set_fill_color(navy.clone());
-        layer.use_text("N",        7.0, Mm(lx),       Mm(y), &fb);
-        layer.use_text("Label",    7.0, Mm(lx + 8.0), Mm(y), &fb);
+        layer.use_text("N", 7.0, Mm(lx), Mm(y), &fb);
+        layer.use_text("Label", 7.0, Mm(lx + 8.0), Mm(y), &fb);
         layer.use_text("Latitude", 7.0, Mm(lx + 40.0), Mm(y), &fb);
-        layer.use_text("Longitude",7.0, Mm(lx + 68.0), Mm(y), &fb);
+        layer.use_text("Longitude", 7.0, Mm(lx + 68.0), Mm(y), &fb);
         y -= 4.5;
 
         for (idx, sp) in data.sondage_points.iter().enumerate() {
-            if y < 30.0 { break; }
+            if y < 30.0 {
+                break;
+            }
             layer.set_fill_color(black.clone());
             let num_str = (idx + 1).to_string();
             layer.use_text(&num_str, 7.5, Mm(lx), Mm(y), &f);
-            layer.use_text(sp.label.as_deref().unwrap_or("—"), 7.5, Mm(lx + 8.0), Mm(y), &f);
+            layer.use_text(
+                sp.label.as_deref().unwrap_or("—"),
+                7.5,
+                Mm(lx + 8.0),
+                Mm(y),
+                &f,
+            );
             layer.use_text(&format!("{:.5}", sp.lat), 7.5, Mm(lx + 40.0), Mm(y), &f);
             layer.use_text(&format!("{:.5}", sp.lon), 7.5, Mm(lx + 68.0), Mm(y), &f);
             y -= 4.0;
+        }
+        y -= sec_gap;
+
+        // QR par point : scan direct vers Google Maps, plus rapide et plus fiable
+        // sur le terrain que la saisie manuelle des coordonnees du tableau
+        // ci-dessus. Grille adaptative selon l'espace restant sur la page — le
+        // tableau texte reste la reference complete si tous les points ne
+        // tiennent pas en QR.
+        let qr_size = 20.0_f64;
+        let card_w = 41.0_f64;
+        let card_h = qr_size + 15.0;
+        let cols = 3usize;
+        let n_shown = {
+            let avail_rows = ((y - 34.0) / card_h).floor().max(0.0) as usize;
+            (avail_rows * cols).min(data.sondage_points.len())
+        };
+
+        if n_shown > 0 {
+            sec!("SCAN GPS DIRECT (par point)");
+            for (idx, sp) in data.sondage_points.iter().take(n_shown).enumerate() {
+                let col = idx % cols;
+                let row = idx / cols;
+                let cx = lx + col as f64 * card_w;
+                let cy = y - (row as f64 * card_h);
+
+                let maps_url = format!(
+                    "https://www.google.com/maps?q={:.6},{:.6}&z=18",
+                    sp.lat, sp.lon
+                );
+
+                layer.set_fill_color(navy.clone());
+                let card_label = sp.label.as_deref().unwrap_or("—");
+                layer.use_text(
+                    &format!("{} — {}", idx + 1, card_label),
+                    7.0,
+                    Mm(cx),
+                    Mm(cy),
+                    &fb,
+                );
+
+                draw_qr_on_layer(&layer, &maps_url, cx, cy - qr_size - 1.5, qr_size);
+
+                layer.set_fill_color(black.clone());
+                layer.use_text(
+                    &format!("{:.5} N", sp.lat),
+                    6.5,
+                    Mm(cx),
+                    Mm(cy - qr_size - 5.0),
+                    &f,
+                );
+                layer.use_text(
+                    &format!("{:.5} E", sp.lon),
+                    6.5,
+                    Mm(cx),
+                    Mm(cy - qr_size - 8.5),
+                    &f,
+                );
+            }
+            let rows_used = (n_shown + cols - 1) / cols;
+            y -= rows_used as f64 * card_h;
+
+            if n_shown < data.sondage_points.len() {
+                layer.set_fill_color(mgray.clone());
+                layer.use_text(
+                    &format!(
+                        "+{} point(s) supplementaire(s) : coordonnees dans le tableau ci-dessus",
+                        data.sondage_points.len() - n_shown
+                    ),
+                    6.5,
+                    Mm(lx),
+                    Mm(y),
+                    &f,
+                );
+                y -= 4.0;
+            }
         }
         y -= sec_gap;
     }
@@ -935,7 +1390,7 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
             row!("Contact email", &data.supervisor_email);
         }
         if !data.supervisor_phone.is_empty() {
-            row!("Telephone",  &data.supervisor_phone);
+            row!("Telephone", &data.supervisor_phone);
         }
         y -= sec_gap;
     }
@@ -943,16 +1398,28 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
     // ── QR Code (colonne droite) ──────────────────────────────────────────────
     if let (Some(la), Some(lo)) = (data.lat, data.lon) {
         let maps_url = format!("https://www.google.com/maps?q={:.6},{:.6}&z=14", la, lo);
-        let qr_x    = 134.0_f64;
-        let qr_y    = 200.0_f64;
+        let qr_x = 134.0_f64;
+        let qr_y = 200.0_f64;
         let qr_size = 45.0_f64;
 
         draw_qr_on_layer(&layer, &maps_url, qr_x, qr_y, qr_size);
 
         layer.set_fill_color(navy.clone());
-        layer.use_text("Localisation GPS", 7.5, Mm(qr_x), Mm(qr_y + qr_size + 3.5), &fb);
+        layer.use_text(
+            "Localisation GPS",
+            7.5,
+            Mm(qr_x),
+            Mm(qr_y + qr_size + 3.5),
+            &fb,
+        );
         layer.set_fill_color(mgray.clone());
-        layer.use_text("Google Maps — scanner le QR", 7.0, Mm(qr_x), Mm(qr_y + qr_size + 0.5), &f);
+        layer.use_text(
+            "Google Maps — scanner le QR",
+            7.0,
+            Mm(qr_x),
+            Mm(qr_y + qr_size + 0.5),
+            &f,
+        );
         layer.set_fill_color(black.clone());
         layer.use_text(&format!("{:.5} N", la), 7.5, Mm(qr_x), Mm(qr_y - 5.0), &f);
         layer.use_text(&format!("{:.5} E", lo), 7.5, Mm(qr_x), Mm(qr_y - 9.0), &f);
@@ -960,21 +1427,43 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
 
     // ── Pied de page ──────────────────────────────────────────────────────────
     // Ligne séparatrice
-    layer.set_fill_color(Color::Rgb(Rgb { r: 0.78, g: 0.78, b: 0.78, icc_profile: None }));
-    layer.set_outline_color(Color::Rgb(Rgb { r: 0.78, g: 0.78, b: 0.78, icc_profile: None }));
+    layer.set_fill_color(Color::Rgb(Rgb {
+        r: 0.78,
+        g: 0.78,
+        b: 0.78,
+        icc_profile: None,
+    }));
+    layer.set_outline_color(Color::Rgb(Rgb {
+        r: 0.78,
+        g: 0.78,
+        b: 0.78,
+        icc_profile: None,
+    }));
     layer.add_shape(Line {
         points: vec![
             (Point::new(Mm(14.0), Mm(24.0)), false),
             (Point::new(Mm(196.0), Mm(24.0)), false),
         ],
-        is_closed: false, has_fill: false, has_stroke: true, is_clipping_path: false,
+        is_closed: false,
+        has_fill: false,
+        has_stroke: true,
+        is_clipping_path: false,
     });
 
     layer.set_fill_color(mgray.clone());
     let notif_ref = format!("ATLAS-{}-{}", data.mission_code, data.maille_code);
     layer.use_text("Ce document constitue un ordre de mission officiel. A conserver et presenter sur le terrain.", 7.0, Mm(14.0), Mm(20.5), &f);
-    layer.use_text(&format!("Ref : {}   |   ID job : {}   |   Atlas Geotechnique Togo — DGTP/MTPTMU",
-        notif_ref, &job_id.to_string()[..8]), 6.5, Mm(14.0), Mm(16.5), &f);
+    layer.use_text(
+        &format!(
+            "Ref : {}   |   ID job : {}   |   Atlas Geotechnique Togo — IntrepidCore",
+            notif_ref,
+            &job_id.to_string()[..8]
+        ),
+        6.5,
+        Mm(14.0),
+        Mm(16.5),
+        &f,
+    );
 
     // ── Sauvegarde ────────────────────────────────────────────────────────────
     let mut buf = Vec::new();
@@ -987,7 +1476,14 @@ fn build_ordre_de_mission_pdf(data: &EmailData, job_id: Uuid) -> anyhow::Result<
 }
 
 /// Dessine un rectangle rempli (couleur définie avant l'appel via fill_rect)
-fn fill_rect(layer: &printpdf::PdfLayerReference, color: Color, x0: f64, y0: f64, x1: f64, y1: f64) {
+fn fill_rect(
+    layer: &printpdf::PdfLayerReference,
+    color: Color,
+    x0: f64,
+    y0: f64,
+    x1: f64,
+    y1: f64,
+) {
     layer.set_fill_color(color.clone());
     layer.set_outline_color(color);
     layer.add_shape(Line {
@@ -1005,7 +1501,13 @@ fn fill_rect(layer: &printpdf::PdfLayerReference, color: Color, x0: f64, y0: f64
 }
 
 /// Dessine un QR code en tant que grille de petits rectangles noirs
-fn draw_qr_on_layer(layer: &printpdf::PdfLayerReference, url: &str, x_mm: f64, y_mm: f64, size_mm: f64) {
+fn draw_qr_on_layer(
+    layer: &printpdf::PdfLayerReference,
+    url: &str,
+    x_mm: f64,
+    y_mm: f64,
+    size_mm: f64,
+) {
     let code = match QrCode::new(url.as_bytes()) {
         Ok(c) => c,
         Err(_) => return,
@@ -1021,9 +1523,18 @@ fn draw_qr_on_layer(layer: &printpdf::PdfLayerReference, url: &str, x_mm: f64, y
             let x = x_mm + col as f64 * module_size;
             // PDF : Y=0 en bas — row 0 (haut du QR) → y_mm + (width-1-row)*module_size
             let y = y_mm + (width - 1 - row) as f64 * module_size;
-            fill_rect(layer,
-                Color::Rgb(Rgb { r: 0.0, g: 0.0, b: 0.0, icc_profile: None }),
-                x, y, x + module_size, y + module_size,
+            fill_rect(
+                layer,
+                Color::Rgb(Rgb {
+                    r: 0.0,
+                    g: 0.0,
+                    b: 0.0,
+                    icc_profile: None,
+                }),
+                x,
+                y,
+                x + module_size,
+                y + module_size,
             );
         }
     }
@@ -1040,25 +1551,40 @@ async fn send_one_email(
     to_name: &str,
     subject: &str,
     html_body: &str,
-    zip_attachment:  Option<(Vec<u8>, String)>,
-    pdf_attachment:  Option<(Vec<u8>, String)>,
+    zip_attachment: Option<(Vec<u8>, String)>,
+    pdf_attachment: Option<(Vec<u8>, String)>,
+    atlaspack_attachment: Option<(Vec<u8>, String)>,
 ) -> anyhow::Result<()> {
-    let from_mb = from.parse().map_err(|e| anyhow::anyhow!("from invalide: {}", e))?;
-    let to_mb   = format!("{} <{}>", to_name, to_email)
+    let from_mb = from
+        .parse()
+        .map_err(|e| anyhow::anyhow!("from invalide: {}", e))?;
+    let to_mb = format!("{} <{}>", to_name, to_email)
         .parse()
         .map_err(|e| anyhow::anyhow!("to invalide: {}", e))?;
 
-    let email = if zip_attachment.is_some() || pdf_attachment.is_some() {
-        let mut mp = MultiPart::mixed()
-            .singlepart(SinglePart::html(html_body.to_string()));
+    let has_attachments =
+        zip_attachment.is_some() || pdf_attachment.is_some() || atlaspack_attachment.is_some();
+
+    let email = if has_attachments {
+        let mut mp = MultiPart::mixed().singlepart(SinglePart::html(html_body.to_string()));
 
         if let Some((pdf_bytes, pdf_name)) = pdf_attachment {
-            let ct = "application/pdf".parse::<ContentType>().unwrap_or(ContentType::TEXT_PLAIN);
+            let ct = "application/pdf"
+                .parse::<ContentType>()
+                .unwrap_or(ContentType::TEXT_PLAIN);
             mp = mp.singlepart(Attachment::new(pdf_name).body(pdf_bytes, ct));
         }
         if let Some((zip_bytes, zip_name)) = zip_attachment {
-            let ct = "application/zip".parse::<ContentType>().unwrap_or(ContentType::TEXT_PLAIN);
+            let ct = "application/zip"
+                .parse::<ContentType>()
+                .unwrap_or(ContentType::TEXT_PLAIN);
             mp = mp.singlepart(Attachment::new(zip_name).body(zip_bytes, ct));
+        }
+        if let Some((atlaspack_bytes, atlaspack_name)) = atlaspack_attachment {
+            let ct = "application/octet-stream"
+                .parse::<ContentType>()
+                .unwrap_or(ContentType::TEXT_PLAIN);
+            mp = mp.singlepart(Attachment::new(atlaspack_name).body(atlaspack_bytes, ct));
         }
 
         Message::builder()
@@ -1077,7 +1603,10 @@ async fn send_one_email(
             .map_err(|e| anyhow::anyhow!("build message: {}", e))?
     };
 
-    transport.send(email).await.map_err(|e| anyhow::anyhow!("SMTP: {}", e))?;
+    transport
+        .send(email)
+        .await
+        .map_err(|e| anyhow::anyhow!("SMTP: {}", e))?;
     Ok(())
 }
 
@@ -1091,46 +1620,66 @@ fn build_email_html(
     include_bbox: bool,
     job_id: Uuid,
     geojson_sha256: &str,
+    // Mot de passe fraîchement attribué à cet opérateur, s'il y en a un dans
+    // ce job. Il ouvre à la fois son compte et son paquet .atlaspack.
+    one_time_password: Option<&str>,
+    // (nom de fichier, taille en octets) si un .atlaspack a pu être joint.
+    atlaspack_info: Option<(&str, usize)>,
+    // (URL de téléchargement, sha256 de l'APK, taille en octets) si un lien
+    // d'installation peut être proposé.
+    apk_link: Option<(&str, &str, u64)>,
 ) -> String {
     let today = chrono::Utc::now().format("%d/%m/%Y").to_string();
     let notification_ref = format!("ATLAS-{}-{}", &data.mission_code, &data.maille_code);
     let job_id_short = &job_id.to_string()[..8];
 
     let role_label = match data.assignment_role.as_str() {
-        "primary"   => "Opérateur principal",
+        "primary" => "Opérateur principal",
         "assistant" => "Opérateur assistant",
-        "observer"  => "Observateur",
-        other       => other,
+        "observer" => "Observateur",
+        other => other,
     };
 
     let theme_label = match data.mission_theme.as_str() {
-        "reconnaissance"    => "Reconnaissance géotechnique",
-        "etude_detaillee"   => "Étude détaillée",
-        "stabilisation"     => "Stabilisation de sol",
-        "synthese"          => "Synthèse géotechnique",
-        "controle"          => "Contrôle et suivi",
-        other               => other,
+        "reconnaissance" => "Reconnaissance géotechnique",
+        "etude_detaillee" => "Étude détaillée",
+        "stabilisation" => "Stabilisation de sol",
+        "synthese" => "Synthèse géotechnique",
+        "controle" => "Contrôle et suivi",
+        other => other,
     };
 
     let fmt_date = |d: Option<chrono::NaiveDate>| {
         d.map(|x| x.format("%d/%m/%Y").to_string())
-         .unwrap_or_else(|| "—".to_string())
+            .unwrap_or_else(|| "—".to_string())
     };
     let date_debut = fmt_date(data.start_date);
-    let date_fin   = fmt_date(data.end_date);
+    let date_fin = fmt_date(data.end_date);
 
     // ── Bloc 1 — Identité mission ─────────────────────────────────────────────
-    let objectifs_row = data.mission_objectifs.as_deref().filter(|s| !s.is_empty())
+    let objectifs_row = data
+        .mission_objectifs
+        .as_deref()
+        .filter(|s| !s.is_empty())
         .map(|obj| format!("{}", tr_row("Objectifs", obj, "")))
         .unwrap_or_default();
 
-    let notes_row = data.assignment_notes.as_deref().filter(|s| !s.is_empty())
-        .map(|n| format!(
-            r#"<tr style="background:#fefce8">
+    let notes_row = data
+        .assignment_notes
+        .as_deref()
+        .filter(|s| !s.is_empty())
+        .map(|n| {
+            format!(
+                r#"<tr style="background:#fefce8">
               <td style="{}">{}</td>
               <td style="{}">{}</td>
-            </tr>"#, TD_LBL, "Notes d'affectation", TD_VAL, html_escape(n)
-        ))
+            </tr>"#,
+                TD_LBL,
+                "Notes d'affectation",
+                TD_VAL,
+                html_escape(n)
+            )
+        })
         .unwrap_or_default();
 
     let instructions_row = if !instructions.is_empty() {
@@ -1138,16 +1687,28 @@ fn build_email_html(
             r#"<tr style="background:#fefce8">
               <td style="{}">{}</td>
               <td style="{}">{}</td>
-            </tr>"#, TD_LBL, "Instructions", TD_VAL, html_escape(instructions)
+            </tr>"#,
+            TD_LBL,
+            "Instructions",
+            TD_VAL,
+            html_escape(instructions)
         )
-    } else { String::new() };
+    } else {
+        String::new()
+    };
 
     // ── Bloc 2 — Localisation ─────────────────────────────────────────────────
     let admin_rows = {
         let mut s = String::new();
-        if let Some(r) = &data.region     { s.push_str(&tr_row("Région", r, "")); }
-        if let Some(p) = &data.prefecture { s.push_str(&tr_row("Préfecture", p, "")); }
-        if let Some(c) = &data.canton     { s.push_str(&tr_row("Canton", c, "")); }
+        if let Some(r) = &data.region {
+            s.push_str(&tr_row("Région", r, ""));
+        }
+        if let Some(p) = &data.prefecture {
+            s.push_str(&tr_row("Préfecture", p, ""));
+        }
+        if let Some(c) = &data.canton {
+            s.push_str(&tr_row("Canton", c, ""));
+        }
         s
     };
 
@@ -1165,9 +1726,12 @@ fn build_email_html(
             TD_LBL, "Centroïde WGS84", TD_VAL, centroid_str
         );
         if include_bbox {
-            if let (Some(x0), Some(y0), Some(x1), Some(y1)) =
-                (data.bbox_xmin, data.bbox_ymin, data.bbox_xmax, data.bbox_ymax)
-            {
+            if let (Some(x0), Some(y0), Some(x1), Some(y1)) = (
+                data.bbox_xmin,
+                data.bbox_ymin,
+                data.bbox_xmax,
+                data.bbox_ymax,
+            ) {
                 s.push_str(&format!(
                     r#"<tr>
                       <td style="{}">Emprise (BBox)</td>
@@ -1178,30 +1742,66 @@ fn build_email_html(
             }
         }
         s
-    } else { String::new() };
+    } else {
+        String::new()
+    };
 
     // ── Bloc 3 — Contexte physique et climatique ──────────────────────────────
     let terrain_rows = {
         let mut s = String::new();
         if let Some(alt) = data.altitude_mean {
-            let desc = if alt < 50.0 { "plaine" } else if alt < 300.0 { "basse altitude" } else { "altitude moyenne" };
-            s.push_str(&tr_row("Altitude moyenne", &format!("{:.0} m ({})", alt, desc), ""));
+            let desc = if alt < 50.0 {
+                "plaine"
+            } else if alt < 300.0 {
+                "basse altitude"
+            } else {
+                "altitude moyenne"
+            };
+            s.push_str(&tr_row(
+                "Altitude moyenne",
+                &format!("{:.0} m ({})", alt, desc),
+                "",
+            ));
         }
         if let Some(slope) = data.dem_slope_mean_deg {
-            let desc = if slope < 2.0 { "quasi-plat" } else if slope < 10.0 { "légèrement pentu" } else { "pentu" };
-            s.push_str(&tr_row("Pente moyenne", &format!("{:.1}° ({})", slope, desc), ""));
+            let desc = if slope < 2.0 {
+                "quasi-plat"
+            } else if slope < 10.0 {
+                "légèrement pentu"
+            } else {
+                "pentu"
+            };
+            s.push_str(&tr_row(
+                "Pente moyenne",
+                &format!("{:.1}° ({})", slope, desc),
+                "",
+            ));
         }
         if let Some(river) = data.distance_river_m {
-            let desc = if river < 500.0 { "Attention — proche du réseau hydrographique" }
-                       else if river < 2000.0 { "Réseau hydrographique à proximité" }
-                       else { "Éloigné du réseau hydrographique" };
-            s.push_str(&tr_row("Distance rivière", &format!("{:.0} m — {}", river, desc), ""));
+            let desc = if river < 500.0 {
+                "Attention — proche du réseau hydrographique"
+            } else if river < 2000.0 {
+                "Réseau hydrographique à proximité"
+            } else {
+                "Éloigné du réseau hydrographique"
+            };
+            s.push_str(&tr_row(
+                "Distance rivière",
+                &format!("{:.0} m — {}", river, desc),
+                "",
+            ));
         }
         if let Some(pa) = data.prec_annual {
             let ps = data.prec_dry.unwrap_or(0.0);
             let pw = data.prec_wet.unwrap_or(0.0);
-            s.push_str(&tr_row("Précipitations annuelles",
-                &format!("{:.0} mm  (saison sèche : {:.0} mm | saison humide : {:.0} mm)", pa, ps, pw), ""));
+            s.push_str(&tr_row(
+                "Précipitations annuelles",
+                &format!(
+                    "{:.0} mm  (saison sèche : {:.0} mm | saison humide : {:.0} mm)",
+                    pa, ps, pw
+                ),
+                "",
+            ));
         }
         s
     };
@@ -1210,39 +1810,36 @@ fn build_email_html(
     let geo_context_rows = {
         let mut s = String::new();
         if let Some(g) = &data.geologie {
-            if !g.is_empty() { s.push_str(&tr_row("Formation géologique", g, "")); }
-        }
-        if let Some(p) = &data.pedologie {
-            if !p.is_empty() { s.push_str(&tr_row("Type de sol (pédologique)", p, "")); }
+            if !g.is_empty() {
+                s.push_str(&tr_row("Formation géologique", g, ""));
+            }
         }
         if let Some(rg) = &data.risque_gonflement {
             if !rg.is_empty() {
-                let rg_style = if rg.to_lowercase().contains("fort") { "color:#b91c1c;font-weight:600" }
-                               else if rg.to_lowercase().contains("moyen") { "color:#b45309;font-weight:600" }
-                               else { "" };
+                let rg_style = if rg.to_lowercase().contains("fort") {
+                    "color:#b91c1c;font-weight:600"
+                } else if rg.to_lowercase().contains("moyen") {
+                    "color:#b45309;font-weight:600"
+                } else {
+                    ""
+                };
                 s.push_str(&format!(
                     r#"<tr>
                       <td style="{}">{}</td>
                       <td style="{};{}">{}</td>
                     </tr>"#,
-                    TD_LBL, "Risque de gonflement", TD_VAL, rg_style, html_escape(rg)
+                    TD_LBL,
+                    "Risque de gonflement",
+                    TD_VAL,
+                    rg_style,
+                    html_escape(rg)
                 ));
             }
         }
-        if let Some(vbs) = data.vbs_rk_h1 {
-            let note = if vbs > 5.0 { "argile très gonflante" }
-                       else if vbs > 2.5 { "argile gonflante" }
-                       else if vbs > 0.5 { "sol limoneux-argileux" }
-                       else { "sol sableux non plastique" };
-            s.push_str(&tr_row("VBS indicatif H1", &format!("{:.2} — {}", vbs, note), ""));
-        }
-        if let Some(ip) = data.ip_rk_h1 {
-            let cl = if ip > 35.0 { "Très plastique (A7)" }
-                     else if ip > 25.0 { "Plastique (A6)" }
-                     else if ip > 17.0 { "Moyennement plastique (A4-A5)" }
-                     else { "Peu plastique (A2-A3)" };
-            s.push_str(&tr_row("Indice de plasticité H1", &format!("{:.1}% — {}", ip, cl), ""));
-        }
+        // VBS/IP indicatifs volontairement exclus du mail : ce sont des données
+        // géotechniques propriétaires appelées à terme à remplacer les essais
+        // labo commercialisés — ne doivent jamais transiter dans un canal
+        // public/externe (mail, ZIP GeoJSON). Cf. mémoire projet.
         s
     };
 
@@ -1250,17 +1847,36 @@ fn build_email_html(
     let protocol_rows = {
         let mut html = String::new();
         let expected = data.expected_sondages.unwrap_or(0);
-        html.push_str(&tr_row("Nombre de sondages attendus",
-            &if expected > 0 { format!("{}", expected) } else { "À définir sur site".to_string() }, ""));
+        html.push_str(&tr_row(
+            "Nombre de sondages attendus",
+            &if expected > 0 {
+                format!("{}", expected)
+            } else {
+                "À définir sur site".to_string()
+            },
+            "",
+        ));
 
         if let Some(h1) = data.depth_h1_m {
-            html.push_str(&tr_row("Profondeur indicative H1", &format!("{:.1} m", h1), ""));
+            html.push_str(&tr_row(
+                "Profondeur indicative H1",
+                &format!("{:.1} m", h1),
+                "",
+            ));
         }
         if let Some(h2) = data.depth_h2_m {
-            html.push_str(&tr_row("Profondeur indicative H2", &format!("{:.1} m", h2), ""));
+            html.push_str(&tr_row(
+                "Profondeur indicative H2",
+                &format!("{:.1} m", h2),
+                "",
+            ));
         }
         if let Some(h3) = data.depth_h3_m {
-            html.push_str(&tr_row("Profondeur indicative H3", &format!("{:.1} m", h3), ""));
+            html.push_str(&tr_row(
+                "Profondeur indicative H3",
+                &format!("{:.1} m", h3),
+                "",
+            ));
         }
 
         // Tableau des localisations GPS de sondages
@@ -1283,8 +1899,15 @@ fn build_email_html(
                 TD_LBL
             ));
             for sp in &data.sondage_points {
-                let gmap = format!("https://www.google.com/maps?q={:.6},{:.6}&z=18", sp.lat, sp.lon);
-                let bg = if sp.numero % 2 == 0 { "background:#f7f9fb" } else { "" };
+                let gmap = format!(
+                    "https://www.google.com/maps?q={:.6},{:.6}&z=18",
+                    sp.lat, sp.lon
+                );
+                let bg = if sp.numero % 2 == 0 {
+                    "background:#f7f9fb"
+                } else {
+                    ""
+                };
                 html.push_str(&format!(
                     r#"<tr style="{}">
                       <td style="padding:5px 8px;border:1px solid #d0d7e2;text-align:center;font-weight:600">{}</td>
@@ -1306,25 +1929,121 @@ fn build_email_html(
 
     // ── Bloc 6 — Données de référence ─────────────────────────────────────────
     let nb = data.nb_sondages_existants;
+    // `localhost` était codé en dur : le lien pointait vers la machine du
+    // destinataire, donc mort pour tout étudiant. On ne publie le lien que si
+    // une URL réellement joignable est configurée ; sinon on l'omet.
+    let plateforme_link = match std::env::var("ATLAS_UI_PUBLIC_BASE_URL")
+        .ok()
+        .map(|s| s.trim().trim_end_matches('/').to_string())
+        .filter(|s| !s.is_empty())
+    {
+        Some(base) => format!(
+            r#" &nbsp;—&nbsp;<a href="{}" style="color:#1a5276;font-weight:600">Consulter la plateforme Atlas &rarr;</a>"#,
+            html_escape(&base)
+        ),
+        None => String::new(),
+    };
     let sondages_block = format!(
         r#"<tr>
           <td style="{}">Sondages dans la base Atlas (maille)</td>
-          <td style="{}">{} sondage{} déjà enregistré{} &nbsp;—&nbsp;
-            <a href="http://localhost:1420" style="color:#1a5276;font-weight:600">Consulter la plateforme Atlas &rarr;</a>
+          <td style="{}">{} sondage{} déjà enregistré{}{}
           </td>
         </tr>"#,
-        TD_LBL, TD_VAL, nb,
+        TD_LBL,
+        TD_VAL,
+        nb,
         if nb > 1 { "s" } else { "" },
-        if nb > 1 { "s" } else { "" }
+        if nb > 1 { "s" } else { "" },
+        plateforme_link
     );
 
     // ── Bloc 7 — Pièces jointes ────────────────────────────────────────────────
-    let pdf_name = format!("OrdresMission-ATLAS-{}.pdf", sanitize_filename(&data.mission_code));
-    let zip_name = format!("ATLAS-{}-{}.zip",
+    let pdf_name = format!(
+        "OrdresMission-ATLAS-{}.pdf",
+        sanitize_filename(&data.mission_code)
+    );
+    let zip_name = format!(
+        "ATLAS-{}-{}.zip",
         sanitize_filename(&data.mission_code),
-        sanitize_filename(&data.maille_code));
-    let sha256_display = if geojson_sha256.is_empty() { "N/A".to_string() }
-                         else { format!("{}…", &geojson_sha256[..32]) };
+        sanitize_filename(&data.maille_code)
+    );
+    let sha256_display = if geojson_sha256.is_empty() {
+        "N/A".to_string()
+    } else {
+        format!("{}…", &geojson_sha256[..32])
+    };
+
+    // ── Identifiants ─────────────────────────────────────────────────────────
+    // Le même secret ouvre le compte en ligne ET le paquet .atlaspack : le
+    // paquet est chiffré à partir du hash du mot de passe. Il est donc donné
+    // ici, à côté du paquet auquel il donne accès.
+    let credentials_row = match one_time_password {
+        Some(pwd) => format!(
+            r#"<div style="margin:14px 0;padding:12px;border:2px solid #1B3A5C;border-radius:6px;background:#f8fafc">
+            <div style="font-weight:700;color:#1B3A5C;margin-bottom:6px">VOS IDENTIFIANTS ATLAS TERRAIN</div>
+            <table style="font-size:13px;border-collapse:collapse">
+              <tr><td style="padding:2px 10px 2px 0;color:#555">Identifiant</td>
+                  <td style="font-family:monospace;font-weight:600">{email}</td></tr>
+              <tr><td style="padding:2px 10px 2px 0;color:#555">Mot de passe</td>
+                  <td style="font-family:monospace;font-weight:700;font-size:15px;letter-spacing:0.5px">{password}</td></tr>
+            </table>
+            <div style="font-size:12px;color:#555;margin-top:8px">
+              Ce mot de passe ouvre <strong>votre compte</strong> et <strong>votre paquet
+              <code>.atlaspack</code></strong> — le paquet est illisible sans lui, même intercepté.
+              Il remplace tout mot de passe précédent : vos sessions ouvertes ont été fermées.
+              <br><strong>Ne le communiquez à personne</strong> et changez-le depuis votre profil
+              après la première connexion.
+            </div>
+          </div>"#,
+            email = html_escape(&data.student_email),
+            password = html_escape(pwd),
+        ),
+        None => String::new(),
+    };
+
+    let atlaspack_row = if let Some((atlaspack_name, atlaspack_size)) = atlaspack_info {
+        format!(
+            r#"<div style="margin-top:6px">
+            <span style="display:inline-block;background:#6d28d9;color:#fff;padding:1px 8px;border-radius:3px;font-size:11px;font-weight:600">ATLASPACK</span>
+            &nbsp;<strong>{name}</strong> &nbsp;<span style="color:#888;font-size:11px">({size_mb:.1} Mo)</span><br>
+            <span style="font-size:12px;color:#555">
+              Paquet chiffré (Argon2id + ChaCha20-Poly1305, signé) contenant vos missions assignées —
+              utilisable entièrement hors-ligne dans l'application Atlas Terrain.<br>
+              Déverrouillage avec <strong>votre email et votre mot de passe personnel</strong> — ce
+              paquet est illisible sans votre identifiant, même intercepté.
+            </span>
+          </div>"#,
+            name = atlaspack_name,
+            size_mb = (atlaspack_size as f64) / 1_048_576.0,
+        )
+    } else {
+        r#"<div style="margin-top:6px;font-size:12px;color:#92400e">
+            Paquet <code>.atlaspack</code> pas encore prêt pour cet opérateur — sa génération a été
+            déclenchée et il sera transmis dans un envoi ultérieur.
+          </div>"#
+            .to_string()
+    };
+
+    let apk_row = if let Some((download_url, apk_sha256, apk_size)) = apk_link {
+        format!(
+            r#"<div style="margin-top:10px;padding-top:10px;border-top:1px dashed #bcd4f0">
+            <span style="display:inline-block;background:#059669;color:#fff;padding:1px 8px;border-radius:3px;font-size:11px;font-weight:600">APPLICATION</span>
+            &nbsp;<strong>Atlas Terrain</strong> &nbsp;<span style="color:#888;font-size:11px">({size_mb:.0} Mo, non joint — trop volumineux pour un envoi fiable par email)</span><br>
+            <span style="font-size:12px;color:#555">
+              Téléchargement : <a href="{url}" style="color:#1a5276">{url}</a><br>
+              <strong>SHA-256 :</strong> <span style="font-family:monospace;font-size:11px">{sha256_short}…</span>
+              &nbsp;— vérifiable avant installation.<br>
+              Une connexion Internet est nécessaire pour le téléchargement et pour la synchronisation ;
+              la collecte sur le terrain fonctionne ensuite entièrement hors-ligne.
+            </span>
+          </div>"#,
+            url = html_escape(download_url),
+            size_mb = (apk_size as f64) / 1_048_576.0,
+            sha256_short = &apk_sha256[..apk_sha256.len().min(32)],
+        )
+    } else {
+        String::new()
+    };
 
     let attachments_block = format!(
         r#"<div style="background:#f0f7ff;border:1px solid #bcd4f0;border-radius:6px;padding:14px;margin:12px 0;line-height:1.8">
@@ -1343,47 +2062,76 @@ fn build_email_html(
               <strong>SHA-256 :</strong> <span style="font-family:monospace;font-size:11px">{sha256_display}</span>
             </span>
           </div>
-        </div>"#,
-        pdf_name = pdf_name, zip_name = zip_name, sha256_display = sha256_display,
+          {atlaspack_row}
+          {apk_row}
+        </div>
+        {credentials_row}"#,
+        pdf_name = pdf_name,
+        zip_name = zip_name,
+        sha256_display = sha256_display,
+        atlaspack_row = atlaspack_row,
+        apk_row = apk_row,
+        credentials_row = credentials_row,
     );
 
     // ── Superviseur ───────────────────────────────────────────────────────────
     let supervisor_block = if !data.supervisor_name.is_empty() {
-        let titre = if data.supervisor_titre.is_empty() { String::new() }
-                    else { format!(" — {}", data.supervisor_titre) };
+        let titre = if data.supervisor_titre.is_empty() {
+            String::new()
+        } else {
+            format!(" — {}", data.supervisor_titre)
+        };
         let email_part = if !data.supervisor_email.is_empty() {
-            format!(r#"&nbsp;<a href="mailto:{0}" style="color:#1a5276">{0}</a>"#, data.supervisor_email)
-        } else { String::new() };
+            format!(
+                r#"&nbsp;<a href="mailto:{0}" style="color:#1a5276">{0}</a>"#,
+                data.supervisor_email
+            )
+        } else {
+            String::new()
+        };
         let phone_part = if !data.supervisor_phone.is_empty() {
             format!(" &nbsp;|&nbsp; <strong>{}</strong>", data.supervisor_phone)
-        } else { String::new() };
+        } else {
+            String::new()
+        };
         format!(
             r#"<div style="background:#f0f4f8;border-left:4px solid #1B3A5C;padding:10px 14px;margin:14px 0;border-radius:0 4px 4px 0">
               <strong>Encadrement :</strong> {}{}<br>
               <span style="font-size:13px">{}{}</span>
             </div>"#,
-            html_escape(&data.supervisor_name), html_escape(&titre), email_part, phone_part
+            html_escape(&data.supervisor_name),
+            html_escape(&titre),
+            email_part,
+            phone_part
         )
-    } else { String::new() };
+    } else {
+        String::new()
+    };
 
     // ── Terrain block conditionnel ────────────────────────────────────────────
-    let terrain_block = if terrain_rows.is_empty() { String::new() } else {
+    let terrain_block = if terrain_rows.is_empty() {
+        String::new()
+    } else {
         format!(
             r#"<h4 style="{SH}">3. Contexte physique et climatique</h4>
             <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px">
             {terrain_rows}
             </table>"#,
-            SH = SH, terrain_rows = terrain_rows
+            SH = SH,
+            terrain_rows = terrain_rows
         )
     };
 
-    let geo_context_block = if geo_context_rows.is_empty() { String::new() } else {
+    let geo_context_block = if geo_context_rows.is_empty() {
+        String::new()
+    } else {
         format!(
             r#"<h4 style="{SH}">4. Contexte géologique et pédologique</h4>
             <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px">
             {geo_context_rows}
             </table>"#,
-            SH = SH, geo_context_rows = geo_context_rows
+            SH = SH,
+            geo_context_rows = geo_context_rows
         )
     };
 
@@ -1412,8 +2160,11 @@ fn build_email_html(
 <!-- EN-TETE -->
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#1B3A5C;border-radius:8px 8px 0 0">
   <tr>
-    <td style="padding:16px 22px">
-      <div style="color:rgba(255,255,255,0.7);font-size:10px;letter-spacing:1.5px;text-transform:uppercase">République Togolaise — DGTP / MTPTMU</div>
+    <td style="padding:16px 22px;width:44px;vertical-align:top">
+      <img src="{logo_data_uri}" alt="IntrepidCore" width="36" height="36" style="display:block;border-radius:4px">
+    </td>
+    <td style="padding:16px 0px">
+      <div style="color:rgba(255,255,255,0.7);font-size:10px;letter-spacing:1.5px;text-transform:uppercase">IntrepidCore</div>
       <div style="color:#fff;font-size:20px;font-weight:700;margin-top:3px;letter-spacing:-0.3px">Atlas Géotechnique Togo</div>
     </td>
     <td style="padding:16px 22px;text-align:right;vertical-align:top">
@@ -1448,10 +2199,6 @@ fn build_email_html(
     <tr>
       <td style="{TD_LBL}">Thème</td>
       <td style="{TD_VAL}">{theme_label}</td>
-    </tr>
-    <tr style="background:#eef2f7">
-      <td style="{TD_LBL}">Matricule / Rôle</td>
-      <td style="{TD_VAL}"><span class="mono">{matricule}</span> &nbsp;—&nbsp; {role_label}</td>
     </tr>
     <tr>
       <td style="{TD_LBL}">Période d'exécution</td>
@@ -1509,46 +2256,46 @@ fn build_email_html(
     <td style="background:#f4f6f9;border:1px solid #dce3ec;border-radius:6px;padding:10px 16px;font-size:11px;color:#64748b;line-height:1.7">
       <strong style="color:#475569">Avertissement de confidentialité</strong><br>
       Ce message est nominatif et exclusivement destiné à <em>{name} ({student_email})</em>.
-      Il contient des données opérationnelles de la DGTP/MTPTMU.
+      Il contient des données opérationnelles d'IntrepidCore.
       Toute diffusion à des tiers non autorisés est interdite.
       En cas de réception par erreur, contactez immédiatement votre superviseur et détruisez ce message.<br>
       <strong>ID notification :</strong> <span class="mono">{job_id_short}…</span>
       &nbsp;|&nbsp;
       <strong>Réf :</strong> <span class="mono">{notification_ref}</span>
-      &nbsp;|&nbsp; Atlas Géotechnique Togo — DGTP/MTPTMU
+      &nbsp;|&nbsp; Atlas Géotechnique Togo — IntrepidCore
     </td>
   </tr>
 </table>
 
 </body>
 </html>"#,
-        notification_ref  = notification_ref,
-        today             = today,
-        name              = html_escape(&data.student_name),
-        role_label        = role_label,
-        SH                = SH,
-        TD_LBL            = TD_LBL,
-        TD_VAL            = TD_VAL,
-        mission_title     = html_escape(&data.mission_title),
-        mission_code      = html_escape(&data.mission_code),
-        theme_label       = theme_label,
-        matricule         = html_escape(&data.matricule),
-        date_debut        = date_debut,
-        date_fin          = date_fin,
-        maille_code       = html_escape(&data.maille_code),
-        admin_rows        = admin_rows,
-        geo_rows          = geo_rows,
-        terrain_block     = terrain_block,
+        notification_ref = notification_ref,
+        logo_data_uri = intrepidcore_logo_data_uri(),
+        today = today,
+        name = html_escape(&data.student_name),
+        role_label = role_label,
+        SH = SH,
+        TD_LBL = TD_LBL,
+        TD_VAL = TD_VAL,
+        mission_title = html_escape(&data.mission_title),
+        mission_code = html_escape(&data.mission_code),
+        theme_label = theme_label,
+        date_debut = date_debut,
+        date_fin = date_fin,
+        maille_code = html_escape(&data.maille_code),
+        admin_rows = admin_rows,
+        geo_rows = geo_rows,
+        terrain_block = terrain_block,
         geo_context_block = geo_context_block,
-        protocol_rows     = protocol_rows,
-        sondages_block    = sondages_block,
+        protocol_rows = protocol_rows,
+        sondages_block = sondages_block,
         attachments_block = attachments_block,
-        supervisor_block  = supervisor_block,
-        objectifs_row     = objectifs_row,
-        notes_row         = notes_row,
-        instructions_row  = instructions_row,
-        student_email     = html_escape(&data.student_email),
-        job_id_short      = job_id_short,
+        supervisor_block = supervisor_block,
+        objectifs_row = objectifs_row,
+        notes_row = notes_row,
+        instructions_row = instructions_row,
+        student_email = html_escape(&data.student_email),
+        job_id_short = job_id_short,
     )
 }
 
@@ -1557,7 +2304,8 @@ fn build_email_html(
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TD_LBL: &str = "padding:9px 13px;border:1px solid #dce3ec;font-weight:600;width:42%;vertical-align:top;background:#f0f4f8;color:#374151;font-size:13px";
-const TD_VAL: &str = "padding:9px 13px;border:1px solid #dce3ec;vertical-align:top;color:#1a202c;font-size:13px";
+const TD_VAL: &str =
+    "padding:9px 13px;border:1px solid #dce3ec;vertical-align:top;color:#1a202c;font-size:13px";
 const SH: &str     = "color:#1B3A5C;border-bottom:2px solid #dce3ec;padding-bottom:6px;font-size:15px;font-weight:600;margin-top:22px;margin-bottom:8px";
 
 fn tr_row(label: &str, value: &str, row_style: &str) -> String {
@@ -1566,15 +2314,29 @@ fn tr_row(label: &str, value: &str, row_style: &str) -> String {
           <td style="{}">{}</td>
           <td style="{}">{}</td>
         </tr>"#,
-        row_style, TD_LBL, label, TD_VAL, html_escape(value)
+        row_style,
+        TD_LBL,
+        label,
+        TD_VAL,
+        html_escape(value)
     )
+}
+
+const INTREPIDCORE_LOGO_PNG: &[u8] = include_bytes!("../../assets/intrepidcore-logo.png");
+
+fn intrepidcore_logo_data_uri() -> String {
+    let b64 = base64::Engine::encode(
+        &base64::engine::general_purpose::STANDARD,
+        INTREPIDCORE_LOGO_PNG,
+    );
+    format!("data:image/png;base64,{}", b64)
 }
 
 fn html_escape(s: &str) -> String {
     s.replace('&', "&amp;")
-     .replace('<', "&lt;")
-     .replace('>', "&gt;")
-     .replace('"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('"', "&quot;")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1592,4 +2354,94 @@ async fn log_job(pool: &PgPool, job_id: Uuid, level: &str, message: &str, detail
     .bind(details)
     .execute(pool)
     .await;
+}
+
+/// Construit un jeu de données d'exemple (utilisé par les tests de non-régression
+/// du générateur de PDF ci-dessous).
+#[cfg(test)]
+fn sample_email_data(n_points: usize) -> EmailData {
+    EmailData {
+        assignment_id: Uuid::new_v4(),
+        student_id: Uuid::new_v4(),
+        assignment_role: "primary".to_string(),
+        assignment_notes: None,
+        student_email: "etudiant.test@atlas-togo.edu".to_string(),
+        student_name: "Test ETUDIANT".to_string(),
+        matricule: "STD-TEST-001".to_string(),
+        maille_code: "TG-0490-0212-01".to_string(),
+        mission_title: "ETUDE DES PHENOMENES DE GONFLEMENT DES SOLS DE TEST".to_string(),
+        mission_code: "M-TEST-QR-001".to_string(),
+        mission_theme: "stabilisation".to_string(),
+        mission_objectifs: Some("Verifier le rendu des QR par point de sondage".to_string()),
+        expected_sondages: Some(n_points as i32),
+        start_date: chrono::NaiveDate::from_ymd_opt(2026, 9, 1),
+        end_date: chrono::NaiveDate::from_ymd_opt(2026, 9, 15),
+        depth_h1_m: Some(3.0),
+        depth_h2_m: Some(6.0),
+        depth_h3_m: Some(10.0),
+        supervisor_name: "Fayid AROUNA".to_string(),
+        supervisor_email: "arounafayid@example.tg".to_string(),
+        supervisor_phone: "+228 90 00 00 00".to_string(),
+        supervisor_titre: "Superviseur terrain".to_string(),
+        lat: Some(6.1319),
+        lon: Some(1.2228),
+        bbox_ymin: Some(6.125),
+        bbox_xmin: Some(1.215),
+        bbox_ymax: Some(6.139),
+        bbox_xmax: Some(1.230),
+        maille_geojson: None,
+        prefecture: Some("Golfe".to_string()),
+        commune: Some("Lome".to_string()),
+        region: Some("Maritime".to_string()),
+        canton: None,
+        altitude_mean: Some(25.0),
+        dem_slope_mean_deg: Some(1.2),
+        distance_river_m: Some(800.0),
+        vbs_rk_h1: Some(3.1),
+        ip_rk_h1: Some(28.0),
+        prec_annual: Some(900.0),
+        prec_dry: Some(20.0),
+        prec_wet: Some(180.0),
+        geologie: Some("Sables argileux du Continental Terminal".to_string()),
+        pedologie: Some("Sol ferrallitique".to_string()),
+        risque_gonflement: Some("Moyen".to_string()),
+        nb_sondages_existants: 4,
+        sondage_points: (1..=n_points)
+            .map(|i| SondagePoint {
+                numero: i as i32,
+                label: Some(format!("S{}", i)),
+                lat: 6.1319 + (i as f64) * 0.001,
+                lon: 1.2228 + (i as f64) * 0.001,
+                notes: None,
+            })
+            .collect(),
+    }
+}
+
+#[cfg(test)]
+mod pdf_tests {
+    use super::*;
+
+    fn sample_data(n_points: usize) -> EmailData {
+        sample_email_data(n_points)
+    }
+
+    /// Génère un PDF d'ordre de mission avec des points de sondage pour
+    /// vérification visuelle manuelle (grille QR par point) et non-régression
+    /// (le générateur ne doit jamais paniquer, quel que soit le nombre de points).
+    #[test]
+    fn ordre_de_mission_pdf_renders_with_sondage_points() {
+        for n in [0usize, 1, 3, 5, 9, 15] {
+            let data = sample_data(n);
+            let bytes = build_ordre_de_mission_pdf(&data, Uuid::new_v4())
+                .unwrap_or_else(|e| panic!("echec generation PDF pour {} points: {}", n, e));
+            assert!(!bytes.is_empty(), "PDF vide pour {} points", n);
+
+            if n == 5 {
+                let out = std::env::temp_dir().join("atlas_ordre_mission_qr_preview.pdf");
+                std::fs::write(&out, &bytes).expect("ecriture PDF preview");
+                println!("PDF de prévisualisation écrit dans {:?}", out);
+            }
+        }
+    }
 }

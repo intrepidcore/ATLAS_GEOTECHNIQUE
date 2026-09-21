@@ -1,20 +1,23 @@
-use std::path::Path;
-use std::path::PathBuf;
-use uuid::Uuid;
-use sqlx::PgPool;
-use sqlx::Row;
 use chrono::Utc;
-use tokio::fs;
-use rust_xlsxwriter::Workbook;
 use genpdf;
 use genpdf::Element;
 use genpdf::{PaperSize, Size};
+use rust_xlsxwriter::Workbook;
 use sqlx::types::Json;
+use sqlx::PgPool;
+use sqlx::Row;
+use std::path::Path;
+use std::path::PathBuf;
+use tokio::fs;
+use uuid::Uuid;
 
-use crate::AppState;
 use crate::auth::AuthUser;
-use crate::export::formats::{ExportRequest, ExportDataSource, ExportFormat, ExportFilters, ExportJobResponse, ExportJobStatus, PdfOptions};
+use crate::export::formats::{
+    ExportDataSource, ExportFilters, ExportFormat, ExportJobResponse, ExportJobStatus,
+    ExportRequest, PdfOptions,
+};
 use crate::export::jobs::ExportJob;
+use crate::AppState;
 
 pub struct ExportService {
     pool: PgPool,
@@ -67,7 +70,15 @@ impl ExportService {
             .map_err(|e| (format!("Erreur BDD création job: {}", e), 500))?;
 
         // Log audit
-        if let Err(e) = self.log_action(job.id, "created", &auth_user.username, Some(serde_json::to_value(&request).unwrap())).await {
+        if let Err(e) = self
+            .log_action(
+                job.id,
+                "created",
+                &auth_user.username,
+                Some(serde_json::to_value(&request).unwrap()),
+            )
+            .await
+        {
             tracing::error!("Erreur log audit création export job {}: {}", job.id, e);
         }
 
@@ -95,7 +106,10 @@ impl ExportService {
     }
 
     /// Récupère le statut d’un job
-    pub async fn get_job_status(&self, job_id: Uuid) -> Result<Option<ExportJobResponse>, (String, u16)> {
+    pub async fn get_job_status(
+        &self,
+        job_id: Uuid,
+    ) -> Result<Option<ExportJobResponse>, (String, u16)> {
         let row_opt = sqlx::query(
             r#"
                 SELECT id, source, format, status, created_at, started_at, finished_at, file_path, file_size, error
@@ -134,7 +148,10 @@ impl ExportService {
     }
 
     /// Historique des exports (consultable)
-    pub async fn get_export_history(&self, auth_user: AuthUser) -> Result<Vec<ExportJobResponse>, (String, u16)> {
+    pub async fn get_export_history(
+        &self,
+        auth_user: AuthUser,
+    ) -> Result<Vec<ExportJobResponse>, (String, u16)> {
         let rows = sqlx::query(
             r#"
                 SELECT id, source, format, status, created_at, started_at, finished_at, file_path, file_size, error
@@ -157,8 +174,7 @@ impl ExportService {
                 let format_str: String = row.get("format");
                 let source = ExportDataSource::from_db_str(&source_str)
                     .unwrap_or(ExportDataSource::Missions);
-                let format = ExportFormat::from_db_str(&format_str)
-                    .unwrap_or(ExportFormat::Csv);
+                let format = ExportFormat::from_db_str(&format_str).unwrap_or(ExportFormat::Csv);
                 ExportJobResponse {
                     job_id: row.get("id"),
                     status: parse_job_status(&status),
@@ -178,7 +194,10 @@ impl ExportService {
     }
 
     /// Exécute un job (arrière-plan)
-    async fn run_export_job(pool: PgPool, job_id: Uuid) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    async fn run_export_job(
+        pool: PgPool,
+        job_id: Uuid,
+    ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Marquer comme démarré
         sqlx::query("UPDATE atlas.colab_export_jobs SET status = 'running', started_at = NOW() WHERE id = $1")
             .bind(job_id)
@@ -186,15 +205,19 @@ impl ExportService {
             .await?;
 
         // Récupérer les détails du job
-        let job_row = sqlx::query("SELECT source, format, filters, options FROM atlas.colab_export_jobs WHERE id = $1")
-            .bind(job_id)
-            .fetch_one(&pool)
-            .await?;
+        let job_row = sqlx::query(
+            "SELECT source, format, filters, options FROM atlas.colab_export_jobs WHERE id = $1",
+        )
+        .bind(job_id)
+        .fetch_one(&pool)
+        .await?;
 
         let source_str: String = job_row.get("source");
         let format_str: String = job_row.get("format");
         let filters_val: serde_json::Value = job_row.get("filters");
-        let options_val: serde_json::Value = job_row.try_get("options").unwrap_or_else(|_| serde_json::json!({}));
+        let options_val: serde_json::Value = job_row
+            .try_get("options")
+            .unwrap_or_else(|_| serde_json::json!({}));
 
         let source = ExportDataSource::from_db_str(&source_str)
             .ok_or_else(|| format!("Source export inconnue: {}", source_str))?;
@@ -221,7 +244,17 @@ impl ExportService {
         let file_path = full_path.to_string_lossy().to_string();
 
         // Générer le fichier selon source/format/filters
-        if let Err(e) = Self::generate_export_file(&pool, &full_path, &source, &format, &filters, columns.as_ref(), pdf_options.as_ref()).await {
+        if let Err(e) = Self::generate_export_file(
+            &pool,
+            &full_path,
+            &source,
+            &format,
+            &filters,
+            columns.as_ref(),
+            pdf_options.as_ref(),
+        )
+        .await
+        {
             let err_str = format!("{}", e);
             sqlx::query(
                 "UPDATE atlas.colab_export_jobs SET status = 'failed', finished_at = NOW(), error = $1 WHERE id = $2",
@@ -263,23 +296,27 @@ impl ExportService {
 
         match format {
             ExportFormat::Json => {
-                let data = Self::fetch_source_as_json(pool, source, filters, max_rows, columns).await?;
+                let data =
+                    Self::fetch_source_as_json(pool, source, filters, max_rows, columns).await?;
                 let bytes = serde_json::to_vec_pretty(&data)?;
                 fs::write(full_path, bytes).await?;
                 Ok(())
             }
             ExportFormat::Csv => {
-                let rows = Self::fetch_source_as_json(pool, source, filters, max_rows, columns).await?;
+                let rows =
+                    Self::fetch_source_as_json(pool, source, filters, max_rows, columns).await?;
                 Self::write_csv(full_path, rows, columns).await?;
                 Ok(())
             }
             ExportFormat::Xlsx => {
-                let rows = Self::fetch_source_as_json(pool, source, filters, max_rows, columns).await?;
+                let rows =
+                    Self::fetch_source_as_json(pool, source, filters, max_rows, columns).await?;
                 Self::write_xlsx(full_path, source, rows, columns)?;
                 Ok(())
             }
             ExportFormat::Pdf => {
-                let rows = Self::fetch_source_as_json(pool, source, filters, max_rows, columns).await?;
+                let rows =
+                    Self::fetch_source_as_json(pool, source, filters, max_rows, columns).await?;
                 Self::write_pdf(full_path, source, filters, rows, columns, pdf_options)?;
                 Ok(())
             }
@@ -338,14 +375,23 @@ impl ExportService {
                     m.insert("student_name", "ms.student_name".to_string());
                     m.insert("student_email", "ms.student_email".to_string());
                     m.insert("supervisor_id", "s.id".to_string());
-                    m.insert("supervisor_name", "COALESCE(u.first_name || ' ' || u.last_name, u.username)".to_string());
+                    m.insert(
+                        "supervisor_name",
+                        "COALESCE(u.first_name || ' ' || u.last_name, u.username)".to_string(),
+                    );
 
                     m.insert("operational_status", "op.operational_status".to_string());
                     m.insert("operational_reason", "op.operational_reason".to_string());
-                    m.insert("notified", "(COALESCE(op.notif_status, '') = 'sent')".to_string());
+                    m.insert(
+                        "notified",
+                        "(COALESCE(op.notif_status, '') = 'sent')".to_string(),
+                    );
                     m.insert("conflict", "(op.conflict_holder_student_uuid IS NOT NULL AND ms.student_uuid IS NOT NULL AND op.conflict_holder_student_uuid <> ms.student_uuid)".to_string());
                     m.insert("conflict_mission_id", "op.conflict_mission_id".to_string());
-                    m.insert("conflict_holder_name", "op.conflict_holder_name".to_string());
+                    m.insert(
+                        "conflict_holder_name",
+                        "op.conflict_holder_name".to_string(),
+                    );
 
                     m.insert("data_source", "'colab'".to_string());
                     m.insert("tool_version", "'atlas-api-geo'".to_string());
@@ -497,9 +543,7 @@ impl ExportService {
                     ORDER BY m.created_at DESC
                     LIMIT {}
                     "#,
-                    json_expr,
-                    where_clause,
-                    max_rows
+                    json_expr, where_clause, max_rows
                 );
 
                 let rows = sqlx::query(&query).fetch_all(pool).await?;
@@ -518,7 +562,10 @@ impl ExportService {
                     m.insert("user_id", "s.user_id".to_string());
                     m.insert("username", "u.username".to_string());
                     m.insert("email", "u.email".to_string());
-                    m.insert("full_name", "COALESCE(u.first_name || ' ' || u.last_name, u.username)".to_string());
+                    m.insert(
+                        "full_name",
+                        "COALESCE(u.first_name || ' ' || u.last_name, u.username)".to_string(),
+                    );
                     m.insert("telephone", "u.telephone".to_string());
                     m.insert("matricule", "s.matricule".to_string());
                     m.insert("promotion", "s.promotion".to_string());
@@ -585,7 +632,10 @@ impl ExportService {
                     m.insert("supervisor_id", "s.id".to_string());
                     m.insert("user_id", "s.user_id".to_string());
                     m.insert("username", "u.username".to_string());
-                    m.insert("full_name", "COALESCE(u.first_name || ' ' || u.last_name, u.username)".to_string());
+                    m.insert(
+                        "full_name",
+                        "COALESCE(u.first_name || ' ' || u.last_name, u.username)".to_string(),
+                    );
                     m.insert("specialite", "s.specialite".to_string());
                     m.insert("institution", "s.institution".to_string());
                     m.insert("is_active", "u.is_active".to_string());
@@ -715,8 +765,7 @@ impl ExportService {
         let header_keys: Vec<String> = if let Some(cols) = columns {
             cols.clone()
         } else {
-            rows
-                .get(0)
+            rows.get(0)
                 .and_then(|v| v.as_object())
                 .map(|o| o.keys().cloned().collect())
                 .unwrap_or_default()
@@ -763,8 +812,7 @@ impl ExportService {
         let header_keys: Vec<String> = if let Some(cols) = columns {
             cols.clone()
         } else {
-            rows
-                .get(0)
+            rows.get(0)
                 .and_then(|v| v.as_object())
                 .map(|o| o.keys().cloned().collect())
                 .unwrap_or_default()
@@ -777,7 +825,9 @@ impl ExportService {
         for (row_idx, row_val) in rows.iter().enumerate() {
             let obj = row_val.as_object();
             for (col, key) in header_keys.iter().enumerate() {
-                let cell = obj.and_then(|o| o.get(key)).unwrap_or(&serde_json::Value::Null);
+                let cell = obj
+                    .and_then(|o| o.get(key))
+                    .unwrap_or(&serde_json::Value::Null);
                 let r = (row_idx + 1) as u32;
                 let c = col as u16;
                 match cell {
@@ -838,7 +888,10 @@ impl ExportService {
             "/usr/share/fonts/truetype/liberation".to_string(),
             "LiberationSerif".to_string(),
         ));
-        font_candidates.push(("/usr/share/fonts/truetype/dejavu".to_string(), "DejaVuSans".to_string()));
+        font_candidates.push((
+            "/usr/share/fonts/truetype/dejavu".to_string(),
+            "DejaVuSans".to_string(),
+        ));
         font_candidates.push(("/usr/share/fonts".to_string(), "DejaVuSans".to_string()));
         // Windows (dev)
         font_candidates.push(("C:\\Windows\\Fonts".to_string(), "arial".to_string()));
@@ -858,15 +911,14 @@ impl ExportService {
             }
         }
 
-        let font_family = font_family_opt
-            .ok_or_else(|| {
-                let details = if attempts.is_empty() {
-                    "Aucune police candidate testée".to_string()
-                } else {
-                    attempts.join(" | ")
-                };
-                format!("Erreur chargement polices PDF: {}", details)
-            })?;
+        let font_family = font_family_opt.ok_or_else(|| {
+            let details = if attempts.is_empty() {
+                "Aucune police candidate testée".to_string()
+            } else {
+                attempts.join(" | ")
+            };
+            format!("Erreur chargement polices PDF: {}", details)
+        })?;
 
         let mut doc = genpdf::Document::new(font_family);
         doc.set_title(title.clone());
@@ -874,8 +926,7 @@ impl ExportService {
         let header_keys_preview: Vec<String> = if let Some(cols) = columns {
             cols.clone()
         } else {
-            rows
-                .get(0)
+            rows.get(0)
                 .and_then(|v| v.as_object())
                 .map(|o| o.keys().cloned().collect())
                 .unwrap_or_default()
@@ -923,8 +974,7 @@ impl ExportService {
         let header_keys: Vec<String> = if let Some(cols) = columns {
             cols.clone()
         } else {
-            rows
-                .get(0)
+            rows.get(0)
                 .and_then(|v| v.as_object())
                 .map(|o| o.keys().cloned().collect())
                 .unwrap_or_default()
@@ -942,9 +992,13 @@ impl ExportService {
         {
             let mut row = table.row();
             for k in &header_keys {
-                row.push_element(genpdf::elements::Paragraph::new(k.clone()).styled(genpdf::style::Style::new().bold()));
+                row.push_element(
+                    genpdf::elements::Paragraph::new(k.clone())
+                        .styled(genpdf::style::Style::new().bold()),
+                );
             }
-            row.push().map_err(|e| format!("Erreur table PDF header: {}", e))?;
+            row.push()
+                .map_err(|e| format!("Erreur table PDF header: {}", e))?;
         }
 
         for r in rows {
@@ -959,7 +1013,8 @@ impl ExportService {
                 }
                 row.push_element(genpdf::elements::Paragraph::new(s));
             }
-            row.push().map_err(|e| format!("Erreur table PDF row: {}", e))?;
+            row.push()
+                .map_err(|e| format!("Erreur table PDF row: {}", e))?;
         }
 
         doc.push(table);

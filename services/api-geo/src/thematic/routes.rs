@@ -328,11 +328,7 @@ pub async fn get_thematic_data_density(
         qb = qb.bind(min_s);
     }
     if let Some(bbox) = req.bbox {
-        qb = qb
-            .bind(bbox[0])
-            .bind(bbox[1])
-            .bind(bbox[2])
-            .bind(bbox[3]);
+        qb = qb.bind(bbox[0]).bind(bbox[1]).bind(bbox[2]).bind(bbox[3]);
     }
     if let Some(a) = &req.adm1 {
         qb = qb.bind(a);
@@ -434,7 +430,7 @@ pub async fn get_thematic_data(
         || column.starts_with("ip_derived_h")
         || column.contains("_fusion_h")  // L2b Fusion BLUP (DB: *_fusion_h*)
         || column.contains("_mtgp_h")   // L4 MTGP
-        || column == "vbs_vfs";         // L3 VfS (surface, pas d'horizon)
+        || column == "vbs_vfs"; // L3 VfS (surface, pas d'horizon)
     let tolerance = simplify_tolerance(req.zoom);
 
     let grid = req.grid.as_deref().unwrap_or("2km");

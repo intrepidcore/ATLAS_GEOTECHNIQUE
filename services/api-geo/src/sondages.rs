@@ -44,7 +44,7 @@ pub struct ListSondagesQuery {
     pub limit: Option<i64>,
     pub offset: Option<i64>,
     pub search: Option<String>,
-    pub missing: Option<String>, // "geom" | "adm3"
+    pub missing: Option<String>,   // "geom" | "adm3"
     pub grid_code: Option<String>, // Filtre par code maille
 }
 
@@ -86,8 +86,16 @@ pub async fn list_sondages(
     let offset = params.offset.unwrap_or(0);
 
     let mut where_clauses: Vec<String> = vec![];
-    let has_search = params.search.as_ref().map(|s| !s.is_empty()).unwrap_or(false);
-    let has_grid_code = params.grid_code.as_ref().map(|s| !s.is_empty()).unwrap_or(false);
+    let has_search = params
+        .search
+        .as_ref()
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
+    let has_grid_code = params
+        .grid_code
+        .as_ref()
+        .map(|s| !s.is_empty())
+        .unwrap_or(false);
 
     // Compteur de paramètres pour les bindings dynamiques
     let mut param_idx = 1;
@@ -143,9 +151,7 @@ pub async fn list_sondages(
         ORDER BY s.created_at DESC
         LIMIT {} OFFSET {}
         "#,
-        additional_where,
-        limit_idx,
-        offset_idx
+        additional_where, limit_idx, offset_idx
     );
 
     let mut q = sqlx::query_as::<_, Sondage>(&query);

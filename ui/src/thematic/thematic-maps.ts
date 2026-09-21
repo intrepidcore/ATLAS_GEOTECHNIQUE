@@ -1,5 +1,4 @@
-import L from 'leaflet'
-import 'leaflet.heat'
+import L from '../leaflet-heat-shim'
 import html2canvas from 'html2canvas'
 import { jsPDF } from 'jspdf'
 import type {

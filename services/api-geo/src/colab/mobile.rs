@@ -1,5 +1,5 @@
 //! API Mobile pour Atlas Colab
-//! 
+//!
 //! Endpoints optimisés pour l'application PWA terrain
 
 use axum::{
@@ -116,6 +116,20 @@ pub struct ConfirmSondagePointRequest {
     pub notes: Option<String>,
 }
 
+/// Requête d'exception lorsque le point prévu est physiquement inaccessible.
+/// Le nom du point réel et la cause sont obligatoires et conservés dans meta.
+#[derive(Debug, Deserialize)]
+pub struct RelocateSondagePointRequest {
+    pub longitude: f64,
+    pub latitude: f64,
+    pub location_accuracy_m: Option<f32>,
+    pub depth_m: Option<f64>,
+    pub profile_description: Option<String>,
+    pub notes: Option<String>,
+    pub point_name: String,
+    pub relocation_reason: String,
+}
+
 /// Réponse de confirmation (succès ou refus hors tolérance)
 #[derive(Debug, Serialize)]
 pub struct ConfirmSondageResponse {
@@ -147,12 +161,10 @@ pub struct RegisterPushTokenRequest {
     pub platform: String,
 }
 
+const FIELD_CONFIRMATION_RADIUS_M: i32 = 10;
+
 fn default_sondage_tolerance_m() -> i32 {
-    std::env::var("ATLAS_DEFAULT_SONDAGE_TOLERANCE_M")
-        .ok()
-        .and_then(|v| v.parse::<i32>().ok())
-        .filter(|v| *v > 0)
-        .unwrap_or(15)
+    FIELD_CONFIRMATION_RADIUS_M
 }
 
 /// Vrai si la distance mesurée est dans la tolérance de la mission (ADR-MOBILE-004).
@@ -166,39 +178,22 @@ mod tests {
 
     #[test]
     fn tolerance_accepts_distance_under_limit() {
-        assert!(is_within_tolerance(4.9, 15));
+        assert!(is_within_tolerance(4.9, FIELD_CONFIRMATION_RADIUS_M));
     }
 
     #[test]
     fn tolerance_accepts_distance_exactly_at_limit() {
-        assert!(is_within_tolerance(15.0, 15));
+        assert!(is_within_tolerance(10.0, FIELD_CONFIRMATION_RADIUS_M));
     }
 
     #[test]
     fn tolerance_rejects_distance_over_limit() {
-        assert!(!is_within_tolerance(15.1, 15));
+        assert!(!is_within_tolerance(10.1, FIELD_CONFIRMATION_RADIUS_M));
     }
 
     #[test]
-    fn default_tolerance_falls_back_to_15_when_env_absent() {
-        std::env::remove_var("ATLAS_DEFAULT_SONDAGE_TOLERANCE_M");
-        assert_eq!(default_sondage_tolerance_m(), 15);
-    }
-
-    #[test]
-    fn default_tolerance_reads_env_override() {
-        std::env::set_var("ATLAS_DEFAULT_SONDAGE_TOLERANCE_M", "25");
-        assert_eq!(default_sondage_tolerance_m(), 25);
-        std::env::remove_var("ATLAS_DEFAULT_SONDAGE_TOLERANCE_M");
-    }
-
-    #[test]
-    fn default_tolerance_ignores_invalid_or_zero_env() {
-        std::env::set_var("ATLAS_DEFAULT_SONDAGE_TOLERANCE_M", "0");
-        assert_eq!(default_sondage_tolerance_m(), 15);
-        std::env::set_var("ATLAS_DEFAULT_SONDAGE_TOLERANCE_M", "not-a-number");
-        assert_eq!(default_sondage_tolerance_m(), 15);
-        std::env::remove_var("ATLAS_DEFAULT_SONDAGE_TOLERANCE_M");
+    fn field_confirmation_radius_is_fixed_to_ten_metres() {
+        assert_eq!(default_sondage_tolerance_m(), 10);
     }
 }
 
@@ -319,15 +314,19 @@ pub async fn get_my_missions(
                 )
             END)::float8 AS percent_done
         FROM atlas.colab_missions m
-        WHERE m.id IN (
-            SELECT mission_id FROM atlas.colab_mission_assignments WHERE student_id IN (
-                SELECT id FROM atlas.colab_students WHERE user_id = $1
+        WHERE m.deleted_at IS NULL
+        AND (
+            m.id IN (
+                SELECT mission_id FROM atlas.colab_mission_assignments
+                WHERE unassigned_at IS NULL AND student_id IN (
+                    SELECT id FROM atlas.colab_students WHERE user_id = $1 AND deleted_at IS NULL
+                )
             )
+            OR m.supervisor_id IN (
+                SELECT id FROM atlas.colab_supervisors WHERE user_id = $1
+            )
+            OR m.created_by = $1
         )
-        OR m.supervisor_id IN (
-            SELECT id FROM atlas.colab_supervisors WHERE user_id = $1
-        )
-        OR m.created_by = $1
         ORDER BY 
             CASE m.status 
                 WHEN 'in_progress' THEN 1 
@@ -486,14 +485,16 @@ pub async fn get_mission_detail(
         .await
         .ok()
         .flatten()
-        .map(|(min_x, min_y, max_x, max_y, center_lon, center_lat)| BoundingBox {
-            min_x,
-            min_y,
-            max_x,
-            max_y,
-            center_lon,
-            center_lat,
-        })
+        .map(
+            |(min_x, min_y, max_x, max_y, center_lon, center_lat)| BoundingBox {
+                min_x,
+                min_y,
+                max_x,
+                max_y,
+                center_lon,
+                center_lat,
+            },
+        )
     } else {
         None
     };
@@ -518,7 +519,15 @@ pub async fn get_map_context(
     // ma.geom est stocké en SRID 25231 (projection locale Togo) ; l'app mobile
     // attend du WGS84 (lon/lat) — transform obligatoire, cf. convention déjà
     // appliquée ailleurs dans exports.rs/export/service.rs.
-    let maille_info: Option<(Option<serde_json::Value>, Option<f64>, Option<f64>, f64, f64, f64, f64)> = sqlx::query_as(
+    let maille_info: Option<(
+        Option<serde_json::Value>,
+        Option<f64>,
+        Option<f64>,
+        f64,
+        f64,
+        f64,
+        f64,
+    )> = sqlx::query_as(
         r#"
         SELECT
             ST_AsGeoJSON(ST_Transform(ma.geom, 4326))::jsonb AS maille_geojson,
@@ -576,17 +585,8 @@ pub async fn get_map_context(
     .await
     .unwrap_or_default();
 
-    // Tolérance : celle de la mission si réglée, sinon le défaut système (jamais figée en dur)
-    let tolerance_m: i32 = sqlx::query_scalar::<_, Option<i32>>(
-        "SELECT sondage_tolerance_m FROM atlas.colab_missions WHERE id = $1",
-    )
-    .bind(mission_id)
-    .fetch_optional(&state.pool)
-    .await
-    .ok()
-    .flatten()
-    .flatten()
-    .unwrap_or_else(default_sondage_tolerance_m);
+    // Règle métier terrain : rayon unique de 10 m, revalidé côté serveur.
+    let tolerance_m = default_sondage_tolerance_m();
 
     let (maille_geojson, center_lon, center_lat, bbox) = match maille_info {
         Some((geojson, lon, lat, min_x, min_y, max_x, max_y)) => (
@@ -634,22 +634,21 @@ pub async fn confirm_sondage_point(
     .bind(mission_id)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))))?;
-
-    let (planned_lat, planned_lon) = point.ok_or_else(|| {
-        (StatusCode::NOT_FOUND, Json(serde_json::json!({ "error": "Point prévisionnel introuvable" })))
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
     })?;
 
-    let tolerance_m: i32 = sqlx::query_scalar::<_, Option<i32>>(
-        "SELECT sondage_tolerance_m FROM atlas.colab_missions WHERE id = $1",
-    )
-    .bind(mission_id)
-    .fetch_optional(&state.pool)
-    .await
-    .ok()
-    .flatten()
-    .flatten()
-    .unwrap_or_else(default_sondage_tolerance_m);
+    let (planned_lat, planned_lon) = point.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "Point prévisionnel introuvable" })),
+        )
+    })?;
+
+    let tolerance_m = default_sondage_tolerance_m();
 
     // Distance orthodromique réelle en mètres (geography), pas une approximation Pythagore.
     let distance_m: f64 = sqlx::query_scalar(
@@ -666,7 +665,12 @@ pub async fn confirm_sondage_point(
     .bind(req.latitude)
     .fetch_one(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
 
     if !is_within_tolerance(distance_m, tolerance_m) {
         return Ok((
@@ -713,7 +717,12 @@ pub async fn confirm_sondage_point(
     .bind(serde_json::json!({ "created_by": auth.id }))
     .fetch_one(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": format!("Erreur création sondage: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": format!("Erreur création sondage: {}", e) })),
+        )
+    })?;
 
     sqlx::query(
         "INSERT INTO atlas.colab_mission_sondages (mission_id, sondage_id) VALUES ($1, $2)
@@ -755,19 +764,162 @@ pub async fn confirm_sondage_point(
     ))
 }
 
+/// POST /colab/mobile/missions/:id/sondage-points/:point_id/relocate
+/// Exception auditée pour un point prévu inaccessible. Elle n'est acceptée
+/// qu'en dehors du rayon normal de 10 m et exige un nom et une justification.
+pub async fn relocate_sondage_point(
+    State(state): State<AppState>,
+    auth: AuthUser,
+    Path((mission_id, point_id)): Path<(Uuid, Uuid)>,
+    Json(req): Json<RelocateSondagePointRequest>,
+) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
+    let point_name = req.point_name.trim();
+    let relocation_reason = req.relocation_reason.trim();
+    if point_name.is_empty() || relocation_reason.is_empty() {
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({
+                "error": "Le nom du point alternatif et la cause du changement sont obligatoires"
+            })),
+        ));
+    }
+
+    let point: Option<(f64, f64, Option<Uuid>)> = sqlx::query_as(
+        "SELECT lat, lon, confirmed_sondage_id FROM atlas.colab_mission_sondage_points WHERE id = $1 AND mission_id = $2",
+    )
+    .bind(point_id)
+    .bind(mission_id)
+    .fetch_optional(&state.pool)
+    .await
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))))?;
+
+    let (planned_lat, planned_lon, confirmed_id) = point.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(serde_json::json!({ "error": "Point prévisionnel introuvable" })),
+        )
+    })?;
+    if confirmed_id.is_some() {
+        return Err((
+            StatusCode::CONFLICT,
+            Json(serde_json::json!({ "error": "Ce point est déjà enregistré" })),
+        ));
+    }
+
+    let distance_m: f64 = sqlx::query_scalar(
+        r#"SELECT ST_Distance(
+            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+            ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography
+        )"#,
+    )
+    .bind(planned_lon)
+    .bind(planned_lat)
+    .bind(req.longitude)
+    .bind(req.latitude)
+    .fetch_one(&state.pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
+
+    let tolerance_m = default_sondage_tolerance_m();
+    if is_within_tolerance(distance_m, tolerance_m) {
+        return Err((
+            StatusCode::UNPROCESSABLE_ENTITY,
+            Json(serde_json::json!({
+                "error": "La position est dans le rayon de 10 m : utilisez la confirmation normale"
+            })),
+        ));
+    }
+
+    let code_sondage = format!(
+        "S-{}-{:04}",
+        chrono::Utc::now().format("%Y%m%d"),
+        rand::random::<u16>() % 10000
+    );
+    let meta = serde_json::json!({
+        "created_by": auth.id,
+        "planned_point_id": point_id,
+        "planned_position": { "latitude": planned_lat, "longitude": planned_lon },
+        "actual_position": { "latitude": req.latitude, "longitude": req.longitude },
+        "distance_from_planned_m": distance_m,
+        "point_name": point_name,
+        "relocation_reason": relocation_reason,
+        "profile_description": req.profile_description,
+        "relocated": true
+    });
+
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
+    let sondage_id: Uuid = sqlx::query_scalar(
+        r#"INSERT INTO atlas.sondages (
+            code, geom, depth_m_max, notes, validation_status, location_mode,
+            location_accuracy_m, mission_id, meta
+        ) VALUES ($1, ST_SetSRID(ST_MakePoint($2, $3), 4326), $4, $5,
+            'draft_field', 'gps_field', $6, $7, $8) RETURNING id"#,
+    )
+    .bind(&code_sondage)
+    .bind(req.longitude)
+    .bind(req.latitude)
+    .bind(req.depth_m.map(|d| d.to_string()))
+    .bind(&req.notes)
+    .bind(req.location_accuracy_m)
+    .bind(mission_id)
+    .bind(meta)
+    .fetch_one(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": format!("Erreur création sondage: {}", e) })),
+        )
+    })?;
+
+    sqlx::query("INSERT INTO atlas.colab_mission_sondages (mission_id, sondage_id) VALUES ($1, $2) ON CONFLICT DO NOTHING")
+        .bind(mission_id).bind(sondage_id).execute(&mut *tx).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))))?;
+    sqlx::query("UPDATE atlas.colab_mission_sondage_points SET confirmed_sondage_id=$1, confirmed_at=NOW(), confirmed_by=$2 WHERE id=$3 AND confirmed_sondage_id IS NULL")
+        .bind(sondage_id).bind(auth.id).bind(point_id).execute(&mut *tx).await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(ConfirmSondageResponse {
+            id: Some(sondage_id),
+            code_sondage: Some(code_sondage),
+            distance_m,
+            tolerance_m,
+            within_tolerance: false,
+            message: "Point alternatif enregistré avec sa justification".to_string(),
+        }),
+    ))
+}
+
 /// GET /colab/mobile/profile — profil + rôle + permissions résolus serveur
 pub async fn get_profile(
     State(state): State<AppState>,
     auth: AuthUser,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
-    let names: Option<(Option<String>, Option<String>)> = sqlx::query_as(
-        "SELECT first_name, last_name FROM atlas.users WHERE id = $1",
-    )
-    .bind(auth.id)
-    .fetch_optional(&state.pool)
-    .await
-    .ok()
-    .flatten();
+    let names: Option<(Option<String>, Option<String>)> =
+        sqlx::query_as("SELECT first_name, last_name FROM atlas.users WHERE id = $1")
+            .bind(auth.id)
+            .fetch_optional(&state.pool)
+            .await
+            .ok()
+            .flatten();
 
     let is_student: bool = sqlx::query_scalar(
         "SELECT EXISTS(SELECT 1 FROM atlas.colab_students WHERE user_id = $1 AND deleted_at IS NULL)",
@@ -804,7 +956,10 @@ pub async fn register_push_token(
     Json(req): Json<RegisterPushTokenRequest>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     if req.platform != "ios" && req.platform != "android" {
-        return Err((StatusCode::BAD_REQUEST, Json(serde_json::json!({ "error": "platform doit être ios ou android" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(serde_json::json!({ "error": "platform doit être ios ou android" })),
+        ));
     }
 
     sqlx::query(
@@ -819,7 +974,12 @@ pub async fn register_push_token(
     .bind(&req.platform)
     .execute(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(serde_json::json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(serde_json::json!({ "error": e.to_string() })),
+        )
+    })?;
 
     Ok(Json(serde_json::json!({ "message": "Token enregistré" })))
 }
@@ -934,7 +1094,7 @@ pub async fn sync_actions(
 
     for action in req.actions {
         let result = process_sync_action(&state, auth.id, &action).await;
-        
+
         match result {
             Ok(server_id) => {
                 synced_count += 1;
@@ -973,8 +1133,10 @@ async fn process_sync_action(
         "create_sondage" => {
             let payload: CreateFieldSondageRequest = serde_json::from_value(action.payload.clone())
                 .map_err(|e| format!("Payload invalide: {}", e))?;
-            
-            let mission_id: Uuid = action.payload.get("mission_id")
+
+            let mission_id: Uuid = action
+                .payload
+                .get("mission_id")
                 .and_then(|v| v.as_str())
                 .and_then(|s| Uuid::parse_str(s).ok())
                 .ok_or("mission_id manquant")?;
@@ -1023,16 +1185,22 @@ async fn process_sync_action(
             Ok(sondage_id)
         }
         "create_field_log" => {
-            let mission_id: Uuid = action.payload.get("mission_id")
+            let mission_id: Uuid = action
+                .payload
+                .get("mission_id")
                 .and_then(|v| v.as_str())
                 .and_then(|s| Uuid::parse_str(s).ok())
                 .ok_or("mission_id manquant")?;
-            
-            let content = action.payload.get("content")
+
+            let content = action
+                .payload
+                .get("content")
                 .and_then(|v| v.as_str())
                 .unwrap_or("");
-            
-            let log_type = action.payload.get("log_type")
+
+            let log_type = action
+                .payload
+                .get("log_type")
                 .and_then(|v| v.as_str())
                 .unwrap_or("note");
 
@@ -1053,7 +1221,10 @@ async fn process_sync_action(
 
             Ok(log_id)
         }
-        _ => Err(format!("Type d'action non supporté: {}", action.action_type)),
+        _ => Err(format!(
+            "Type d'action non supporté: {}",
+            action.action_type
+        )),
     }
 }
 
@@ -1072,7 +1243,10 @@ pub async fn create_track(
     )
     .bind(req.mission_id)
     .bind(auth.id)
-    .bind(req.name.unwrap_or_else(|| format!("Trace {}", chrono::Utc::now().format("%Y-%m-%d %H:%M"))))
+    .bind(
+        req.name
+            .unwrap_or_else(|| format!("Trace {}", chrono::Utc::now().format("%Y-%m-%d %H:%M"))),
+    )
     .fetch_one(&state.pool)
     .await
     .map_err(|e| {
@@ -1177,6 +1351,10 @@ pub fn mobile_routes() -> Router<AppState> {
         .route(
             "/mobile/missions/:id/sondage-points/:point_id/confirm",
             post(confirm_sondage_point),
+        )
+        .route(
+            "/mobile/missions/:id/sondage-points/:point_id/relocate",
+            post(relocate_sondage_point),
         )
         // Synchronisation
         .route("/mobile/sync", post(sync_actions))

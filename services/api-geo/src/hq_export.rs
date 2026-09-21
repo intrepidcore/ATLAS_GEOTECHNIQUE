@@ -55,7 +55,7 @@ pub struct HqExportRequest {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct HqOutputOptions {
     #[serde(default = "default_format")]
-    pub format: String,      // "png" | "pdf"
+    pub format: String, // "png" | "pdf"
     #[serde(default = "default_dpi")]
     pub dpi: u32,
     #[serde(default = "default_width")]
@@ -83,12 +83,24 @@ pub struct HqBbox {
 }
 
 // Defaults
-fn default_adm_level() -> String { "adm1".into() }
-fn default_engine()    -> String { "puppeteer".into() }
-fn default_format()    -> String { "png".into() }
-fn default_dpi()       -> u32    { 150 }
-fn default_width()     -> u32    { 2480 }
-fn default_height()    -> u32    { 3508 }
+fn default_adm_level() -> String {
+    "adm1".into()
+}
+fn default_engine() -> String {
+    "puppeteer".into()
+}
+fn default_format() -> String {
+    "png".into()
+}
+fn default_dpi() -> u32 {
+    150
+}
+fn default_width() -> u32 {
+    2480
+}
+fn default_height() -> u32 {
+    3508
+}
 
 impl Default for HqOutputOptions {
     fn default() -> Self {
@@ -154,7 +166,7 @@ pub async fn create_hq_export(
                 "expected": ["puppeteer", "maplibre"]
             })),
         )
-        .into_response();
+            .into_response();
     }
 
     // Validation thematic_id (format basique)
@@ -163,7 +175,7 @@ pub async fn create_hq_export(
             StatusCode::BAD_REQUEST,
             Json(serde_json::json!({"error": "invalid_thematic_id"})),
         )
-        .into_response();
+            .into_response();
     }
 
     // Construire le payload JSON versionne
@@ -257,17 +269,17 @@ pub async fn get_hq_export_status(
     match row {
         Ok(Some(r)) => {
             let resp = HqExportStatus {
-                job_id:        r.try_get("id").unwrap_or(job_id),
-                status:        r.try_get("status").unwrap_or_default(),
-                progress:      r.try_get("progress").unwrap_or(0),
-                engine:        r.try_get("engine").unwrap_or_default(),
-                duration_ms:   r.try_get("duration_ms").ok(),
+                job_id: r.try_get("id").unwrap_or(job_id),
+                status: r.try_get("status").unwrap_or_default(),
+                progress: r.try_get("progress").unwrap_or(0),
+                engine: r.try_get("engine").unwrap_or_default(),
+                duration_ms: r.try_get("duration_ms").ok(),
                 error_message: r.try_get("error_message").ok().flatten(),
-                result_path:   r.try_get("result_path").ok().flatten(),
-                created_at:    r.try_get("created_at").unwrap_or_else(|_| Utc::now()),
-                updated_at:    r.try_get("updated_at").unwrap_or_else(|_| Utc::now()),
-                started_at:    r.try_get("started_at").ok().flatten(),
-                finished_at:   r.try_get("finished_at").ok().flatten(),
+                result_path: r.try_get("result_path").ok().flatten(),
+                created_at: r.try_get("created_at").unwrap_or_else(|_| Utc::now()),
+                updated_at: r.try_get("updated_at").unwrap_or_else(|_| Utc::now()),
+                started_at: r.try_get("started_at").ok().flatten(),
+                finished_at: r.try_get("finished_at").ok().flatten(),
             };
             (StatusCode::OK, Json(resp)).into_response()
         }
@@ -312,16 +324,20 @@ pub async fn download_hq_export(
                 .flatten()
                 .unwrap_or_else(|| "image/png".to_string()),
         ),
-        Ok(None) => return (
-            StatusCode::NOT_FOUND,
-            Json(serde_json::json!({"error": "job_not_found"})),
-        ).into_response(),
+        Ok(None) => {
+            return (
+                StatusCode::NOT_FOUND,
+                Json(serde_json::json!({"error": "job_not_found"})),
+            )
+                .into_response()
+        }
         Err(e) => {
             tracing::error!(?e, "download_hq_export db error");
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "db_error"})),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
@@ -333,15 +349,19 @@ pub async fn download_hq_export(
                 "status": status,
                 "hint": "Poll /export/hq/status/:id until status=COMPLETED"
             })),
-        ).into_response();
+        )
+            .into_response();
     }
 
     let result_path = match path_opt {
         Some(p) => p,
-        None => return (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(serde_json::json!({"error": "result_path_missing"})),
-        ).into_response(),
+        None => {
+            return (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "result_path_missing"})),
+            )
+                .into_response()
+        }
     };
 
     // Lire le fichier entier en memoire (images PNG/PDF < 5 MB en general)
@@ -352,12 +372,16 @@ pub async fn download_hq_export(
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "file_not_found", "path": result_path})),
-            ).into_response();
+            )
+                .into_response();
         }
     };
 
-    let filename = format!("atlas_export_{}.{}", job_id,
-        if mime.contains("pdf") { "pdf" } else { "png" });
+    let filename = format!(
+        "atlas_export_{}.{}",
+        job_id,
+        if mime.contains("pdf") { "pdf" } else { "png" }
+    );
 
     axum::response::Response::builder()
         .status(StatusCode::OK)
@@ -367,9 +391,7 @@ pub async fn download_hq_export(
             format!("attachment; filename=\"{}\"", filename),
         )
         .body(Body::from(bytes))
-        .unwrap_or_else(|_| {
-            axum::response::Response::new(Body::empty())
-        })
+        .unwrap_or_else(|_| axum::response::Response::new(Body::empty()))
 }
 
 /// GET /export/hq/list
@@ -379,7 +401,7 @@ pub async fn list_hq_exports(
     Query(q): Query<HqListQuery>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    let limit  = q.limit.unwrap_or(20).min(100);
+    let limit = q.limit.unwrap_or(20).min(100);
     let offset = q.offset.unwrap_or(0);
 
     let rows = sqlx::query(
@@ -412,12 +434,19 @@ pub async fn list_hq_exports(
                     "finished_at":  r.try_get::<Option<DateTime<Utc>>, _>("finished_at").ok().flatten(),
                 })
             }).collect();
-            (StatusCode::OK, Json(serde_json::json!({"jobs": jobs, "total": jobs.len()}))).into_response()
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({"jobs": jobs, "total": jobs.len()})),
+            )
+                .into_response()
         }
         Err(e) => {
             tracing::error!(?e, "list_hq_exports db error");
-            (StatusCode::INTERNAL_SERVER_ERROR,
-             Json(serde_json::json!({"error": "db_error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "db_error"})),
+            )
+                .into_response()
         }
     }
 }
@@ -449,19 +478,27 @@ pub async fn cancel_hq_export(
     match row {
         Ok(Some(r)) => {
             let status: String = r.try_get("status").unwrap_or_default();
-            (StatusCode::OK, Json(serde_json::json!({
-                "job_id": job_id,
-                "status": status,
-            }))).into_response()
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "job_id": job_id,
+                    "status": status,
+                })),
+            )
+                .into_response()
         }
         Ok(None) => (
             StatusCode::NOT_FOUND,
             Json(serde_json::json!({"error": "job_not_found"})),
-        ).into_response(),
+        )
+            .into_response(),
         Err(e) => {
             tracing::error!(?e, "cancel_hq_export db error");
-            (StatusCode::INTERNAL_SERVER_ERROR,
-             Json(serde_json::json!({"error": "db_error"}))).into_response()
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(serde_json::json!({"error": "db_error"})),
+            )
+                .into_response()
         }
     }
 }

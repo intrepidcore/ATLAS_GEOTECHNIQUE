@@ -1,39 +1,37 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use axum::http::header;
 use axum::http::Method;
 use axum::{
     extract::{Query, State},
     middleware,
-    routing::{delete, get, patch, post},
     response::IntoResponse,
+    routing::{delete, get, patch, post},
     Json, Router,
 };
-use axum::http::header;
 use serde::{Deserialize, Serialize};
 use std::net::SocketAddr;
-use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tower_http::set_header::SetResponseHeaderLayer;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
-mod audit;
 mod ai_infer;
 mod ai_jobs;
-mod ai_plots;
 mod ai_opti;
+mod ai_plots;
 mod ai_stats;
-mod blup_fusion;
-mod internal_services;
+mod atlaspack;
+mod audit;
 pub mod auth;
-mod routes;
-mod zones_etude;
-mod colab;
-mod export;
-mod cells_labs;
+mod blup_fusion;
 mod cells_kpi;
+mod cells_labs;
+mod colab;
 mod config;
 mod db_manager;
-mod events;
 mod dsm;
+mod events;
+mod export;
 mod exports;
 mod geocode_manual;
 mod geocode_suggestions;
@@ -42,6 +40,7 @@ mod geotechnical;
 mod health;
 mod import_bulk;
 mod import_wizard;
+mod internal_services;
 mod layers;
 mod metrics;
 mod metrics_handler;
@@ -49,6 +48,7 @@ mod neighbors;
 mod observability;
 mod rbac;
 pub mod roles;
+mod routes;
 mod search_service;
 mod sondages;
 mod sondages_geocode;
@@ -56,8 +56,10 @@ mod sql_sanitizer;
 mod stats_global;
 pub mod users;
 mod websocket;
+mod zones_etude;
 
 use metrics_handler::metrics_handler;
+mod hq_export;
 pub mod state;
 mod surveys;
 mod surveys_adm;
@@ -68,7 +70,6 @@ mod surveys_extended;
 mod surveys_unified;
 mod thematic;
 mod version;
-mod hq_export;
 
 #[derive(Serialize)]
 struct Health {
@@ -213,9 +214,29 @@ async fn main() -> anyhow::Result<()> {
     // Initialiser la configuration auth
     let auth_config = auth::AuthConfig::new();
     if let Err(e) = auth_config.validate() {
-        tracing::warn!("⚠️ Configuration auth invalide: {}. Utilisation des valeurs par défaut.", e);
+        tracing::warn!(
+            "⚠️ Configuration auth invalide: {}. Utilisation des valeurs par défaut.",
+            e
+        );
     }
     tracing::info!("✅ Configuration auth initialisée");
+
+    // Trousseau de signature .atlaspack — clé privée chargée depuis
+    // ATLASPACK_SIGNING_PRIVATE_KEY_B64 uniquement (jamais en base, jamais
+    // dans le dépôt). Générée une fois via `cargo run --bin generate_atlaspack_keys`.
+    let atlaspack_signing_key = std::sync::Arc::new(
+        atlaspack::crypto::AtlasPackSigningKeypair::from_env().unwrap_or_else(|e| {
+            panic!(
+                "Impossible de démarrer : {e}. Lancez `cargo run --bin generate_atlaspack_keys` \
+                 pour générer une clé, puis exportez ATLASPACK_SIGNING_PRIVATE_KEY_B64."
+            )
+        }),
+    );
+    tracing::info!(key_id = %atlaspack_signing_key.key_id, "✅ Clé de signature .atlaspack chargée");
+    let atlaspack_state = atlaspack::config::AtlasPackState {
+        config: std::sync::Arc::new(atlaspack::config::AtlasPackConfig::from_env()),
+        signing_key: atlaspack_signing_key,
+    };
 
     let state = AppState {
         pool,
@@ -223,7 +244,20 @@ async fn main() -> anyhow::Result<()> {
         metrics: metrics.clone(),
         ws_tx,
         auth_config,
+        atlaspack: atlaspack_state.clone(),
     };
+
+    // Enregistre (idempotent) la clé publique .atlaspack courante en base —
+    // permet la rotation future (plusieurs lignes actives) sans jamais y
+    // stocker la clé privée.
+    let _ = sqlx::query(
+        "INSERT INTO atlas.atlaspack_signing_keys (id, public_key_b64, algorithm, active) \
+         VALUES ($1, $2, 'ed25519', TRUE) ON CONFLICT (id) DO NOTHING",
+    )
+    .bind(&state.atlaspack.signing_key.key_id)
+    .bind(&state.atlaspack.signing_key.public_key_b64)
+    .execute(&state.pool)
+    .await;
 
     // Background worker: process ai_training_jobs queued by sondages trigger or manual requests.
     // Runs in-process (V1) with SKIP LOCKED claim to avoid double-processing.
@@ -232,6 +266,17 @@ async fn main() -> anyhow::Result<()> {
     // Background worker: envoyer les emails Colab (notifications mailles étudiants).
     // Désactivé automatiquement si GMAIL_USER/SMTP_USER non définis.
     colab::email_worker::spawn_colab_email_worker(state.pool.clone());
+
+    // Background worker: génération des paquets opérateur .atlaspack
+    // (file DB-backed, pattern identique à colab::email_worker).
+    atlaspack::jobs::spawn_atlaspack_worker(state.pool.clone(), state.atlaspack.clone());
+    // Les envois d'identifiants en attente survivent au redémarrage.
+    {
+        let pool = state.pool.clone();
+        tokio::spawn(async move {
+            colab::credentials::resume_pending_credential_jobs(pool).await;
+        });
+    }
 
     // NOTE: On expose les routes à la racine ET sous /api pour rester compatible
     // avec le frontend (fallback API_BASE_URL = origin + /api) et les reverse proxies.
@@ -247,6 +292,8 @@ async fn main() -> anyhow::Result<()> {
         )
         // WebSocket endpoint
         .route("/ws", get(websocket::ws_handler))
+        // Distribution publique de l'APK — pas d'auth possible avant install.
+        .merge(colab::app_download::app_download_routes())
         // Routes publiques pour export cartographique
         .route("/export/cells/adm", get(thematic::get_adm_cells))
         .route("/coverage/mailles", get(routes::get_coverage_mailles))
@@ -475,169 +522,167 @@ async fn main() -> anyhow::Result<()> {
             get(sondages::get_adm3_candidates),
         );
 
-        // Database Manager endpoints (ADMIN ONLY)
-        // ==========================================================================
-        // Toutes les routes /db/* sont protégées par require_admin
-        let db_manager_routes = Router::new()
-            .route(
-                "/types",
-                get(db_manager::routes::get_postgres_types_handler),
-            )
-            .route("/schema", get(db_manager::routes::get_schema_handler))
-            .route(
-                "/table/:schema/:table",
-                get(db_manager::routes::get_table_info_handler),
-            )
-            .route(
-                "/table/:schema/:table/data",
-                get(db_manager::routes::get_table_data_handler),
-            )
-            .route(
-                "/table/:schema/:table/select",
-                post(db_manager::routes::select_rows_handler),
-            )
-            .route(
-                "/table/:schema/:table/select-bbox",
-                post(db_manager::routes::select_bbox_handler),
-            )
-            .route(
-                "/table/:schema/:table/extent",
-                post(db_manager::routes::extent_by_ids_handler),
-            )
-            .route(
-                "/table/:schema/:table/extent-related",
-                post(db_manager::routes::extent_by_related_handler),
-            )
-            .route(
-                "/table/:schema/:table/row",
-                post(db_manager::routes::add_row_handler),
-            )
-            .route(
-                "/table/:schema/:table/row/:id/:column",
-                axum::routing::put(db_manager::routes::update_cell_handler),
-            )
-            .route(
-                "/table/:schema/:table/rows",
-                delete(db_manager::routes::delete_rows_handler),
-            )
-            .route(
-                "/table/:schema/:table/staging",
-                post(db_manager::routes::create_staging_handler),
-            )
-            .route(
-                "/staging/:id/operation",
-                post(db_manager::routes::apply_staging_operation_handler),
-            )
-            .route(
-                "/staging/:id/validate",
-                get(db_manager::routes::validate_staging_handler),
-            )
-            .route(
-                "/staging/:id/preview",
-                get(db_manager::routes::preview_staging_handler),
-            )
-            .route(
-                "/staging/:id/commit",
-                post(db_manager::routes::commit_staging_handler),
-            )
-            .route(
-                "/staging/:id",
-                delete(db_manager::routes::cancel_staging_handler),
-            )
-            .route(
-                "/table/:schema/:table/column",
-                post(db_manager::routes::add_column_handler),
-            )
-            .route(
-                "/table/:schema/:table/column/:column",
-                delete(db_manager::routes::delete_column_handler),
-            )
-            .route(
-                "/table/:schema/:table/column/:column/impact",
-                get(db_manager::routes::analyze_column_impact_handler),
-            )
-            .route(
-                "/table/:schema/:table/column/dryrun",
-                post(db_manager::routes::dryrun_add_column_handler),
-            )
-            .route(
-                "/table/:schema/:table/column/:column/dryrun",
-                get(db_manager::routes::dryrun_delete_column_handler),
-            )
-            .route(
-                "/table/:schema/:table/audit",
-                get(db_manager::routes::get_audit_log_handler),
-            )
-            .route(
-                "/table/:schema/:table/audit/stats",
-                get(db_manager::routes::get_audit_stats_handler),
-            )
-            .route(
-                "/backup",
-                post(db_manager::routes::create_backup_handler)
-                    .get(db_manager::routes::list_backups_handler),
-            )
-            .route(
-                "/backup/:id/restore",
-                post(db_manager::routes::restore_backup_handler),
-            )
-            .route(
-                "/backup/:id",
-                delete(db_manager::routes::delete_backup_handler),
-            )
-            .layer(middleware::from_fn(auth::middleware::require_admin))
-            .with_state(state.clone());
+    // Database Manager endpoints (ADMIN ONLY)
+    // ==========================================================================
+    // Toutes les routes /db/* sont protégées par require_admin
+    let db_manager_routes = Router::new()
+        .route(
+            "/types",
+            get(db_manager::routes::get_postgres_types_handler),
+        )
+        .route("/schema", get(db_manager::routes::get_schema_handler))
+        .route(
+            "/table/:schema/:table",
+            get(db_manager::routes::get_table_info_handler),
+        )
+        .route(
+            "/table/:schema/:table/data",
+            get(db_manager::routes::get_table_data_handler),
+        )
+        .route(
+            "/table/:schema/:table/select",
+            post(db_manager::routes::select_rows_handler),
+        )
+        .route(
+            "/table/:schema/:table/select-bbox",
+            post(db_manager::routes::select_bbox_handler),
+        )
+        .route(
+            "/table/:schema/:table/extent",
+            post(db_manager::routes::extent_by_ids_handler),
+        )
+        .route(
+            "/table/:schema/:table/extent-related",
+            post(db_manager::routes::extent_by_related_handler),
+        )
+        .route(
+            "/table/:schema/:table/row",
+            post(db_manager::routes::add_row_handler),
+        )
+        .route(
+            "/table/:schema/:table/row/:id/:column",
+            axum::routing::put(db_manager::routes::update_cell_handler),
+        )
+        .route(
+            "/table/:schema/:table/rows",
+            delete(db_manager::routes::delete_rows_handler),
+        )
+        .route(
+            "/table/:schema/:table/staging",
+            post(db_manager::routes::create_staging_handler),
+        )
+        .route(
+            "/staging/:id/operation",
+            post(db_manager::routes::apply_staging_operation_handler),
+        )
+        .route(
+            "/staging/:id/validate",
+            get(db_manager::routes::validate_staging_handler),
+        )
+        .route(
+            "/staging/:id/preview",
+            get(db_manager::routes::preview_staging_handler),
+        )
+        .route(
+            "/staging/:id/commit",
+            post(db_manager::routes::commit_staging_handler),
+        )
+        .route(
+            "/staging/:id",
+            delete(db_manager::routes::cancel_staging_handler),
+        )
+        .route(
+            "/table/:schema/:table/column",
+            post(db_manager::routes::add_column_handler),
+        )
+        .route(
+            "/table/:schema/:table/column/:column",
+            delete(db_manager::routes::delete_column_handler),
+        )
+        .route(
+            "/table/:schema/:table/column/:column/impact",
+            get(db_manager::routes::analyze_column_impact_handler),
+        )
+        .route(
+            "/table/:schema/:table/column/dryrun",
+            post(db_manager::routes::dryrun_add_column_handler),
+        )
+        .route(
+            "/table/:schema/:table/column/:column/dryrun",
+            get(db_manager::routes::dryrun_delete_column_handler),
+        )
+        .route(
+            "/table/:schema/:table/audit",
+            get(db_manager::routes::get_audit_log_handler),
+        )
+        .route(
+            "/table/:schema/:table/audit/stats",
+            get(db_manager::routes::get_audit_stats_handler),
+        )
+        .route(
+            "/backup",
+            post(db_manager::routes::create_backup_handler)
+                .get(db_manager::routes::list_backups_handler),
+        )
+        .route(
+            "/backup/:id/restore",
+            post(db_manager::routes::restore_backup_handler),
+        )
+        .route(
+            "/backup/:id",
+            delete(db_manager::routes::delete_backup_handler),
+        )
+        .layer(middleware::from_fn(auth::middleware::require_admin))
+        .with_state(state.clone());
 
-        base_api = base_api.nest("/db", db_manager_routes);
-        // ==========================================================================
-        // Authentication & Authorization routes (RBAC)
-        // ==========================================================================
-        base_api = base_api
-            .merge(auth::routes::auth_routes())
-            // Users management (requires authentication)
-            .merge(
-                users::routes::users_routes()
-                    .layer(middleware::from_fn_with_state(
-                        state.clone(),
-                        auth::middleware::auth_middleware,
-                    )),
-            )
-            // Roles management (requires authentication)
-            .merge(
-                roles::routes::roles_routes()
-                    .layer(middleware::from_fn_with_state(
-                        state.clone(),
-                        auth::middleware::auth_middleware,
-                    )),
-            )
-            // ==========================================================================
-            // Atlas Colab routes (requires authentication)
-            // ==========================================================================
-            .merge(
-                colab::routes::colab_routes()
-                    .merge(export::export_routes())
-                    .route_layer(middleware::from_fn_with_state(
-                        state.clone(),
-                        auth::middleware::auth_middleware,
-                    )),
-            )
-            // ==========================================================================
-            // Atlas Colab Mobile/PWA routes (requires authentication)
-            // ==========================================================================
-            .nest(
-                "/colab",
-                colab::mobile::mobile_routes()
-                    .merge(colab::comments::comments_routes())
-                    .merge(colab::qa::qa_routes())
-                    .layer(middleware::from_fn_with_state(
-                        state.clone(),
-                        auth::middleware::auth_middleware,
-                    )),
-            )
-            .layer(middleware::from_fn_with_state(
+    base_api = base_api.nest("/db", db_manager_routes);
+    // ==========================================================================
+    // Authentication & Authorization routes (RBAC)
+    // ==========================================================================
+    base_api = base_api
+        .merge(auth::routes::auth_routes())
+        // Users management (requires authentication)
+        .merge(
+            users::routes::users_routes().layer(middleware::from_fn_with_state(
                 state.clone(),
-                auth::middleware::optional_auth_middleware,
-            ));
+                auth::middleware::auth_middleware,
+            )),
+        )
+        // Roles management (requires authentication)
+        .merge(
+            roles::routes::roles_routes().layer(middleware::from_fn_with_state(
+                state.clone(),
+                auth::middleware::auth_middleware,
+            )),
+        )
+        // ==========================================================================
+        // Atlas Colab routes (requires authentication)
+        // ==========================================================================
+        .merge(
+            colab::routes::colab_routes()
+                .merge(export::export_routes())
+                .route_layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    auth::middleware::auth_middleware,
+                )),
+        )
+        // ==========================================================================
+        // Atlas Colab Mobile/PWA routes (requires authentication)
+        // ==========================================================================
+        .nest(
+            "/colab",
+            colab::mobile::mobile_routes()
+                .merge(colab::comments::comments_routes())
+                .merge(colab::qa::qa_routes())
+                .layer(middleware::from_fn_with_state(
+                    state.clone(),
+                    auth::middleware::auth_middleware,
+                )),
+        )
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            auth::middleware::optional_auth_middleware,
+        ));
 
     let app = Router::new()
         .nest("/", base_api.clone())
@@ -649,10 +694,15 @@ async fn main() -> anyhow::Result<()> {
                 axum::Json(serde_json::json!({
                     "error": "Route non trouvée",
                     "error_code": "NOT_FOUND"
-                }))
+                })),
             )
         })
-        .layer(SetResponseHeaderLayer::overriding(
+        // `if_not_present` et NON `overriding` : cette couche sert à donner un
+        // Content-Type par défaut aux réponses qui n'en fixent pas. En mode
+        // `overriding` elle écrasait aussi celui des réponses binaires — tout
+        // téléchargement (APK, .atlaspack, exports) était annoncé comme du JSON,
+        // ce qui fait échouer l'installation côté Android.
+        .layer(SetResponseHeaderLayer::if_not_present(
             header::CONTENT_TYPE,
             header::HeaderValue::from_static("application/json; charset=utf-8"),
         ))

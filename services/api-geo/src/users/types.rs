@@ -13,7 +13,11 @@ use validator::Validate;
 pub struct CreateUserRequest {
     #[validate(email(message = "Email invalide"))]
     pub email: String,
-    #[validate(length(min = 3, max = 50, message = "Username doit faire entre 3 et 50 caractères"))]
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Username doit faire entre 3 et 50 caractères"
+    ))]
     pub username: String,
     #[validate(length(min = 8, message = "Mot de passe trop court (min 8 caractères)"))]
     pub password: String,
@@ -30,7 +34,11 @@ pub struct CreateUserRequest {
 pub struct UpdateUserRequest {
     #[validate(email(message = "Email invalide"))]
     pub email: Option<String>,
-    #[validate(length(min = 3, max = 50, message = "Username doit faire entre 3 et 50 caractères"))]
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Username doit faire entre 3 et 50 caractères"
+    ))]
     pub username: Option<String>,
     pub first_name: Option<String>,
     pub last_name: Option<String>,

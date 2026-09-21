@@ -572,18 +572,12 @@ pub async fn list_surveys(
 
     // Filtre par code maille 2km
     if let Some(maille) = &q.maille_code {
-        conditions.push(format!(
-            "maille_code = '{}'",
-            maille.replace("'", "''")
-        ));
+        conditions.push(format!("maille_code = '{}'", maille.replace("'", "''")));
     }
 
     // Filtre par code maille 28km
     if let Some(m28) = &q.m28 {
-        conditions.push(format!(
-            "id_m28 = '{}'",
-            m28.replace("'", "''")
-        ));
+        conditions.push(format!("id_m28 = '{}'", m28.replace("'", "''")));
     }
 
     if !conditions.is_empty() {
@@ -1338,7 +1332,7 @@ pub async fn get_adm_geojson(
     State(state): State<AppState>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let level = q.get("level").map(|s| s.as_str()).unwrap_or("adm1");
     let name = match q.get("name") {
         Some(n) if !n.is_empty() => n,
@@ -1346,14 +1340,36 @@ pub async fn get_adm_geojson(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(serde_json::json!({"error": "Parameter 'name' is required"})),
-            ).into_response();
+            )
+                .into_response();
         }
     };
-    
+
     let candidates: Vec<&'static str> = match level {
-        "adm1" => vec!["atlas.adm1_tg", "public.adm1_tg", "adm1_tg", "atlas.adm1", "public.adm1", "adm1"],
-        "adm2" => vec!["atlas.adm2_tg", "public.adm2_tg", "adm2_tg", "atlas.adm2", "public.adm2", "adm2"],
-        "adm3" => vec!["atlas.adm3", "public.adm3", "adm3", "atlas.adm3_tg", "public.adm3_tg", "adm3_tg"],
+        "adm1" => vec![
+            "atlas.adm1_tg",
+            "public.adm1_tg",
+            "adm1_tg",
+            "atlas.adm1",
+            "public.adm1",
+            "adm1",
+        ],
+        "adm2" => vec![
+            "atlas.adm2_tg",
+            "public.adm2_tg",
+            "adm2_tg",
+            "atlas.adm2",
+            "public.adm2",
+            "adm2",
+        ],
+        "adm3" => vec![
+            "atlas.adm3",
+            "public.adm3",
+            "adm3",
+            "atlas.adm3_tg",
+            "public.adm3_tg",
+            "adm3_tg",
+        ],
         _ => {
             return (
                 StatusCode::BAD_REQUEST,
@@ -1463,14 +1479,25 @@ pub async fn get_adm_geojson(
                 return Json(geojson).into_response();
             }
             Err(e) => {
-                tracing::warn!(?e, level, name, table, "get_adm_geojson candidate failed (trying next)");
+                tracing::warn!(
+                    ?e,
+                    level,
+                    name,
+                    table,
+                    "get_adm_geojson candidate failed (trying next)"
+                );
                 last_error = Some(format!("{}", e));
                 continue;
             }
         }
     }
 
-    tracing::warn!(level, name, ?last_error, "get_adm_geojson: no candidate table matched or returned features");
+    tracing::warn!(
+        level,
+        name,
+        ?last_error,
+        "get_adm_geojson: no candidate table matched or returned features"
+    );
     let fc = serde_json::json!({
         "type": "FeatureCollection",
         "features": []

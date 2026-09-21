@@ -1,6 +1,6 @@
+use anyhow::Context;
 use serde::Serialize;
 use sqlx::{PgPool, Row};
-use anyhow::Context;
 
 #[derive(Serialize, Clone)]
 pub struct SearchResult {
@@ -28,7 +28,11 @@ fn bbox_from_box2d(box2d: Option<String>) -> Option<[f64; 4]> {
     Some([xmin, ymin, xmax, ymax])
 }
 
-pub async fn unified_search(pool: &PgPool, q_raw: &str, limit: i64) -> anyhow::Result<Vec<SearchResult>> {
+pub async fn unified_search(
+    pool: &PgPool,
+    q_raw: &str,
+    limit: i64,
+) -> anyhow::Result<Vec<SearchResult>> {
     let q = q_raw.trim();
     if q.is_empty() {
         return Ok(vec![]);
@@ -47,19 +51,144 @@ pub async fn unified_search(pool: &PgPool, q_raw: &str, limit: i64) -> anyhow::R
             .await
             .context("search_maille_28km")?,
     );
-    results.extend(search_adm(pool, "adm1", q, &q_upper, limit).await.context("search_adm1")?);
-    results.extend(search_adm(pool, "adm2", q, &q_upper, limit).await.context("search_adm2")?);
-    results.extend(search_adm(pool, "adm3", q, &q_upper, limit).await.context("search_adm3")?);
+    results.extend(
+        search_adm(pool, "adm1", q, &q_upper, limit)
+            .await
+            .context("search_adm1")?,
+    );
+    results.extend(
+        search_adm(pool, "adm2", q, &q_upper, limit)
+            .await
+            .context("search_adm2")?,
+    );
+    results.extend(
+        search_adm(pool, "adm3", q, &q_upper, limit)
+            .await
+            .context("search_adm3")?,
+    );
     results.extend(
         search_sondages(pool, q, &q_upper, limit)
             .await
             .context("search_sondages")?,
     );
+    results.extend(
+        search_operateurs(pool, q, limit)
+            .await
+            .context("search_operateurs")?,
+    );
 
     Ok(results)
 }
 
-async fn search_maille_2km(pool: &PgPool, q: &str, q_upper: &str, limit: i64) -> Result<Vec<SearchResult>, sqlx::Error> {
+/// Opérateurs Colab ayant une mission active, recherchés par nom ou email.
+///
+/// Le résultat porte la géométrie de LEUR maille : sélectionner un opérateur
+/// dans la barre de recherche doit pouvoir cadrer la carte sur sa zone sans
+/// second appel.
+async fn search_operateurs(
+    pool: &PgPool,
+    q: &str,
+    limit: i64,
+) -> Result<Vec<SearchResult>, sqlx::Error> {
+    let pattern = format!("%{}%", q);
+    let rows = sqlx::query(
+        r#"
+        SELECT DISTINCT ON (cs.id)
+          cs.id::text AS student_id,
+          TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) AS nom,
+          u.email,
+          -- Toutes les mailles de la mission, pas seulement la principale :
+          -- isoler un opérateur doit montrer l'intégralité de sa zone.
+          (SELECT string_agg(v.maille_code, ',' ORDER BY v.maille_code)
+             FROM atlas.v_mission_mailles v WHERE v.mission_id = m.id) AS maille_code,
+          (SELECT CASE WHEN ST_Collect(mc2.geom) IS NULL THEN NULL ELSE format(
+              'BOX(%s %s,%s %s)',
+              ST_XMin(ST_Transform(ST_Collect(mc2.geom), 4326)),
+              ST_YMin(ST_Transform(ST_Collect(mc2.geom), 4326)),
+              ST_XMax(ST_Transform(ST_Collect(mc2.geom), 4326)),
+              ST_YMax(ST_Transform(ST_Collect(mc2.geom), 4326))
+            ) END
+             FROM atlas.v_mission_mailles v
+             JOIN atlas.mailles mc2 ON mc2.id = v.maille_id
+            WHERE v.mission_id = m.id) AS bbox,
+          (SELECT ST_X(ST_Centroid(ST_Transform(ST_Collect(mc2.geom), 4326)))::float8
+             FROM atlas.v_mission_mailles v
+             JOIN atlas.mailles mc2 ON mc2.id = v.maille_id
+            WHERE v.mission_id = m.id) AS lon,
+          (SELECT ST_Y(ST_Centroid(ST_Transform(ST_Collect(mc2.geom), 4326)))::float8
+             FROM atlas.v_mission_mailles v
+             JOIN atlas.mailles mc2 ON mc2.id = v.maille_id
+            WHERE v.mission_id = m.id) AS lat
+        FROM atlas.colab_students cs
+        JOIN atlas.users u ON u.id = cs.user_id AND u.deleted_at IS NULL
+        JOIN atlas.colab_mission_assignments a
+          ON a.student_id = cs.id AND a.unassigned_at IS NULL
+        JOIN atlas.colab_missions m
+          ON m.id = a.mission_id AND m.deleted_at IS NULL
+        WHERE cs.deleted_at IS NULL
+          AND (
+            u.first_name ILIKE $1
+            OR u.last_name ILIKE $1
+            OR u.email ILIKE $1
+            OR TRIM(COALESCE(u.first_name,'') || ' ' || COALESCE(u.last_name,'')) ILIKE $1
+          )
+        ORDER BY cs.id, a.assigned_at DESC
+        LIMIT $2
+        "#,
+    )
+    .bind(&pattern)
+    .bind(limit)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(rows
+        .into_iter()
+        .map(|r| {
+            let nom: Option<String> = r.try_get("nom").ok();
+            let email: String = r.get("email");
+            let maille_code: Option<String> = r.try_get("maille_code").ok().flatten();
+            let nom = nom
+                .map(|n| n.trim().to_string())
+                .filter(|n| !n.is_empty())
+                .unwrap_or_else(|| email.clone());
+            // Une mission multi-mailles alignerait sinon trois codes de
+            // quinze caractères dans une liste déroulante étroite.
+            let label = match &maille_code {
+                Some(codes) => {
+                    let n = codes.split(',').filter(|c| !c.trim().is_empty()).count();
+                    if n > 1 {
+                        format!("{nom} — {n} mailles")
+                    } else {
+                        format!("{nom} — {codes}")
+                    }
+                }
+                None => format!("{nom} — aucune maille"),
+            };
+            let lon: Option<f64> = r.try_get("lon").ok().flatten();
+            let lat: Option<f64> = r.try_get("lat").ok().flatten();
+            let bbox = bbox_from_box2d(r.try_get("bbox").ok().flatten());
+            SearchResult {
+                r#type: "operateur".to_string(),
+                id: r.try_get("student_id").ok(),
+                code: maille_code,
+                label,
+                bbox,
+                centroid: match (lon, lat) {
+                    (Some(x), Some(y)) => Some([x, y]),
+                    _ => None,
+                },
+                has_geom: bbox.is_some(),
+            }
+        })
+        .collect())
+}
+
+async fn search_maille_2km(
+    pool: &PgPool,
+    q: &str,
+    q_upper: &str,
+    limit: i64,
+) -> Result<Vec<SearchResult>, sqlx::Error> {
     let rows = sqlx::query(
         r#"
         SELECT
@@ -146,7 +275,12 @@ async fn search_maille_2km(pool: &PgPool, q: &str, q_upper: &str, limit: i64) ->
     Ok(out)
 }
 
-async fn search_maille_28km(pool: &PgPool, q: &str, q_upper: &str, limit: i64) -> Result<Vec<SearchResult>, sqlx::Error> {
+async fn search_maille_28km(
+    pool: &PgPool,
+    q: &str,
+    q_upper: &str,
+    limit: i64,
+) -> Result<Vec<SearchResult>, sqlx::Error> {
     let rows = sqlx::query(
         r#"
         SELECT
@@ -206,9 +340,16 @@ async fn search_maille_28km(pool: &PgPool, q: &str, q_upper: &str, limit: i64) -
     Ok(out)
 }
 
-async fn search_adm(pool: &PgPool, level: &str, q: &str, q_upper: &str, limit: i64) -> Result<Vec<SearchResult>, sqlx::Error> {
+async fn search_adm(
+    pool: &PgPool,
+    level: &str,
+    q: &str,
+    q_upper: &str,
+    limit: i64,
+) -> Result<Vec<SearchResult>, sqlx::Error> {
     let query = match level {
-        "adm1" => r#"
+        "adm1" => {
+            r#"
         SELECT
           id::text as id,
           name::text as name,
@@ -234,8 +375,10 @@ async fn search_adm(pool: &PgPool, level: &str, q: &str, q_upper: &str, limit: i
           END,
           name
         LIMIT $3
-        "#,
-        "adm2" => r#"
+        "#
+        }
+        "adm2" => {
+            r#"
         SELECT
           id::text as id,
           name::text as name,
@@ -261,8 +404,10 @@ async fn search_adm(pool: &PgPool, level: &str, q: &str, q_upper: &str, limit: i
           END,
           name
         LIMIT $3
-        "#,
-        _ => r#"
+        "#
+        }
+        _ => {
+            r#"
         SELECT
           id::text as id,
           name::text as name,
@@ -288,7 +433,8 @@ async fn search_adm(pool: &PgPool, level: &str, q: &str, q_upper: &str, limit: i
           END,
           name
         LIMIT $3
-        "#,
+        "#
+        }
     };
 
     let rows = sqlx::query(query)
@@ -322,7 +468,12 @@ async fn search_adm(pool: &PgPool, level: &str, q: &str, q_upper: &str, limit: i
     Ok(out)
 }
 
-async fn search_sondages(pool: &PgPool, q: &str, q_upper: &str, limit: i64) -> Result<Vec<SearchResult>, sqlx::Error> {
+async fn search_sondages(
+    pool: &PgPool,
+    q: &str,
+    q_upper: &str,
+    limit: i64,
+) -> Result<Vec<SearchResult>, sqlx::Error> {
     let rows = sqlx::query(
         r#"
         SELECT

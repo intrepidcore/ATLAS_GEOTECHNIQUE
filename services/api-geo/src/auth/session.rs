@@ -37,7 +37,8 @@ impl SessionManager {
         let session_id = Uuid::new_v4();
         let now = Utc::now();
         let access_expires = now + Duration::seconds(self.config.access_token_ttl.as_secs() as i64);
-        let refresh_expires = now + Duration::seconds(self.config.refresh_token_ttl.as_secs() as i64);
+        let refresh_expires =
+            now + Duration::seconds(self.config.refresh_token_ttl.as_secs() as i64);
 
         // Générer les tokens
         let access_token = self.jwt_manager.generate_access_token(
@@ -149,13 +150,12 @@ impl SessionManager {
         .ok_or(AuthError::InvalidRefreshToken)?;
 
         // Récupérer l'utilisateur
-        let user: DbUser = sqlx::query_as(
-            r#"SELECT * FROM atlas.users WHERE id = $1 AND is_active = TRUE"#,
-        )
-        .bind(session.user_id)
-        .fetch_optional(&self.pool)
-        .await?
-        .ok_or(AuthError::UserNotFound)?;
+        let user: DbUser =
+            sqlx::query_as(r#"SELECT * FROM atlas.users WHERE id = $1 AND is_active = TRUE"#)
+                .bind(session.user_id)
+                .fetch_optional(&self.pool)
+                .await?
+                .ok_or(AuthError::UserNotFound)?;
 
         // Récupérer les rôles et permissions actuels
         let roles = self.get_user_roles(user.id).await?;
@@ -172,7 +172,8 @@ impl SessionManager {
         )?;
 
         let new_access_token_hash = JwtManager::hash_token(&new_access_token);
-        let new_expires = Utc::now() + Duration::seconds(self.config.access_token_ttl.as_secs() as i64);
+        let new_expires =
+            Utc::now() + Duration::seconds(self.config.access_token_ttl.as_secs() as i64);
 
         // Mettre à jour la session
         sqlx::query(
@@ -233,12 +234,10 @@ impl SessionManager {
         .ok_or(AuthError::SessionExpired)?;
 
         // Mettre à jour last_activity
-        sqlx::query(
-            r#"UPDATE atlas.sessions SET last_activity_at = NOW() WHERE id = $1"#,
-        )
-        .bind(session.id)
-        .execute(&self.pool)
-        .await?;
+        sqlx::query(r#"UPDATE atlas.sessions SET last_activity_at = NOW() WHERE id = $1"#)
+            .bind(session.id)
+            .execute(&self.pool)
+            .await?;
 
         Ok(session)
     }

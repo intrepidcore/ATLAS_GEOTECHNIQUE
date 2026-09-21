@@ -58,7 +58,16 @@ export default defineConfig(({ mode }) => {
         host: 'localhost',
       },
       watch: {
-        ignored: ['**/src-tauri/**']
+        ignored: ['**/src-tauri/**'],
+        // Le projet vit sur un volume D: monté sous Windows : les événements
+        // du système de fichiers n'y remontent pas jusqu'à chokidar. Sans
+        // scrutation, le serveur continue de servir la version transformée
+        // précédente d'un module modifié — un rechargement forcé du
+        // navigateur n'y change rien, c'est le cache du serveur qui est
+        // périmé. La scrutation coûte quelques cycles CPU ; servir du code
+        // mort coûte des heures de débogage.
+        usePolling: true,
+        interval: 300,
       },
       proxy: {
         '/api': {
@@ -200,7 +209,16 @@ export default defineConfig(({ mode }) => {
       output: {
         manualChunks: {
           'vendor-react': ['react', 'react-dom'],
-          'vendor-leaflet': ['leaflet', 'leaflet.heat'],
+          // Le shim doit etre dans le MEME chunk que le plugin : un chunk
+          // importe s'execute avant celui qui l'importe, donc un shim reste
+          // dans le bundle applicatif s'executerait trop tard et window.L
+          // serait encore indefini au chargement de leaflet.heat.
+          'vendor-leaflet': [
+            'leaflet',
+            './src/leaflet-global.ts',
+            './src/leaflet-heat-shim.ts',
+            'leaflet.heat',
+          ],
           'vendor-charts': ['chart.js'],
           'vendor-export': ['exceljs', 'jspdf', 'html2canvas', 'file-saver'],
         },

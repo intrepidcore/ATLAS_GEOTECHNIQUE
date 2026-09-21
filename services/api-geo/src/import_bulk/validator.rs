@@ -264,7 +264,7 @@ pub fn validate_analyse_qualitative(type_essai: &str, analyse: &str) -> Result<S
 }
 
 fn normalize_analyse(s: &str) -> String {
-    s.trim()
+    super::fold_diacritics(s.trim())
         .to_lowercase()
         .chars()
         .filter(|c| c.is_alphanumeric() || c.is_whitespace())

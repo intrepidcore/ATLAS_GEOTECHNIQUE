@@ -23,8 +23,15 @@ pub struct LoginRequest {
 pub struct RegisterRequest {
     #[validate(email(message = "Email invalide"))]
     pub email: String,
-    #[validate(length(min = 3, max = 50, message = "Username doit faire entre 3 et 50 caractères"))]
-    #[validate(regex(path = "USERNAME_REGEX", message = "Username invalide (lettres, chiffres, _ et - uniquement)"))]
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Username doit faire entre 3 et 50 caractères"
+    ))]
+    #[validate(regex(
+        path = "USERNAME_REGEX",
+        message = "Username invalide (lettres, chiffres, _ et - uniquement)"
+    ))]
     pub username: String,
     #[validate(length(min = 8, message = "Mot de passe trop court (min 8 caractères)"))]
     pub password: String,
@@ -45,7 +52,10 @@ pub struct RefreshTokenRequest {
 pub struct ChangePasswordRequest {
     #[validate(length(min = 1, message = "Mot de passe actuel requis"))]
     pub current_password: String,
-    #[validate(length(min = 8, message = "Nouveau mot de passe trop court (min 8 caractères)"))]
+    #[validate(length(
+        min = 8,
+        message = "Nouveau mot de passe trop court (min 8 caractères)"
+    ))]
     pub new_password: String,
 }
 
@@ -58,7 +68,10 @@ pub struct ResetPasswordRequest {
 #[derive(Debug, Deserialize, Validate)]
 pub struct ConfirmResetPasswordRequest {
     pub token: String,
-    #[validate(length(min = 8, message = "Nouveau mot de passe trop court (min 8 caractères)"))]
+    #[validate(length(
+        min = 8,
+        message = "Nouveau mot de passe trop court (min 8 caractères)"
+    ))]
     pub new_password: String,
 }
 

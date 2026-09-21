@@ -28,7 +28,9 @@ pub async fn pg_pool_from_url(url: &str) -> anyhow::Result<PgPool> {
 
     // Health check en runtime (pas de macro compile-time) pour garder les builds Docker
     // indépendants de la DB et éviter d'exiger sqlx-data.json/SQLX_OFFLINE.
-    let _one: i32 = sqlx::query_scalar::<_, i32>("SELECT 1").fetch_one(&pool).await?;
+    let _one: i32 = sqlx::query_scalar::<_, i32>("SELECT 1")
+        .fetch_one(&pool)
+        .await?;
 
     Ok(pool)
 }

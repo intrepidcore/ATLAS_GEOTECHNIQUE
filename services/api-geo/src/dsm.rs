@@ -28,7 +28,7 @@ pub async fn get_coverage_mailles_dsm(
             .split(',')
             .filter_map(|s| s.trim().parse().ok())
             .collect();
-        
+
         if coords.len() == 4 {
             format!(
                 "AND m.geom && ST_Transform(ST_MakeEnvelope({},{},{},{},4326),25231)",

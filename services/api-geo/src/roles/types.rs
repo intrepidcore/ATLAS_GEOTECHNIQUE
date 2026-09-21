@@ -12,7 +12,11 @@ use validator::Validate;
 pub struct CreateRoleRequest {
     #[validate(length(min = 2, max = 50, message = "ID doit faire entre 2 et 50 caractères"))]
     pub id: String,
-    #[validate(length(min = 2, max = 100, message = "Nom doit faire entre 2 et 100 caractères"))]
+    #[validate(length(
+        min = 2,
+        max = 100,
+        message = "Nom doit faire entre 2 et 100 caractères"
+    ))]
     pub name: String,
     pub description: Option<String>,
     /// Liste des IDs de permissions à assigner
@@ -21,7 +25,11 @@ pub struct CreateRoleRequest {
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateRoleRequest {
-    #[validate(length(min = 2, max = 100, message = "Nom doit faire entre 2 et 100 caractères"))]
+    #[validate(length(
+        min = 2,
+        max = 100,
+        message = "Nom doit faire entre 2 et 100 caractères"
+    ))]
     pub name: Option<String>,
     pub description: Option<String>,
 }
@@ -116,7 +124,11 @@ pub struct DbRoleWithPermissions {
 }
 
 impl DbRoleWithPermissions {
-    pub fn into_response(self, include_permissions: bool, include_user_count: bool) -> RoleResponse {
+    pub fn into_response(
+        self,
+        include_permissions: bool,
+        include_user_count: bool,
+    ) -> RoleResponse {
         let permissions = if include_permissions {
             self.permissions
                 .and_then(|v| serde_json::from_value::<Vec<PermissionResponse>>(v).ok())

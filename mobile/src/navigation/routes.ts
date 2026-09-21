@@ -6,7 +6,21 @@ export type RootStackParamList = {
   Tabs: undefined;
   MissionDetail: { missionId: string };
   MissionMap: { missionId: string };
-  SondageForm: { missionId: string; plannedPointId?: string; lat?: number; lon?: number };
+  LabResults: { missionId: string };
+  ExportData: undefined;
+  AuditLog: undefined;
+  Backup: undefined;
+  SondageForm: {
+    missionId: string;
+    plannedPointId: string;
+    plannedPointLabel: string;
+    plannedLat: number;
+    plannedLon: number;
+    mode: 'confirm' | 'relocate';
+    distanceM: number;
+    lat: number;
+    lon: number;
+  };
 };
 
 export type TabParamList = {

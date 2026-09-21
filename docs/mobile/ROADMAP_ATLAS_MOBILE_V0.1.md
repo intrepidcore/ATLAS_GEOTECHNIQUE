@@ -11,7 +11,7 @@ created: 2026-08-20
 
 # Roadmap — Atlas Mobile V0.1
 
-App terrain React Native (Expo) pour étudiants et superviseurs Atlas Colab. Remplace le PWA `ui/src/pages/mobile/*` par une app native iOS/Android, offline-first, avec navigation carte, confirmation GPS à tolérance paramétrable, fiches de sondage, synchronisation différée.
+App terrain React Native (Expo) pour étudiants et superviseurs Atlas Colab. Remplace le PWA `ui/src/pages/mobile/*` par une app native iOS/Android, offline-first, avec carte OpenStreetMap, confirmation GPS dans un rayon fixe de 10 m, exception d'accessibilité justifiée, fiches de sondage et synchronisation différée.
 
 Contrainte d'environnement de build : ce chantier a été exécuté sans macOS ni SDK Android/Xcode locaux. Le code est complet, testé (typecheck + jest + web preview), et le pipeline CI/CD est prêt pour builder les deux plateformes via EAS Build (cloud). Un compte Expo (gratuit) et — pour publication store — un compte Apple Developer (payant) et Google Play Console (payant, one-time) restent à créer par l'utilisateur : voir [ADR-MOBILE-003](adr/ADR-MOBILE-003-strategie-build-eas.md).
 
@@ -21,7 +21,7 @@ Contrainte d'environnement de build : ce chantier a été exécuté sans macOS n
 - [x] ADR-MOBILE-001 — Choix stack (React Native + Expo)
 - [x] ADR-MOBILE-002 — Stratégie offline-first
 - [x] ADR-MOBILE-003 — Stratégie de build sans macOS (EAS)
-- [x] ADR-MOBILE-004 — Confirmation point de prélèvement à tolérance GPS paramétrable
+- [x] ADR-MOBILE-004 révisé — rayon de 10 m et exception d'accessibilité obligatoire
 - [x] ADR-MOBILE-005 — Deux profils (étudiant/superviseur) sans duplication de code
 - [x] SDD — Software Design Document Atlas Mobile
 
@@ -58,7 +58,7 @@ Contrainte d'environnement de build : ce chantier a été exécuté sans macOS n
 - [x] Écran Connexion (réutilise `/auth/login`, refresh silencieux)
 - [x] Écran Liste des missions (assignées, offline-cached)
 - [x] Écran Détail mission (maille, équipe, dates, avancement)
-- [x] Écran Carte terrain (maille en polygone offline, points prévisionnels, position GPS, cercle de tolérance)
+- [x] Écran Carte terrain Leaflet/OSM (maille, points prévisionnels, position GPS, cercles de 10 m)
 - [x] Confirmation de point de prélèvement in-app (tolérance visuelle + validation serveur)
 - [x] Écran Fiche de sondage (création/édition, brouillon offline, champs alignés PWA)
 - [x] Écran Journal d'activité terrain

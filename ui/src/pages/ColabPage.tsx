@@ -27,7 +27,9 @@ import {
   ClipboardList,
   Trash2,
   Bell,
+  PackageCheck,
 } from 'lucide-react';
+import { AtlasPackPanel } from './colab/atlaspack-panel';
 import {
   attributionsApi,
   communesApi,
@@ -330,7 +332,7 @@ const ColabPage: React.FC = () => {
   const [showCreateStudentModal, setShowCreateStudentModal] = useState(false);
   const [showCreateSupervisorModal, setShowCreateSupervisorModal] = useState(false);
   const [showActionMenu, setShowActionMenu] = useState(false);
-  const [activeTab, setActiveTab] = useState<'missions' | 'students' | 'supervisors' | 'documents' | 'exports' | 'attributions'>('missions');
+  const [activeTab, setActiveTab] = useState<'missions' | 'students' | 'supervisors' | 'documents' | 'exports' | 'attributions' | 'atlaspack'>('missions');
 
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [selectedSupervisor, setSelectedSupervisor] = useState<SupervisorSummary | null>(null);
@@ -1175,6 +1177,17 @@ const ColabPage: React.FC = () => {
             >
               <Users className="w-4 h-4" />
               Attributions & Notifications
+            </button>
+            <button
+              onClick={() => setActiveTab('atlaspack')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg font-medium text-sm transition-colors ${
+                activeTab === 'atlaspack'
+                  ? 'bg-background text-primary border-t border-x border-border'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+              }`}
+            >
+              <PackageCheck className="w-4 h-4" />
+              Paquets terrain
             </button>
           </div>
         </div>
@@ -2758,6 +2771,8 @@ const ColabPage: React.FC = () => {
             )}
           </>
         )}
+
+        {activeTab === 'atlaspack' && <AtlasPackPanel />}
 
         {activeTab === 'students' && (
           <StudentsTab

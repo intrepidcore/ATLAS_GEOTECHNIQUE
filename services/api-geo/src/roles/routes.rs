@@ -102,18 +102,20 @@ async fn create_role(
     Json(request): Json<CreateRoleRequest>,
 ) -> Result<(StatusCode, Json<RoleResponse>), AuthError> {
     if !auth_user.has_permission("roles.create") {
-        return Err(AuthError::PermissionDenied("roles.create requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.create requis".to_string(),
+        ));
     }
 
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     // Vérifier que l'ID n'existe pas
-    let existing: Option<(String,)> = sqlx::query_as(
-        r#"SELECT id FROM atlas.roles WHERE id = $1"#,
-    )
-    .bind(&request.id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<(String,)> = sqlx::query_as(r#"SELECT id FROM atlas.roles WHERE id = $1"#)
+        .bind(&request.id)
+        .fetch_optional(&state.pool)
+        .await?;
 
     if existing.is_some() {
         return Err(AuthError::ValidationError(format!(
@@ -142,12 +144,11 @@ async fn create_role(
     let mut permissions = Vec::new();
     if let Some(permission_ids) = request.permissions {
         for perm_id in permission_ids {
-            let perm: Option<DbPermission> = sqlx::query_as(
-                r#"SELECT * FROM atlas.permissions WHERE id = $1"#,
-            )
-            .bind(&perm_id)
-            .fetch_optional(&state.pool)
-            .await?;
+            let perm: Option<DbPermission> =
+                sqlx::query_as(r#"SELECT * FROM atlas.permissions WHERE id = $1"#)
+                    .bind(&perm_id)
+                    .fetch_optional(&state.pool)
+                    .await?;
 
             if let Some(p) = perm {
                 sqlx::query(
@@ -232,22 +233,23 @@ async fn update_role(
     Json(request): Json<UpdateRoleRequest>,
 ) -> Result<Json<RoleResponse>, AuthError> {
     if !auth_user.has_permission("roles.update") {
-        return Err(AuthError::PermissionDenied("roles.update requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.update requis".to_string(),
+        ));
     }
 
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     // Vérifier que le rôle existe et n'est pas système
-    let existing: Option<DbRole> = sqlx::query_as(
-        r#"SELECT * FROM atlas.roles WHERE id = $1"#,
-    )
-    .bind(&role_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<DbRole> = sqlx::query_as(r#"SELECT * FROM atlas.roles WHERE id = $1"#)
+        .bind(&role_id)
+        .fetch_optional(&state.pool)
+        .await?;
 
-    let existing = existing.ok_or_else(|| {
-        AuthError::ValidationError(format!("Rôle '{}' non trouvé", role_id))
-    })?;
+    let existing = existing
+        .ok_or_else(|| AuthError::ValidationError(format!("Rôle '{}' non trouvé", role_id)))?;
 
     if existing.is_system {
         return Err(AuthError::ValidationError(
@@ -310,20 +312,19 @@ async fn delete_role(
     Path(role_id): Path<String>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("roles.delete") {
-        return Err(AuthError::PermissionDenied("roles.delete requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.delete requis".to_string(),
+        ));
     }
 
     // Vérifier que le rôle existe et n'est pas système
-    let existing: Option<DbRole> = sqlx::query_as(
-        r#"SELECT * FROM atlas.roles WHERE id = $1"#,
-    )
-    .bind(&role_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<DbRole> = sqlx::query_as(r#"SELECT * FROM atlas.roles WHERE id = $1"#)
+        .bind(&role_id)
+        .fetch_optional(&state.pool)
+        .await?;
 
-    let existing = existing.ok_or_else(|| {
-        AuthError::ValidationError(format!("Rôle '{}' non trouvé", role_id))
-    })?;
+    let existing = existing
+        .ok_or_else(|| AuthError::ValidationError(format!("Rôle '{}' non trouvé", role_id)))?;
 
     if existing.is_system {
         return Err(AuthError::ValidationError(
@@ -332,12 +333,11 @@ async fn delete_role(
     }
 
     // Vérifier qu'aucun utilisateur n'a ce rôle
-    let user_count: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM atlas.user_roles WHERE role_id = $1"#,
-    )
-    .bind(&role_id)
-    .fetch_one(&state.pool)
-    .await?;
+    let user_count: i64 =
+        sqlx::query_scalar(r#"SELECT COUNT(*) FROM atlas.user_roles WHERE role_id = $1"#)
+            .bind(&role_id)
+            .fetch_one(&state.pool)
+            .await?;
 
     if user_count > 0 {
         return Err(AuthError::ValidationError(format!(
@@ -381,7 +381,12 @@ async fn get_role_permissions(
     .fetch_all(&state.pool)
     .await?;
 
-    Ok(Json(permissions.into_iter().map(PermissionResponse::from).collect()))
+    Ok(Json(
+        permissions
+            .into_iter()
+            .map(PermissionResponse::from)
+            .collect(),
+    ))
 }
 
 /// PUT /roles/:id/permissions - Remplacer toutes les permissions d'un rôle
@@ -392,16 +397,16 @@ async fn assign_permissions(
     Json(request): Json<AssignPermissionsRequest>,
 ) -> Result<Json<Vec<PermissionResponse>>, AuthError> {
     if !auth_user.has_permission("roles.manage") {
-        return Err(AuthError::PermissionDenied("roles.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.manage requis".to_string(),
+        ));
     }
 
     // Vérifier que le rôle existe
-    let existing: Option<DbRole> = sqlx::query_as(
-        r#"SELECT * FROM atlas.roles WHERE id = $1"#,
-    )
-    .bind(&role_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<DbRole> = sqlx::query_as(r#"SELECT * FROM atlas.roles WHERE id = $1"#)
+        .bind(&role_id)
+        .fetch_optional(&state.pool)
+        .await?;
 
     if existing.is_none() {
         return Err(AuthError::ValidationError(format!(
@@ -419,12 +424,11 @@ async fn assign_permissions(
     // Ajouter les nouvelles permissions
     let mut assigned = Vec::new();
     for perm_id in &request.permissions {
-        let perm: Option<DbPermission> = sqlx::query_as(
-            r#"SELECT * FROM atlas.permissions WHERE id = $1"#,
-        )
-        .bind(perm_id)
-        .fetch_optional(&state.pool)
-        .await?;
+        let perm: Option<DbPermission> =
+            sqlx::query_as(r#"SELECT * FROM atlas.permissions WHERE id = $1"#)
+                .bind(perm_id)
+                .fetch_optional(&state.pool)
+                .await?;
 
         if let Some(p) = perm {
             sqlx::query(
@@ -459,7 +463,9 @@ async fn remove_all_permissions(
     Path(role_id): Path<String>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("roles.manage") {
-        return Err(AuthError::PermissionDenied("roles.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.manage requis".to_string(),
+        ));
     }
 
     sqlx::query(r#"DELETE FROM atlas.role_permissions WHERE role_id = $1"#)
@@ -482,16 +488,17 @@ async fn add_permission(
     Path((role_id, permission_id)): Path<(String, String)>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("roles.manage") {
-        return Err(AuthError::PermissionDenied("roles.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.manage requis".to_string(),
+        ));
     }
 
     // Vérifier que le rôle et la permission existent
-    let role_exists: Option<(String,)> = sqlx::query_as(
-        r#"SELECT id FROM atlas.roles WHERE id = $1"#,
-    )
-    .bind(&role_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let role_exists: Option<(String,)> =
+        sqlx::query_as(r#"SELECT id FROM atlas.roles WHERE id = $1"#)
+            .bind(&role_id)
+            .fetch_optional(&state.pool)
+            .await?;
 
     if role_exists.is_none() {
         return Err(AuthError::ValidationError(format!(
@@ -500,12 +507,11 @@ async fn add_permission(
         )));
     }
 
-    let perm_exists: Option<(String,)> = sqlx::query_as(
-        r#"SELECT id FROM atlas.permissions WHERE id = $1"#,
-    )
-    .bind(&permission_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let perm_exists: Option<(String,)> =
+        sqlx::query_as(r#"SELECT id FROM atlas.permissions WHERE id = $1"#)
+            .bind(&permission_id)
+            .fetch_optional(&state.pool)
+            .await?;
 
     if perm_exists.is_none() {
         return Err(AuthError::ValidationError(format!(
@@ -542,16 +548,16 @@ async fn remove_permission(
     Path((role_id, permission_id)): Path<(String, String)>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("roles.manage") {
-        return Err(AuthError::PermissionDenied("roles.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.manage requis".to_string(),
+        ));
     }
 
-    sqlx::query(
-        r#"DELETE FROM atlas.role_permissions WHERE role_id = $1 AND permission_id = $2"#,
-    )
-    .bind(&role_id)
-    .bind(&permission_id)
-    .execute(&state.pool)
-    .await?;
+    sqlx::query(r#"DELETE FROM atlas.role_permissions WHERE role_id = $1 AND permission_id = $2"#)
+        .bind(&role_id)
+        .bind(&permission_id)
+        .execute(&state.pool)
+        .await?;
 
     sqlx::query(r#"UPDATE atlas.roles SET updated_at = NOW() WHERE id = $1"#)
         .bind(&role_id)
@@ -571,7 +577,14 @@ async fn get_role_users(
         return Err(AuthError::PermissionDenied("roles.read requis".to_string()));
     }
 
-    let users: Vec<(uuid::Uuid, String, String, Option<String>, Option<String>, bool)> = sqlx::query_as(
+    let users: Vec<(
+        uuid::Uuid,
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+        bool,
+    )> = sqlx::query_as(
         r#"
         SELECT u.id, u.email, u.username, u.first_name, u.last_name, u.is_active
         FROM atlas.users u
@@ -617,21 +630,22 @@ async fn list_permissions(
     }
 
     let permissions: Vec<DbPermission> = if let Some(resource) = query.resource {
-        sqlx::query_as(
-            r#"SELECT * FROM atlas.permissions WHERE resource = $1 ORDER BY action"#,
-        )
-        .bind(&resource)
-        .fetch_all(&state.pool)
-        .await?
+        sqlx::query_as(r#"SELECT * FROM atlas.permissions WHERE resource = $1 ORDER BY action"#)
+            .bind(&resource)
+            .fetch_all(&state.pool)
+            .await?
     } else {
-        sqlx::query_as(
-            r#"SELECT * FROM atlas.permissions ORDER BY resource, action"#,
-        )
-        .fetch_all(&state.pool)
-        .await?
+        sqlx::query_as(r#"SELECT * FROM atlas.permissions ORDER BY resource, action"#)
+            .fetch_all(&state.pool)
+            .await?
     };
 
-    Ok(Json(permissions.into_iter().map(PermissionResponse::from).collect()))
+    Ok(Json(
+        permissions
+            .into_iter()
+            .map(PermissionResponse::from)
+            .collect(),
+    ))
 }
 
 /// GET /permissions/grouped - Liste les permissions groupées par ressource
@@ -643,11 +657,10 @@ async fn list_permissions_grouped(
         return Err(AuthError::PermissionDenied("roles.read requis".to_string()));
     }
 
-    let permissions: Vec<DbPermission> = sqlx::query_as(
-        r#"SELECT * FROM atlas.permissions ORDER BY resource, action"#,
-    )
-    .fetch_all(&state.pool)
-    .await?;
+    let permissions: Vec<DbPermission> =
+        sqlx::query_as(r#"SELECT * FROM atlas.permissions ORDER BY resource, action"#)
+            .fetch_all(&state.pool)
+            .await?;
 
     // Grouper par ressource
     let mut grouped: std::collections::HashMap<String, Vec<PermissionResponse>> =
@@ -683,15 +696,14 @@ async fn get_permission(
         return Err(AuthError::PermissionDenied("roles.read requis".to_string()));
     }
 
-    let permission: DbPermission = sqlx::query_as(
-        r#"SELECT * FROM atlas.permissions WHERE id = $1"#,
-    )
-    .bind(&permission_id)
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or_else(|| {
-        AuthError::ValidationError(format!("Permission '{}' non trouvée", permission_id))
-    })?;
+    let permission: DbPermission =
+        sqlx::query_as(r#"SELECT * FROM atlas.permissions WHERE id = $1"#)
+            .bind(&permission_id)
+            .fetch_optional(&state.pool)
+            .await?
+            .ok_or_else(|| {
+                AuthError::ValidationError(format!("Permission '{}' non trouvée", permission_id))
+            })?;
 
     Ok(Json(PermissionResponse::from(permission)))
 }
@@ -709,11 +721,10 @@ async fn get_roles_stats(
         .fetch_one(&state.pool)
         .await?;
 
-    let system_roles: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM atlas.roles WHERE is_system = TRUE"#,
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let system_roles: i64 =
+        sqlx::query_scalar(r#"SELECT COUNT(*) FROM atlas.roles WHERE is_system = TRUE"#)
+            .fetch_one(&state.pool)
+            .await?;
 
     let total_permissions: i64 = sqlx::query_scalar(r#"SELECT COUNT(*) FROM atlas.permissions"#)
         .fetch_one(&state.pool)

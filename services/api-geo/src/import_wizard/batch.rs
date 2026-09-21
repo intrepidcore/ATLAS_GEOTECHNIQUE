@@ -16,6 +16,7 @@ mod tests {
     fn test_generate_batch_id() {
         let batch_id = generate_batch_id();
         assert!(batch_id.starts_with("IMP-"));
-        assert_eq!(batch_id.len(), 20); // IMP-YYYYMMDD-HHMMSS
+        // IMP- (4) + YYYYMMDD (8) + - (1) + HHMMSS (6) = 19.
+        assert_eq!(batch_id.len(), 19);
     }
 }

@@ -348,7 +348,7 @@ pub fn generate_survey_code(
     if let Some(pcode) = adm3_pcode {
         format!("AUTO-{}-{:04}", pcode, index)
     } else if let Some(loc) = localite {
-        let clean_loc = loc
+        let clean_loc = super::fold_diacritics(loc)
             .chars()
             .filter(|c| c.is_alphanumeric())
             .take(8)

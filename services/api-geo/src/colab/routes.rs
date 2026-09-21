@@ -4,7 +4,7 @@ use axum::{
     extract::{Multipart, Path, Query, State},
     http::{header, HeaderMap, StatusCode},
     response::IntoResponse,
-    routing::{get, post, put, delete},
+    routing::{delete, get, post, put},
     Json, Router,
 };
 use chrono::{NaiveDate, Utc};
@@ -15,12 +15,12 @@ use tokio::io::AsyncWriteExt;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::state::AppState;
-use crate::auth::middleware::AuthUser;
 use crate::auth::middleware::require_permission;
+use crate::auth::middleware::AuthUser;
 use crate::auth::password::PasswordHasher;
 use crate::auth::session::SessionManager;
 use crate::auth::types::AuthEventType;
+use crate::state::AppState;
 
 use super::types::*;
 
@@ -174,8 +174,10 @@ async fn list_missions(
         .iter()
         .map(|r| {
             let is_real_conflict: bool = r.try_get::<bool, _>("is_real_conflict").unwrap_or(false);
-            let conflict_holder_email: Option<String> = r.try_get::<String, _>("conflict_holder_email").ok();
-            let conflict_holder_name: Option<String> = r.try_get::<String, _>("conflict_holder_name").ok();
+            let conflict_holder_email: Option<String> =
+                r.try_get::<String, _>("conflict_holder_email").ok();
+            let conflict_holder_name: Option<String> =
+                r.try_get::<String, _>("conflict_holder_name").ok();
 
             let operational_status = if is_real_conflict {
                 "blocked_conflict".to_string()
@@ -230,7 +232,11 @@ async fn list_missions(
                 operational_issues: issues,
                 conflict_holder_email,
                 conflict_holder_name,
-                conflict_mission_id: if is_real_conflict { Some(r.get("id")) } else { None },
+                conflict_mission_id: if is_real_conflict {
+                    Some(r.get("id"))
+                } else {
+                    None
+                },
                 created_at: r.get("created_at"),
                 updated_at: r.get("updated_at"),
             }
@@ -252,12 +258,18 @@ async fn create_mission(
     Json(request): Json<CreateMissionRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    request
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+    request.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let theme = MissionTheme::from_str(request.theme.trim()).ok_or_else(|| {
         (
@@ -268,11 +280,12 @@ async fn create_mission(
 
     let expected_sondages = request.expected_sondages.unwrap_or(0).max(0);
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     // Garde anti-doublon code (missions non supprimées)
     let existing: Option<Uuid> = sqlx::query_scalar(
@@ -281,7 +294,12 @@ async fn create_mission(
     .bind(request.code.trim())
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
     if let Some(existing_id) = existing {
         return Err((
             StatusCode::BAD_REQUEST,
@@ -316,16 +334,52 @@ async fn create_mission(
     .bind(request.title.trim())
     .bind(theme.as_str())
     .bind(request.maille_id)
-    .bind(request.zone_label.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.commune.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.region.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .zone_label
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .commune
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .region
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .bind(request.supervisor_id)
     .bind(expected_sondages)
     .bind(request.start_date)
     .bind(request.end_date)
-    .bind(request.description.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.objectifs.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.notes_internal.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .description
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .objectifs
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .notes_internal
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .bind(request.depth_h1_m)
     .bind(request.depth_h2_m)
     .bind(request.depth_h3_m)
@@ -333,7 +387,12 @@ async fn create_mission(
     .bind(auth.id)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
 
     // Insérer les points de sondage planifiés
     for sp in &request.sondage_points {
@@ -350,7 +409,15 @@ async fn create_mission(
         .bind(sp.notes.as_deref().filter(|s| !s.is_empty()))
         .execute(&mut *tx)
         .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Insertion sondage_points impossible", &e))))?;
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(map_db_creation_error(
+                    "Insertion sondage_points impossible",
+                    &e,
+                )),
+            )
+        })?;
     }
 
     // Assignations initiales (idempotent)
@@ -361,7 +428,12 @@ async fn create_mission(
         .bind(student_id)
         .fetch_optional(&mut *tx)
         .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(map_db_creation_error("Création impossible", &e)),
+            )
+        })?;
 
         if exists_student.is_none() {
             return Err((
@@ -381,7 +453,12 @@ async fn create_mission(
         .bind(student_id)
         .execute(&mut *tx)
         .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(map_db_creation_error("Création impossible", &e)),
+            )
+        })?;
 
         // Notifie l'étudiant assigné (visible dans l'app mobile, cf. docs/mobile).
         let _ = sqlx::query(
@@ -415,9 +492,27 @@ async fn create_mission(
             })?;
     }
 
-    tx.commit()
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
+
+    // Prépare (ou régénère) automatiquement le paquet .atlaspack de chaque
+    // opérateur assigné à cette nouvelle mission (hors transaction : la
+    // génération elle-même est asynchrone via la file de jobs).
+    for student_id in request.assigned_student_ids.iter() {
+        if let Err(e) = crate::atlaspack::jobs::enqueue_or_refresh_package_for_student(
+            &state.pool,
+            *student_id,
+            Some(auth.id),
+        )
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+        {
+            tracing::warn!(student_id = %student_id, error = %e, "rafraîchissement .atlaspack après création de mission échoué");
+        }
+    }
 
     Ok(Json(json!({ "success": true, "id": mission_id })))
 }
@@ -489,8 +584,10 @@ async fn get_mission(
     let maille_id: Option<Uuid> = row.get("maille_id");
     let mission_status: String = row.get("status");
     let is_real_conflict: bool = row.try_get::<bool, _>("is_real_conflict").unwrap_or(false);
-    let conflict_holder_email: Option<String> = row.try_get::<String, _>("conflict_holder_email").ok();
-    let conflict_holder_name: Option<String> = row.try_get::<String, _>("conflict_holder_name").ok();
+    let conflict_holder_email: Option<String> =
+        row.try_get::<String, _>("conflict_holder_email").ok();
+    let conflict_holder_name: Option<String> =
+        row.try_get::<String, _>("conflict_holder_name").ok();
 
     let operational_status = if is_real_conflict {
         "blocked_conflict".to_string()
@@ -641,6 +738,30 @@ async fn get_mission(
         }
     };
 
+    let sondage_points: Vec<SondagePointRequest> = sqlx::query(
+        "SELECT numero, label, lat, lon, notes
+         FROM atlas.colab_mission_sondage_points
+         WHERE mission_id = $1 ORDER BY numero",
+    )
+    .bind(mission_id)
+    .fetch_all(&state.pool)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?
+    .into_iter()
+    .map(|r| SondagePointRequest {
+        numero: r.get("numero"),
+        label: r.get("label"),
+        lat: r.get("lat"),
+        lon: r.get("lon"),
+        notes: r.get("notes"),
+    })
+    .collect();
+
     Ok(Json(MissionDetail {
         id: row.get("id"),
         code: row.get("code"),
@@ -666,9 +787,14 @@ async fn get_mission(
         operational_issues,
         conflict_holder_email,
         conflict_holder_name,
-        conflict_mission_id: if is_real_conflict { Some(row.get("id")) } else { None },
+        conflict_mission_id: if is_real_conflict {
+            Some(row.get("id"))
+        } else {
+            None
+        },
         assigned_students,
         linked_sondages,
+        sondage_points,
     }))
 }
 
@@ -679,12 +805,18 @@ async fn update_mission(
     Json(request): Json<UpdateMissionRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.update") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    request
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+    request.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let theme: Option<String> = match request.theme.as_deref() {
         None => None,
@@ -728,11 +860,12 @@ async fn update_mission(
 
     let expected_sondages = request.expected_sondages.map(|v| v.max(0));
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     // Vérifier existence
     let exists: Option<Uuid> = sqlx::query_scalar(
@@ -741,9 +874,17 @@ async fn update_mission(
     .bind(mission_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
     if exists.is_none() {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Mission non trouvée" })),
+        ));
     }
 
     let res = sqlx::query(
@@ -773,27 +914,74 @@ async fn update_mission(
         "#,
     )
     .bind(mission_id)
-    .bind(request.title.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .title
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .bind(theme)
     .bind(status)
     .bind(request.maille_id)
-    .bind(request.zone_label.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.commune.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.region.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .zone_label
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .commune
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .region
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .bind(request.supervisor_id)
     .bind(expected_sondages)
     .bind(request.start_date)
     .bind(request.end_date)
-    .bind(request.description.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.objectifs.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.notes_internal.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .description
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .objectifs
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .notes_internal
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .bind(request.depth_h1_m)
     .bind(request.depth_h2_m)
     .bind(request.depth_h3_m)
     .bind(request.sondage_tolerance_m)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Mise à jour impossible", &e)),
+        )
+    })?;
 
     // Remplacement des points de sondage si fournis
     if let Some(points) = &request.sondage_points {
@@ -801,7 +989,12 @@ async fn update_mission(
             .bind(mission_id)
             .execute(&mut *tx)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": format!("Erreur DB: {}", e) })),
+                )
+            })?;
         for sp in points {
             sqlx::query(
                 r#"INSERT INTO atlas.colab_mission_sondage_points
@@ -816,12 +1009,20 @@ async fn update_mission(
             .bind(sp.notes.as_deref().filter(|s| !s.is_empty()))
             .execute(&mut *tx)
             .await
-            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Sondage points impossible", &e))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(map_db_creation_error("Sondage points impossible", &e)),
+                )
+            })?;
         }
     }
 
     if res.rows_affected() == 0 {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Mission non trouvée" })),
+        ));
     }
 
     // Sync derived maille assignment if maille_id is set (or kept)
@@ -833,7 +1034,12 @@ async fn update_mission(
     .bind(mission_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?
     .flatten();
 
     if current_maille_id.is_some() {
@@ -841,12 +1047,43 @@ async fn update_mission(
             .bind(mission_id)
             .execute(&mut *tx)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur sync attribution: {}", e) }))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": format!("Erreur sync attribution: {}", e) })),
+                )
+            })?;
     }
 
-    tx.commit()
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
+    // Une mission modifiée (ex: passage draft -> planned, changement de
+    // maille/dates) peut rendre obsolète un paquet .atlaspack déjà généré
+    // pour ses opérateurs assignés — on le détecte ici, pas seulement à la
+    // (dés)affectation.
+    let assigned_students: Vec<Uuid> = sqlx::query_scalar(
+        "SELECT student_id FROM atlas.colab_mission_assignments WHERE mission_id = $1 AND unassigned_at IS NULL",
+    )
+    .bind(mission_id)
+    .fetch_all(&state.pool)
+    .await
+    .unwrap_or_default();
+    for student_id in assigned_students {
+        if let Err(e) = crate::atlaspack::jobs::enqueue_or_refresh_package_for_student(
+            &state.pool,
+            student_id,
+            Some(auth.id),
+        )
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+        {
+            tracing::warn!(student_id = %student_id, error = %e, "rafraîchissement .atlaspack après modification de mission échoué");
+        }
+    }
 
     Ok(Json(json!({ "success": true, "id": mission_id })))
 }
@@ -857,14 +1094,18 @@ async fn delete_mission(
     Path(mission_id): Path<Uuid>,
 ) -> Result<StatusCode, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.update") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     let updated = sqlx::query(
         r#"
@@ -876,27 +1117,42 @@ async fn delete_mission(
     .bind(mission_id)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?
     .rows_affected();
 
     if updated == 0 {
         // Idempotent: si déjà deleted_at, on renvoie NO_CONTENT; sinon 404.
-        let exists: Option<(Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM atlas.colab_missions WHERE id = $1"#,
-        )
-        .bind(mission_id)
-        .fetch_optional(&mut *tx)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+        let exists: Option<(Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM atlas.colab_missions WHERE id = $1"#)
+                .bind(mission_id)
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({ "error": format!("Erreur DB: {}", e) })),
+                    )
+                })?;
 
-        tx.commit()
-            .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+        tx.commit().await.map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?;
 
         return if exists.is_some() {
             Ok(StatusCode::NO_CONTENT)
         } else {
-            Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))))
+            Err((
+                StatusCode::NOT_FOUND,
+                Json(json!({ "error": "Mission non trouvée" })),
+            ))
         };
     }
 
@@ -911,7 +1167,12 @@ async fn delete_mission(
     .bind(mission_id)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     // Soft-delete des documents liés (les fichiers restent sur disque comme pour delete_document)
     sqlx::query(
@@ -924,11 +1185,19 @@ async fn delete_mission(
     .bind(mission_id)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     Ok(StatusCode::NO_CONTENT)
 }
@@ -940,16 +1209,12 @@ async fn unassign_mission_maille(
 ) -> Result<Json<UnassignMissionMailleResponse>, (StatusCode, Json<serde_json::Value>)> {
     require_permission(&state.pool, auth.id, "colab.missions.unassign").await?;
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("Erreur DB: {}", e) })),
-            )
-        })?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     // Idempotence: si la mission est déjà supprimée, on ne fait rien.
     let row = sqlx::query(
@@ -972,21 +1237,24 @@ async fn unassign_mission_maille(
             Json(json!({ "error": format!("Erreur DB: {}", e) })),
         )
     })?
-    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))))?;
+    .ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Mission non trouvée" })),
+        )
+    })?;
 
     let is_active: bool = row.get("is_active");
     let existing_ex_maille_code: Option<String> = row.try_get("ex_maille_code").ok();
     let maille_code: Option<String> = row.try_get("maille_code").ok();
 
     if !is_active {
-        tx.commit()
-            .await
-            .map_err(|e| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(json!({ "error": format!("Erreur DB: {}", e) })),
-                )
-            })?;
+        tx.commit().await.map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?;
 
         return Ok(Json(UnassignMissionMailleResponse {
             mission_id,
@@ -996,6 +1264,25 @@ async fn unassign_mission_maille(
     }
 
     let ex_maille_code = maille_code.or(existing_ex_maille_code);
+
+    // Une mission supprimée ne doit plus rester affectée à un opérateur :
+    // sinon elle continue d'apparaître dans son .atlaspack et dans sa liste mobile.
+    sqlx::query(
+        r#"
+        UPDATE atlas.colab_mission_assignments
+        SET unassigned_at = NOW()
+        WHERE mission_id = $1 AND unassigned_at IS NULL
+        "#,
+    )
+    .bind(mission_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     sqlx::query(
         r#"
@@ -1031,14 +1318,12 @@ async fn unassign_mission_maille(
             )
         })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("Erreur DB: {}", e) })),
-            )
-        })?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     // Audit trail (BM-20): tracer l'action sensible
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
@@ -1172,7 +1457,10 @@ async fn get_maille_active_missions(
         })
         .collect();
 
-    Ok(Json(MailleActiveMissionsResponse { maille_id, missions }))
+    Ok(Json(MailleActiveMissionsResponse {
+        maille_id,
+        missions,
+    }))
 }
 
 async fn get_maille_state(
@@ -1272,20 +1560,19 @@ async fn reassign_mission(
 ) -> Result<Json<ReassignMissionResponse>, (StatusCode, Json<serde_json::Value>)> {
     require_permission(&state.pool, auth.id, "colab.missions.reassign").await?;
 
-    request
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+    request.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("Erreur DB: {}", e) })),
-            )
-        })?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     // Charger la mission source (active)
     let src = sqlx::query(
@@ -1321,7 +1608,12 @@ async fn reassign_mission(
             Json(json!({ "error": format!("Erreur DB: {}", e) })),
         )
     })?
-    .ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" }))))?;
+    .ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Mission non trouvée" })),
+        )
+    })?;
 
     let old_code: String = src.get("code");
     let title: String = src.get("title");
@@ -1346,7 +1638,12 @@ async fn reassign_mission(
     .bind(request.student_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Réattribution impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Réattribution impossible", &e)),
+        )
+    })?;
 
     if exists_student.is_none() {
         return Err((
@@ -1388,6 +1685,25 @@ async fn reassign_mission(
     }
 
     // Soft-delete mission source et conserver ex_maille_code
+    // Une mission supprimée ne doit plus rester affectée à un opérateur :
+    // sinon elle continue d'apparaître dans son .atlaspack et dans sa liste mobile.
+    sqlx::query(
+        r#"
+        UPDATE atlas.colab_mission_assignments
+        SET unassigned_at = NOW()
+        WHERE mission_id = $1 AND unassigned_at IS NULL
+        "#,
+    )
+    .bind(mission_id)
+    .execute(&mut *tx)
+    .await
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
+
     sqlx::query(
         r#"
         UPDATE atlas.colab_missions
@@ -1481,7 +1797,12 @@ async fn reassign_mission(
     .bind(auth.id)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Réattribution impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Réattribution impossible", &e)),
+        )
+    })?;
 
     // Assigner l'étudiant
     sqlx::query(
@@ -1495,7 +1816,12 @@ async fn reassign_mission(
     .bind(request.student_id)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Réattribution impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Réattribution impossible", &e)),
+        )
+    })?;
 
     let _ = sqlx::query(
         r#"
@@ -1522,14 +1848,12 @@ async fn reassign_mission(
             )
         })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({ "error": format!("Erreur DB: {}", e) })),
-            )
-        })?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     // Audit trail (BM-20): tracer l'action sensible
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
@@ -1549,6 +1873,16 @@ async fn reassign_mission(
             })),
         )
         .await;
+
+    if let Err(e) = crate::atlaspack::jobs::enqueue_or_refresh_package_for_student(
+        &state.pool,
+        request.student_id,
+        Some(auth.id),
+    )
+    .await
+    {
+        tracing::warn!(student_id = %request.student_id, error = %e, "rafraîchissement .atlaspack après réattribution échoué");
+    }
 
     Ok(Json(ReassignMissionResponse {
         old_mission_id: mission_id,
@@ -1576,10 +1910,11 @@ async fn get_stats(
         ));
     }
 
-    let total_missions: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_missions WHERE deleted_at IS NULL")
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+    let total_missions: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_missions WHERE deleted_at IS NULL")
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
 
     let status_rows = sqlx::query(
         r#"
@@ -1661,17 +1996,16 @@ async fn get_stats(
     .await
     .unwrap_or(0);
 
-    let total_field_logs: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_field_logs",
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+    let total_field_logs: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_field_logs")
+        .fetch_one(&state.pool)
+        .await
+        .unwrap_or(0);
 
-    let total_documents: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_documents WHERE deleted_at IS NULL")
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+    let total_documents: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_documents WHERE deleted_at IS NULL")
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
 
     Ok(Json(ColabStats {
         total_missions,
@@ -1751,18 +2085,25 @@ async fn create_supervisor(
     Json(request): Json<CreateSupervisorRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.supervisors.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    request
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+    request.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     // 1. Déjà superviseur actif ? → erreur claire
     let existing_sup: Option<(Uuid,)> = sqlx::query_as(
@@ -1775,10 +2116,17 @@ async fn create_supervisor(
     .bind(&request.email)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
     if existing_sup.is_some() {
-        return Err((StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Cet email est déjà associé à un superviseur" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Cet email est déjà associé à un superviseur" })),
+        ));
     }
 
     // 2. Déjà étudiant actif ? → erreur claire
@@ -1792,10 +2140,17 @@ async fn create_supervisor(
     .bind(&request.email)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
     if existing_stu.is_some() {
-        return Err((StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Cet email est déjà associé à un étudiant" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Cet email est déjà associé à un étudiant" })),
+        ));
     }
 
     // 3. Compte atlas.users existant (sans profil superviseur) → réutiliser
@@ -1805,13 +2160,23 @@ async fn create_supervisor(
     .bind(&request.email)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
 
     let (user_id, account_reused, temp_password) = if let Some((uid,)) = existing_user {
         (uid, true, None::<String>)
     } else {
         // Garde anti-doublon téléphone
-        if let Some(tel) = request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        if let Some(tel) = request
+            .telephone
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+        {
             let exists_tel: Option<(Uuid,)> = sqlx::query_as(
                 r#"
                 SELECT s.id FROM atlas.users u
@@ -1823,22 +2188,36 @@ async fn create_supervisor(
             .bind(tel)
             .fetch_optional(&mut *tx)
             .await
-            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(map_db_creation_error("Création impossible", &e)),
+                )
+            })?;
             if exists_tel.is_some() {
-                return Err((StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": "Téléphone déjà utilisé par un autre superviseur" }))));
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "Téléphone déjà utilisé par un autre superviseur" })),
+                ));
             }
         }
 
         let base = request.email.split('@').next().unwrap_or("user");
-        let username = ensure_unique_username(&mut tx, base)
-            .await
-            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+        let username = ensure_unique_username(&mut tx, base).await.map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(map_db_creation_error("Création impossible", &e)),
+            )
+        })?;
         let token = Uuid::new_v4().to_string().replace('-', "");
         let pw = format!("A{}!a1", &token[..8]);
         let password_hasher = PasswordHasher::new(state.auth_config.clone());
-        let hash = password_hasher.hash_password(&pw)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+        let hash = password_hasher.hash_password(&pw).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+        })?;
         let uid: Uuid = sqlx::query_scalar(
             r#"
             INSERT INTO atlas.users (email, username, password_hash, first_name, last_name, telephone, is_active, is_verified)
@@ -1874,19 +2253,63 @@ async fn create_supervisor(
         "#,
     )
     .bind(user_id)
-    .bind(request.specialite.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.institution.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.titre.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.departement.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.notes.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .specialite
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .institution
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .titre
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .departement
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .telephone
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .notes
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     Ok(Json(json!({
         "success": true,
@@ -1904,18 +2327,25 @@ async fn update_supervisor(
     Json(request): Json<UpdateSupervisorRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.supervisors.update") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    request
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+    request.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let user_id: Option<Uuid> = sqlx::query_scalar(
         r#"SELECT user_id FROM atlas.colab_supervisors WHERE id = $1 AND deleted_at IS NULL"#,
@@ -1923,10 +2353,18 @@ async fn update_supervisor(
     .bind(supervisor_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let Some(user_id) = user_id else {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Superviseur non trouvé" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Superviseur non trouvé" })),
+        ));
     };
 
     // Mise à jour user
@@ -1944,17 +2382,49 @@ async fn update_supervisor(
         "#,
     )
     .bind(user_id)
-    .bind(request.email.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.first_name.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.last_name.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .email
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .first_name
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .last_name
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .telephone
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .bind(request.is_active)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Mise à jour impossible", &e)),
+        )
+    })?;
 
     if res_user.rows_affected() == 0 {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Utilisateur non trouvé" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Utilisateur non trouvé" })),
+        ));
     }
 
     // Mise à jour superviseur
@@ -1973,21 +2443,67 @@ async fn update_supervisor(
         "#,
     )
     .bind(supervisor_id)
-    .bind(request.titre.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.institution.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.departement.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.specialite.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.notes.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .titre
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .institution
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .departement
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .specialite
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .telephone
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .notes
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Mise à jour impossible", &e)),
+        )
+    })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    Ok(Json(json!({ "success": true, "supervisor_id": supervisor_id })))
+    Ok(Json(
+        json!({ "success": true, "supervisor_id": supervisor_id }),
+    ))
 }
 
 async fn delete_supervisor(
@@ -1996,14 +2512,18 @@ async fn delete_supervisor(
     Path(supervisor_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.supervisors.delete") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let user_id: Option<Uuid> = sqlx::query_scalar(
         r#"SELECT user_id FROM atlas.colab_supervisors WHERE id = $1 AND deleted_at IS NULL"#,
@@ -2011,10 +2531,18 @@ async fn delete_supervisor(
     .bind(supervisor_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let Some(user_id) = user_id else {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Superviseur non trouvé" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Superviseur non trouvé" })),
+        ));
     };
 
     sqlx::query(
@@ -2033,11 +2561,16 @@ async fn delete_supervisor(
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Suppression impossible", &e))))?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    Ok(Json(json!({ "success": true, "supervisor_id": supervisor_id, "deactivated": true })))
+    Ok(Json(
+        json!({ "success": true, "supervisor_id": supervisor_id, "deactivated": true }),
+    ))
 }
 
 async fn create_student(
@@ -2046,18 +2579,25 @@ async fn create_student(
     Json(request): Json<CreateStudentRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.students.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    request
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+    request.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     // 1. Déjà étudiant actif ? → erreur claire
     let existing_stu: Option<(Uuid,)> = sqlx::query_as(
@@ -2070,10 +2610,17 @@ async fn create_student(
     .bind(&request.email)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
     if existing_stu.is_some() {
-        return Err((StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Cet email est déjà associé à un étudiant" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Cet email est déjà associé à un étudiant" })),
+        ));
     }
 
     // 2. Déjà superviseur actif ? → erreur claire
@@ -2087,10 +2634,17 @@ async fn create_student(
     .bind(&request.email)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
     if existing_sup.is_some() {
-        return Err((StatusCode::BAD_REQUEST,
-            Json(json!({ "error": "Cet email est déjà associé à un superviseur" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Cet email est déjà associé à un superviseur" })),
+        ));
     }
 
     // 3. Compte atlas.users existant mais sans profil étudiant → réutiliser
@@ -2100,13 +2654,23 @@ async fn create_student(
     .bind(&request.email)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Création impossible", &e)),
+        )
+    })?;
 
     let (user_id, account_reused, temp_password) = if let Some((uid,)) = existing_user {
         (uid, true, None::<String>)
     } else {
         // Garde anti-doublon téléphone
-        if let Some(tel) = request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+        if let Some(tel) = request
+            .telephone
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+        {
             let exists_tel: Option<(Uuid,)> = sqlx::query_as(
                 r#"
                 SELECT s.id FROM atlas.users u
@@ -2118,22 +2682,36 @@ async fn create_student(
             .bind(tel)
             .fetch_optional(&mut *tx)
             .await
-            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(map_db_creation_error("Création impossible", &e)),
+                )
+            })?;
             if exists_tel.is_some() {
-                return Err((StatusCode::BAD_REQUEST,
-                    Json(json!({ "error": "Téléphone déjà utilisé par un autre étudiant" }))));
+                return Err((
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({ "error": "Téléphone déjà utilisé par un autre étudiant" })),
+                ));
             }
         }
 
         let base = request.email.split('@').next().unwrap_or("user");
-        let username = ensure_unique_username(&mut tx, base)
-            .await
-            .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
+        let username = ensure_unique_username(&mut tx, base).await.map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(map_db_creation_error("Création impossible", &e)),
+            )
+        })?;
         let token = Uuid::new_v4().to_string().replace('-', "");
         let pw = format!("A{}!a1", &token[..8]);
         let password_hasher = PasswordHasher::new(state.auth_config.clone());
-        let hash = password_hasher.hash_password(&pw)
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+        let hash = password_hasher.hash_password(&pw).map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+        })?;
         let uid: Uuid = sqlx::query_scalar(
             r#"
             INSERT INTO atlas.users (email, username, password_hash, first_name, last_name, telephone, is_active, is_verified, created_by)
@@ -2178,9 +2756,12 @@ async fn create_student(
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Création impossible", &e))))?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     Ok(Json(json!({
         "success": true,
@@ -2198,34 +2779,53 @@ async fn update_student(
     Json(request): Json<UpdateStudentRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.students.update") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    request
-        .validate()
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({ "error": e.to_string() }))))?;
+    request.validate().map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     // Charger user_id
-    let user_id: Option<Uuid> = sqlx::query_scalar(
-        r#"SELECT user_id FROM atlas.colab_students WHERE id = $1"#,
-    )
-    .bind(student_id)
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    let user_id: Option<Uuid> =
+        sqlx::query_scalar(r#"SELECT user_id FROM atlas.colab_students WHERE id = $1"#)
+            .bind(student_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e.to_string() })),
+                )
+            })?;
 
     let Some(user_id) = user_id else {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Étudiant non trouvé" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Étudiant non trouvé" })),
+        ));
     };
 
     // Garde anti-doublon téléphone
-    if let Some(tel) = request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()) {
+    if let Some(tel) = request
+        .telephone
+        .as_deref()
+        .map(|s| s.trim())
+        .filter(|s| !s.is_empty())
+    {
         let exists_tel: Option<(Uuid,)> = sqlx::query_as(
             r#"
             SELECT id
@@ -2242,9 +2842,17 @@ async fn update_student(
         .bind(user_id)
         .fetch_optional(&mut *tx)
         .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+        .map_err(|e| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(map_db_creation_error("Mise à jour impossible", &e)),
+            )
+        })?;
         if exists_tel.is_some() {
-            return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Téléphone déjà utilisé" }))));
+            return Err((
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "Téléphone déjà utilisé" })),
+            ));
         }
     }
 
@@ -2264,14 +2872,43 @@ async fn update_student(
         "#,
     )
     .bind(user_id)
-    .bind(request.email.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.first_name.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.last_name.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.telephone.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .email
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .first_name
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .last_name
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .telephone
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .bind(request.is_active)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Mise à jour impossible", &e)),
+        )
+    })?;
 
     // Update colab_students
     sqlx::query(
@@ -2290,19 +2927,57 @@ async fn update_student(
         "#,
     )
     .bind(student_id)
-    .bind(request.matricule.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.promotion.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.filiere.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.etablissement.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
-    .bind(request.niveau.as_deref().map(|s| s.trim()).filter(|s| !s.is_empty()))
+    .bind(
+        request
+            .matricule
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .promotion
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .filiere
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .etablissement
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
+    .bind(
+        request
+            .niveau
+            .as_deref()
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty()),
+    )
     .bind(request.age)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Mise à jour impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Mise à jour impossible", &e)),
+        )
+    })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     Ok(Json(json!({ "success": true, "student_id": student_id })))
 }
@@ -2313,7 +2988,10 @@ async fn delete_student(
     Path(student_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.students.delete") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     // Blocage si missions/mailles actives
@@ -2351,22 +3029,30 @@ async fn delete_student(
         ));
     }
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    let user_id: Option<Uuid> = sqlx::query_scalar(
-        r#"SELECT user_id FROM atlas.colab_students WHERE id = $1"#,
-    )
-    .bind(student_id)
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    let user_id: Option<Uuid> =
+        sqlx::query_scalar(r#"SELECT user_id FROM atlas.colab_students WHERE id = $1"#)
+            .bind(student_id)
+            .fetch_optional(&mut *tx)
+            .await
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e.to_string() })),
+                )
+            })?;
 
     let Some(user_id) = user_id else {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Étudiant non trouvé" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Étudiant non trouvé" })),
+        ));
     };
 
     sqlx::query(
@@ -2385,11 +3071,16 @@ async fn delete_student(
     .await
     .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Suppression impossible", &e))))?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    Ok(Json(json!({ "success": true, "student_id": student_id, "deactivated": true })))
+    Ok(Json(
+        json!({ "success": true, "student_id": student_id, "deactivated": true }),
+    ))
 }
 
 async fn get_student_prefs() -> impl IntoResponse {
@@ -2424,7 +3115,10 @@ fn build_operational_issues(
 
     let is_active = matches!(mission_status, "planned" | "in_progress");
     let is_draft = mission_status == "draft";
-    let is_not_assignable = matches!(mission_status, "completed" | "archived" | "cancelled" | "suspended");
+    let is_not_assignable = matches!(
+        mission_status,
+        "completed" | "archived" | "cancelled" | "suspended"
+    );
 
     if is_not_assignable {
         issues.push(OperationalIssue {
@@ -2512,7 +3206,9 @@ fn build_operational_issues(
                     OperationalAction {
                         code: "edit_student".to_string(),
                         label: "Compléter ADM".to_string(),
-                        payload: Some(json!({ "action": "edit_student_adm", "student_id": student_id })),
+                        payload: Some(
+                            json!({ "action": "edit_student_adm", "student_id": student_id }),
+                        ),
                     },
                     OperationalAction {
                         code: "change_student".to_string(),
@@ -2559,7 +3255,9 @@ fn build_operational_issues(
                     a.push(OperationalAction {
                         code: "resolve_assign_holder".to_string(),
                         label: "Assigner le détenteur".to_string(),
-                        payload: Some(json!({ "action": "assign_holder", "student_id": holder_student_id })),
+                        payload: Some(
+                            json!({ "action": "assign_holder", "student_id": holder_student_id }),
+                        ),
                     });
                 } else {
                     a.push(OperationalAction {
@@ -2574,7 +3272,10 @@ fn build_operational_issues(
     }
 
     if issues.is_empty()
-        && matches!(operational_status, "action_required" | "blocked_conflict" | "blocked")
+        && matches!(
+            operational_status,
+            "action_required" | "blocked_conflict" | "blocked"
+        )
     {
         if let Some(reason) = operational_reason {
             let reason = reason.trim();
@@ -2666,10 +3367,11 @@ async fn ensure_unique_username(
 ) -> Result<String, sqlx::Error> {
     let mut candidate = sanitize_username_base(base);
     loop {
-        let exists: Option<(Uuid,)> = sqlx::query_as(r#"SELECT id FROM atlas.users WHERE username = $1"#)
-            .bind(&candidate)
-            .fetch_optional(&mut **tx)
-            .await?;
+        let exists: Option<(Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM atlas.users WHERE username = $1"#)
+                .bind(&candidate)
+                .fetch_optional(&mut **tx)
+                .await?;
 
         if exists.is_none() {
             return Ok(candidate);
@@ -2690,15 +3392,43 @@ pub fn colab_routes() -> Router<AppState> {
     Router::new()
         // Missions
         .route("/colab/missions", get(list_missions).post(create_mission))
-        .route("/colab/missions/:id", get(get_mission).put(update_mission).delete(delete_mission))
-        .route("/colab/missions/:id/maille", delete(unassign_mission_maille))
+        .route(
+            "/colab/missions/:id",
+            get(get_mission).put(update_mission).delete(delete_mission),
+        )
+        .route(
+            "/colab/missions/:id/maille",
+            delete(unassign_mission_maille),
+        )
+        .route(
+            "/colab/missions/:id/sondage-points/generate",
+            post(super::sondage_points::generate_sondage_points),
+        )
+        .route(
+            "/colab/students/reset-passwords-and-notify",
+            post(super::credentials::reset_passwords_and_notify),
+        )
+        // Validation humaine obligatoire avant tout envoi de masse.
+        .route(
+            "/colab/email-jobs/:id/approve",
+            post(super::credentials::approve_email_job),
+        )
         .route("/colab/missions/:id/reassign", post(reassign_mission))
-        .route("/colab/missions/:id/resolve-conflict", post(resolve_conflict))
+        .route(
+            "/colab/missions/:id/resolve-conflict",
+            post(resolve_conflict),
+        )
         .route("/colab/missions/stats", get(get_stats))
-        .route("/colab/mailles/:id/missions", get(get_maille_active_missions))
+        .route(
+            "/colab/mailles/:id/missions",
+            get(get_maille_active_missions),
+        )
         .route("/colab/mailles/:id/state", get(get_maille_state))
         // Documents
-        .route("/colab/documents", get(list_documents).post(upload_document))
+        .route(
+            "/colab/documents",
+            get(list_documents).post(upload_document),
+        )
         .route("/colab/documents/:id", delete(delete_document))
         .route("/colab/documents/:id/download", get(download_document))
         // Suggest (autocomplétion)
@@ -2709,10 +3439,15 @@ pub fn colab_routes() -> Router<AppState> {
         .route("/colab/students/suggest", get(suggest_students))
         .route("/colab/supervisors/suggest", get(suggest_supervisors))
         // Superviseurs
-        .route("/colab/supervisors", get(list_supervisors).post(create_supervisor))
+        .route(
+            "/colab/supervisors",
+            get(list_supervisors).post(create_supervisor),
+        )
         .route(
             "/colab/supervisors/:id",
-            get(get_supervisor).put(update_supervisor).delete(delete_supervisor),
+            get(get_supervisor)
+                .put(update_supervisor)
+                .delete(delete_supervisor),
         )
         // Étudiants
         .route("/colab/students", get(list_students).post(create_student))
@@ -2727,7 +3462,10 @@ pub fn colab_routes() -> Router<AppState> {
             get(get_student_prefs).put(update_student_prefs),
         )
         // Notifications email (orchestrées par script local)
-        .route("/colab/notify/jobs", get(list_notify_jobs).post(create_notify_job))
+        .route(
+            "/colab/notify/jobs",
+            get(list_notify_jobs).post(create_notify_job),
+        )
         .route("/colab/notify/jobs/:id", get(get_notify_job))
         .route("/colab/notify/jobs/:id/cancel", post(cancel_notify_job))
         // Attributions & Notifications (mailles ↔ étudiants)
@@ -2737,8 +3475,16 @@ pub fn colab_routes() -> Router<AppState> {
         // Alias API "stable" (Phase B2): assign/unassign
         .route("/colab/assign", post(assign_attribution))
         .route("/colab/assign/:id", delete(unassign_assignment))
-        .route("/colab/attributions/notify", post(enqueue_attributions_notifications))
-        .route("/colab/attributions/notifications/history", get(list_attributions_notification_history))
+        .route(
+            "/colab/attributions/notify",
+            post(enqueue_attributions_notifications),
+        )
+        .route(
+            "/colab/attributions/notifications/history",
+            get(list_attributions_notification_history),
+        )
+        .merge(super::lab_results::lab_result_routes())
+        .merge(crate::atlaspack::routes::atlaspack_routes())
 }
 
 // ============================================================================
@@ -2752,17 +3498,30 @@ async fn resolve_maille(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let lat: f64 = params
         .get("lat")
         .and_then(|s| s.parse::<f64>().ok())
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "lat requis" }))))?;
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "lat requis" })),
+            )
+        })?;
     let lon: f64 = params
         .get("lon")
         .and_then(|s| s.parse::<f64>().ok())
-        .ok_or_else(|| (StatusCode::BAD_REQUEST, Json(json!({ "error": "lon requis" }))))?;
+        .ok_or_else(|| {
+            (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "lon requis" })),
+            )
+        })?;
 
     // atlas.mailles.geom est en SRID 25231 dans la base. Les coordonnées du navigateur sont en WGS84 (4326).
     // On transforme le point dans le SRID des mailles pour éviter un mismatch SRID (erreur PostGIS).
@@ -2786,10 +3545,18 @@ async fn resolve_maille(
     .bind(lat)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     let Some(row) = row else {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Aucune maille trouvée" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Aucune maille trouvée" })),
+        ));
     };
 
     Ok(Json(json!({
@@ -2826,7 +3593,10 @@ async fn get_attributions_summary(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.notify.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     // Source de vérité: missions + affectations de mission (pas uniquement colab_student_prefs)
@@ -2837,12 +3607,11 @@ async fn get_attributions_summary(
     .await
     .unwrap_or(0);
 
-    let total_students: i64 = sqlx::query_scalar(
-        "SELECT COUNT(*) FROM atlas.colab_students WHERE deleted_at IS NULL",
-    )
-    .fetch_one(&state.pool)
-    .await
-    .unwrap_or(0);
+    let total_students: i64 =
+        sqlx::query_scalar("SELECT COUNT(*) FROM atlas.colab_students WHERE deleted_at IS NULL")
+            .fetch_one(&state.pool)
+            .await
+            .unwrap_or(0);
 
     // Couverture (missions réellement affectées à un étudiant via colab_mission_assignments)
     let missions_with_student: i64 = sqlx::query_scalar(
@@ -2887,7 +3656,10 @@ async fn list_attributions(
     Query(query): Query<AttributionsQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.notify.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let limit = query.limit.unwrap_or(200).max(1).min(1000);
@@ -2943,14 +3715,18 @@ async fn list_attributions(
         ORDER BY v.assigned_at DESC NULLS LAST
         LIMIT {}
         "#,
-        where_clause,
-        limit
+        where_clause, limit
     );
 
     let rows = sqlx::query(&sql)
         .fetch_all(&state.pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur DB: {}", e) })),
+            )
+        })?;
 
     let items: Vec<serde_json::Value> = rows
         .iter()
@@ -3025,11 +3801,17 @@ async fn enqueue_attributions_notifications(
     Json(req): Json<EnqueueAttributionsNotificationsRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.notify.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     if req.assignment_ids.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "assignment_ids requis" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "assignment_ids requis" })),
+        ));
     }
 
     let params = json!({
@@ -3053,7 +3835,12 @@ async fn enqueue_attributions_notifications(
     .bind(&params)
     .fetch_one(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur création job: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur création job: {}", e) })),
+        )
+    })?;
 
     // Logs par assignment
     for aid in &req.assignment_ids {
@@ -3075,6 +3862,67 @@ async fn enqueue_attributions_notifications(
         .bind(auth.id)
         .execute(&state.pool)
         .await;
+
+        // La notification ne doit pas rester limitée au job e-mail : elle est
+        // aussi persistée pour le compte connecté dans Atlas Terrain.
+        let _ = sqlx::query(
+            r#"
+            INSERT INTO atlas.colab_notifications (
+                user_id, notification_type, title, message, mission_id, payload
+            )
+            SELECT
+                cs.user_id,
+                'mission_assigned'::atlas.notification_type,
+                'Mission terrain à consulter',
+                'Une mission vous a été attribuée ou mise à jour. Ouvrez Atlas Terrain pour consulter les points prévus.',
+                cma.mission_id,
+                jsonb_build_object('assignment_id', cma.id, 'source', 'attributions_notify')
+            FROM atlas.colab_mission_assignments cma
+            JOIN atlas.colab_students cs ON cs.id = cma.student_id
+            WHERE cma.id = $1
+              AND cma.unassigned_at IS NULL
+              AND cs.user_id IS NOT NULL
+            "#,
+        )
+        .bind(aid)
+        .execute(&state.pool)
+        .await;
+    }
+
+    // Push Expo best-effort pour les appareils déjà enregistrés. La
+    // notification en base reste la source fiable si Expo est indisponible.
+    let push_tokens: Vec<String> = sqlx::query_scalar(
+        r#"
+        SELECT DISTINCT pt.expo_token
+        FROM atlas.colab_mission_assignments cma
+        JOIN atlas.colab_students cs ON cs.id = cma.student_id
+        JOIN atlas.colab_mobile_push_tokens pt ON pt.user_id = cs.user_id
+        WHERE cma.id = ANY($1) AND cma.unassigned_at IS NULL
+        "#,
+    )
+    .bind(&req.assignment_ids)
+    .fetch_all(&state.pool)
+    .await
+    .unwrap_or_default();
+
+    if !push_tokens.is_empty() {
+        let messages: Vec<serde_json::Value> = push_tokens
+            .iter()
+            .map(|token| {
+                json!({
+                    "to": token,
+                    "title": "Atlas Terrain",
+                    "body": "Une mission terrain vous a été attribuée ou mise à jour.",
+                    "sound": "default",
+                    "data": { "type": "mission_assigned" }
+                })
+            })
+            .collect();
+        let _ = reqwest::Client::new()
+            .post("https://exp.host/--/api/v2/push/send")
+            .json(&messages)
+            .send()
+            .await;
     }
 
     // Job log
@@ -3089,7 +3937,12 @@ async fn enqueue_attributions_notifications(
     .execute(&state.pool)
     .await;
 
-    Ok(Json(json!({ "success": true, "job_id": job_id })))
+    Ok(Json(json!({
+        "success": true,
+        "job_id": job_id,
+        "mobile_notifications": req.assignment_ids.len(),
+        "push_devices": push_tokens.len()
+    })))
 }
 
 async fn list_attributions_notification_history(
@@ -3097,7 +3950,10 @@ async fn list_attributions_notification_history(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.notify.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let rows = sqlx::query(
@@ -3123,7 +3979,12 @@ async fn list_attributions_notification_history(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     let items: Vec<serde_json::Value> = rows
         .iter()
@@ -3169,7 +4030,10 @@ async fn cancel_notify_job(
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.notify.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let res = sqlx::query(
@@ -3182,10 +4046,18 @@ async fn cancel_notify_job(
     .bind(job_id)
     .execute(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     if res.rows_affected() == 0 {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "Job non annulable (statut non pending ou introuvable)" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "Job non annulable (statut non pending ou introuvable)" })),
+        ));
     }
 
     let _ = sqlx::query(
@@ -3217,8 +4089,13 @@ async fn assign_attribution(
     auth: AuthUser,
     Json(req): Json<AssignAttributionRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    if !auth.has_permission("colab.missions.update") && !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    if !auth.has_permission("colab.missions.update")
+        && !auth.has_permission("colab.missions.create")
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     // B1: verrouillage métier
@@ -3237,10 +4114,18 @@ async fn assign_attribution(
     .bind(req.mission_id)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     let mission_row = mission_row.ok_or_else(|| {
-        (StatusCode::NOT_FOUND, Json(json!({ "error": "Mission non trouvée" })))
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Mission non trouvée" })),
+        )
     })?;
 
     let mission_status: String = mission_row
@@ -3255,10 +4140,15 @@ async fn assign_attribution(
         ));
     }
 
-    if matches!(mission_status.as_str(), "completed" | "archived" | "cancelled" | "suspended") {
+    if matches!(
+        mission_status.as_str(),
+        "completed" | "archived" | "cancelled" | "suspended"
+    ) {
         return Err((
             StatusCode::BAD_REQUEST,
-            Json(json!({ "error": format!("Attribution impossible: mission '{}'", mission_status) })),
+            Json(
+                json!({ "error": format!("Attribution impossible: mission '{}'", mission_status) }),
+            ),
         ));
     }
 
@@ -3281,7 +4171,12 @@ async fn assign_attribution(
     .bind(req.mission_id)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     if let Some(conflict_mission_id) = conflict {
         return Err((
@@ -3293,11 +4188,12 @@ async fn assign_attribution(
         ));
     }
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     // Close existing active assignment(s) for this mission (only one maille per mission anyway)
     let _ = sqlx::query(
@@ -3323,7 +4219,12 @@ async fn assign_attribution(
     .bind(req.student_id)
     .fetch_one(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(map_db_creation_error("Attribution impossible", &e))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(map_db_creation_error("Attribution impossible", &e)),
+        )
+    })?;
 
     let _ = sqlx::query(
         r#"
@@ -3344,13 +4245,33 @@ async fn assign_attribution(
         .bind(req.mission_id)
         .execute(&mut *tx)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur sync attribution: {}", e) }))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur sync attribution: {}", e) })),
+            )
+        })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
-    Ok(Json(json!({ "success": true, "assignment_id": assignment_id })))
+    if let Err(e) = crate::atlaspack::jobs::enqueue_or_refresh_package_for_student(
+        &state.pool,
+        req.student_id,
+        Some(auth.id),
+    )
+    .await
+    {
+        tracing::warn!(student_id = %req.student_id, error = %e, "rafraîchissement .atlaspack après attribution échoué");
+    }
+
+    Ok(Json(
+        json!({ "success": true, "assignment_id": assignment_id }),
+    ))
 }
 
 async fn unassign_assignment(
@@ -3358,26 +4279,40 @@ async fn unassign_assignment(
     auth: AuthUser,
     Path(assignment_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    if !auth.has_permission("colab.missions.update") && !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+    if !auth.has_permission("colab.missions.update")
+        && !auth.has_permission("colab.missions.create")
+    {
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let mut tx = state
-        .pool
-        .begin()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    let mut tx = state.pool.begin().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
-    let mission_id: Option<Uuid> = sqlx::query_scalar(
-        r#"SELECT mission_id FROM atlas.colab_mission_assignments WHERE id = $1"#,
+    let assignment: Option<(Uuid, Uuid)> = sqlx::query_as(
+        r#"SELECT mission_id, student_id FROM atlas.colab_mission_assignments WHERE id = $1"#,
     )
     .bind(assignment_id)
     .fetch_optional(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
-    let mission_id = mission_id.ok_or_else(|| {
-        (StatusCode::NOT_FOUND, Json(json!({ "error": "Affectation introuvable" })))
+    let (mission_id, unassigned_student_id) = assignment.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Affectation introuvable" })),
+        )
     })?;
 
     let res = sqlx::query(
@@ -3390,7 +4325,12 @@ async fn unassign_assignment(
     .bind(assignment_id)
     .execute(&mut *tx)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
     if res.rows_affected() == 0 {
         return Err((
@@ -3403,13 +4343,33 @@ async fn unassign_assignment(
         .bind(mission_id)
         .execute(&mut *tx)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur sync attribution: {}", e) }))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": format!("Erreur sync attribution: {}", e) })),
+            )
+        })?;
 
-    tx.commit()
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur DB: {}", e) }))))?;
+    tx.commit().await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur DB: {}", e) })),
+        )
+    })?;
 
-    Ok(Json(json!({ "success": true, "assignment_id": assignment_id })))
+    if let Err(e) = crate::atlaspack::jobs::enqueue_or_refresh_package_for_student(
+        &state.pool,
+        unassigned_student_id,
+        Some(auth.id),
+    )
+    .await
+    {
+        tracing::warn!(student_id = %unassigned_student_id, error = %e, "rafraîchissement .atlaspack après désaffectation échoué");
+    }
+
+    Ok(Json(
+        json!({ "success": true, "assignment_id": assignment_id }),
+    ))
 }
 
 async fn create_notify_job(
@@ -3418,10 +4378,15 @@ async fn create_notify_job(
     Json(req): Json<CreateNotifyJobRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.notify.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let job_type = req.job_type.unwrap_or_else(|| "maille_bbox_gmail".to_string());
+    let job_type = req
+        .job_type
+        .unwrap_or_else(|| "maille_bbox_gmail".to_string());
     let params = req.params.unwrap_or_else(|| json!({}));
 
     let job_id: Uuid = sqlx::query_scalar(
@@ -3502,7 +4467,10 @@ async fn list_notify_jobs(
     Query(query): Query<NotifyJobsQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.notify.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let limit = query.limit.unwrap_or(50).max(1).min(200);
@@ -3560,7 +4528,10 @@ async fn get_notify_job(
     Path(job_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.notify.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let row = sqlx::query(
@@ -3590,7 +4561,10 @@ async fn get_notify_job(
     })?;
 
     let Some(row) = row else {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Job introuvable" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Job introuvable" })),
+        ));
     };
 
     let logs = sqlx::query(
@@ -3652,7 +4626,10 @@ async fn list_documents(
     Query(params): Query<DocumentsQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
 
     let mut conditions = vec!["d.deleted_at IS NULL".to_string()];
@@ -3663,7 +4640,10 @@ async fn list_documents(
         conditions.push(format!("d.sondage_id = '{}'", sondage_id));
     }
     if let Some(document_type) = params.document_type {
-        conditions.push(format!("d.document_type::TEXT = '{}'", document_type.replace('\'', "''")));
+        conditions.push(format!(
+            "d.document_type::TEXT = '{}'",
+            document_type.replace('\'', "''")
+        ));
     }
 
     let where_clause = conditions.join(" AND ");
@@ -3696,7 +4676,12 @@ async fn list_documents(
     let rows = sqlx::query(&query)
         .fetch_all(&state.pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur: {}", e)}))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": format!("Erreur: {}", e)})),
+            )
+        })?;
 
     let documents: Vec<ColabDocument> = rows
         .iter()
@@ -3719,7 +4704,9 @@ async fn list_documents(
         })
         .collect();
 
-    Ok(Json(json!({ "documents": documents, "total": documents.len() })))
+    Ok(Json(
+        json!({ "documents": documents, "total": documents.len() }),
+    ))
 }
 
 /// GET /colab/supervisors/:id - Détail d'un superviseur
@@ -3729,7 +4716,10 @@ async fn get_supervisor(
     Path(supervisor_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.supervisors.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let row = sqlx::query(
@@ -3755,9 +4745,19 @@ async fn get_supervisor(
     .bind(supervisor_id)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur: {}", e) }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": format!("Erreur: {}", e) })),
+        )
+    })?;
 
-    let row = row.ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({ "error": "Superviseur non trouvé" }))))?;
+    let row = row.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Superviseur non trouvé" })),
+        )
+    })?;
 
     Ok(Json(json!({
         "id": row.get::<Uuid,_>("id"),
@@ -3782,7 +4782,10 @@ async fn get_student(
     Path(student_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.students.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let row = sqlx::query(
@@ -3821,7 +4824,12 @@ async fn get_student(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur: {}", e) }))))?;
 
-    let row = row.ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({ "error": "Étudiant non trouvé" }))))?;
+    let row = row.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Étudiant non trouvé" })),
+        )
+    })?;
 
     Ok(Json(json!({
         "id": row.get::<Uuid,_>("id"),
@@ -3849,7 +4857,10 @@ async fn list_students(
     Query(query): Query<StudentsListQuery>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.students.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let audit_mode = query.audit_mode.unwrap_or(false);
@@ -3937,7 +4948,9 @@ async fn list_students(
         })
         .collect();
 
-    Ok(Json(json!({ "students": students, "total": students.len() })))
+    Ok(Json(
+        json!({ "students": students, "total": students.len() }),
+    ))
 }
 
 async fn list_student_duplicates(
@@ -3945,7 +4958,10 @@ async fn list_student_duplicates(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.students.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let rows = sqlx::query(
@@ -3994,7 +5010,8 @@ async fn list_student_duplicates(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": format!("Erreur: {}", e) }))))?;
 
-    let mut map: std::collections::BTreeMap<String, Vec<serde_json::Value>> = std::collections::BTreeMap::new();
+    let mut map: std::collections::BTreeMap<String, Vec<serde_json::Value>> =
+        std::collections::BTreeMap::new();
     for r in rows.iter() {
         let tel: String = r.get("telephone");
         let item = json!({
@@ -4031,7 +5048,10 @@ async fn get_student_stats(
     Path(student_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.students.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let exists: Option<i64> = sqlx::query_scalar(
@@ -4047,10 +5067,18 @@ async fn get_student_stats(
     .bind(student_id)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     if exists.is_none() {
-        return Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Étudiant non trouvé" }))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Étudiant non trouvé" })),
+        ));
     }
 
     let active_missions: i64 = sqlx::query_scalar(
@@ -4103,7 +5131,12 @@ async fn get_student_stats(
     .bind(student_id)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let mailles_detail: Vec<serde_json::Value> = rows
         .iter()
@@ -4137,7 +5170,10 @@ async fn upload_document(
     mut multipart: Multipart,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.update") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
 
     let mut mission_id: Option<Uuid> = None;
@@ -4148,25 +5184,30 @@ async fn upload_document(
     let mut file_name: Option<String> = None;
     let mut mime_type: Option<String> = None;
 
-    while let Some(field) = multipart
-        .next_field()
-        .await
-        .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({"error": format!("Multipart invalide: {}", e)}))))?
-    {
+    while let Some(field) = multipart.next_field().await.map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error": format!("Multipart invalide: {}", e)})),
+        )
+    })? {
         let name = field.name().unwrap_or("").to_string();
         if name == "file" {
             file_name = field.file_name().map(|s| s.to_string());
             mime_type = field.content_type().map(|s| s.to_string());
-            let bytes = field
-                .bytes()
-                .await
-                .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({"error": format!("Fichier invalide: {}", e)}))))?;
+            let bytes = field.bytes().await.map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"error": format!("Fichier invalide: {}", e)})),
+                )
+            })?;
             file_bytes = Some(bytes.to_vec());
         } else {
-            let value = field
-                .text()
-                .await
-                .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({"error": format!("Champ invalide: {}", e)}))))?;
+            let value = field.text().await.map_err(|e| {
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(json!({"error": format!("Champ invalide: {}", e)})),
+                )
+            })?;
             match name.as_str() {
                 "mission_id" => {
                     mission_id = value.parse::<Uuid>().ok();
@@ -4180,15 +5221,24 @@ async fn upload_document(
     }
 
     let mission_id = mission_id.ok_or_else(|| {
-        (StatusCode::BAD_REQUEST, Json(json!({"error":"mission_id requis"})))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"mission_id requis"})),
+        )
     })?;
     let title = title.unwrap_or_default();
     if title.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({"error":"title requis"}))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"title requis"})),
+        ));
     }
     let document_type = document_type.unwrap_or_else(|| "autre".to_string());
     let file_bytes = file_bytes.ok_or_else(|| {
-        (StatusCode::BAD_REQUEST, Json(json!({"error":"file requis"})))
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"file requis"})),
+        )
     })?;
 
     // vérifier mission non supprimée
@@ -4198,25 +5248,46 @@ async fn upload_document(
     .bind(mission_id)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur DB: {}", e)}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur DB: {}", e)})),
+        )
+    })?;
 
     if exists.is_none() {
-        return Err((StatusCode::NOT_FOUND, Json(json!({"error":"Mission non trouvée"}))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({"error":"Mission non trouvée"})),
+        ));
     }
 
     let doc_id = Uuid::new_v4();
-    let stored_name = format!("{}_{}", doc_id, file_name.clone().unwrap_or_else(|| "document".to_string()));
+    let stored_name = format!(
+        "{}_{}",
+        doc_id,
+        file_name.clone().unwrap_or_else(|| "document".to_string())
+    );
     let storage_dir = "./data/colab_documents";
-    fs::create_dir_all(storage_dir)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur storage: {}", e)}))))?;
+    fs::create_dir_all(storage_dir).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur storage: {}", e)})),
+        )
+    })?;
     let file_path = format!("{}/{}", storage_dir, stored_name);
-    let mut f = fs::File::create(&file_path)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur écriture: {}", e)}))))?;
-    f.write_all(&file_bytes)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur écriture: {}", e)}))))?;
+    let mut f = fs::File::create(&file_path).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur écriture: {}", e)})),
+        )
+    })?;
+    f.write_all(&file_bytes).await.map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur écriture: {}", e)})),
+        )
+    })?;
 
     sqlx::query(
         r#"
@@ -4241,7 +5312,12 @@ async fn upload_document(
     .bind(mime_type.as_deref())
     .execute(&state.pool)
     .await
-    .map_err(|e| (StatusCode::BAD_REQUEST, Json(json!({"error":"Upload impossible", "details": e.to_string()}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"Upload impossible", "details": e.to_string()})),
+        )
+    })?;
 
     Ok(Json(json!({"success": true, "id": doc_id})))
 }
@@ -4253,7 +5329,10 @@ async fn download_document(
     Path(document_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
 
     let row = sqlx::query(
@@ -4264,14 +5343,22 @@ async fn download_document(
     .await
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur: {}", e)}))))?;
 
-    let row = row.ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({"error":"Document non trouvé"}))))?;
+    let row = row.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error":"Document non trouvé"})),
+        )
+    })?;
     let file_path: String = row.get("file_path");
     let file_name: String = row.get("file_name");
     let mime_type: Option<String> = row.get("mime_type");
 
-    let bytes = fs::read(&file_path)
-        .await
-        .map_err(|e| (StatusCode::NOT_FOUND, Json(json!({"error": format!("Fichier introuvable: {}", e)}))))?;
+    let bytes = fs::read(&file_path).await.map_err(|e| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({"error": format!("Fichier introuvable: {}", e)})),
+        )
+    })?;
 
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -4298,7 +5385,10 @@ async fn delete_document(
     Path(document_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.update") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
 
     let res = sqlx::query(
@@ -4310,7 +5400,10 @@ async fn delete_document(
     .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur: {}", e)}))))?;
 
     if res.rows_affected() == 0 {
-        return Err((StatusCode::NOT_FOUND, Json(json!({"error":"Document non trouvé"}))));
+        return Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({"error":"Document non trouvé"})),
+        ));
     }
 
     Ok(Json(json!({"success": true, "deleted": document_id})))
@@ -4327,7 +5420,10 @@ async fn suggest_mailles(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Vec<MailleSuggestItem>>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
 
     let q = params.get("q").cloned().unwrap_or_default();
@@ -4350,7 +5446,12 @@ async fn suggest_mailles(
     .bind(&q)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur: {}", e)}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur: {}", e)})),
+        )
+    })?;
 
     let out = rows
         .iter()
@@ -4378,7 +5479,10 @@ async fn suggest_communes(
     Query(params): Query<SuggestTextQuery>,
 ) -> Result<Json<Vec<String>>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
     let q = format!("%{}%", params.q);
     let rows = sqlx::query_scalar(
@@ -4395,9 +5499,16 @@ async fn suggest_communes(
     .bind(&q)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur: {}", e)}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur: {}", e)})),
+        )
+    })?;
 
-    Ok(Json(rows.into_iter().filter_map(|x: Option<String>| x).collect()))
+    Ok(Json(
+        rows.into_iter().filter_map(|x: Option<String>| x).collect(),
+    ))
 }
 
 /// GET /colab/regions/suggest?q=mar
@@ -4407,7 +5518,10 @@ async fn suggest_regions(
     Query(params): Query<SuggestTextQuery>,
 ) -> Result<Json<Vec<String>>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
     let q = format!("%{}%", params.q);
     let rows = sqlx::query_scalar(
@@ -4424,9 +5538,16 @@ async fn suggest_regions(
     .bind(&q)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur: {}", e)}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur: {}", e)})),
+        )
+    })?;
 
-    Ok(Json(rows.into_iter().filter_map(|x: Option<String>| x).collect()))
+    Ok(Json(
+        rows.into_iter().filter_map(|x: Option<String>| x).collect(),
+    ))
 }
 
 /// GET /colab/students/suggest?q=jo
@@ -4436,7 +5557,10 @@ async fn suggest_students(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Vec<UserSuggestItem>>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
 
     let q = params.get("q").cloned().unwrap_or_default();
@@ -4459,7 +5583,12 @@ async fn suggest_students(
     .bind(&q)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur: {}", e)}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur: {}", e)})),
+        )
+    })?;
 
     let out = rows
         .iter()
@@ -4486,7 +5615,10 @@ async fn suggest_supervisors(
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<Vec<UserSuggestItem>>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.create") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({"error":"Permission refusée"}))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({"error":"Permission refusée"})),
+        ));
     }
 
     let q = params.get("q").cloned().unwrap_or_default();
@@ -4508,7 +5640,12 @@ async fn suggest_supervisors(
     .bind(&q)
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": format!("Erreur: {}", e)}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": format!("Erreur: {}", e)})),
+        )
+    })?;
 
     let out = rows
         .iter()

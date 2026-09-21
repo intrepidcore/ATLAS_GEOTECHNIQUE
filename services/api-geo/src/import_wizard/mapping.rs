@@ -78,8 +78,23 @@ pub fn infer_mapping(columns: &[String]) -> HashMap<String, String> {
     mapping
 }
 
+/// Un alias correspond-il au nom de colonne ?
+///
+/// La recherche en sous-chaîne pure était fausse : les alias d'une seule
+/// lettre (« x », « e », « n », « y », « z ») se retrouvent dans presque tous
+/// les noms de colonnes. « depth_m » contient « e » et était donc mappé en
+/// longitude — en écrasant la vraie colonne, puisque la boucle passe après.
+/// Les alias courts ne valent désormais qu'en égalité ou en jeton complet.
 fn matches_pattern(value: &str, patterns: &[&str]) -> bool {
-    patterns.iter().any(|p| value.contains(p))
+    let normalised: String = value
+        .chars()
+        .map(|c| if c.is_alphanumeric() { c } else { '_' })
+        .collect();
+    let tokens: Vec<&str> = normalised.split('_').filter(|t| !t.is_empty()).collect();
+
+    patterns.iter().any(|p| {
+        normalised == *p || tokens.contains(p) || (p.len() >= 3 && normalised.contains(p))
+    })
 }
 
 #[cfg(test)]

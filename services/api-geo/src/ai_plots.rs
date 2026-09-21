@@ -1,4 +1,9 @@
-use axum::{extract::State, http::StatusCode, routing::{get, post}, Json, Router};
+use axum::{
+    extract::State,
+    http::StatusCode,
+    routing::{get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
@@ -54,7 +59,12 @@ async fn get_variograms_summary(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let mut out = Vec::new();
     for r in rows {
@@ -92,7 +102,11 @@ fn script_path(relative_from_manifest_dir: &str) -> String {
             .unwrap_or(relative_from_manifest_dir);
         return format!("{}/{}", dir.trim_end_matches('/'), script_name);
     }
-    format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative_from_manifest_dir)
+    format!(
+        "{}/{}",
+        env!("CARGO_MANIFEST_DIR"),
+        relative_from_manifest_dir
+    )
 }
 
 fn python_candidates() -> Vec<&'static str> {
@@ -132,18 +146,28 @@ async fn post_variogram_plot(
     Json(payload): Json<VariogramPlotRequest>,
 ) -> Result<Json<VariogramPlotResponse>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
     let parameter_id = payload.parameter_id.trim().to_string();
     if parameter_id.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({"error":"parameter_id requis"}))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({"error":"parameter_id requis"})),
+        ));
     }
     let horizon = payload
         .horizon
         .as_ref()
         .map(|h| h.trim().to_uppercase())
         .filter(|h| !h.is_empty());
-    let cache_key = format!("variogram:{}:{}", parameter_id, horizon.clone().unwrap_or_else(|| "ALL".to_string()));
+    let cache_key = format!(
+        "variogram:{}:{}",
+        parameter_id,
+        horizon.clone().unwrap_or_else(|| "ALL".to_string())
+    );
 
     // Cache hit
     if let Ok(Some(row)) = sqlx::query(
@@ -170,18 +194,39 @@ async fn post_variogram_plot(
         }));
     }
 
-    let db_url = require_database_url().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+    let db_url = require_database_url().map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e })),
+        )
+    })?;
     let script = script_path("../../scripts/generate_variogram_plot.py");
-    let mut args = vec![script.as_str(), "--database-url", db_url.as_str(), "--parameter-id", parameter_id.as_str()];
+    let mut args = vec![
+        script.as_str(),
+        "--database-url",
+        db_url.as_str(),
+        "--parameter-id",
+        parameter_id.as_str(),
+    ];
     if let Some(h) = &horizon {
         args.push("--horizon");
         args.push(h.as_str());
     }
-    let py = run_python_json(&args).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+    let py = run_python_json(&args).map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e })),
+        )
+    })?;
     let svg = py
         .get("svg")
         .and_then(|v| v.as_str())
-        .ok_or_else(|| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error":"svg missing in python output"}))))?
+        .ok_or_else(|| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error":"svg missing in python output"})),
+            )
+        })?
         .to_string();
     let rows = py.get("rows").and_then(|v| v.as_i64()).unwrap_or(0) as i32;
 
@@ -226,19 +271,23 @@ pub async fn variogram_compare(
     Json(req): Json<VariogramCompareRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let horizons = req.horizons.unwrap_or_else(|| {
-        vec!["h1".to_string(), "h2".to_string(), "h3".to_string()]
-    });
+    let horizons = req
+        .horizons
+        .unwrap_or_else(|| vec!["h1".to_string(), "h2".to_string(), "h3".to_string()]);
 
     let params_with_vario: Vec<serde_json::Value> = {
         let mut results = vec![];
         for h in &horizons {
             let param_id = format!("{}_{}", req.parameter_base, h);
 
-            let row = sqlx::query(r#"
+            let row = sqlx::query(
+                r#"
                 SELECT parameter_id, nugget, sill, range_m, loo_rmse,
                     COALESCE(
                         fit_quality->>'horizon_label',
@@ -249,12 +298,17 @@ pub async fn variogram_compare(
                   AND nugget IS NOT NULL
                 ORDER BY created_at DESC
                 LIMIT 1
-            "#)
+            "#,
+            )
             .bind(&param_id)
             .fetch_optional(&state.pool)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR,
-                Json(json!({"error": e.to_string()}))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({"error": e.to_string()})),
+                )
+            })?;
 
             if let Some(r) = row {
                 results.push(json!({
@@ -278,20 +332,25 @@ pub async fn variogram_compare(
         })));
     }
 
-    let params_json = serde_json::to_string(&params_with_vario)
-        .unwrap_or_default();
+    let params_json = serde_json::to_string(&params_with_vario).unwrap_or_default();
 
     let script = script_path("../../scripts/generate_variogram_plot.py");
-    let db_url = require_database_url().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
-    let result = run_python_json(
-        &[
-            script.as_str(),
-            "--multi-compare", &params_json,
-            "--parameter-id", &req.parameter_base,
-            "--database-url", &db_url,
-        ]
-    ).map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR,
-        Json(json!({"error": e}))))?;
+    let db_url = require_database_url().map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e })),
+        )
+    })?;
+    let result = run_python_json(&[
+        script.as_str(),
+        "--multi-compare",
+        &params_json,
+        "--parameter-id",
+        &req.parameter_base,
+        "--database-url",
+        &db_url,
+    ])
+    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e}))))?;
 
     Ok(Json(json!({
         "svg": result.get("svg"),
@@ -299,4 +358,3 @@ pub async fn variogram_compare(
         "parameter_base": req.parameter_base,
     })))
 }
-

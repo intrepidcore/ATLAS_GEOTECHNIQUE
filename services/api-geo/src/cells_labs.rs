@@ -231,16 +231,14 @@ pub async fn get_cell_complete(
     let kpi_row = fetch_kpi_row(pool, &code).await;
 
     let kpi = match kpi_row {
-        Ok(Some(r)) => {
-            CompleteKpi {
-                n_sondages: r.n_sondages,
-                n_echantillons: r.n_echantillons,
-                n_essais: r.n_essais,
-                pct_spread: r.pct_spread,
-                depth_max_m: r.depth_max_m,
-                updated_at: Some(chrono::Utc::now().to_rfc3339()),
-            }
-        }
+        Ok(Some(r)) => CompleteKpi {
+            n_sondages: r.n_sondages,
+            n_echantillons: r.n_echantillons,
+            n_essais: r.n_essais,
+            pct_spread: r.pct_spread,
+            depth_max_m: r.depth_max_m,
+            updated_at: Some(chrono::Utc::now().to_rfc3339()),
+        },
         Ok(None) => CompleteKpi {
             n_sondages: 0,
             n_echantillons: 0,
@@ -417,9 +415,21 @@ pub async fn get_cell_complete(
             };
 
             // Flags pour proctor/granulo/gonflement (présence d'essai)
-            let proctor = if has_proctor { Some(serde_json::json!({"present": true})) } else { None };
-            let granulo = if has_granulo { Some(serde_json::json!({"present": true})) } else { None };
-            let swelling = if has_gonflement { Some(serde_json::json!({"present": true})) } else { None };
+            let proctor = if has_proctor {
+                Some(serde_json::json!({"present": true}))
+            } else {
+                None
+            };
+            let granulo = if has_granulo {
+                Some(serde_json::json!({"present": true}))
+            } else {
+                None
+            };
+            let swelling = if has_gonflement {
+                Some(serde_json::json!({"present": true}))
+            } else {
+                None
+            };
 
             SampleComplete {
                 id: row.try_get("id").unwrap(),

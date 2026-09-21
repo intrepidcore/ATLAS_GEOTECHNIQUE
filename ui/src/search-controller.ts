@@ -5,6 +5,7 @@ export type SearchResultType =
   | 'adm2'
   | 'adm3'
   | 'sondage'
+  | 'operateur'
 
 export type SearchResult = {
   type: SearchResultType
@@ -54,6 +55,8 @@ function groupLabel(t: SearchResultType): string {
       return 'ADM3'
     case 'sondage':
       return 'Sondages'
+    case 'operateur':
+      return 'Opérateurs'
     default:
       return 'Résultats'
   }

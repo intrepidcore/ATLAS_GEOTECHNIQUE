@@ -7,7 +7,6 @@ jest.mock('@react-native-community/netinfo', () => ({
 }));
 
 jest.mock('@/db/repository', () => ({
-  newClientId: (prefix: string) => `${prefix}-test-id`,
   repository: {
     getQueueCount: jest.fn().mockResolvedValue(0),
     getQueue: jest.fn().mockResolvedValue([]),
@@ -26,9 +25,23 @@ jest.mock('@/api/mobile', () => ({
   },
 }));
 
+jest.mock('@/services/atlaspack/repository', () => ({
+  newUuid: () => '11111111-1111-4111-8111-111111111111',
+  atlaspackRepository: {
+    recordAuditEvent: jest.fn().mockResolvedValue('audit-id'),
+  },
+}));
+
+jest.mock('@/services/atlaspack/session', () => ({
+  atlaspackSession: {
+    get: jest.fn().mockReturnValue(null),
+  },
+}));
+
 import { repository } from '@/db/repository';
 import { mobileApi } from '@/api/mobile';
 import { syncService } from '@/services/syncService';
+import { atlaspackRepository } from '@/services/atlaspack/repository';
 
 describe('syncService.createSondageOffline', () => {
   beforeEach(() => jest.clearAllMocks());
@@ -37,7 +50,7 @@ describe('syncService.createSondageOffline', () => {
     await syncService.createSondageOffline('mission-1', { longitude: 1.2, latitude: 6.1 }, null);
     expect(repository.saveDraft).toHaveBeenCalledTimes(1);
     expect(repository.enqueue).toHaveBeenCalledWith(
-      expect.stringContaining('sondage-'),
+      '11111111-1111-4111-8111-111111111111',
       'create_sondage',
       expect.objectContaining({ mission_id: 'mission-1' })
     );
@@ -49,6 +62,20 @@ describe('syncService.createSondageOffline', () => {
       expect.any(String),
       'confirm_sondage_point',
       expect.objectContaining({ planned_point_id: 'point-9' })
+    );
+  });
+
+  it('records a gps_capture audit event for a normal confirmation', async () => {
+    await syncService.createSondageOffline('mission-1', { longitude: 1.2, latitude: 6.1 }, 'point-9', 'confirm');
+    expect(atlaspackRepository.recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'gps_capture', missionId: 'mission-1', objectType: 'sondage' })
+    );
+  });
+
+  it('records a relocate_point audit event when relocating', async () => {
+    await syncService.createSondageOffline('mission-1', { longitude: 1.2, latitude: 6.1 }, 'point-9', 'relocate');
+    expect(atlaspackRepository.recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: 'relocate_point' })
     );
   });
 });

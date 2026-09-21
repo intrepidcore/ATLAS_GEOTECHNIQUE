@@ -2,9 +2,11 @@ import React from 'react';
 import { View, Text } from 'react-native';
 import { useSyncStatus } from '@/context/SyncStatusContext';
 import { colors } from '@/theme/tokens';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export const SyncStatusBanner: React.FC = () => {
   const status = useSyncStatus();
+  const insets = useSafeAreaInsets();
 
   if (status.state === 'idle' && status.pendingCount === 0) return null;
 
@@ -18,7 +20,7 @@ export const SyncStatusBanner: React.FC = () => {
           : { bg: colors.green500, text: 'À jour' };
 
   return (
-    <View style={{ backgroundColor: bg, paddingVertical: 6, paddingHorizontal: 12 }}>
+    <View style={{ backgroundColor: bg, paddingTop: insets.top + 4, paddingBottom: 6, paddingHorizontal: 12 }}>
       <Text style={{ color: colors.white, fontSize: 12, textAlign: 'center', fontWeight: '500' }}>{text}</Text>
     </View>
   );

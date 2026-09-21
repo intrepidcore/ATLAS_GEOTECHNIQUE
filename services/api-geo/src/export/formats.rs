@@ -59,7 +59,9 @@ impl std::fmt::Display for ExportDataSource {
             ExportDataSource::Supervisors => write!(f, "supervisors"),
             ExportDataSource::Documents => write!(f, "documents"),
             ExportDataSource::Logs => write!(f, "logs"),
-            ExportDataSource::MissionsStudentsSupervisors => write!(f, "missions_students_supervisors"),
+            ExportDataSource::MissionsStudentsSupervisors => {
+                write!(f, "missions_students_supervisors")
+            }
             ExportDataSource::MissionsDocuments => write!(f, "missions_documents"),
             ExportDataSource::StudentsMissions => write!(f, "students_missions"),
             ExportDataSource::LogsMissions => write!(f, "logs_missions"),

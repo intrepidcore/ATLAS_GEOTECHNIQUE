@@ -69,7 +69,10 @@ async fn list_recent_jobs(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let queue_rows = sqlx::query(
@@ -83,7 +86,12 @@ async fn list_recent_jobs(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let queue_jobs: Vec<serde_json::Value> = queue_rows
         .into_iter()
@@ -113,7 +121,12 @@ async fn list_recent_jobs(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let legacy: Vec<AiJobPublic> = legacy_rows.into_iter().map(row_to_public).collect();
 
@@ -131,7 +144,10 @@ async fn run_jobs_once(
     Json(payload): Json<RunOnceRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let max_jobs = payload.max_jobs.unwrap_or(1).clamp(1, 25);
@@ -147,13 +163,17 @@ async fn run_jobs_once(
             Err(e) => {
                 return Err((
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    Json(json!({ "error": e.to_string(), "processed": processed, "results": results })),
+                    Json(
+                        json!({ "error": e.to_string(), "processed": processed, "results": results }),
+                    ),
                 ))
             }
         }
     }
 
-    Ok(Json(json!({ "success": true, "processed": processed, "results": results })))
+    Ok(Json(
+        json!({ "success": true, "processed": processed, "results": results }),
+    ))
 }
 
 async fn get_ai_plan_summary(
@@ -161,7 +181,10 @@ async fn get_ai_plan_summary(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let interpolation_rows = sqlx::query(
@@ -173,7 +196,12 @@ async fn get_ai_plan_summary(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let prediction_rows = sqlx::query(
         r#"
@@ -184,7 +212,12 @@ async fn get_ai_plan_summary(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     let interpolation: Vec<serde_json::Value> = interpolation_rows
         .into_iter()
@@ -242,14 +275,24 @@ async fn enqueue_job(
     Json(body): Json<EnqueueRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let allowed_types = [
-        "ked_recompute", "rk_recompute", "blup_recompute",
-        "vfs_extract",   "mtgp_recompute", "sgs_compute",
-        "3d_render",     "kriging", "kriging_interpolate",
-        "catboost_predict", "train_supervised",
+        "ked_recompute",
+        "rk_recompute",
+        "blup_recompute",
+        "vfs_extract",
+        "mtgp_recompute",
+        "sgs_compute",
+        "3d_render",
+        "kriging",
+        "kriging_interpolate",
+        "catboost_predict",
+        "train_supervised",
     ];
     if !allowed_types.contains(&body.job_type.as_str()) {
         return Err((
@@ -271,7 +314,12 @@ async fn enqueue_job(
     .bind(body.payload.unwrap_or(json!({})))
     .fetch_one(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     Ok(Json(json!({
         "job_id": job_id,
@@ -298,10 +346,18 @@ async fn get_job_status(
     .bind(id)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     match row {
-        None => Err((StatusCode::NOT_FOUND, Json(json!({ "error": "Job introuvable" })))),
+        None => Err((
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Job introuvable" })),
+        )),
         Some(r) => {
             let status: String = r.get("status");
             let error_message: Option<String> = r.try_get("error_message").ok().flatten();
@@ -332,14 +388,14 @@ async fn get_job_status(
 fn method_to_model_id(method: &str) -> &'static str {
     match method {
         "ked_pedologie_ked" | "ked_hierarchical_5levels" => "L1_KED_H",
-        "ked_pedologie_eg"                               => "L1_KED_H",
-        "ked_pedologie_granulo"                          => "L1_KED_H",
-        "regression_kriging_scorpan"                     => "L2a_RK",
-        "ked_rk_fusion_bayesian"                         => "L2b_BLUP",
-        "mtgp_icm_gpflow"                                => "L4_MTGP",
-        "maille_spectral_vfs"                            => "L3_VFS",
+        "ked_pedologie_eg" => "L1_KED_H",
+        "ked_pedologie_granulo" => "L1_KED_H",
+        "regression_kriging_scorpan" => "L2a_RK",
+        "ked_rk_fusion_bayesian" => "L2b_BLUP",
+        "mtgp_icm_gpflow" => "L4_MTGP",
+        "maille_spectral_vfs" => "L3_VFS",
         "sgs_gstools" | "sgs_p50" | "sgs_p10" | "sgs_p90" => "L5_SGS",
-        _                                                => "UNKNOWN",
+        _ => "UNKNOWN",
     }
 }
 
@@ -360,7 +416,12 @@ async fn get_models_status(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     // 2. LOO-RMSE depuis ai_variograms (le plus récent par parameter_id)
     let variograms = sqlx::query(
@@ -393,7 +454,7 @@ async fn get_models_status(
     for r in &counts {
         let method: String = r.get("method");
         let n_mailles: i64 = r.try_get("n_mailles").unwrap_or(0);
-        let n_params: i64  = r.try_get("n_params").unwrap_or(0);
+        let n_params: i64 = r.try_get("n_params").unwrap_or(0);
         let last_run: Option<String> = r
             .try_get::<Option<chrono::DateTime<chrono::Utc>>, _>("last_run_at")
             .ok()
@@ -411,56 +472,90 @@ async fn get_models_status(
 
     // 4. Construire la réponse par modèle dans l'ordre hiérarchique
     let model_defs: &[(&str, &str, &str, &[&str])] = &[
-        ("L1_KED_H",  "KED Hiérarchique 5 niveaux",         "ked_pedologie_ked",       &["L1 — Production officielle. Dérive pédologique 5 niveaux."]),
-        ("L2a_RK",    "RK-SCORPAN (Regression Kriging)",     "regression_kriging_scorpan", &["H2 dégradé pour WL/WP (transition lithologique 1–2m)"]),
-        ("L2b_BLUP",  "Fusion Bayésienne BLUP",              "ked_rk_fusion_bayesian",  &["σ² réduit ~48% vs modèles individuels"]),
-        ("L3_VFS",    "VfS-PLS Sentinel-2",                  "maille_spectral_vfs",     &["VBS surface uniquement — couverture partielle (végétation dense exclue)"]),
-        ("L4_MTGP",   "MTGP/ICM GPflow (Multi-Tâches)",      "mtgp_icm_gpflow",         &["Expérimental — LOO-RMSE non calculée (O(N³))"]),
-        ("L5_SGS",    "SGS — Simulation Gaussienne Séquentielle", "sgs_p50",             &["Incertitude P10/P50/P90 — 29 407 mailles — dépend de L1 KED"]),
+        (
+            "L1_KED_H",
+            "KED Hiérarchique 5 niveaux",
+            "ked_pedologie_ked",
+            &["L1 — Production officielle. Dérive pédologique 5 niveaux."],
+        ),
+        (
+            "L2a_RK",
+            "RK-SCORPAN (Regression Kriging)",
+            "regression_kriging_scorpan",
+            &["H2 dégradé pour WL/WP (transition lithologique 1–2m)"],
+        ),
+        (
+            "L2b_BLUP",
+            "Fusion Bayésienne BLUP",
+            "ked_rk_fusion_bayesian",
+            &["σ² réduit ~48% vs modèles individuels"],
+        ),
+        (
+            "L3_VFS",
+            "VfS-PLS Sentinel-2",
+            "maille_spectral_vfs",
+            &["VBS surface uniquement — couverture partielle (végétation dense exclue)"],
+        ),
+        (
+            "L4_MTGP",
+            "MTGP/ICM GPflow (Multi-Tâches)",
+            "mtgp_icm_gpflow",
+            &["Expérimental — LOO-RMSE non calculée (O(N³))"],
+        ),
+        (
+            "L5_SGS",
+            "SGS — Simulation Gaussienne Séquentielle",
+            "sgs_p50",
+            &["Incertitude P10/P50/P90 — 29 407 mailles — dépend de L1 KED"],
+        ),
     ];
 
-    let models: Vec<serde_json::Value> = model_defs.iter().map(|(id, label, method_db, warnings)| {
-        let (n_mailles, n_params, last_run) = model_map.get(id).cloned().unwrap_or((0, 0, None));
+    let models: Vec<serde_json::Value> = model_defs
+        .iter()
+        .map(|(id, label, method_db, warnings)| {
+            let (n_mailles, n_params, last_run) =
+                model_map.get(id).cloned().unwrap_or((0, 0, None));
 
-        let status = if n_mailles >= 29000 {
-            "ready"
-        } else if n_mailles > 0 {
-            "partial"
-        } else {
-            "not_computed"
-        };
-
-        // Métriques RMSE depuis ai_variograms (pas de hardcoding — ARCH-01)
-        let mut metrics = serde_json::Map::new();
-        for (pid, rmse) in &rmse_map {
-            // Associer les paramètres KED au L1, RK au L2a, etc.
-            let belongs = match *id {
-                "L1_KED_H" => pid.contains("_ked_h") || pid.starts_with("ip_derived"),
-                "L2a_RK"   => pid.contains("_rk_h"),
-                _           => false,
+            let status = if n_mailles >= 29000 {
+                "ready"
+            } else if n_mailles > 0 {
+                "partial"
+            } else {
+                "not_computed"
             };
-            if belongs {
-                metrics.insert(pid.clone(), json!({ "loo_rmse": rmse }));
+
+            // Métriques RMSE depuis ai_variograms (pas de hardcoding — ARCH-01)
+            let mut metrics = serde_json::Map::new();
+            for (pid, rmse) in &rmse_map {
+                // Associer les paramètres KED au L1, RK au L2a, etc.
+                let belongs = match *id {
+                    "L1_KED_H" => pid.contains("_ked_h") || pid.starts_with("ip_derived"),
+                    "L2a_RK" => pid.contains("_rk_h"),
+                    _ => false,
+                };
+                if belongs {
+                    metrics.insert(pid.clone(), json!({ "loo_rmse": rmse }));
+                }
             }
-        }
 
-        // L2b : variance_reduction depuis la doc (valeur calculée, pas hardcodée — c'est un résultat mathématique)
-        if *id == "L2b_BLUP" && n_mailles > 0 {
-            metrics.insert("variance_reduction_pct".to_string(), json!(47.9));
-        }
+            // L2b : variance_reduction depuis la doc (valeur calculée, pas hardcodée — c'est un résultat mathématique)
+            if *id == "L2b_BLUP" && n_mailles > 0 {
+                metrics.insert("variance_reduction_pct".to_string(), json!(47.9));
+            }
 
-        json!({
-            "id":           id,
-            "label":        label,
-            "method_db":    method_db,
-            "status":       status,
-            "n_mailles":    n_mailles,
-            "n_params":     n_params,
-            "last_run_at":  last_run,
-            "metrics":      metrics,
-            "warnings":     warnings,
+            json!({
+                "id":           id,
+                "label":        label,
+                "method_db":    method_db,
+                "status":       status,
+                "n_mailles":    n_mailles,
+                "n_params":     n_params,
+                "last_run_at":  last_run,
+                "metrics":      metrics,
+                "warnings":     warnings,
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(Json(json!({
         "models":       models,
@@ -485,7 +580,7 @@ fn archetype_filename(param: &str, archetype: &str) -> Option<String> {
         "B" => "B_strati_maps.png",
         "C" => "C_fence_coupes.png",
         "D" => "D_isovaleurs.png",
-        _   => return None,
+        _ => return None,
     };
     Some(format!("{}_{}", param, suffix))
 }
@@ -540,7 +635,12 @@ async fn get_3d_asset(
     .bind(&payload)
     .fetch_one(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
     Ok(Json(json!({
         "cached":   false,
@@ -563,7 +663,9 @@ fn row_to_public(r: PgRow) -> AiJobPublic {
         requested_by: r.try_get("requested_by").ok(),
         started_at: started_at.map(|d| d.to_rfc3339()),
         finished_at: finished_at.map(|d| d.to_rfc3339()),
-        logs: r.try_get::<serde_json::Value, _>("logs").unwrap_or(json!({})),
+        logs: r
+            .try_get::<serde_json::Value, _>("logs")
+            .unwrap_or(json!({})),
     }
 }
 
@@ -579,7 +681,11 @@ fn script_path(relative_from_manifest_dir: &str) -> String {
             .unwrap_or(relative_from_manifest_dir);
         return format!("{}/{}", dir.trim_end_matches('/'), script_name);
     }
-    format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative_from_manifest_dir)
+    format!(
+        "{}/{}",
+        env!("CARGO_MANIFEST_DIR"),
+        relative_from_manifest_dir
+    )
 }
 
 fn python_candidates() -> Vec<&'static str> {
@@ -676,9 +782,12 @@ async fn try_process_ai_job_queue(pool: &PgPool) -> anyhow::Result<Option<serde_
         "catboost_predict" | "train_supervised" => (
             script_path("../../scripts/supervised_rga_train_infer.py"),
             vec![
-                "--database-url".to_string(), db_url,
-                "--model-version".to_string(), "supervised_ml_gb_v2_context".to_string(),
-                "--target".to_string(), "rga_predictor".to_string(),
+                "--database-url".to_string(),
+                db_url,
+                "--model-version".to_string(),
+                "supervised_ml_gb_v2_context".to_string(),
+                "--target".to_string(),
+                "rga_predictor".to_string(),
             ],
         ),
         // L1 — KED Hiérarchique 5 niveaux (VBS/IP/WL/WP/EG × H1/H2/H3)
@@ -713,30 +822,46 @@ async fn try_process_ai_job_queue(pool: &PgPool) -> anyhow::Result<Option<serde_
         ),
         // Génération 3D (archetypes B/C/D)
         "3d_render" => {
-            let param = payload.get("param").and_then(|v| v.as_str()).unwrap_or("vbs");
-            let archetype = payload.get("archetype").and_then(|v| v.as_str()).unwrap_or("B");
+            let param = payload
+                .get("param")
+                .and_then(|v| v.as_str())
+                .unwrap_or("vbs");
+            let archetype = payload
+                .get("archetype")
+                .and_then(|v| v.as_str())
+                .unwrap_or("B");
             (
                 script_path("../../scripts/render_3d_archetypes.py"),
                 vec![
-                    "--database-url".to_string(), db_url,
-                    "--param".to_string(), param.to_string(),
-                    "--archetype".to_string(), archetype.to_string(),
+                    "--database-url".to_string(),
+                    db_url,
+                    "--param".to_string(),
+                    param.to_string(),
+                    "--archetype".to_string(),
+                    archetype.to_string(),
                 ],
             )
         }
         "kriging" | "kriging_interpolate" | _ => (
             script_path("../../scripts/kriging_gp_global_interpolate.py"),
             vec![
-                "--database-url".to_string(), db_url,
-                "--method".to_string(), "kriging_gp_global_v1".to_string(),
+                "--database-url".to_string(),
+                db_url,
+                "--method".to_string(),
+                "kriging_gp_global_v1".to_string(),
             ],
         ),
     };
 
-    let args_str: Vec<&str> = std::iter::once(script.as_str()).chain(args.iter().map(|s| s.as_str())).collect();
-    
+    let args_str: Vec<&str> = std::iter::once(script.as_str())
+        .chain(args.iter().map(|s| s.as_str()))
+        .collect();
+
     let (status, detail) = match run_python_json(&args_str) {
-        Ok(v) => ("finished", json!({"result": v, "parameter_id": parameter_id, "job_type": job_type, "payload": payload})),
+        Ok(v) => (
+            "finished",
+            json!({"result": v, "parameter_id": parameter_id, "job_type": job_type, "payload": payload}),
+        ),
         Err(e) => ("failed", json!({"error": e.to_string()})),
     };
 
@@ -902,4 +1027,3 @@ async fn process_one_job(pool: &PgPool) -> anyhow::Result<Option<serde_json::Val
         "details": result_or_error
     })))
 }
-

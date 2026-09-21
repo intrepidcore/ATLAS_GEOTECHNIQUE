@@ -27,21 +27,26 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
     && cp /app/target/release/api-geo /out/api-geo
 
 FROM debian:bookworm-slim
+ARG INSTALL_ML=false
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl fonts-dejavu-core fonts-liberation \
-    python3 python3-pip python3-numpy python3-sklearn python3-psycopg2 \
+    python3 python3-pip python3-numpy python3-psycopg2 \
+    && if [ "$INSTALL_ML" = "true" ]; then apt-get install -y --no-install-recommends python3-sklearn; fi \
     && pip3 install --no-cache-dir --break-system-packages 'PyKrige>=1.7.0' \
     && ln -sf /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf /usr/share/fonts/truetype/dejavu/DejaVuSans-Regular.ttf \
     && rm -rf /var/lib/apt/lists/*
 
-# ARCH-GPU-01 : Dépendances ML baked dans l'image — BuildKit cache évite le re-téléchargement
-# (~2GB au premier build, ~10s ensuite grâce au cache pip BuildKit)
-# tensorflow[and-cuda] embarque les libs CUDA pour GPU RTX 2050
+# Les dépendances ML sont optionnelles. L'API mobile/Colab n'en a pas besoin.
+# Pour une image ML : docker compose build --build-arg INSTALL_ML=true api-geo
 RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install --break-system-packages \
-    pandas==2.0.3 \
-    scikit-learn==1.3.2 \
-    'tensorflow[and-cuda]>=2.15,<2.16' \
-    gpflow==2.10.1
+    if [ "$INSTALL_ML" = "true" ]; then \
+      pip3 install --break-system-packages \
+        pandas==2.0.3 \
+        scikit-learn==1.3.2 \
+        'tensorflow[and-cuda]>=2.15,<2.16' \
+        gpflow==2.10.1; \
+    else \
+      echo "Optional ML runtime skipped (INSTALL_ML=false)"; \
+    fi
 
 WORKDIR /app
 COPY --from=builder /out/api-geo /usr/local/bin/api-geo

@@ -47,11 +47,17 @@ impl AuthUser {
     }
 
     pub fn has_any_permission(&self, permissions: &[&str]) -> bool {
-        self.is_admin() || permissions.iter().any(|p| self.permissions.contains(&p.to_string()))
+        self.is_admin()
+            || permissions
+                .iter()
+                .any(|p| self.permissions.contains(&p.to_string()))
     }
 
     pub fn has_all_permissions(&self, permissions: &[&str]) -> bool {
-        self.is_admin() || permissions.iter().all(|p| self.permissions.contains(&p.to_string()))
+        self.is_admin()
+            || permissions
+                .iter()
+                .all(|p| self.permissions.contains(&p.to_string()))
     }
 
     pub fn has_role(&self, role: &str) -> bool {
@@ -121,8 +127,9 @@ pub async fn optional_auth_middleware(
         match jwt_manager.validate_token(&token) {
             Ok(token_data) => {
                 let token_hash = JwtManager::hash_token(&token);
-                let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
-                
+                let session_manager =
+                    SessionManager::new(state.pool.clone(), state.auth_config.clone());
+
                 match session_manager.validate_session(&token_hash).await {
                     Ok(_) => AuthUser::from_claims(token_data.claims).ok(),
                     Err(_) => None,
@@ -142,7 +149,14 @@ pub async fn optional_auth_middleware(
 }
 
 /// Middleware pour vérifier une permission spécifique (JWT-only)
-pub fn require_permission_jwt(permission: &'static str) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Response, AuthError>> + Send>> + Clone {
+pub fn require_permission_jwt(
+    permission: &'static str,
+) -> impl Fn(
+    Request,
+    Next,
+) -> std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<Response, AuthError>> + Send>,
+> + Clone {
     move |req: Request, next: Next| {
         let permission = permission;
         Box::pin(async move {
@@ -201,7 +215,14 @@ pub async fn require_permission(
 }
 
 /// Middleware pour vérifier un rôle spécifique
-pub fn require_role(role: &'static str) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Response, AuthError>> + Send>> + Clone {
+pub fn require_role(
+    role: &'static str,
+) -> impl Fn(
+    Request,
+    Next,
+) -> std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<Response, AuthError>> + Send>,
+> + Clone {
     move |req: Request, next: Next| {
         let role = role;
         Box::pin(async move {
@@ -389,7 +410,7 @@ where
             .get::<AuthUserExtension>()
             .and_then(|ext| ext.0.clone())
             .or_else(|| parts.extensions.get::<AuthUser>().cloned());
-        
+
         Ok(OptionalAuthUser(user))
     }
 }

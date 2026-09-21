@@ -20,7 +20,9 @@ impl Role {
     pub fn from_roles(roles: &[String]) -> Self {
         if roles.contains(&"admin".to_string()) {
             Role::Admin
-        } else if roles.contains(&"editor".to_string()) || roles.contains(&"data_manager".to_string()) {
+        } else if roles.contains(&"editor".to_string())
+            || roles.contains(&"data_manager".to_string())
+        {
             Role::Editor
         } else {
             Role::Viewer
@@ -60,18 +62,15 @@ impl User {
     }
 
     pub fn can_ddl(&self) -> bool {
-        matches!(self.role, Role::Admin)
-            || self.permissions.contains(&"schema.modify".to_string())
+        matches!(self.role, Role::Admin) || self.permissions.contains(&"schema.modify".to_string())
     }
 
     pub fn can_backup(&self) -> bool {
-        matches!(self.role, Role::Admin)
-            || self.permissions.contains(&"backup.create".to_string())
+        matches!(self.role, Role::Admin) || self.permissions.contains(&"backup.create".to_string())
     }
 
     pub fn can_restore(&self) -> bool {
-        matches!(self.role, Role::Admin)
-            || self.permissions.contains(&"backup.restore".to_string())
+        matches!(self.role, Role::Admin) || self.permissions.contains(&"backup.restore".to_string())
     }
 
     pub fn has_permission(&self, permission: &str) -> bool {
@@ -206,8 +205,12 @@ pub async fn log_user_middleware(req: Request, next: Next) -> Response {
 /// Crée un middleware qui vérifie une permission spécifique
 pub fn require_permission(
     permission: &'static str,
-) -> impl Fn(Request, Next) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<Response, StatusCode>> + Send>>
-       + Clone {
+) -> impl Fn(
+    Request,
+    Next,
+) -> std::pin::Pin<
+    Box<dyn std::future::Future<Output = Result<Response, StatusCode>> + Send>,
+> + Clone {
     move |req: Request, next: Next| {
         Box::pin(async move {
             let user = extract_user_from_request(&req).ok_or(StatusCode::UNAUTHORIZED)?;

@@ -8,6 +8,7 @@
  */
 
 import L from 'leaflet';
+import { currentFilters, featureMatchesFilters } from './filters-state';
 
 type ZoneMailleMeta = {
   pct_intersection: number
@@ -283,7 +284,26 @@ export const ADM3_DEFAULT_STYLE: L.PathOptions = {
  * @param feature - Feature GeoJSON de la maille
  * @param zoom - Niveau de zoom actuel (optionnel, pour poids dynamique)
  */
+/** Maille filtrée : invisible et sans contour. */
+const HIDDEN_STYLE: L.PathOptions = {
+  opacity: 0,
+  fillOpacity: 0,
+  weight: 0,
+};
+
 export function getGridFeatureStyle(feature: any, zoom?: number): L.PathOptions {
+  // La décision de visibilité appartient au style, pas aux appelants.
+  //
+  // Elle était auparavant appliquée après coup par applyFilters(), qui posait
+  // une opacité nulle sur les couches masquées. N'importe quel autre chemin
+  // qui restylait une couche — le survol, la sortie de survol, `resetStyle`,
+  // le restyle au changement de zoom — la faisait réapparaître : en promenant
+  // le curseur sur la carte, l'utilisateur « décalquait » les mailles
+  // masquées une à une. Centraliser ici ferme tous ces chemins d'un coup.
+  if (!featureMatchesFilters(feature, currentFilters)) {
+    return HIDDEN_STYLE;
+  }
+
   const props = feature?.properties || {};
   
   // Propriétés disponibles dans l'API

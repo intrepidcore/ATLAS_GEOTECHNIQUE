@@ -130,13 +130,15 @@ impl JwtManager {
     /// Génère un refresh token (opaque, stocké en base)
     pub fn generate_refresh_token(&self) -> String {
         let random_bytes: [u8; 32] = rand::random();
-        base64::Engine::encode(&base64::engine::general_purpose::URL_SAFE_NO_PAD, random_bytes)
+        base64::Engine::encode(
+            &base64::engine::general_purpose::URL_SAFE_NO_PAD,
+            random_bytes,
+        )
     }
 
     /// Valide et décode un access token
     pub fn validate_token(&self, token: &str) -> Result<TokenData<Claims>, AuthError> {
-        decode::<Claims>(token, &self.decoding_key, &self.validation)
-            .map_err(AuthError::from)
+        decode::<Claims>(token, &self.decoding_key, &self.validation).map_err(AuthError::from)
     }
 
     /// Hash un token pour stockage sécurisé
@@ -160,7 +162,11 @@ impl JwtManager {
 // Ajout de hex encoding pour le hash
 mod hex {
     pub fn encode(bytes: impl AsRef<[u8]>) -> String {
-        bytes.as_ref().iter().map(|b| format!("{:02x}", b)).collect()
+        bytes
+            .as_ref()
+            .iter()
+            .map(|b| format!("{:02x}", b))
+            .collect()
     }
 }
 
@@ -203,13 +209,13 @@ mod tests {
     fn test_token_hash() {
         let token = "some_random_token_value";
         let hash = JwtManager::hash_token(token);
-        
+
         // SHA-256 produit 64 caractères hex
         assert_eq!(hash.len(), 64);
-        
+
         // Même token = même hash
         assert_eq!(hash, JwtManager::hash_token(token));
-        
+
         // Token différent = hash différent
         assert_ne!(hash, JwtManager::hash_token("different_token"));
     }

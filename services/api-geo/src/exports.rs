@@ -1,11 +1,11 @@
 use crate::state::AppState;
+use axum::extract::Path;
 use axum::{
     extract::{Query, State},
     http::{header, StatusCode},
     response::IntoResponse,
     Json,
 };
-use axum::extract::Path;
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
 use uuid::Uuid;
@@ -30,7 +30,10 @@ pub struct ExportJobStatusResponse {
     pub error_log: Option<String>,
 }
 
-pub async fn create_export(State(state): State<AppState>, Json(req): Json<ExportRequest>) -> impl IntoResponse {
+pub async fn create_export(
+    State(state): State<AppState>,
+    Json(req): Json<ExportRequest>,
+) -> impl IntoResponse {
     let pool = &state.pool;
 
     let mode = req.mode.to_lowercase();
@@ -66,8 +69,14 @@ pub async fn create_export(State(state): State<AppState>, Json(req): Json<Export
     match row {
         Ok(r) => {
             let id: Uuid = r.try_get("id").unwrap_or_else(|_| Uuid::nil());
-            let status: String = r.try_get("status").unwrap_or_else(|_| "PENDING".to_string());
-            (StatusCode::OK, Json(ExportJobCreatedResponse { id, status })).into_response()
+            let status: String = r
+                .try_get("status")
+                .unwrap_or_else(|_| "PENDING".to_string());
+            (
+                StatusCode::OK,
+                Json(ExportJobCreatedResponse { id, status }),
+            )
+                .into_response()
         }
         Err(e) => {
             tracing::error!(?e, "create_export db error");
@@ -111,7 +120,9 @@ pub async fn get_export_job(
     match row {
         Ok(Some(r)) => {
             let id: Uuid = r.try_get("id").unwrap_or(job_id);
-            let status: String = r.try_get("status").unwrap_or_else(|_| "UNKNOWN".to_string());
+            let status: String = r
+                .try_get("status")
+                .unwrap_or_else(|_| "UNKNOWN".to_string());
             let result_path: Option<String> = r.try_get("result_path").ok();
             let error_log: Option<String> = r.try_get("error_log").ok();
             (
@@ -461,9 +472,8 @@ fn validate_zone_code(code: &str) -> bool {
     let c = code.trim();
     !c.is_empty()
         && c.len() <= 64
-        && c.chars().all(|ch| {
-            ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_' || ch == '-'
-        })
+        && c.chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_' || ch == '-')
 }
 
 /// GET /exports/geopackage/zone/:code
@@ -525,7 +535,7 @@ pub async fn export_geopackage_zone(
           m.code, m.spatial_id, m.geom, m.pref_name, m.adm2_name,
           target.pct_intersection, target.priorite_recherche
         ORDER BY target.priorite_recherche, target.pct_intersection DESC
-        "#
+        "#,
     )
     .bind(&zone_code)
     .fetch_all(pool)
@@ -617,7 +627,7 @@ pub async fn export_geopackage_zone(
             )
           )
         ORDER BY s.id, s.code
-        "#
+        "#,
     )
     .bind(&zone_code)
     .fetch_all(pool)
@@ -715,7 +725,7 @@ pub async fn export_geopackage_zone(
         JOIN atlas.sondages s ON e.sondage_id = s.id
         JOIN target_sondage ts ON ts.id = s.id
         ORDER BY s.code, e.depth_m
-        "#
+        "#,
     )
     .bind(&zone_code)
     .fetch_all(pool)
@@ -778,8 +788,10 @@ pub async fn export_geopackage_zone(
     });
 
     let json_str = serde_json::to_string_pretty(&package).unwrap();
-    let content_disposition =
-        format!("attachment; filename=\"atlas_zone_{}_export.gpkg.json\"", zone_code);
+    let content_disposition = format!(
+        "attachment; filename=\"atlas_zone_{}_export.gpkg.json\"",
+        zone_code
+    );
     (
         StatusCode::OK,
         [

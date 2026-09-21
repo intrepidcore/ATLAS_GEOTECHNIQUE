@@ -28,7 +28,7 @@ pub async fn get_layer_styles(
     Path(layer_type): Path<String>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     // Valider le type de couche
     let valid_types = ["geologie", "pedologie", "risque"];
     if !valid_types.contains(&layer_type.as_str()) {
@@ -38,21 +38,18 @@ pub async fn get_layer_styles(
                 "error": "Invalid layer type",
                 "valid_types": valid_types
             })),
-        ).into_response();
+        )
+            .into_response();
     }
-    
+
     let query = r#"
         SELECT unit_code, unit_label, color_hex, sort_order
         FROM atlas.layer_style
         WHERE layer_id = $1
         ORDER BY sort_order
     "#;
-    
-    match sqlx::query(query)
-        .bind(&layer_type)
-        .fetch_all(pool)
-        .await
-    {
+
+    match sqlx::query(query).bind(&layer_type).fetch_all(pool).await {
         Ok(rows) => {
             let styles: Vec<LayerStyleItem> = rows
                 .iter()
@@ -63,7 +60,7 @@ pub async fn get_layer_styles(
                     sort_order: row.get("sort_order"),
                 })
                 .collect();
-            
+
             Json(styles).into_response()
         }
         Err(e) => {
@@ -71,28 +68,27 @@ pub async fn get_layer_styles(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "database error"})),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
 
 /// GET /api/layers/styles
 /// Récupère tous les styles pour toutes les couches contextuelles
-pub async fn get_all_layer_styles(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn get_all_layer_styles(State(state): State<AppState>) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let query = r#"
         SELECT layer_id, unit_code, unit_label, color_hex, sort_order
         FROM atlas.layer_style
         ORDER BY layer_id, sort_order
     "#;
-    
+
     match sqlx::query(query).fetch_all(pool).await {
         Ok(rows) => {
             let mut result: HashMap<String, Vec<LayerStyleItem>> = HashMap::new();
-            
+
             for row in rows {
                 let layer_id: String = row.get("layer_id");
                 let item = LayerStyleItem {
@@ -101,10 +97,10 @@ pub async fn get_all_layer_styles(
                     color_hex: row.get("color_hex"),
                     sort_order: row.get("sort_order"),
                 };
-                
+
                 result.entry(layer_id).or_insert_with(Vec::new).push(item);
             }
-            
+
             Json(result).into_response()
         }
         Err(e) => {
@@ -112,7 +108,8 @@ pub async fn get_all_layer_styles(
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
                 Json(serde_json::json!({"error": "database error"})),
-            ).into_response()
+            )
+                .into_response()
         }
     }
 }
@@ -123,13 +120,13 @@ pub async fn get_geologie(
     Query(params): Query<LayerQuery>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let bbox_filter = if let Some(bbox_str) = params.bbox {
         let coords: Vec<f64> = bbox_str
             .split(',')
             .filter_map(|s| s.trim().parse().ok())
             .collect();
-        
+
         if coords.len() == 4 {
             format!(
                 "WHERE ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({},{},{},{},4326),25231))",
@@ -141,7 +138,7 @@ pub async fn get_geologie(
     } else {
         String::new()
     };
-    
+
     let query = format!(
         r#"
         SELECT jsonb_build_object(
@@ -173,7 +170,7 @@ pub async fn get_geologie(
         "#,
         bbox_filter
     );
-    
+
     match sqlx::query(&query).fetch_one(pool).await {
         Ok(row) => {
             let geojson: serde_json::Value = row.try_get("geojson").unwrap_or(serde_json::json!({
@@ -199,13 +196,13 @@ pub async fn get_pedologie(
     Query(params): Query<LayerQuery>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let bbox_filter = if let Some(bbox_str) = params.bbox {
         let coords: Vec<f64> = bbox_str
             .split(',')
             .filter_map(|s| s.trim().parse().ok())
             .collect();
-        
+
         if coords.len() == 4 {
             format!(
                 "WHERE ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({},{},{},{},4326),25231))",
@@ -217,7 +214,7 @@ pub async fn get_pedologie(
     } else {
         String::new()
     };
-    
+
     let query = format!(
         r#"
         SELECT jsonb_build_object(
@@ -249,7 +246,7 @@ pub async fn get_pedologie(
         "#,
         bbox_filter
     );
-    
+
     match sqlx::query(&query).fetch_one(pool).await {
         Ok(row) => {
             let geojson: serde_json::Value = row.try_get("geojson").unwrap_or(serde_json::json!({
@@ -275,13 +272,13 @@ pub async fn get_risque_gonflement(
     Query(params): Query<LayerQuery>,
 ) -> impl IntoResponse {
     let pool = &state.pool;
-    
+
     let bbox_filter = if let Some(bbox_str) = params.bbox {
         let coords: Vec<f64> = bbox_str
             .split(',')
             .filter_map(|s| s.trim().parse().ok())
             .collect();
-        
+
         if coords.len() == 4 {
             format!(
                 "WHERE ST_Intersects(geom, ST_Transform(ST_MakeEnvelope({},{},{},{},4326),25231))",
@@ -293,7 +290,7 @@ pub async fn get_risque_gonflement(
     } else {
         String::new()
     };
-    
+
     let query = format!(
         r#"
         SELECT jsonb_build_object(
@@ -327,7 +324,7 @@ pub async fn get_risque_gonflement(
         "#,
         bbox_filter
     );
-    
+
     match sqlx::query(&query).fetch_one(pool).await {
         Ok(row) => {
             let geojson: serde_json::Value = row.try_get("geojson").unwrap_or(serde_json::json!({

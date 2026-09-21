@@ -78,13 +78,12 @@ async fn main() -> anyhow::Result<()> {
         .await
         .context("Failed to connect to DB")?;
 
-    let user_id: Option<uuid::Uuid> = sqlx::query_scalar(
-        r#"SELECT id FROM atlas.users WHERE email = $1"#,
-    )
-    .bind(&email)
-    .fetch_optional(&pool)
-    .await
-    .context("Failed to lookup user by email")?;
+    let user_id: Option<uuid::Uuid> =
+        sqlx::query_scalar(r#"SELECT id FROM atlas.users WHERE email = $1"#)
+            .bind(&email)
+            .fetch_optional(&pool)
+            .await
+            .context("Failed to lookup user by email")?;
 
     let user_id = user_id.ok_or_else(|| anyhow!("User not found for email: {email}"))?;
 

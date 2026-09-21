@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Pressable } from 'react-native';
+import { Beaker } from 'lucide-react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, radius } from '@/theme/tokens';
@@ -7,8 +8,9 @@ import { StatusBadge } from '@/components/StatusBadge';
 import { PrimaryButton } from '@/components/PrimaryButton';
 import { repository } from '@/db/repository';
 import { mobileApi, type MobileMissionDetail } from '@/api/mobile';
-import { usePermission } from '@/context/RoleContext';
 import type { RootStackParamList } from '@/navigation/routes';
+import { atlaspackRepository } from '@/services/atlaspack/repository';
+import { atlaspackSession } from '@/services/atlaspack/session';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Rt = RouteProp<RootStackParamList, 'MissionDetail'>;
@@ -24,9 +26,6 @@ export const MissionDetailScreen: React.FC = () => {
   const navigation = useNavigation<Nav>();
   const { params } = useRoute<Rt>();
   const [detail, setDetail] = useState<MobileMissionDetail | null>(null);
-  const canCreateSondagePerm = usePermission('sondage.create');
-  const canWriteFieldLogPerm = usePermission('colab.field_logs.write');
-  const canCreateSondage = canCreateSondagePerm || canWriteFieldLogPerm;
 
   useEffect(() => {
     void mobileApi
@@ -45,6 +44,16 @@ export const MissionDetailScreen: React.FC = () => {
           });
         }
       });
+    void atlaspackRepository.recordAuditEvent({
+      eventType: 'mission_opened',
+      operatorUserId: atlaspackSession.get()?.operatorUserId ?? null,
+      missionId: params.missionId,
+      objectType: 'mission',
+      objectId: params.missionId,
+      oldValues: null,
+      newValues: null,
+      metadata: null,
+    });
   }, [params.missionId]);
 
   if (!detail) {
@@ -79,13 +88,27 @@ export const MissionDetailScreen: React.FC = () => {
 
       <PrimaryButton label="Ouvrir la carte terrain" onPress={() => navigation.navigate('MissionMap', { missionId: mission.id })} />
 
-      {canCreateSondage ? (
-        <PrimaryButton
-          variant="outline"
-          label="Nouveau sondage libre"
-          onPress={() => navigation.navigate('SondageForm', { missionId: mission.id })}
-        />
-      ) : null}
+      <Pressable
+        onPress={() => navigation.navigate('LabResults', { missionId: mission.id })}
+        style={{
+          backgroundColor: colors.white,
+          borderWidth: 1,
+          borderColor: colors.blue600,
+          borderRadius: radius.xl,
+          paddingVertical: 14,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexDirection: 'row',
+          gap: 9,
+        }}
+      >
+        <Beaker size={19} color={colors.blue600} />
+        <Text style={{ color: colors.blue600, fontWeight: '700', fontSize: 15 }}>Saisir les résultats de laboratoire</Text>
+      </Pressable>
+
+      <Text style={{ color: colors.gray500, fontSize: 12, textAlign: 'center' }}>
+        Un sondage s’enregistre depuis un point prévu sur la carte. Rayon normal : 10 m.
+      </Text>
     </ScrollView>
   );
 };

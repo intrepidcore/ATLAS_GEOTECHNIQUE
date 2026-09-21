@@ -123,9 +123,12 @@ export function updateFilterBadges() {
   const minEssais = parseInt((document.getElementById('filterMinEssais') as HTMLInputElement)?.value || '0')
   if (minEssais > 0) activeFilters.push({ id: 'minEssais', label: `Min ${minEssais} essais` })
 
-  // Uniquement attribuées
-  const assignedOnly = (document.getElementById('filterAssignedOnly') as HTMLInputElement)?.checked
-  if (assignedOnly) activeFilters.push({ id: 'assignedOnly', label: `Attribuées uniquement` })
+  // Mailles attribuées masquées — l'état par défaut est « affichées », donc
+  // seul le décochage constitue un filtre actif à signaler.
+  const assignedEl = document.getElementById('filterAssigned') as HTMLInputElement
+  if (assignedEl && !assignedEl.checked) {
+    activeFilters.push({ id: 'assigned', label: `Attribuées masquées` })
+  }
   
   // Profondeur
   const depthMin = (document.getElementById('filterDepthMin') as HTMLInputElement)?.value
@@ -178,8 +181,8 @@ export function updateFilterBadges() {
     case 'minEssais':
       (document.getElementById('filterMinEssais') as HTMLInputElement).value = '0'
       break
-    case 'assignedOnly':
-      ;(document.getElementById('filterAssignedOnly') as HTMLInputElement).checked = false
+    case 'assigned':
+      ;(document.getElementById('filterAssigned') as HTMLInputElement).checked = true
       break
     case 'depth':
       (document.getElementById('filterDepthMin') as HTMLInputElement).value = ''
@@ -236,7 +239,7 @@ export function initKeyboardShortcuts() {
 export function initFilterListeners() {
   const filterIds = [
     'filterAdm1', 'filterAdm2', 'filterAdm3',
-    'filterAssignedOnly',
+    'filterAssigned',
     'filterMinSondages', 'filterMinEssais',
     'filterDepthMin', 'filterDepthMax',
     'filterWLMin', 'filterWLMax',

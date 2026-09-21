@@ -45,7 +45,7 @@ pub async fn create_import(
             Ok(Json(CreateImportResponse {
                 id,
                 batch_id: batch_id.map(|uuid| uuid.to_string()),
-            status: ImportStatus::Pending,
+                status: ImportStatus::Pending,
                 upload_url: format!("/imports/{}/upload", id),
             }))
         }
@@ -88,11 +88,12 @@ pub async fn commit_import(
 ) -> Result<Json<CommitResponse>, StatusCode> {
     let _ = req;
 
-    let batch_id: Option<Uuid> = sqlx::query_scalar(r#"SELECT batch_id FROM imports WHERE id = $1"#)
-        .bind(id)
-        .fetch_one(&state.pool)
-        .await
-        .map_err(|_| StatusCode::NOT_FOUND)?;
+    let batch_id: Option<Uuid> =
+        sqlx::query_scalar(r#"SELECT batch_id FROM imports WHERE id = $1"#)
+            .bind(id)
+            .fetch_one(&state.pool)
+            .await
+            .map_err(|_| StatusCode::NOT_FOUND)?;
 
     sqlx::query(r#"UPDATE imports SET status = 'running', updated_at = now() WHERE id = $1"#)
         .bind(id)
@@ -110,11 +111,12 @@ pub async fn undo_import(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
 ) -> Result<Json<UndoResponse>, StatusCode> {
-    let batch_id: Option<Uuid> = sqlx::query_scalar(r#"SELECT batch_id FROM imports WHERE id = $1"#)
-        .bind(id)
-        .fetch_one(&state.pool)
-        .await
-        .map_err(|_| StatusCode::NOT_FOUND)?;
+    let batch_id: Option<Uuid> =
+        sqlx::query_scalar(r#"SELECT batch_id FROM imports WHERE id = $1"#)
+            .bind(id)
+            .fetch_one(&state.pool)
+            .await
+            .map_err(|_| StatusCode::NOT_FOUND)?;
 
     // Convertir Option<Uuid> en Option<String> pour les requêtes
     let batch_id_str = batch_id.as_ref().map(|uuid| uuid.to_string());

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { AlertCircle, Loader2, Map, MapPin, X } from 'lucide-react';
+import { AlertCircle, FlaskConical, Grid3x3, Loader2, Map, MapPin, X } from 'lucide-react';
 import {
   communesApi,
   getStatusColor,
@@ -20,6 +20,7 @@ import {
 import { Badge, Button, Input, Select } from './ui';
 import { usePermissions } from '../../hooks/use-permissions';
 import { GpsPickerModal, MaillePickerModal } from './map-picker-modal';
+import { LabResultsPanel } from './lab-results-panel';
 
 const MissionDetailModal: React.FC<{
   isOpen: boolean;
@@ -35,7 +36,7 @@ const MissionDetailModal: React.FC<{
   const [mission, setMission] = useState<MissionDetail | null>(null);
   const [status, setStatus] = useState('');
   const [edit, setEdit] = useState<UpdateMissionRequest>({});
-  const [tab, setTab] = useState<'details' | 'edit'>('details');
+  const [tab, setTab] = useState<'details' | 'edit' | 'lab'>('details');
 
   const { can } = usePermissions();
 
@@ -55,6 +56,47 @@ const MissionDetailModal: React.FC<{
   const [editGpsPickerOpen, setEditGpsPickerOpen] = useState(false);
   const [editGpsPoints, setEditGpsPoints] = useState<SondagePointInput[]>([]);
 
+  // Génération automatique du plan d'échantillonnage
+  const [gridCount, setGridCount] = useState('3');
+  const [gridClosePairs, setGridClosePairs] = useState(true);
+  const [gridReplace, setGridReplace] = useState(false);
+  const [gridBusy, setGridBusy] = useState(false);
+  const [gridError, setGridError] = useState<string | null>(null);
+  const [gridSummary, setGridSummary] = useState<string | null>(null);
+
+  const generateGrid = async (replace: boolean) => {
+    if (!missionId) return;
+    setGridBusy(true);
+    setGridError(null);
+    setGridSummary(null);
+    try {
+      const parsed = parseInt(gridCount, 10);
+      const res = await missionsApi.generateSondagePoints(missionId, {
+        // La charge de terrain se raisonne par zone : on impose l'effectif à
+        // chaque maille plutôt qu'un total réparti au prorata des aires.
+        points_per_maille: Number.isFinite(parsed) && parsed > 0 ? parsed : undefined,
+        close_pairs: gridClosePairs,
+        replace,
+      });
+      const points: SondagePointInput[] = res.points.map(p => ({
+        numero: p.numero,
+        label: p.label,
+        lat: p.lat,
+        lon: p.lon,
+      }));
+      setEditGpsPoints(points);
+      setEdit(prev => ({ ...prev, sondage_points: points }));
+      const pas = res.mailles.map(m => `${m.code} : pas ${Math.round(m.spacing_m)} m`).join(' · ');
+      setGridSummary(
+        `${res.generated} point(s) posé(s)${res.close_pairs > 0 ? `, dont ${res.close_pairs} en couple rapproché` : ''}. ${pas}`
+      );
+    } catch (e) {
+      setGridError(e instanceof Error ? e.message : 'Génération impossible');
+    } finally {
+      setGridBusy(false);
+    }
+  };
+
   useEffect(() => {
     if (!isOpen || !missionId) return;
     setLoading(true);
@@ -69,6 +111,7 @@ const MissionDetailModal: React.FC<{
       .get(missionId)
       .then(m => {
         setMission(m);
+        setEditGpsPoints(m.sondage_points ?? []);
         setStatus(m.status);
         setEditMailleQuery(m.maille_id ? (m.zone_label || '') : '');
         setEditCommuneQuery(m.commune || '');
@@ -91,6 +134,7 @@ const MissionDetailModal: React.FC<{
           depth_h1_m: m.depth_h1_m ?? undefined,
           depth_h2_m: m.depth_h2_m ?? undefined,
           depth_h3_m: m.depth_h3_m ?? undefined,
+          sondage_points: m.sondage_points ?? [],
         });
       })
       .catch(err => setError(err instanceof Error ? err.message : 'Erreur chargement mission'))
@@ -152,7 +196,7 @@ const MissionDetailModal: React.FC<{
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className={`relative bg-white rounded-2xl shadow-xl w-full ${tab === 'lab' ? 'max-w-5xl' : 'max-w-3xl'} mx-4 max-h-[90vh] overflow-y-auto`}>
         <div className="flex items-center justify-between p-4 border-b">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-semibold">Mission</h2>
@@ -170,6 +214,14 @@ const MissionDetailModal: React.FC<{
                 onClick={() => setTab('edit')}
               >
                 Édition
+              </button>
+              <button
+                type="button"
+                className={`inline-flex items-center gap-1.5 px-3 py-1 text-sm rounded-md ${tab === 'lab' ? 'bg-white shadow text-gray-900' : 'text-gray-600 hover:text-gray-900'}`}
+                onClick={() => setTab('lab')}
+              >
+                <FlaskConical className="h-3.5 w-3.5" />
+                Laboratoire
               </button>
             </div>
           </div>
@@ -491,6 +543,68 @@ const MissionDetailModal: React.FC<{
                         Placer sur la carte
                       </button>
                     </div>
+
+                    {/* Plan d'échantillonnage automatique.
+                        Réseau triangulaire : à densité égale c'est le plan qui
+                        minimise la variance de krigeage maximale. Les couples
+                        rapprochés fournissent les lags courts sans lesquels
+                        l'effet de pépite n'est pas identifiable — et donc sans
+                        lesquels le BLUP « stationnaire » est mal pondéré. */}
+                    <div className="mb-3 rounded-lg border border-indigo-200 dark:border-indigo-800 bg-indigo-50/60 dark:bg-indigo-900/20 p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Grid3x3 className="w-4 h-4 text-indigo-600 dark:text-indigo-300" />
+                        <span className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">
+                          Générer un plan d'échantillonnage
+                        </span>
+                      </div>
+                      <p className="text-[11px] leading-snug text-indigo-700/80 dark:text-indigo-300/80 mb-2">
+                        Réseau triangulaire équilatéral posé dans chaque maille de la mission,
+                        pour minimiser la variance d'un BLUP stationnaire.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <label className="text-[11px] text-indigo-800 dark:text-indigo-200">Points par maille</label>
+                        <input
+                          type="number"
+                          min={1}
+                          max={500}
+                          value={gridCount}
+                          onChange={e => setGridCount(e.target.value)}
+                          aria-label="Nombre de points par maille"
+                          className="w-20 rounded-md border border-indigo-200 dark:border-indigo-700 bg-white dark:bg-slate-900 px-2 py-1 text-xs text-slate-900 dark:text-slate-100"
+                        />
+                        <label className="flex items-center gap-1.5 text-[11px] text-indigo-800 dark:text-indigo-200">
+                          <input
+                            type="checkbox"
+                            checked={gridClosePairs}
+                            onChange={e => setGridClosePairs(e.target.checked)}
+                          />
+                          Couples rapprochés (pépite)
+                        </label>
+                        <label className="flex items-center gap-1.5 text-[11px] text-indigo-800 dark:text-indigo-200">
+                          <input
+                            type="checkbox"
+                            checked={gridReplace}
+                            onChange={e => setGridReplace(e.target.checked)}
+                          />
+                          Remplacer les points existants
+                        </label>
+                        <button
+                          type="button"
+                          disabled={gridBusy}
+                          onClick={() => void generateGrid(gridReplace)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+                        >
+                          {gridBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Grid3x3 className="w-3.5 h-3.5" />}
+                          {gridReplace ? 'Régénérer la grille' : 'Générer la grille'}
+                        </button>
+                      </div>
+                      {gridSummary && (
+                        <p className="mt-2 text-[11px] text-emerald-700 dark:text-emerald-300">{gridSummary}</p>
+                      )}
+                      {gridError && (
+                        <p className="mt-2 text-[11px] text-red-600 dark:text-red-400">{gridError}</p>
+                      )}
+                    </div>
                     {editGpsPoints.length > 0 ? (
                       <div className="space-y-1">
                         {editGpsPoints.map((pt, idx) => (
@@ -566,6 +680,7 @@ const MissionDetailModal: React.FC<{
                           setEditMailleQuery(refreshed.maille_id ? (refreshed.zone_label || '') : '');
                           setEditCommuneQuery(refreshed.commune || '');
                           setEditRegionQuery(refreshed.region || '');
+                          setEditGpsPoints(refreshed.sondage_points ?? []);
                           setEdit({
                             title: refreshed.title,
                             theme: refreshed.theme,
@@ -584,6 +699,7 @@ const MissionDetailModal: React.FC<{
                             depth_h1_m: refreshed.depth_h1_m ?? undefined,
                             depth_h2_m: refreshed.depth_h2_m ?? undefined,
                             depth_h3_m: refreshed.depth_h3_m ?? undefined,
+                            sondage_points: refreshed.sondage_points ?? [],
                           });
                         } catch (err) {
                           setError(err instanceof Error ? err.message : "Erreur mise à jour");
@@ -598,6 +714,10 @@ const MissionDetailModal: React.FC<{
                     </button>
                   </div>
                 </div>
+              )}
+
+              {tab === 'lab' && (
+                <LabResultsPanel missionId={mission.id} sondages={mission.linked_sondages} />
               )}
             </>
           )}
@@ -627,9 +747,11 @@ const MissionDetailModal: React.FC<{
         onClose={() => setEditGpsPickerOpen(false)}
         onConfirm={pts => {
           setEditGpsPoints(pts);
+          setEdit(prev => ({ ...prev, sondage_points: pts.map((point, index) => ({ ...point, numero: index + 1 })) }));
           setEditGpsPickerOpen(false);
         }}
         initialPoints={editGpsPoints}
+        mailleCodes={(edit.zone_label || mission?.zone_label) ? [String(edit.zone_label || mission?.zone_label)] : []}
       />
     </div>
   );

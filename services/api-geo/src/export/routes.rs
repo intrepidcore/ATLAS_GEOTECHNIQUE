@@ -1,19 +1,19 @@
 use axum::{
-    extract::{Path, State, Query},
+    extract::{Path, Query, State},
     http::{header, HeaderValue, StatusCode},
     response::{IntoResponse, Json},
     routing::{delete, get, post, put},
     Router,
 };
-use uuid::Uuid;
 use serde::{Deserialize, Serialize};
-use tokio::fs;
 use sqlx::Row;
+use tokio::fs;
+use uuid::Uuid;
 
-use crate::AppState;
 use crate::auth::AuthUser;
+use crate::export::formats::{ExportJobResponse, ExportRequest};
 use crate::export::service::ExportService;
-use crate::export::formats::{ExportRequest, ExportJobResponse};
+use crate::AppState;
 
 #[derive(Deserialize)]
 pub struct ExportHistoryQuery {
@@ -147,7 +147,9 @@ async fn list_export_schedules(
         })
         .collect();
 
-    Ok(Json(serde_json::json!({ "schedules": schedules, "total": schedules.len() })))
+    Ok(Json(
+        serde_json::json!({ "schedules": schedules, "total": schedules.len() }),
+    ))
 }
 
 async fn get_export_schedule(
@@ -413,7 +415,9 @@ pub fn export_routes() -> Router<AppState> {
         )
         .route(
             "/colab/export/schedules/:id",
-            get(get_export_schedule).put(update_export_schedule).delete(deactivate_export_schedule),
+            get(get_export_schedule)
+                .put(update_export_schedule)
+                .delete(deactivate_export_schedule),
         )
         .route(
             "/colab/export/templates",
@@ -421,7 +425,9 @@ pub fn export_routes() -> Router<AppState> {
         )
         .route(
             "/colab/export/templates/:id",
-            get(get_export_template).put(update_export_template).delete(deactivate_export_template),
+            get(get_export_template)
+                .put(update_export_template)
+                .delete(deactivate_export_template),
         )
 }
 
@@ -534,7 +540,9 @@ async fn list_export_templates(
         })
         .collect();
 
-    Ok(Json(serde_json::json!({ "templates": templates, "total": templates.len() })))
+    Ok(Json(
+        serde_json::json!({ "templates": templates, "total": templates.len() }),
+    ))
 }
 
 async fn get_export_template(
@@ -828,13 +836,16 @@ async fn download_export(
                     if p.is_absolute() {
                         p
                     } else {
-                        let export_dir = std::env::var("EXPORT_DIR").unwrap_or_else(|_| "exports".to_string());
+                        let export_dir =
+                            std::env::var("EXPORT_DIR").unwrap_or_else(|_| "exports".to_string());
                         // Compat: si on a un ancien chemin préfixé par "exports/",
                         // on le rebase directement sur EXPORT_DIR.
                         let mut iter = p.components();
                         let first = iter.next();
                         let rebased = match first {
-                            Some(std::path::Component::Normal(os)) if os == "exports" => iter.as_path().to_path_buf(),
+                            Some(std::path::Component::Normal(os)) if os == "exports" => {
+                                iter.as_path().to_path_buf()
+                            }
                             _ => p,
                         };
                         std::path::PathBuf::from(export_dir).join(rebased)
@@ -867,7 +878,8 @@ async fn download_export(
                 };
 
                 let filename = resolved_str
-                    .split('/').last()
+                    .split('/')
+                    .last()
                     .or_else(|| resolved_str.split('\\').last())
                     .unwrap_or("export");
 

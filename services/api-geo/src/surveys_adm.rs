@@ -825,5 +825,9 @@ pub async fn get_adm3_geojson(State(state): State<AppState>) -> impl IntoRespons
 
 /// GET /adm3/test - Test endpoint
 pub async fn test_adm3_endpoint() -> impl IntoResponse {
-    (StatusCode::OK, Json(serde_json::json!({"message": "ADM3 test endpoint works"}))).into_response()
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({"message": "ADM3 test endpoint works"})),
+    )
+        .into_response()
 }

@@ -9,9 +9,28 @@ export interface FiltersState {
   adm3: string | null;
   hasData: boolean;
   noData: boolean;
-  assignedOnly: boolean;
+  /**
+   * Affichage des mailles attribuées à Colab (les roses). C'était un filtre
+   * exclusif « uniquement les attribuées » ; c'est désormais un interrupteur
+   * d'affichage, homogène avec `hasData` et `noData` : décoché, les mailles
+   * attribuées disparaissent de la carte.
+   */
+  assigned: boolean;
   minSondages: number;
   minEssais: number;
+  /**
+   * Opérateur épinglé depuis la barre de recherche. Tant qu'il est posé,
+   * SEULE sa maille est affichée : la grille nationale disparaît entièrement,
+   * pour que la zone de l'opérateur se lise sans bruit autour.
+   */
+  focusedOperator: FocusedOperator | null;
+}
+
+export interface FocusedOperator {
+  studentId: string;
+  name: string;
+  /** Une mission peut couvrir plusieurs mailles : on les isole toutes. */
+  mailleCodes: string[];
 }
 
 // État global des filtres
@@ -21,9 +40,10 @@ export const currentFilters: FiltersState = {
   adm3: null,
   hasData: true,
   noData: true,
-  assignedOnly: false,
+  assigned: true,
   minSondages: 0,
   minEssais: 0,
+  focusedOperator: null,
 };
 
 // Statistiques filtrées
@@ -63,7 +83,7 @@ export function syncFiltersFromDOM(): void {
   const adm3El = document.getElementById('filterAdm3') as HTMLSelectElement;
   const hasDataEl = document.getElementById('filterHasData') as HTMLInputElement;
   const noDataEl = document.getElementById('filterNoData') as HTMLInputElement;
-  const assignedOnlyEl = document.getElementById('filterAssignedOnly') as HTMLInputElement;
+  const assignedEl = document.getElementById('filterAssigned') as HTMLInputElement;
   const minSondagesEl = document.getElementById('filterMinSondages') as HTMLInputElement;
   const minEssaisEl = document.getElementById('filterMinEssais') as HTMLInputElement;
 
@@ -72,7 +92,9 @@ export function syncFiltersFromDOM(): void {
   currentFilters.adm3 = adm3El?.value || null;
   currentFilters.hasData = hasDataEl?.checked ?? true;
   currentFilters.noData = noDataEl?.checked ?? true;
-  currentFilters.assignedOnly = assignedOnlyEl?.checked ?? false;
+  currentFilters.assigned = assignedEl?.checked ?? true;
+  // `focusedOperator` n'a pas de contrôle dans le DOM : il est posé par la
+  // barre de recherche et retiré par la puce d'épinglage. On ne l'écrase pas.
   currentFilters.minSondages = parseInt(minSondagesEl?.value) || 0;
   currentFilters.minEssais = parseInt(minEssaisEl?.value) || 0;
 }
@@ -86,9 +108,10 @@ export function resetFilters(): void {
   currentFilters.adm3 = null;
   currentFilters.hasData = true;
   currentFilters.noData = true;
-  currentFilters.assignedOnly = false;
+  currentFilters.assigned = true;
   currentFilters.minSondages = 0;
   currentFilters.minEssais = 0;
+  currentFilters.focusedOperator = null;
 }
 
 /**
@@ -109,13 +132,22 @@ export function featureMatchesFilters(feature: any, filters: FiltersState = curr
     (!hasData && filters.noData);
 
   const isAssigned = !!p.is_assigned;
-  const matchAssignedOnly = !filters.assignedOnly || isAssigned;
+  // Décoché : la maille attribuée est masquée, pas « seule affichée ».
+  const matchAssigned = filters.assigned || !isAssigned;
+
+  // Épinglage d'un opérateur : tout ce qui n'est pas sa maille disparaît,
+  // filtres courants compris. C'est volontairement le plus fort des critères.
+  const focus = filters.focusedOperator;
+  if (focus) {
+    const code = String(p.code ?? p.maille_code ?? '').trim();
+    return focus.mailleCodes.length > 0 && focus.mailleCodes.includes(code);
+  }
 
   // Filtre min sondages/essais
   const matchMinSondages = (p.n_sondages || 0) >= filters.minSondages;
   const matchMinEssais = (p.n_essais || 0) >= filters.minEssais;
 
-  return matchAdm1 && matchAdm2 && matchAdm3 && matchDataFlag && matchAssignedOnly && matchMinSondages && matchMinEssais;
+  return matchAdm1 && matchAdm2 && matchAdm3 && matchDataFlag && matchAssigned && matchMinSondages && matchMinEssais;
 }
 
 /**

@@ -67,7 +67,9 @@ async fn login(
     Json(request): Json<LoginRequest>,
 ) -> Result<Json<LoginResponse>, AuthError> {
     // Valider la requête
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     let addr = connect_info.map(|ci| ci.0);
     let ip = extract_ip(&headers, addr);
@@ -140,14 +142,17 @@ async fn login(
 
     // Vérifier le mot de passe
     let password_valid = password_hasher.verify_password(&request.password, &user.password_hash)?;
-    
+
     if !password_valid {
         // Incrémenter le compteur d'échecs
         let new_attempts = user.failed_login_attempts + 1;
         let max_attempts = state.auth_config.max_login_attempts as i32;
-        
+
         let locked_until = if new_attempts >= max_attempts {
-            Some(chrono::Utc::now() + chrono::Duration::seconds(state.auth_config.lockout_duration.as_secs() as i64))
+            Some(
+                chrono::Utc::now()
+                    + chrono::Duration::seconds(state.auth_config.lockout_duration.as_secs() as i64),
+            )
         } else {
             None
         };
@@ -168,9 +173,9 @@ async fn login(
                 false,
                 ip.as_deref(),
                 user_agent.as_deref(),
-                Some(serde_json::json!({ 
+                Some(serde_json::json!({
                     "reason": "invalid_password",
-                    "attempts": new_attempts 
+                    "attempts": new_attempts
                 })),
             )
             .await?;
@@ -405,7 +410,9 @@ async fn change_password(
     auth_user: AuthUser,
     Json(request): Json<ChangePasswordRequest>,
 ) -> Result<StatusCode, AuthError> {
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
@@ -413,17 +420,16 @@ async fn change_password(
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
 
     // Récupérer l'utilisateur
-    let user: DbUser = sqlx::query_as(
-        r#"SELECT * FROM atlas.users WHERE id = $1"#,
-    )
-    .bind(auth_user.id)
-    .fetch_optional(&state.pool)
-    .await?
-    .ok_or(AuthError::UserNotFound)?;
+    let user: DbUser = sqlx::query_as(r#"SELECT * FROM atlas.users WHERE id = $1"#)
+        .bind(auth_user.id)
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or(AuthError::UserNotFound)?;
 
     // Vérifier le cooldown
     if let Some(password_changed_at) = user.password_changed_at {
-        let cooldown = chrono::Duration::seconds(state.auth_config.password_change_cooldown.as_secs() as i64);
+        let cooldown =
+            chrono::Duration::seconds(state.auth_config.password_change_cooldown.as_secs() as i64);
         if chrono::Utc::now() - password_changed_at < cooldown {
             return Err(AuthError::PasswordChangeCooldown);
         }
@@ -459,6 +465,8 @@ async fn change_password(
     .execute(&state.pool)
     .await?;
 
+    crate::atlaspack::jobs::refresh_package_after_password_change(&state.pool, auth_user.id).await;
+
     // Révoquer toutes les autres sessions
     session_manager
         .revoke_all_sessions(
@@ -490,19 +498,20 @@ async fn request_password_reset(
     connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<ResetPasswordRequest>,
 ) -> Result<Json<serde_json::Value>, AuthError> {
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
 
     // Chercher l'utilisateur (ne pas révéler s'il existe ou non)
-    let user: Option<DbUser> = sqlx::query_as(
-        r#"SELECT * FROM atlas.users WHERE email = $1 AND is_active = TRUE"#,
-    )
-    .bind(&request.email)
-    .fetch_optional(&state.pool)
-    .await?;
+    let user: Option<DbUser> =
+        sqlx::query_as(r#"SELECT * FROM atlas.users WHERE email = $1 AND is_active = TRUE"#)
+            .bind(&request.email)
+            .fetch_optional(&state.pool)
+            .await?;
 
     if let Some(user) = user {
         // Générer un token de reset
@@ -566,7 +575,9 @@ async fn confirm_password_reset(
     connect_info: Option<ConnectInfo<SocketAddr>>,
     Json(request): Json<ConfirmResetPasswordRequest>,
 ) -> Result<StatusCode, AuthError> {
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     let ip = extract_ip(&headers, connect_info.map(|ci| ci.0));
     let user_agent = extract_user_agent(&headers);
@@ -606,13 +617,14 @@ async fn confirm_password_reset(
     .execute(&state.pool)
     .await?;
 
+    crate::atlaspack::jobs::refresh_package_after_password_change(&state.pool, reset_token.user_id)
+        .await;
+
     // Marquer le token comme utilisé
-    sqlx::query(
-        r#"UPDATE atlas.password_reset_tokens SET used_at = NOW() WHERE id = $1"#,
-    )
-    .bind(reset_token.id)
-    .execute(&state.pool)
-    .await?;
+    sqlx::query(r#"UPDATE atlas.password_reset_tokens SET used_at = NOW() WHERE id = $1"#)
+        .bind(reset_token.id)
+        .execute(&state.pool)
+        .await?;
 
     // Révoquer toutes les sessions
     session_manager
@@ -646,28 +658,40 @@ async fn register_student(
     Json(request): Json<RegisterStudentRequest>,
 ) -> Result<Json<serde_json::Value>, AuthError> {
     // Valider la requête
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
-    request.student_info.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .student_info
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     let password_hasher = PasswordHasher::new(state.auth_config.clone());
 
     // Vérifier si l'email existe déjà
-    let existing: Option<DbUser> = sqlx::query_as(
-        r#"SELECT * FROM atlas.users WHERE deleted_at IS NULL AND email = $1"#,
-    )
-    .bind(&request.email)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<DbUser> =
+        sqlx::query_as(r#"SELECT * FROM atlas.users WHERE deleted_at IS NULL AND email = $1"#)
+            .bind(&request.email)
+            .fetch_optional(&state.pool)
+            .await?;
 
     if existing.is_some() {
-        return Err(AuthError::ValidationError("Un compte existe déjà avec cet email".to_string()));
+        return Err(AuthError::ValidationError(
+            "Un compte existe déjà avec cet email".to_string(),
+        ));
     }
 
     // Générer le username à partir de l'email (sanitization pour respecter la contrainte DB)
     let local = request.email.split('@').next().unwrap_or(&request.email);
     let mut username: String = local
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
 
     username = username.trim_matches('_').to_string();
@@ -707,7 +731,9 @@ async fn register_student(
 
         attempts += 1;
         if attempts > 10 {
-            return Err(AuthError::InternalError("Impossible de générer un username unique".to_string()));
+            return Err(AuthError::InternalError(
+                "Impossible de générer un username unique".to_string(),
+            ));
         }
 
         let suffix: u32 = rand::thread_rng().gen_range(1000..9999);
@@ -755,7 +781,7 @@ async fn register_student(
     let current_year = chrono::Utc::now().format("%Y").to_string();
     let next_year = (chrono::Utc::now().year() + 1).to_string();
     let promotion = format!("{}-{}", current_year, next_year);
-    
+
     sqlx::query(
         r#"
         INSERT INTO atlas.colab_students (user_id, matricule, etablissement, filiere, niveau, promotion)

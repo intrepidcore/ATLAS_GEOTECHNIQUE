@@ -20,10 +20,7 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sqlx::{PgPool, Row};
-use std::{
-    collections::HashMap,
-    time::Instant,
-};
+use std::{collections::HashMap, time::Instant};
 use uuid::Uuid;
 
 use crate::{auth::AuthUser, state::AppState};
@@ -35,14 +32,14 @@ const FUSION_METHOD: &str = "ked_rk_fusion_bayesian";
 /// Plages physiques par paramètre (DATA-02)
 fn physical_clamp(param: &str) -> (f64, f64) {
     match param {
-        "vbs"  => (0.0, 20.0),
-        "ip"   => (0.0, 80.0),
-        "wl"   => (20.0, 120.0),
-        "wp"   => (10.0, 60.0),
-        "eg"   => (0.0, 20.0),
-        "cbr_95"   => (0.0, 300.0),
-        "gamma_d"  => (12.0, 25.0),
-        "w_opt"    => (5.0, 50.0),
+        "vbs" => (0.0, 20.0),
+        "ip" => (0.0, 80.0),
+        "wl" => (20.0, 120.0),
+        "wp" => (10.0, 60.0),
+        "eg" => (0.0, 20.0),
+        "cbr_95" => (0.0, 300.0),
+        "gamma_d" => (12.0, 25.0),
+        "w_opt" => (5.0, 50.0),
         _ => (f64::NEG_INFINITY, f64::INFINITY),
     }
 }
@@ -50,10 +47,10 @@ fn physical_clamp(param: &str) -> (f64, f64) {
 /// Unité par paramètre (pour le catalogue)
 fn param_unit(param: &str) -> &'static str {
     match param {
-        "vbs"      => "g/100g",
+        "vbs" => "g/100g",
         "ip" | "wl" | "wp" | "eg" | "w_opt" => "%",
-        "cbr_95"   => "%",
-        "gamma_d"  => "kN/m³",
+        "cbr_95" => "%",
+        "gamma_d" => "kN/m³",
         _ => "",
     }
 }
@@ -120,30 +117,18 @@ fn bayesian_fusion(
         (None, None) => (None, None, Dominant::Equal),
 
         (None, Some(rv)) => {
-            let s2 = rk_var
-                .filter(|&v| v > 0.0)
-                .unwrap_or(fallback)
-                .max(1e-10);
+            let s2 = rk_var.filter(|&v| v > 0.0).unwrap_or(fallback).max(1e-10);
             (Some(rv), Some(s2), Dominant::RkOnly)
         }
 
         (Some(kv), None) => {
-            let s2 = ked_var
-                .filter(|&v| v > 0.0)
-                .unwrap_or(fallback)
-                .max(1e-10);
+            let s2 = ked_var.filter(|&v| v > 0.0).unwrap_or(fallback).max(1e-10);
             (Some(kv), Some(s2), Dominant::KedOnly)
         }
 
         (Some(kv), Some(rv)) => {
-            let s2_ked = ked_var
-                .filter(|&v| v > 0.0)
-                .unwrap_or(fallback)
-                .max(1e-10);
-            let s2_rk = rk_var
-                .filter(|&v| v > 0.0)
-                .unwrap_or(fallback)
-                .max(1e-10);
+            let s2_ked = ked_var.filter(|&v| v > 0.0).unwrap_or(fallback).max(1e-10);
+            let s2_rk = rk_var.filter(|&v| v > 0.0).unwrap_or(fallback).max(1e-10);
 
             let w_ked = 1.0 / s2_ked;
             let w_rk = 1.0 / s2_rk;
@@ -284,11 +269,19 @@ fn compute_fusion(
 
     let mean_var_ked = {
         let v: Vec<f64> = ked_map.values().filter_map(|(_, var)| *var).collect();
-        if v.is_empty() { 0.0 } else { v.iter().sum::<f64>() / v.len() as f64 }
+        if v.is_empty() {
+            0.0
+        } else {
+            v.iter().sum::<f64>() / v.len() as f64
+        }
     };
     let mean_var_rk = {
         let v: Vec<f64> = rk_map.values().filter_map(|(_, var)| *var).collect();
-        if v.is_empty() { 0.0 } else { v.iter().sum::<f64>() / v.len() as f64 }
+        if v.is_empty() {
+            0.0
+        } else {
+            v.iter().sum::<f64>() / v.len() as f64
+        }
     };
 
     let (clamp_min, clamp_max) = physical_clamp(param);
@@ -336,9 +329,18 @@ fn compute_fusion(
         match dominant {
             Dominant::KedOnly => metrics.n_ked_only += 1,
             Dominant::RkOnly => metrics.n_rk_only += 1,
-            Dominant::Ked => { metrics.n_fused += 1; metrics.n_ked_dom += 1; }
-            Dominant::Rk => { metrics.n_fused += 1; metrics.n_rk_dom += 1; }
-            Dominant::Equal => { metrics.n_fused += 1; metrics.n_equal += 1; }
+            Dominant::Ked => {
+                metrics.n_fused += 1;
+                metrics.n_ked_dom += 1;
+            }
+            Dominant::Rk => {
+                metrics.n_fused += 1;
+                metrics.n_rk_dom += 1;
+            }
+            Dominant::Equal => {
+                metrics.n_fused += 1;
+                metrics.n_equal += 1;
+            }
         }
         if let Some(s2) = sigma2 {
             fus_vars.push(s2);
@@ -394,10 +396,7 @@ fn make_task_result(
 // ── Écriture en base ──────────────────────────────────────────────────────────
 
 /// Marque les anciennes valeurs fusion comme superseded (BM-SYNC-05)
-async fn supersede_old_fusion(
-    pool: &PgPool,
-    fusion_param_id: &str,
-) -> sqlx::Result<u64> {
+async fn supersede_old_fusion(pool: &PgPool, fusion_param_id: &str) -> sqlx::Result<u64> {
     let result = sqlx::query(
         r#"
         UPDATE atlas.ai_interpolation_values
@@ -498,9 +497,9 @@ async fn insert_fusion_values(
     }
 
     // Décomposition en colonnes parallèles pour UNNEST
-    let ids: Vec<Uuid>         = rows.iter().map(|_| Uuid::new_v4()).collect();
-    let maille_ids: Vec<Uuid>  = rows.iter().map(|(m, _, _)| *m).collect();
-    let values: Vec<f64>       = rows.iter().map(|(_, z, _)| *z).collect();
+    let ids: Vec<Uuid> = rows.iter().map(|_| Uuid::new_v4()).collect();
+    let maille_ids: Vec<Uuid> = rows.iter().map(|(m, _, _)| *m).collect();
+    let values: Vec<f64> = rows.iter().map(|(_, z, _)| *z).collect();
     let variances: Vec<Option<f64>> = rows.iter().map(|(_, _, v)| *v).collect();
 
     // Un seul INSERT avec UNNEST — évite les limites de paramètres et le push_values
@@ -757,7 +756,7 @@ pub async fn fusion_status(
             let fusion_count: i64 = sqlx::query(
                 "SELECT COUNT(*)::bigint AS c FROM atlas.ai_interpolation_values \
                  WHERE parameter_id = $1 AND method = $2 \
-                 AND NOT COALESCE(is_superseded, false)"
+                 AND NOT COALESCE(is_superseded, false)",
             )
             .bind(&fusion_param_id)
             .bind(FUSION_METHOD)
@@ -770,7 +769,7 @@ pub async fn fusion_status(
             let ked_count: i64 = sqlx::query(
                 "SELECT COUNT(*)::bigint AS c FROM atlas.ai_interpolation_values \
                  WHERE parameter_id = $1 AND method LIKE 'ked%' \
-                 AND NOT COALESCE(is_superseded, false)"
+                 AND NOT COALESCE(is_superseded, false)",
             )
             .bind(&ked_param_id)
             .fetch_one(&state.pool)
@@ -782,7 +781,7 @@ pub async fn fusion_status(
             let rk_count: i64 = sqlx::query(
                 "SELECT COUNT(*)::bigint AS c FROM atlas.ai_interpolation_values \
                  WHERE parameter_id = $1 AND method = 'regression_kriging_scorpan' \
-                 AND NOT COALESCE(is_superseded, false)"
+                 AND NOT COALESCE(is_superseded, false)",
             )
             .bind(&rk_param_id)
             .fetch_one(&state.pool)

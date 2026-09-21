@@ -1,0 +1,247 @@
+### sondages
+code_site	localite	region	prefecture_adm2	canton_adm3	date_sondage	lat_wgs84	lon_wgs84	x_utm31	y_utm31	position_source	precision_m	prof_totale_m	niveau_nappe_m	bureau_etude	type_document	ref_document	commentaire
+PD1	LOGOTE				2021-08-30					Inconnue		5.8		LAB TP	Rapport géotechnique	RG N° 015/MNS/09-2021/EK/LABTP, sondage PD1, p.19	[N3 retenu] Site à la périphérie du terrain de football du Lycée de Sagbado (p.6), implantation relative annexe 1 (p.17). Couche texte PDF p.19 contient « X = N 11°04'07,4'' ; Y = E 00°04'33,0'' », mais ces chaînes ne sont pas visibles dans les rendus PDF : attribution non validée, non utilisée, à vérifier.
+PD2	LOGOTE				2021-08-30					Inconnue		5.4		LAB TP	Rapport géotechnique	RG N° 015/MNS/09-2021/EK/LABTP, sondage PD2, p.20	[N3 retenu] Site à la périphérie du terrain de football du Lycée de Sagbado (p.6), implantation relative annexe 1 (p.17). Couche texte PDF p.20 contient « X = N 11°04'08,1'' ; Y = E 00°04'34,3'' », mais ces chaînes ne sont pas visibles dans les rendus PDF : attribution non validée, non utilisée, à vérifier.
+PD3	LOGOTE				2021-08-30					Inconnue		5.6		LAB TP	Rapport géotechnique	RG N° 015/MNS/09-2021/EK/LABTP, sondage PD3, p.21	[N3 retenu] Site à la périphérie du terrain de football du Lycée de Sagbado (p.6), implantation relative annexe 1 (p.17). Couche texte PDF p.21 contient « X = N 11°04'03,6'' ; Y = E 00°04'34,2'' », mais ces chaînes ne sont pas visibles dans les rendus PDF : attribution non validée, non utilisée, à vérifier.
+SP	LOGOTE				2021-08-27					Inconnue		30		LAB TP	Rapport géotechnique	RG N° 015/MNS/09-2021/EK/LABTP, essai pressiométrique SP, p.23	[N3] Site à la périphérie du terrain de football du Lycée de Sagbado (p.6). Position relative figurée au plan d’implantation annexe 1 (p.17), sans coordonnées ni orientation géoréférencée exploitables. Nappe non renseignée individuellement ; le rapport indique qu’elle n’a pas été rencontrée.
+SC	LOGOTE									Inconnue		30		LAB TP	Rapport géotechnique	RG N° 015/MNS/09-2021/EK/LABTP, sondage carotté SC, p.9 et annexe 1 p.17	[N3] Site à la périphérie du terrain de football du Lycée de Sagbado (p.6). Position relative figurée au plan d’implantation annexe 1 (p.17), sans coordonnées exploitables. Date individuelle non indiquée ; campagne du 27 août au 1er septembre 2021 (p.4). Nappe non rencontrée (p.9).
+
+### echantillons
+code_site	depth_top_m	depth_bot_m	depth_m	horizon	date_prelevement	laboratoire_essai	nature_sol	remanie	commentaire
+SC	3	3.5	3.25	H3 (>1,5 m)		LAB TP	Sable silto argileux		Tableau 8 p.13. Densité humide=1.95 g/cm3 ; densité sèche=1.80 g/cm3. Ces deux densités n’ont pas de colonne dédiée dans le canevas.
+SC	7	7.5	7.25	H3 (>1,5 m)		LAB TP	Argile limoneuse		Tableau 8 p.13. Densité humide=1.98 g/cm3 ; densité sèche=1.81 g/cm3. Ces deux densités n’ont pas de colonne dédiée dans le canevas.
+SC	12.5	13	12.75	H3 (>1,5 m)		LAB TP	Argile limoneuse		Tableau 8 p.13. Densité humide=1.97 g/cm3 ; densité sèche=1.80 g/cm3. Ces deux densités n’ont pas de colonne dédiée dans le canevas.
+SC	22	22.5	22.25	H3 (>1,5 m)		LAB TP	Argile feuillée		Tableau 8 p.13. Densité humide=1.97 g/cm3 ; densité sèche=1.80 g/cm3. Ces deux densités n’ont pas de colonne dédiée dans le canevas.
+
+### atterberg
+code_site	depth_m	wl_pct	wp_pct	ip_calc	ip_rapport	norme	commentaire
+SC	3.25	23	15		8	NF P 94-051	Tableau 8 p.13
+SC	7.25	48	28		20	NF P 94-051	Tableau 8 p.13
+SC	12.75	70	33		37	NF P 94-051	Tableau 8 p.13
+SC	22.25	75	38		37	NF P 94-051	Tableau 8 p.13
+
+### penetrometre_rd
+code_site	depth_m	rd_mpa	type_essai	refus	commentaire
+PD1	0	0	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	0	0	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	0	0	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	0.2	4.91	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	0.2	4.91	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	0.2	6.88	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	0.4	7.86	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	0.4	7.86	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	0.4	16.71	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	0.6	15.72	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	0.6	7.86	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	0.6	13.76	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	0.8	17.69	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	0.8	8.84	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	0.8	12.77	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	1	22.6	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	1	10.81	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	1	14.74	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	1.2	19.13	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	1.2	10.93	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	1.2	14.57	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	1.4	20.04	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	1.4	13.66	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	1.4	17.3	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	1.6	21.86	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	1.6	13.66	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	1.6	19.13	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	1.8	27.32	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	1.8	9.11	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	1.8	26.41	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	2	28.23	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	2	11.84	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	2	25.5	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	2.2	26.31	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	2.2	17.82	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	2.2	27.16	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	2.4	28.85	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	2.4	22.91	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	2.4	28.01	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	2.6	33.95	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	2.6	28.85	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	2.6	28.85	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	2.8	33.1	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	2.8	31.4	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	2.8	33.1	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	3	33.95	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	3	29.7	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	3	30.55	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	3.2	37.34	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	3.2	31.78	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	3.2	34.96	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	3.4	39.72	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	3.4	36.55	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	3.4	34.96	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	3.6	42.11	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	3.6	41.31	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	3.6	39.72	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	3.8	39.72	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	3.8	46.88	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	3.8	45.29	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	4	36.55	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	4	54.03	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	4	44.49	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	4.2	35.1	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	4.2	52.28	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	4.2	52.28	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	4.4	36.59	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	4.4	59.75	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	4.4	54.52	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	4.6	39.58	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	4.6	64.23	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	4.6	59.75	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	4.8	40.33	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	4.8	69.46	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	4.8	64.23	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	5	48.54	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	5	72.44	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	5	69.46	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	5.2	54.25	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	5.2	69.05	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	5.2	65.52	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	5.4	62.71	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD2	5.4		Pénétromètre dynamique	oui	Refus indiqué au tableau 3 p.9. Dynamique lourd.
+PD3	5.4	69.05	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD1	5.6	67.64	Pénétromètre dynamique	non	Dynamique lourd. Tableau 3 p.8-9. Norme contradictoire dans le rapport : p.4 NF EN ISO 22476-2 ; p.7 NF P 94-115.
+PD3	5.6		Pénétromètre dynamique	oui	Refus indiqué au tableau 3 p.9. Dynamique lourd.
+PD1	5.8		Pénétromètre dynamique	oui	Refus indiqué au tableau 3 p.9. Dynamique lourd.
+
+### pressiometre
+code_site	depth_m	em_mpa	pl_mpa	pf_mpa	em_pl_calc	commentaire
+SP	1	2.03	0.82	0.61		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	2	5.32	1.26	0.93		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	3	9.1	0.63	0.43		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	4	10.5	0.73	0.62		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	5	13.7	1.7	1.07		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	6	10.7	1.68	1.4		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	7	12.61	1.93	1.34		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	8	17.36	2.01	1.55		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	9	13.46	2.06	1.38		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	10	15.01	1.88	1.29		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	11	13.14	2.42	2.01		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	12	13.17	2.29	1.88		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	13	21.29	2.35	1.38		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	14	18.19	2.13	1.42		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	15	32.23	2.88	1.69		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	16	23.18	2.31	1.51		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	17	14.39	2.88	2.18		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	18	21.17	3.37	1.98		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	19	27.71	3.42	2.35		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	20	34.12	2.99	1.76		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	21	26.12	2.18	1.42		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	22	34.12	3	1.76		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	23	23.56	3.81	2.24		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	24	25.17	3.22	1.89		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	25	33.35	3.67	2.16		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	26	32.03	3.74	2.2		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	27	33.14	3.69	2.17		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	28	32.03	3.78	2.22		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	29	33.14	3.73	2.19		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+SP	30	32.03	3.81	2.24		Tableau récapitulatif p.10 ; essai Ménard NF P 94-110-1. Pl* est une grandeur distincte et n’est pas saisie dans cette feuille.
+
+### granulometrie
+code_site	depth_m	sieve_mm	passant_pct	methode	commentaire
+SC	3.25	2	99	NF P 94-056	1re colonne « < 2 mm » telle qu’imprimée au tableau 8 p.13.
+SC	3.25	2	98.7	NF P 94-056	2e colonne « < 2 mm » telle qu’imprimée au tableau 8 p.13 ; doublon d’en-tête contradictoire conservé sans correction.
+SC	3.25	0.08	18.3	NF P 94-056	Colonne « < 80 µm » du tableau 8 p.13.
+SC	7.25	2	100	NF P 94-056	1re colonne « < 2 mm » telle qu’imprimée au tableau 8 p.13.
+SC	7.25	2	99.9	NF P 94-056	2e colonne « < 2 mm » telle qu’imprimée au tableau 8 p.13 ; doublon d’en-tête contradictoire conservé sans correction.
+SC	7.25	0.08	74.1	NF P 94-056	Colonne « < 80 µm » du tableau 8 p.13.
+SC	12.75	2	99.6	NF P 94-056	1re colonne « < 2 mm » telle qu’imprimée au tableau 8 p.13.
+SC	12.75	2	99.1	NF P 94-056	2e colonne « < 2 mm » telle qu’imprimée au tableau 8 p.13 ; doublon d’en-tête contradictoire conservé sans correction.
+SC	12.75	0.08	75.3	NF P 94-056	Colonne « < 80 µm » du tableau 8 p.13.
+SC	22.25	2	100	NF P 94-056	1re colonne « < 2 mm » telle qu’imprimée au tableau 8 p.13.
+SC	22.25	2	99.8	NF P 94-056	2e colonne « < 2 mm » telle qu’imprimée au tableau 8 p.13 ; doublon d’en-tête contradictoire conservé sans correction.
+SC	22.25	0.08	95.5	NF P 94-056	Colonne « < 80 µm » du tableau 8 p.13.
+
+### classification
+code_site	depth_m	classe_gtr	classe_hrb	classe_usc	w_nat_pct	rho_s_gcm3	commentaire
+SC	3.25				8.33		Tableau 8 p.13. Nature: Sable silto argileux. Densité humide 1,95 g/cm3 ; densité sèche 1,80 g/cm3 non reportées dans rho_s.
+SC	7.25				9.21		Tableau 8 p.13. Nature: Argile limoneuse. Densité humide 1,98 g/cm3 ; densité sèche 1,81 g/cm3 non reportées dans rho_s.
+SC	12.75				9.43		Tableau 8 p.13. Nature: Argile limoneuse. Densité humide 1,97 g/cm3 ; densité sèche 1,80 g/cm3 non reportées dans rho_s.
+SC	22.25				9.56		Tableau 8 p.13. Nature: Argile feuillée. Densité humide 1,97 g/cm3 ; densité sèche 1,80 g/cm3 non reportées dans rho_s.
+
+# JOURNAL D’EXTRACTION — LOGOTE
+
+## PHASE 0 — RECONNAISSANCE
+- PDF à texte natif, 32 pages. Les figures, tableaux, graphes et le plan d’implantation ont été contrôlés sur les rendus de pages ; aucun OCR n’a été nécessaire.
+- Structure : garde ; indice/diffusion ; sommaire ; introduction et situation ; méthodologie ; pénétromètre dynamique ; sondage carotté ; pressiomètre Ménard ; essais de laboratoire ; conclusion ; annexes (implantation, pénétromètres, pressiomètre, caisses de carottage, méthodes de calcul).
+- Ouvrage : château d’eau de 1300 m3 à LOGOTE.
+- Sondages distincts : PD1, PD2, PD3, SP, SC.
+
+## PHASE 1 — OÙ SE CACHE LA POSITION
+1. Page de garde et cartouche : LOGOTE / projet d’AEP de Lomé ; aucune coordonnée visible.
+2. Situation/localisation : p.6, « Le site de LOGOTE se situe à la périphérie du terrain de football du Lycée de Sagbado ».
+3. Tableau récapitulatif de coordonnées : aucun.
+4. En-têtes/fiches : les rendus p.19-21 ne montrent pas de coordonnées. La couche texte PDF contient toutefois des chaînes DMS pour PD1-PD3 ; voir point à vérifier ci-dessous.
+5. Plan d’implantation : p.17, positions relatives PD1, PD2, PD3, SP, SC avec deux cotes 7.00 et 12.65 ; pas de nord, pas de grille, pas de coordonnées, pas de système déclaré.
+6. Légendes/figures/photos : pas de position individuelle supplémentaire.
+7. Annexes : identifient les sondages, pas de géoréférencement exploitable.
+8. PK/profils : sans objet pour cet ouvrage ponctuel.
+9. Repère terrain : terrain de football du Lycée de Sagbado (p.6).
+10. Métadonnées/couche texte : DMS cachées/suspectes p.19-21, non utilisées.
+
+## NIVEAUX DE PREUVE
+- PD1 : N3 retenu.
+- PD2 : N3 retenu.
+- PD3 : N3 retenu.
+- SP : N3.
+- SC : N3.
+Pour les cinq sondages, position_source = Inconnue. Aucun lat/lon ni X/Y n’a été fabriqué ou converti.
+
+## RÈGLES D’IMPLANTATION TROUVÉES
+Aucune règle textuelle reproductible de type maillage, PK, espacement ou angle n’est donnée. Le rapport dit seulement que « Les différents points de sondage sont indiqués sur le plan d’implantation présenté en annexe 1 » (p.7).
+Le plan p.17 montre les cinq points et des cotes 7.00 et 12.65, mais le rapport ne dit pas que ces cotes représentent des offsets de sondages ; elles n’ont donc pas été déroulées.
+
+## CONTRADICTIONS / ANOMALIES INTERNES
+1. COORDONNÉES PD1-PD3 — p.19-21 :
+   - la couche texte PDF contient :
+     PD1 : N 11°04'07,4'' ; E 00°04'33,0''
+     PD2 : N 11°04'08,1'' ; E 00°04'34,3''
+     PD3 : N 11°04'03,6'' ; E 00°04'34,2''
+   - ces chaînes ne sont visibles ni dans le rendu PDFium ni dans le rendu Poppler des pages.
+   Décision : leur attribution au contenu visible des fiches n’est pas validée ; elles ne sont pas saisies dans les colonnes de coordonnées et sont conservées seulement en commentaire pour vérification humaine.
+2. NORME PÉNÉTROMÈTRE :
+   - p.4 : NF EN ISO 22476-2 (Juillet 2005) ;
+   - p.7, tableau 2 : NF P 94-115.
+   Aucune résolution silencieuse.
+3. GRANULOMÉTRIE p.13 :
+   - le tableau 8 comporte deux colonnes différentes toutes deux imprimées « < 2 mm (%) ».
+   - les valeurs diffèrent (ex. 99 et 98.7 à 3,00-3,50 m).
+   Décision : deux lignes sieve_mm=2.0 par échantillon, chacune documentée ; aucune correction du libellé.
+4. PRESSION LIMITE NETTE Pl* :
+   - p.9 : plage annoncée 0,60 à 3,60 bars ;
+   - p.10 : colonne Pl* libellée MPa avec des valeurs 0,60 à 3,60.
+   Pl* n’entre pas dans la feuille pressiometre demandée (qui contient Pl, Pf et Em) ; aucune conversion n’a été faite.
+
+## CE QUI A ÉTÉ DÉDUIT PLUTÔT QUE LU
+- depth_m = 3.25, 7.25, 12.75, 22.25 m : centroïdes calculés uniquement parce que la règle d’extraction fournie l’impose.
+- horizon H3 (>1,5 m) : application du vocabulaire imposé aux quatre prélèvements.
+- PD1 profondeur totale 5.80 m, PD2 5.40 m, PD3 5.60 m : profondeur du refus explicitement indiquée au tableau 3.
+- SC : aucune date individuelle n’est attribuée ; seule la campagne 27 août-1er septembre 2021 est connue.
+
+## À VÉRIFIER PAR UN HUMAIN — PRIORITÉ
+1. p.19-21 : origine des DMS invisibles de la couche texte et appartenance réelle aux fiches PD1-PD3.
+2. p.13 : libellé réel des deux premières colonnes granulométriques.
+3. p.4 et p.7 : norme réelle du pénétromètre dynamique.
+4. p.9-10 : unité correcte de Pl*.
+5. p.17 : si un plan source géoréférencé/CAD existe, l’utiliser pour positionner SP/SC/PD1-3.
+
+## BILAN
+- Sondages : 5.
+- N1 ou N2 retenus : 0.
+- N3 : 5.
+- Échantillons : 4.
+- Atterberg : 4 lignes.
+- Pénétromètre Rd : 87 lignes au total, dont 84 valeurs numériques et 3 lignes de refus.
+- Pressiomètre : 30 lignes.
+- Granulométrie : 12 lignes, dont 8 lignes à sieve_mm=2.0 parce que le rapport imprime deux colonnes « <2 mm ».
+- Classification/état : 4 lignes avec w_nat uniquement ; aucune classe GTR/HRB/USC n’est fournie.
+- Feuilles non remplies : vbs, gonflement_eg, proctor, cbr.
+- Aucune conversion de coordonnées, d’unité ou de système de référence n’a été faite.
+
+Le rapport ne permet pas, en l’état, un géoréférencement individuel fiable des sondages.

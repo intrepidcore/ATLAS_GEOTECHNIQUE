@@ -78,6 +78,19 @@ Si vous souhaitez contribuer ou compiler l'Atlas localement depuis les sources :
    cargo run
    ```
 
+   Pour reconstruire uniquement l'image Docker de l'API utilisée par Atlas Terrain,
+   sans TensorFlow, CUDA, GPflow ni scikit-learn :
+
+   ```bash
+   docker compose build api-geo
+   docker compose up -d --no-deps api-geo
+   ```
+
+   Le build sans ML est le comportement par défaut (`ATLAS_API_INSTALL_ML=false`).
+   Les fonctions mobile/Colab et PyKrige restent disponibles. Une image incluant
+   volontairement la pile ML peut être produite avec
+   `ATLAS_API_INSTALL_ML=true docker compose build api-geo`.
+
 5. **Lancer le Frontend Web**
    ```bash
    cd ui

@@ -4,6 +4,8 @@ App React Native (Expo) pour étudiants et superviseurs en mission de terrain. R
 
 Documentation complète : [docs/mobile/](../docs/mobile/) — roadmap, ADR, SDD.
 
+Compilation Android sur le poste Windows/WSL : [BUILD_ANDROID_WINDOWS_WSL.md](../docs/mobile/BUILD_ANDROID_WINDOWS_WSL.md).
+
 ## Démarrer en développement
 
 ```bash

@@ -19,6 +19,8 @@ export interface SondageDraft {
   layers_count: number | null;
   profile_description: string | null;
   notes: string | null;
+  point_name: string | null;
+  relocation_reason: string | null;
   status: SondageDraftStatus;
   server_id: string | null;
   created_at: string;
@@ -31,6 +33,45 @@ export interface SyncQueueItem {
   attempts: number;
   last_error: string | null;
   created_at: string;
+}
+
+export interface FieldLogDraft {
+  client_id: string;
+  mission_id: string;
+  log_type: string;
+  content: string;
+  longitude: number | null;
+  latitude: number | null;
+  status: string;
+  created_at: string;
+}
+
+export interface ExportDataSelection {
+  missionIds: string[];
+  includePlannedPoints: boolean;
+  includeSondages: boolean;
+  includeFieldLogs: boolean;
+  includePendingQueue: boolean;
+}
+
+export interface FieldExportSnapshot {
+  schema_version: 1;
+  source: 'atlas-terrain';
+  exported_at: string;
+  missions: MobileMission[];
+  planned_points: Array<PlannedPoint & { mission_id: string }>;
+  sondages: SondageDraft[];
+  field_logs: FieldLogDraft[];
+  pending_queue: SyncQueueItem[];
+}
+
+function queueMissionId(item: SyncQueueItem): string | null {
+  try {
+    const payload = JSON.parse(item.payload) as { mission_id?: unknown };
+    return typeof payload.mission_id === 'string' ? payload.mission_id : null;
+  } catch {
+    return null;
+  }
 }
 
 export const repository = {
@@ -112,17 +153,45 @@ export const repository = {
     return row?.tolerance_m ?? null;
   },
 
+  async getCachedMapContext(missionId: string): Promise<MapContext | null> {
+    const db = await getDb();
+    const row = await db.getFirstAsync<{
+      tolerance_m: number; maille_geojson: string | null;
+      center_lon: number | null; center_lat: number | null;
+      bbox_min_x: number | null; bbox_min_y: number | null;
+      bbox_max_x: number | null; bbox_max_y: number | null;
+    }>('SELECT * FROM mission_map_cache WHERE mission_id = ?', [missionId]);
+    if (!row) return null;
+    const plannedPoints = await this.getPlannedPoints(missionId);
+    const hasBbox = row.bbox_min_x !== null && row.bbox_min_y !== null && row.bbox_max_x !== null && row.bbox_max_y !== null;
+    return {
+      mission_id: missionId,
+      tolerance_m: row.tolerance_m,
+      maille_geojson: row.maille_geojson ? JSON.parse(row.maille_geojson) : null,
+      center_lon: row.center_lon,
+      center_lat: row.center_lat,
+      bbox: hasBbox ? {
+        min_x: row.bbox_min_x!, min_y: row.bbox_min_y!, max_x: row.bbox_max_x!, max_y: row.bbox_max_y!,
+        center_lon: row.center_lon ?? 0, center_lat: row.center_lat ?? 0,
+      } : null,
+      planned_points: plannedPoints,
+      existing_sondages: [],
+    };
+  },
+
   async saveDraft(draft: SondageDraft): Promise<void> {
     const db = await getDb();
     await db.runAsync(
       `INSERT OR REPLACE INTO sondages_draft
        (client_id, mission_id, planned_point_id, longitude, latitude, location_accuracy_m,
-        depth_m, layers_count, profile_description, notes, status, server_id, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        depth_m, layers_count, profile_description, notes, point_name, relocation_reason,
+        status, server_id, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         draft.client_id, draft.mission_id, draft.planned_point_id,
         draft.longitude, draft.latitude, draft.location_accuracy_m,
         draft.depth_m, draft.layers_count, draft.profile_description, draft.notes,
+        draft.point_name, draft.relocation_reason,
         draft.status, draft.server_id, draft.created_at,
       ]
     );
@@ -141,6 +210,26 @@ export const repository = {
     return db.getAllAsync<SondageDraft>(
       'SELECT * FROM sondages_draft WHERE mission_id = ? ORDER BY created_at DESC',
       [missionId]
+    );
+  },
+
+  async getDraftsForMissions(missionIds: string[]): Promise<SondageDraft[]> {
+    if (missionIds.length === 0) return [];
+    const db = await getDb();
+    const placeholders = missionIds.map(() => '?').join(',');
+    return db.getAllAsync<SondageDraft>(
+      `SELECT * FROM sondages_draft WHERE mission_id IN (${placeholders}) ORDER BY created_at DESC`,
+      missionIds
+    );
+  },
+
+  async getFieldLogsForMissions(missionIds: string[]): Promise<FieldLogDraft[]> {
+    if (missionIds.length === 0) return [];
+    const db = await getDb();
+    const placeholders = missionIds.map(() => '?').join(',');
+    return db.getAllAsync<FieldLogDraft>(
+      `SELECT * FROM field_logs_draft WHERE mission_id IN (${placeholders}) ORDER BY created_at DESC`,
+      missionIds
     );
   },
 
@@ -164,6 +253,48 @@ export const repository = {
     const db = await getDb();
     const row = await db.getFirstAsync<{ n: number }>('SELECT COUNT(*) as n FROM sync_queue');
     return row?.n ?? 0;
+  },
+
+  async getExportSnapshot(selection: ExportDataSelection): Promise<FieldExportSnapshot> {
+    const db = await getDb();
+    const ids = [...new Set(selection.missionIds)].filter(Boolean);
+    if (ids.length === 0) {
+      return {
+        schema_version: 1, source: 'atlas-terrain', exported_at: new Date().toISOString(), missions: [], planned_points: [],
+        sondages: [], field_logs: [], pending_queue: [],
+      };
+    }
+    const placeholders = ids.map(() => '?').join(',');
+    const missions = await db.getAllAsync<MobileMission>(
+      `SELECT * FROM missions WHERE id IN (${placeholders}) ORDER BY code`, ids
+    );
+    const plannedPoints = selection.includePlannedPoints
+      ? await db.getAllAsync<Array<PlannedPoint & { mission_id: string }>[number]>(
+        `SELECT mission_id, id, numero, label, lat, lon, confirmed_sondage_id
+         FROM mission_planned_points WHERE mission_id IN (${placeholders}) ORDER BY mission_id, numero`, ids
+      ) : [];
+    const sondages = selection.includeSondages
+      ? await db.getAllAsync<SondageDraft>(
+        `SELECT * FROM sondages_draft WHERE mission_id IN (${placeholders}) ORDER BY created_at`, ids
+      ) : [];
+    const fieldLogs = selection.includeFieldLogs
+      ? await db.getAllAsync<FieldLogDraft>(
+        `SELECT * FROM field_logs_draft WHERE mission_id IN (${placeholders}) ORDER BY created_at`, ids
+      ) : [];
+    const queue = selection.includePendingQueue ? await this.getQueue(10000) : [];
+    return {
+      schema_version: 1,
+      source: 'atlas-terrain',
+      exported_at: new Date().toISOString(),
+      missions,
+      planned_points: plannedPoints,
+      sondages,
+      field_logs: fieldLogs,
+      pending_queue: queue.filter((item) => {
+        const missionId = queueMissionId(item);
+        return missionId !== null && ids.includes(missionId);
+      }),
+    };
   },
 
   async removeFromQueue(clientId: string): Promise<void> {

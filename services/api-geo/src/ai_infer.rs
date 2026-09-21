@@ -66,7 +66,10 @@ pub async fn infer_maille(
     Json(payload): Json<InferMailleRequest>,
 ) -> Result<Json<InferMailleResponse>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let features = load_features(&state, payload.maille_id, payload.maille_code.as_deref()).await?;
@@ -104,7 +107,10 @@ pub async fn infer_maille_by_code(
     Path(code): Path<String>,
 ) -> Result<Json<InferMailleResponse>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let features = load_features(&state, None, Some(&code)).await?;
@@ -141,7 +147,10 @@ pub async fn get_features_by_code(
     Path(code): Path<String>,
 ) -> Result<Json<MailleFeatures>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
     let features = load_features(&state, None, Some(&code)).await?;
     Ok(Json(features))
@@ -153,13 +162,20 @@ pub async fn validate_maille_prediction(
     Json(payload): Json<ValidateMailleRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let features = load_features(&state, payload.maille_id, payload.maille_code.as_deref()).await?;
     let prediction = build_prediction(&features, None);
-    let pred_score = prediction.get("risk_score").and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let observed_proxy = (features.vbs_moyen.unwrap_or(7.0) * 3.2 + features.ip_moyen.unwrap_or(25.0) * 1.4)
+    let pred_score = prediction
+        .get("risk_score")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+    let observed_proxy = (features.vbs_moyen.unwrap_or(7.0) * 3.2
+        + features.ip_moyen.unwrap_or(25.0) * 1.4)
         .clamp(0.0, 100.0);
     let abs_error = (pred_score - observed_proxy).abs();
     let quality = if abs_error <= 8.0 {
@@ -186,7 +202,10 @@ pub async fn load_features(
     maille_code: Option<&str>,
 ) -> Result<MailleFeatures, (StatusCode, Json<serde_json::Value>)> {
     if maille_id.is_none() && maille_code.is_none() {
-        return Err((StatusCode::BAD_REQUEST, Json(json!({ "error": "maille_id ou maille_code requis" }))));
+        return Err((
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "error": "maille_id ou maille_code requis" })),
+        ));
     }
 
     let row = sqlx::query(
@@ -217,9 +236,19 @@ pub async fn load_features(
     .bind(maille_code)
     .fetch_optional(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e.to_string() }))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        )
+    })?;
 
-    let r = row.ok_or_else(|| (StatusCode::NOT_FOUND, Json(json!({ "error": "Maille non trouvée" }))))?;
+    let r = row.ok_or_else(|| {
+        (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "Maille non trouvée" })),
+        )
+    })?;
 
     Ok(MailleFeatures {
         maille_id: r.get("maille_id"),
@@ -356,7 +385,8 @@ fn build_prediction(features: &MailleFeatures, charge_kpa: Option<f64>) -> serde
         _ => 30.0,
     };
 
-    let mut risk_score: f64 = (vbs_score * 0.45_f64) + (ip_score * 0.30_f64) + (cg_score * 0.15_f64);
+    let mut risk_score: f64 =
+        (vbs_score * 0.45_f64) + (ip_score * 0.30_f64) + (cg_score * 0.15_f64);
     if features.pct_in_lama.unwrap_or(0.0) >= 25.0 || features.in_zone_rga_tres_fort {
         facteurs.push("Contexte geologique Lama / zone RGA tres fort".to_string());
         risk_score += 10.0;

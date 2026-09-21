@@ -244,7 +244,11 @@ pub static JOB_QUEUE: Lazy<JobQueue> = Lazy::new(JobQueue::new);
 mod tests {
     use super::*;
 
+    // Ce test ouvre une vraie connexion PostgreSQL : il ne peut pas tourner
+    // dans une CI sans base. Ignoré par défaut, exécutable via
+    // `cargo test -- --ignored` avec une base joignable.
     #[tokio::test]
+    #[ignore = "nécessite une base PostgreSQL joignable"]
     async fn test_job_queue_submit_and_status() {
         let queue = JobQueue::new();
         let pool = Arc::new(PgPool::connect("postgres://test").await.unwrap());
@@ -255,8 +259,7 @@ mod tests {
             mapping: MappingConfig::default(),
             geoloc_config: GeolocationConfig {
                 mode: GeolocationMode::Unknown,
-                seed: None,
-                jitter_radius: None,
+                ..Default::default()
             },
         };
 

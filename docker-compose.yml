@@ -26,7 +26,10 @@ services:
       - atlas-net
 
   api-geo:
-    build: ./services/api-geo
+    build:
+      context: ./services/api-geo
+      args:
+        INSTALL_ML: ${ATLAS_API_INSTALL_ML:-false}
     container_name: atlas-api-geo
     restart: unless-stopped
     env_file:
@@ -43,10 +46,31 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       EXPORT_DIR: /data/exports
       ATLAS_SCRIPTS_DIR: /opt/atlas/scripts
+      # .atlaspack — paquets opérateur hors-ligne (ATLASPACK_SIGNING_PRIVATE_KEY_B64
+      # vient de .env, jamais commité ; générer via `cargo run --bin generate_atlaspack_keys`)
+      ATLASPACK_STORAGE_DIR: /data/atlaspack
+      # Distribution de l'APK Atlas Terrain : le binaire est monté en lecture
+      # seule (cf. volumes) et servi par GET /colab/app/latest. L'URL publique
+      # sert à construire le lien de téléchargement dans les emails d'ordre de
+      # mission — sans elle, le bloc "Application" est simplement omis.
+      ATLAS_TERRAIN_APK_PATH: /data/app/AtlasTerrain.apk
+      # Lien de telechargement propose aux operateurs dans les emails.
+      # Prioritaire sur l'endpoint interne : Google Drive est joignable
+      # depuis n'importe quelle connexion, l'API seulement via Tailscale.
+      ATLAS_TERRAIN_APK_URL: ${ATLAS_TERRAIN_APK_URL:-}
+      ATLAS_API_PUBLIC_BASE_URL: ${ATLAS_API_PUBLIC_BASE_URL:-}
+      # URL publique de l'interface web, utilisee dans les emails d'ordre
+      # de mission. Vide => le lien "Consulter la plateforme" est omis
+      # (plutot qu'un lien localhost mort chez le destinataire).
+      ATLAS_UI_PUBLIC_BASE_URL: ${ATLAS_UI_PUBLIC_BASE_URL:-}
       # Microservices IA (optionnel) : laisser vide = exécution locale dans api-geo
       ATLAS_API_INFER_URL: ${ATLAS_API_INFER_URL:-}
       ATLAS_API_OPTI_URL: ${ATLAS_API_OPTI_URL:-}
       ATLAS_INTERNAL_SERVICE_TOKEN: ${ATLAS_INTERNAL_SERVICE_TOKEN:-}
+      # Durée de validité du jeton d'accès de l'UI. Le code retombe sur 1 h ;
+      # porté à 2 h car la session du gestionnaire de base de données
+      # expirait en pleine saisie.
+      JWT_ACCESS_TTL_SECS: ${JWT_ACCESS_TTL_SECS:-7200}
     depends_on:
       db:
         condition: service_healthy
@@ -58,6 +82,10 @@ services:
       - ./scripts:/opt/atlas/scripts:ro
       - ml-pip-cache:/root/.cache/pip    # Cache pip persistant (ML deps ~2.3GB)
       - C:/PROJET_ATLAS_MASTER/pdf_debug:/data/pdf_debug
+      - ./data/atlaspack:/data/atlaspack  # Paquets .atlaspack générés + pièces jointes réimportées
+      # APK Atlas Terrain servi aux opérateurs (lecture seule — le fichier reste
+      # produit par le build mobile, jamais écrit par l'API).
+      - ./mobile/AtlasTerrain-labo-horsligne.apk:/data/app/AtlasTerrain.apk:ro
     # GPU pour les calculs MTGP/GPflow (ARCH-GPU-01)
     deploy:
       resources:

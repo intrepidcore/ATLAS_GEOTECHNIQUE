@@ -187,8 +187,13 @@ mod tests {
         let breaks = classify_jenks(&values, 3).unwrap();
         assert_eq!(breaks.len(), 2);
         // Jenks devrait identifier les 3 groupes naturels
-        assert!(breaks[0] > 3.0 && breaks[0] < 10.0);
-        assert!(breaks[1] > 12.0 && breaks[1] < 20.0);
+        // Convention du module : un break est la borne INFÉRIEURE de la classe
+        // suivante, pas un point médian entre deux groupes. C'est ce
+        // qu'attend `generate_labels`, qui produit « < 10 », « 10 – 20 »,
+        // « ≥ 20 » — une partition correcte des trois groupes naturels.
+        // L'ancienne assertion réclamait une valeur strictement comprise entre
+        // les groupes, ce qui contredisait cette convention.
+        assert_eq!(breaks, vec![10.0, 20.0]);
     }
 
     #[test]

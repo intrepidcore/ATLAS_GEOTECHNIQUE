@@ -1,5 +1,6 @@
 import { API_BASE_URL } from './config';
 import { tokenStorage } from './tokenStorage';
+import { fetchWithTimeout } from './transport';
 
 export interface LoginResponse {
   access_token: string;
@@ -8,7 +9,7 @@ export interface LoginResponse {
 
 export const authApi = {
   async login(email: string, password: string): Promise<void> {
-    const res = await fetch(`${API_BASE_URL}/auth/login`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -24,7 +25,7 @@ export const authApi = {
   async refresh(): Promise<boolean> {
     const refreshToken = await tokenStorage.getRefreshToken();
     if (!refreshToken) return false;
-    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    const res = await fetchWithTimeout(`${API_BASE_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ refresh_token: refreshToken }),

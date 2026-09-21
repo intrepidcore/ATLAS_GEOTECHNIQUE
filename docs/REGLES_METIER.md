@@ -164,8 +164,50 @@ Toute action sensible de réattribution doit être tracée dans `atlas.auth_audi
 
 ---
 
+## BM-15 — Statut d'une maille : toutes les mailles d'une mission
+
+Une mission peut couvrir **plusieurs mailles**. Le statut d'une maille
+(`active` / `assigned` / `free`) tient compte de **toutes** les mailles de la
+mission, pas seulement de `colab_missions.maille_id`.
+
+L'ensemble des mailles d'une mission est défini par `atlas.v_mission_mailles`
+(migration 108) : les codes présents dans `zone_label` qui correspondent à une
+maille réelle, plus la maille principale. `zone_label` contient parfois un nom
+de lieu et non un code ; la maille principale garantit alors un résultat non
+vide.
+
+Conformément à l'ADR-001, `atlas.v_maille_status` reste l'unique source de
+vérité, et l'API la lit sans recalculer la règle (migration 110).
+
+**Défaut corrigé** : une mission à trois mailles n'en colorait qu'une sur la
+carte ; les deux autres apparaissaient libres alors qu'un opérateur y était
+envoyé et qu'un plan de sondage y était posé.
+
+## BM-16 — Aucun envoi de masse sans validation humaine
+
+Un lot d'envoi porteur d'identifiants ou d'ordres de mission est créé en
+`awaiting_approval` et n'est **jamais** libéré automatiquement. Le worker ne
+consomme que `pending` ; seule une action explicite d'un administrateur
+(`POST /colab/email-jobs/:id/approve`) fait la transition.
+
+La validation est refusée si :
+
+- le lot n'est pas en `awaiting_approval` ;
+- le nombre de destinataires a changé depuis l'affichage (`expected_recipients`) ;
+- un seul paquet `.atlaspack` n'est pas encore régénéré — envoyer un mot de
+  passe sans le paquet qu'il ouvre livrerait un opérateur bloqué.
+
+L'identité du validateur et l'horodatage sont conservés dans les paramètres du
+lot.
+
+**Motivation** : le dispositif initial libérait l'envoi dès que les paquets
+étaient prêts. Vingt-sept messages contenant des identifiants seraient partis
+vers des personnes réelles sans qu'aucune main humaine n'ait validé le lot, et
+sans fenêtre pour rattraper une attribution erronée.
+
 ## Historique des révisions
 
+- 2026-09-08 : ajout BM-15 (mailles multiples d'une mission, migrations 108/110) et BM-16 (validation humaine des envois de masse, migration 109).
 - 2026-03-13 : ajout BM-07..BM-12 (missions/mailles étudiants + seed contract) et canonicalisation autour de `atlas.v_maille_status`.
 - 2026-03-14 : ajout BM-13 (distinction intégrité référentielle vs validité géographique mission→maille).
 - 2026-03-14 : ajout BM-18..BM-20 (RBAC réattribution + gating UI + protection API + audit trail).

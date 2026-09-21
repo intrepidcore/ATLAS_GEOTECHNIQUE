@@ -12,7 +12,10 @@ use uuid::Uuid;
 
 fn validate_zone_code(code: &str) -> bool {
     let c = code.trim();
-    !c.is_empty() && c.len() <= 64 && c.chars().all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_' || ch == '-')
+    !c.is_empty()
+        && c.len() <= 64
+        && c.chars()
+            .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit() || ch == '_' || ch == '-')
 }
 
 #[derive(Serialize)]
@@ -62,9 +65,7 @@ pub struct ZoneGeoJsonResponse {
 
 /// GET /api/zones-etude
 /// Liste toutes les zones publiées (avec stats mailles/sondages + centroïde pour carte).
-pub async fn list_zones_etude(
-    State(state): State<AppState>,
-) -> impl IntoResponse {
+pub async fn list_zones_etude(State(state): State<AppState>) -> impl IntoResponse {
     list_zones_etude_impl(&state.pool).await
 }
 
@@ -140,9 +141,7 @@ async fn list_zones_etude_impl(pool: &PgPool) -> impl IntoResponse {
             mineraux_argileux: mineraux,
             altitude_moyenne_m,
             source_donnees: row.try_get("source_donnees").ok(),
-            carte_overlay_order: row
-                .try_get::<i32, _>("carte_overlay_order")
-                .unwrap_or(100),
+            carte_overlay_order: row.try_get::<i32, _>("carte_overlay_order").unwrap_or(100),
             nb_mailles_total: row.get::<i64, _>("nb_mailles_total"),
             nb_mailles_prio1: row.get::<i64, _>("nb_mailles_prio1"),
             nb_sondages_existants: row.get::<i64, _>("nb_sondages_existants"),
@@ -209,7 +208,7 @@ pub async fn get_zone_mailles(
         GROUP BY m.id, m.code, m.geom, mze.pct_intersection, mze.priorite_recherche
         ORDER BY mze.priorite_recherche, mze.pct_intersection DESC
         LIMIT $2
-        "#
+        "#,
     )
     .bind(&code_trim)
     .bind(limit)
@@ -277,7 +276,7 @@ pub async fn get_zone_geojson(
         FROM atlas.zones_etude
         WHERE code = $1 AND is_published = TRUE
         LIMIT 1
-        "#
+        "#,
     )
     .bind(&code_trim)
     .fetch_optional(&state.pool)
@@ -304,4 +303,3 @@ pub async fn get_zone_geojson(
     let geojson: serde_json::Value = row.get("geojson");
     Json(ZoneGeoJsonResponse { geojson }).into_response()
 }
-

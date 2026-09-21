@@ -1,18 +1,18 @@
 //! API Commentaires et Notifications pour Atlas Colab
-//! 
+//!
 //! Gestion des commentaires, mentions et notifications
 
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post, delete},
+    routing::{delete, get, post},
     Json, Router,
 };
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
-use regex::Regex;
 
 use crate::auth::middleware::AuthUser;
 use crate::state::AppState;
@@ -263,14 +263,13 @@ pub async fn create_comment(
     // Créer les mentions et notifications
     for username in &mentions {
         // Trouver l'utilisateur mentionné
-        let mentioned_user: Option<(Uuid, String)> = sqlx::query_as(
-            "SELECT id, email FROM atlas.users WHERE username = $1",
-        )
-        .bind(username)
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten();
+        let mentioned_user: Option<(Uuid, String)> =
+            sqlx::query_as("SELECT id, email FROM atlas.users WHERE username = $1")
+                .bind(username)
+                .fetch_optional(&state.pool)
+                .await
+                .ok()
+                .flatten();
 
         if let Some((user_id, _email)) = mentioned_user {
             // Créer la mention
@@ -306,14 +305,13 @@ pub async fn create_comment(
 
     // Si c'est une réponse, notifier l'auteur du commentaire parent
     if let Some(parent_id) = req.parent_comment_id {
-        let parent_author: Option<Uuid> = sqlx::query_scalar(
-            "SELECT author_id FROM atlas.colab_comments WHERE id = $1",
-        )
-        .bind(parent_id)
-        .fetch_optional(&state.pool)
-        .await
-        .ok()
-        .flatten();
+        let parent_author: Option<Uuid> =
+            sqlx::query_scalar("SELECT author_id FROM atlas.colab_comments WHERE id = $1")
+                .bind(parent_id)
+                .fetch_optional(&state.pool)
+                .await
+                .ok()
+                .flatten();
 
         if let Some(parent_author_id) = parent_author {
             if parent_author_id != auth.id {
@@ -381,7 +379,9 @@ pub async fn update_comment(
         ));
     }
 
-    Ok(Json(serde_json::json!({ "message": "Commentaire modifié" })))
+    Ok(Json(
+        serde_json::json!({ "message": "Commentaire modifié" }),
+    ))
 }
 
 /// DELETE /colab/comments/:id - Supprimer un commentaire
@@ -391,8 +391,10 @@ pub async fn delete_comment(
     Path(comment_id): Path<Uuid>,
 ) -> Result<impl IntoResponse, (StatusCode, Json<serde_json::Value>)> {
     // Vérifier si l'utilisateur est l'auteur ou admin
-    let is_admin = auth.permissions.contains(&"colab.comments.moderate".to_string());
-    
+    let is_admin = auth
+        .permissions
+        .contains(&"colab.comments.moderate".to_string());
+
     let result = if is_admin {
         sqlx::query("DELETE FROM atlas.colab_comments WHERE id = $1")
             .bind(comment_id)
@@ -419,7 +421,9 @@ pub async fn delete_comment(
         ));
     }
 
-    Ok(Json(serde_json::json!({ "message": "Commentaire supprimé" })))
+    Ok(Json(
+        serde_json::json!({ "message": "Commentaire supprimé" }),
+    ))
 }
 
 // ============================================================================
@@ -534,7 +538,9 @@ pub async fn mark_notification_read(
         )
     })?;
 
-    Ok(Json(serde_json::json!({ "message": "Notification marquée comme lue" })))
+    Ok(Json(
+        serde_json::json!({ "message": "Notification marquée comme lue" }),
+    ))
 }
 
 /// POST /colab/notifications/read-all - Marquer toutes comme lues

@@ -10,10 +10,7 @@ use validator::Validate;
 
 use super::types::*;
 use crate::auth::{
-    error::AuthError,
-    middleware::AuthUser,
-    password::PasswordHasher,
-    session::SessionManager,
+    error::AuthError, middleware::AuthUser, password::PasswordHasher, session::SessionManager,
     types::DbUser,
 };
 use crate::state::AppState;
@@ -27,13 +24,19 @@ pub fn users_routes() -> Router<AppState> {
             "/users/:id",
             get(get_user).put(update_user).delete(delete_user),
         )
-        .route("/users/:id/roles", put(assign_roles).delete(remove_all_roles))
+        .route(
+            "/users/:id/roles",
+            put(assign_roles).delete(remove_all_roles),
+        )
         .route("/users/:id/roles/:role_id", delete(remove_role))
         .route("/users/:id/activate", post(activate_user))
         .route("/users/:id/deactivate", post(deactivate_user))
         .route("/users/:id/unlock", post(unlock_user))
         .route("/users/:id/reset-password", post(admin_reset_password))
-        .route("/users/:id/sessions", get(list_user_sessions).delete(revoke_user_sessions))
+        .route(
+            "/users/:id/sessions",
+            get(list_user_sessions).delete(revoke_user_sessions),
+        )
 }
 
 /// GET /users - Liste les utilisateurs avec pagination et filtres
@@ -157,10 +160,14 @@ async fn create_user(
 ) -> Result<(StatusCode, Json<UserResponse>), AuthError> {
     // Vérifier la permission
     if !auth_user.has_permission("users.create") {
-        return Err(AuthError::PermissionDenied("users.create requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.create requis".to_string(),
+        ));
     }
 
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     let password_hasher = PasswordHasher::new(state.auth_config.clone());
 
@@ -168,24 +175,22 @@ async fn create_user(
     password_hasher.validate_password_strength(&request.password)?;
 
     // Vérifier l'unicité de l'email
-    let existing: Option<(Uuid,)> = sqlx::query_as(
-        r#"SELECT id FROM atlas.users WHERE deleted_at IS NULL AND email = $1"#,
-    )
-    .bind(&request.email)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<(Uuid,)> =
+        sqlx::query_as(r#"SELECT id FROM atlas.users WHERE deleted_at IS NULL AND email = $1"#)
+            .bind(&request.email)
+            .fetch_optional(&state.pool)
+            .await?;
 
     if existing.is_some() {
         return Err(AuthError::EmailAlreadyExists);
     }
 
     // Vérifier l'unicité du username
-    let existing: Option<(Uuid,)> = sqlx::query_as(
-        r#"SELECT id FROM atlas.users WHERE username = $1"#,
-    )
-    .bind(&request.username)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<(Uuid,)> =
+        sqlx::query_as(r#"SELECT id FROM atlas.users WHERE username = $1"#)
+            .bind(&request.username)
+            .fetch_optional(&state.pool)
+            .await?;
 
     if existing.is_some() {
         return Err(AuthError::UsernameAlreadyExists);
@@ -225,12 +230,11 @@ async fn create_user(
     if let Some(role_ids) = request.roles {
         for role_id in role_ids {
             // Vérifier que le rôle existe
-            let role: Option<(String, String)> = sqlx::query_as(
-                r#"SELECT id, name FROM atlas.roles WHERE id = $1"#,
-            )
-            .bind(&role_id)
-            .fetch_optional(&state.pool)
-            .await?;
+            let role: Option<(String, String)> =
+                sqlx::query_as(r#"SELECT id, name FROM atlas.roles WHERE id = $1"#)
+                    .bind(&role_id)
+                    .fetch_optional(&state.pool)
+                    .await?;
 
             if let Some((id, name)) = role {
                 sqlx::query(
@@ -327,18 +331,20 @@ async fn update_user(
     // Peut modifier son propre profil (limité) ou avoir la permission
     let is_self = user_id == auth_user.id;
     if !is_self && !auth_user.has_permission("users.update") {
-        return Err(AuthError::PermissionDenied("users.update requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.update requis".to_string(),
+        ));
     }
 
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     // Vérifier que l'utilisateur existe
-    let existing: Option<DbUser> = sqlx::query_as(
-        r#"SELECT * FROM atlas.users WHERE id = $1"#,
-    )
-    .bind(user_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<DbUser> = sqlx::query_as(r#"SELECT * FROM atlas.users WHERE id = $1"#)
+        .bind(user_id)
+        .fetch_optional(&state.pool)
+        .await?;
 
     if existing.is_none() {
         return Err(AuthError::UserNotFound);
@@ -361,13 +367,12 @@ async fn update_user(
 
     // Vérifier l'unicité du username si modifié
     if let Some(username) = &request.username {
-        let existing: Option<(Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM atlas.users WHERE username = $1 AND id != $2"#,
-        )
-        .bind(username)
-        .bind(user_id)
-        .fetch_optional(&state.pool)
-        .await?;
+        let existing: Option<(Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM atlas.users WHERE username = $1 AND id != $2"#)
+                .bind(username)
+                .bind(user_id)
+                .fetch_optional(&state.pool)
+                .await?;
 
         if existing.is_some() {
             return Err(AuthError::UsernameAlreadyExists);
@@ -418,7 +423,7 @@ async fn update_user(
 
     // Exécuter la mise à jour
     let mut query = sqlx::query(&sql);
-    
+
     if let Some(email) = &request.email {
         query = query.bind(email);
     }
@@ -484,7 +489,9 @@ async fn delete_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("users.delete") {
-        return Err(AuthError::PermissionDenied("users.delete requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.delete requis".to_string(),
+        ));
     }
 
     // Ne pas permettre de se supprimer soi-même
@@ -495,12 +502,10 @@ async fn delete_user(
     }
 
     // Vérifier que l'utilisateur existe
-    let existing: Option<(Uuid,)> = sqlx::query_as(
-        r#"SELECT id FROM atlas.users WHERE id = $1"#,
-    )
-    .bind(user_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<(Uuid,)> = sqlx::query_as(r#"SELECT id FROM atlas.users WHERE id = $1"#)
+        .bind(user_id)
+        .fetch_optional(&state.pool)
+        .await?;
 
     if existing.is_none() {
         return Err(AuthError::UserNotFound);
@@ -523,16 +528,16 @@ async fn assign_roles(
     Json(request): Json<AssignRolesRequest>,
 ) -> Result<Json<Vec<RoleInfo>>, AuthError> {
     if !auth_user.has_permission("roles.assign") {
-        return Err(AuthError::PermissionDenied("roles.assign requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.assign requis".to_string(),
+        ));
     }
 
     // Vérifier que l'utilisateur existe
-    let existing: Option<(Uuid,)> = sqlx::query_as(
-        r#"SELECT id FROM atlas.users WHERE id = $1"#,
-    )
-    .bind(user_id)
-    .fetch_optional(&state.pool)
-    .await?;
+    let existing: Option<(Uuid,)> = sqlx::query_as(r#"SELECT id FROM atlas.users WHERE id = $1"#)
+        .bind(user_id)
+        .fetch_optional(&state.pool)
+        .await?;
 
     if existing.is_none() {
         return Err(AuthError::UserNotFound);
@@ -543,12 +548,11 @@ async fn assign_roles(
 
     for role_id in &request.roles {
         // Vérifier que le rôle existe
-        let role: Option<(String, String)> = sqlx::query_as(
-            r#"SELECT id, name FROM atlas.roles WHERE id = $1"#,
-        )
-        .bind(role_id)
-        .fetch_optional(&state.pool)
-        .await?;
+        let role: Option<(String, String)> =
+            sqlx::query_as(r#"SELECT id, name FROM atlas.roles WHERE id = $1"#)
+                .bind(role_id)
+                .fetch_optional(&state.pool)
+                .await?;
 
         if let Some((id, name)) = role {
             sqlx::query(
@@ -584,7 +588,9 @@ async fn remove_all_roles(
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("roles.assign") {
-        return Err(AuthError::PermissionDenied("roles.assign requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.assign requis".to_string(),
+        ));
     }
 
     sqlx::query(r#"DELETE FROM atlas.user_roles WHERE user_id = $1"#)
@@ -602,7 +608,9 @@ async fn remove_role(
     Path((user_id, role_id)): Path<(Uuid, String)>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("roles.assign") {
-        return Err(AuthError::PermissionDenied("roles.assign requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "roles.assign requis".to_string(),
+        ));
     }
 
     sqlx::query(r#"DELETE FROM atlas.user_roles WHERE user_id = $1 AND role_id = $2"#)
@@ -621,7 +629,9 @@ async fn activate_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("users.manage") {
-        return Err(AuthError::PermissionDenied("users.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.manage requis".to_string(),
+        ));
     }
 
     sqlx::query(r#"UPDATE atlas.users SET is_active = TRUE, updated_at = NOW() WHERE id = $1"#)
@@ -639,7 +649,9 @@ async fn deactivate_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("users.manage") {
-        return Err(AuthError::PermissionDenied("users.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.manage requis".to_string(),
+        ));
     }
 
     // Ne pas permettre de se désactiver soi-même
@@ -670,7 +682,9 @@ async fn unlock_user(
     Path(user_id): Path<Uuid>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("users.manage") {
-        return Err(AuthError::PermissionDenied("users.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.manage requis".to_string(),
+        ));
     }
 
     sqlx::query(
@@ -695,10 +709,14 @@ async fn admin_reset_password(
     Json(request): Json<AdminResetPasswordRequest>,
 ) -> Result<StatusCode, AuthError> {
     if !auth_user.has_permission("users.manage") {
-        return Err(AuthError::PermissionDenied("users.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.manage requis".to_string(),
+        ));
     }
 
-    request.validate().map_err(|e| AuthError::ValidationError(e.to_string()))?;
+    request
+        .validate()
+        .map_err(|e| AuthError::ValidationError(e.to_string()))?;
 
     let password_hasher = PasswordHasher::new(state.auth_config.clone());
     password_hasher.validate_password_strength(&request.new_password)?;
@@ -723,6 +741,8 @@ async fn admin_reset_password(
         .revoke_all_sessions(user_id, "admin_password_reset", None, None)
         .await?;
 
+    crate::atlaspack::jobs::refresh_package_after_password_change(&state.pool, user_id).await;
+
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -734,7 +754,9 @@ async fn list_user_sessions(
 ) -> Result<Json<Vec<crate::auth::types::SessionInfo>>, AuthError> {
     // Peut voir ses propres sessions ou avoir la permission
     if user_id != auth_user.id && !auth_user.has_permission("users.manage") {
-        return Err(AuthError::PermissionDenied("users.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.manage requis".to_string(),
+        ));
     }
 
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
@@ -744,7 +766,9 @@ async fn list_user_sessions(
         None
     };
 
-    let sessions = session_manager.list_user_sessions(user_id, current_session).await?;
+    let sessions = session_manager
+        .list_user_sessions(user_id, current_session)
+        .await?;
 
     Ok(Json(sessions))
 }
@@ -756,7 +780,9 @@ async fn revoke_user_sessions(
     Path(user_id): Path<Uuid>,
 ) -> Result<Json<serde_json::Value>, AuthError> {
     if !auth_user.has_permission("users.manage") {
-        return Err(AuthError::PermissionDenied("users.manage requis".to_string()));
+        return Err(AuthError::PermissionDenied(
+            "users.manage requis".to_string(),
+        ));
     }
 
     let session_manager = SessionManager::new(state.pool.clone(), state.auth_config.clone());
@@ -782,23 +808,20 @@ async fn get_users_stats(
         .fetch_one(&state.pool)
         .await?;
 
-    let active_users: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM atlas.users WHERE is_active = TRUE"#,
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let active_users: i64 =
+        sqlx::query_scalar(r#"SELECT COUNT(*) FROM atlas.users WHERE is_active = TRUE"#)
+            .fetch_one(&state.pool)
+            .await?;
 
-    let verified_users: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM atlas.users WHERE is_verified = TRUE"#,
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let verified_users: i64 =
+        sqlx::query_scalar(r#"SELECT COUNT(*) FROM atlas.users WHERE is_verified = TRUE"#)
+            .fetch_one(&state.pool)
+            .await?;
 
-    let locked_accounts: i64 = sqlx::query_scalar(
-        r#"SELECT COUNT(*) FROM atlas.users WHERE locked_until > NOW()"#,
-    )
-    .fetch_one(&state.pool)
-    .await?;
+    let locked_accounts: i64 =
+        sqlx::query_scalar(r#"SELECT COUNT(*) FROM atlas.users WHERE locked_until > NOW()"#)
+            .fetch_one(&state.pool)
+            .await?;
 
     let recent_logins: i64 = sqlx::query_scalar(
         r#"SELECT COUNT(*) FROM atlas.users WHERE last_login_at > NOW() - INTERVAL '24 hours'"#,

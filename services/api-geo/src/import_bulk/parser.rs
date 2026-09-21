@@ -485,11 +485,11 @@ mod tests {
     }
 
     #[test]
-    fn test_sanitize_csv_injection() {
-        assert_eq!(sanitize_csv_injection("=SUM(A1:A10)"), "'=SUM(A1:A10)");
-        assert_eq!(sanitize_csv_injection("+1234"), "'+1234");
-        assert_eq!(sanitize_csv_injection("-1234"), "'-1234");
-        assert_eq!(sanitize_csv_injection("@username"), "'@username");
-        assert_eq!(sanitize_csv_injection("normal value"), "normal value");
+    fn test_sanitize_csv_value() {
+        assert_eq!(sanitize_csv_value("=SUM(A1:A10)"), "'=SUM(A1:A10)");
+        assert_eq!(sanitize_csv_value("+1234"), "'+1234");
+        assert_eq!(sanitize_csv_value("-1234"), "'-1234");
+        assert_eq!(sanitize_csv_value("@username"), "'@username");
+        assert_eq!(sanitize_csv_value("normal value"), "normal value");
     }
 }

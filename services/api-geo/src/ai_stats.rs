@@ -114,7 +114,8 @@ async fn get_descriptive_stats(
             COALESCE(PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY value), 0.0) AS median,
             COALESCE(PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY value), 0.0) AS q3
         FROM filtered
-        "#.to_string()
+        "#
+        .to_string()
     };
 
     // Essayer d'abord d'obtenir les données depuis ai_interpolation_values
@@ -137,7 +138,17 @@ async fn get_descriptive_stats(
                 let median: f64 = row.try_get("median").unwrap_or(0.0);
                 let q3: f64 = row.try_get("q3").unwrap_or(0.0);
                 let max: f64 = row.try_get("max").unwrap_or(0.0);
-                (n, mean, stddev, min, q1, median, q3, max, "interpolated_values")
+                (
+                    n,
+                    mean,
+                    stddev,
+                    min,
+                    q1,
+                    median,
+                    q3,
+                    max,
+                    "interpolated_values",
+                )
             } else {
                 // COUNT = 0 - utiliser fallback variogrammes (fetch_optional — ETL-03)
                 let fallback_opt = sqlx::query(
@@ -161,7 +172,12 @@ async fn get_descriptive_stats(
                 .bind(parameter.clone())
                 .fetch_optional(&state.pool)
                 .await
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+                .map_err(|e| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        Json(json!({"error": e.to_string()})),
+                    )
+                })?;
 
                 let Some(fallback) = fallback_opt else {
                     return Ok(Json(json!({
@@ -184,9 +200,19 @@ async fn get_descriptive_stats(
                 let q3: f64 = fallback.try_get("q3").unwrap_or(0.0);
                 let max: f64 = fallback.try_get("max").unwrap_or(0.0);
 
-                (n, mean, stddev, min, q1, median, q3, max, "variograms_fallback")
+                (
+                    n,
+                    mean,
+                    stddev,
+                    min,
+                    q1,
+                    median,
+                    q3,
+                    max,
+                    "variograms_fallback",
+                )
             }
-        },
+        }
         Ok(None) | Err(_) => {
             // Fallback vers les variogrammes — fetch_optional : jamais de 500 si table vide
             let fallback_opt = sqlx::query(
@@ -208,9 +234,14 @@ async fn get_descriptive_stats(
                 "#,
             )
             .bind(parameter.clone())
-            .fetch_optional(&state.pool)  // fix: fetch_one → fetch_optional (ETL-03)
+            .fetch_optional(&state.pool) // fix: fetch_one → fetch_optional (ETL-03)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({"error": e.to_string()})),
+                )
+            })?;
 
             let Some(fallback) = fallback_opt else {
                 // Aucune donnée — réponse vide propre plutôt que 500
@@ -252,7 +283,7 @@ async fn get_descriptive_stats(
     // Appliquer le clamp aux valeurs min/max pour les paramètres géotechniques
     let clamped_min = clamp_geotechnical_value(&parameter, min);
     let clamped_max = clamp_geotechnical_value(&parameter, max);
-    
+
     // Retourner les données interpolées
     Ok(Json(json!({
         "parameter_id": parameter,
@@ -289,7 +320,12 @@ async fn get_correlations(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e.to_string()})),
+        )
+    })?;
 
     let mut items = Vec::new();
     for r in &rows {
@@ -326,7 +362,10 @@ async fn get_eda_histogram(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     let raw_parameter = params.get("parameter").map(|s| s.as_str()).unwrap_or("vbs");
     let parameter = normalize_param_id(raw_parameter);
-    let bins: i32 = params.get("bins").and_then(|s| s.parse().ok()).unwrap_or(10);
+    let bins: i32 = params
+        .get("bins")
+        .and_then(|s| s.parse().ok())
+        .unwrap_or(10);
 
     // Essayer d'abord ai_interpolation_values, puis fallback vers les variogrammes
     let query = r#"
@@ -358,7 +397,12 @@ async fn get_eda_histogram(
         FROM binned GROUP BY bin ORDER BY bin
         "#;
 
-    let rows = match sqlx::query(&query).bind(parameter.clone()).bind(bins).fetch_all(&state.pool).await {
+    let rows = match sqlx::query(&query)
+        .bind(parameter.clone())
+        .bind(bins)
+        .fetch_all(&state.pool)
+        .await
+    {
         Ok(r) => r,
         Err(_) => {
             // Fallback : générer un histogramme synthétique à partir du variogramme
@@ -374,7 +418,12 @@ async fn get_eda_histogram(
             .bind(parameter.clone())
             .fetch_optional(&state.pool)
             .await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({"error": e.to_string()})),
+                )
+            })?;
 
             let Some(vr) = var_row else {
                 return Ok(Json(json!({
@@ -484,12 +533,22 @@ async fn get_coverage(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e.to_string()})),
+        )
+    })?;
 
     let total_mailles: i64 = sqlx::query("SELECT COUNT(*)::bigint FROM atlas.mailles")
         .fetch_one(&state.pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": e.to_string()})),
+            )
+        })?
         .try_get("count")
         .unwrap_or(29407);
 
@@ -552,7 +611,12 @@ pub async fn get_ml_registry(
     )
     .fetch_all(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e.to_string()})),
+        )
+    })?;
 
     let items: Vec<serde_json::Value> = rows
         .iter()
@@ -631,25 +695,37 @@ async fn get_coverage_map(
     State(state): State<AppState>,
     axum::extract::Query(params): axum::extract::Query<std::collections::HashMap<String, String>>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
-    let raw_parameter = params.get("parameter").map(|s| s.as_str()).unwrap_or("vbs_avg");
+    let raw_parameter = params
+        .get("parameter")
+        .map(|s| s.as_str())
+        .unwrap_or("vbs_avg");
     let parameter = normalize_param_id(raw_parameter);
 
-    let coverage_row = sqlx::query(r#"
+    let coverage_row = sqlx::query(
+        r#"
         SELECT COUNT(DISTINCT maille_id)::bigint AS n_interp
         FROM atlas.ai_interpolation_values
         WHERE parameter_id = $1
           AND COALESCE(is_superseded, false) = false
-    "#)
+    "#,
+    )
     .bind(&parameter)
     .fetch_one(&state.pool)
     .await
-    .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+    .map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({"error": e.to_string()})),
+        )
+    })?;
 
     let n_interp: i64 = coverage_row.try_get("n_interp").unwrap_or(0);
     let coverage_pct = n_interp as f64 * 100.0 / 29407.0;
 
     let (geojson_query, limit_note) = if coverage_pct >= 99.0 {
-        (format!(r#"
+        (
+            format!(
+                r#"
             SELECT m.id, m.code,
                 ST_AsGeoJSON(ST_Simplify(m.geom, 0.005))::json AS geometry,
                 'missing' AS status
@@ -661,9 +737,15 @@ async fn get_coverage_map(
                   AND COALESCE(iv.is_superseded, false) = false
             )
             LIMIT 500
-        "#, parameter), "missing_only")
+        "#,
+                parameter
+            ),
+            "missing_only",
+        )
     } else {
-        (format!(r#"
+        (
+            format!(
+                r#"
             SELECT m.id, m.code,
                 ST_AsGeoJSON(ST_Simplify(m.geom, 0.01))::json AS geometry,
                 CASE WHEN iv.maille_id IS NOT NULL THEN 'interpolated'
@@ -676,27 +758,40 @@ async fn get_coverage_map(
                   AND COALESCE(is_superseded, false) = false
             ) iv ON iv.maille_id = m.id
             LIMIT 5000
-        "#, parameter), "all_mailles")
+        "#,
+                parameter
+            ),
+            "all_mailles",
+        )
     };
 
     let features = sqlx::query(&geojson_query)
         .fetch_all(&state.pool)
         .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({"error": e.to_string()}))))?;
+        .map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"error": e.to_string()})),
+            )
+        })?;
 
-    let feature_list: Vec<serde_json::Value> = features.iter().map(|r| {
-        let geometry: serde_json::Value = r.try_get::<serde_json::Value, _>("geometry")
-            .unwrap_or(serde_json::Value::Null);
-        json!({
-            "type": "Feature",
-            "geometry": geometry,
-            "properties": {
-                "id": r.get::<i64, _>("id"),
-                "code": r.try_get::<String, _>("code").unwrap_or_default(),
-                "status": r.get::<String, _>("status"),
-            }
+    let feature_list: Vec<serde_json::Value> = features
+        .iter()
+        .map(|r| {
+            let geometry: serde_json::Value = r
+                .try_get::<serde_json::Value, _>("geometry")
+                .unwrap_or(serde_json::Value::Null);
+            json!({
+                "type": "Feature",
+                "geometry": geometry,
+                "properties": {
+                    "id": r.get::<i64, _>("id"),
+                    "code": r.try_get::<String, _>("code").unwrap_or_default(),
+                    "status": r.get::<String, _>("status"),
+                }
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(Json(json!({
         "type": "FeatureCollection",

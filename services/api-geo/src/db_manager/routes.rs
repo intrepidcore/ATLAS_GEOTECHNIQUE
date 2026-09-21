@@ -7,12 +7,10 @@ use axum::{
     Json,
 };
 use serde::Serialize;
-use std::collections::HashMap;
 use sqlx::PgPool;
+use std::collections::HashMap;
 
-fn require_admin_pool(
-    state: &AppState,
-) -> Result<&PgPool, (StatusCode, Json<DbManagerError>)> {
+fn require_admin_pool(state: &AppState) -> Result<&PgPool, (StatusCode, Json<DbManagerError>)> {
     state.admin_pool.as_ref().ok_or((
         StatusCode::SERVICE_UNAVAILABLE,
         Json(DbManagerError::new(
@@ -87,18 +85,7 @@ pub async fn select_bbox_handler(
     ))?;
     let srid = payload.get("srid").and_then(|v| v.as_i64()).unwrap_or(4326) as i32;
 
-    match table::select_bbox(
-        pool,
-        &schema,
-        &table,
-        min_x,
-        min_y,
-        max_x,
-        max_y,
-        srid,
-    )
-    .await
-    {
+    match table::select_bbox(pool, &schema, &table, min_x, min_y, max_x, max_y, srid).await {
         Ok(resp) => Ok(Json(resp)),
         Err(e) => Err((
             StatusCode::INTERNAL_SERVER_ERROR,
@@ -213,8 +200,7 @@ pub async fn add_row_handler(
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<DbManagerError>)> {
     let pool = require_admin_pool(&state)?;
     // Créer un backup automatique
-    if let Err(e) = backup::create_auto_backup(pool, &schema, &table, "Ajout de ligne").await
-    {
+    if let Err(e) = backup::create_auto_backup(pool, &schema, &table, "Ajout de ligne").await {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
 
@@ -333,9 +319,7 @@ pub async fn create_staging_handler(
 ) -> Result<Json<StagingInfo>, (StatusCode, Json<DbManagerError>)> {
     let pool = require_admin_pool(&state)?;
     // Créer un backup automatique
-    if let Err(e) =
-        backup::create_auto_backup(pool, &schema, &table, "Création staging").await
-    {
+    if let Err(e) = backup::create_auto_backup(pool, &schema, &table, "Création staging").await {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
 
@@ -439,9 +423,7 @@ pub async fn add_column_handler(
 ) -> Result<StatusCode, (StatusCode, Json<DbManagerError>)> {
     let pool = require_admin_pool(&state)?;
     // Créer un backup automatique
-    if let Err(e) =
-        backup::create_auto_backup(pool, &schema, &table, "Ajout de colonne").await
-    {
+    if let Err(e) = backup::create_auto_backup(pool, &schema, &table, "Ajout de colonne").await {
         eprintln!("Erreur lors de la création du backup: {}", e);
     }
 

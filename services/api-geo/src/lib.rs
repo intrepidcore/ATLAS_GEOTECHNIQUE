@@ -1,4 +1,5 @@
 // Library exports for api-geo
+pub mod atlaspack;
 pub mod auth;
 pub mod db_manager;
 pub mod events;

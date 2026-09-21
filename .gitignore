@@ -65,6 +65,7 @@ exports/*.csv
 exports/*.json
 data/thematic_maille_matrix_fixed.xlsx
 data/tiles/*.mbtiles
+data/atlaspack/
 backup/
 db/dumps/
 
@@ -107,3 +108,25 @@ temp_*.bat
 temp_*.sql
 
 data/db/backups/atlas_desktop_seed.dump
+
+# Artefacts de build mobile : 638 Mo, regeneres par EAS ou gradle, et
+# plusieurs depassent la limite de 100 Mo de GitHub.
+*.apk
+*.aab
+*.7z.[0-9][0-9][0-9]
+
+# Cle de signature de debogage : se regenere, ne se partage pas.
+mobile/android/app/debug.keystore
+*.keystore
+*.jks
+
+# Repertoire de travail temporaire.
+.codex-tmp/
+
+# Extractions d.audit de la base sondages : enregistrements reels, coordonnees
+# et noms d.operateurs. Donnees proprietaires et personnelles, jamais publiees.
+audit_output/
+
+# Bytecode Python.
+__pycache__/
+*.pyc

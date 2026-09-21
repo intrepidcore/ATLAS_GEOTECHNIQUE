@@ -49,6 +49,7 @@ import { ThematicMapManager } from './thematic/thematic-maps'
 import { ThematicPanel } from './thematic/thematic-panel'
 import { initInferOptiCommandCenter } from './infer-opti/command-center'
 import { initScientificDrawer } from './scientific-drawer'
+import { focusOperator, initOperatorFocus } from './operator-focus'
 import { initCampaignPlanner } from './mission/campaign-planner'
 import { initRightPanelShell } from './right-panel-shell'
 import { createSearchController, type SearchResult } from './search-controller'
@@ -195,6 +196,7 @@ bus.on('maille:update', ({ mailleId }) => {
 import { loadAndDisplayGlobalStats, invalidateGlobalStatsCache } from './global-stats'
 import { initTileLayer, initOfflineTiles, createTileControl, createBasemapLayerControl } from './tile-manager'
 import { createCartoDBDarkBasemap, createCartoDBPositronBasemap } from './map/basemaps'
+import { registerBasemap, removeOtherBasemaps } from './tile-manager'
 import { makeResizable } from './components/resizable-panel'
 import { initFloatingPanels } from './components/panel-float'
 import { createProfessionalMetricsControl } from './components/map/ProfessionalMetricsControl'
@@ -821,14 +823,30 @@ initOfflineTiles().then(() => {
   console.log('[INIT] Tile layers + basemap control initialized')
 
   // D1 — Sync tile layer with light/dark theme
+  //
+  // Ce fond suit le thème, mais il ne doit pas s'ajouter PAR-DESSUS un fond
+  // choisi explicitement par l'utilisateur : c'était l'une des trois sources
+  // qui empilaient des tuiles sans jamais se retirer. Dès qu'un choix est fait
+  // dans le sélecteur de fonds, la synchronisation avec le thème s'efface.
   let _themeBaseTile: L.TileLayer | null = null
+  let _userPickedBasemap = false
   function applyThemeTile() {
+    if (_userPickedBasemap) return
     const isDark = document.documentElement.classList.contains('dark')
     if (_themeBaseTile) { map.removeLayer(_themeBaseTile) }
     _themeBaseTile = isDark ? createCartoDBDarkBasemap() : createCartoDBPositronBasemap()
+    registerBasemap(_themeBaseTile)
+    removeOtherBasemaps(map, _themeBaseTile)
     _themeBaseTile.addTo(map)
     _themeBaseTile.bringToBack()
   }
+  map.on('baselayerchange', () => {
+    _userPickedBasemap = true
+    if (_themeBaseTile && map.hasLayer(_themeBaseTile)) {
+      map.removeLayer(_themeBaseTile)
+    }
+    _themeBaseTile = null
+  })
   applyThemeTile()
   new MutationObserver(() => applyThemeTile()).observe(
     document.documentElement,
@@ -1106,6 +1124,36 @@ function toast(msg: string, kind: 'ok' | 'err' = 'ok') {
 }
 
 function handleSearchSelection(result: SearchResult) {
+  // Un opérateur sans maille reste sélectionnable : on l'épingle pour le
+  // signaler, plutôt que de rejeter la sélection sur « localisation
+  // indisponible » qui n'expliquerait rien.
+  if (result.type === 'operateur') {
+    const name = result.label.split(' — ')[0] ?? result.label
+    // Le serveur renvoie les codes séparés par des virgules quand la mission
+    // couvre plusieurs mailles.
+    const codes = (result.code ?? '')
+      .split(',')
+      .map((c) => c.trim())
+      .filter(Boolean)
+    focusOperator({ studentId: result.id ?? '', name, mailleCodes: codes })
+    applyFilters()
+    if (result.bbox) {
+      const b = L.latLngBounds([result.bbox[1], result.bbox[0]], [result.bbox[3], result.bbox[2]])
+      if (b.isValid()) map.fitBounds(b.pad(0.4))
+    } else if (result.centroid) {
+      map.setView([result.centroid[1], result.centroid[0]], 13)
+    }
+    toast(
+      codes.length === 0
+        ? `${name} n'a aucune maille attribuée`
+        : codes.length === 1
+          ? `${name} — maille ${codes[0]} isolée`
+          : `${name} — ${codes.length} mailles isolées`,
+      codes.length > 0 ? 'ok' : 'err',
+    )
+    return
+  }
+
   if (!result.has_geom) {
     toast('Localisation indisponible', 'err')
     return
@@ -1259,6 +1307,17 @@ function getDefaultStyle(feature: any): L.PathOptions {
  * Pattern robuste : pas de clignotement, pas de couche supplémentaire
  */
 function handleMouseOver(layer: L.Path, feature: any) {
+  // Une maille masquée par les filtres ne réagit pas au survol : ni style,
+  // ni infobulle, ni passage au premier plan.
+  if (!featureMatchesFilters(feature, currentFilters)) {
+    try {
+      ;(layer as any).closeTooltip?.()
+    } catch {
+      // ignore
+    }
+    return
+  }
+
   // Si on survole la maille déjà sélectionnée, ne rien faire
   if (layer === selectedCell) return
   
@@ -1460,7 +1519,11 @@ function onEachFeature(f: any, layer: any) {
   
   // Tooltip enrichi avec données contextuelles de la feature survolée
   // Le contenu est généré dynamiquement lors du survol
-  layer.bindTooltip(() => buildEnrichedTooltip(p), { sticky: true, opacity: 0.95 })
+  // L'infobulle suit la visibilité : une maille filtrée ne raconte rien.
+  layer.bindTooltip(
+    () => (featureMatchesFilters(f, currentFilters) ? buildEnrichedTooltip(p) : ''),
+    { sticky: true, opacity: 0.95 },
+  )
   
   // Chantier A - Pattern robuste : survol et clic sur la même couche
   layer.on({
@@ -1499,6 +1562,10 @@ function onEachFeature(f: any, layer: any) {
       }
     },
     click: async () => {
+      // Masquée par les filtres : la maille n'est pas là pour l'utilisateur,
+      // elle ne doit pas répondre au clic non plus.
+      if (!featureMatchesFilters(f, currentFilters)) return
+
       // Appeler le handler de clic centralisé
       handleClick(layer, f, p)
       
@@ -3633,7 +3700,7 @@ function buildAdmFilters(gj: any) {
   // Attach data filter handlers
   safeAddEventListener('filterHasData', 'change', () => applyFilters())
   safeAddEventListener('filterNoData', 'change', () => applyFilters())
-  safeAddEventListener('filterAssignedOnly', 'change', () => applyFilters())
+  safeAddEventListener('filterAssigned', 'change', () => applyFilters())
   safeAddEventListener('filterMinSondages', 'input', () => applyFilters())
   safeAddEventListener('filterMinEssais', 'input', () => applyFilters())
 
@@ -5193,7 +5260,7 @@ document.getElementById('resetFilters')?.addEventListener('click', () => {
   // Réinitialiser tous les filtres
   (document.getElementById('filterHasData') as HTMLInputElement).checked = true;
   (document.getElementById('filterNoData') as HTMLInputElement).checked = true;
-  ;(document.getElementById('filterAssignedOnly') as HTMLInputElement).checked = false;
+  ;(document.getElementById('filterAssigned') as HTMLInputElement).checked = true;
   (document.getElementById('filterMinSondages') as HTMLInputElement).value = '0';
   ;(document.getElementById('filterMinEssais') as HTMLInputElement).value = '0';
   (document.getElementById('filterAdm1') as HTMLSelectElement).value = '';
@@ -5267,13 +5334,11 @@ function applyFilters() {
     
     if (visible) {
       filteredFeatures.push(feature)
-      // Appliquer le style normal avec opacité visible
-      const style = getGridFeatureStyle(feature, map?.getZoom())
-      layer.setStyle({ ...style, opacity: 1 })
-    } else {
-      // Masquer complètement la maille
-      layer.setStyle({ opacity: 0, fillOpacity: 0 })
     }
+    // `getGridFeatureStyle` décide seul de la visibilité : on le laisse
+    // produire le style dans les deux cas plutôt que d'en écrire un ici, sous
+    // peine de voir les deux définitions diverger.
+    layer.setStyle(getGridFeatureStyle(feature, map?.getZoom()))
   })
   
   // 4. Calculer et afficher les statistiques
@@ -5641,6 +5706,10 @@ function initUnifiedSearch() {
   } catch {
     // ignore
   }
+
+  // La puce d'épinglage vit sous la barre de recherche : elle doit être
+  // initialisée en même temps que le contrôleur qui la nourrit.
+  initOperatorFocus(() => applyFilters())
 
   unifiedSearchController = createSearchController({
     apiBase: API_GEO,

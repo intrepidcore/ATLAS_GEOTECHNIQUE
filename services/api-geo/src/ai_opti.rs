@@ -1,8 +1,4 @@
-use axum::{
-    extract::State,
-    http::StatusCode,
-    Json,
-};
+use axum::{extract::State, http::StatusCode, Json};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::Row;
@@ -17,7 +13,10 @@ pub async fn optimize_campaign_simple(
     Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
     match internal_services::forward_opti_campaign_simple(payload).await {
         Ok(Some(v)) => Ok(Json(v)),
@@ -28,7 +27,10 @@ pub async fn optimize_campaign_simple(
                 "detail": "Configurer ATLAS_API_OPTI_URL et démarrer api-opti avec DATABASE_URL (migration 159)."
             })),
         )),
-        Err(e) => Err((StatusCode::BAD_GATEWAY, Json(json!({ "error": "api-opti", "detail": e })))),
+        Err(e) => Err((
+            StatusCode::BAD_GATEWAY,
+            Json(json!({ "error": "api-opti", "detail": e })),
+        )),
     }
 }
 
@@ -39,7 +41,10 @@ pub async fn optimize_campaign_ga(
     Json(payload): Json<serde_json::Value>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
     match internal_services::forward_opti_campaign_ga(payload).await {
         Ok(Some(v)) => Ok(Json(v)),
@@ -50,7 +55,10 @@ pub async fn optimize_campaign_ga(
                 "detail": "Configurer ATLAS_API_OPTI_URL et démarrer api-opti avec DATABASE_URL."
             })),
         )),
-        Err(e) => Err((StatusCode::BAD_GATEWAY, Json(json!({ "error": "api-opti", "detail": e })))),
+        Err(e) => Err((
+            StatusCode::BAD_GATEWAY,
+            Json(json!({ "error": "api-opti", "detail": e })),
+        )),
     }
 }
 
@@ -97,12 +105,19 @@ pub async fn optimize_strategy(
     Json(payload): Json<OptiRequest>,
 ) -> Result<Json<OptiResponse>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let features = ai_infer::load_features(&state, payload.maille_id, payload.maille_code.as_deref()).await?;
+    let features =
+        ai_infer::load_features(&state, payload.maille_id, payload.maille_code.as_deref()).await?;
     let charge = payload.charge_kpa.unwrap_or(150.0).clamp(50.0, 500.0);
-    let budget = payload.budget_fcfa.unwrap_or(45_000_000.0).clamp(5_000_000.0, 500_000_000.0);
+    let budget = payload
+        .budget_fcfa
+        .unwrap_or(45_000_000.0)
+        .clamp(5_000_000.0, 500_000_000.0);
     let generations = payload.generations.unwrap_or(25).clamp(5, 100);
     let population_size = payload.population_size.unwrap_or(40).clamp(10, 200);
 
@@ -130,7 +145,11 @@ pub async fn optimize_strategy(
         })?,
         Ok(None) => {
             let mut candidates = build_candidates(&features, charge, budget);
-            candidates.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap_or(std::cmp::Ordering::Equal));
+            candidates.sort_by(|a, b| {
+                b.fitness
+                    .partial_cmp(&a.fitness)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             for (idx, c) in candidates.iter_mut().enumerate() {
                 c.rank = idx + 1;
             }
@@ -183,10 +202,15 @@ pub async fn request_retrain(
     Json(payload): Json<RetrainRequest>,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let target = payload.target.unwrap_or_else(|| "rga_predictor".to_string());
+    let target = payload
+        .target
+        .unwrap_or_else(|| "rga_predictor".to_string());
     let trigger_reason = payload
         .trigger_reason
         .unwrap_or_else(|| "manual_request".to_string());
@@ -219,7 +243,10 @@ pub async fn recompute_geotech_sources(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let row = sqlx::query(
@@ -259,7 +286,11 @@ fn script_path(relative_from_manifest_dir: &str) -> String {
         return format!("{}/{}", dir.trim_end_matches('/'), script_name);
     }
     // `CARGO_MANIFEST_DIR` = .../services/api-geo
-    format!("{}/{}", env!("CARGO_MANIFEST_DIR"), relative_from_manifest_dir)
+    format!(
+        "{}/{}",
+        env!("CARGO_MANIFEST_DIR"),
+        relative_from_manifest_dir
+    )
 }
 
 fn require_database_url() -> Result<String, String> {
@@ -305,14 +336,21 @@ pub async fn recompute_kriging_global_gp(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let metrics = match internal_services::forward_infer_kriging().await {
         Ok(Some(v)) => v,
         Ok(None) => {
-            let db_url = require_database_url()
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+            let db_url = require_database_url().map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e })),
+                )
+            })?;
             let kriging_script = script_path("../../scripts/kriging_gp_global_interpolate.py");
             run_python_json(&[
                 &kriging_script,
@@ -321,7 +359,12 @@ pub async fn recompute_kriging_global_gp(
                 "--method",
                 "kriging_gp_global_v1",
             ])
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e })),
+                )
+            })?
         }
         Err(e) => {
             return Err((
@@ -356,7 +399,10 @@ pub async fn train_supervised_infer_rga(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     const MODEL_V2: &str = "supervised_ml_gb_v2_context";
@@ -365,8 +411,12 @@ pub async fn train_supervised_infer_rga(
     let result = match internal_services::forward_infer_supervised(MODEL_V2, TARGET).await {
         Ok(Some(v)) => v,
         Ok(None) => {
-            let db_url = require_database_url()
-                .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+            let db_url = require_database_url().map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e })),
+                )
+            })?;
             let script = script_path("../../scripts/supervised_rga_train_infer.py");
             run_python_json(&[
                 &script,
@@ -377,7 +427,12 @@ pub async fn train_supervised_infer_rga(
                 "--target",
                 TARGET,
             ])
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?
+            .map_err(|e| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(json!({ "error": e })),
+                )
+            })?
         }
         Err(e) => {
             return Err((
@@ -416,7 +471,10 @@ pub async fn refresh_ml_prereqs(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
     let row = sqlx::query(r#"SELECT atlas.refresh_atlas_ml_prereqs() AS payload"#)
@@ -442,7 +500,11 @@ pub async fn refresh_ml_prereqs(
     })))
 }
 
-fn build_candidates(features: &ai_infer::MailleFeatures, charge_kpa: f64, budget_fcfa: f64) -> Vec<OptiCandidate> {
+fn build_candidates(
+    features: &ai_infer::MailleFeatures,
+    charge_kpa: f64,
+    budget_fcfa: f64,
+) -> Vec<OptiCandidate> {
     let treatments = [
         ("aucun", 1.0_f64, 0.0_f64, 0.85_f64),
         ("chaux", 1.18_f64, 7_500_000.0_f64, 0.9_f64),
@@ -455,17 +517,24 @@ fn build_candidates(features: &ai_infer::MailleFeatures, charge_kpa: f64, budget
         ("micropieux", 1.45_f64, 26_000_000.0_f64),
     ];
 
-    let risk_multiplier = if features.pct_in_lama.unwrap_or(0.0) >= 25.0 { 1.18 } else { 1.0 };
+    let risk_multiplier = if features.pct_in_lama.unwrap_or(0.0) >= 25.0 {
+        1.18
+    } else {
+        1.0
+    };
     let data_bonus = (features.n_sondages as f64 * 0.03).clamp(0.0, 0.15);
 
     let mut out = Vec::new();
     for (t_name, t_safety_mult, t_cost, t_durability) in treatments {
         for (f_name, f_safety_mult, f_cost) in foundations {
             let base_safety = (2.2 - (charge_kpa / 280.0)).clamp(0.8, 2.2);
-            let safety = (base_safety * t_safety_mult * f_safety_mult / risk_multiplier + data_bonus).clamp(0.6, 3.0);
+            let safety = (base_safety * t_safety_mult * f_safety_mult / risk_multiplier
+                + data_bonus)
+                .clamp(0.6, 3.0);
             let cost = t_cost + f_cost + (charge_kpa * 12_000.0);
             let budget_ratio = (budget_fcfa / cost).clamp(0.2, 2.0);
-            let durability = (t_durability + if f_name == "micropieux" { 0.05 } else { 0.0 }).clamp(0.5, 1.0);
+            let durability =
+                (t_durability + if f_name == "micropieux" { 0.05 } else { 0.0 }).clamp(0.5, 1.0);
             let fitness = (safety * 45.0) + (durability * 35.0) + (budget_ratio * 20.0);
 
             out.push(OptiCandidate {
@@ -494,38 +563,54 @@ pub async fn recompute_rk(
     use std::thread;
 
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let db_url = require_database_url()
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+    let db_url = require_database_url().map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e })),
+        )
+    })?;
 
     let rk_script = script_path("../../scripts/atlas_regression_kriging_terrain.py");
 
-    let params   = ["vbs", "ip", "wl", "wp", "eg"];
+    let params = ["vbs", "ip", "wl", "wp", "eg"];
     let horizons = ["h1", "h2", "h3"];
 
     // 15 threads parallèles (param × horizon) — chacun indépendant, écriture atomique en DB
-    let handles: Vec<_> = params.iter().flat_map(|&p| {
-        // Cloner les captures AVANT la closure interne (évite move sur FnMut outer)
-        let rk_script_outer = rk_script.clone();
-        let db_url_outer    = db_url.clone();
-        horizons.iter().map(move |&h| {
-            let script  = rk_script_outer.clone();
-            let db      = db_url_outer.clone();
-            let param   = p.to_string();
-            let horizon = h.to_string();
-            thread::spawn(move || {
-                let result = run_python_json(&[
-                    &script,
-                    "--database-url", &db,
-                    "--parameter",    &param,
-                    "--horizon",      &horizon,
-                ]);
-                (param, horizon, result)
-            })
-        }).collect::<Vec<_>>()
-    }).collect();
+    let handles: Vec<_> = params
+        .iter()
+        .flat_map(|&p| {
+            // Cloner les captures AVANT la closure interne (évite move sur FnMut outer)
+            let rk_script_outer = rk_script.clone();
+            let db_url_outer = db_url.clone();
+            horizons
+                .iter()
+                .map(move |&h| {
+                    let script = rk_script_outer.clone();
+                    let db = db_url_outer.clone();
+                    let param = p.to_string();
+                    let horizon = h.to_string();
+                    thread::spawn(move || {
+                        let result = run_python_json(&[
+                            &script,
+                            "--database-url",
+                            &db,
+                            "--parameter",
+                            &param,
+                            "--horizon",
+                            &horizon,
+                        ]);
+                        (param, horizon, result)
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
 
     let mut results = Vec::new();
     let mut n_ok = 0usize;
@@ -558,11 +643,18 @@ pub async fn recompute_ked(
     auth: AuthUser,
 ) -> Result<Json<serde_json::Value>, (StatusCode, Json<serde_json::Value>)> {
     if !auth.has_permission("colab.missions.read") {
-        return Err((StatusCode::FORBIDDEN, Json(json!({ "error": "Permission refusée" }))));
+        return Err((
+            StatusCode::FORBIDDEN,
+            Json(json!({ "error": "Permission refusée" })),
+        ));
     }
 
-    let db_url = require_database_url()
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, Json(json!({ "error": e }))))?;
+    let db_url = require_database_url().map_err(|e| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e })),
+        )
+    })?;
 
     let ked_script = script_path("../../scripts/run_ked_vbs_ip_wl_wp_horizons.py");
     let eg_script = script_path("../../scripts/run_ked_eg_horizons.py");

@@ -70,6 +70,7 @@ mobile/
       SondageFormScreen.tsx
       ActivityScreen.tsx
       ProfileScreen.tsx
+      ExportDataScreen.tsx       # export local sélectif JSON/CSV + partage Android
     components/
       SyncStatusBanner.tsx
       MissionCard.tsx
@@ -105,6 +106,7 @@ CREATE TABLE sondages_draft (
   client_id TEXT PRIMARY KEY, mission_id TEXT, planned_point_id TEXT,
   longitude REAL, latitude REAL, location_accuracy_m REAL,
   depth_m REAL, layers_count INTEGER, profile_description TEXT, notes TEXT,
+  point_name TEXT, relocation_reason TEXT,
   status TEXT,                     -- 'draft' | 'queued' | 'synced' | 'failed'
   server_id TEXT, created_at TEXT
 );
@@ -126,6 +128,23 @@ CREATE TABLE app_settings (
 
 Migration versionnée par `PRAGMA user_version` (cf. `db/schema.ts`).
 
+## 3.1 Export et transfert manuel
+
+Depuis l'écran Profil, « Exporter les données » permet à l'opérateur de choisir :
+
+- une ou plusieurs missions présentes dans le cache local ;
+- les points prévisionnels ;
+- les sondages terrain, y compris le nom et la justification d'un point alternatif ;
+- le journal terrain ;
+- les opérations encore dans la file de synchronisation.
+
+Deux formats sont produits dans le cache temporaire de l'application :
+
+- JSON structuré, identifié par `source: atlas-terrain` et `schema_version: 1`, recommandé pour un futur réimport automatisé ;
+- CSV UTF-8 avec BOM et séparateur point-virgule, recommandé pour l'ouverture dans un tableur.
+
+Le fichier est transmis à la feuille de partage native Android avec `expo-sharing`. L'opérateur choisit ensuite le moyen disponible sur son téléphone : messagerie, e-mail, Bluetooth, stockage ou application de transfert. L'export ne marque aucune donnée comme synchronisée et ne supprime aucune donnée locale.
+
 ## 4. Contrats API (backend existant + ajouts de ce chantier)
 
 | Méthode | Route | État |
@@ -137,6 +156,7 @@ Migration versionnée par `PRAGMA user_version` (cf. `db/schema.ts`).
 | GET | `/colab/mobile/missions/:id/map-context` | **étendu** : `+planned_points[]`, `+tolerance_m` |
 | POST | `/colab/mobile/missions/:id/sondages` | existant, réutilisé tel quel |
 | POST | `/colab/mobile/missions/:id/sondage-points/:point_id/confirm` | **nouveau** (ADR-MOBILE-004) |
+| POST | `/colab/mobile/missions/:id/sondage-points/:point_id/relocate` | **nouveau** : exception d'accessibilité justifiée |
 | POST | `/colab/mobile/sync` | existant, réutilisé tel quel |
 | POST | `/colab/mobile/tracks`, `/tracks/:id/points`, `/tracks/:id/stop` | existant, réutilisé tel quel |
 | GET | `/colab/mobile/profile` | **nouveau** (ADR-MOBILE-005) |
@@ -150,7 +170,7 @@ Migration versionnée par `PRAGMA user_version` (cf. `db/schema.ts`).
   "maille_geojson": { "type": "Polygon", "coordinates": [...] },
   "center_lon": 1.23, "center_lat": 6.17,
   "bbox": { "min_x": ..., "max_x": ..., ... },
-  "tolerance_m": 15,
+  "tolerance_m": 10,
   "planned_points": [
     { "id": "uuid", "numero": 1, "label": "S1", "lat": 6.171, "lon": 1.228, "confirmed_sondage_id": null }
   ],
@@ -160,9 +180,34 @@ Migration versionnée par `PRAGMA user_version` (cf. `db/schema.ts`).
 
 ### `POST /colab/mobile/missions/:id/sondage-points/:point_id/confirm`
 
-Requête : `{ longitude, latitude, location_accuracy_m?, depth_m?, layers_count?, profile_description?, notes? }`
+Requête : `{ longitude, latitude, location_accuracy_m?, depth_m?, profile_description?, notes? }`
 Réponse succès (`201`) : `{ id, code_sondage, distance_m, tolerance_m, message }`
-Réponse hors tolérance (`422`) : `{ error: "Hors tolérance", distance_m, tolerance_m }` — le serveur refuse, l'app propose alors "Enregistrer comme sondage libre" (hors point prévu) plutôt que de bloquer l'opérateur.
+Réponse hors tolérance (`422`) : le serveur refuse la confirmation normale. L'app propose l'exception d'accessibilité, qui exige `point_name` et `relocation_reason`; aucun sondage libre ne contourne la règle.
+
+### Navigation puis capture explicite
+
+L'ouverture de « Carte terrain » démarre uniquement la navigation : la position courante est affichée, la maille et les points prévisionnels restent visibles, mais aucune position n'est capturée et aucune alerte de tolérance n'est déclenchée. L'opérateur sélectionne un point puis utilise explicitement « Capturer ma position pour ce point » lorsqu'il est prêt.
+
+Après cette capture seulement :
+
+- à 10 m ou moins, la confirmation normale est proposée ;
+- au-delà de 10 m, la confirmation normale reste bloquée et le formulaire de point alternatif est proposé ;
+- un point alternatif exige un nom et la cause du déplacement ;
+- la distance et la tolérance sont recalculées par l'API lors de l'enregistrement.
+
+### Fonds cartographiques Atlas Terrain
+
+La carte Leaflet mobile propose un sélecteur de fonds :
+
+- OpenStreetMap Standard ;
+- Carto Positron et Carto Voyager ;
+- OpenTopoMap ;
+- Esri Satellite et Esri Topographique ;
+- Google Routes, Satellite, Hybride et Relief, explicitement marqués « test ».
+
+La maille, les points prévisionnels, les sondages enregistrés et la position GPS sont des couches Atlas indépendantes du fond sélectionné. Les fonds Google restent réservés aux essais de compatibilité de l'APK interne ; ils ne doivent pas être activés dans une version de production sans contrat et validation des conditions d'utilisation.
+
+Après le choix d'un fond, le sélecteur de couches se replie automatiquement afin de rendre immédiatement toute la surface cartographique à la navigation.
 
 ### `GET /colab/mobile/profile`
 
@@ -213,4 +258,4 @@ Le bandeau global (`SyncStatusBanner`) reflète l'état agrégé : `à jour` / `
 
 ## 10. Ce que ce document ne couvre pas (backlog explicite)
 
-Push notifications distantes réelles, fiches de sondage labo complètes, cartes régionales pré-téléchargées — voir section "Hors périmètre V0.1" de la roadmap.
+Push distant garanti application arrêtée (jusqu'à configuration EAS/FCM) et cartes régionales pré-téléchargées — voir la roadmap. Les notifications de compte et alertes locales par polling sont déjà fonctionnelles. La saisie structurée des résultats de laboratoire est disponible dans Atlas Colab Studio et dans Atlas Terrain depuis le détail d'une mission. L'opérateur choisit un sondage synchronisé, décrit l'échantillon et renseigne les familles d'essais réalisées (Atterberg, VBS, gonflement, Proctor, CBR, pénétromètre, pressiomètre et granulométrie). L'API limite cet accès aux opérateurs affectés à la mission ou aux comptes disposant des permissions Colab. La promotion vers les tables scientifiques canoniques reste une étape de validation distincte.

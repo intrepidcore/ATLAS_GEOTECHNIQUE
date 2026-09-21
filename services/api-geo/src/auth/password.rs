@@ -1,7 +1,9 @@
 // Gestion du hachage et validation des mots de passe
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher as ArgonHasher, PasswordVerifier, SaltString},
-    Argon2, Algorithm, Params, Version,
+    password_hash::{
+        rand_core::OsRng, PasswordHash, PasswordHasher as ArgonHasher, PasswordVerifier, SaltString,
+    },
+    Algorithm, Argon2, Params, Version,
 };
 
 use super::config::AuthConfig;
@@ -18,7 +20,7 @@ impl PasswordHasher {
         // m=65536 (64 MiB), t=3 (3 itérations), p=4 (4 threads parallèles)
         let params = Params::new(65536, 3, 4, None).expect("Invalid Argon2 params");
         let argon2 = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
-        
+
         Self { argon2, config }
     }
 
@@ -36,8 +38,11 @@ impl PasswordHasher {
     pub fn verify_password(&self, password: &str, hash: &str) -> Result<bool, AuthError> {
         let parsed_hash = PasswordHash::new(hash)
             .map_err(|e| AuthError::InternalError(format!("Invalid hash format: {}", e)))?;
-        
-        Ok(self.argon2.verify_password(password.as_bytes(), &parsed_hash).is_ok())
+
+        Ok(self
+            .argon2
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .is_ok())
     }
 
     /// Valide la force d'un mot de passe selon la configuration
@@ -54,11 +59,13 @@ impl PasswordHasher {
 
         // Caractères spéciaux
         if self.config.require_special_chars {
-            let has_special = password.chars().any(|c| {
-                !c.is_alphanumeric() && !c.is_whitespace()
-            });
+            let has_special = password
+                .chars()
+                .any(|c| !c.is_alphanumeric() && !c.is_whitespace());
             if !has_special {
-                errors.push("Le mot de passe doit contenir au moins un caractère spécial".to_string());
+                errors.push(
+                    "Le mot de passe doit contenir au moins un caractère spécial".to_string(),
+                );
             }
         }
 
@@ -107,7 +114,10 @@ impl PasswordHasher {
             // Pour les paramètres, on vérifie via le hash string lui-même
             // Format: $argon2id$v=19$m=65536,t=3,p=4$...
             let hash_str = hash.to_string();
-            if !hash_str.contains("m=65536") || !hash_str.contains("t=3") || !hash_str.contains("p=4") {
+            if !hash_str.contains("m=65536")
+                || !hash_str.contains("t=3")
+                || !hash_str.contains("p=4")
+            {
                 return true;
             }
         }
@@ -118,18 +128,63 @@ impl PasswordHasher {
 /// Liste des mots de passe les plus courants à rejeter
 fn is_common_password(password: &str) -> bool {
     const COMMON_PASSWORDS: &[&str] = &[
-        "password", "123456", "12345678", "qwerty", "abc123",
-        "monkey", "1234567", "letmein", "trustno1", "dragon",
-        "baseball", "iloveyou", "master", "sunshine", "ashley",
-        "bailey", "passw0rd", "shadow", "123123", "654321",
-        "superman", "qazwsx", "michael", "football", "password1",
-        "password123", "welcome", "welcome1", "admin", "admin123",
-        "root", "toor", "pass", "test", "guest", "master",
-        "changeme", "atlas", "atlas123", "Atlas2025",
+        "password",
+        "123456",
+        "12345678",
+        "qwerty",
+        "abc123",
+        "monkey",
+        "1234567",
+        "letmein",
+        "trustno1",
+        "dragon",
+        "baseball",
+        "iloveyou",
+        "master",
+        "sunshine",
+        "ashley",
+        "bailey",
+        "passw0rd",
+        "shadow",
+        "123123",
+        "654321",
+        "superman",
+        "qazwsx",
+        "michael",
+        "football",
+        "password1",
+        "password123",
+        "welcome",
+        "welcome1",
+        "admin",
+        "admin123",
+        "root",
+        "toor",
+        "pass",
+        "test",
+        "guest",
+        "master",
+        "changeme",
+        "atlas",
+        "atlas123",
+        "Atlas2025",
     ];
-    
+
     let lower = password.to_lowercase();
-    COMMON_PASSWORDS.iter().any(|&p| lower == p.to_lowercase())
+
+    // Les politiques de complexité poussent à « décorer » un mot courant :
+    // « Password123! » satisfait majuscule + chiffre + caractère spécial tout
+    // en restant l'un des mots de passe les plus devinés au monde. Une
+    // comparaison stricte le laissait passer. On teste donc aussi la forme
+    // dépouillée (sans caractères non alphanumériques) et le radical obtenu en
+    // retirant les chiffres de fin.
+    let stripped: String = lower.chars().filter(|c| c.is_alphanumeric()).collect();
+    let core = stripped.trim_end_matches(|c: char| c.is_ascii_digit());
+
+    COMMON_PASSWORDS.iter().any(|&candidate| {
+        let candidate = candidate.to_lowercase();
+        lower == candidate || stripped == candidate || (!core.is_empty() && core == candidate)
+    })
 }
 
 impl Default for PasswordHasher {
@@ -146,10 +201,10 @@ mod tests {
     fn test_hash_and_verify() {
         let hasher = PasswordHasher::default();
         let password = "TestPassword123!";
-        
+
         let hash = hasher.hash_password(password).unwrap();
         assert!(hash.starts_with("$argon2id$"));
-        
+
         assert!(hasher.verify_password(password, &hash).unwrap());
         assert!(!hasher.verify_password("wrong", &hash).unwrap());
     }
@@ -157,19 +212,19 @@ mod tests {
     #[test]
     fn test_password_strength() {
         let hasher = PasswordHasher::default();
-        
+
         // Trop court
         assert!(hasher.validate_password_strength("Ab1!").is_err());
-        
+
         // Pas de majuscule
         assert!(hasher.validate_password_strength("abcdefgh1!").is_err());
-        
+
         // Pas de chiffre
         assert!(hasher.validate_password_strength("Abcdefgh!").is_err());
-        
+
         // Pas de caractère spécial
         assert!(hasher.validate_password_strength("Abcdefgh1").is_err());
-        
+
         // Valide
         assert!(hasher.validate_password_strength("Abcdefgh1!").is_ok());
     }
@@ -177,7 +232,7 @@ mod tests {
     #[test]
     fn test_common_password() {
         let hasher = PasswordHasher::default();
-        
+
         assert!(hasher.validate_password_strength("Password123!").is_err());
         assert!(hasher.validate_password_strength("Admin123!").is_err());
     }
